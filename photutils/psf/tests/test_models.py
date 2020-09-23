@@ -103,7 +103,7 @@ class TestFittableImageModel:
 
     def test_oversampling_inputs(self):
         data = np.arange(30).reshape(5, 6)
-        for oversampling in [4, (3, 3), (3, 4), '1', ('1', '2')]:
+        for oversampling in [4, (3, 3), (3, 4)]:
             fim = FittableImageModel(data, oversampling=oversampling)
             if not hasattr(oversampling, '__len__'):
                 _oversamp = float(oversampling)
@@ -111,9 +111,10 @@ class TestFittableImageModel:
                 _oversamp = tuple(float(o) for o in oversampling)
             assert np.all(fim._oversampling == _oversamp)
 
-        for oversampling in ['a', ('b', 2), (-1, 3), -1]:
+        for oversampling in [-1, [-2, 4], (1, 4, 8), ((1, 2), (3, 4)),
+                             np.ones((2, 2, 2)), 2.1, np.nan, (1, np.inf)]:
             with pytest.raises(ValueError):
-                fim = FittableImageModel(data, oversampling=oversampling)
+                FittableImageModel(data, oversampling=oversampling)
 
 
 class TestGriddedPSFModel:
@@ -345,7 +346,7 @@ class TestPRFAdapter:
         dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=True),
         dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
         dict(xname=None, yname=None, fluxname=None, renormalize_psf=False)
-        ])
+    ])
     def test_prfadapter_integrates(self, adapterkwargs):
         from scipy.integrate import dblquad
 

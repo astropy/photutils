@@ -176,13 +176,14 @@ def test_epsfmodel_inputs():
         EPSFModel(data, flux=None)
 
     data[2, 2] = 1
-    for oversampling in [np.NaN, 'a', -1, [-2, 4]]:
+    for oversampling in [-1, [-2, 4], (1, 4, 8), ((1, 2), (3, 4)),
+                         np.ones((2, 2, 2)), 2.1, np.nan, (1, np.inf)]:
         with pytest.raises(ValueError):
             EPSFModel(data, oversampling=oversampling)
 
-    for origin in ['a', (1, 2, 3)]:
-        with pytest.raises(TypeError):
-            EPSFModel(data, origin=origin)
+    origin = (1, 2, 3)
+    with pytest.raises(TypeError):
+        EPSFModel(data, origin=origin)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

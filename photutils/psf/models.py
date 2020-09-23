@@ -108,7 +108,7 @@ class FittableImageModel(Fittable2DModel):
         the `compute_interpolator` method.  See `compute_interpolator`
         for more details.
 
-    oversampling : float or tuple of two floats, optional
+    oversampling : int or tuple of two int, optional
         The oversampling factor(s) of the model in the ``x`` and ``y``
         directions.  If ``oversampling`` is a scalar it will be treated
         as being the same in both x and y; otherwise a tuple of two
@@ -245,20 +245,25 @@ class FittableImageModel(Fittable2DModel):
         return self._oversampling
 
     def _set_oversampling(self, value):
-        """
-        This is a private method because it's used in the initializer by
-        the ``oversampling``
-        """
+        value = np.atleast_1d(value)
 
-        try:
-            value = np.atleast_1d(value).astype(float)
-            if len(value) == 1:
-                value = np.repeat(value, 2)
-        except ValueError:
-            raise ValueError('Oversampling factors must be float')
+        if np.any(~np.isfinite(value)):
+            raise ValueError('Oversampling factor must be a finite value')
 
         if np.any(value <= 0):
-            raise ValueError('Oversampling factors must be greater than 0')
+            raise ValueError('Oversampling factor must be greater than 0')
+
+        if len(value) == 1:
+            value = np.repeat(value, 2)
+        if len(value) != 2:
+            raise ValueError('Oversampling factor must have 1 or 2 '
+                             'elements')
+        if value.ndim != 1:
+            raise ValueError('Oversampling factor must be 1D')
+
+        value_int = value.astype(int)
+        if np.any(value_int != value):  # e.g., 2.0 is OK, 2.1 is not
+            raise ValueError('Oversampling elements must be integers')
 
         self._oversampling = value
 
@@ -490,6 +495,8 @@ class FittableImageModel(Fittable2DModel):
             xi = np.asarray(x) - x_0
             yi = np.asarray(y) - y_0
 
+        xi = xi.astype(float)
+        yi = yi.astype(float)
         xi += self._x_origin
         yi += self._y_origin
 
@@ -600,18 +607,6 @@ class EPSFModel(FittableImageModel):
             warnings.warn("Overflow encountered while computing "
                           "normalization constant. Normalization "
                           "constant will be set to 1.", NonNormalizable)
-
-    def _set_oversampling(self, value):
-        try:
-            value = np.atleast_1d(value).astype(int)
-            if len(value) == 1:
-                value = np.repeat(value, 2)
-        except ValueError:
-            raise ValueError('Oversampling factor must be a scalar')
-        if np.any(value <= 0):
-            raise ValueError('Oversampling factor must be greater than 0')
-
-        self._oversampling = value
 
     def normalized_data(self):
         """
