@@ -1,3 +1,5 @@
+.. _source_detection:
+
 Source Detection (`photutils.detection`)
 ========================================
 

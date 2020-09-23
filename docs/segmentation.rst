@@ -30,8 +30,8 @@ The image can also be filtered before thresholding to smooth the noise
 and maximize the detectability of objects with a shape similar to the
 filter kernel.
 
-Let's start by detecting sources in a synthetic image provided
-by the `photutils.datasets <datasets.html>`_ module::
+Let's start by detecting sources in a synthetic image provided by the
+:ref:`photutils.datasets <datasets>` module::
 
     >>> from photutils.datasets import make_100gaussians_image
     >>> data = make_100gaussians_image()
