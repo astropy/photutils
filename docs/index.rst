@@ -7,6 +7,10 @@
       h1 {display:none;}
     </style>
 
+.. |br| raw:: html
+
+    <div style="min-height:0.1em;"></div>
+
 *********
 Photutils
 *********
@@ -26,11 +30,14 @@ primarily provides tools for detecting and performing photometry of
 astronomical sources.  It is an open source Python package and is
 licensed under a :ref:`3-clause BSD license <photutils_license>`.
 
+|br|
+
 .. Important::
     If you use Photutils for a project that leads to a publication,
     whether directly or as a dependency of another package, please
     include an :doc:`acknowledgment and/or citation <citation>`.
 
+|br|
 
 Getting Started
 ===============
@@ -83,6 +90,8 @@ Developer Documentation
     :hidden:
 
     test_function.rst
+
+|br|
 
 .. note::
 
