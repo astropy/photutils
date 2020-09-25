@@ -28,10 +28,10 @@ def _get_bibtex():
     citation_file = os.path.join(os.path.dirname(__file__), 'CITATION.rst')
 
     with open(citation_file, 'r') as citation:
-        refs = citation.read().split('@misc')[1:]
+        refs = citation.read().split('@software')[1:]
         if len(refs) == 0:
             return ''
-        bibtexreference = "@misc{0}".format(refs[0])
+        bibtexreference = "@software{0}".format(refs[0])
     return bibtexreference
 
 
