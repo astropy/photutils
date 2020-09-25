@@ -12,12 +12,21 @@ also requires a PyPI account with admin-level access for Photutils.
 These instructions assume the name of the git remote for the repo is
 called ``upstream``.
 
+#. Check out the branch that you are going to release. This will usually
+   be the ``master`` branch, unless you are making a bugfix release.
+
+   For a bugfix release, check out the ``A.B.x`` branch. Use ``git
+   cherry-pick <hash>`` (or ``git cherry-pick -m1 <hash>`` for merge
+   commits) to backport fixes to the bugfix branch. Also, be sure to
+   push all changes to the upstream repo so that CI can run on the
+   bugfix branch.
+
 #. Ensure Travis-CI and any other continuous integration is passing
    for the branch you are going to release. Also, ensure that Read the
    Docs builds are passing.
 
-#. Locally run the tests using ``tox`` to do thorough tests in isolated
-   environments::
+#. Locally run the tests using ``tox`` to thoroughly test the code in
+   isolated environments::
 
         tox -e test-alldeps -- --remote-data=any
         tox -e build_docs
@@ -29,7 +38,7 @@ called ``upstream``.
    commit the changes::
 
         git add CHANGES.rst
-        git commit -m'Finalizing changelog for version <X.Y.Z version>'
+        git commit -m'Finalizing changelog for version <X.Y.Z>'
 
 #. Remove any untracked files (WARNING: this will permanently remove any
    files that have not been previously committed, so make sure that you
@@ -47,13 +56,13 @@ called ``upstream``.
    release by creating an annotated git tag (optionally signing with the
    ``-s`` option)::
 
-        git tag -a <X.Y.Z version> -m'<X.Y.Z version>'
-        git show <X.Y.Z version>  # show the tag
+        git tag -a <X.Y.Z> -m'<X.Y.Z>'
+        git show <X.Y.Z>  # show the tag
         git tag  # show all tags
 
 #. Check out the release commit::
 
-        git checkout <X.Y.Z version>
+        git checkout <X.Y.Z>
 
 #. Generate the source distribution tar file by first making sure the
    `pep517 <https://pypi.org/project/pep517/>`_ package is installed and
@@ -79,13 +88,13 @@ called ``upstream``.
    environment::
 
         <install and activate virtual environment>
-        pip install -e .[all,test]
+        pip install -e '.[all,test]'
         pytest --remote-data=any
 
    or::
 
         <install and activate virtual environment>
-        pip install ./<file>.tar.gz[all,test]
+        pip install './<file>.tar.gz[all,test]'
         cd <any-directory-outside-of-photutils-source>
         python
         >>> import photutils
@@ -125,16 +134,19 @@ called ``upstream``.
     Then commit the changes and push to the upstream repo::
 
         git add CHANGES.rst
-        git commit -m'Add version <x.y.z next_version> to the changelog'
+        git commit -m'Add version <x.y.z> to the changelog'
         git push upstream master
 
 #. Create a GitHub Release
    (https://github.com/astropy/photutils/releases) by clicking on
    "Draft a new release", select the tag of the released version, add
    a release title with the released version, and add a description
-   of "See ```CHANGES.rst``` for release notes.". Then click "Publish
-   release". This step will trigger an automatic update of the package
-   on Zenodo (see below).
+   of::
+
+        See the [changelog](https://photutils.readthedocs.io/en/stable/changelog.html) for release notes.
+
+   Then click "Publish release". This step will trigger an automatic
+   update of the package on Zenodo (see below).
 
 #. Close the GitHub Milestone
    (https://github.com/astropy/photutils/milestones) for the released
