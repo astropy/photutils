@@ -235,8 +235,14 @@ class Isophote:
                                                        coeffs)
             residual = self.sample.values[2] - model
 
-            c = fit_upper_harmonic(sample.values[0], residual, n)
-            covariance = c[1]
+            c = fit_upper_harmonic(sample.values[0], sample.values[2], n)
+
+            # compute covariance matrix (leastsq gives inv. of Hessian)
+            if (len(sample.values[2] > len(c[0]))) and c[1] is not None:
+                covariance = - c[1] * residual
+            else:
+                covariance = np.inf
+
             ce = np.diagonal(covariance)
             c = c[0]
 
