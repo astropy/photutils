@@ -131,16 +131,16 @@ called ``upstream``.
 
        - No changes yet
 
-    Then commit the changes and push to the upstream repo::
+   Then commit the changes and push to the upstream repo::
 
         git add CHANGES.rst
         git commit -m'Add version <x.y.z> to the changelog'
         git push upstream master
 
-#. Tag this new commit with the development version of the next
-   ``x.y.z`` major version and push the tag to the upstream repo. This
-   is needed if the latest package release is a bugfix release tagged on
-   the bugfix branch (not the master branch)::
+#. Tag this new commit with the development version of the next major
+   version and push the tag to the upstream repo. This is needed if
+   the latest package release is a bugfix release tagged on the bugfix
+   branch (not the master branch)::
 
         git tag -a <x.y.z.dev> -m'<x.y.z.dev>'
         git push upstream <x.y.z.dev>
