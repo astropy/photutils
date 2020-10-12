@@ -121,6 +121,13 @@ matrix:
           stage: Initial tests
           env: TOXENV=codestyle
 
+        # Do a code style check
+        - os: linux
+          python: 3.8
+          name: Security check
+          stage: Comprehensive tests
+          env: TOXENV=bandit
+
     allow_failures:
         # Do a PEP8 test with flake8
         # (do allow to fail unless your code completely compliant)
