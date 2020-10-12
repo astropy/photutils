@@ -18,12 +18,12 @@ addons:
 
 stages:
    # Do the style check and a single test job, don't proceed if it fails
-   - name: Initial tests
+   # - name: Initial tests
    # Test docs, astropy dev, and without optional dependencies
    - name: Comprehensive tests
    # These will only run when cron is opted in
-   - name: Cron tests
-     if: type = cron
+   #- name: Cron tests
+   #  if: type = cron
 
 env:
     global:
@@ -52,73 +52,73 @@ matrix:
         # Try MacOS X, usually enough only to run from cron as hardly there are
         # issues that are not picked up by a linux worker. We set language to
         # 'c' since 'python' doesn't work on non-Linux platforms.
-        - os: osx
-          language: c
-          name: Python 3.7 with required dependencies
-          stage: Cron tests
-          env: PYTHON_VERSION=3.7 TOXENV=py37-test-alldeps
+        #- os: osx
+        #  language: c
+        #  name: Python 3.7 with required dependencies
+        #  stage: Cron tests
+        #  env: PYTHON_VERSION=3.7 TOXENV=py37-test-alldeps
 
         # Do a regular build on Linux with Python 3.8, with cov
         # For Linux we use language: python to avoid using conda.
-        - os: linux
-          python: 3.8
-          name: Python 3.8 with required dependencies and measure coverage
-          stage: Initial tests
-          env: TOXENV=py38-test-alldeps-cov
-
+        #- os: linux
+        #  python: 3.8
+        #  name: Python 3.8 with required dependencies and measure coverage
+        #  stage: Initial tests
+        #  env: TOXENV=py38-test-alldeps-cov
+        #
         # Check for sphinx doc build warnings
-        - os: linux
-          python: 3.8
-          name: Documentation build
-          stage: Comprehensive tests
-          env: TOXENV=build_docs
+        #- os: linux
+        #  python: 3.8
+        #  name: Documentation build
+        #  stage: Comprehensive tests
+        #  env: TOXENV=build_docs
 
         # Now try Astropy dev with the latest Python
-        - os: linux
-          python: 3.8
-          name: Python 3.8 with developer version of astropy
-          stage: Comprehensive tests
-          env: TOXENV=py38-test-alldeps-devdeps
+        #- os: linux
+        #  python: 3.8
+        #  name: Python 3.8 with developer version of astropy
+        #  stage: Comprehensive tests
+        #  env: TOXENV=py38-test-alldeps-devdeps
 
         # And with an older Python, Astropy LTS, and the oldest supported Numpy
-        - os: linux
-          python: 3.6
-          name: Python 3.6 astropy LTS and Numpy 1.17
-          stage: Comprehensive tests
-          env: TOXENV=py36-test-alldeps-astropylts-numpy117
+        #- os: linux
+        #  python: 3.6
+        #  name: Python 3.6 astropy LTS and Numpy 1.17
+        #  stage: Comprehensive tests
+        #  env: TOXENV=py36-test-alldeps-astropylts-numpy117
 
         # Add a job that runs from cron only and tests against astropy dev and
         # numpy dev to give a change for early discovery of issues and feedback
         # for both developer teams.
-        - os: linux
-          python: 3.8
-          name: Python 3.8 latest developer version of key dependencies
-          stage: Cron tests
-          env: TOXENV=py38-test-alldeps-devdeps
+        #- os: linux
+        #  python: 3.8
+        #  name: Python 3.8 latest developer version of key dependencies
+        #  stage: Cron tests
+        #  env: TOXENV=py38-test-alldeps-devdeps
 
         # Try on Windows.
         - os: windows
           language: c
           name: Python 3.8 with required dependencies
           stage: Comprehensive tests
-          env: PYTHON_VERSION=3.8 TOXENV=py38-test
+          env: MINICONDA_VERSION=4.8.3 PYTHON_VERSION=3.8 TOXENV=py38-test
 
         # Try other python versions and Numpy versions. Since we can assume that
         # the Numpy developers have taken care of testing Numpy with different
         # versions of Python, we can vary Python and Numpy versions at the same
         # time.
-        - os: linux
-          python: 3.7
-          name: Python 3.7 with astropy 4.0 and Numpy 1.17
-          stage: Comprehensive tests
-          env: TOXENV=py37-test-astropy40-numpy117
+        #- os: linux
+        #  python: 3.7
+        #  name: Python 3.7 with astropy 4.0 and Numpy 1.17
+        #  stage: Comprehensive tests
+        #  env: TOXENV=py37-test-astropy40-numpy117
 
         # Do a code style check
-        - os: linux
-          python: 3.8
-          name: Code style checks
-          stage: Initial tests
-          env: TOXENV=codestyle
+        #- os: linux
+        #  python: 3.8
+        #  name: Code style checks
+        #  stage: Initial tests
+        #  env: TOXENV=codestyle
 
     allow_failures:
         # Do a PEP8 test with flake8
