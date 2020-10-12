@@ -101,7 +101,7 @@ matrix:
           language: c
           name: Python 3.8 with required dependencies
           stage: Comprehensive tests
-          env: MINICONDA_VERSION=4.8.3 PYTHON_VERSION=3.8 TOXENV=py38-test
+          env: CONDA_VERSION>=4.8 MINICONDA_VERSION=4.8.3 PYTHON_VERSION=3.8 TOXENV=py38-test
 
         # Try other python versions and Numpy versions. Since we can assume that
         # the Numpy developers have taken care of testing Numpy with different
