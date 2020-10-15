@@ -115,6 +115,11 @@ Then to build and install Photutils, run::
     cd photutils
     pip install .[all]
 
+If you wish to install the package in "editable" mode, instead include
+the "-e" option::
+
+    pip install -e .[all]
+
 
 Building and installing using pip
 ---------------------------------
