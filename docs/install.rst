@@ -113,7 +113,12 @@ version of the Photutils source code can be retrieved using git::
 Then to build and install Photutils, run::
 
     cd photutils
-    python setup.py install
+    pip install .[all]
+
+If you wish to install the package in "editable" mode, instead include
+the "-e" option::
+
+    pip install -e .[all]
 
 
 Building and installing using pip
