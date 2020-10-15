@@ -101,7 +101,8 @@ matrix:
           language: c
           name: Python 3.8 with required dependencies
           stage: Comprehensive tests
-          env: PYTHON_VERSION=3.8 TOXENV=py38-test
+          env: PATH=/c/Python38:/c/Python38/Scripts:$PATH
+               TOXENV=py38-test
 
         # Try other python versions and Numpy versions. Since we can assume that
         # the Numpy developers have taken care of testing Numpy with different
@@ -134,17 +135,21 @@ before_install:
         export TOXPOSARGS=$TOXPOSARGS" --cov-report=xml:"$TRAVIS_BUILD_DIR"/coverage.xml";
       fi
 
+    - if [[ $TRAVIS_OS_NAME == windows ]]; then
+        choco install --no-progress python --version 3.8;
+        python -m pip install --upgrade pip;
+      fi
+
     - echo "TOXENV="$TOXENV
     - echo "TOXARGS="$TOXARGS
     - echo "TOXPOSARGS="$TOXPOSARGS
 
 install:
     # We now use the ci-helpers package to set up our Python environment
-    # on Windows and MacOS X but we don't set up any other dependencies,
-    # instead using tox to do this. See https://github.com/astropy/ci-helpers
-    # for more information about ci-helpers.
-
-    - if [[ $TRAVIS_OS_NAME != linux ]]; then
+    # on MacOS X but we don't set up any other dependencies, instead using
+    # tox to do this. See https://github.com/astropy/ci-helpers for more
+    # information about ci-helpers.
+    - if [[ $TRAVIS_OS_NAME == osx ]]; then
         git clone --depth 1 git://github.com/astropy/ci-helpers.git;
         source ci-helpers/travis/setup_conda.sh;
       fi
