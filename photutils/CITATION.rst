@@ -25,15 +25,15 @@ v1.0.0 one would cite Bradley et al. 2020 with the BibTeX entry
 
     @software{larry_bradley_2020_4044744,
     author       = {Larry Bradley and
-                    Brigitta Sipőcz and
+                    Brigitta Sip{\H o}cz and
                     Thomas Robitaille and
                     Erik Tollerud and
-                    Zé Vinícius and
+                    Z\`e Vin{\'{\i}}cius and
                     Christoph Deil and
                     Kyle Barbary and
                     Tom J Wilson and
                     Ivo Busko and
-                    Hans Moritz Günther and
+                    Hans Moritz G{\"u}nther and
                     Mihai Cara and
                     Simon Conseil and
                     Azalee Bostroem and
