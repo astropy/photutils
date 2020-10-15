@@ -75,6 +75,19 @@ except Exception:
 # extensions_helpers is not installed
 import os  # noqa
 from setuptools import setup  # noqa
+
+try:
+    import Cython
+except ImportError:
+    print('To build photutils, you need the Cython package.  Try "pip install Cython" or similar.')
+    sys.exit(-1)
+
+try:
+    import extension_helpers
+except ImportError:
+    print('To build photutils, you need the extension_helpers package.  Try "pip install extension_helpers" or similar.')
+    sys.exit(-1)
+
 from extension_helpers import get_extensions  # noqa
 
 setup(use_scm_version={'write_to': os.path.join('photutils', 'version.py'),
