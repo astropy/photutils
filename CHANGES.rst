@@ -1,7 +1,13 @@
 1.1.0 (unreleased)
 ------------------
 
-- No changes yet
+New Features
+^^^^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - The ``PixelAperture.plot()`` method now returns a list of
+    ``matplotlib.patches.Patch`` objects. [#923]
 
 
 1.0.1 (2020-09-24)
