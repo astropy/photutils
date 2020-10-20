@@ -160,7 +160,7 @@ class EllipseFitter:
                 coeffs = fit_first_and_second_harmonics(values[0], values[2])
                 coeffs = coeffs[0]
             except Exception as e:
-                log.info(e)
+                log.warning(e)
                 sample.geometry.fix = fixed_parameters
                 return Isophote(sample, i + 1, False, 3)
 
