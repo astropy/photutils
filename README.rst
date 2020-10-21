@@ -66,7 +66,7 @@ for details.
     :alt: Zenodo Latest DOI
 
 .. |Travis Status| image:: https://img.shields.io/travis/astropy/photutils/master?logo=travis%20ci&logoColor=white&label=Travis%20CI
-    :target: https://travis-ci.org/astropy/photutils
+    :target: https://travis-ci.com/astropy/photutils
     :alt: Travis CI Status
 
 .. |Codecov Status| image:: https://img.shields.io/codecov/c/github/astropy/photutils?logo=codecov
