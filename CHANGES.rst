@@ -13,6 +13,15 @@ New Features
 1.0.2 (unreleased)
 ------------------
 
+New Features
+^^^^^^^^^^^^
+
+- ``photutils.background``
+
+  - Improved the performance of ``Background2D`` (e.g., by a factor
+    of ~4 with 2048x2048 input arrays when using the default interpolator).
+    [#1103]
+
 Bug Fixes
 ^^^^^^^^^
 
