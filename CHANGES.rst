@@ -10,6 +10,18 @@ New Features
     ``matplotlib.patches.Patch`` objects. [#923]
 
 
+1.0.2 (unreleased)
+------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.background``
+
+  - Fixed a bug with ``Background2D`` where using ``BkgIDWInterpolator``
+    would give incorrect results. [#1104]
+
+
 1.0.1 (2020-09-24)
 ------------------
 
