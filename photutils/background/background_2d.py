@@ -745,7 +745,7 @@ class Background2D:
         self.yx = np.column_stack([self.y, self.x])
 
         # the position coordinates used when calling an interpolator
-        nx, ny = self.data.shape
+        ny, nx = self.data.shape
         self.data_coords = np.array(list(product(range(ny), range(nx))))
 
     @lazyproperty
