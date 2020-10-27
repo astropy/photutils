@@ -52,6 +52,22 @@ class TestBackground2D:
         assert b.background_rms_median == 0.0
 
     @pytest.mark.parametrize('interpolator', INTERPOLATORS)
+    def test_background_rect(self, interpolator):
+        """
+        Regression test for interpolators with non-square input data.
+        """
+        data = np.arange(12).reshape(3, 4)
+        rms = np.zeros((3, 4))
+        b = Background2D(data, (1, 1), filter_size=1,
+                         interpolator=interpolator)
+        assert_allclose(b.background, data, atol=1.e-7)
+        assert_allclose(b.background_rms, rms)
+        assert_allclose(b.background_mesh, data)
+        assert_allclose(b.background_rms_mesh, rms)
+        assert b.background_median == 5.5
+        assert b.background_rms_median == 0.0
+
+    @pytest.mark.parametrize('interpolator', INTERPOLATORS)
     def test_background_nonconstant(self, interpolator):
         data = np.copy(DATA)
         data[25:50, 50:75] = 10.
