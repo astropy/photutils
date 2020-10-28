@@ -110,7 +110,7 @@ class Scalar(ApertureAttribute):
 
 class PositiveScalar(ApertureAttribute):
     """
-    Check that value is a strictly positive (>= 0) scalar.
+    Check that value is a strictly positive (> 0) scalar.
     """
 
     def _validate(self, value):
