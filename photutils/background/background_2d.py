@@ -746,7 +746,7 @@ class Background2D:
 
         # the position coordinates used when calling an interpolator
         ny, nx = self.data.shape
-        self.data_coords = np.array(list(product(range(ny), range(nx))))
+        self.data_coords = np.indices((nx, ny)).T.reshape(nx*ny, 2)[:, [1, 0]]
 
     @lazyproperty
     def mesh_nmasked(self):
