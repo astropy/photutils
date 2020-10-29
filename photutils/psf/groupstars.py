@@ -104,12 +104,12 @@ class DAOGroup(GroupStarsBase):
     @crit_separation.setter
     def crit_separation(self, crit_separation):
         if not isinstance(crit_separation, (float, int)):
-            raise ValueError(f'crit_separation is expected to be either '
-                             'float or int. Received {type(crit_separation}.')
+            raise ValueError('crit_separation is expected to be either float'
+                             f'or int. Received {type(crit_separation)}.')
 
         elif crit_separation < 0.0:
-            raise ValueError(f'crit_separation is expected to be a positive '
-                             'real number. Got {crit_separation}.')
+            raise ValueError('crit_separation is expected to be a positive '
+                             f'real number. Got {crit_separation}.')
         else:
             self._crit_separation = crit_separation
 
