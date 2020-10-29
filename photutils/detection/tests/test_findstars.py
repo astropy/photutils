@@ -35,8 +35,7 @@ class TestDAOStarFinder:
     def test_daofind(self, threshold, fwhm):
         starfinder = DAOStarFinder(threshold, fwhm, sigma_radius=1.5)
         tbl = starfinder(DATA)
-        datafn = ('daofind_test_thresh{0:04.1f}_fwhm{1:04.1f}'
-                  '.txt'.format(threshold, fwhm))
+        datafn = f'daofind_test_thresh{threshold:04.1f}_fwhm{fwhm:04.1f}.txt'
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         tbl_ref = Table.read(datafn, format='ascii')
 
@@ -177,8 +176,8 @@ class TestIRAFStarFinder:
     def test_irafstarfind(self, threshold, fwhm):
         starfinder = IRAFStarFinder(threshold, fwhm, sigma_radius=1.5)
         tbl = starfinder(DATA)
-        datafn = ('irafstarfind_test_thresh{0:04.1f}_fwhm{1:04.1f}'
-                  '.txt'.format(threshold, fwhm))
+        datafn = (f'irafstarfind_test_thresh{threshold:04.1f}_'
+                  f'fwhm{fwhm:04.1f}.txt')
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         tbl_ref = Table.read(datafn, format='ascii')
 

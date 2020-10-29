@@ -35,8 +35,8 @@ class Aperture(metaclass=abc.ABCMeta):
 
     def __len__(self):
         if self.isscalar:
-            raise TypeError('Scalar {0!r} object has no len()'
-                            .format(self.__class__.__name__))
+            raise TypeError(f'Scalar {self.__class__.__name__!r} object has '
+                            'no len()')
         return self.shape[0]
 
     def __getitem__(self, index):
@@ -60,13 +60,13 @@ class Aperture(metaclass=abc.ABCMeta):
                             'or SkyAperture')
 
     def __repr__(self):
-        prefix = '<{0}('.format(self.__class__.__name__)
+        prefix = f'<{self.__class__.__name__}('
         cls_info = [self._positions_str(prefix)]
         for param in self._shape_params:
-            cls_info.append('{0}={1}'.format(param, getattr(self, param)))
+            cls_info.append(f'{param}={getattr(self, param)}')
         cls_info = ', '.join(cls_info)
 
-        return '{0}{1})>'.format(prefix, cls_info)
+        return f'{prefix}{cls_info})>'
 
     def __str__(self):
         prefix = 'positions'
@@ -76,7 +76,7 @@ class Aperture(metaclass=abc.ABCMeta):
         if self._shape_params is not None:
             for param in self._shape_params:
                 cls_info.append((param, getattr(self, param)))
-        fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
+        fmt = [f'{key}: {val}' for key, val in cls_info]
 
         return '\n'.join(fmt)
 
@@ -121,7 +121,7 @@ class PixelAperture(Aperture):
     @staticmethod
     def _translate_mask_mode(mode, subpixels, rectangle=False):
         if mode not in ('center', 'subpixel', 'exact'):
-            raise ValueError('Invalid mask mode: {0}'.format(mode))
+            raise ValueError(f'Invalid mask mode: {mode}')
 
         if rectangle and mode == 'exact':
             warnings.warn('The "exact" method is not yet implemented for '

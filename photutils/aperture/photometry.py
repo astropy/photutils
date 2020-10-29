@@ -196,7 +196,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     meta = OrderedDict()
     meta['name'] = 'Aperture photometry results'
     meta['version'] = _get_version_info()
-    calling_args = "method='{0}', subpixels={1}".format(method, subpixels)
+    calling_args = f"method='{method}', subpixels={subpixels}"
     meta['aperture_photometry_args'] = calling_args
 
     tbl = QTable(meta=meta)
@@ -226,8 +226,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         sum_key = sum_key_main
         sum_err_key = sum_err_key_main
         if not single_aperture:
-            sum_key += '_{}'.format(i)
-            sum_err_key += '_{}'.format(i)
+            sum_key += f'_{i}'
+            sum_err_key += f'_{i}'
 
         tbl[sum_key] = aper_sum
         if error is not None:

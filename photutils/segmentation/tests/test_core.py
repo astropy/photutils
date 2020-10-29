@@ -108,14 +108,14 @@ class TestSegmentationImage:
 
         props = ['shape', 'nlabels', 'max_label']
         for prop in props:
-            assert '{}:'.format(prop) in repr(self.segm)
+            assert f'{prop}:' in repr(self.segm)
 
     def test_segment_repr_str(self):
         assert repr(self.segm[0]) == str(self.segm[0])
 
         props = ['label', 'slices', 'area']
         for prop in props:
-            assert '{}:'.format(prop) in repr(self.segm[0])
+            assert f'{prop}:' in repr(self.segm[0])
 
     def test_segment_data(self):
         assert_allclose(self.segm[3].data.shape, (3, 3))

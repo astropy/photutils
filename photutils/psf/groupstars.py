@@ -104,12 +104,12 @@ class DAOGroup(GroupStarsBase):
     @crit_separation.setter
     def crit_separation(self, crit_separation):
         if not isinstance(crit_separation, (float, int)):
-            raise ValueError('crit_separation is expected to be either '
-                             'float or int. Received {}.'
-                             .format(type(crit_separation)))
+            raise ValueError('crit_separation is expected to be either float'
+                             f'or int. Received {type(crit_separation)}.')
+
         elif crit_separation < 0.0:
             raise ValueError('crit_separation is expected to be a positive '
-                             'real number. Got {}'.format(crit_separation))
+                             f'real number. Got {crit_separation}.')
         else:
             self._crit_separation = crit_separation
 
@@ -126,7 +126,7 @@ class DAOGroup(GroupStarsBase):
         if not np.array_equal(cstarlist['id'], np.arange(len(cstarlist)) + 1):
             raise ValueError('id colum must be an integer-valued ' +
                              'sequence starting from 1. ' +
-                             'Got {}'.format(cstarlist['id']))
+                             f"Got {cstarlist['id']}")
 
         n = 1
         while (cstarlist['group_id'] == 0).sum() > 0:
@@ -236,7 +236,7 @@ class DBSCANGroup(GroupStarsBase):
         if not np.array_equal(cstarlist['id'], np.arange(len(cstarlist)) + 1):
             raise ValueError('id colum must be an integer-valued ' +
                              'sequence starting from 1. ' +
-                             'Got {}'.format(cstarlist['id']))
+                             f"Got {cstarlist['id']}")
 
         pos_stars = np.transpose((cstarlist['x_0'], cstarlist['y_0']))
         dbscan = DBSCAN(eps=self.crit_separation,

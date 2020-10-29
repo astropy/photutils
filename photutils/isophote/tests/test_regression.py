@@ -77,12 +77,12 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
     compare results visually with synth_table_mean.fits.
     """
 
-    filename = '{0}_table.fits'.format(name)
+    filename = f'{name}_table.fits'
     path = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
     table = Table.read(path)
 
     nrows = len(table['SMA'])
-    path = get_path('isophote/{0}.fits'.format(name),
+    path = get_path(f'isophote/{name}.fits',
                     location='photutils-datasets', cache=True)
     hdu = fits.open(path)
     data = hdu[0].data

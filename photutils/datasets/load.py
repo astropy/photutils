@@ -49,13 +49,13 @@ def get_path(filename, location='local', cache=True, show_progress=False):
     """
 
     datasets_url = ('https://github.com/astropy/photutils-datasets/raw/'
-                    'master/data/{0}'.format(filename))
+                    f'master/data/{filename}')
 
     if location == 'local':
         path = get_pkg_data_filename('data/' + filename)
     elif location == 'remote':  # pragma: no cover
         try:
-            url = 'https://data.astropy.org/photometry/{0}'.format(filename)
+            url = f'https://data.astropy.org/photometry/{filename}'
             path = download_file(url, cache=cache,
                                  show_progress=show_progress)
         except (URLError, HTTPError):  # timeout or not found
@@ -65,7 +65,7 @@ def get_path(filename, location='local', cache=True, show_progress=False):
         path = download_file(datasets_url, cache=cache,
                              show_progress=show_progress)
     else:
-        raise ValueError('Invalid location: {0}'.format(location))
+        raise ValueError(f'Invalid location: {location}')
 
     return path
 
@@ -210,7 +210,7 @@ def load_irac_psf(channel, show_progress=False):  # pragma: no cover
     if channel < 1 or channel > 4:
         raise ValueError('channel must be 1, 2, 3, or 4')
 
-    filepath = 'irac_ch{0}_flight.fits'.format(channel)
+    filepath = f'irac_ch{channel}_flight.fits'
     path = get_path(filepath, location='remote', show_progress=show_progress)
     hdu = fits.open(path)[0]
 

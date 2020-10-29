@@ -50,8 +50,8 @@ def _make_binary_structure(ndim, connectivity):
         elif connectivity == 8:
             selem = np.ones((3, 3), dtype=int)
         else:
-            raise ValueError('Invalid connectivity={0}.  '
-                             'Options are 4 or 8'.format(connectivity))
+            raise ValueError(f'Invalid connectivity={connectivity}.  '
+                             'Options are 4 or 8.')
     else:
         selem = generate_binary_structure(ndim, 1)
 
@@ -129,7 +129,7 @@ def _detect_sources(data, thresholds, npixels, filter_kernel=None,
 
     if (npixels <= 0) or (int(npixels) != npixels):
         raise ValueError('npixels must be a positive integer, got '
-                         '"{0}"'.format(npixels))
+                         f'"{npixels}"')
 
     if mask is not None:
         if mask.shape != data.shape:

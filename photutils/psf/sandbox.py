@@ -199,8 +199,8 @@ class DiscretePRF(Fittable2DModel):
         if np.iscomplexobj(imdata):
             raise TypeError('Complex type not supported')
         if imdata.ndim != 2:
-            raise ValueError('{0}-d array not supported. '
-                             'Only 2-d arrays supported.'.format(imdata.ndim))
+            raise ValueError(f'{imdata.ndim}-d array not supported. '
+                             'Only 2-d arrays supported.')
         if size % 2 == 0:
             raise TypeError("Size must be odd.")
 

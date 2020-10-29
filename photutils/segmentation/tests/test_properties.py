@@ -236,7 +236,7 @@ class TestSourceProperties:
 
         attrs = ['label', 'centroid', 'sky_centroid']
         for attr in attrs:
-            assert '{}:'.format(attr) in repr(props)
+            assert f'{attr}:' in repr(props)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
