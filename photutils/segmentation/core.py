@@ -49,16 +49,15 @@ class Segment:
         self.area = area
 
     def __str__(self):
-        cls_name = '<{0}.{1}>'.format(self.__class__.__module__,
-                                      self.__class__.__name__)
+        cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
 
         cls_info = []
         params = ['label', 'slices', 'area']
         for param in params:
             cls_info.append((param, getattr(self, param)))
-        fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
+        fmt = [f'{key}: {val}' for key, val in cls_info]
 
-        return '{}\n'.format(cls_name) + '\n'.join(fmt)
+        return f'{cls_name}\n' + '\n'.join(fmt)
 
     def __repr__(self):
         return self.__str__()
@@ -183,16 +182,15 @@ class SegmentationImage:
             yield i
 
     def __str__(self):
-        cls_name = '<{0}.{1}>'.format(self.__class__.__module__,
-                                      self.__class__.__name__)
+        cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
 
         cls_info = []
         params = ['shape', 'nlabels', 'max_label']
         for param in params:
             cls_info.append((param, getattr(self, param)))
-        fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
+        fmt = [f'{key}: {val}' for key, val in cls_info]
 
-        return '{}\n'.format(cls_name) + '\n'.join(fmt)
+        return f'{cls_name}\n' + '\n'.join(fmt)
 
     def __repr__(self):
         return self.__str__()
@@ -530,9 +528,9 @@ class SegmentationImage:
 
         if bad_labels:
             if len(bad_labels) == 1:
-                raise ValueError('label {} is invalid'.format(bad_labels))
+                raise ValueError(f'label {bad_labels} is invalid')
             else:
-                raise ValueError('labels {} are invalid'.format(bad_labels))
+                raise ValueError(f'labels {bad_labels} are invalid')
 
     @deprecated_renamed_argument('random_state', 'seed', '1.0')
     def make_cmap(self, background_color='#000000', seed=None):

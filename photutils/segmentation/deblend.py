@@ -222,10 +222,9 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     from skimage.segmentation import watershed
 
     if nlevels < 1:
-        raise ValueError('nlevels must be >= 1, got "{0}"'.format(nlevels))
+        raise ValueError(f'nlevels must be >= 1, got "{nlevels}"')
     if contrast < 0 or contrast > 1:
-        raise ValueError('contrast must be >= 0 and <= 1, got '
-                         '"{0}"'.format(contrast))
+        raise ValueError(f'contrast must be >= 0 and <= 1, got "{contrast}"')
 
     segm_mask = (segment_img.data > 0)
     source_values = data[segm_mask]

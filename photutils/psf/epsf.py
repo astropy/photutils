@@ -68,8 +68,7 @@ class EPSFFitter:
 
             min_size = 3
             if any([size < min_size for size in fit_boxsize]):
-                raise ValueError('size must be >= {} for x and y'
-                                 .format(min_size))
+                raise ValueError(f'size must be >= {min_size} for x and y')
 
         self.fit_boxsize = fit_boxsize
 
@@ -829,7 +828,7 @@ class EPSFBuilder:
                 if iter_num == 1:
                     dt_str = ' [? s/iter]'
                 else:
-                    dt_str = ' [{:.1f} s/iter]'.format(dt)
+                    dt_str = f' [{dt:.1f} s/iter]'
 
                 print('PROGRESS: iteration {0:d} (of max {1}){2}'
                       .format(iter_num, self.maxiters, dt_str), end='\r')

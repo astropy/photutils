@@ -263,8 +263,8 @@ class EllipseGeometry:
             self.y0 = float(max_j)
 
             if verbose:
-                log.info("Found center at x0 = {0:5.1f}, y0 = {1:5.1f}"
-                         .format(self.x0, self.y0))
+                log.info(f'Found center at x0 = {self.x0:5.1f}, '
+                         'y0 = {self.y0:5.1f}')
         else:
             if verbose:
                 log.info('Result is below the threshold -- keeping the '

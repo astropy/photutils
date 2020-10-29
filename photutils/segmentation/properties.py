@@ -294,18 +294,17 @@ class SourceProperties:
         self.kron_params = kron_params
 
     def __str__(self):
-        cls_name = '<{0}.{1}>'.format(self.__class__.__module__,
-                                      self.__class__.__name__)
+        cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
 
         cls_info = []
         params = ['label', 'sky_centroid']
         for param in params:
             cls_info.append((param, getattr(self, param)))
-        fmt = (['{0}: {1}'.format(key, val) for key, val in cls_info])
+        fmt = ([f'{key}: {val}' for key, val in cls_info])
         fmt.insert(1, 'centroid (x, y): ({0:0.4f}, {1:0.4f})'
                    .format(self.xcentroid.value, self.ycentroid.value))
 
-        return '{}\n'.format(cls_name) + '\n'.join(fmt)
+        return f'{cls_name}\n' + '\n'.join(fmt)
 
     def __repr__(self):
         return self.__str__()
@@ -1922,11 +1921,10 @@ class SourceCatalog:
             yield i
 
     def __str__(self):
-        cls_name = '<{0}.{1}>'.format(self.__class__.__module__,
-                                      self.__class__.__name__)
-        fmt = ['Catalog length: {0}'.format(len(self))]
+        cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
+        fmt = [f'Catalog length: {len(self)}']
 
-        return '{}\n'.format(cls_name) + '\n'.join(fmt)
+        return f'{cls_name}\n' + '\n'.join(fmt)
 
     def __repr__(self):
         return self.__str__()

@@ -18,5 +18,4 @@ def _get_version_info():
     from astropy import __version__ as astropy_version
     from photutils import __version__ as photutils_version
 
-    return 'astropy: {0}, photutils: {1}'.format(astropy_version,
-                                                 photutils_version)
+    return f'astropy: {astropy_version}, photutils: {photutils_version}'

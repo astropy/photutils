@@ -654,7 +654,7 @@ def extract_stars(data, catalogs, size=(11, 11)):
 
     min_size = 3
     if size[0] < min_size or size[1] < min_size:
-        raise ValueError('size must be >= {} for x and y'.format(min_size))
+        raise ValueError(f'size must be >= {min_size} for x and y')
 
     if len(catalogs) == 1:  # may included linked stars
         use_xy = True

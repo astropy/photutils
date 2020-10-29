@@ -129,7 +129,7 @@ def _detect_sources(data, thresholds, npixels, filter_kernel=None,
 
     if (npixels <= 0) or (int(npixels) != npixels):
         raise ValueError('npixels must be a positive integer, got '
-                         '"{0}"'.format(npixels))
+                         f'"{npixels}"')
 
     if mask is not None:
         if mask.shape != data.shape:
