@@ -158,8 +158,8 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
     elif distribution == 'poisson':
         image = rng.poisson(lam=mean, size=shape)
     else:
-        raise ValueError('Invalid distribution: {0}. Use either "gaussian" '
-                         'or "poisson".'.format(distribution))
+        raise ValueError(f'Invalid distribution: {distribution}. Use either '
+                         '"gaussian" or "poisson".')
 
     return image
 

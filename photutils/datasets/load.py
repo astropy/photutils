@@ -49,7 +49,7 @@ def get_path(filename, location='local', cache=True, show_progress=False):
     """
 
     datasets_url = ('https://github.com/astropy/photutils-datasets/raw/'
-                    'master/data/{0}'.format(filename))
+                    'master/data/{filename}')
 
     if location == 'local':
         path = get_pkg_data_filename('data/' + filename)

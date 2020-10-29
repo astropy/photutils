@@ -133,11 +133,11 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
 
         if not np.array_equal(source_deblended.data.astype(bool),
                               source_segm.data.astype(bool)):
-            raise ValueError('Deblending failed for source "{0}".  Please '
-                             'ensure you used the same pixel connectivity '
-                             'in detect_sources and deblend_sources.  If '
-                             'this issue persists, then please inform the '
-                             'developers.'.format(label))
+            raise ValueError(f'Deblending failed for source "{label}".  '
+                             'Please ensure you used the same pixel '
+                             'connectivity in detect_sources and '
+                             'deblend_sources.  If this issue persists, '
+                             'then please inform the developers.')
 
         if source_deblended.nlabels > 1:
             source_deblended.relabel_consecutive(start_label=1)
@@ -235,9 +235,9 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         return segment_img  # no deblending
 
     if mode == 'exponential' and source_min < 0:
-        warnings.warn('Source "{0}" contains negative values, setting '
-                      'deblending mode to "linear"'.format(
-                          segment_img.labels[0]), AstropyUserWarning)
+        warnings.warn(f'Source "{segment_img.labels[0]}" contains negative '
+                      'values, setting deblending mode to "linear"',
+                      AstropyUserWarning)
         mode = 'linear'
 
     steps = np.arange(1., nlevels + 1)
@@ -250,8 +250,8 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         thresholds = source_min + ((source_max - source_min) /
                                    (nlevels + 1)) * steps
     else:
-        raise ValueError('"{0}" is an invalid mode; mode must be '
-                         '"exponential" or "linear"'.format(mode))
+        raise ValueError(f'"{mode}" is an invalid mode; mode must be '
+                         '"exponential" or "linear"')
 
     # suppress NoDetectionsWarning during deblending
     warnings.filterwarnings('ignore', category=NoDetectionsWarning)

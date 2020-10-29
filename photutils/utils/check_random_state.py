@@ -45,5 +45,5 @@ def check_random_state(seed):
     if isinstance(seed, np.random.RandomState):
         return seed
 
-    raise ValueError('{0!r} cannot be used to seed a numpy.random.RandomState'
-                     ' instance'.format(seed))
+    raise ValueError('{seed!r} cannot be used to seed a '
+                     'numpy.random.RandomState instance')
