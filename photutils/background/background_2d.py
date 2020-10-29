@@ -153,10 +153,16 @@ class BkgIDWInterpolator:
         if np.ptp(mesh) == 0:
             return np.zeros_like(bkg2d_obj.data) + np.min(mesh)
 
+        yxpos = np.column_stack([bkg2d_obj._mesh_ypos, bkg2d_obj._mesh_xpos])
         mesh1d = mesh[bkg2d_obj.mesh_yidx, bkg2d_obj.mesh_xidx]
-        interp_func = ShepardIDWInterpolator(bkg2d_obj.yx, mesh1d,
+        interp_func = ShepardIDWInterpolator(yxpos, mesh1d,
                                              leafsize=self.leafsize)
-        data = interp_func(bkg2d_obj.data_coords,
+
+        # the position coordinates used when calling the interpolator
+        ny, nx = bkg2d_obj.data.shape
+        data_coords = np.indices((nx, ny)).T.reshape(nx * ny, 2)[:, [1, 0]]
+
+        data = interp_func(data_coords,
                            n_neighbors=self.n_neighbors, power=self.power,
                            reg=self.reg)
 
@@ -356,7 +362,6 @@ class Background2D:
 
         self._prepare_data()
         self._calc_bkg_bkgrms()
-        self._calc_coordinates()
 
     def _combine_masks(self):
         if self._mask is None and self.coverage_mask is None:
@@ -726,27 +731,15 @@ class Background2D:
         if not np.array_equal(self.filter_size, [1, 1]):
             self._filter_meshes()
 
-    def _calc_coordinates(self):
-        """
-        Calculate the coordinates to use when calling an interpolator.
+    @lazyproperty
+    def _mesh_ypos(self):
+        return (self.mesh_yidx * self.box_size[0] +
+                (self.box_size[0] - 1) / 2.)
 
-        These are needed for `Background2D` and `BackgroundIDW2D`.
-
-        Regular-grid interpolators require a 2D array of values.  Some
-        require a 2D meshgrid of x and y.  Other require a strictly
-        increasing 1D array of the x and y ranges.
-        """
-
-        # the position coordinates used to initialize an interpolation
-        self.y = (self.mesh_yidx * self.box_size[0] +
-                  (self.box_size[0] - 1) / 2.)
-        self.x = (self.mesh_xidx * self.box_size[1] +
-                  (self.box_size[1] - 1) / 2.)
-        self.yx = np.column_stack([self.y, self.x])
-
-        # the position coordinates used when calling an interpolator
-        ny, nx = self.data.shape
-        self.data_coords = np.indices((nx, ny)).T.reshape(nx*ny, 2)[:, [1, 0]]
+    @lazyproperty
+    def _mesh_xpos(self):
+        return (self.mesh_xidx * self.box_size[1] +
+                (self.box_size[1] - 1) / 2.)
 
     @lazyproperty
     def mesh_nmasked(self):
@@ -858,10 +851,11 @@ class Background2D:
         kwargs['color'] = color
         if axes is None:
             axes = plt.gca()
-        axes.scatter(self.x, self.y, marker=marker, color=color)
+        axes.scatter(self._mesh_xpos, self._mesh_ypos, marker=marker,
+                     color=color)
         if outlines:
             from ..aperture import RectangularAperture
-            xy = np.column_stack([self.x, self.y])
-            apers = RectangularAperture(xy, self.box_size[1],
+            xypos = np.column_stack([self._mesh_xpos, self._mesh_ypos])
+            apers = RectangularAperture(xypos, self.box_size[1],
                                         self.box_size[0], 0.)
             apers.plot(axes=axes, **kwargs)
