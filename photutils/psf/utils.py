@@ -211,8 +211,8 @@ def subtract_psf(data, psf, posflux, subshape=None):
     """
 
     if data.ndim != 2:
-        raise ValueError('{0}-d array not supported. Only 2-d arrays can be '
-                         'passed to subtract_psf.'.format(data.ndim))
+        raise ValueError(f'{data.ndim}-d array not supported. Only 2-d '
+                         'arrays can be passed to subtract_psf.')
 
     #  translate array input into table
     if hasattr(posflux, 'colnames'):

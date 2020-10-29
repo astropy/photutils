@@ -77,14 +77,13 @@ class PixelPositions(ApertureAttribute):
             raise u.UnitsError(f'{self.name} must be in pixel units')
 
         if np.any(~np.isfinite(value)):
-            raise ValueError('{} must not contain any non-finite (e.g., NaN '
-                             'or inf) positions'.format(self.name))
+            raise ValueError(f'{self.name} must not contain any non-finite '
+                             '(e.g., NaN or inf) positions')
 
         value = np.atleast_2d(value)
         if (value.shape[1] != 2 and value.shape[0] != 2) or value.ndim > 2:
-            raise TypeError('{} must be an (x, y) pixel position or a list '
-                            'or array of (x, y) pixel positions.'
-                            .format(self.name))
+            raise TypeError(f'{self.name} must be a (x, y) pixel position '
+                            'or a list or array of (x, y) pixel positions.')
 
 
 class SkyCoordPositions(ApertureAttribute):

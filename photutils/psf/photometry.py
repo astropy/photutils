@@ -158,13 +158,13 @@ class BasicPSFPhotometry:
                     self._fitshape = tuple(value)
                 else:
                     raise ValueError('fitshape must be odd integer-valued, '
-                                     'received fitshape = {}'.format(value))
+                                     f'received fitshape={value}')
             else:
                 raise ValueError('fitshape must have positive elements, '
-                                 'received fitshape = {}'.format(value))
+                                 f'received fitshape={value}')
         else:
             raise ValueError('fitshape must have two dimensions, '
-                             'received fitshape = {}'.format(value))
+                             f'received fitshape={value}')
 
     @property
     def aperture_radius(self):

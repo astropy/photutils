@@ -158,11 +158,10 @@ class EPSFFitter:
                                               (ycenter, xcenter),
                                               mode='strict')
             except (PartialOverlapError, NoOverlapError):
-                warnings.warn('The star at ({0}, {1}) cannot be fit because '
+                warnings.warn('The star at ({star.center[0]}, '
+                              '{star.center[1]}) cannot be fit because '
                               'its fitting region extends beyond the star '
-                              'cutout image.'.format(star.center[0],
-                                                     star.center[1]),
-                              AstropyUserWarning)
+                              'cutout image.', AstropyUserWarning)
 
                 star = copy.deepcopy(star)
                 star._fit_error_status = 1
@@ -829,9 +828,8 @@ class EPSFBuilder:
                     dt_str = ' [? s/iter]'
                 else:
                     dt_str = f' [{dt:.1f} s/iter]'
-
-                print('PROGRESS: iteration {0:d} (of max {1}){2}'
-                      .format(iter_num, self.maxiters, dt_str), end='\r')
+                print(f'PROGRESS: iteration {iter_num:d} (of max '
+                      f'{self.maxiters}){dt_str}', end='\r')
 
             # build/improve the ePSF
             epsf = self._build_epsf_step(stars, epsf=epsf)
