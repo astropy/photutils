@@ -508,7 +508,10 @@ class Background2D:
 
         if (xextra + yextra) == 0:
             # no resizing of the data is necessary
-            data_ma = np.ma.masked_array(self.data, mask=self.mask)
+            mask = self.mask
+            if mask is None:
+                mask = False
+            data_ma = np.ma.masked_array(self.data, mask=mask)
         else:
             # pad or crop the data
             if self.edge_method == 'pad':
