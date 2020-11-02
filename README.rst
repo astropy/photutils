@@ -4,7 +4,7 @@ Photutils
 
 |PyPI Version| |Conda Version| |Conda Downloads| |Astropy|
 
-|Travis Status| |CircleCI Status| |Codecov Status| |Latest RTD Status| |LGTM Grade|
+|CI Status| |CircleCI Status| |Codecov Status| |Latest RTD Status| |LGTM Grade|
 
 Photutils is an `Astropy`_ package for detection and photometry of
 astronomical sources.
@@ -65,9 +65,9 @@ for details.
     :target: https://zenodo.org/badge/latestdoi/2640766
     :alt: Zenodo Latest DOI
 
-.. |Travis Status| image:: https://img.shields.io/travis/astropy/photutils/master?logo=travis%20ci&logoColor=white&label=Travis%20CI
-    :target: https://travis-ci.com/astropy/photutils
-    :alt: Travis CI Status
+.. |CI Status| image:: https://github.com/astropy/photutils/workflows/CI%20Tests/badge.svg
+    :target: https://github.com/astropy/photutils/actions
+    :alt: CI Status
 
 .. |Codecov Status| image:: https://img.shields.io/codecov/c/github/astropy/photutils?logo=codecov
     :target: https://codecov.io/gh/astropy/photutils
