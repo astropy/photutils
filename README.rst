@@ -65,7 +65,7 @@ for details.
     :target: https://zenodo.org/badge/latestdoi/2640766
     :alt: Zenodo Latest DOI
 
-.. |CI Status| image:: https://github.com/astropy/photutils/workflows/CI%20Tests/badge.svg
+.. |CI Status| image:: https://github.com/astropy/photutils/workflows/CI%20Tests/badge.svg#
     :target: https://github.com/astropy/photutils/actions
     :alt: CI Status
 
