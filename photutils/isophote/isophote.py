@@ -228,34 +228,47 @@ class Isophote:
         """
 
         try:
-            coeffs = fit_first_and_second_harmonics(self.sample.values[0],
+            # first and second harmonics
+            coeffs, _ = fit_first_and_second_harmonics(self.sample.values[0],
                                                     self.sample.values[2])
-            coeffs = coeffs[0]
             model = first_and_second_harmonic_function(self.sample.values[0],
                                                        coeffs)
             residual = self.sample.values[2] - model
 
-            c = fit_upper_harmonic(sample.values[0], sample.values[2], n)
+            # upper (third and fourth) harmonics
+            up_coeffs, inv_hessian = fit_upper_harmonic(
+                sample.values[0],
+                sample.values[2],
+                n
+            )
 
-            # compute covariance matrix (leastsq gives inv. of Hessian)
-            if (len(sample.values[2] > len(c[0]))) and c[1] is not None:
-                covariance = - c[1] * residual
-            else:
-                covariance = np.inf
+            a = up_coeffs[1] / self.sma / sample.gradient
+            b = up_coeffs[2] / self.sma / sample.gradient
 
-            ce = np.diagonal(covariance)
-            c = c[0]
+            def errfunc(coeffs, phi, order, intensities):
+                return (coeffs[0] + coeffs[1]*np.sin(order*phi) +
+                        coeffs[2]*np.cos(order*phi) - intensities)
 
-            a = c[1] / self.sma / sample.gradient
-            b = c[2] / self.sma / sample.gradient
+            cost = (errfunc(up_coeffs, self.sample.values[0], n,
+                            self.sample.values[2])**2).sum()
+            s_sq = cost / (len(self.sample.values[2]) - len(up_coeffs))
+            covariance = inv_hessian * s_sq
+
+            error = []
+            for i in range(len(up_coeffs)):
+                try:
+                    error.append(np.sqrt(np.abs(covariance[i][i])))
+                except Exception:
+                    error.append(0.00)
+            ce = np.array(error)
 
             # this comes from the old code. Likely it was based on
             # empirical experience with the STSDAS task, so we leave
             # it here without too much thought.
             gre = self.grad_r_error if self.grad_r_error is not None else 0.64
 
-            a_err = abs(a) * np.sqrt((ce[1] / c[1])**2 + gre**2)
-            b_err = abs(b) * np.sqrt((ce[2] / c[2])**2 + gre**2)
+            a_err = abs(a) * np.sqrt((ce[1] / up_coeffs[1])**2 + gre**2)
+            b_err = abs(b) * np.sqrt((ce[2] / up_coeffs[2])**2 + gre**2)
 
         except Exception:  # we want to catch everything
             a = b = a_err = b_err = None
