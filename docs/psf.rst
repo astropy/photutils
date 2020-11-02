@@ -608,7 +608,7 @@ photometry:
     >>> itr_phot_obj = IterativelySubtractedPSFPhotometry(finder=iraffind,
     ...                                                   group_maker=daogroup,
     ...                                                   bkg_estimator=mmm_bkg,
-    ...                                                   psf_model=psf_model,
+    ...                                                   psf_model=gaussian_prf,
     ...                                                   fitter=fitter,
     ...                                                   fitshape=(11, 11),
     ...                                                   niters=2)
