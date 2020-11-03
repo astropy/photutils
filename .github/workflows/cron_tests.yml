@@ -16,12 +16,8 @@ jobs:
     if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
     strategy:
       matrix:
-        name: [
-          'ubuntu-py38-test-alldeps-devdeps',
-        ]
         include:
-          - name: 'ubuntu-py38-test-alldeps-devdeps'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.8'
             tox_env: 'py38-test-test-alldeps-devdeps'
 

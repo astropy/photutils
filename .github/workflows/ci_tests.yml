@@ -18,74 +18,45 @@ jobs:
     if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
     strategy:
       matrix:
-        name: [
-          'ubuntu-py36',
-          'ubuntu-py37',
-          'ubuntu-py38',
-          'macos-py38',
-          'windows-py38',
-          'ubuntu-py38-test',
-          'ubuntu-codestyle',
-          'ubuntu-build_docs',
-          'ubuntu-linkcheck',
-          'ubuntu-bandit',
-          'ubuntu-py36-test-alldeps-astropylts-numpy117',
-          'ubuntu-py37-test-alldeps-astropylts-numpy118',
-          'ubuntu-py38-test-alldeps-devdeps',
-        ]
-
         include:
-          - name: 'ubuntu-py36'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.6'
             tox_env: 'py36-test-alldeps'
-          - name: 'ubuntu-py37'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.7'
             tox_env: 'py37-test-alldeps'
-          - name: 'ubuntu-py38'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.8'
             tox_env: 'py38-test-alldeps-cov'
             use_remote_data: true
-          - name: 'macos-py38'
-            os: macos-latest
+          - os: macos-latest
             python: '3.8'
             tox_env: 'py38-test-alldeps'
-          - name: 'windows-py38'
-            os: windows-latest
+          - os: windows-latest
             python: '3.8'
             tox_env: 'py38-test-alldeps'
-          - name: 'ubuntu-py38-test'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.8'
             tox_env: 'py38-test'
-          - name: 'ubuntu-codestyle'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.8'
             tox_env: 'codestyle'
-          - name: 'ubuntu-build_docs'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.8'
             tox_env: 'build_docs'
-          - name: 'ubuntu-linkcheck'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.8'
             tox_env: 'linkcheck'
-          - name: 'ubuntu-bandit'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.8'
             tox_env: 'bandit'
-          - name: 'ubuntu-py36-test-alldeps-astropylts-numpy117'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.6'
             tox_env: 'py36-test-alldeps-astropylts-numpy117'
-          - name: 'ubuntu-py37-test-alldeps-astropylts-numpy118'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.7'
             tox_env: 'py37-test-alldeps-astropylts-numpy118'
-          - name: 'ubuntu-py38-test-alldeps-devdeps'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.8'
             tox_env: 'py38-test-alldeps-devdeps'
 
