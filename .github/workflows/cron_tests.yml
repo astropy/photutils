@@ -16,14 +16,10 @@ jobs:
     if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
     strategy:
       matrix:
-        name: [
-          'ubuntu-py38-test-alldeps-devdeps',
-        ]
         include:
-          - name: 'ubuntu-py38-test-alldeps-devdeps'
-            os: ubuntu-latest
+          - os: ubuntu-latest
             python: '3.8'
-            tox_env: 'py38-test-test-alldeps-devdeps'
+            tox_env: 'py38-test-alldeps-devdeps'
 
     steps:
     - name: Check out repository
@@ -35,26 +31,19 @@ jobs:
     - name: Install base dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install tox coverage
+        python -m pip install tox
     - name: Print Python, pip, setuptools, and tox versions
       run: |
         python -c "import sys; print(f'Python {sys.version}')"
         python -c "import pip; print(f'pip {pip.__version__}')"
         python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
         python -c "import tox; print(f'tox {tox.__version__}')"
-
     - name: Run tests
       if: "! matrix.use_remote_data"
-      run: |
-        tox -e ${{ matrix.tox_env }}
-
+      run: tox -e ${{ matrix.tox_env }}
     - name: Run tests with remote data
       if: "matrix.use_remote_data"
-      env:
-        TOXPOSARGS: '--remote-data=any'
-      run: |
-        tox -e ${{ matrix.tox_env }}
-
+      run: tox -e ${{ matrix.tox_env }} -- --remote-data=any
     - name: Upload coverage to codecov
       if: "endsWith(matrix.tox_env, '-cov')"
       uses: codecov/codecov-action@v1.0.13
