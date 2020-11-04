@@ -226,17 +226,20 @@ class Isophote:
         amplitudes and errors for harmonic "n". Note that we first
         subtract the first and second harmonics from the raw data.
         """
-
         try:
             # first and second harmonics
-            coeffs, _ = fit_first_and_second_harmonics(self.sample.values[0],
-                                                    self.sample.values[2])
-            model = first_and_second_harmonic_function(self.sample.values[0],
-                                                       coeffs)
+            coeffs, _ = fit_first_and_second_harmonics(
+                            self.sample.values[0],
+                            self.sample.values[2]
+                        )
+            model = first_and_second_harmonic_function(
+                        self.sample.values[0],
+                        coeffs
+                    )
             residual = self.sample.values[2] - model
 
             # upper (third and fourth) harmonics
-            up_coeffs, inv_hessian = fit_upper_harmonic(
+            up_coeffs, up_inv_hessian = fit_upper_harmonic(
                 sample.values[0],
                 sample.values[2],
                 n
@@ -245,22 +248,16 @@ class Isophote:
             a = up_coeffs[1] / self.sma / sample.gradient
             b = up_coeffs[2] / self.sma / sample.gradient
 
-            def errfunc(coeffs, phi, order, intensities):
-                return (coeffs[0] + coeffs[1]*np.sin(order*phi) +
-                        coeffs[2]*np.cos(order*phi) - intensities)
+            def errfunc(x, phi, order, intensities):
+                return (x[0] + x[1]*np.sin(order*phi) +
+                        x[2]*np.cos(order*phi) - intensities)
 
-            cost = (errfunc(up_coeffs, self.sample.values[0], n,
-                            self.sample.values[2])**2).sum()
-            s_sq = cost / (len(self.sample.values[2]) - len(up_coeffs))
-            covariance = inv_hessian * s_sq
+            up_var_residual = np.std(errfunc(up_coeffs, self.sample.values[0],
+                                            n, self.sample.values[2]),
+                                            ddof=len(up_coeffs))**2
+            up_covariance = up_inv_hessian * up_var_residual
 
-            error = []
-            for i in range(len(up_coeffs)):
-                try:
-                    error.append(np.sqrt(np.abs(covariance[i][i])))
-                except Exception:
-                    error.append(0.00)
-            ce = np.array(error)
+            ce = np.sqrt(np.diag(up_covariance))
 
             # this comes from the old code. Likely it was based on
             # empirical experience with the STSDAS task, so we leave
@@ -283,14 +280,15 @@ class Isophote:
         """
 
         try:
-            coeffs = fit_first_and_second_harmonics(self.sample.values[0],
-                                                    self.sample.values[2])
-            covariance = coeffs[1]
-            coeffs = coeffs[0]
+            coeffs, covariance = fit_first_and_second_harmonics(
+                self.sample.values[0],
+                self.sample.values[2]
+            )
             model = first_and_second_harmonic_function(self.sample.values[0],
                                                        coeffs)
-            residual_rms = np.std(self.sample.values[2] - model)
-            errors = np.diagonal(covariance) * residual_rms
+            var_residual = np.std(self.sample.values[2] - model,
+                                    ddof=len(coeffs))**2
+            errors = np.sqrt(np.diagonal(covariance * var_residual))
 
             eps = self.sample.geometry.eps
             pa = self.sample.geometry.pa
