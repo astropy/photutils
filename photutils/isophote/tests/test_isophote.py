@@ -245,3 +245,30 @@ class TestIsophoteList:
         assert result[-1].sma < result[0].sma
         result.sort()
         assert result[-1].sma > result[0].sma
+
+    def test_to_table(self):
+        from photutils.isophote import EllipseGeometry, Ellipse
+        test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
+                                   background=100., noise=1.e-6, i0=100., sma=10.,
+                                   eps=0.2, pa=0., seed=1)
+        g = EllipseGeometry(27,27,5,0.2,0)
+        ellipse = Ellipse(test_img, geometry=g,threshold=0.1)
+        isolist = ellipse.fit_image(maxsma=27)
+        
+        assert len(isolist.get_names()) >= 30
+
+        tbl = isolist.to_table()
+        assert len(tbl.colnames) == 18
+
+        tbl = isolist.to_table(key_properties=['all'])
+        assert len(tbl.colnames) >= 30
+
+        tbl = isolist.to_table(key_properties=['main'])
+        assert len(tbl.colnames) == 18
+
+        tbl = isolist.to_table(key_properties=['sma'])
+        assert len(tbl.colnames) == 1
+
+        tbl = isolist.to_table(key_properties=['tflux_e', 'tflux_c', 'npix_e', 'npix_c'])
+        assert len(tbl.colnames) == 4
+        
