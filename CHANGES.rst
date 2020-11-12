@@ -1,6 +1,11 @@
 1.1.0 (unreleased)
 ------------------
 
+General
+^^^^^^^
+
+- The minimum required python version is 3.7. [#1120]
+
 New Features
 ^^^^^^^^^^^^
 
