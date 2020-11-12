@@ -20,9 +20,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: '3.6'
-            tox_env: 'py36-test-alldeps'
-          - os: ubuntu-latest
             python: '3.7'
             tox_env: 'py37-test-alldeps'
           - os: ubuntu-latest
@@ -50,9 +47,6 @@ jobs:
           - os: ubuntu-latest
             python: '3.8'
             tox_env: 'bandit'
-          - os: ubuntu-latest
-            python: '3.6'
-            tox_env: 'py36-test-alldeps-astropylts-numpy117'
           - os: ubuntu-latest
             python: '3.7'
             tox_env: 'py37-test-alldeps-astropylts-numpy118'
