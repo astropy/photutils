@@ -6,14 +6,12 @@ on:
     - cron: '0 6 * * 2-5'
 
 env:
-  SETUP_XVFB: True  # avoid issues if mpl tries to open a GUI window
   TOXARGS: '-v'
 
 jobs:
   cron-test:
     name: ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
-    if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
     strategy:
       matrix:
         include:
@@ -40,12 +38,9 @@ jobs:
         python -c "import tox; print(f'tox {tox.__version__}')"
     - name: Run tests
       if: "! matrix.use_remote_data"
-      run: tox -e ${{ matrix.tox_env }}
-    - name: Run tests with remote data
-      if: "matrix.use_remote_data"
-      run: tox -e ${{ matrix.tox_env }} -- --remote-data=any
+      run: tox -e ${{ matrix.tox_env }} -- ${{ matrix.toxposargs }}
     - name: Upload coverage to codecov
-      if: "endsWith(matrix.tox_env, '-cov')"
+      if: "contains(matrix.tox_env, '-cov')"
       uses: codecov/codecov-action@v1.0.13
       with:
         file: ./coverage.xml
