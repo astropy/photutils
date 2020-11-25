@@ -8,14 +8,12 @@ on:
     - cron: '0 6 * * 1'
 
 env:
-  SETUP_XVFB: True  # avoid issues if mpl tries to open a GUI window
   TOXARGS: '-v'
 
 jobs:
   ci-tests:
     name: ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
-    if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
     strategy:
       matrix:
         include:
@@ -25,7 +23,7 @@ jobs:
           - os: ubuntu-latest
             python: '3.8'
             tox_env: 'py38-test-alldeps-cov'
-            use_remote_data: true
+            toxposargs: --remote-data=any
           - os: macos-latest
             python: '3.8'
             tox_env: 'py38-test-alldeps'
@@ -57,6 +55,8 @@ jobs:
     steps:
     - name: Check out repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
     - name: Set up Python ${{ matrix.python }}
       uses: actions/setup-python@v2
       with:
@@ -66,7 +66,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install tox
     - name: Install graphviz dependency
-      if: "endsWith(matrix.tox_env, 'build_docs')"
+      if: "contains(matrix.tox_env, 'build_docs')"
       run: sudo apt-get -y install graphviz
     - name: Print Python, pip, setuptools, and tox versions
       run: |
@@ -75,13 +75,9 @@ jobs:
         python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
         python -c "import tox; print(f'tox {tox.__version__}')"
     - name: Run tests
-      if: "! matrix.use_remote_data"
-      run: tox -e ${{ matrix.tox_env }}
-    - name: Run tests with remote data
-      if: "matrix.use_remote_data"
-      run: tox -e ${{ matrix.tox_env }} -- --remote-data=any
+      run: tox -e ${{ matrix.tox_env }} -- ${{ matrix.toxposargs }}
     - name: Upload coverage to codecov
-      if: "endsWith(matrix.tox_env, '-cov')"
+      if: "contains(matrix.tox_env, '-cov')"
       uses: codecov/codecov-action@v1.0.13
       with:
         file: ./coverage.xml
