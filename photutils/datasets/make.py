@@ -4,8 +4,6 @@ This module provides tools for making example datasets for examples and
 tests.
 """
 
-from collections import OrderedDict
-
 from astropy import coordinates as coord
 from astropy.convolution import discretize_model
 from astropy.io import fits
@@ -184,8 +182,8 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
 
     param_ranges : dict
         The lower and upper boundaries for each of the model parameters
-        as a `dict` mapping the parameter name to its ``(lower, upper)``
-        bounds.
+        as a dictionary mapping the parameter name to its ``(lower,
+        upper)`` bounds.
 
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
@@ -205,22 +203,20 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
 
     Notes
     -----
-    To generate identical parameter values from separate function calls,
-    ``param_ranges`` must be input as an `~collections.OrderedDict` with
-    the same parameter ranges and the ``seed`` must be the same.
+    To generate identical parameter values from separate function
+    calls, ``param_ranges`` must have the same parameter ranges and the
+    ``seed`` must be the same.
 
     Examples
     --------
-    >>> from collections import OrderedDict
     >>> from photutils.datasets import make_random_models_table
     >>> n_sources = 5
-    >>> param_ranges = [('amplitude', [500, 1000]),
-    ...                 ('x_mean', [0, 500]),
-    ...                 ('y_mean', [0, 300]),
-    ...                 ('x_stddev', [1, 5]),
-    ...                 ('y_stddev', [1, 5]),
-    ...                 ('theta', [0, np.pi])]
-    >>> param_ranges = OrderedDict(param_ranges)
+    >>> param_ranges = {'amplitude': [500, 1000],
+    ...                 'x_mean': [0, 500],
+    ...                 'y_mean': [0, 300],
+    ...                 'x_stddev': [1, 5],
+    ...                 'y_stddev': [1, 5],
+    ...                 'theta': [0, np.pi]}
     >>> sources = make_random_models_table(n_sources, param_ranges,
     ...                                    seed=0)
     >>> for col in sources.colnames:
@@ -268,15 +264,15 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
 
     param_ranges : dict
         The lower and upper boundaries for each of the
-        `~astropy.modeling.functional_models.Gaussian2D` parameters as a
-        `dict` mapping the parameter name to its ``(lower, upper)``
-        bounds.  The dictionary keys must be valid
-        `~astropy.modeling.functional_models.Gaussian2D` parameter names
-        or ``'flux'``.  If ``'flux'`` is specified, but not
+        `~astropy.modeling.functional_models.Gaussian2D` parameters
+        as a dictionary mapping the parameter name to its ``(lower,
+        upper)`` bounds. The dictionary keys must be valid
+        `~astropy.modeling.functional_models.Gaussian2D` parameter
+        names or ``'flux'``. If ``'flux'`` is specified, but not
         ``'amplitude'`` then the 2D Gaussian amplitudes will be
-        calculated and placed in the output table.  If both ``'flux'``
+        calculated and placed in the output table. If both ``'flux'``
         and ``'amplitude'`` are specified, then ``'flux'`` will be
-        ignored.  Model parameters not defined in ``param_ranges`` will
+        ignored. Model parameters not defined in ``param_ranges`` will
         be set to the default value.
 
     seed : int, optional
@@ -296,22 +292,20 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
 
     Notes
     -----
-    To generate identical parameter values from separate function calls,
-    ``param_ranges`` must be input as an `~collections.OrderedDict` with
-    the same parameter ranges and the ``seed`` must be the same.
+    To generate identical parameter values from separate function
+    calls, ``param_ranges`` must have the same parameter ranges and the
+    ``seed`` must be the same.
 
     Examples
     --------
-    >>> from collections import OrderedDict
     >>> from photutils.datasets import make_random_gaussians_table
     >>> n_sources = 5
-    >>> param_ranges = [('amplitude', [500, 1000]),
-    ...                 ('x_mean', [0, 500]),
-    ...                 ('y_mean', [0, 300]),
-    ...                 ('x_stddev', [1, 5]),
-    ...                 ('y_stddev', [1, 5]),
-    ...                 ('theta', [0, np.pi])]
-    >>> param_ranges = OrderedDict(param_ranges)
+    >>> param_ranges = {'amplitude': [500, 1000],
+    ...                 'x_mean': [0, 500],
+    ...                 'y_mean': [0, 300],
+    ...                 'x_stddev': [1, 5],
+    ...                 'y_stddev': [1, 5],
+    ...                 'theta': [0, np.pi]}
     >>> sources = make_random_gaussians_table(n_sources, param_ranges,
     ...                                       seed=0)
     >>> for col in sources.colnames:
@@ -327,13 +321,12 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
 
     To specifying the flux range instead of the amplitude range:
 
-    >>> param_ranges = [('flux', [500, 1000]),
-    ...                 ('x_mean', [0, 500]),
-    ...                 ('y_mean', [0, 300]),
-    ...                 ('x_stddev', [1, 5]),
-    ...                 ('y_stddev', [1, 5]),
-    ...                 ('theta', [0, np.pi])]
-    >>> param_ranges = OrderedDict(param_ranges)
+    >>> param_ranges = {'flux': [500, 1000],
+    ...                 'x_mean': [0, 500],
+    ...                 'y_mean': [0, 300],
+    ...                 'x_stddev': [1, 5],
+    ...                 'y_stddev': [1, 5],
+    ...                 'theta': [0, np.pi]}
     >>> sources = make_random_gaussians_table(n_sources, param_ranges,
     ...                                       seed=0)
     >>> for col in sources.colnames:
@@ -418,7 +411,6 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
     .. plot::
         :include-source:
 
-        from collections import OrderedDict
         from astropy.modeling.models import Moffat2D
         from photutils.datasets import (make_random_models_table,
                                         make_model_sources_image)
@@ -426,12 +418,11 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
         model = Moffat2D()
         n_sources = 10
         shape = (100, 100)
-        param_ranges = [('amplitude', [100, 200]),
-                        ('x_0', [0, shape[1]]),
-                        ('y_0', [0, shape[0]]),
-                        ('gamma', [5, 10]),
-                        ('alpha', [1, 2])]
-        param_ranges = OrderedDict(param_ranges)
+        param_ranges = {'amplitude': [100, 200],
+                        'x_0': [0, shape[1]],
+                        'y_0': [0, shape[0]],
+                        'gamma': [5, 10],
+                        'alpha': [1, 2]}
         sources = make_random_models_table(n_sources, param_ranges,
                                            seed=0)
 
@@ -742,12 +733,12 @@ def make_100gaussians_image(noise=True):
     ymean_range = [0, 300]
     xstddev_range = [1, 5]
     ystddev_range = [1, 5]
-    params = OrderedDict([('flux', flux_range),
-                          ('x_mean', xmean_range),
-                          ('y_mean', ymean_range),
-                          ('x_stddev', xstddev_range),
-                          ('y_stddev', ystddev_range),
-                          ('theta', [0, 2 * np.pi])])
+    params = {'flux': flux_range,
+              'x_mean': xmean_range,
+              'y_mean': ymean_range,
+              'x_stddev': xstddev_range,
+              'y_stddev': ystddev_range,
+              'theta': [0, 2 * np.pi]}
 
     rng = np.random.RandomState(12345)
     sources = Table()
