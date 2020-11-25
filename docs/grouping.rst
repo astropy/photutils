@@ -48,7 +48,6 @@ sources and the latter will make an actual image using that table.
 .. plot::
     :include-source:
 
-    from collections import OrderedDict
     import numpy as np
     from photutils.datasets import (make_random_gaussians_table,
                                     make_gaussian_sources_image)
@@ -57,14 +56,12 @@ sources and the latter will make an actual image using that table.
     n_sources = 350
     sigma_psf = 2.0
 
-    # use an OrderedDict to ensure reproducibility
-    params = OrderedDict([('flux', [500, 5000]),
-                          ('x_mean', [6, 250]),
-                          ('y_mean', [6, 250]),
-                          ('x_stddev', [sigma_psf, sigma_psf]),
-                          ('y_stddev', [sigma_psf, sigma_psf]),
-                          ('theta', [0, np.pi])])
-
+    params = {'flux': [500, 5000],
+              'x_mean': [6, 250],
+              'y_mean': [6, 250],
+              'x_stddev': [sigma_psf, sigma_psf],
+              'y_stddev': [sigma_psf, sigma_psf],
+              'theta': [0, np.pi]}
     starlist = make_random_gaussians_table(n_sources, params, seed=123)
 
     shape = (256, 256)
@@ -158,8 +155,6 @@ in the same group have the same aperture color:
 
 .. plot::
 
-    from collections import OrderedDict
-
     import numpy as np
     from astropy.stats import gaussian_sigma_to_fwhm
     from photutils.datasets import (make_random_gaussians_table,
@@ -175,14 +170,12 @@ in the same group have the same aperture color:
 
     n_sources = 350
     sigma_psf = 2.0
-    # use an OrderedDict to ensure reproducibility
-    params = OrderedDict([('flux', [500, 5000]),
-                          ('x_mean', [6, 250]),
-                          ('y_mean', [6, 250]),
-                          ('x_stddev', [sigma_psf, sigma_psf]),
-                          ('y_stddev', [sigma_psf, sigma_psf]),
-                          ('theta', [0, np.pi])])
-
+    params = {'flux': [500, 5000],
+              'x_mean': [6, 250],
+              'y_mean': [6, 250],
+              'x_stddev': [sigma_psf, sigma_psf],
+              'y_stddev': [sigma_psf, sigma_psf],
+              'theta': [0, np.pi]}
     starlist = make_random_gaussians_table(n_sources, params, seed=123)
 
     shape = (256, 256)
@@ -224,8 +217,6 @@ to use :class:`~photutils.psf.DBSCANGroup`.
 
 .. plot::
 
-    from collections import OrderedDict
-
     import numpy as np
     from astropy.stats import gaussian_sigma_to_fwhm
     from photutils.datasets import (make_random_gaussians_table,
@@ -241,14 +232,12 @@ to use :class:`~photutils.psf.DBSCANGroup`.
 
     n_sources = 350
     sigma_psf = 2.0
-    # use an OrderedDict to ensure reproducibility
-    params = OrderedDict([('flux', [500, 5000]),
-                          ('x_mean', [6, 250]),
-                          ('y_mean', [6, 250]),
-                          ('x_stddev', [sigma_psf, sigma_psf]),
-                          ('y_stddev', [sigma_psf, sigma_psf]),
-                          ('theta', [0, np.pi])])
-
+    params = {'flux': [500, 5000],
+              'x_mean': [6, 250],
+              'y_mean': [6, 250],
+              'x_stddev': [sigma_psf, sigma_psf],
+              'y_stddev': [sigma_psf, sigma_psf],
+              'theta': [0, np.pi]}
     starlist = make_random_gaussians_table(n_sources, params, seed=123)
 
     shape = (256, 256)

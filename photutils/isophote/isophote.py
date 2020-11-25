@@ -3,8 +3,6 @@
 This module provides classes to store the results of isophote fits.
 """
 
-from collections import OrderedDict
-
 from astropy.table import QTable
 import astropy.units as u
 import numpy as np
@@ -746,7 +744,7 @@ def _isophote_list_to_table(isophote_list):
         An astropy QTable with the main isophote parameters.
     """
 
-    properties = OrderedDict()
+    properties = {}
     properties['sma'] = 'sma'
     properties['intens'] = 'intens'
     properties['int_err'] = 'intens_err'

@@ -4,7 +4,6 @@ This module defines tools to perform aperture photometry.
 """
 
 import warnings
-from collections import OrderedDict
 
 import numpy as np
 from astropy.nddata import NDData, StdDevUncertainty
@@ -193,7 +192,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
                              'positions.')
 
     # define output table meta data
-    meta = OrderedDict()
+    meta = {}
     meta['name'] = 'Aperture photometry results'
     meta['version'] = _get_version_info()
     calling_args = f"method='{method}', subpixels={subpixels}"
