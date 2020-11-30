@@ -44,9 +44,6 @@ jobs:
             tox_env: 'build_docs'
           - os: ubuntu-latest
             python: '3.8'
-            tox_env: 'linkcheck'
-          - os: ubuntu-latest
-            python: '3.8'
             tox_env: 'bandit'
           - os: ubuntu-latest
             python: '3.6'
