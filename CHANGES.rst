@@ -20,7 +20,7 @@ Bug Fixes
 - ``photutils.isophote``
 
   - Fixed bug that caused an infinite loop when the sample
-    extracted from an image has zero length. [#1052]
+    extracted from an image has zero length. [#1129]
 
 
 1.0.2 (unreleased)
