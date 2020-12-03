@@ -14,6 +14,14 @@ New Features
   - The ``PixelAperture.plot()`` method now returns a list of
     ``matplotlib.patches.Patch`` objects. [#923]
 
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.isophote``
+
+  - Fixed bug that caused an infinite loop when the sample
+    extracted from an image has zero length. [#1052]
+
 
 1.0.2 (unreleased)
 ------------------
