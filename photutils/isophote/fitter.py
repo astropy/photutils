@@ -153,6 +153,15 @@ class EllipseFitter:
             # values[2] = 1-d array with intensity
             values = sample.extract()
 
+            # We have to check for a zero-length condition here, and bail out
+            # in case it is detected. The scipy fitter won't raise an exception
+            # for zero-length input arrays, but just prints an "INFO" message.
+            # This may result in an infinite loop.
+            if len(values[2]) < 1:
+                log.warning("Too small sample to warrant a fit. SMA is " + str(sample.geometry.sma))
+                sample.geometry.fix = fixed_parameters
+                return Isophote(sample, i + 1, False, 3)
+
             # Fit harmonic coefficients. Failure in fitting is
             # a fatal error; terminate immediately with sample
             # marked as invalid.
