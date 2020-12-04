@@ -158,7 +158,8 @@ class EllipseFitter:
             # for zero-length input arrays, but just prints an "INFO" message.
             # This may result in an infinite loop.
             if len(values[2]) < 1:
-                log.warning("Too small sample to warrant a fit. SMA is " + str(sample.geometry.sma))
+                s = str(sample.geometry.sma)
+                log.warning("Too small sample to warrant a fit. SMA is " + s)
                 sample.geometry.fix = fixed_parameters
                 return Isophote(sample, i + 1, False, 3)
 
@@ -176,7 +177,8 @@ class EllipseFitter:
             # Mask out coefficients that control fixed ellipse parameters.
             free_coeffs = ma.masked_array(coeffs[1:], mask=fixed_parameters)
 
-            # Largest non-masked harmonic in absolute value drives the correction.
+            # Largest non-masked harmonic in absolute value drives the
+            # correction.
             largest_harmonic_index = np.argmax(np.abs(free_coeffs))
             largest_harmonic = free_coeffs[largest_harmonic_index]
 
