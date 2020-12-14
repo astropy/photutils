@@ -43,6 +43,11 @@ Bug Fixes
   - Fixed bug that caused an infinite loop when the sample extracted
     from an image has zero length. [#1129]
 
+- ``photutils.segmentation``
+
+  - Fixed an issue where negative Kron radius values could be returned,
+    which would cause an error when calculating Kron fluxes. [#1132]
+
 
 1.0.1 (2020-09-24)
 ------------------
