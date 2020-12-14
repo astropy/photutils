@@ -1614,7 +1614,7 @@ class SourceProperties:
         """
         The flux in the Kron aperture.
 
-        If the Kron aperture is `None`, then `np.nan` will be returned.
+        If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
         if self.kron_aperture is None:
             self._kron_fluxerr = np.nan * self._data_unit
@@ -1643,7 +1643,7 @@ class SourceProperties:
         """
         The flux error in the Kron aperture.
 
-        If the Kron aperture is `None`, then `np.nan` will be returned.
+        If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
         if self._kron_fluxerr is None:
             _ = self.kron_flux  # run kron_flux to computer kron_fluxerr
