@@ -292,6 +292,7 @@ class SourceProperties:
         if kron_params[0] not in ('none', 'mask', 'mask_all', 'correct'):
             raise ValueError('Invalid value for kron_params[0]')
         self.kron_params = kron_params
+        self._kron_fluxerr = None
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
@@ -1454,7 +1455,7 @@ class SourceProperties:
         sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
         bkg_func = SExtractorBackground(sigma_clip)
         if isinstance(pix1d, u.Quantity):
-            return bkg_func(pix1d.value) << self._data_unit
+            return bkg_func(pix1d.value) * self._data_unit
         return bkg_func(pix1d)
 
     def _elliptical_aperture(self, radius=6.):
@@ -1546,6 +1547,12 @@ class SourceProperties:
 
         where :math:`\\bar{x}` and :math:`\\bar{y}` represent the source
         centroid.
+
+        If either the numerator or denominator <= 0, then ``np.nan``
+        will be returned. In this case, the Kron aperture will
+        be defined as a circular aperture with a radius equal to
+        ``kron_params[2]``. If ``kron_params[2] <= 0``, then the Kron
+        aperture will be `None` and the Kron flux will be ``np.nan``.
         """
         aperture = self._elliptical_aperture(radius=6.0)
         aperture_mask = aperture.to_mask()
@@ -1569,16 +1576,30 @@ class SourceProperties:
             data = data.value
         flux_numer, _ = aperture.do_photometry(data * rr, method=method)
         flux_denom, _ = aperture.do_photometry(data, method=method)
+
+        if flux_numer <= 0 or flux_denom <= 0:
+            return np.nan << u.pixel
         return (flux_numer[0] / flux_denom[0]) << u.pixel
 
     @lazyproperty
     def kron_aperture(self):
         """
         The Kron aperture.
+
+        If ``kron_radius = np.nan`` or ``kron_radius *
+        np.sqrt(semimajor_axis_sigma * semiminor_axis_sigma) <
+        kron_params[2]`` then a circular aperture with a radius equal to
+        ``kron_params[2]`` will be returned. If ``kron_params[2] <= 0``,
+        then the Kron aperture will be `None`, and the Kron flux will be
+        ``np.nan``.
         """
         a = self.semimajor_axis_sigma.value
         b = self.semiminor_axis_sigma.value
-        if self.kron_radius.value * np.sqrt(a * b) < self.kron_params[2]:
+        circ_radius = self.kron_radius.value * np.sqrt(a * b)
+        min_radius = self.kron_params[2]
+        if np.isnan(self.kron_radius.value) or circ_radius < min_radius:
+            if min_radius <= 0:
+                return None
             # use circular aperture with radius=self.kron_params[2]
             xypos = (self.xcentroid.value, self.ycentroid.value)
             aperture = CircularAperture(xypos, r=self.kron_params[2])
@@ -1592,7 +1613,13 @@ class SourceProperties:
     def kron_flux(self):
         """
         The flux in the Kron aperture.
+
+        If the Kron aperture is `None`, then `np.nan` will be returned.
         """
+        if self.kron_aperture is None:
+            self._kron_fluxerr = np.nan * self._data_unit
+            return np.nan * self._data_unit
+
         aperture = deepcopy(self.kron_aperture)
         aperture_mask = aperture.to_mask()
         data, error = self._prepare_kron_data(aperture_mask)
@@ -1615,9 +1642,15 @@ class SourceProperties:
     def kron_fluxerr(self):
         """
         The flux error in the Kron aperture.
+
+        If the Kron aperture is `None`, then `np.nan` will be returned.
         """
         if self._kron_fluxerr is None:
-            _ = self.kron_flux
+            _ = self.kron_flux  # run kron_flux to computer kron_fluxerr
+
+        if self._error is None:
+            return None
+
         return self._kron_fluxerr
 
     @lazyproperty
