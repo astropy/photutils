@@ -17,11 +17,6 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
-- ``photutils.isophote``
-
-  - Fixed bug that caused an infinite loop when the sample
-    extracted from an image has zero length. [#1129]
-
 
 1.0.2 (unreleased)
 ------------------
@@ -42,6 +37,11 @@ Bug Fixes
 
   - Fixed a bug with ``Background2D`` where using ``BkgIDWInterpolator``
     would give incorrect results. [#1104]
+
+- ``photutils.isophote``
+
+  - Fixed bug that caused an infinite loop when the sample extracted
+    from an image has zero length. [#1129]
 
 
 1.0.1 (2020-09-24)
