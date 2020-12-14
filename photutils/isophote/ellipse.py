@@ -462,6 +462,12 @@ class Ellipse:
             if isophote.stop_code < 0:
                 self._fix_last_isophote(isophote_list, 0)
 
+            # but if we get an error from the scipy fitter, bail out
+            # immediately. This usually happens at very small radii
+            # when the number of data points is too small.
+            if isophote.stop_code == 3:
+                break
+
             # reset variable from the actual list, since the last
             # `isophote` instance may no longer be OK.
             isophote = isophote_list[-1]
