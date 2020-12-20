@@ -14,7 +14,7 @@ import numpy as np
 
 from .groupstars import DAOGroup
 from .utils import (_extract_psf_fitting_names, get_grouped_psf_model,
-                    subtract_psf)
+                    subtract_psf, _split)
 from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
 from ..detection import DAOStarFinder
@@ -523,9 +523,22 @@ class BasicPSFPhotometry:
         if star_group_size > 1:
             for i in range(star_group_size):
                 for param_tab_name, param_name in self._pars_to_output.items():
+                    param_prefix, param_postfix = _split(param_name)
+                    # TODO sometimes we need to match prefixes (if its param_i+j) and sometimes the whole name
+                    #  if its param_i_j
+                    #  Find out why why combining e.g. IntegratedGaussianPRF works differently than Gaussian2D
+                    #  Maybe it would be better to unify names already at the point where the models are combined?
+                    model_name_candidates = [name for name in fit_model.param_names if name.startswith(param_name)]
+                    if len(model_name_candidates) < 2:
+                        model_name_candidates = [name for name in fit_model.param_names if name.startswith(param_prefix)]
+                        # this is needed for the case that we have param_0 param_1 ->
+                        #  param_0 param_1 [...] param_N param_N+1
+                        model_name_candidates = [name for name in model_name_candidates if
+                                                 int(_split(name)[1]) >= int(param_postfix)]
+
                     param_tab[param_tab_name][i] = getattr(fit_model,
-                                                           param_name +
-                                                           '_' + str(i)).value
+                                                           model_name_candidates[i]
+                                                           ).value
         else:
             for param_tab_name, param_name in self._pars_to_output.items():
                 param_tab[param_tab_name] = getattr(fit_model,

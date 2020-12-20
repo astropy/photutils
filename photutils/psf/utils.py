@@ -255,3 +255,17 @@ def subtract_psf(data, psf, posflux, subshape=None):
             subbeddata = add_array(subbeddata, -psf(x, y), (y_0, x_0))
 
     return subbeddata
+
+
+from typing import List
+
+def _split(name: str) -> List[str]:
+
+    components = name.split('_')
+    if not components[-1].isnumeric():  # no number prefix present
+        components = ['_'.join(components), '-1']
+    elif len(components) == 1:  # contained no _
+        components = components + ['-1']
+    elif len(components) > 2:  # contained multiple _
+        components = ['_'.join(components[:-1]), components[-1]]
+    return components
