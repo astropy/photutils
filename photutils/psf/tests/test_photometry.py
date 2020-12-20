@@ -654,6 +654,59 @@ def test_psf_extra_output_cols(sigma_psf, sources):
             assert(np.all(~np.isnan(phot_results['sharpness'])))
 
 
+@pytest.fixture(params=[2, 3])
+def overlap_image(request):
+
+    if request.param == 2:
+        close_tab = Table([[50., 53.], [50., 50.], [25., 25.,]], names=['x_0', 'y_0', 'flux_0'])
+    elif request.param == 3:
+        close_tab = Table([[50., 55., 50.], [50., 50., 55.], [25., 25., 25.]], names=['x_0', 'y_0', 'flux_0'])
+    else:
+        raise ValueError
+
+    # Add sources to test image
+    close_image = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
+    for x, y, flux in close_tab:
+        close_model = Gaussian2D(flux / (2 * np.pi * GAUSSIAN_WIDTH ** 2),
+                                 x, y, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
+        close_image += discretize_model(close_model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
+                                        mode='oversample')
+    return close_image
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_fitting_group(overlap_image):
+    """ Test psf_photometry when two input stars are close and need to be fit together """
+    from photutils.background import MADStdBackgroundRMS
+
+    # TODO remove debug
+    import matplotlib.pyplot as plt
+    # plt.imshow(close_image)
+    # plt.colorbar()
+    # plt.show()
+
+    # There are a few models here that fail, be it something created by EPSFBuilder or simpler the Moffat2D one
+    # unprepared_psf = Moffat2D(amplitude=1, gamma=2, alpha=2.8, x_0=0, y_0=0)
+    # psf = prepare_psf_model(unprepared_psf, xname='x_0', yname='y_0', fluxname=None)
+    psf = prepare_psf_model(Gaussian2D(), renormalize_psf=False)
+
+    psf.fwhm = Parameter('fwhm', 'this is not the way to add this I think')
+    psf.fwhm.value = 10
+
+    separation_crit = 10
+
+    basic_phot = BasicPSFPhotometry(
+                                    # choose low threshold and fwhm to find stars no matter what
+                                    finder=DAOStarFinder(1, 1),
+                                    group_maker=DAOGroup(separation_crit),
+                                    bkg_estimator=MADStdBackgroundRMS(),
+                                    fitter=LevMarLSQFitter(),
+                                    psf_model=psf,
+                                    fitshape=31)
+    # this should not raise AttributeError: Attribute "offset_0_0" not found
+    f = basic_phot(image=overlap_image)
+
+
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_finder_return_none():
     """
