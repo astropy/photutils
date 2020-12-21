@@ -14,7 +14,7 @@ import numpy as np
 
 from .groupstars import DAOGroup
 from .utils import (_extract_psf_fitting_names, get_grouped_psf_model,
-                    subtract_psf, _split)
+                    subtract_psf, _split_parameter_name)
 from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
 from ..detection import DAOStarFinder
@@ -520,21 +520,41 @@ class BasicPSFPhotometry:
             param_tab.add_column(Column(name=param_tab_name,
                                         data=np.empty(star_group_size)))
 
+        # TODO sometimes we need to match prefixes (if its param_i+j) and sometimes the whole name
+        #  if its param_i_j
+        #  Find out why why combining e.g. IntegratedGaussianPRF works differently than Gaussian2D
+        #  Maybe it would be better to unify names already at the point where the models are
+        #  combined?
+        # If we encounter a group with two or more stars, the model will have been combined in
+        # psf/utils.py:get_grouped_psf_model() by adding the models. But if
+        # psf/utils.py:prepare_psf_model() has been called on the model before it is already a
+        # compound model.
+        # The parameter names of the combined model are built from a flattened version of the
+        # expression tree so two models with "myparam" don't necessarily combine to a model with
+        # "myparam_0" and "myparam_1" if they have submodels themselves:
+        #  model(submodel('subparam'), 'param', 'second_param') +
+        #  model(submodel('subparam'), 'param')
+        #  ->
+        #  combined_model('param_0', 'second_param_0', 'subparam_1', 'param_2', 'subparam_3')
+        # But this behaviour is different for e.g. IntegratedGaussianPRF compared to
+        # Gaussian2D, so we need to check if there are any candidate parameters that have the
+        # whole parameter name with an attached '_N' prefix or that increment the
+        # existing '_N' prefix of the name
         if star_group_size > 1:
             for i in range(star_group_size):
                 for param_tab_name, param_name in self._pars_to_output.items():
-                    param_prefix, param_postfix = _split(param_name)
-                    # TODO sometimes we need to match prefixes (if its param_i+j) and sometimes the whole name
-                    #  if its param_i_j
-                    #  Find out why why combining e.g. IntegratedGaussianPRF works differently than Gaussian2D
-                    #  Maybe it would be better to unify names already at the point where the models are combined?
-                    model_name_candidates = [name for name in fit_model.param_names if name.startswith(param_name)]
+                    param_prefix, param_postfix = _split_parameter_name(param_name)
+
+                    model_name_candidates = [name for name in fit_model.param_names
+                                             if name.startswith(param_name)]
                     if len(model_name_candidates) < 2:
-                        model_name_candidates = [name for name in fit_model.param_names if name.startswith(param_prefix)]
+                        model_name_candidates = [name for name in fit_model.param_names
+                                                 if name.startswith(param_prefix)]
                         # this is needed for the case that we have param_0 param_1 ->
                         #  param_0 param_1 [...] param_N param_N+1
-                        model_name_candidates = [name for name in model_name_candidates if
-                                                 int(_split(name)[1]) >= int(param_postfix)]
+                        model_name_candidates = \
+                            [name for name in model_name_candidates if
+                             int(_split_parameter_name(name)[1]) >= int(param_postfix)]
 
                     param_tab[param_tab_name][i] = getattr(fit_model,
                                                            model_name_candidates[i]

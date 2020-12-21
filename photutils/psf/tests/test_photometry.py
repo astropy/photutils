@@ -658,9 +658,10 @@ def test_psf_extra_output_cols(sigma_psf, sources):
 def overlap_image(request):
 
     if request.param == 2:
-        close_tab = Table([[50., 53.], [50., 50.], [25., 25.,]], names=['x_0', 'y_0', 'flux_0'])
+        close_tab = Table([[50., 53.], [50., 50.], [25., 25.]], names=['x_0', 'y_0', 'flux_0'])
     elif request.param == 3:
-        close_tab = Table([[50., 55., 50.], [50., 50., 55.], [25., 25., 25.]], names=['x_0', 'y_0', 'flux_0'])
+        close_tab = Table([[50., 55., 50.], [50., 50., 55.], [25., 25., 25.]],
+                          names=['x_0', 'y_0', 'flux_0'])
     else:
         raise ValueError
 
@@ -679,13 +680,8 @@ def test_psf_fitting_group(overlap_image):
     """ Test psf_photometry when two input stars are close and need to be fit together """
     from photutils.background import MADStdBackgroundRMS
 
-    # TODO remove debug
-    import matplotlib.pyplot as plt
-    # plt.imshow(close_image)
-    # plt.colorbar()
-    # plt.show()
-
-    # There are a few models here that fail, be it something created by EPSFBuilder or simpler the Moffat2D one
+    # There are a few models here that fail, be it something
+    # created by EPSFBuilder or simpler the Moffat2D one
     # unprepared_psf = Moffat2D(amplitude=1, gamma=2, alpha=2.8, x_0=0, y_0=0)
     # psf = prepare_psf_model(unprepared_psf, xname='x_0', yname='y_0', fluxname=None)
     psf = prepare_psf_model(Gaussian2D(), renormalize_psf=False)
@@ -704,7 +700,7 @@ def test_psf_fitting_group(overlap_image):
                                     psf_model=psf,
                                     fitshape=31)
     # this should not raise AttributeError: Attribute "offset_0_0" not found
-    f = basic_phot(image=overlap_image)
+    basic_phot(image=overlap_image)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
