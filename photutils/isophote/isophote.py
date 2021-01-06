@@ -198,7 +198,7 @@ class Isophote:
         jmax = min(ysize, int(y0 + sma + 0.5) + 1)
 
         # Integrate
-        if (jmax-jmin > 1) and (imax-imin) > 1:
+        if (jmax - jmin > 1) and (imax - imin) > 1:
             y, x = np.mgrid[jmin:jmax, imin:imax]
             radius, angle = self.sample.geometry.to_polar(x, y)
             radius_e = self.sample.geometry.radius(angle)
@@ -228,33 +228,27 @@ class Isophote:
         """
         try:
             # first and second harmonics
-            coeffs, _ = fit_first_and_second_harmonics(
-                            self.sample.values[0],
-                            self.sample.values[2]
-                        )
-            model = first_and_second_harmonic_function(
-                        self.sample.values[0],
-                        coeffs
-                    )
+            coeffs, _ = fit_first_and_second_harmonics(self.sample.values[0],
+                                                       self.sample.values[2])
+            model = first_and_second_harmonic_function(self.sample.values[0],
+                                                       coeffs)
             residual = self.sample.values[2] - model
 
             # upper (third and fourth) harmonics
-            up_coeffs, up_inv_hessian = fit_upper_harmonic(
-                sample.values[0],
-                sample.values[2],
-                n
-            )
+            up_coeffs, up_inv_hessian = fit_upper_harmonic(sample.values[0],
+                                                           sample.values[2],
+                                                           n)
 
             a = up_coeffs[1] / self.sma / sample.gradient
             b = up_coeffs[2] / self.sma / sample.gradient
 
             def errfunc(x, phi, order, intensities):
-                return (x[0] + x[1]*np.sin(order*phi) +
-                        x[2]*np.cos(order*phi) - intensities)
+                return (x[0] + x[1] * np.sin(order * phi) +
+                        x[2] * np.cos(order * phi) - intensities)
 
             up_var_residual = np.std(errfunc(up_coeffs, self.sample.values[0],
-                                            n, self.sample.values[2]),
-                                            ddof=len(up_coeffs))**2
+                                             n, self.sample.values[2]),
+                                     ddof=len(up_coeffs))**2
             up_covariance = up_inv_hessian * up_var_residual
 
             ce = np.sqrt(np.diag(up_covariance))
@@ -281,13 +275,11 @@ class Isophote:
 
         try:
             coeffs, covariance = fit_first_and_second_harmonics(
-                self.sample.values[0],
-                self.sample.values[2]
-            )
+                self.sample.values[0], self.sample.values[2])
             model = first_and_second_harmonic_function(self.sample.values[0],
                                                        coeffs)
             var_residual = np.std(self.sample.values[2] - model,
-                                    ddof=len(coeffs))**2
+                                  ddof=len(coeffs)) ** 2
             errors = np.sqrt(np.diagonal(covariance * var_residual))
 
             eps = self.sample.geometry.eps
