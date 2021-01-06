@@ -227,13 +227,6 @@ class Isophote:
         subtract the first and second harmonics from the raw data.
         """
         try:
-            # first and second harmonics
-            coeffs, _ = fit_first_and_second_harmonics(self.sample.values[0],
-                                                       self.sample.values[2])
-            model = first_and_second_harmonic_function(self.sample.values[0],
-                                                       coeffs)
-            residual = self.sample.values[2] - model
-
             # upper (third and fourth) harmonics
             up_coeffs, up_inv_hessian = fit_upper_harmonic(sample.values[0],
                                                            sample.values[2],
