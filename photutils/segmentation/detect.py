@@ -29,9 +29,9 @@ def _make_binary_structure(ndim, connectivity):
     connectivity : {4, 8}
         For the case of ``ndim=2``, the type of pixel connectivity used
         in determining how pixels are grouped into a detected source.
-        The options are 4 or 8 (default).  4-connected pixels touch
-        along their edges.  8-connected pixels touch along their edges
-        or corners.  For reference, SExtractor uses 8-connected pixels.
+        The options are 4 or 8 (default). 4-connected pixels touch along
+        their edges. 8-connected pixels touch along their edges or
+        corners. For reference, SourceExtractor uses 8-connected pixels.
 
     Returns
     -------
@@ -98,10 +98,10 @@ def _detect_sources(data, thresholds, npixels, filter_kernel=None,
 
     connectivity : {4, 8}, optional
         The type of pixel connectivity used in determining how pixels
-        are grouped into a detected source.  The options are 4 or 8
-        (default).  4-connected pixels touch along their edges.
-        8-connected pixels touch along their edges or corners.  For
-        reference, SExtractor uses 8-connected pixels.
+        are grouped into a detected source. The options are 4 or
+        8 (default). 4-connected pixels touch along their edges.
+        8-connected pixels touch along their edges or corners. For
+        reference, SourceExtractor uses 8-connected pixels.
 
     mask : array_like of bool, optional
         A boolean mask, with the same shape as the input ``data``, where
@@ -233,10 +233,10 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
     connectivity : {4, 8}, optional
         The type of pixel connectivity used in determining how pixels
-        are grouped into a detected source.  The options are 4 or 8
-        (default).  4-connected pixels touch along their edges.
-        8-connected pixels touch along their edges or corners.  For
-        reference, SExtractor uses 8-connected pixels.
+        are grouped into a detected source. The options are 4 or
+        8 (default). 4-connected pixels touch along their edges.
+        8-connected pixels touch along their edges or corners. For
+        reference, SourceExtractor uses 8-connected pixels.
 
     mask : array_like of bool, optional
         A boolean mask, with the same shape as the input ``data``, where

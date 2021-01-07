@@ -181,12 +181,10 @@ classes that can be used:
 * `~photutils.background.SExtractorBackground`
 * `~photutils.background.BiweightLocationBackground`
 
-The default is a `~photutils.background.SExtractorBackground`
-instance.  For this method, the background in each mesh is calculated
-as ``(2.5 * median) - (1.5 * mean)``.  However, if ``(mean - median) /
-std > 0.3`` then the ``median`` is used instead (despite what the
-`SExtractor <https://www.astromatic.net/software/sextractor>`_ User's
-Manual says, this is the method it always uses).
+The default is a `~photutils.background.SExtractorBackground` instance.
+For this method, the background in each mesh is calculated as ``(2.5 *
+median) - (1.5 * mean)``. However, if ``(mean - median) / std > 0.3``
+then the ``median`` is used instead.
 
 Likewise, the background RMS level in each mesh is calculated using
 the function or callable object input via the ``bkgrms_estimator``
