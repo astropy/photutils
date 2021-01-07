@@ -164,11 +164,11 @@ class SourceProperties:
     ``data`` (and optional ``filtered_data``) should be
     background-subtracted for accurate source photometry and properties.
 
-    `SExtractor`_'s centroid and morphological parameters are always
-    calculated from a filtered "detection" image, i.e., the image
-    used to define the segmentation image. The usual downside of
-    the filtering is the sources will be made more circular than
-    they actually are. If you wish to reproduce `SExtractor`_
+    `Source Extractor`_'s centroid and morphological parameters are
+    always calculated from a filtered "detection" image, i.e., the
+    image used to define the segmentation image. The usual downside
+    of the filtering is the sources will be made more circular than
+    they actually are. If you wish to reproduce `SourceExtractor`_
     centroid and morphology results, then input a filtered and
     background-subtracted "detection" image into the ``filtered_data``
     keyword. If ``filtered_data`` is `None`, then the unfiltered
@@ -206,7 +206,7 @@ class SourceProperties:
     pixels outside of the source segment, masked pixels from the
     ``mask`` input, or any non-finite ``data`` values (NaN and +/- inf).
 
-    .. _SExtractor: https://www.astromatic.net/software/sextractor
+    .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
 
     def __init__(self, data, segment_img, label, filtered_data=None,
@@ -1178,12 +1178,12 @@ class SourceProperties:
     def _check_covariance(covariance):
         """
         Check and modify the covariance matrix in the case of
-        "infinitely" thin detections.  This follows SExtractor's
+        "infinitely" thin detections.  This follows SourceExtractor's
         prescription of incrementally increasing the diagonal elements
         by 1/12.
         """
 
-        increment = 1. / 12  # arbitrary SExtractor value
+        increment = 1. / 12  # arbitrary SourceExtractor value
         value = (covariance[0, 0] * covariance[1, 1]) - covariance[0, 1]**2
         if value >= increment**2:
             return covariance
@@ -1219,7 +1219,7 @@ class SourceProperties:
         moments as the source.
         """
 
-        # this matches SExtractor's A parameter
+        # this matches SourceExtractor's A parameter
         return np.sqrt(self.covariance_eigvals[0])
 
     @lazyproperty
@@ -1230,7 +1230,7 @@ class SourceProperties:
         moments as the source.
         """
 
-        # this matches SExtractor's B parameter
+        # this matches SourceExtractor's B parameter
         return np.sqrt(self.covariance_eigvals[1])
 
     @lazyproperty
@@ -1280,7 +1280,7 @@ class SourceProperties:
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
 
-        Note that this is the same as `SExtractor`_'s elongation
+        Note that this is the same as `SourceExtractor`_'s elongation
         parameter.
         """
 
@@ -1297,7 +1297,7 @@ class SourceProperties:
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
 
-        Note that this is the same as `SExtractor`_'s ellipticity
+        Note that this is the same as `SourceExtractor`_'s ellipticity
         parameter.
         """
 
@@ -1309,7 +1309,7 @@ class SourceProperties:
         The ``(0, 0)`` element of the `covariance` matrix, representing
         :math:`\\sigma_x^2`, in units of pixel**2.
 
-        Note that this is the same as `SExtractor`_'s X2 parameter.
+        Note that this is the same as `SourceExtractor`_'s X2 parameter.
         """
 
         return self.covariance[0, 0]
@@ -1320,7 +1320,7 @@ class SourceProperties:
         The ``(1, 1)`` element of the `covariance` matrix, representing
         :math:`\\sigma_y^2`, in units of pixel**2.
 
-        Note that this is the same as `SExtractor`_'s Y2 parameter.
+        Note that this is the same as `SourceExtractor`_'s Y2 parameter.
         """
 
         return self.covariance[1, 1]
@@ -1332,7 +1332,7 @@ class SourceProperties:
         matrix, representing :math:`\\sigma_x \\sigma_y`, in units of
         pixel**2.
 
-        Note that this is the same as `SExtractor`_'s XY parameter.
+        Note that this is the same as `SourceExtractor`_'s XY parameter.
         """
 
         return self.covariance[0, 1]
@@ -1340,7 +1340,8 @@ class SourceProperties:
     @lazyproperty
     def cxx(self):
         """
-        `SExtractor`_'s CXX ellipse parameter in units of pixel**(-2).
+        `SourceExtractor`_'s CXX ellipse parameter in units of
+        pixel**(-2).
 
         The ellipse is defined as
 
@@ -1349,7 +1350,7 @@ class SourceProperties:
                 cyy (y - \\bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
-        units of the axes lengths).  `SExtractor`_ reports that the
+        units of the axes lengths). `SourceExtractor`_ reports that the
         isophotal limit of a source is well represented by :math:`R
         \\approx 3`.
         """
@@ -1360,7 +1361,8 @@ class SourceProperties:
     @lazyproperty
     def cyy(self):
         """
-        `SExtractor`_'s CYY ellipse parameter in units of pixel**(-2).
+        `SourceExtractor`_'s CYY ellipse parameter in units of
+        pixel**(-2).
 
         The ellipse is defined as
 
@@ -1369,7 +1371,7 @@ class SourceProperties:
                 cyy (y - \\bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
-        units of the axes lengths).  `SExtractor`_ reports that the
+        units of the axes lengths). `SourceExtractor`_ reports that the
         isophotal limit of a source is well represented by :math:`R
         \\approx 3`.
         """
@@ -1380,7 +1382,8 @@ class SourceProperties:
     @lazyproperty
     def cxy(self):
         """
-        `SExtractor`_'s CXY ellipse parameter in units of pixel**(-2).
+        `SourceExtractor`_'s CXY ellipse parameter in units of
+        pixel**(-2).
 
         The ellipse is defined as
 
@@ -1389,7 +1392,7 @@ class SourceProperties:
                 cyy (y - \\bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
-        units of the axes lengths).  `SExtractor`_ reports that the
+        units of the axes lengths). `SourceExtractor`_ reports that the
         isophotal limit of a source is well represented by :math:`R
         \\approx 3`.
         """
@@ -1804,11 +1807,11 @@ def source_properties(data, segment_img, error=None, mask=None,
 
     Notes
     -----
-    `SExtractor`_'s centroid and morphological parameters are always
-    calculated from a filtered "detection" image, i.e., the image
-    used to define the segmentation image. The usual downside of
-    the filtering is the sources will be made more circular than
-    they actually are. If you wish to reproduce `SExtractor`_
+    `SourceExtractor`_'s centroid and morphological parameters are
+    always calculated from a filtered "detection" image, i.e., the
+    image used to define the segmentation image. The usual downside
+    of the filtering is the sources will be made more circular than
+    they actually are. If you wish to reproduce `SourceExtractor`_
     centroid and morphology results, then input a filtered and
     background-subtracted "detection" image into the ``filtered_data``
     keyword. If ``filtered_data`` is `None`, then the unfiltered
@@ -1838,7 +1841,7 @@ def source_properties(data, segment_img, error=None, mask=None,
     are the non-masked pixels in the source segment, and
     :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
-    .. _SExtractor: https://www.astromatic.net/software/sextractor
+    .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
 
     See Also
     --------

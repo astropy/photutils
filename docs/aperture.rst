@@ -760,10 +760,9 @@ See Also
 
 1. `IRAF's APPHOT package`_
 
-2. `SourceExtractor Manual [PDF]`_ (Sec. 9.4 p. 36)
+2. `SourceExtractor`_
 
-.. _SourceExtractor: https://www.astromatic.net/software/sextractor
-.. _SourceExtractor Manual [PDF]: https://www.astromatic.net/pubsvn/software/sextractor/trunk/doc/sextractor.pdf
+.. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
 .. _IRAF's APPHOT package: http://iraf.noao.edu/scripts/irafhelp?apphot
 
 
