@@ -181,12 +181,12 @@ class TestFitEllipseSamples:
         fitter = EllipseFitter(sample)
         iso = fitter.fit(maxit=400)
 
-        assert_allclose(iso.a3, -6.87e-7, atol=1.e-9)
+        assert_allclose(iso.a3, -6.825e-7, atol=1.e-9)
         assert_allclose(iso.b3, 1.68e-6, atol=1.e-8)
         assert_allclose(iso.a4, -4.36e-6, atol=1.e-8)
         assert_allclose(iso.b4, 4.73e-5, atol=1.e-7)
 
-        assert_allclose(iso.a3_err, 5.28e-5, atol=1.e-7)
-        assert_allclose(iso.b3_err, 5.24e-5, atol=1.e-7)
-        assert_allclose(iso.a4_err, 5.28e-5, atol=1.e-7)
-        assert_allclose(iso.b4_err, 5.24e-5, atol=1.e-7)
+        assert_allclose(iso.a3_err, 8.152e-6, atol=1.e-7)
+        assert_allclose(iso.b3_err, 8.115e-6, atol=1.e-7)
+        assert_allclose(iso.a4_err, 7.501e-6, atol=1.e-7)
+        assert_allclose(iso.b4_err, 7.473e-6, atol=1.e-7)
