@@ -141,13 +141,12 @@ Source Deblending
 -----------------
 
 In the example above, overlapping sources are detected as single
-sources.  Separating those sources requires a deblending procedure,
-such as a multi-thresholding technique used by `SExtractor
-<https://www.astromatic.net/software/sextractor>`_.  Photutils provides
-a :func:`~photutils.segmentation.deblend_sources` function that
-deblends sources uses a combination of multi-thresholding and
-`watershed segmentation
-<https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_.  Note
+sources. Separating those sources requires a deblending procedure,
+such as a multi-thresholding technique used by `SourceExtractor`_.
+Photutils provides a :func:`~photutils.segmentation.deblend_sources`
+function that deblends sources uses a combination
+of multi-thresholding and `watershed segmentation
+<https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. Note
 that in order to deblend sources, they must be separated enough such
 that there is a saddle between them.
 
@@ -628,19 +627,19 @@ the ``mask`` keyword (`True` pixel values are masked) to the
 Filtering
 ^^^^^^^^^
 
-`SExtractor`_'s centroid and morphological parameters are always
-calculated from a filtered "detection" image.  The usual downside of
-the filtering is the sources will be made more circular than they
-actually are (assuming a circular kernel is used, which is common).
-If you wish to reproduce `SExtractor`_ results, then use the
-:func:`~photutils.segmentation.source_properties` ``filter_kernel``
-keyword to filter the ``data`` prior to centroid and morphological
-measurements.   The kernel should be the same one used with
-:func:`~photutils.segmentation.detect_sources` to define the
-segmentation image.  If ``filter_kernel`` is `None`, then the centroid
+`SourceExtractor`_'s centroid and morphological parameters are
+always calculated from a filtered "detection" image. The usual
+downside of the filtering is the sources will be made more circular
+than they actually are (assuming a circular kernel is used, which
+is common). If you wish to reproduce `SourceExtractor`_ results,
+then use the :func:`~photutils.segmentation.source_properties`
+``filter_kernel`` keyword to filter the ``data`` prior to centroid and
+morphological measurements. The kernel should be the same one used
+with :func:`~photutils.segmentation.detect_sources` to define the
+segmentation image. If ``filter_kernel`` is `None`, then the centroid
 and morphological measurements will be performed on the unfiltered
-``data``.  Note that photometry is *always* performed on the
-unfiltered ``data``.
+``data``. Note that photometry is *always* performed on the unfiltered
+``data``.
 
 
 Reference/API
@@ -650,4 +649,4 @@ Reference/API
     :no-heading:
 
 
-.. _SExtractor:  https://www.astromatic.net/software/sextractor
+.. _SourceExtractor:  https://sextractor.readthedocs.io/en/latest/

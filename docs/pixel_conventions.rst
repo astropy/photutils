@@ -20,6 +20,6 @@ the second (fast) array index and the ``y`` (row) coordinate corresponds
 to the first (slow) index. ``image[y, x]`` gives the value at pixel
 coordinates ``(x, y)``.
 
-.. _SourceExtractor: https://www.astromatic.net/software/sextractor
+.. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
 .. _IRAF: http://ast.noao.edu/data/software
 .. _ds9: http://ds9.si.edu/

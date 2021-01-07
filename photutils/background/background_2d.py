@@ -688,9 +688,9 @@ class Background2D:
         Both meshes are computed at the same time here method because
         the filtering of both depends on the background mesh.
 
-        The ``background_mesh`` and ``background_rms_mesh`` images are
-        equivalent to the low-resolution "MINIBACKGROUND" and
-        "MINIBACK_RMS" background maps in SExtractor, respectively.
+        The ``background_mesh`` and ``background_rms_mesh`` images
+        are equivalent to the low-resolution "MINIBACKGROUND" and
+        "MINIBACK_RMS" background maps in SourceExtractor, respectively.
         """
 
         if self.sigma_clip is not None:
@@ -785,7 +785,7 @@ class Background2D:
         """
         The median value of the 2D low-resolution background map.
 
-        This is equivalent to the value SExtractor prints to stdout
+        This is equivalent to the value SourceExtractor prints to stdout
         (i.e., "(M+D) Background: <value>").
         """
 
@@ -796,7 +796,7 @@ class Background2D:
         """
         The median value of the low-resolution background RMS map.
 
-        This is equivalent to the value SExtractor prints to stdout
+        This is equivalent to the value SourceExtractor prints to stdout
         (i.e., "(M+D) RMS: <value>").
         """
 

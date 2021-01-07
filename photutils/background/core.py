@@ -326,13 +326,13 @@ class MMMBackground(ModeEstimatorBackground):
 class SExtractorBackground(BackgroundBase):
     """
     Class to calculate the background in an array using the
-    SExtractor algorithm.
+    Source Extractor algorithm.
 
     The background is calculated using a mode estimator of the form
     ``(2.5 * median) - (1.5 * mean)``. If ``(mean - median) / std >
     0.3`` then the median is used instead.
 
-    .. _SExtractor: https://www.astromatic.net/software/sextractor
+    .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
 
     Parameters
     ----------
