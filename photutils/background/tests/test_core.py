@@ -69,13 +69,13 @@ def test_background_axis(bkg_class):
     assert_allclose(bkg_arr, bkgi)
 
 
-def test_sextrator_background_zero_std():
+def test_sourceextrator_background_zero_std():
     data = np.ones((100, 100))
     bkg = SExtractorBackground(sigma_clip=None)
     assert_allclose(bkg.calc_background(data), 1.0)
 
 
-def test_sextrator_background_skew():
+def test_sourceextrator_background_skew():
     data = np.arange(100)
     data[70:] = 1.e7
     bkg = SExtractorBackground(sigma_clip=None)
