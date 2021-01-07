@@ -20,6 +20,8 @@ Bug Fixes
 
 - ``photutils.isophote``
 
+  - Corrected calculations of upper harmonics and their errors [#1089]
+
   - Fixed bug that caused an infinite loop when the sample extracted
     from an image has zero length. [#1129]
 
