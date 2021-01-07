@@ -30,6 +30,10 @@ New Features
     of ~4 with 2048x2048 input arrays when using the default interpolator).
     [#1103, #1108]
 
+  - Changed ``BkgZoomInterpolator`` default method to ``constant`` to
+    account for upstream changes in ``scipy.ndimage.zoom`` (scipy
+    v1.6.0). [#1137]
+
 Bug Fixes
 ^^^^^^^^^
 
