@@ -164,7 +164,7 @@ class SourceProperties:
     ``data`` (and optional ``filtered_data``) should be
     background-subtracted for accurate source photometry and properties.
 
-    `Source Extractor`_'s centroid and morphological parameters are
+    `SourceExtractor`_'s centroid and morphological parameters are
     always calculated from a filtered "detection" image, i.e., the
     image used to define the segmentation image. The usual downside
     of the filtering is the sources will be made more circular than
