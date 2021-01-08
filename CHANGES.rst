@@ -57,6 +57,10 @@ Bug Fixes
   - Fixed an issue where negative Kron radius values could be returned,
     which would cause an error when calculating Kron fluxes. [#1132]
 
+  - Fixed an issue where an error was raised with
+    ``SegmentationImage.remove_border_labels()`` with ``relabel=True``
+    when no segments remain. [#1133]
+
 
 1.0.1 (2020-09-24)
 ------------------
