@@ -25,6 +25,9 @@ Bug Fixes
   - Fixed bug that caused an infinite loop when the sample extracted
     from an image has zero length. [#1129]
 
+  - Fixed a bug where the default ``fixed_parameters`` in
+    ``EllipseSample.update()`` were not defined. [#1139]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where negative Kron radius values could be returned,
