@@ -278,7 +278,7 @@ class EllipseSample:
 
         return r_angles, r_radii, r_intensities
 
-    def update(self, fixed_parameters):
+    def update(self, fixed_parameters=None):
         """
         Update this `~photutils.isophote.EllipseSample` instance.
 
@@ -288,6 +288,9 @@ class EllipseSample:
         then computes the the mean intensity, local gradient, and other
         associated quantities.
         """
+
+        if fixed_parameters is None:
+            fixed_parameters = np.array([False, False, False, False])
         self.geometry.fix = fixed_parameters
 
         step = self.geometry.astep
