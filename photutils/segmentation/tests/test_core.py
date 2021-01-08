@@ -282,6 +282,13 @@ class TestSegmentationImage:
             segm = SegmentationImage(self.data)
             segm.remove_border_labels(border_width=3)
 
+    def test_remove_border_labels_no_remaining_segments(self):
+        alt_data = np.copy(self.data)
+        alt_data[alt_data == 3] = 0
+        segm = SegmentationImage(alt_data)
+        segm.remove_border_labels(border_width=1, relabel=True)
+        assert segm.nlabels == 0
+
     def test_remove_masked_labels(self):
         ref_data = np.array([[0, 0, 0, 0, 0, 0],
                              [0, 0, 0, 0, 0, 0],

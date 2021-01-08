@@ -723,9 +723,10 @@ class SegmentationImage:
 
         if relabel:
             labels = np.unique(idx[idx != 0])
-            idx2 = np.zeros(max(labels) + 1, dtype=int)
-            idx2[labels] = np.arange(len(labels)) + 1
-            idx = idx2[idx]
+            if not len(labels) == 0:
+                idx2 = np.zeros(max(labels) + 1, dtype=int)
+                idx2[labels] = np.arange(len(labels)) + 1
+                idx = idx2[idx]
 
         data_new = idx[self.data]
         self.__dict__ = {}  # reset all cached properties
