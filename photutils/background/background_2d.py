@@ -184,7 +184,7 @@ class Background2D:
 
     Parameters
     ----------
-    data : array_like
+    data : array_like or `~astropy.nddata.NDData`
         The 2D array from which to estimate the background and/or
         background RMS map.
 
