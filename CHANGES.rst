@@ -14,6 +14,11 @@ New Features
   - The ``PixelAperture.plot()`` method now returns a list of
     ``matplotlib.patches.Patch`` objects. [#923]
 
+- ``photutils.background``
+
+  - The ``Background2D`` class now accepts astropy ``NDData``,
+    ``CCDData``, and ``Quantity`` objects as data inputs. [#1140]
+
 Bug Fixes
 ^^^^^^^^^
 
