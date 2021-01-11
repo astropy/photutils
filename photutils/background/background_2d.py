@@ -532,12 +532,11 @@ class Background2D:
         self.nboxes = self.nxboxes * self.nyboxes
 
         # a reshaped 2D masked array with mesh data along the x axis
-        mesh_data = np.ma.swapaxes(
-                        data_ma.reshape(
-                            self.nyboxes, self.box_size[0],
-                            self.nxboxes, self.box_size[1]),
-                        1, 2).reshape(self.nyboxes * self.nxboxes,
-                                      self.box_npixels)
+        mesh_data = np.ma.swapaxes(data_ma.reshape(
+            self.nyboxes, self.box_size[0],
+            self.nxboxes, self.box_size[1]),
+            1, 2).reshape(self.nyboxes * self.nxboxes,
+                          self.box_npixels)
 
         # first cut on rejecting meshes
         self.mesh_idx = self._select_meshes(mesh_data)

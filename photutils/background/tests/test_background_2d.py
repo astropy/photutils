@@ -42,6 +42,7 @@ DATA2 = NDData(DATA, unit=None)
 DATA3 = NDData(DATA, unit=u.ct)
 DATA4 = CCDData(DATA, unit=u.ct)
 
+
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestBackground2D:
     @pytest.mark.parametrize(('filter_size', 'interpolator'),
