@@ -5,6 +5,8 @@ Tests for the background_2d module.
 
 import itertools
 
+from astropy.nddata import NDData, CCDData
+import astropy.units as u
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 import pytest
@@ -35,6 +37,10 @@ PADBKG_RMS_MESH = np.zeros((5, 5))
 FILTER_SIZES = [(1, 1), (3, 3)]
 INTERPOLATORS = [BkgZoomInterpolator(), BkgIDWInterpolator()]
 
+DATA1 = DATA << u.ct
+DATA2 = NDData(DATA, unit=None)
+DATA3 = NDData(DATA, unit=u.ct)
+DATA4 = CCDData(DATA, unit=u.ct)
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestBackground2D:
@@ -44,6 +50,23 @@ class TestBackground2D:
     def test_background(self, filter_size, interpolator):
         b = Background2D(DATA, (25, 25), filter_size=filter_size,
                          interpolator=interpolator)
+        assert_allclose(b.background, DATA)
+        assert_allclose(b.background_rms, BKG_RMS)
+        assert_allclose(b.background_mesh, BKG_MESH)
+        assert_allclose(b.background_rms_mesh, BKG_RMS_MESH)
+        assert b.background_median == 1.0
+        assert b.background_rms_median == 0.0
+
+    @pytest.mark.parametrize('data', [DATA1, DATA3, DATA4])
+    def test_background_nddata(self, data):
+        """ Test with NDData and CCDData, and also test units. """
+        b = Background2D(data, (25, 25), filter_size=3)
+        assert isinstance(b.background, u.Quantity)
+        assert isinstance(b.background_rms, u.Quantity)
+        assert isinstance(b.background_median, u.Quantity)
+        assert isinstance(b.background_rms_median, u.Quantity)
+
+        b = Background2D(DATA2, (25, 25), filter_size=3)
         assert_allclose(b.background, DATA)
         assert_allclose(b.background_rms, BKG_RMS)
         assert_allclose(b.background_mesh, BKG_MESH)
