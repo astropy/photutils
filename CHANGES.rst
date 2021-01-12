@@ -22,7 +22,7 @@ New Features
 - ``photutils.isophote``
 
   - Added the ability to specify the output columns in the
-  ``IsophoteList`` ``to_table`` method. [#1117]
+    ``IsophoteList`` ``to_table`` method. [#1117]
 
 Bug Fixes
 ^^^^^^^^^
