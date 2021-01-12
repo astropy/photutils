@@ -781,7 +781,7 @@ def _isophote_list_to_table(isophote_list, columns='main'):
         An astropy QTable with the selected or all isophote parameters.
     """
 
-    properties = OrderedDict()
+    properties = dict()
     isotable = QTable()
 
     # main_properties: `List`
@@ -789,12 +789,11 @@ def _isophote_list_to_table(isophote_list, columns='main'):
     # the isophote_list parameters
 
     def __rename_properties(properties,
-                            orig_names = ['int_err', 'eps', 'ellip_err',
-                                          'grad_r_error', 'nflag'],
-                            new_names = ['intens_err', 'ellipticity',
-                                         'ellipticity_err', 'grad_rerror',
-                                         'nflag']
-                            ):
+                            orig_names=['int_err', 'eps', 'ellip_err',
+                                        'grad_r_error', 'nflag'],
+                            new_names=['intens_err', 'ellipticity',
+                                       'ellipticity_err', 'grad_rerror',
+                                       'nflag']):
         '''
         Simple renaming for some of the isophote_list parameters.
 

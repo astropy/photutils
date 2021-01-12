@@ -269,6 +269,6 @@ class TestIsophoteList:
         tbl = isolist.to_table(columns=['sma'])
         assert len(tbl.colnames) == 1
 
-        tbl = isolist.to_table(columns=['tflux_e', 'tflux_c',
-                                               'npix_e', 'npix_c'])
+        tbl = isolist.to_table(columns=['tflux_e', 'tflux_c', 'npix_e',
+                                        'npix_c'])
         assert len(tbl.colnames) == 4
