@@ -19,6 +19,11 @@ New Features
   - The ``Background2D`` class now accepts astropy ``NDData``,
     ``CCDData``, and ``Quantity`` objects as data inputs. [#1140]
 
+- ``photutils.isophote``
+
+  - Added the ability to specify the output columns in the
+    ``IsophoteList`` ``to_table`` method. [#1117]
+
 Bug Fixes
 ^^^^^^^^^
 

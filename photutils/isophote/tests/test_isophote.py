@@ -9,7 +9,9 @@ from numpy.testing import assert_allclose
 import pytest
 
 from .make_test_data import make_test_image
+from ..ellipse import Ellipse
 from ..fitter import EllipseFitter
+from ..geometry import EllipseGeometry
 from ..isophote import Isophote, IsophoteList
 from ..sample import EllipseSample
 from ...datasets import get_path
@@ -245,3 +247,30 @@ class TestIsophoteList:
         assert result[-1].sma < result[0].sma
         result.sort()
         assert result[-1].sma > result[0].sma
+
+    @pytest.mark.skipif('not HAS_SCIPY')
+    def test_to_table(self):
+        test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
+                                   background=100., noise=1.e-6, i0=100.,
+                                   sma=10., eps=0.2, pa=0., seed=1)
+        g = EllipseGeometry(27, 27, 5, 0.2, 0)
+        ellipse = Ellipse(test_img, geometry=g, threshold=0.1)
+        isolist = ellipse.fit_image(maxsma=27)
+
+        assert len(isolist.get_names()) >= 30  # test for get_names
+
+        tbl = isolist.to_table()
+        assert len(tbl.colnames) == 18
+
+        tbl = isolist.to_table(columns='all')
+        assert len(tbl.colnames) >= 30
+
+        tbl = isolist.to_table(columns='main')
+        assert len(tbl.colnames) == 18
+
+        tbl = isolist.to_table(columns=['sma'])
+        assert len(tbl.colnames) == 1
+
+        tbl = isolist.to_table(columns=['tflux_e', 'tflux_c', 'npix_e',
+                                        'npix_c'])
+        assert len(tbl.colnames) == 4
