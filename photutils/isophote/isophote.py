@@ -716,7 +716,7 @@ class IsophoteList:
         """
         return self._collect_as_array('b4_err')
 
-    def to_table(self, key_properties=['main']):
+    def to_table(self, columns='main'):
         """
         Convert an `~photutils.isophote.IsophoteList` instance to a
         `~astropy.table.QTable` with the main isophote parameters.
@@ -726,7 +726,7 @@ class IsophoteList:
         result : `~astropy.table.QTable`
             An astropy QTable with the main isophote parameters.
         """
-        return _isophote_list_to_table(self, key_properties)
+        return _isophote_list_to_table(self, columns)
 
     def get_names(self):
         '''Print the names of the properties of an \
@@ -751,7 +751,7 @@ def _get_properties(isophote_list):
     result : `OrderedDict`
         An OrderedDict with the list of the isophote_list properties
     """
-    properties = OrderedDict()
+    properties = dict()
     for an_item in isophote_list.__class__.__dict__:
         p_type = isophote_list.__class__.__dict__[an_item]
         '''Exclude the sample property'''
@@ -760,7 +760,7 @@ def _get_properties(isophote_list):
     return properties
 
 
-def _isophote_list_to_table(isophote_list, key_properties=['main']):
+def _isophote_list_to_table(isophote_list, columns='main'):
     """
     Convert an `~photutils.isophote.IsophoteList` instance to
     a `~astropy.table.QTable`.
@@ -772,8 +772,8 @@ def _isophote_list_to_table(isophote_list, key_properties=['main']):
         A list of isophotes.
 
     key_properties : A list of properties to export from the isophote_list
-        If key_properties = ['all'] or ['main'], it will pick all or few
-        selected main properties
+        If ``columns`` is 'all' or 'main', it will pick all or few
+        of the main properties.
 
     Returns
     -------
@@ -800,18 +800,18 @@ def _isophote_list_to_table(isophote_list, key_properties=['main']):
 
         Parameters
         ----------
-        properties: `OrderedDict`
-            An OrderedDict with the list of the isophote_list parameters
-        orig_names: `List`
+        properties: `dict`
+            A dictionary with the list of the isophote_list parameters
+        orig_names: list
             A list of original names in the isophote_list parameters
             to be renamed
-        new_names: `List`
+        new_names: list
             A list of new names matching in length of the orig_names
 
         Returns
         -------
-        properties: `OrderedDict`
-            An OrderedDict with the list of the renamed isophote_list
+        properties: `dict`
+            A dictionary with the list of the renamed isophote_list
             parameters
         '''
         main_properties = ['sma', 'intens', 'int_err', 'eps', 'ellip_err',
@@ -826,14 +826,14 @@ def _isophote_list_to_table(isophote_list, key_properties=['main']):
                 properties[an_item] = an_item
         return properties
 
-    if 'all' in key_properties:
+    if columns == 'all':
         properties = _get_properties(isophote_list)
         properties = __rename_properties(properties)
 
-    elif 'main' in key_properties:
+    elif columns == 'main':
         properties = __rename_properties(properties)
     else:
-        for an_item in key_properties:
+        for an_item in columns:
             properties[an_item] = an_item
 
     for k, v in properties.items():

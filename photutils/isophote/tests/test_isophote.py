@@ -260,15 +260,15 @@ class TestIsophoteList:
         tbl = isolist.to_table()
         assert len(tbl.colnames) == 18
 
-        tbl = isolist.to_table(key_properties=['all'])
+        tbl = isolist.to_table(columns='all')
         assert len(tbl.colnames) >= 30
 
-        tbl = isolist.to_table(key_properties=['main'])
+        tbl = isolist.to_table(columns='main')
         assert len(tbl.colnames) == 18
 
-        tbl = isolist.to_table(key_properties=['sma'])
+        tbl = isolist.to_table(columns=['sma'])
         assert len(tbl.colnames) == 1
 
-        tbl = isolist.to_table(key_properties=['tflux_e', 'tflux_c',
+        tbl = isolist.to_table(columns=['tflux_e', 'tflux_c',
                                                'npix_e', 'npix_c'])
         assert len(tbl.colnames) == 4
