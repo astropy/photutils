@@ -362,10 +362,16 @@ apertures (red) on the image:
 
    norm = simple_norm(data, 'sqrt', percent=99)
    plt.imshow(data, norm=norm, interpolation='nearest')
-   aperture.plot(color='white', lw=2)
-   annulus_aperture.plot(color='red', lw=2)
    plt.xlim(0, 170)
    plt.ylim(130, 250)
+
+   ap_patches = aperture.plot(color='white', lw=2,
+                              label='Photometry aperture')
+   ann_patches = annulus_aperture.plot(color='red', lw=2,
+                                       label='Background annulus')
+   handles = (ap_patches[0], ann_patches[0])
+   plt.legend(loc=(0.17, 0.05), facecolor='#458989', labelcolor='white',
+              handles=handles, prop={'weight': 'bold', 'size': 11})
 
 We can use aperture masks to directly access the pixel values in any
 aperture.  Let's do that for the annulus aperture::
