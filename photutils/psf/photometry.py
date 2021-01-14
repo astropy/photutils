@@ -406,10 +406,12 @@ class BasicPSFPhotometry:
                                                    len(star_groups.groups[n]))
             result_tab = vstack([result_tab, param_table])
 
-            if 'param_cov' in self.fitter.fit_info.keys():
+            param_cov = self.fitter.fit_info.get('param_cov', None)
+            if param_cov is not None:
                 unc_tab = vstack([unc_tab,
                                   self._get_uncertainties(
                                       len(star_groups.groups[n]))])
+
             try:
                 from astropy.nddata.utils import NoOverlapError
             except ImportError:
@@ -422,7 +424,7 @@ class BasicPSFPhotometry:
             except NoOverlapError:
                 pass
 
-        if 'param_cov' in self.fitter.fit_info.keys():
+        if param_cov is not None:
             result_tab = hstack([result_tab, unc_tab])
 
         return result_tab, image
@@ -488,15 +490,13 @@ class BasicPSFPhotometry:
                 unc_tab.add_column(Column(name=param_name + "_unc",
                                           data=np.empty(star_group_size)))
 
-        if 'param_cov' in self.fitter.fit_info.keys():
-            if self.fitter.fit_info['param_cov'] is not None:
-                k = 0
-                n_fit_params = len(unc_tab.colnames)
-                for i in range(star_group_size):
-                    unc_tab[i] = np.sqrt(np.diag(
-                                         self.fitter.fit_info['param_cov'])
-                                         )[k: k + n_fit_params]
-                    k = k + n_fit_params
+        k = 0
+        n_fit_params = len(unc_tab.colnames)
+        param_cov = self.fitter.fit_info.get('param_cov', None)
+        for i in range(star_group_size):
+            unc_tab[i] = np.sqrt(np.diag(param_cov))[k: k + n_fit_params]
+            k = k + n_fit_params
+
         return unc_tab
 
     def _model_params2table(self, fit_model, star_group_size):
@@ -800,8 +800,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             star_groups = star_groups.group_by('group_id')
             table = hstack([star_groups, table])
 
-            table['iter_detected'] = n*np.ones(table['x_fit'].shape,
-                                               dtype=int)
+            table['iter_detected'] = n * np.ones(table['x_fit'].shape,
+                                                 dtype=int)
 
             output_table = vstack([output_table, table])
 
