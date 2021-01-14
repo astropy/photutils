@@ -5,7 +5,7 @@ Tests for the photometry module.
 
 from astropy.convolution.utils import discretize_model
 from astropy.modeling import Fittable2DModel, Parameter
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import LevMarLSQFitter, SimplexLSQFitter
 from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Table
@@ -697,3 +697,22 @@ def test_finder_return_none():
 
     results = iter_phot(image=img, init_guesses=intab)
     assert_allclose(results['flux_fit'], f0, rtol=0.05)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_photometry_uncertainties():
+    """
+    Test an Astropy fitter that does not return a parameter
+    covariance matrix (param_cov). The output table should not
+    contain flux_unc, x_0_unc, and y_0_unc columns.
+    """
+    psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                                    bkg_estimator=None, psf_model=psf,
+                                    fitter=SimplexLSQFitter(),
+                                    fitshape=7)
+    phot_tbl = basic_phot(image=image, init_guesses=INTAB)
+    columns = ('flux_unc', 'x_0_unc', 'y_0_unc')
+    for column in columns:
+        assert column not in phot_tbl.colnames
