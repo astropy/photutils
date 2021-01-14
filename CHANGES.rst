@@ -74,7 +74,7 @@ Bug Fixes
 - ``photutils.psf``
 
   - Changed the default ``recentering_func`` in ``EPSFBuilder``, to avoid
-    convergence issues. [#1143]
+    convergence issues. [#1144]
 
 
 1.0.1 (2020-09-24)
