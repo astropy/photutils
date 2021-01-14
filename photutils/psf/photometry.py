@@ -6,7 +6,7 @@ This module provides classes to perform PSF-fitting photometry.
 import warnings
 
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata.utils import overlap_slices
+from astropy.nddata.utils import overlap_slices, NoOverlapError
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Column, Table, hstack, vstack
 from astropy.utils.exceptions import AstropyUserWarning
@@ -412,11 +412,6 @@ class BasicPSFPhotometry:
                                   self._get_uncertainties(
                                       len(star_groups.groups[n]))])
 
-            try:
-                from astropy.nddata.utils import NoOverlapError
-            except ImportError:
-                raise ImportError("astropy 1.1 or greater is required in "
-                                  "order to use this class.")
             # do not subtract if the fitting did not go well
             try:
                 image = subtract_psf(image, self.psf_model, param_table,
