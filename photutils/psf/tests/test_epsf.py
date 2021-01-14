@@ -88,9 +88,9 @@ class TestEPSFBuild:
         size = 25
         oversampling = 4.
         stars = extract_stars(self.nddata, self.init_stars, size=size)
-        epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=8,
+        epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=15,
                                    progress_bar=False, norm_radius=25,
-                                   recentering_maxiters=5)
+                                   recentering_maxiters=15)
         epsf, fitted_stars = epsf_builder(stars)
 
         ref_size = (size * oversampling) + 1
@@ -211,8 +211,8 @@ def test_epsf_build_oversampling(oversamp):
     stars_tbl['x'] = sources['x_0']
     stars_tbl['y'] = sources['y_0']
     stars = extract_stars(nddata, stars_tbl, size=25)
-    epsf_builder = EPSFBuilder(oversampling=oversamp, maxiters=10,
-                               progress_bar=False)
+    epsf_builder = EPSFBuilder(oversampling=oversamp, maxiters=15,
+                               progress_bar=False, recentering_maxiters=20)
     epsf, fitted_stars = epsf_builder(stars)
 
     # input PSF shape
@@ -223,4 +223,4 @@ def test_epsf_build_oversampling(oversamp):
     yy, xx = np.mgrid[0:size, 0:size]
     psf = m(xx, yy)
 
-    assert_allclose(epsf.data, psf*epsf.data.sum(), atol=2e-4)
+    assert_allclose(epsf.data, psf*epsf.data.sum(), atol=2.5e-4)

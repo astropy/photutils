@@ -37,6 +37,11 @@ Bug Fixes
     ``SegmentationImage.remove_border_labels()`` with ``relabel=True``
     when no segments remain. [#1133]
 
+- ``photutils.psf``
+
+  - Changed the default ``recentering_func`` in ``EPSFBuilder``, to avoid
+    convergence issues. [#1144]
+
 
 1.0.1 (2020-09-24)
 ------------------

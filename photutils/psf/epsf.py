@@ -18,7 +18,7 @@ import numpy as np
 
 from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from .models import EPSFModel
-from ..centroids import centroid_epsf
+from ..centroids import centroid_com, centroid_epsf
 from ..utils._round import _py2intround
 
 try:
@@ -316,7 +316,7 @@ class EPSFBuilder:
     """
 
     def __init__(self, oversampling=4., shape=None,
-                 smoothing_kernel='quartic', recentering_func=centroid_epsf,
+                 smoothing_kernel='quartic', recentering_func=centroid_com,
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
                  progress_bar=True, norm_radius=5.5, shift_val=0.5,
                  recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
@@ -593,7 +593,7 @@ class EPSFBuilder:
 
         return convolve(epsf_data, kernel)
 
-    def _recenter_epsf(self, epsf, centroid_func=centroid_epsf,
+    def _recenter_epsf(self, epsf, centroid_func=centroid_com,
                        box_size=(5, 5), maxiters=20, center_accuracy=1.0e-4):
         """
         Calculate the center of the ePSF data and shift the data so the
