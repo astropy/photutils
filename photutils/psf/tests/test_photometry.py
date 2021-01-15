@@ -5,7 +5,7 @@ Tests for the photometry module.
 
 from astropy.convolution.utils import discretize_model
 from astropy.modeling import Fittable2DModel, Parameter
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import LevMarLSQFitter, SimplexLSQFitter
 from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Table
@@ -38,9 +38,9 @@ def make_psf_photometry_objs(std=1, sigma_psf=1):
     modified as-needed in specific tests below
     """
 
-    daofind = DAOStarFinder(threshold=5.0*std,
-                            fwhm=sigma_psf*gaussian_sigma_to_fwhm)
-    daogroup = DAOGroup(1.5*sigma_psf*gaussian_sigma_to_fwhm)
+    daofind = DAOStarFinder(threshold=5.0 * std,
+                            fwhm=sigma_psf * gaussian_sigma_to_fwhm)
+    daogroup = DAOGroup(1.5 * sigma_psf * gaussian_sigma_to_fwhm)
     threshold = 5. * std
     fwhm = sigma_psf * gaussian_sigma_to_fwhm
     crit_separation = 1.5 * sigma_psf * gaussian_sigma_to_fwhm
@@ -163,9 +163,9 @@ def test_psf_photometry_niters(sigma_psf, sources):
                           (sigma_psfs[1], sources2),
                           # these ensure that the test *fails* if the model
                           # PSFs are the wrong shape
-                          pytest.param(sigma_psfs[0]/1.2, sources1,
+                          pytest.param(sigma_psfs[0] / 1.2, sources1,
                                        marks=pytest.mark.xfail()),
-                          pytest.param(sigma_psfs[1]*1.2, sources2,
+                          pytest.param(sigma_psfs[1] * 1.2, sources2,
                                        marks=pytest.mark.xfail())])
 def test_psf_photometry_oneiter(sigma_psf, sources):
     """
@@ -630,7 +630,7 @@ def test_psf_extra_output_cols(sigma_psf, sources):
     for i, init_guesses in enumerate([init_guess1, init_guess2, init_guess3,
                                       init_guess4]):
         dao_phot = DAOPhotPSFPhotometry(crit_separation=8, threshold=40,
-                                        fwhm=2*2*np.sqrt(2*np.log(2)),
+                                        fwhm=4 * np.sqrt(2 * np.log(2)),
                                         psf_model=psf_model, fitshape=(11, 11),
                                         extra_output_cols=['sharpness',
                                                            'roundness1',
@@ -669,13 +669,13 @@ def test_finder_return_none():
             ys, xs = np.where(image == f)
             x = np.mean(xs)
             y = np.mean(ys)
-            table.add_row([int(n+1), x, y, f*9])
+            table.add_row([int(n + 1), x, y, f * 9])
         table.sort(['flux'])
 
         return table
 
     prf = np.zeros((7, 7), float)
-    prf[2:5, 2:5] = 1/9
+    prf[2:5, 2:5] = 1 / 9
     prf = FittableImageModel(prf)
 
     img = np.zeros((50, 50), float)
@@ -683,7 +683,7 @@ def test_finder_return_none():
     y0 = [20, 5, 40]
     f0 = [50, 100, 200]
     for x, y, f in zip(x0, y0, f0):
-        img[y-1:y+2, x-1:x+2] = f/9
+        img[y - 1:y + 2, x - 1:x + 2] = f / 9
 
     intab = Table(data=[[37, 19.6, 34.9], [19.6, 4.5, 40.1], [45, 103, 210]],
                   names=['x_0', 'y_0', 'flux_0'])
@@ -697,3 +697,22 @@ def test_finder_return_none():
 
     results = iter_phot(image=img, init_guesses=intab)
     assert_allclose(results['flux_fit'], f0, rtol=0.05)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_photometry_uncertainties():
+    """
+    Test an Astropy fitter that does not return a parameter
+    covariance matrix (param_cov). The output table should not
+    contain flux_unc, x_0_unc, and y_0_unc columns.
+    """
+    psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                                    bkg_estimator=None, psf_model=psf,
+                                    fitter=SimplexLSQFitter(),
+                                    fitshape=7)
+    phot_tbl = basic_phot(image=image, init_guesses=INTAB)
+    columns = ('flux_unc', 'x_0_unc', 'y_0_unc')
+    for column in columns:
+        assert column not in phot_tbl.colnames

@@ -28,6 +28,12 @@ Bug Fixes
   - Fixed a bug where the default ``fixed_parameters`` in
     ``EllipseSample.update()`` were not defined. [#1139]
 
+- ``photutils.psf``
+
+  - Fixed a bug where very incorrect PSF-fitting uncertainties could
+    be returned when the astropy fitter did not return fit
+    uncertainties. [#1143]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where negative Kron radius values could be returned,
