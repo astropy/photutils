@@ -6,8 +6,6 @@ has tools for background estimation, ePSF building, PSF matching,
 centroiding, and morphological measurements.
 """
 
-import os
-
 # Affiliated packages may add whatever they like to this file, but
 # should keep this content at the top.
 # ----------------------------------------------------------------------------
@@ -25,6 +23,7 @@ from .segmentation import *  # noqa
 
 # Set the bibtex entry to the article referenced in CITATION.rst.
 def _get_bibtex():
+    import os
     citation_file = os.path.join(os.path.dirname(__file__), 'CITATION.rst')
 
     with open(citation_file, 'r') as citation:
