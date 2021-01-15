@@ -27,6 +27,14 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+API changes
+^^^^^^^^^^^
+
+- ``photutils.centroid``
+
+  - Removed the deprecated ``fit_2dgaussian`` function and
+    ``GaussianConst2D`` class. [#1147]
+
 
 1.0.2 (unreleased)
 ------------------
