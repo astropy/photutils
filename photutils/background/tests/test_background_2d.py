@@ -60,7 +60,7 @@ class TestBackground2D:
         rms = np.zeros((3, 4))
         b = Background2D(data, (1, 1), filter_size=1,
                          interpolator=interpolator)
-        assert_allclose(b.background, data, atol=1.e-7)
+        assert_allclose(b.background, data, atol=0.005)
         assert_allclose(b.background_rms, rms)
         assert_allclose(b.background_mesh, data)
         assert_allclose(b.background_rms_mesh, rms)
@@ -98,7 +98,7 @@ class TestBackground2D:
                           bkg_estimator=MeanBackground(), edge_method='crop')
         b2 = Background2D(DATA, (23, 22), filter_size=filter_size,
                           bkg_estimator=MeanBackground(), edge_method='pad')
-        assert_allclose(b1.background, b2.background)
+        assert_allclose(b1.background, b2.background, rtol=2e-6)
         assert_allclose(b1.background_rms, b2.background_rms)
 
     @pytest.mark.parametrize('box_size', ([(25, 25), (23, 22)]))
@@ -114,13 +114,13 @@ class TestBackground2D:
         mask[25:50, 25:50] = True
         b = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
                          bkg_estimator=MeanBackground())
-        assert_allclose(b.background, DATA)
+        assert_allclose(b.background, DATA, rtol=2.e-5)
         assert_allclose(b.background_rms, BKG_RMS)
 
         # test edge crop with
         b2 = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
                           bkg_estimator=MeanBackground(), edge_method='crop')
-        assert_allclose(b2.background, DATA)
+        assert_allclose(b2.background, DATA, rtol=2.e-5)
 
     def test_mask(self):
         data = np.copy(DATA)
@@ -172,7 +172,7 @@ class TestBackground2D:
         """Test case where padding is added only on one axis."""
 
         b = Background2D(DATA, (25, 22), filter_size=(1, 1))
-        assert_allclose(b.background, DATA)
+        assert_allclose(b.background, DATA, rtol=1e-5)
         assert_allclose(b.background_rms, BKG_RMS)
         assert b.background_median == 1.0
         assert b.background_rms_median == 0.0
