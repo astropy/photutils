@@ -39,15 +39,16 @@ class BkgZoomInterpolator:
         value must be an integer in the range 0-5.  The default is 3
         (bicubic interpolation).
 
-    mode : {'constant', 'nearest', 'reflect', 'wrap'}, optional
+    mode : {'reflect', 'constant', 'nearest', 'wrap'}, optional
         Points outside the boundaries of the input are filled according
-        to the given mode.
+        to the given mode.  Default is 'reflect'.
 
     cval : float, optional
         The value used for points outside the boundaries of the input if
         ``mode='constant'``. Default is 0.0
     """
-    def __init__(self, order=3, mode='constant', cval=0.0):
+
+    def __init__(self, order=3, mode='reflect', cval=0.0):
         self.order = order
         self.mode = mode
         self.cval = cval
