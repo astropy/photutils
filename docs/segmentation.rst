@@ -77,7 +77,7 @@ in :func:`~photutils.segmentation.detect_sources`.
 We will also input a 2D circular Gaussian kernel with a FWHM of 3
 pixels to smooth the image some prior to thresholding:
 
-.. doctest-requires:: scipy
+.. doctest-requires:: scipy>=1.6.0
 
     >>> from astropy.convolution import Gaussian2DKernel
     >>> from astropy.stats import gaussian_fwhm_to_sigma
@@ -158,7 +158,7 @@ that a local peak must have to be considered as a separate object.
 
 Here's a simple example of source deblending:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy>=1.6.0, skimage
 
     >>> from photutils import deblend_sources
     >>> segm_deblend = deblend_sources(data, segm, npixels=5,
@@ -296,7 +296,7 @@ background and background noise image.  We define a 2D detection
 threshold image using the background and background RMS images.  We
 set the threshold at 2 sigma (per pixel) above the background:
 
-.. doctest-requires:: scipy
+.. doctest-requires:: scipy>=1.6.0
 
     >>> from astropy.convolution import Gaussian2DKernel
     >>> from photutils.datasets import make_100gaussians_image
@@ -314,7 +314,7 @@ threshold includes the background, we do not subtract the background
 from the data here.  We also input a 2D circular Gaussian kernel with
 a FWHM of 3 pixels to filter the image prior to thresholding:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy>=1.6.0, skimage
 
     >>> from astropy.stats import gaussian_fwhm_to_sigma
     >>> sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
@@ -343,7 +343,7 @@ source properties are shown below.  Please see
 `~photutils.segmentation.SourceProperties` for the list of the many
 properties that are calculated for each source:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy>=1.6.0, skimage
 
     >>> from photutils import source_properties
     >>> cat = source_properties(data, segm_deblend)
@@ -382,7 +382,7 @@ semiminor axes lengths
 `~photutils.segmentation.SourceProperties.semiminor_axis_sigma`) , and
 orientation (`~photutils.segmentation.SourceProperties.orientation`):
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy>=1.6.0, skimage
 
     >>> import numpy as np
     >>> import astropy.units as u
@@ -470,7 +470,7 @@ Now let's plot the derived elliptical apertures on the data:
 We can also specify a specific subset of sources, defined by their
 label numbers in the segmentation image:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy>=1.6.0, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> cat = source_properties(data, segm_deblend, labels=labels)
@@ -499,7 +499,7 @@ properties can also be specified (or excluded) in the
 `~astropy.table.QTable` via the ``columns`` or ``exclude_columns``
 keywords:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy>=1.6.0, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> cat = source_properties(data, segm_deblend, labels=labels)
@@ -536,7 +536,7 @@ from the data into the ``background`` keyword of
 :func:`~photutils.segmentation.source_properties`, the background
 properties for each source will also be calculated:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy>=1.6.0, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> cat = source_properties(data, segm_deblend, labels=labels,
@@ -588,7 +588,7 @@ calculated.  `~photutils.segmentation.SourceProperties.source_sum` and
 instrumental flux and propagated flux error within the source
 segments:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy>=1.6.0, skimage
 
     >>> from photutils.utils import calc_total_error
     >>> labels = [1, 5, 20, 50, 75, 80]
