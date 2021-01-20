@@ -1,8 +1,8 @@
-1.0.2 (unreleased)
+1.0.2 (2021-01-20)
 ------------------
 
-New Features
-^^^^^^^^^^^^
+General
+^^^^^^^
 
 - ``photutils.background``
 
