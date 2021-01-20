@@ -21,9 +21,8 @@ called ``upstream``.
    push all changes to the upstream repo so that CI can run on the
    bugfix branch.
 
-#. Ensure Travis-CI and any other continuous integration is passing
-   for the branch you are going to release. Also, ensure that Read the
-   Docs builds are passing.
+#. Ensure that CI tests are passing for the branch you are going to
+   release. Also, ensure that Read the Docs builds are passing.
 
 #. Locally run the tests using ``tox`` to thoroughly test the code in
    isolated environments::
