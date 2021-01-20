@@ -111,8 +111,8 @@ called ``upstream``.
         twine check dist/*
         twine upload dist/*
 
-   Check that the entry on PyPI is correct, and that the tarfile is
-   present.
+   Check that the entry on PyPI (https://pypi.org/project/photutils/) is
+   correct, and that the tarfile is present.
 
 #. Go back to the master branch::
 
@@ -122,8 +122,10 @@ called ``upstream``.
 
         git push upstream <X.Y.Z>
 
-#. Add a new section to ``CHANGES.rst`` for the next ``x.y.z`` version,
-   with a single entry ``No changes yet``, e.g.,::
+#. Update ``CHANGES.rst``. After releasing a minor (bugfix) version,
+   update its release date. After releasing a major version, add a new
+   section to ``CHANGES.rst`` for the next ``x.y.z`` version, with a
+   single entry ``No changes yet``, e.g.,::
 
        x.y.z (unreleased)
        ------------------
@@ -136,10 +138,11 @@ called ``upstream``.
         git commit -m'Add version <x.y.z> to the changelog'
         git push upstream master
 
-#. Tag this new commit with the development version of the next major
-   version and push the tag to the upstream repo. This is needed if
-   the latest package release is a bugfix release tagged on the bugfix
-   branch (not the master branch)::
+#. After releasing a major version, tag this new commit with the
+   development version of the next major version and push the tag to
+   the upstream repo. This is needed if the latest package release is
+   the first bugfix release tagged on a bugfix branch (not the master
+   branch)::
 
         git tag -a <x.y.z.dev> -m'<x.y.z.dev>'
         git push upstream <x.y.z.dev>
@@ -147,8 +150,8 @@ called ``upstream``.
 #. Create a GitHub Release
    (https://github.com/astropy/photutils/releases) by clicking on
    "Draft a new release", select the tag of the released version, add
-   a release title with the released version, and add a description
-   of::
+   a release title with the released version, and add the following
+   description::
 
         See the [changelog](https://photutils.readthedocs.io/en/stable/changelog.html) for release notes.
 
@@ -157,7 +160,7 @@ called ``upstream``.
 
 #. Close the GitHub Milestone
    (https://github.com/astropy/photutils/milestones) for the released
-   version and open a new Milestone for the next release.
+   version and, if needed, open a new Milestone for the next release.
 
 #. Go to Read the Docs
    (https://readthedocs.org/projects/photutils/versions/) and check that
