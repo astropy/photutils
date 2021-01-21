@@ -549,6 +549,10 @@ class EPSFBuilder:
         if self.smoothing_kernel is None:
             return epsf_data
 
+        # do this check first as comparing a ndarray to string causes a warning
+        elif isinstance(self.smoothing_kernel, np.ndarray):
+            kernel = self.smoothing_kernel
+
         elif self.smoothing_kernel == 'quartic':
             # from Polynomial2D fit with degree=4 to 5x5 array of
             # zeros with 1. at the center
@@ -582,9 +586,6 @@ class EPSFBuilder:
                   +0.01142786],
                  [-0.07428311, 0.01142786, 0.03999952, 0.01142786,
                   -0.07428311]])
-
-        elif isinstance(self.smoothing_kernel, np.ndarray):
-            kernel = self.smoothing_kernel
 
         else:
             raise TypeError('Unsupported kernel.')
