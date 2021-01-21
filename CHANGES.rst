@@ -72,6 +72,9 @@ Bug Fixes
     be returned when the astropy fitter did not return fit
     uncertainties. [#1143]
 
+  - Changed the default ``recentering_func`` in ``EPSFBuilder``, to
+    avoid convergence issues. [#1144]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where negative Kron radius values could be returned,
@@ -80,11 +83,6 @@ Bug Fixes
   - Fixed an issue where an error was raised with
     ``SegmentationImage.remove_border_labels()`` with ``relabel=True``
     when no segments remain. [#1133]
-
-- ``photutils.psf``
-
-  - Changed the default ``recentering_func`` in ``EPSFBuilder``, to avoid
-    convergence issues. [#1144]
 
 
 1.0.1 (2020-09-24)
