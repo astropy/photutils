@@ -27,6 +27,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Fixed a bug in ``EPSFBuild`` where a warning was raised if the input
+    ``smoothing_kernel`` was an ``numpy.ndarray``. [#1146]
+
 API changes
 ^^^^^^^^^^^
 
