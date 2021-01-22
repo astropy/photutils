@@ -340,7 +340,7 @@ class PixelAperture(Aperture):
 
         Returns
         -------
-        areas : array_like
+        areas : float or array_like
             The overlapping areas between the aperture masks and the data.
         """
 
