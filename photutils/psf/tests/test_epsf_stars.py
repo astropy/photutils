@@ -89,10 +89,11 @@ def test_epsf_star_residual_image():
 
 def test_stars_pickleable():
     """
-    Verify that EPSFStars can be successfully pickled/unpickled for use multiprocessing
+    Verify that EPSFStars can be successfully
+    pickled/unpickled for use multiprocessing
     """
     from multiprocessing.reduction import ForkingPickler
-    stars = EPSFStars([1])  # Doesn't need to actually contain anything useful
-
+    # Doesn't need to actually contain anything useful
+    stars = EPSFStars([1])
     # This should not blow up
     ForkingPickler.loads(ForkingPickler.dumps(stars))

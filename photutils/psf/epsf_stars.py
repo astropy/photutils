@@ -321,7 +321,8 @@ class EPSFStars:
         for i in self._data:
             yield i
 
-    # explicit set/getstate to avoid infinite recursion from pickler using __getattr__
+    # explicit set/getstate to avoid infinite recursion
+    # from pickler using __getattr__
     def __getstate__(self):
         return self.__dict__
 
