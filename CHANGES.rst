@@ -14,6 +14,9 @@ New Features
   - The ``PixelAperture.plot()`` method now returns a list of
     ``matplotlib.patches.Patch`` objects. [#923]
 
+  - Added an ``area_overlap`` method for ``PixelAperture`` objects that
+    gives the overlapping area of the aperture on the data. [#874]
+
 - ``photutils.background``
 
   - The ``Background2D`` class now accepts astropy ``NDData``,
