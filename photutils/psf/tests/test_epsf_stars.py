@@ -85,3 +85,14 @@ def test_epsf_star_residual_image():
     # spline fitting (twice), so assert_allclose cannot be more more precise than
     # 0.001 currently.
     assert_allclose(np.sum(residual), 0., atol=1.e-3, rtol=1e-3)
+
+
+def test_stars_pickleable():
+    """
+    Verify that EPSFStars can be successfully pickled/unpickled for use multiprocessing
+    """
+    from multiprocessing.reduction import ForkingPickler
+    stars = EPSFStars([1])  # Doesn't need to actually contain anything useful
+
+    # This should not blow up
+    ForkingPickler.loads(ForkingPickler.dumps(stars))

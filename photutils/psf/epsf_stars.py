@@ -321,6 +321,13 @@ class EPSFStars:
         for i in self._data:
             yield i
 
+    # explicit set/getstate to avoid infinite recursion from pickler using __getattr__
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, d):
+        self.__dict__ = d
+
     def __getattr__(self, attr):
         if attr in ['cutout_center', 'center', 'flux',
                     '_excluded_from_fit']:
