@@ -530,9 +530,7 @@ pixel's value and saved it in the array ``error``::
     .. math:: \Delta F = \sqrt{\sum_{i \in A}
               \sigma_{\mathrm{tot}, i}^2}
 
-where :math:`\Delta F` is
-`~photutils.segmentation.SourceProperties.source_sum_err`, :math:`A`
-are the non-masked pixels in the aperture, and
+where :math:`A` are the non-masked pixels in the aperture, and
 :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
 
 In the example above, it is assumed that the ``error`` keyword
