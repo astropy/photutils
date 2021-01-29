@@ -682,3 +682,153 @@ class SourceCatalog:
         if self._wcs is None:
             return self._null_object
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ur))
+
+    @lazyproperty
+    @as_scalar
+    def min_value(self):
+        """
+        The minimum pixel value of the ``data`` within the source
+        segment.
+        """
+        values = np.array([np.min(array) for array in self._data_values])
+        if self._data_unit is not None:
+            values <<= self._data_unit
+        return values
+
+    @lazyproperty
+    @as_scalar
+    def max_value(self):
+        """
+        The maximum pixel value of the ``data`` within the source
+        segment.
+        """
+        values = np.array([np.max(array) for array in self._data_values])
+        if self._data_unit is not None:
+            values <<= self._data_unit
+        return values
+
+    @lazyproperty
+    @as_scalar
+    def minval_cutout_index(self):
+        """
+        The ``(y, x)`` coordinate, relative to the `data_cutout`, of the
+        minimum pixel value of the ``data`` within the source segment.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
+        """
+        data = self.data_cutout_ma
+        if self.isscalar:
+            data = (data,)
+        idx = []
+        for arr in data:
+            if np.all(arr.mask):
+                idx.append((np.nan, np.nan))
+            else:
+                idx.append(np.unravel_index(np.argmin(arr), arr.shape))
+        return np.array(idx)
+
+    @lazyproperty
+    @as_scalar
+    def maxval_cutout_index(self):
+        """
+        The ``(y, x)`` coordinate, relative to the `data_cutout`, of the
+        maximum pixel value of the ``data`` within the source segment.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
+        """
+        data = self.data_cutout_ma
+        if self.isscalar:
+            data = (data,)
+        idx = []
+        for arr in data:
+            if np.all(arr.mask):
+                idx.append((np.nan, np.nan))
+            else:
+                idx.append(np.unravel_index(np.argmax(arr), arr.shape))
+        return np.array(idx)
+
+    @lazyproperty
+    @as_scalar
+    def minval_index(self):
+        """
+        The ``(y, x)`` coordinate of the minimum pixel value of the
+        ``data`` within the source segment.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
+        """
+        index = self.minval_cutout_index
+        if self.isscalar:
+            index = (index,)
+        out = []
+        for idx, slc in zip(index, self._slices_iter):
+            out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
+        return np.array(out)
+
+    @lazyproperty
+    @as_scalar
+    def maxval_index(self):
+        """
+        The ``(y, x)`` coordinate of the maximum pixel value of the
+        ``data`` within the source segment.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
+        """
+        index = self.maxval_cutout_index
+        if self.isscalar:
+            index = (index,)
+        out = []
+        for idx, slc in zip(index, self._slices_iter):
+            out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
+        return np.array(out)
+
+    @lazyproperty
+    @as_scalar
+    def minval_xindex(self):
+        """
+        The ``x`` coordinate of the minimum pixel value of the ``data``
+        within the source segment.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
+        """
+        return np.transpose(self.minval_index)[1]
+
+    @lazyproperty
+    @as_scalar
+    def minval_yindex(self):
+        """
+        The ``y`` coordinate of the minimum pixel value of the ``data``
+        within the source segment.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
+        """
+        return np.transpose(self.minval_index)[0]
+
+    @lazyproperty
+    @as_scalar
+    def maxval_xindex(self):
+        """
+        The ``x`` coordinate of the maximum pixel value of the ``data``
+        within the source segment.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
+        """
+        return np.transpose(self.maxval_index)[1]
+
+    @lazyproperty
+    @as_scalar
+    def maxval_yindex(self):
+        """
+        The ``y`` coordinate of the maximum pixel value of the ``data``
+        within the source segment.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
+        """
+        return np.transpose(self.maxval_index)[0]
