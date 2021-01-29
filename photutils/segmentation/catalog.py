@@ -419,3 +419,48 @@ class SourceCatalog:
             return self._null_object
         return self._make_cutout(self._background, units=False,
                                  masked=True)
+
+    def _get_values(self, array):
+        if self.isscalar:
+            array = (array,)
+        return [arr.compressed() if len(arr.compressed()) > 0 else np.nan
+                for arr in array]
+
+    @lazyproperty
+    def _data_values(self):
+        return self._get_values(self.data_cutout_ma)
+
+    @lazyproperty
+    def _error_values(self):
+        if self._error is None:
+            return self._null_value
+        return self._get_values(self.error_cutout_ma)
+
+    @lazyproperty
+    def _background_values(self):
+        if self._background is None:
+            return self._null_value
+        return self._get_values(self.background_cutout_ma)
+
+    @lazyproperty
+    @as_scalar
+    def moments(self):
+        """Spatial moments up to 3rd order of the source."""
+        return np.array([_moments(arr, order=3) for arr in
+                         self._cutout_moment_data])
+
+    @lazyproperty
+    @as_scalar
+    def moments_central(self):
+        """
+        Central moments (translation invariant) of the source up to 3rd
+        order.
+        """
+        xcen = self.xcentroid
+        ycen = self.ycentroid
+        if self.isscalar:
+            xcen = (xcen,)
+            ycen = (ycen,)
+        return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
+                         for arr, xcen_, ycen_ in
+                         zip(self._cutout_moment_data, xcen, ycen)])
