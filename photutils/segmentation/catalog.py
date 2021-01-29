@@ -131,6 +131,10 @@ class SourceCatalog:
                                                  predicate=islazyproperty)]
 
     def __getitem__(self, index):
+        if self.isscalar:
+            raise TypeError(f'A scalar {self.__class__.__name__!r} object '
+                            'cannot be indexed')
+
         newcls = object.__new__(self.__class__)
 
         segm = copy(self._segment_img)  # TODO: add segm copy method?
