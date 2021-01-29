@@ -86,4 +86,4 @@ def test_slicing():
         len(aper3)
 
     with pytest.raises(TypeError):
-        aper4 = aper3[0]
+        aper3[0]
