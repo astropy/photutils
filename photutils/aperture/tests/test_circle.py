@@ -72,3 +72,18 @@ class TestSkyCircularAperture(BaseTestAperture):
 
 class TestSkyCircularAnnulus(BaseTestAperture):
     aperture = SkyCircularAnnulus(SKYCOORD, r_in=3.*UNIT, r_out=7.*UNIT)
+
+
+def test_slicing():
+    xypos = [(10, 10), (20, 20), (30, 30)]
+    aper1 = CircularAperture(xypos, r=3)
+    aper2 = aper1[0:2]
+    assert len(aper2) == 2
+
+    aper3 = aper1[0]
+    assert aper3.isscalar
+    with pytest.raises(TypeError):
+        len(aper3)
+
+    with pytest.raises(TypeError):
+        aper4 = aper3[0]
