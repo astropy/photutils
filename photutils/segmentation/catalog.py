@@ -5,7 +5,6 @@ defined by a segmentation image.
 """
 
 import functools
-import time
 
 from copy import copy
 import inspect
@@ -529,3 +528,157 @@ class SourceCatalog:
         if self._wcs is None:
             return self._null_object
         return self.sky_centroid.icrs
+
+    @lazyproperty
+    @as_scalar
+    def bbox(self):
+        """
+        The `~photutils.aperture.BoundingBox` of the minimal rectangular
+        region containing the source segment.
+        """
+        return [BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
+                            iymin=slc[0].start, iymax=slc[0].stop)
+                for slc in self._slices_iter]
+
+    @lazyproperty
+    @as_scalar
+    def bbox_xmin(self):
+        """
+        The minimum ``x`` pixel location within the minimal bounding box
+        containing the source segment.
+        """
+        return np.array([slc[1].start for slc in self._slices_iter])
+
+    @lazyproperty
+    @as_scalar
+    def bbox_xmax(self):
+        """
+        The maximum ``x`` pixel location within the minimal bounding box
+        containing the source segment.
+
+        Note that this value is inclusive, unlike numpy slice indices.
+        """
+        return np.array([slc[1].stop - 1 for slc in self._slices_iter])
+
+    @lazyproperty
+    @as_scalar
+    def bbox_ymin(self):
+        """
+        The minimum ``y`` pixel location within the minimal bounding box
+        containing the source segment.
+        """
+        return np.array([slc[0].start for slc in self._slices_iter])
+
+    @lazyproperty
+    @as_scalar
+    def bbox_ymax(self):
+        """
+        The maximum ``y`` pixel location within the minimal bounding box
+        containing the source segment.
+
+        Note that this value is inclusive, unlike numpy slice indices.
+        """
+        return np.array([slc[0].stop - 1 for slc in self._slices_iter])
+
+    @lazyproperty
+    def _bbox_corner_ll(self):
+        """
+        Lower-left outside pixel corner location.
+        """
+        bbox = self.bbox
+        if self.isscalar:
+            bbox = (bbox,)
+        xypos = []
+        for bbox_ in bbox:
+            xypos.append((bbox_.ixmin - 0.5, bbox_.iymin - 0.5))
+        return np.array(xypos)
+
+    @lazyproperty
+    def _bbox_corner_ul(self):
+        bbox = self.bbox
+        if self.isscalar:
+            bbox = (bbox,)
+        xypos = []
+        for bbox_ in bbox:
+            xypos.append((bbox_.ixmin - 0.5, bbox_.iymax + 0.5))
+        return np.array(xypos)
+
+    @lazyproperty
+    def _bbox_corner_lr(self):
+        bbox = self.bbox
+        if self.isscalar:
+            bbox = (bbox,)
+        xypos = []
+        for bbox_ in bbox:
+            xypos.append((bbox_.ixmax + 0.5, bbox_.iymin - 0.5))
+        return np.array(xypos)
+
+    @lazyproperty
+    def _bbox_corner_ur(self):
+        bbox = self.bbox
+        if self.isscalar:
+            bbox = (bbox,)
+        xypos = []
+        for bbox_ in bbox:
+            xypos.append((bbox_.ixmax + 0.5, bbox_.iymax + 0.5))
+        return np.array(xypos)
+
+    @lazyproperty
+    @as_scalar
+    def sky_bbox_ll(self):
+        """
+        The sky coordinates of the lower-left corner vertex of the
+        minimal bounding box of the source segment, returned as a
+        `~astropy.coordinates.SkyCoord` object.
+
+        The bounding box encloses all of the source segment pixels in
+        their entirety, thus the vertices are at the pixel *corners*.
+        """
+        if self._wcs is None:
+            return self._null_object
+        return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ll))
+
+    @lazyproperty
+    @as_scalar
+    def sky_bbox_ul(self):
+        """
+        The sky coordinates of the upper-left corner vertex of the
+        minimal bounding box of the source segment, returned as a
+        `~astropy.coordinates.SkyCoord` object.
+
+        The bounding box encloses all of the source segment pixels in
+        their entirety, thus the vertices are at the pixel *corners*.
+        """
+        if self._wcs is None:
+            return self._null_object
+        return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ul))
+
+    @lazyproperty
+    @as_scalar
+    def sky_bbox_lr(self):
+        """
+        The sky coordinates of the lower-right corner vertex of the
+        minimal bounding box of the source segment, returned as a
+        `~astropy.coordinates.SkyCoord` object.
+
+        The bounding box encloses all of the source segment pixels in
+        their entirety, thus the vertices are at the pixel *corners*.
+        """
+        if self._wcs is None:
+            return self._null_object
+        return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_lr))
+
+    @lazyproperty
+    @as_scalar
+    def sky_bbox_ur(self):
+        """
+        The sky coordinates of the upper-right corner vertex of the
+        minimal bounding box of the source segment, returned as a
+        `~astropy.coordinates.SkyCoord` object.
+
+        The bounding box encloses all of the source segment pixels in
+        their entirety, thus the vertices are at the pixel *corners*.
+        """
+        if self._wcs is None:
+            return self._null_object
+        return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ur))
