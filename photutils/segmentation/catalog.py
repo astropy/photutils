@@ -464,3 +464,68 @@ class SourceCatalog:
         return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
                          zip(self._cutout_moment_data, xcen, ycen)])
+
+    @lazyproperty
+    @as_scalar
+    def cutout_centroid(self):
+        """
+        The ``(y, x)`` coordinate, relative to the `data_cutout`, of
+        the centroid within the source segment.
+        """
+        moments = self.moments
+        if self.isscalar:
+            moments = moments[np.newaxis, :]
+        mu_00 = moments[:, 0, 0]
+        badmask = (mu_00 == 0)
+        ycentroid = np.where(badmask, np.nan, moments[:, 1, 0] / mu_00)
+        xcentroid = np.where(badmask, np.nan, moments[:, 0, 1] / mu_00)
+        return np.transpose((ycentroid, xcentroid))
+
+    @lazyproperty
+    @as_scalar
+    def centroid(self):
+        """
+        The ``(y, x)`` coordinate of the centroid within the source
+        segment.
+        """
+        origin = np.transpose((self.bbox_ymin, self.bbox_xmin))
+        return self.cutout_centroid + origin
+
+    @lazyproperty
+    @as_scalar
+    def xcentroid(self):
+        """
+        The ``x`` coordinate of the centroid within the source segment.
+        """
+        return np.transpose(self.centroid)[1]
+
+    @lazyproperty
+    @as_scalar
+    def ycentroid(self):
+        """
+        The ``y`` coordinate of the centroid within the source segment.
+        """
+        return np.transpose(self.centroid)[0]
+
+    @lazyproperty
+    def sky_centroid(self):
+        """
+        The sky coordinate of the centroid within the source segment,
+        returned as a `~astropy.coordinates.SkyCoord` object.
+
+        The output coordinate frame is the same as the input WCS.
+        """
+        if self._wcs is None:
+            return self._null_object
+        return self._wcs.pixel_to_world(self.xcentroid, self.ycentroid)
+
+    @lazyproperty
+    def sky_centroid_icrs(self):
+        """
+        The sky coordinate, in the International Celestial Reference
+        System (ICRS) frame, of the centroid within the source segment,
+        returned as a `~astropy.coordinates.SkyCoord` object.
+        """
+        if self._wcs is None:
+            return self._null_object
+        return self.sky_centroid.icrs
