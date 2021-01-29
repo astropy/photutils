@@ -30,6 +30,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Slicing a scalar ``Aperture`` object now raises an informative error
+    message. [#1154]
+
 - ``photutils.psf``
 
   - Fixed a bug in ``EPSFBuild`` where a warning was raised if the input

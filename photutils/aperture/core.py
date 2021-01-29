@@ -35,11 +35,15 @@ class Aperture(metaclass=abc.ABCMeta):
 
     def __len__(self):
         if self.isscalar:
-            raise TypeError(f'Scalar {self.__class__.__name__!r} object has '
-                            'no len()')
+            raise TypeError(f'A scalar {self.__class__.__name__!r} object '
+                            'has no len()')
         return self.shape[0]
 
     def __getitem__(self, index):
+        if self.isscalar:
+            raise TypeError(f'A scalar {self.__class__.__name__!r} object '
+                            'cannot be indexed')
+
         kwargs = dict()
         for param in self._shape_params:
             kwargs[param] = getattr(self, param)
