@@ -198,6 +198,14 @@ class SourceCatalog:
                 newcls.__dict__[key] = val
         return newcls
 
+    def __str__(self):
+        cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
+        fmt = [f'Sources: {len(self)}']
+        return f'{cls_name}\n' + '\n'.join(fmt)
+
+    def __repr__(self):
+        return self.__str__()
+
     def __len__(self):
         if self.isscalar:
             raise TypeError(f'Scalar {self.__class__.__name__!r} object has '
