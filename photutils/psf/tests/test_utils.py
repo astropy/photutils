@@ -12,7 +12,7 @@ import pytest
 
 from ..models import IntegratedGaussianPRF
 from ..sandbox import DiscretePRF
-from ..utils import get_grouped_psf_model, prepare_psf_model, subtract_psf, _split_parameter_name
+from ..utils import get_grouped_psf_model, prepare_psf_model, subtract_psf
 
 try:
     import scipy  # noqa
@@ -162,23 +162,21 @@ def test_get_grouped_psf_model():
     assert gpsf.sigma_0 == gpsf.sigma_1 == 1.2
 
 
+@pytest.mark.parametrize('igp',
+    [IntegratedGaussianPRF(sigma=1.2),
+     Gaussian2D(x_stddev=2),
+     prepare_psf_model(Gaussian2D(x_stddev=2),
+                       xname='x_mean', yname='y_mean', renormalize_psf=False)])
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_subtract_psf():
-    """Test subtract_psf."""
+def test_get_grouped_psf_model_submodel_names(igp):
+    """Verify that submodel tagging works"""
+    tab = Table(names=['x_0', 'y_0', 'flux_0'],
+                data=[[1, 2], [3, 4], [0.5, 1]])
+    pars_to_set = {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux'}
 
-    prf = DiscretePRF(test_psf, subsampling=1)
-    posflux = INTAB.copy()
-    for n in posflux.colnames:
-        posflux.rename_column(n, n.split('_')[0] + '_fit')
-    residuals = subtract_psf(image, prf, posflux)
-    assert_allclose(residuals, np.zeros_like(image), atol=1E-4)
-
-
-def test_split():
-    assert(_split_parameter_name('foo') == ['foo', '-1'])
-    assert(_split_parameter_name('foo_1') == ['foo', '1'])
-    assert(_split_parameter_name('foo_20') == ['foo', '20'])
-    assert(_split_parameter_name('foo_bar') == ['foo_bar', '-1'])
-    assert(_split_parameter_name('foo_bar_1') == ['foo_bar', '1'])
-    assert(_split_parameter_name('foo_bar_baz') == ['foo_bar_baz', '-1'])
-    assert(_split_parameter_name('foo_10_bar') == ['foo_10_bar', '-1'])
+    gpsf = get_grouped_psf_model(igp, tab, pars_to_set)
+    # There should be two submodels one named 0 and one named 1
+    assert len([submodel for submodel in gpsf.traverse_postorder()
+                if submodel.name == 0]) == 1
+    assert len([submodel for submodel in gpsf.traverse_postorder()
+                if submodel.name == 1]) == 1

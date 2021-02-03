@@ -129,8 +129,12 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
 
     group_psf = None
 
-    for star in star_group:
+    for index, star in enumerate(star_group):
         psf_to_add = template_psf_model.copy()
+        # we 'tag' the model here so that later we don't have to rely
+        # on possibly mangled names of the compound model to find
+        # the parameters again
+        psf_to_add.name = index
         for param_tab_name, param_name in pars_to_set.items():
             setattr(psf_to_add, param_name, star[param_tab_name])
 
@@ -138,7 +142,7 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
             # this is the first one only
             group_psf = psf_to_add
         else:
-            group_psf += psf_to_add
+            group_psf = group_psf + psf_to_add
 
     return group_psf
 
@@ -257,27 +261,3 @@ def subtract_psf(data, psf, posflux, subshape=None):
 
     return subbeddata
 
-
-def _split_parameter_name(name: str) -> List[str]:
-    """When combining astropy models, parameter names have a number attached
-    as a postfix. This function extracts that number. If no number is
-    present, '-1' is returned as the postfix
-
-    Parameters
-    ----------
-    name: parameter name that may or may not contain a numerical postfix
-
-    Returns
-    -------
-    components: 2 Element List[str]
-    First element contains the base-name, the second the numerical
-    postfix.
-    """
-    components = name.split('_')
-    if not components[-1].isnumeric():  # no number prefix present
-        components = ['_'.join(components), '-1']
-    elif len(components) == 1:  # contained no _
-        components = components + ['-1']
-    elif len(components) > 2:  # contained multiple _
-        components = ['_'.join(components[:-1]), components[-1]]
-    return components
