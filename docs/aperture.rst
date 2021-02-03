@@ -174,7 +174,9 @@ above).
 
 For the ``'subpixel'`` method, the default value is ``subpixels=5``,
 meaning that each pixel is equally divided into 25 smaller pixels
-(this is the method and subsampling factor used in SourceExtractor_.).
+(this is the method and subsampling factor used in `SourceExtractor
+<https://sextractor.readthedocs.io/en/latest/>`_).
+
 The precision can be increased by increasing ``subpixels``, but note
 that computation time will be increased.
 
@@ -757,17 +759,6 @@ They may also optionally define an ``area`` property.  All
 
     * ``plot()``: A method to plot the aperture on a
       `matplotlib.axes.Axes` instance.
-
-
-See Also
---------
-
-1. `IRAF's APPHOT package`_
-
-2. `SourceExtractor`_
-
-.. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
-.. _IRAF's APPHOT package: http://iraf.noao.edu/scripts/irafhelp?apphot
 
 
 Reference/API
