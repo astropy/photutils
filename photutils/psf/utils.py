@@ -7,7 +7,6 @@ from astropy.table import Table
 from astropy.modeling import models
 from astropy.nddata.utils import add_array, extract_array
 import numpy as np
-from typing import List
 
 __all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf']
 
@@ -260,4 +259,3 @@ def subtract_psf(data, psf, posflux, subshape=None):
             subbeddata = add_array(subbeddata, -psf(x, y), (y_0, x_0))
 
     return subbeddata
-
