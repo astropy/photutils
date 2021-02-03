@@ -844,3 +844,56 @@ class SourceCatalog:
         first occurence is returned.
         """
         return np.transpose(self.maxval_index)[0]
+
+    @lazyproperty
+    @as_scalar
+    def source_sum(self):
+        """
+        The sum of the unmasked ``data`` values within the source segment.
+
+        .. math:: F = \\sum_{i \\in S} (I_i - B_i)
+
+        where :math:`F` is ``source_sum``, :math:`(I_i - B_i)` is the
+        ``data``, and :math:`S` are the unmasked pixels in the source
+        segment.
+
+        Non-finite pixel values (NaN and +/- inf) are excluded
+        (automatically masked).
+        """
+        source_sum = np.array([np.sum(arr) for arr in self._data_values])
+        if self._data_unit is not None:
+            source_sum <<= self._data_unit
+        return source_sum
+
+    @lazyproperty
+    @as_scalar
+    def source_sum_err(self):
+        """
+        The uncertainty of
+        `~photutils.segmentation.LegacySourceProperties.source_sum`,
+        propagated from the input ``error`` array.
+
+        ``source_sum_err`` is the quadrature sum of the total errors
+        over the non-masked pixels within the source segment:
+
+        .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
+                  \\sigma_{\\mathrm{tot}, i}^2}
+
+        where :math:`\\Delta F` is ``source_sum_err``,
+        :math:`\\sigma_{\\mathrm{tot, i}}` are the pixel-wise total
+        errors, and :math:`S` are the non-masked pixels in the source
+        segment.
+
+        Pixel values that are masked in the input ``data``, including
+        any non-finite pixel values (NaN and +/- inf) that are
+        automatically masked, are also masked in the error array.
+        """
+        if self._error is None:
+            err = self._null_value
+        else:
+            err = np.sqrt(np.array([np.sum(arr**2)
+                                    for arr in self._error_values]))
+
+        if self._data_unit is not None:
+            err <<= self._data_unit
+        return err
