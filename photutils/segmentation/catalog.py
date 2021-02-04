@@ -467,14 +467,13 @@ class SourceCatalog:
         Central moments (translation invariant) of the source up to 3rd
         order.
         """
-        xcen = self.xcentroid
-        ycen = self.ycentroid
+        cutout_centroid = self.cutout_centroid
         if self.isscalar:
-            xcen = (xcen,)
-            ycen = (ycen,)
+            cutout_centroid = cutout_centroid[np.newaxis, :]
         return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
-                         zip(self._cutout_moment_data, xcen, ycen)])
+                         zip(self._cutout_moment_data, cutout_centroid[:, 1],
+                             cutout_centroid[:, 0])])
 
     @lazyproperty
     @as_scalar
@@ -486,10 +485,12 @@ class SourceCatalog:
         moments = self.moments
         if self.isscalar:
             moments = moments[np.newaxis, :]
-        mu_00 = moments[:, 0, 0]
-        badmask = (mu_00 == 0)
-        ycentroid = np.where(badmask, np.nan, moments[:, 1, 0] / mu_00)
-        xcentroid = np.where(badmask, np.nan, moments[:, 0, 1] / mu_00)
+
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
+            xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
         return np.transpose((ycentroid, xcentroid))
 
     @lazyproperty
@@ -953,8 +954,8 @@ class SourceCatalog:
         else:
             from scipy.ndimage import map_coordinates
 
-            xcen= self.xcentroid
-            ycen= self.ycentroid
+            xcen = self.xcentroid
+            ycen = self.ycentroid
             if self.isscalar:
                 xcen = (xcen,)
                 ycen = (ycen,)
@@ -1037,3 +1038,86 @@ class SourceCatalog:
             perimeter.append(perimeter_hist[0:size] @ weights)
 
         return np.array(perimeter) * u.pix
+
+    @lazyproperty
+    @as_scalar
+    def inertia_tensor(self):
+        """
+        The inertia tensor of the source for the rotation around its
+        center of mass.
+        """
+        moments = self.moments_central
+        if self.isscalar:
+            moments = moments[np.newaxis, :]
+        mu_02 = moments[:, 0, 2]
+        mu_11 = -moments[:, 1, 1]
+        mu_20 = moments[:, 2, 0]
+        tensor = np.array([mu_02, mu_11, mu_11, mu_20]).swapaxes(0, 1)
+        return tensor.reshape((tensor.shape[0], 2, 2)) * u.pix**2
+
+    @lazyproperty
+    @as_scalar
+    def covariance(self):
+        """
+        The covariance matrix of the 2D Gaussian function that has the
+        same second-order moments as the source.
+        """
+        moments = self.moments_central
+        if self.isscalar:
+            moments = moments[np.newaxis, :]
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            mu_norm = moments / moments[:, 0, 0][:, np.newaxis, np.newaxis]
+
+        covar = np.array([mu_norm[:, 0, 2], mu_norm[:, 1, 1],
+                          mu_norm[:, 1, 1], mu_norm[:, 2, 0]]).swapaxes(0, 1)
+        covar = covar.reshape((covar.shape[0], 2, 2))
+
+        # Modify the covariance matrix in the case of "infinitely" thin
+        # detections. This follows SourceExtractor's prescription of
+        # incrementally increasing the diagonal elements by 1/12.
+        delta = 1. / 12
+        delta2 = delta**2
+        # ignore RuntimeWarning from NaN values in covar
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            covar_det = np.linalg.det(covar)
+        idx = np.where(covar_det < delta2)[0]
+        while idx.size > 0:
+            covar[idx, 0, 0] += delta
+            covar[idx, 1, 1] += delta
+            # ignore RuntimeWarning from NaN values in covar
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                covar_det = np.linalg.det(covar)
+            idx = np.where(covar_det < delta2)[0]
+
+        return covar * (u.pix**2)
+
+    @lazyproperty
+    @as_scalar
+    def covariance_eigvals(self):
+        """
+        The two eigenvalues of the `covariance` matrix in decreasing
+        order.
+        """
+        covariance = self.covariance.value
+        if self.isscalar:
+            covariance = covariance[np.newaxis, :]
+        eigvals = np.empty((self.nlabels, 2))
+        eigvals.fill(np.nan)
+        # np.linalg.eivals requires finite input values
+        idx = np.unique(np.where(np.isfinite(covariance))[0])
+        eigvals[idx] = np.linalg.eigvals(covariance[idx])
+
+        # check for negative variance
+        # (just in case covariance matrix is not positive (semi)definite)
+        idx2 = np.unique(np.where(eigvals < 0)[0])  # pragma: no cover
+        eigvals[idx2] = (np.nan, np.nan)  # pragma: no cover
+
+        # sort each eigenvalue pair in descending order
+        eigvals.sort(axis=1)
+        eigvals = np.fliplr(eigvals)
+
+        return eigvals * u.pix**2
