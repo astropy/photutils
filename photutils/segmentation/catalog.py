@@ -967,3 +967,73 @@ class SourceCatalog:
         if self._data_unit is not None:
             bkg <<= self._data_unit
         return bkg
+
+    @lazyproperty
+    @as_scalar
+    def area(self):
+        """
+        The total unmasked area of the source segment in units of
+        pixels**2.
+
+        Note that the source area may be smaller than its segment area
+        if a mask is input to `SourceProperties` or if the ``data``
+        within the segment contains invalid values (NaN and inf).
+        """
+        return np.array([arr.shape[0]
+                         if isinstance(arr, np.ndarray) else np.nan
+                         for arr in self._data_values]) << u.pix**2
+
+    @lazyproperty
+    @as_scalar
+    def equivalent_radius(self):
+        """
+        The radius of a circle with the same `area` as the source
+        segment.
+        """
+        return np.sqrt(self.area / np.pi)
+
+    @lazyproperty
+    @as_scalar
+    def perimeter(self):
+        """
+        The perimeter of the source segment, approximated as the total
+        length of lines connecting the centers of the border pixels
+        defined by a 4-pixel connectivity.
+
+        If any masked pixels make holes within the source segment, then
+        the perimeter around the inner hole (e.g., an annulus) will also
+        contribute to the total perimeter.
+
+        References
+        ----------
+        .. [1] K. Benkrid, D. Crookes, and A. Benkrid.  "Design and FPGA
+               Implementation of a Perimeter Estimator".  Proceedings of
+               the Irish Machine Vision and Image Processing Conference,
+               pp. 51-57 (2000).
+               http://www.cs.qub.ac.uk/~d.crookes/webpubs/papers/perimeter.doc
+        """
+        from scipy.ndimage import binary_erosion, convolve
+
+        selem = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
+        kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
+        size = 34
+        weights = np.zeros(size, dtype=float)
+        weights[[5, 7, 15, 17, 25, 27]] = 1.
+        weights[[21, 33]] = np.sqrt(2.)
+        weights[[13, 23]] = (1 + np.sqrt(2.)) / 2.
+
+        perimeter = []
+        for mask in self._cutout_total_mask:
+            if np.all(mask):
+                perimeter.append(np.nan)
+                continue
+
+            data = ~mask
+            data_eroded = binary_erosion(data, selem, border_value=0)
+            border = np.logical_xor(data, data_eroded).astype(int)
+            perimeter_data = convolve(border, kernel, mode='constant', cval=0)
+            perimeter_hist = np.bincount(perimeter_data.ravel(),
+                                         minlength=size)
+            perimeter.append(perimeter_hist[0:size] @ weights)
+
+        return np.array(perimeter) * u.pix
