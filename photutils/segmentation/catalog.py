@@ -1299,3 +1299,43 @@ class SourceCatalog:
         return (2. * np.cos(self.orientation) * np.sin(self.orientation)
                 * ((1. / self.semimajor_sigma**2)
                    - (1. / self.semiminor_sigma**2)))
+
+    @lazyproperty
+    @as_scalar
+    def gini(self):
+        """
+        The `Gini coefficient
+        <https://en.wikipedia.org/wiki/Gini_coefficient>`_ of the
+        source.
+
+        The Gini coefficient is calculated using the prescription from
+        `Lotz et al. 2004
+        <https://ui.adsabs.harvard.edu/abs/2004AJ....128..163L/abstract>`_
+        as:
+
+        .. math::
+            G = \\frac{1}{\\left | \\bar{x} \\right | n (n - 1)}
+            \\sum^{n}_{i} (2i - n - 1) \\left | x_i \\right |
+
+        where :math:`\\bar{x}` is the mean over all pixel values
+        :math:`x_i`.
+
+        The Gini coefficient is a way of measuring the inequality in a
+        given set of values. In the context of galaxy morphology, it
+        measures how the light of a galaxy image is distributed among
+        its pixels. A Gini coefficient value of 0 corresponds to a
+        galaxy image with the light evenly distributed over all pixels
+        while a Gini coefficient value of 1 represents a galaxy image
+        with all its light concentrated in just one pixel.
+        """
+        gini = []
+        for arr in self._data_values:
+            if np.all(np.isnan(arr)):
+                gini.append(np.nan)
+                continue
+            npix = np.size(arr)
+            normalization = np.abs(np.mean(arr)) * npix * (npix - 1)
+            kernel = ((2. * np.arange(1, npix + 1) - npix - 1)
+                      * np.abs(np.sort(arr)))
+            gini.append(np.sum(kernel) / normalization)
+        return np.array(gini)
