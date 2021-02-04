@@ -1056,8 +1056,7 @@ class SourceCatalog:
         return tensor.reshape((tensor.shape[0], 2, 2)) * u.pix**2
 
     @lazyproperty
-    @as_scalar
-    def covariance(self):
+    def _covariance(self):
         """
         The covariance matrix of the 2D Gaussian function that has the
         same second-order moments as the source.
@@ -1092,8 +1091,12 @@ class SourceCatalog:
                 warnings.simplefilter('ignore', RuntimeWarning)
                 covar_det = np.linalg.det(covar)
             idx = np.where(covar_det < delta2)[0]
+        return covar
 
-        return covar * (u.pix**2)
+    @lazyproperty
+    @as_scalar
+    def covariance(self):
+        return self._covariance * (u.pix**2)
 
     @lazyproperty
     @as_scalar
@@ -1102,14 +1105,11 @@ class SourceCatalog:
         The two eigenvalues of the `covariance` matrix in decreasing
         order.
         """
-        covariance = self.covariance.value
-        if self.isscalar:
-            covariance = covariance[np.newaxis, :]
         eigvals = np.empty((self.nlabels, 2))
         eigvals.fill(np.nan)
         # np.linalg.eivals requires finite input values
-        idx = np.unique(np.where(np.isfinite(covariance))[0])
-        eigvals[idx] = np.linalg.eigvals(covariance[idx])
+        idx = np.unique(np.where(np.isfinite(self._covariance))[0])
+        eigvals[idx] = np.linalg.eigvals(self._covariance[idx])
 
         # check for negative variance
         # (just in case covariance matrix is not positive (semi)definite)
@@ -1158,13 +1158,10 @@ class SourceCatalog:
         Gaussian function that has the same second-order moments as the
         source.  The angle increases in the counter-clockwise direction.
         """
-        # Quantity output in radians because inputs are Quantities
-        covar = self.covariance
-        if self.isscalar:
-            covar = covar[np.newaxis, :]
+        covar = self._covariance
         orient_radians = 0.5 * np.arctan2(2. * covar[:, 0, 1],
                                           (covar[:, 0, 0] - covar[:, 1, 1]))
-        return orient_radians.to(u.deg)
+        return orient_radians * 180. / np.pi * u.deg
 
     @lazyproperty
     @as_scalar
@@ -1210,3 +1207,95 @@ class SourceCatalog:
         and semiminor axes, respectively.
         """
         return 1.0 - (self.semiminor_sigma / self.semimajor_sigma)
+
+    @lazyproperty
+    @as_scalar
+    def covar_sigx2(self):
+        """
+        The ``(0, 0)`` element of the `covariance` matrix, representing
+        :math:`\\sigma_x^2`, in units of pixel**2.
+        """
+        return self._covariance[:, 0, 0] * u.pix**2
+
+    @lazyproperty
+    @as_scalar
+    def covar_sigy2(self):
+        """
+        The ``(1, 1)`` element of the `covariance` matrix, representing
+        :math:`\\sigma_y^2`, in units of pixel**2.
+        """
+        return self._covariance[:, 1, 1] * u.pix**2
+
+    @lazyproperty
+    @as_scalar
+    def covar_sigxy(self):
+        """
+        The ``(0, 1)`` and ``(1, 0)`` elements of the `covariance`
+        matrix, representing :math:`\\sigma_x \\sigma_y`, in units of
+        pixel**2.
+        """
+        return self._covariance[:, 0, 1] * u.pix**2
+
+    @lazyproperty
+    @as_scalar
+    def cxx(self):
+        """
+        `SourceExtractor`_'s CXX ellipse parameter in units of
+        pixel**(-2).
+
+        The ellipse is defined as
+
+            .. math::
+                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
+                cyy (y - \\bar{y})^2 = R^2
+
+        where :math:`R` is a parameter which scales the ellipse (in
+        units of the axes lengths). `SourceExtractor`_ reports that the
+        isophotal limit of a source is well represented by :math:`R
+        \\approx 3`.
+        """
+        return ((np.cos(self.orientation) / self.semimajor_sigma)**2
+                + (np.sin(self.orientation) / self.semiminor_sigma)**2)
+
+    @lazyproperty
+    @as_scalar
+    def cyy(self):
+        """
+        `SourceExtractor`_'s CYY ellipse parameter in units of
+        pixel**(-2).
+
+        The ellipse is defined as
+
+            .. math::
+                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
+                cyy (y - \\bar{y})^2 = R^2
+
+        where :math:`R` is a parameter which scales the ellipse (in
+        units of the axes lengths). `SourceExtractor`_ reports that the
+        isophotal limit of a source is well represented by :math:`R
+        \\approx 3`.
+        """
+        return ((np.sin(self.orientation) / self.semimajor_sigma)**2
+                + (np.cos(self.orientation) / self.semiminor_sigma)**2)
+
+    @lazyproperty
+    @as_scalar
+    def cxy(self):
+        """
+        `SourceExtractor`_'s CXY ellipse parameter in units of
+        pixel**(-2).
+
+        The ellipse is defined as
+
+            .. math::
+                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
+                cyy (y - \\bar{y})^2 = R^2
+
+        where :math:`R` is a parameter which scales the ellipse (in
+        units of the axes lengths). `SourceExtractor`_ reports that the
+        isophotal limit of a source is well represented by :math:`R
+        \\approx 3`.
+        """
+        return (2. * np.cos(self.orientation) * np.sin(self.orientation)
+                * ((1. / self.semimajor_sigma**2)
+                   - (1. / self.semiminor_sigma**2)))
