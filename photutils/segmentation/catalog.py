@@ -294,7 +294,7 @@ class SourceCatalog:
         these arrays:
 
             * any masked pixels
-            * invalid values (NaN and +/- inf)
+            * invalid values (NaN and inf)
             * negative data values - negative pixels (especially at
               large radii) can give image moments that have negative
               variances.
@@ -389,7 +389,7 @@ class SourceCatalog:
 
         The mask is `True` for pixels outside of the source segment
         (labeled region of interest), masked pixels from the ``mask``
-        input, or any non-finite ``data`` values (NaN and +/- inf).
+        input, or any non-finite ``data`` values (NaN and inf).
         """
         return self._make_cutout(self._data, units=False, masked=True)
 
@@ -857,7 +857,7 @@ class SourceCatalog:
         ``data``, and :math:`S` are the unmasked pixels in the source
         segment.
 
-        Non-finite pixel values (NaN and +/- inf) are excluded
+        Non-finite pixel values (NaN and inf) are excluded
         (automatically masked).
         """
         source_sum = np.array([np.sum(arr) for arr in self._data_values])
@@ -885,8 +885,8 @@ class SourceCatalog:
         segment.
 
         Pixel values that are masked in the input ``data``, including
-        any non-finite pixel values (NaN and +/- inf) that are
-        automatically masked, are also masked in the error array.
+        any non-finite pixel values (NaN and inf) that are automatically
+        masked, are also masked in the error array.
         """
         if self._error is None:
             err = self._null_value
@@ -897,3 +897,73 @@ class SourceCatalog:
         if self._data_unit is not None:
             err <<= self._data_unit
         return err
+
+    @lazyproperty
+    @as_scalar
+    def background_sum(self):
+        """
+        The sum of ``background`` values within the source segment.
+
+        Pixel values that are masked in the input ``data``, including
+        any non-finite pixel values (NaN and inf) that are automatically
+        masked, are also masked in the background array.
+        """
+        if self._background is None:
+            bkg_sum = self._null_value
+        else:
+            bkg_sum = np.array([np.sum(arr)
+                                for arr in self._background_values])
+
+        if self._data_unit is not None:
+            bkg_sum <<= self._data_unit
+        return bkg_sum
+
+    @lazyproperty
+    @as_scalar
+    def background_mean(self):
+        """
+        The mean of ``background`` values within the source segment.
+
+        Pixel values that are masked in the input ``data``, including
+        any non-finite pixel values (NaN and inf) that are automatically
+        masked, are also masked in the background array.
+        """
+        if self._background is None:
+            bkg_mean = self._null_value
+        else:
+            bkg_mean = np.array([np.mean(arr)
+                                 for arr in self._background_values])
+
+        if self._data_unit is not None:
+            bkg_mean <<= self._data_unit
+        return bkg_mean
+
+    @lazyproperty
+    @as_scalar
+    def background_centroid(self):
+        """
+        The value of the ``background`` at the position of the source
+        centroid.
+
+        The background value at fractional position values are
+        determined using bilinear interpolation.
+        """
+        if self._background is None:
+            bkg = self._null_value
+        else:
+            from scipy.ndimage import map_coordinates
+
+            xcen= self.xcentroid
+            ycen= self.ycentroid
+            if self.isscalar:
+                xcen = (xcen,)
+                ycen = (ycen,)
+            bkg = map_coordinates(self._background, (xcen, ycen), order=1,
+                                  mode='nearest')
+
+            mask = np.isfinite(xcen) & np.isfinite(ycen)
+            bkg[~mask] = np.nan
+
+        if self._data_unit is not None:
+            bkg <<= self._data_unit
+        return bkg
