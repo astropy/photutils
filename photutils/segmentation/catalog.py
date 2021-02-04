@@ -35,7 +35,7 @@ DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'bbox_ymin', 'bbox_ymax', 'min_value', 'max_value',
                    'minval_xpos', 'minval_ypos', 'maxval_xpos', 'maxval_ypos',
                    'area', 'equivalent_radius', 'perimeter',
-                   'semimajor_axis_sigma', 'semiminor_axis_sigma',
+                   'semimajor_sigma', 'semiminor_sigma',
                    'orientation', 'eccentricity', 'ellipticity', 'elongation',
                    'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy',
                    'cyy', 'gini']
@@ -1121,3 +1121,92 @@ class SourceCatalog:
         eigvals = np.fliplr(eigvals)
 
         return eigvals * u.pix**2
+
+    @lazyproperty
+    @as_scalar
+    def semimajor_sigma(self):
+        """
+        The 1-sigma standard deviation along the semimajor axis of the
+        2D Gaussian function that has the same second-order central
+        moments as the source.
+        """
+        eigvals = self.covariance_eigvals
+        if self.isscalar:
+            eigvals = eigvals[np.newaxis, :]
+        # this matches SourceExtractor's A parameter
+        return np.sqrt(eigvals[:, 0])
+
+    @lazyproperty
+    @as_scalar
+    def semiminor_sigma(self):
+        """
+        The 1-sigma standard deviation along the semiminor axis of the
+        2D Gaussian function that has the same second-order central
+        moments as the source.
+        """
+        eigvals = self.covariance_eigvals
+        if self.isscalar:
+            eigvals = eigvals[np.newaxis, :]
+        # this matches SourceExtractor's A parameter
+        return np.sqrt(eigvals[:, 1])
+
+    @lazyproperty
+    @as_scalar
+    def orientation(self):
+        """
+        The angle between the ``x`` axis and the major axis of the 2D
+        Gaussian function that has the same second-order moments as the
+        source.  The angle increases in the counter-clockwise direction.
+        """
+        # Quantity output in radians because inputs are Quantities
+        covar = self.covariance
+        if self.isscalar:
+            covar = covar[np.newaxis, :]
+        orient_radians = 0.5 * np.arctan2(2. * covar[:, 0, 1],
+                                          (covar[:, 0, 0] - covar[:, 1, 1]))
+        return orient_radians.to(u.deg)
+
+    @lazyproperty
+    @as_scalar
+    def eccentricity(self):
+        """
+        The eccentricity of the 2D Gaussian function that has the same
+        second-order moments as the source.
+
+        The eccentricity is the fraction of the distance along the
+        semimajor axis at which the focus lies.
+
+        .. math:: e = \\sqrt{1 - \\frac{b^2}{a^2}}
+
+        where :math:`a` and :math:`b` are the lengths of the semimajor
+        and semiminor axes, respectively.
+        """
+        semimajor_var, semiminor_var = np.transpose(self.covariance_eigvals)
+        return np.sqrt(1. - (semiminor_var / semimajor_var))
+
+    @lazyproperty
+    @as_scalar
+    def elongation(self):
+        """
+        The ratio of the lengths of the semimajor and semiminor axes:
+
+        .. math:: \\mathrm{elongation} = \\frac{a}{b}
+
+        where :math:`a` and :math:`b` are the lengths of the semimajor
+        and semiminor axes, respectively.
+        """
+        return self.semimajor_sigma / self.semiminor_sigma
+
+    @lazyproperty
+    @as_scalar
+    def ellipticity(self):
+        """
+        ``1`` minus the ratio of the lengths of the semimajor and
+        semiminor axes (or ``1`` minus the `elongation`):
+
+        .. math:: \\mathrm{ellipticity} = 1 - \\frac{b}{a}
+
+        where :math:`a` and :math:`b` are the lengths of the semimajor
+        and semiminor axes, respectively.
+        """
+        return 1.0 - (self.semiminor_sigma / self.semimajor_sigma)
