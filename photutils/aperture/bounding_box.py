@@ -162,7 +162,9 @@ class BoundingBox:
         The slice tuple is in numpy axis order (i.e., ``(y, x)``) and
         therefore can be used to slice numpy arrays.
         """
-
+        if self.iymin < 0 or self.ixmin < 0:
+            return ValueError('cannot create slices when ixmin or iymin '
+                              'is negative')
         return (slice(self.iymin, self.iymax), slice(self.ixmin, self.ixmax))
 
     @property
