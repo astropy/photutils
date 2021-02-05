@@ -179,3 +179,31 @@ class ApertureMask:
             weighted_cutout[self._mask] = fill_value
 
             return weighted_cutout
+
+    def get_values(self, data):
+        """
+        Get the mask-weighted pixel values from the data as a 1D array.
+
+        If the ``ApertureMask`` was created with ``method='center'``,
+        (where the mask weights are only 1 or 0), then the returned
+        values will simply be pixel values extracted from the data.
+
+        Parameters
+        ----------
+        data : array_like or `~astropy.units.Quantity`
+            The 2D array from which to get mask-weighted values.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            A 1D array of mask-weighted pixel values from the input
+            ``data``. If there is no overlap of the aperture with the
+            input ``data``, the result will be a 1-element array of
+            ``numpy.nan``.
+        """
+        slc_large, slc_small = self.bbox.get_overlap_slices(data.shape)
+        if slc_large is None:
+            return np.array([np.nan])
+        cutout = data[slc_large]
+        mask = self.data[slc_small]
+        return (cutout * mask)[mask > 0]
