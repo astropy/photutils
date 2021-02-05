@@ -9,7 +9,7 @@ from numpy.testing import assert_allclose, assert_almost_equal
 import pytest
 
 from ..bounding_box import BoundingBox
-from ..circle import CircularAperture
+from ..circle import CircularAperture, CircularAnnulus
 from ..mask import ApertureMask
 
 try:
@@ -127,3 +127,20 @@ def test_mask_multiply_quantity():
     # test that multiply() returns a copy
     data[25, 25] = 100. * u.adu
     assert data_weighted[10, 10].value == 1.
+
+
+@pytest.mark.parametrize('value', (np.nan, np.inf))
+def test_mask_nonfinite_fill_value(value):
+    aper = CircularAnnulus((0, 0), 10, 20)
+    data = np.ones((101, 101)).astype(int)
+    cutout = aper.to_mask().cutout(data, fill_value=value)
+    assert ~np.isfinite(cutout[0, 0])
+
+
+def test_mask_multiply_fill_value():
+    aper = CircularAnnulus((0, 0), 10, 20)
+    data = np.ones((101, 101)).astype(int)
+    cutout = aper.to_mask().multiply(data, fill_value=np.nan)
+    xypos = ((20, 20), (5, 5), (5, 35), (35, 5), (35, 35))
+    for x, y in xypos:
+        assert np.isnan(cutout[y, x])
