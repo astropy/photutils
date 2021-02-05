@@ -130,7 +130,11 @@ class ApertureMask:
             return cutout
 
         # cutout is always a copy for partial overlap
-        cutout = np.zeros(self.shape, dtype=data.dtype)
+        if ~np.isfinite(fill_value):
+            dtype = np.float
+        else:
+            dtype = data.dtype
+        cutout = np.zeros(self.shape, dtype=dtype)
         cutout[:] = fill_value
         cutout[slices_small] = data[slices_large]
 
