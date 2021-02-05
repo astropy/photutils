@@ -46,9 +46,6 @@ def test_mask_cutout_shape():
         mask.cutout(np.arange(10))
 
     with pytest.raises(ValueError):
-        mask._overlap_slices((10,))
-
-    with pytest.raises(ValueError):
         mask.to_image((10,))
 
 
