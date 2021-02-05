@@ -17,6 +17,9 @@ New Features
   - Added an ``area_overlap`` method for ``PixelAperture`` objects that
     gives the overlapping area of the aperture on the data. [#874]
 
+  - Added a ``get_overlap_slices`` method and a ``center`` attribute to
+    ``BoundingBox``. [#1157]
+
 - ``photutils.background``
 
   - The ``Background2D`` class now accepts astropy ``NDData``,
@@ -42,6 +45,11 @@ Bug Fixes
 
 API changes
 ^^^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - Deprecated the ``BoundingBox`` ``slices`` attribute. Use the
+    ``get_overlap_slices`` method instead. [#1157]
 
 - ``photutils.centroid``
 
