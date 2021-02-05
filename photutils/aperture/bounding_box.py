@@ -155,6 +155,7 @@ class BoundingBox:
         return self.iymax - self.iymin, self.ixmax - self.ixmin
 
     @property
+    @deprecated('1.1', alternative='get_overlap_slices')
     def slices(self):
         """
         The bounding box as a tuple of `slice` objects.
@@ -166,6 +167,50 @@ class BoundingBox:
             return ValueError('cannot create slices when ixmin or iymin '
                               'is negative')
         return (slice(self.iymin, self.iymax), slice(self.ixmin, self.ixmax))
+
+    def get_overlap_slices(self, shape):
+        """
+        Get slices for the overlapping part of the bounding box and an
+        2D array.
+
+        Parameters
+        ----------
+        shape : 2-tuple of int
+            The shape of the 2D array.
+
+        Returns
+        -------
+        slices_large : tuple of slices or `None`
+            A tuple of slice objects for each axis of the large array,
+            such that ``large_array[slices_large]`` extracts the region
+            of the large array that overlaps with the small array.
+            `None` is returned if there is no overlap of the bounding
+            box with the given image shape.
+        slices_small : tuple of slices or `None`
+            A tuple of slice objects for each axis of an array enclosed
+            by the bounding box such that ``small_array[slices_small]``
+            extracts the region that is inside the large array. `None`
+            is returned if there is no overlap of the bounding box with
+            the given image shape.
+        """
+        if len(shape) != 2:
+            raise ValueError('input shape must have 2 elements.')
+
+        xmin = self.ixmin
+        xmax = self.ixmax
+        ymin = self.iymin
+        ymax = self.iymax
+        if xmin >= shape[1] or ymin >= shape[0] or xmax <= 0 or ymax <= 0:
+            # no overlap of the bounding box with the input shape
+            return None, None
+
+        slices_large = (slice(max(ymin, 0), min(ymax, shape[0])),
+                        slice(max(xmin, 0), min(xmax, shape[1])))
+        slices_small = (slice(max(-ymin, 0),
+                              min(ymax - ymin, shape[0] - ymin)),
+                        slice(max(-xmin, 0),
+                              min(xmax - xmin, shape[1] - xmin)))
+        return slices_large, slices_small
 
     @property
     def extent(self):
