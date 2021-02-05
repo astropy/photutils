@@ -332,7 +332,7 @@ class PixelAperture(Aperture):
         if self.isscalar:
             masks = (masks,)
         data = np.ones_like(data)
-        areas = [mask.multiply(data).sum() for mask in masks]
+        areas = [mask.get_values(data).sum() for mask in masks]
         if self.isscalar:
             return areas[0]
         else:
@@ -349,19 +349,10 @@ class PixelAperture(Aperture):
             masks = (masks,)
 
         for apermask in masks:
-            data_weighted = apermask.multiply(data)
-            if data_weighted is None:
-                aperture_sums.append(np.nan)
-            else:
-                aperture_sums.append(np.sum(data_weighted))
-
+            aperture_sums.append(apermask.get_values(data).sum())
             if variance is not None:
-                variance_weighted = apermask.multiply(variance)
-                if variance_weighted is None:
-                    aperture_sum_errs.append(np.nan)
-                else:
-                    aperture_sum_errs.append(
-                        np.sqrt(np.sum(variance_weighted)))
+                aperture_sum_errs.append(
+                    np.sqrt(apermask.get_values(variance).sum()))
 
         aperture_sums = np.array(aperture_sums)
         aperture_sum_errs = np.array(aperture_sum_errs)

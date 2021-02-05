@@ -130,7 +130,11 @@ class ApertureMask:
             return cutout
 
         # cutout is always a copy for partial overlap
-        cutout = np.zeros(self.shape, dtype=data.dtype)
+        if ~np.isfinite(fill_value):
+            dtype = np.float
+        else:
+            dtype = data.dtype
+        cutout = np.zeros(self.shape, dtype=dtype)
         cutout[:] = fill_value
         cutout[slices_small] = data[slices_large]
 
@@ -171,8 +175,35 @@ class ApertureMask:
         else:
             weighted_cutout = cutout * self.data
 
-            # needed to zero out non-finite data values outside of the
-            # mask but within the bounding box
-            weighted_cutout[self._mask] = 0.
+            # fill values outside of the mask but within the bounding box
+            weighted_cutout[self._mask] = fill_value
 
             return weighted_cutout
+
+    def get_values(self, data):
+        """
+        Get the mask-weighted pixel values from the data as a 1D array.
+
+        If the ``ApertureMask`` was created with ``method='center'``,
+        (where the mask weights are only 1 or 0), then the returned
+        values will simply be pixel values extracted from the data.
+
+        Parameters
+        ----------
+        data : array_like or `~astropy.units.Quantity`
+            The 2D array from which to get mask-weighted values.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            A 1D array of mask-weighted pixel values from the input
+            ``data``. If there is no overlap of the aperture with the
+            input ``data``, the result will be a 1-element array of
+            ``numpy.nan``.
+        """
+        slc_large, slc_small = self.bbox.get_overlap_slices(data.shape)
+        if slc_large is None:
+            return np.array([np.nan])
+        cutout = data[slc_large]
+        mask = self.data[slc_small]
+        return (cutout * mask)[mask > 0]
