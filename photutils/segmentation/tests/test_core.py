@@ -98,7 +98,6 @@ class TestSegmentationImage:
         assert self.segm[idx].label == label
         assert self.segm[idx].area == self.segm.get_area(label)
         assert self.segm[idx].slices == self.segm.slices[idx]
-        assert self.segm[idx].bbox.slices == self.segm[idx].slices
 
         for i, segment in enumerate(self.segm):
             assert segment.label == self.segm.labels[i]
