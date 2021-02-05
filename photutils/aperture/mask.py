@@ -171,8 +171,7 @@ class ApertureMask:
         else:
             weighted_cutout = cutout * self.data
 
-            # needed to zero out non-finite data values outside of the
-            # mask but within the bounding box
-            weighted_cutout[self._mask] = 0.
+            # fill values outside of the mask but within the bounding box
+            weighted_cutout[self._mask] = fill_value
 
             return weighted_cutout
