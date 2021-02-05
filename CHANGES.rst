@@ -20,6 +20,9 @@ New Features
   - Added a ``get_overlap_slices`` method and a ``center`` attribute to
     ``BoundingBox``. [#1157]
 
+  - Added a ``get_values`` method to ``ApertureMask`` that returns a 1D
+    array of mask-weighted values. [#1158]
+
 - ``photutils.background``
 
   - The ``Background2D`` class now accepts astropy ``NDData``,
@@ -37,6 +40,14 @@ Bug Fixes
 
   - Slicing a scalar ``Aperture`` object now raises an informative error
     message. [#1154]
+
+  - Fixed an issue where ``ApertureMask.multiply`` ``fill_value`` was
+    not applied to pixels outside of the aperture mask, but within the
+    aperture bounding box. [#1158]
+
+  - Fixed an issue where ``ApertureMask.cutout`` would raise an error
+    if ``fill_value`` was non-finite and the input array was integer
+    type. [#1158]
 
 - ``photutils.psf``
 
