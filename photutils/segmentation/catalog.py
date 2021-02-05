@@ -4,13 +4,13 @@ This module provides tools for calculating the properties of sources
 defined by a segmentation image.
 """
 
+from copy import deepcopy
 import functools
-
-from copy import copy
 import inspect
 import warnings
 
 from astropy.coordinates import SkyCoord
+from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
@@ -18,10 +18,11 @@ from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
-from ..aperture import BoundingBox
+from ..aperture import (BoundingBox, CircularAperture, EllipticalAperture,
+                        RectangularAnnulus)
+from ..background import SExtractorBackground
 from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
-from ..utils._wcs_helpers import _pixel_to_world
 
 __all__ = ['SourceCatalog']
 __doctest_requires__ = {('SourceCatalog', 'SourceCatalog.*'): ['scipy']}
@@ -54,8 +55,8 @@ def as_scalar(method):
 
 
 class SourceCatalog:
-    def __init__(self, data, segment_img, error=None, mask=None,
-                 kernel=None, background=None, wcs=None):
+    def __init__(self, data, segment_img, error=None, mask=None, kernel=None,
+                 background=None, wcs=None, localbkg_width=None):
 
         self._data_unit = None
         data, error, background = self._process_quantities(data, error,
@@ -67,6 +68,10 @@ class SourceCatalog:
         self._kernel = kernel
         self._background = self._validate_array(background, 'background')
         self._wcs = wcs
+
+        if localbkg_width is not None and localbkg_width <= 0:
+            raise ValueError('localbkg_width must be > 0')
+        self.localbkg_width = localbkg_width
 
         # needed for ordering and isscalar
         self._labels = self._segment_img.labels
@@ -110,7 +115,7 @@ class SourceCatalog:
             raise ValueError('segment_img and data must have the same shape.')
         return segment_img
 
-    def _validate_array(self, array, name, check_units=True):
+    def _validate_array(self, array, name):
         if name == 'mask' and array is np.ma.nomask:
             array = None
         if array is not None:
@@ -124,8 +129,8 @@ class SourceCatalog:
         """
         Return all lazyproperties (even in superclasses).
         """
-        def islazyproperty(object):
-            return isinstance(object, lazyproperty)
+        def islazyproperty(obj):
+            return isinstance(obj, lazyproperty)
 
         return [i[0] for i in inspect.getmembers(self.__class__,
                                                  predicate=islazyproperty)]
@@ -137,7 +142,7 @@ class SourceCatalog:
 
         newcls = object.__new__(self.__class__)
 
-        segm = copy(self._segment_img)  # TODO: add segm copy method?
+        segm = deepcopy(self._segment_img)  # TODO: add segm copy method?
         # TODO: test non-consecutive labels
         segm.keep_labels(segm.labels[index])
         newcls._segment_img = segm
@@ -431,6 +436,10 @@ class SourceCatalog:
         return self._make_cutout(self._background, units=False,
                                  masked=True)
 
+    @lazyproperty
+    def _all_masked(self):
+        return [np.all(mask) for mask in self._cutout_total_mask]
+
     def _get_values(self, array):
         if self.isscalar:
             array = (array,)
@@ -704,6 +713,7 @@ class SourceCatalog:
         segment.
         """
         values = np.array([np.min(array) for array in self._data_values])
+        values -= self._local_background
         if self._data_unit is not None:
             values <<= self._data_unit
         return values
@@ -716,6 +726,7 @@ class SourceCatalog:
         segment.
         """
         values = np.array([np.max(array) for array in self._data_values])
+        values -= self._local_background
         if self._data_unit is not None:
             values <<= self._data_unit
         return values
@@ -862,6 +873,7 @@ class SourceCatalog:
         (automatically masked).
         """
         source_sum = np.array([np.sum(arr) for arr in self._data_values])
+        source_sum -= self.area * self._local_background
         if self._data_unit is not None:
             source_sum <<= self._data_unit
         return source_sum
@@ -1339,3 +1351,66 @@ class SourceCatalog:
                       * np.abs(np.sort(arr)))
             gini.append(np.sum(kernel) / normalization)
         return np.array(gini)
+
+    @lazyproperty
+    def local_background_aperture(self):
+        """
+        The rectangular annulus aperture used to estimate the local
+        background.
+        """
+        if self.localbkg_width is None:
+            return self._null_object
+
+        aperture = []
+        for bbox_ in self.bbox:
+            xpos = 0.5 * (bbox_.ixmin + bbox_.ixmax - 1)
+            ypos = 0.5 * (bbox_.iymin + bbox_.iymax - 1)
+            scale = 1.5
+            width_bbox = bbox_.ixmax - bbox_.ixmin
+            width_in = width_bbox * scale
+            width_out = width_in + 2 * self.localbkg_width
+            height_bbox = bbox_.iymax - bbox_.iymin
+            height_in = height_bbox * scale
+            height_out = height_in + 2 * self.localbkg_width
+            aperture.append(RectangularAnnulus((xpos, ypos), width_in,
+                                               width_out, height_out,
+                                               height_in, theta=0.))
+        return aperture
+
+    @lazyproperty
+    def _local_background(self):
+        """
+        The local background value estimated using a rectangular annulus
+        aperture around the source.
+
+        This property is always an `~numpy.ndarray` without units.
+        """
+        if self.localbkg_width is None:
+            bkg = np.zeros(self.nlabels)
+        else:
+            mask = self._data_mask | self._segment_img.data.astype(bool)
+            sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
+            bkg_func = SExtractorBackground(sigma_clip)
+            bkg = []
+            for aperture in self.local_background_aperture:
+                aperture_mask = aperture.to_mask(method='center')
+                values = aperture_mask.get_values(self._data, mask=mask)
+                if len(values) < 10:  # not enough unmasked pixels
+                    bkg.append(0.)
+                    continue
+                bkg.append(bkg_func(values))
+            bkg = np.array(bkg)
+
+        bkg[self._all_masked] = np.nan
+        return bkg
+
+    @lazyproperty
+    def local_background(self):
+        """
+        The local background value estimated using a rectangular annulus
+        aperture around the source.
+        """
+        bkg = self._local_background
+        if self._data_unit is not None:
+            bkg <<= self._data_unit
+        return bkg
