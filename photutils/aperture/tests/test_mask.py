@@ -157,3 +157,11 @@ def test_mask_get_values():
     assert shapes[2] == (278,)
     sums_expected = (245.621534, 942.477796, 245.621534)
     assert_allclose(sums, sums_expected)
+
+
+def test_mask_get_values_no_overlap():
+    aper = CircularAperture((-100, -100), r=3)
+    data = np.ones((101, 101))
+    values = aper.to_mask().get_values(data)
+    assert values.size == 1
+    assert np.isnan(values[0])
