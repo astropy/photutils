@@ -144,3 +144,16 @@ def test_mask_multiply_fill_value():
     xypos = ((20, 20), (5, 5), (5, 35), (35, 5), (35, 35))
     for x, y in xypos:
         assert np.isnan(cutout[y, x])
+
+
+def test_mask_get_values():
+    aper = CircularAnnulus(((0, 0), (50, 50), (100, 100)), 10, 20)
+    data = np.ones((101, 101))
+    values = [mask.get_values(data) for mask in aper.to_mask()]
+    shapes = [val.shape for val in values]
+    sums = [np.sum(val) for val in values]
+    assert shapes[0] == (278,)
+    assert shapes[1] == (1068,)
+    assert shapes[2] == (278,)
+    sums_expected = (245.621534, 942.477796, 245.621534)
+    assert_allclose(sums, sums_expected)
