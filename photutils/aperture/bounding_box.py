@@ -41,11 +41,11 @@ class BoundingBox:
     >>> bbox == BoundingBox(ixmin=7, ixmax=10, iymin=2, iymax=20)
     False
 
-    >>> # "shape" and "slices" can be useful when working with numpy arrays
+    >>> # "center" and "shape" can be useful when working with numpy arrays
+    >>> bbox.center  # numpy order: (y, x)
+    (10.5, 5.0)
     >>> bbox.shape  # numpy order: (y, x)
     (18, 9)
-    >>> bbox.slices  # numpy order: (y, x)
-    (slice(2, 20, None), slice(1, 10, None))
 
     >>> # "extent" is useful when plotting the BoundingBox with matplotlib
     >>> bbox.extent  # matplotlib order: (x, y)
@@ -113,7 +113,6 @@ class BoundingBox:
         >>> BoundingBox.from_float(xmin=1.4, xmax=10.4, ymin=1.6, ymax=10.6)
         BoundingBox(ixmin=1, ixmax=11, iymin=2, iymax=12)
         """
-
         ixmin = int(np.floor(xmin + 0.5))
         ixmax = int(np.ceil(xmax + 0.5))
         iymin = int(np.floor(ymin + 0.5))
@@ -126,12 +125,10 @@ class BoundingBox:
             raise TypeError('Can compare BoundingBox only to another '
                             'BoundingBox.')
 
-        return (
-            (self.ixmin == other.ixmin) and
-            (self.ixmax == other.ixmax) and
-            (self.iymin == other.iymin) and
-            (self.iymax == other.iymax)
-        )
+        return ((self.ixmin == other.ixmin)
+                and (self.ixmax == other.ixmax)
+                and (self.iymin == other.iymin)
+                and (self.iymax == other.iymax))
 
     def __or__(self, other):
         return self.union(other)
@@ -147,11 +144,18 @@ class BoundingBox:
         return fmt.format(**data)
 
     @property
+    def center(self):
+        """
+        The ``(y, x)`` center of the bounding box.
+        """
+        return (0.5 * (self.iymax - 1 + self.iymin),
+                0.5 * (self.ixmax - 1 + self.ixmin))
+
+    @property
     def shape(self):
         """
         The ``(ny, nx)`` shape of the bounding box.
         """
-
         return self.iymax - self.iymin, self.ixmax - self.ixmin
 
     @property
@@ -200,6 +204,7 @@ class BoundingBox:
         xmax = self.ixmax
         ymin = self.iymin
         ymax = self.iymax
+
         if xmin >= shape[1] or ymin >= shape[0] or xmax <= 0 or ymax <= 0:
             # no overlap of the bounding box with the input shape
             return None, None
@@ -210,6 +215,7 @@ class BoundingBox:
                               min(ymax - ymin, shape[0] - ymin)),
                         slice(max(-xmin, 0),
                               min(xmax - xmin, shape[1] - xmin)))
+
         return slices_large, slices_small
 
     @property
@@ -225,13 +231,8 @@ class BoundingBox:
         indexing. This is useful for plotting the bounding box using
         Matplotlib.
         """
-
-        return (
-            self.ixmin - 0.5,
-            self.ixmax - 0.5,
-            self.iymin - 0.5,
-            self.iymax - 0.5,
-        )
+        return (self.ixmin - 0.5, self.ixmax - 0.5,
+                self.iymin - 0.5, self.iymax - 0.5)
 
     @deprecated('0.7', alternative='as_artist')
     def as_patch(self, **kwargs):  # pragma: no cover
@@ -250,7 +251,6 @@ class BoundingBox:
         result : `matplotlib.patches.Rectangle`
             A matplotlib rectangular patch.
         """
-
         return self.as_artist(**kwargs)
 
     def as_artist(self, **kwargs):
@@ -285,7 +285,6 @@ class BoundingBox:
             ax.add_patch(bbox.as_artist(facecolor='none', edgecolor='white',
                          lw=2.))
         """
-
         from matplotlib.patches import Rectangle
 
         return Rectangle(xy=(self.extent[0], self.extent[2]),
@@ -296,14 +295,10 @@ class BoundingBox:
         Return a `~photutils.aperture.RectangularAperture` that
         represents the bounding box.
         """
-
         from .rectangle import RectangularAperture  # prevent circular import
 
-        xpos = (self.extent[1] + self.extent[0]) / 2.
-        ypos = (self.extent[3] + self.extent[2]) / 2.
-        xypos = (xpos, ypos)
+        xypos = self.center[::-1]  # xy order
         height, width = self.shape
-
         return RectangularAperture(xypos, w=width, h=height, theta=0.)
 
     def plot(self, axes=None, origin=(0, 0), **kwargs):
@@ -324,7 +319,6 @@ class BoundingBox:
         kwargs : `dict`
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
-
         aper = self.to_aperture()
         aper.plot(axes=axes, origin=origin, **kwargs)
 
@@ -344,7 +338,6 @@ class BoundingBox:
             A `BoundingBox` representing the union of the input
             `BoundingBox` with this one.
         """
-
         if not isinstance(other, BoundingBox):
             raise TypeError('BoundingBox can be joined only with another '
                             'BoundingBox.')
@@ -372,7 +365,6 @@ class BoundingBox:
             A `BoundingBox` representing the intersection of the input
             `BoundingBox` with this one.
         """
-
         if not isinstance(other, BoundingBox):
             raise TypeError('BoundingBox can be intersected only with '
                             'another BoundingBox.')
