@@ -142,14 +142,10 @@ class SourceCatalog:
 
         newcls = object.__new__(self.__class__)
 
-        segm = deepcopy(self._segment_img)  # TODO: add segm copy method?
-        # TODO: test non-consecutive labels
-        segm.keep_labels(segm.labels[index])
-        newcls._segment_img = segm
-
         # attributes defined in __init__ (_segment_img was set above)
-        init_attr = ('_data', '_error', '_mask', '_kernel', '_background',
-                     '_wcs', '_data_unit', 'default_columns')
+        init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
+                     '_background', '_wcs', '_data_unit', 'localbkg_width',
+                     'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -873,7 +869,7 @@ class SourceCatalog:
         (automatically masked).
         """
         source_sum = np.array([np.sum(arr) for arr in self._data_values])
-        source_sum -= self.area * self._local_background
+        source_sum -= self.area.value * self._local_background
         if self._data_unit is not None:
             source_sum <<= self._data_unit
         return source_sum
@@ -1353,6 +1349,7 @@ class SourceCatalog:
         return np.array(gini)
 
     @lazyproperty
+    @as_scalar
     def local_background_aperture(self):
         """
         The rectangular annulus aperture used to estimate the local
@@ -1361,8 +1358,11 @@ class SourceCatalog:
         if self.localbkg_width is None:
             return self._null_object
 
+        bbox = self.bbox
+        if self.isscalar:
+            bbox = (bbox,)
         aperture = []
-        for bbox_ in self.bbox:
+        for bbox_ in bbox:
             xpos = 0.5 * (bbox_.ixmin + bbox_.ixmax - 1)
             ypos = 0.5 * (bbox_.iymin + bbox_.iymax - 1)
             scale = 1.5
@@ -1391,8 +1391,12 @@ class SourceCatalog:
             mask = self._data_mask | self._segment_img.data.astype(bool)
             sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
             bkg_func = SExtractorBackground(sigma_clip)
+            bkg_aper = self.local_background_aperture
+            if self.isscalar:
+                bkg_aper = (bkg_aper,)
+
             bkg = []
-            for aperture in self.local_background_aperture:
+            for aperture in bkg_aper:
                 aperture_mask = aperture.to_mask(method='center')
                 values = aperture_mask.get_values(self._data, mask=mask)
                 if len(values) < 10:  # not enough unmasked pixels
@@ -1405,6 +1409,7 @@ class SourceCatalog:
         return bkg
 
     @lazyproperty
+    @as_scalar
     def local_background(self):
         """
         The local background value estimated using a rectangular annulus
