@@ -690,9 +690,6 @@ References
 `Spitzer PSF vs. PRF
 <https://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
 
-`Kepler PSF calibration
-<https://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
-
 `The Kepler Pixel Response Function
 <https://ui.adsabs.harvard.edu/abs/2010ApJ...713L..97B/abstract>`_
 
