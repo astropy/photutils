@@ -10,6 +10,7 @@ import pytest
 
 from ..bounding_box import BoundingBox
 from ..circle import CircularAperture, CircularAnnulus
+from ..rectangle import RectangularAnnulus
 from ..mask import ApertureMask
 
 try:
@@ -165,3 +166,10 @@ def test_mask_get_values_no_overlap():
     values = aper.to_mask().get_values(data)
     assert values.size == 1
     assert np.isnan(values[0])
+
+
+def test_rectangular_annulus_hin():
+    aper = RectangularAnnulus((25, 25), 2, 4, 20, h_in=18, theta=0)
+    mask = aper.to_mask(method='center')
+    assert mask.data.shape == (21, 5)
+    assert np.count_nonzero(mask.data) == 40
