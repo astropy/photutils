@@ -49,6 +49,9 @@ Bug Fixes
     if ``fill_value`` was non-finite and the input array was integer
     type. [#1158]
 
+  - Fixed an issue where ``RectangularAnnulus`` with a non-default
+    ``h_in`` would give an incorrect ``ApertureMask``. [#1160]
+
 - ``photutils.psf``
 
   - Fixed a bug in ``EPSFBuild`` where a warning was raised if the input
