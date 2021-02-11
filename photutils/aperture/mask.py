@@ -2,6 +2,7 @@
 """
 This module defines a class for aperture masks.
 """
+import warnings
 
 import astropy.units as u
 import numpy as np
@@ -131,7 +132,7 @@ class ApertureMask:
 
         # cutout is always a copy for partial overlap
         if ~np.isfinite(fill_value):
-            dtype = np.float
+            dtype = float
         else:
             dtype = data.dtype
         cutout = np.zeros(self.shape, dtype=dtype)
@@ -180,7 +181,7 @@ class ApertureMask:
 
             return weighted_cutout
 
-    def get_values(self, data):
+    def get_values(self, data, mask=None):
         """
         Get the mask-weighted pixel values from the data as a 1D array.
 
@@ -192,6 +193,11 @@ class ApertureMask:
         ----------
         data : array_like or `~astropy.units.Quantity`
             The 2D array from which to get mask-weighted values.
+
+        mask : array_like (bool), optional
+            A boolean mask with the same shape as ``data`` where a
+            `True` value indicates the corresponding element of ``data``
+            is not returned in the result.
 
         Returns
         -------
@@ -205,5 +211,15 @@ class ApertureMask:
         if slc_large is None:
             return np.array([np.nan])
         cutout = data[slc_large]
-        mask = self.data[slc_small]
-        return (cutout * mask)[mask > 0]
+        apermask = self.data[slc_small]
+        pixel_mask = (apermask > 0)  # good pixels
+
+        if mask is not None:
+            if mask.shape != data.shape:
+                raise ValueError('mask and data must have the same shape')
+            pixel_mask &= ~mask[slc_large]
+
+        # ignore multiplication with inf data values
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return (cutout * apermask)[pixel_mask]
