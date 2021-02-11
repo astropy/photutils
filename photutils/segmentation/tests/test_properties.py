@@ -494,6 +494,10 @@ class TestSourcePropertiesFunction:
     def test_local_background(self):
         props = source_properties(IMAGE, self.segm, localbkg_width=24)
         assert_allclose(props[0].local_background, 0., atol=1.e-7)
+        props = source_properties(IMAGE << u.Jy, self.segm, localbkg_width=24)
+        local_bkg = props.local_background
+        assert isinstance(local_bkg, u.Quantity)
+        assert_allclose(local_bkg.value, 0., atol=1.e-7)
 
     def test_wcs(self):
         mywcs = make_wcs(IMAGE.shape)
