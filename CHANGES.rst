@@ -57,6 +57,14 @@ Bug Fixes
   - Fixed a bug in ``EPSFBuild`` where a warning was raised if the input
     ``smoothing_kernel`` was an ``numpy.ndarray``. [#1146]
 
+- ``photutils.segmentation``
+
+  - Fixed ``SourceProperties`` ``local_background`` to work with
+    Quantity data inputs. [#1162]
+
+  - Fixed ``SourceProperties`` ``local_background`` for sources near the
+    image edges. [#1162]
+
 API changes
 ^^^^^^^^^^^
 
