@@ -13,13 +13,6 @@ from ..circle import CircularAperture, CircularAnnulus
 from ..rectangle import RectangularAnnulus
 from ..mask import ApertureMask
 
-try:
-    import matplotlib  # noqa
-    HAS_MATPLOTLIB = True
-except ImportError:
-    HAS_MATPLOTLIB = False
-
-
 POSITIONS = [(-20, -20), (-20, 20), (20, -20), (60, 60)]
 
 
@@ -162,7 +155,7 @@ def test_mask_get_values():
 
 def test_mask_get_values_no_overlap():
     aper = CircularAperture((-100, -100), r=3)
-    data = np.ones((101, 101))
+    data = np.ones((51, 51))
     values = aper.to_mask().get_values(data)
     assert values.size == 1
     assert np.isnan(values[0])
@@ -173,3 +166,19 @@ def test_rectangular_annulus_hin():
     mask = aper.to_mask(method='center')
     assert mask.data.shape == (21, 5)
     assert np.count_nonzero(mask.data) == 40
+
+
+def test_mask_get_values_mask():
+    aper = CircularAperture((24.5, 24.5), r=10.)
+    data = np.ones((51, 51))
+    mask = aper.to_mask()
+    with pytest.raises(ValueError):
+        mask.get_values(data, mask=np.ones(3))
+
+    arr = mask.get_values(data, mask=None)
+    assert_allclose(np.sum(arr), 100. * np.pi)
+
+    data_mask = np.zeros(data.shape, dtype=bool)
+    data_mask[25:] = True
+    arr2 = mask.get_values(data, mask=data_mask)
+    assert_allclose(np.sum(arr2), 100. * np.pi / 2.)

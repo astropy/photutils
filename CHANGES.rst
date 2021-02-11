@@ -21,7 +21,7 @@ New Features
     ``BoundingBox``. [#1157]
 
   - Added a ``get_values`` method to ``ApertureMask`` that returns a 1D
-    array of mask-weighted values. [#1158]
+    array of mask-weighted values. [#1158, #1161]
 
 - ``photutils.background``
 
