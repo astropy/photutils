@@ -82,7 +82,6 @@ class RectangularMaskMixin:
         elif hasattr(self, 'w_out'):  # annulus
             w = self.w_out
             h = self.h_out
-            h_in = self.w_in * self.h_out / self.w_out
         else:
             raise ValueError('Cannot determine the aperture radius.')
 
@@ -98,7 +97,7 @@ class RectangularMaskMixin:
             if hasattr(self, 'w_in'):
                 mask -= rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                                  edges[3], nx, ny, self.w_in,
-                                                 h_in, self.theta, 0,
+                                                 self.h_in, self.theta, 0,
                                                  subpixels)
 
             masks.append(ApertureMask(mask, bbox))
