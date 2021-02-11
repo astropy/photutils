@@ -1430,36 +1430,31 @@ class SourceProperties:
         aperture around the source.
         """
         if self.localbkg_width is None:
-            return 0.
+            local_bkg = 0.
+        elif self._is_completely_masked:
+            local_bkg = np.nan
+        else:
+            aperture = self.local_background_aperture
+            aperture_mask = aperture.to_mask(method='center')
 
-        aperture = self.local_background_aperture
-        aperture_mask = aperture.to_mask(method='center')
+            mask = ~np.isfinite(self._data)
+            if self._mask is not None:
+                mask |= self._mask
+            mask |= self._segment_img.data.astype(bool)
 
-        mask = ~np.isfinite(self._data)
-        if self._mask is not None:
-            mask |= self._mask
+            values = aperture_mask.get_values(self._data, mask=mask)
+            if len(values) < 10:  # not enough unmasked pixels
+                return 0.
+            sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
+            bkg_func = SExtractorBackground(sigma_clip)
+            if isinstance(values, u.Quantity):
+                local_bkg = bkg_func(values.value)
+            else:
+                local_bkg = bkg_func(values)
 
-        data = aperture_mask.cutout(self._data, copy=True)
-        mask = aperture_mask.cutout(mask)
-        segm_mask = self._mask_neighbors(aperture_mask, method='mask')
-
-        # need to define new aperture mask
-        aperture = deepcopy(self.local_background_aperture)
-        aperture.positions -= (aperture_mask.bbox.ixmin,
-                               aperture_mask.bbox.iymin)
-        aperture_mask = aperture.to_mask(method='center')
-
-        mask |= aperture_mask._mask
-        if segm_mask is not None:
-            mask |= segm_mask
-        pix1d = aperture_mask.multiply(data)[~mask]
-        if len(pix1d) < 10:  # not enough unmasked pixels
-            return 0.
-        sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
-        bkg_func = SExtractorBackground(sigma_clip)
-        if isinstance(pix1d, u.Quantity):
-            return bkg_func(pix1d.value) * self._data_unit
-        return bkg_func(pix1d)
+        if self._data_unit != 1:
+            local_bkg <<= self._data_unit
+        return local_bkg
 
     def _elliptical_aperture(self, radius=6.):
         """
