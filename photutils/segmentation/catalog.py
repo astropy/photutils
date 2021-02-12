@@ -1453,6 +1453,8 @@ class SourceCatalog:
         return segm_mask
 
     def _make_circular_apertures(self, radius):
+        if radius <= 0:
+            return self._null_object
         apertures = []
         for (xcen, ycen) in zip(self._xcentroid, self._ycentroid):
             if np.any(~np.isfinite((xcen, ycen))):
@@ -1606,3 +1608,39 @@ class SourceCatalog:
 
         kron_radius = np.array(kron_radius) * u.pix
         return kron_radius
+
+    @lazyproperty
+    def kron_aperture(self):
+        """
+        The Kron aperture.
+
+        If ``kron_radius * np.sqrt(semimajor_sigma * semiminor__sigma) <
+        kron_params[2]`` then a circular aperture with a radius equal to
+        ``kron_params[2]`` will be returned. If ``kron_params[2] <= 0``,
+        then the Kron aperture will be `None`.
+
+        If ``kron_radius = np.nan`` then a circular aperture with a
+        radius equal to ``kron_params[2]`` will be returned if the
+        source is not completely masked, otherwise `None` will be
+        returned.
+
+        Note that if the Kron aperture is `None`, the Kron flux will be
+        ``np.nan``.
+        """
+        scale = self.kron_radius.value * self.kron_params[1]
+        kron_aperture = self._make_elliptical_apertures(scale=scale)
+        kron_radius = self.kron_radius.value
+
+        # check for minimum Kron radius
+        major_sigma = self.semimajor_sigma.value
+        minor_sigma = self.semiminor_sigma.value
+        circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
+        min_radius = self.kron_params[2]
+        mask = np.isnan(kron_radius) | (circ_radius < min_radius)
+        idx = mask.nonzero()[0]
+        if idx.size > 0:
+            circ_aperture = self._make_circular_apertures(self.kron_params[2])
+            for i in idx:
+                kron_aperture[i] = circ_aperture[i]
+
+        return kron_aperture
