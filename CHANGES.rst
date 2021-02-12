@@ -65,6 +65,9 @@ Bug Fixes
   - Fixed ``SourceProperties`` ``local_background`` for sources near the
     image edges. [#1162]
 
+  - Fixed ``SourceProperties`` ``kron_radius`` for sources that are
+    completely masked. [#1164]
+
 API changes
 ^^^^^^^^^^^
 
