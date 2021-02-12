@@ -1606,6 +1606,9 @@ class SourceProperties:
                 return None
             # use circular aperture with radius=self.kron_params[2]
             xypos = (self.xcentroid.value, self.ycentroid.value)
+            values = (xypos[0], xypos[1], self.kron_params[2])
+            if np.any(~np.isfinite(values)):
+                return None
             aperture = CircularAperture(xypos, r=self.kron_params[2])
         else:
             radius = self.kron_radius.value * self.kron_params[1]
