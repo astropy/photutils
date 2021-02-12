@@ -1468,6 +1468,9 @@ class SourceProperties:
         a = self.semimajor_axis_sigma.value * radius
         b = self.semiminor_axis_sigma.value * radius
         theta = self.orientation.to(u.radian).value
+        values = (position[0], position[1], a, b, theta)
+        if np.any(~np.isfinite(values)):
+            return None
         return EllipticalAperture(position, a, b, theta=theta)
 
     def _mask_neighbors(self, aperture_mask, method='none'):
@@ -1553,6 +1556,9 @@ class SourceProperties:
         aperture will be `None` and the Kron flux will be ``np.nan``.
         """
         aperture = self._elliptical_aperture(radius=6.0)
+        if aperture is None:
+            return np.nan << u.pixel
+
         aperture_mask = aperture.to_mask()
 
         # prepare cutouts of the data and error arrays based on the
