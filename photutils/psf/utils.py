@@ -4,11 +4,25 @@ This module provides utilities for PSF-fitting photometry.
 """
 
 from astropy.table import QTable
-from astropy.modeling import models
+from astropy.modeling.models import Const2D, Identity, Shift
 from astropy.nddata.utils import add_array, extract_array
 import numpy as np
 
 __all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf']
+
+
+class _InverseShift(Shift):
+    @staticmethod
+    def evaluate(x, offset):
+        return x - offset
+
+    @staticmethod
+    def fit_deriv(x, *params):
+        """
+        One dimensional Shift model derivative with respect to parameter.
+        """
+        d_offset = -np.ones_like(x)
+        return [d_offset]
 
 
 def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
@@ -55,25 +69,25 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
         subclasses.
     """
     if xname is None:
-        xinmod = models.Shift(0, name='x_offset')
+        xinmod = _InverseShift(0, name='x_offset')
         xname = 'offset_0'
     else:
-        xinmod = models.Identity(1)
+        xinmod = Identity(1)
         xname = xname + '_2'
     xinmod.fittable = True
 
     if yname is None:
-        yinmod = models.Shift(0, name='y_offset')
+        yinmod = _InverseShift(0, name='y_offset')
         yname = 'offset_1'
     else:
-        yinmod = models.Identity(1)
+        yinmod = Identity(1)
         yname = yname + '_2'
     yinmod.fittable = True
 
     outmod = (xinmod & yinmod) | psfmodel
 
     if fluxname is None:
-        outmod = outmod * models.Const2D(1, name='flux_scaling')
+        outmod = outmod * Const2D(1, name='flux_scaling')
         fluxname = 'amplitude_3'
     else:
         fluxname = fluxname + '_2'
@@ -84,7 +98,7 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
 
         integrand = integrate.dblquad(psfmodel, -np.inf, np.inf,
                                       lambda x: -np.inf, lambda x: np.inf)[0]
-        normmod = models.Const2D(1./integrand, name='renormalize_scaling')
+        normmod = Const2D(1./integrand, name='renormalize_scaling')
         outmod = outmod * normmod
 
     # final setup of the output model - fix all the non-offset/scale
