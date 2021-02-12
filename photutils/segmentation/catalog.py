@@ -1504,17 +1504,21 @@ class SourceCatalog:
                                                theta=theta_))
         return aperture
 
-    def _prepare_kron_data(self, label, xcentroid, ycentroid, aperture_mask):
+    def _prepare_kron_data(self, label, xcentroid, ycentroid, aperture_mask,
+                           background=0.):
         """
         Make cutouts from data and error, applying various types of
         masking and/or pixel corrections for a single ``aperture_mask``.
         """
-        data = aperture_mask.cutout(self._data, copy=True)
-        mask = aperture_mask.cutout(self._data_mask, copy=True)
+        data = aperture_mask.cutout(self._data, copy=True, fill_value=np.nan)
+        mask = (aperture_mask.cutout(self._data_mask, copy=True)
+                | np.isnan(data))
         segm_mask = self._mask_neighbors(label, aperture_mask,
                                          method=self.kron_params[0])
         if segm_mask is not None:
             mask |= segm_mask
+
+        data -= background
         data[mask] = 0.
 
         if self._error is not None:
@@ -1592,7 +1596,7 @@ class SourceCatalog:
 
             # prepare cutouts of the data based on the aperture size
             data, _ = self._prepare_kron_data(label, xcen_, ycen_,
-                                              aperture_mask)
+                                              aperture_mask, 0.0)
 
             aperture.positions -= (aperture_mask.bbox.ixmin,
                                    aperture_mask.bbox.iymin)
@@ -1676,11 +1680,10 @@ class SourceCatalog:
 
             aperture_mask = aperture.to_mask()
             data, error = self._prepare_kron_data(label, xcen, ycen,
-                                                  aperture_mask)
+                                                  aperture_mask, bkg)
             aperture.positions -= (aperture_mask.bbox.ixmin,
                                    aperture_mask.bbox.iymin)
 
-            data -= bkg  # local background subtraction
             method = self.kron_params[3]
             subpixels = self.kron_params[4]
             flux, fluxerr = aperture.do_photometry(data, error=error,
