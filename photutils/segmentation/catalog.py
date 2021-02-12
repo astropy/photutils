@@ -9,7 +9,6 @@ import functools
 import inspect
 import warnings
 
-from astropy.coordinates import SkyCoord
 from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
@@ -522,7 +521,10 @@ class SourceCatalog:
         """
         The ``x`` coordinate of the centroid within the source segment.
         """
-        return np.transpose(self.centroid)[1]
+        xcentroid = np.transpose(self.centroid)[1]
+        if self.isscalar:
+            xcentroid = (xcentroid,)
+        return xcentroid
 
     @lazyproperty
     @as_scalar
@@ -537,7 +539,10 @@ class SourceCatalog:
         """
         The ``y`` coordinate of the centroid within the source segment.
         """
-        return np.transpose(self.centroid)[0]
+        ycentroid = np.transpose(self.centroid)[0]
+        if self.isscalar:
+            ycentroid = (ycentroid,)
+        return ycentroid
 
     @lazyproperty
     @as_scalar
@@ -1610,6 +1615,7 @@ class SourceCatalog:
         return kron_radius
 
     @lazyproperty
+    @as_scalar
     def kron_aperture(self):
         """
         The Kron aperture.
@@ -1644,3 +1650,73 @@ class SourceCatalog:
                 kron_aperture[i] = circ_aperture[i]
 
         return kron_aperture
+
+    @lazyproperty
+    def _kron_flux_fluxerr(self):
+        """
+        The flux and flux error in the Kron aperture.
+
+        If the Kron aperture is `None`, then ``np.nan`` will be returned.
+        """
+        kron_aperture = deepcopy(self.kron_aperture)
+        if self.isscalar:
+            kron_aperture = (kron_aperture,)
+
+        kron_flux = []
+        kron_fluxerr = []
+        for label, xcen, ycen, aperture, bkg in zip(self._label_iter,
+                                                    self._xcentroid,
+                                                    self._ycentroid,
+                                                    kron_aperture,
+                                                    self._local_background):
+            if aperture is None:
+                kron_flux.append(np.nan)
+                kron_fluxerr.append(np.nan)
+                continue
+
+            aperture_mask = aperture.to_mask()
+            data, error = self._prepare_kron_data(label, xcen, ycen,
+                                                  aperture_mask)
+            aperture.positions -= (aperture_mask.bbox.ixmin,
+                                   aperture_mask.bbox.iymin)
+
+            data -= bkg  # local background subtraction
+            method = self.kron_params[3]
+            subpixels = self.kron_params[4]
+            flux, fluxerr = aperture.do_photometry(data, error=error,
+                                                   method=method,
+                                                   subpixels=subpixels)
+
+            kron_flux.append(flux[0])
+            if error is None:
+                kron_fluxerr.append(np.nan)
+            else:
+                kron_fluxerr.append(fluxerr[0])
+
+        return np.transpose((kron_flux, kron_fluxerr))
+
+    @lazyproperty
+    @as_scalar
+    def kron_flux(self):
+        """
+        The flux in the Kron aperture.
+
+        If the Kron aperture is `None`, then ``np.nan`` will be returned.
+        """
+        kron_flux = self._kron_flux_fluxerr[:, 0]
+        if self._data_unit is not None:
+            kron_flux <<= self._data_unit
+        return kron_flux
+
+    @lazyproperty
+    @as_scalar
+    def kron_fluxerr(self):
+        """
+        The flux error in the Kron aperture.
+
+        If the Kron aperture is `None`, then ``np.nan`` will be returned.
+        """
+        kron_fluxerr = self._kron_flux_fluxerr[:, 1]
+        if self._data_unit is not None:
+            kron_fluxerr <<= self._data_unit
+        return kron_fluxerr
