@@ -636,3 +636,8 @@ class TestSourceCatalog:
 
         assert repr(cat) == str(cat)
         assert 'Catalog length:' in repr(cat)
+
+    def test_kron_radius_all_masked(self):
+        mask = np.ones(IMAGE.shape, dtype=bool)
+        cat = source_properties(IMAGE, self.segm, mask=mask)
+        assert np.all(np.isnan(cat.kron_radius))
