@@ -1442,7 +1442,7 @@ class SourceCatalog:
         if method == 'none':
             return None
 
-        slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data)
+        slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data.shape)
         segment_img = np.copy(self._segment_img.data[slc_lg])
 
         # mask all pixels outside of the source segment
@@ -1510,7 +1510,7 @@ class SourceCatalog:
         Make cutouts from data and error, applying various types of
         masking and/or pixel corrections for a single ``aperture_mask``.
         """
-        slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data)
+        slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data.shape)
         data = np.copy(self._data[slc_lg])
         mask = self._data_mask[slc_lg]
         segm_mask = self._mask_neighbors(label, aperture_mask,
@@ -1537,6 +1537,15 @@ class SourceCatalog:
             if self._error is not None:
                 error = _mask_to_mirrored_num(error, segm_mask, xypos)
 
+        return data, error
+
+    def _correct_kron_mask(self, data, mask, xycenter, error=None):
+        # Correct masked pixels in neighboring segments.  Masked pixels
+        # are replaced with pixels on the opposite side of the source.
+        from ..utils.interpolation import _mask_to_mirrored_num
+        data = _mask_to_mirrored_num(data, mask, xycenter)
+        if error is not None:
+            error = _mask_to_mirrored_num(error, mask, xycenter)
         return data, error
 
     @lazyproperty
@@ -1593,28 +1602,42 @@ class SourceCatalog:
                 kron_radius.append(np.nan)
                 continue
 
-            method = 'center'  # need whole pixel to compute Kron radius
-            aperture_mask = aperture.to_mask(method=method)
-
             # prepare cutouts of the data based on the aperture size
-            data, _ = self._prepare_kron_data(label, xcen_, ycen_,
-                                              aperture_mask, 0.0)
+            method = 'center'  # need whole pixels to compute Kron radius
+            aperture_mask = aperture.to_mask(method=method)
+            slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data.shape)
 
-            xypos = (xcen_ - max(0, aperture_mask.bbox.ixmin),
+            # prepare kron mask (method?)
+            mask = self._data_mask[slc_lg]
+            segm_mask = self._mask_neighbors(label, aperture_mask,
+                                             method=self.kron_params[0])
+            if segm_mask is not None:
+                mask |= segm_mask
+
+            data = self._data[slc_lg]
+
+            xycen = (xcen_ - max(0, aperture_mask.bbox.ixmin),
                      ycen_ - max(0, aperture_mask.bbox.iymin))
-            x = np.arange(data.shape[1]) - xypos[0]
-            y = np.arange(data.shape[0]) - xypos[1]
+
+            if self.kron_params[0] == 'correct':
+                data, _ = self._correct_kron_mask(data, mask, xycen,
+                                                  error=None)
+
+            x = np.arange(data.shape[1]) - xycen[0]
+            y = np.arange(data.shape[0]) - xycen[1]
             xx, yy = np.meshgrid(x, y)
             rr = np.sqrt(cxx_ * xx**2 + cxy_ * xx * yy + cyy_ * yy**2)
 
-            flux_numer = np.sum(aperture_mask.getvalues(data * rr))
-            flux_denom = np.sum(aperture_mask.getvalues(data))
+            aperture_weights = aperture_mask.data[slc_sm]
+            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
+            flux_numer = np.sum((aperture_weights * data * rr)[pixel_mask])
+            flux_denom = np.sum((aperture_weights * data)[pixel_mask])
 
             if flux_numer <= 0 or flux_denom <= 0:
                 kron_radius.append(np.nan)
                 continue
 
-            kron_radius.append(flux_numer[0] / flux_denom[0])
+            kron_radius.append(flux_numer / flux_denom)
 
         kron_radius = np.array(kron_radius) * u.pix
         return kron_radius
@@ -1678,6 +1701,9 @@ class SourceCatalog:
                 kron_flux.append(np.nan)
                 kron_fluxerr.append(np.nan)
                 continue
+
+            xycen = (xcen_ - max(0, aperture_mask.bbox.ixmin),
+                     ycen_ - max(0, aperture_mask.bbox.iymin))
 
             aperture_mask = aperture.to_mask()
             data, error = self._prepare_kron_data(label, xcen, ycen,
