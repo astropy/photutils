@@ -1442,8 +1442,8 @@ class SourceCatalog:
         if method == 'none':
             return None
 
-        segment_img = aperture_mask.cutout(self._segment_img.data,
-                                           copy=True)
+        slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data)
+        segment_img = np.copy(self._segment_img.data[slc_lg])
 
         # mask all pixels outside of the source segment
         if method in ('mask_all', ):
@@ -1510,19 +1510,19 @@ class SourceCatalog:
         Make cutouts from data and error, applying various types of
         masking and/or pixel corrections for a single ``aperture_mask``.
         """
-        data = aperture_mask.cutout(self._data, copy=True, fill_value=np.nan)
-        mask = (aperture_mask.cutout(self._data_mask, copy=True)
-                | np.isnan(data))
+        slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data)
+        data = np.copy(self._data[slc_lg])
+        mask = self._data_mask[slc_lg]
         segm_mask = self._mask_neighbors(label, aperture_mask,
                                          method=self.kron_params[0])
         if segm_mask is not None:
             mask |= segm_mask
 
-        data -= background
+        data -= background  # subtract local background before masking
         data[mask] = 0.
 
         if self._error is not None:
-            error = aperture_mask.cutout(self._error, copy=True)
+            error = np.copy(self._error[slc_lg])
             error[mask] = 0.
         else:
             error = None
@@ -1531,7 +1531,8 @@ class SourceCatalog:
         # are replaced with pixels on the opposite side of the source.
         if self.kron_params[0] == 'correct':
             from ..utils.interpolation import _mask_to_mirrored_num
-            xypos = (xcentroid, ycentroid)
+            xypos = (xcentroid - max(0, aperture_mask.bbox.ixmin),
+                     ycentroid - max(0, aperture_mask.bbox.iymin))
             data = _mask_to_mirrored_num(data, segm_mask, xypos)
             if self._error is not None:
                 error = _mask_to_mirrored_num(error, segm_mask, xypos)
@@ -1592,22 +1593,22 @@ class SourceCatalog:
                 kron_radius.append(np.nan)
                 continue
 
-            aperture_mask = aperture.to_mask()
+            method = 'center'  # need whole pixel to compute Kron radius
+            aperture_mask = aperture.to_mask(method=method)
 
             # prepare cutouts of the data based on the aperture size
             data, _ = self._prepare_kron_data(label, xcen_, ycen_,
                                               aperture_mask, 0.0)
 
-            aperture.positions -= (aperture_mask.bbox.ixmin,
-                                   aperture_mask.bbox.iymin)
-            x = np.arange(data.shape[1]) - xcen_ + aperture_mask.bbox.ixmin
-            y = np.arange(data.shape[0]) - ycen_ + aperture_mask.bbox.iymin
+            xypos = (xcen_ - max(0, aperture_mask.bbox.ixmin),
+                     ycen_ - max(0, aperture_mask.bbox.iymin))
+            x = np.arange(data.shape[1]) - xypos[0]
+            y = np.arange(data.shape[0]) - xypos[1]
             xx, yy = np.meshgrid(x, y)
             rr = np.sqrt(cxx_ * xx**2 + cxy_ * xx * yy + cyy_ * yy**2)
 
-            method = 'center'  # need whole pixel to compute Kron radius
-            flux_numer, _ = aperture.do_photometry(data * rr, method=method)
-            flux_denom, _ = aperture.do_photometry(data, method=method)
+            flux_numer = np.sum(aperture_mask.getvalues(data * rr))
+            flux_denom = np.sum(aperture_mask.getvalues(data))
 
             if flux_numer <= 0 or flux_denom <= 0:
                 kron_radius.append(np.nan)
