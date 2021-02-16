@@ -48,6 +48,33 @@ class ApertureMask:
         """
         return self.data.shape
 
+    def get_overlap_slices(self, shape):
+        """
+        Get slices for the overlapping part of the aperture mask and a
+        2D array.
+
+        Parameters
+        ----------
+        shape : 2-tuple of int
+            The shape of the 2D array.
+
+        Returns
+        -------
+        slices_large : tuple of slices or `None`
+            A tuple of slice objects for each axis of the large array,
+            such that ``large_array[slices_large]`` extracts the region
+            of the large array that overlaps with the small array.
+            `None` is returned if there is no overlap of the bounding
+            box with the given image shape.
+        slices_small : tuple of slices or `None`
+            A tuple of slice objects for each axis of the aperture mask
+            array such that ``small_array[slices_small]`` extracts the
+            region that is inside the large array. `None` is returned if
+            there is no overlap of the bounding box with the given image
+            shape.
+        """
+        return self.bbox.get_overlap_slices(shape)
+
     def to_image(self, shape):
         """
         Return an image of the mask in a 2D array of the given shape,
