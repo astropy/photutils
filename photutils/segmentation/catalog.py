@@ -1438,25 +1438,6 @@ class SourceCatalog:
             bkg <<= self._data_unit
         return bkg
 
-    def _mask_neighbors(self, label, aperture_mask, method='none'):
-        if method == 'none':
-            return None
-
-        slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data.shape)
-        segment_img = np.copy(self._segment_img.data[slc_lg])
-
-        # mask all pixels outside of the source segment
-        if method in ('mask_all', ):
-            segm_mask = (segment_img != label)
-
-        # mask pixels *only* in neighboring segments (not including
-        # background pixels)
-        if method in ('mask', 'correct'):
-            segm_mask = np.logical_and(segment_img != label,
-                                       segment_img != 0)
-
-        return segm_mask
-
     def _make_circular_apertures(self, radius):
         if radius <= 0:
             return self._null_object
@@ -1504,41 +1485,6 @@ class SourceCatalog:
                                                theta=theta_))
         return aperture
 
-    def _prepare_kron_data(self, label, xcentroid, ycentroid, aperture_mask,
-                           background=0.):
-        """
-        Make cutouts from data and error, applying various types of
-        masking and/or pixel corrections for a single ``aperture_mask``.
-        """
-        slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data.shape)
-        data = np.copy(self._data[slc_lg])
-        mask = self._data_mask[slc_lg]
-        segm_mask = self._mask_neighbors(label, aperture_mask,
-                                         method=self.kron_params[0])
-        if segm_mask is not None:
-            mask |= segm_mask
-
-        data -= background  # subtract local background before masking
-        data[mask] = 0.
-
-        if self._error is not None:
-            error = np.copy(self._error[slc_lg])
-            error[mask] = 0.
-        else:
-            error = None
-
-        # Correct masked pixels in neighboring segments.  Masked pixels
-        # are replaced with pixels on the opposite side of the source.
-        if self.kron_params[0] == 'correct':
-            from ..utils.interpolation import _mask_to_mirrored_num
-            xypos = (xcentroid - max(0, aperture_mask.bbox.ixmin),
-                     ycentroid - max(0, aperture_mask.bbox.iymin))
-            data = _mask_to_mirrored_num(data, segm_mask, xypos)
-            if self._error is not None:
-                error = _mask_to_mirrored_num(error, segm_mask, xypos)
-
-        return data, error
-
     def _correct_kron_mask(self, data, mask, xycenter, error=None):
         # Correct masked pixels in neighboring segments.  Masked pixels
         # are replaced with pixels on the opposite side of the source.
@@ -1547,6 +1493,26 @@ class SourceCatalog:
         if error is not None:
             error = _mask_to_mirrored_num(error, mask, xycenter)
         return data, error
+
+    def _make_kron_segm_mask(self, label, slices):
+        method = self.kron_params[0]
+        if method in ('none',):
+            return None
+
+        # mask all pixels outside of the source segment
+        segment_img = self._segment_img.data[slices]
+        if method in ('mask_all',):
+            segm_mask = (segment_img != label)
+
+        # mask pixels *only* in neighboring segments (do not include
+        # background pixels)
+        elif method in ('mask', 'correct'):
+            segm_mask = np.logical_and(segment_img != label, segment_img != 0)
+
+        else:
+            raise ValueError('invalid Kron mask method')
+
+        return segm_mask
 
     @lazyproperty
     @as_scalar
@@ -1606,26 +1572,26 @@ class SourceCatalog:
             method = 'center'  # need whole pixels to compute Kron radius
             aperture_mask = aperture.to_mask(method=method)
             slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data.shape)
-
-            # prepare kron mask (method?)
-            mask = self._data_mask[slc_lg]
-            segm_mask = self._mask_neighbors(label, aperture_mask,
-                                             method=self.kron_params[0])
-            if segm_mask is not None:
-                mask |= segm_mask
-
             data = self._data[slc_lg]
+            data_mask = self._data_mask[slc_lg]
+            segm_mask = self._make_kron_segm_mask(label, slc_lg)
+            if segm_mask is None:
+                mask = data_mask
+            else:
+                mask = data_mask | segm_mask
 
             xycen = (xcen_ - max(0, aperture_mask.bbox.ixmin),
                      ycen_ - max(0, aperture_mask.bbox.iymin))
 
+            # apply corrections to masked data based on source symmetry
             if self.kron_params[0] == 'correct':
-                data, _ = self._correct_kron_mask(data, mask, xycen,
+                data, _ = self._correct_kron_mask(data, segm_mask, xycen,
                                                   error=None)
+                mask = data_mask  # do not include the correct segm_mask
 
-            x = np.arange(data.shape[1]) - xycen[0]
-            y = np.arange(data.shape[0]) - xycen[1]
-            xx, yy = np.meshgrid(x, y)
+            xval = np.arange(data.shape[1]) - xycen[0]
+            yval = np.arange(data.shape[0]) - xycen[1]
+            xx, yy = np.meshgrid(xval, yval)
             rr = np.sqrt(cxx_ * xx**2 + cxy_ * xx * yy + cyy_ * yy**2)
 
             aperture_weights = aperture_mask.data[slc_sm]
@@ -1702,26 +1668,41 @@ class SourceCatalog:
                 kron_fluxerr.append(np.nan)
                 continue
 
-            xycen = (xcen_ - max(0, aperture_mask.bbox.ixmin),
-                     ycen_ - max(0, aperture_mask.bbox.iymin))
+            # prepare cutouts of the data based on the aperture size
+            aperture_mask = aperture.to_mask(method=self.kron_params[3],
+                                             subpixels=self.kron_params[4])
+            slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data.shape)
+            data = self._data[slc_lg]
+            data_mask = self._data_mask[slc_lg]
+            if self._error is not None:
+                error = self._error[slc_lg]
+            else:
+                error = None
 
-            aperture_mask = aperture.to_mask()
-            data, error = self._prepare_kron_data(label, xcen, ycen,
-                                                  aperture_mask, bkg)
-            aperture.positions -= (aperture_mask.bbox.ixmin,
-                                   aperture_mask.bbox.iymin)
+            segm_mask = self._make_kron_segm_mask(label, slc_lg)
+            if segm_mask is None:
+                mask = data_mask
+            else:
+                mask = data_mask | segm_mask
 
-            method = self.kron_params[3]
-            subpixels = self.kron_params[4]
-            flux, fluxerr = aperture.do_photometry(data, error=error,
-                                                   method=method,
-                                                   subpixels=subpixels)
+            xycen = (xcen - max(0, aperture_mask.bbox.ixmin),
+                     ycen - max(0, aperture_mask.bbox.iymin))
 
-            kron_flux.append(flux[0])
+            # apply corrections to masked data based on source symmetry
+            if self.kron_params[0] == 'correct':
+                data, error = self._correct_kron_mask(data, mask, xycen,
+                                                      error=error)
+                mask = data_mask  # do not include the correct segm_mask
+
+            aperture_weights = aperture_mask.data[slc_sm]
+            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
+            kron_flux.append(np.sum((aperture_weights
+                                     * (data - bkg))[pixel_mask]))
             if error is None:
                 kron_fluxerr.append(np.nan)
             else:
-                kron_fluxerr.append(fluxerr[0])
+                kron_fluxerr.append(np.sqrt(np.sum((aperture_weights
+                                                    * error**2)[pixel_mask])))
 
         return np.transpose((kron_flux, kron_fluxerr))
 
