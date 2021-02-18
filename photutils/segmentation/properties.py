@@ -12,7 +12,8 @@ from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyUserWarning,
+                                      AstropyDeprecationWarning)
 import numpy as np
 
 from .core import SegmentationImage
@@ -143,7 +144,8 @@ class SourceProperties:
                      MASK_TYPE=NONE in SourceExtractor).
           * 'mask':  mask pixels assigned to neighboring sources
                      (equivalent to MASK_TYPE=BLANK in SourceExtractor)
-          * 'mask_all':  mask all pixels outside of the source segment.
+          * 'mask_all':  mask all pixels outside of the source segment
+                         (deprecated).
           * 'correct':  replace pixels assigned to neighboring sources
                         by replacing them with pixels on the opposite
                         side of the source (equivalent to
@@ -291,6 +293,10 @@ class SourceProperties:
 
         if kron_params[0] not in ('none', 'mask', 'mask_all', 'correct'):
             raise ValueError('Invalid value for kron_params[0]')
+        if kron_params[0] == 'mask_all':
+            warnings.warn('The "mask_all" option is deprecated and will '
+                          'be removed in a future release.',
+                          AstropyDeprecationWarning)
         self.kron_params = kron_params
         self._kron_fluxerr = None
 
