@@ -1492,7 +1492,7 @@ class SourceProperties:
 
         return segm_mask
 
-    def _prepare_kron_data(self, aperture_mask):
+    def _prepare_kron_data(self, aperture_mask, sub_bkg=False):
         mask = ~np.isfinite(self._data)
         if self._mask is not None:
             mask |= self._mask
@@ -1505,6 +1505,8 @@ class SourceProperties:
         if segm_mask is not None:
             mask |= segm_mask
 
+        if sub_bkg:
+            data -= self.local_background
         data[mask] = 0.
 
         if self._error is not None:
@@ -1564,7 +1566,7 @@ class SourceProperties:
 
         # prepare cutouts of the data and error arrays based on the
         # aperture size
-        data, error = self._prepare_kron_data(aperture_mask)
+        data, error = self._prepare_kron_data(aperture_mask, sub_bkg=False)
         aperture.positions -= (aperture_mask.bbox.ixmin,
                                aperture_mask.bbox.iymin)
 
@@ -1630,14 +1632,14 @@ class SourceProperties:
 
         aperture = deepcopy(self.kron_aperture)
         aperture_mask = aperture.to_mask()
-        data, error = self._prepare_kron_data(aperture_mask)
+        data, error = self._prepare_kron_data(aperture_mask, sub_bkg=True)
         aperture.positions -= (aperture_mask.bbox.ixmin,
                                aperture_mask.bbox.iymin)
 
         method = self.kron_params[3]
         subpixels = self.kron_params[4]
-        flux, fluxerr = aperture.do_photometry(data - self.local_background,
-                                               error=error, method=method,
+        flux, fluxerr = aperture.do_photometry(data, error=error,
+                                               method=method,
                                                subpixels=subpixels)
         if len(fluxerr) > 0:
             self._kron_fluxerr = fluxerr[0]
