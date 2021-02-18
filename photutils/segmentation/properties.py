@@ -1520,10 +1520,11 @@ class SourceProperties:
         # are replaced with pixels on the opposite side of the source.
         if self.kron_params[0] == 'correct':
             from ..utils.interpolation import _mask_to_mirrored_num
-            xypos = (self.xcentroid.value, self.ycentroid.value)
-            data = _mask_to_mirrored_num(data, segm_mask, xypos)
+            xycen = (self.xcentroid.value - aperture_mask.bbox.ixmin,
+                     self.ycentroid.value - aperture_mask.bbox.iymin)
+            data = _mask_to_mirrored_num(data, segm_mask, xycen)
             if self._error is not None:
-                error = _mask_to_mirrored_num(error, segm_mask, xypos)
+                error = _mask_to_mirrored_num(error, segm_mask, xycen)
 
         return data, error
 
