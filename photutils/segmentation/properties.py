@@ -1497,14 +1497,15 @@ class SourceProperties:
         if self._mask is not None:
             mask |= self._mask
 
-        data = aperture_mask.cutout(self._data, copy=True)
-        mask = aperture_mask.cutout(mask)
-        data[mask] = 0.
+        data = aperture_mask.cutout(self._data, copy=True, fill_value=np.nan)
+        mask = aperture_mask.cutout(mask) | np.isnan(data)
 
         segm_mask = self._mask_neighbors(aperture_mask,
                                          method=self.kron_params[0])
         if segm_mask is not None:
-            data[segm_mask] = 0.
+            mask |= segm_mask
+
+        data[mask] = 0.
 
         if self._error is not None:
             error = aperture_mask.cutout(self._error, copy=True)
