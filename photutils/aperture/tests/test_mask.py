@@ -168,6 +168,14 @@ def test_rectangular_annulus_hin():
     assert np.count_nonzero(mask.data) == 40
 
 
+def test_mask_get_overlap_slices():
+    aper = CircularAperture((5, 5), r=10.)
+    mask = aper.to_mask()
+    slc = ((slice(0, 16, None), slice(0, 16, None)),
+           (slice(5, 21, None), slice(5, 21, None)))
+    assert mask.get_overlap_slices((25, 25)) == slc
+
+
 def test_mask_get_values_mask():
     aper = CircularAperture((24.5, 24.5), r=10.)
     data = np.ones((51, 51))
