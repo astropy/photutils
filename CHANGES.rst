@@ -23,6 +23,8 @@ New Features
   - Added a ``get_values`` method to ``ApertureMask`` that returns a 1D
     array of mask-weighted values. [#1158, #1161]
 
+  - Added ``get_overlap_slices`` method to ``ApertureMask``. [#1165]
+
 - ``photutils.background``
 
   - The ``Background2D`` class now accepts astropy ``NDData``,
