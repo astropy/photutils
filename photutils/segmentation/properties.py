@@ -1525,12 +1525,12 @@ class SourceProperties:
         # Correct masked pixels in neighboring segments.  Masked pixels
         # are replaced with pixels on the opposite side of the source.
         if apply_correct:
-            from ..utils.interpolation import _mask_to_mirrored_num
+            from ._utils import mask_to_mirrored_value
             xycen = (self.xcentroid.value - aperture_mask.bbox.ixmin,
                      self.ycentroid.value - aperture_mask.bbox.iymin)
-            data = _mask_to_mirrored_num(data, segm_mask, xycen)
+            data = mask_to_mirrored_value(data, segm_mask, xycen)
             if self._error is not None:
-                error = _mask_to_mirrored_num(error, segm_mask, xycen)
+                error = mask_to_mirrored_value(error, segm_mask, xycen)
 
         return data, error
 
