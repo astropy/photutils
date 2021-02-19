@@ -1573,8 +1573,8 @@ class SourceProperties:
 
         # prepare cutouts of the data and error arrays based on the
         # aperture size
-        data, error = self._prepare_kron_data(aperture_mask, sub_bkg=False,
-                                              correct=False)
+        data, _ = self._prepare_kron_data(aperture_mask, sub_bkg=False,
+                                          correct=False)
         aperture.positions -= (aperture_mask.bbox.ixmin,
                                aperture_mask.bbox.iymin)
 
