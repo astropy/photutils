@@ -8,7 +8,6 @@ from numpy.testing import assert_allclose
 import pytest
 
 from .. import ShepardIDWInterpolator as idw
-from ..interpolation import _mask_to_mirrored_num
 
 try:
     import scipy  # noqa
@@ -34,7 +33,7 @@ class TestShepardIDWInterpolator:
         self.y = np.sin(self.x)
         self.f = idw(self.x, self.y)
 
-    @pytest.mark.parametrize('positions', [0.4, np.arange(2, 5)*0.1])
+    @pytest.mark.parametrize('positions', [0.4, np.arange(2, 5) * 0.1])
     def test_idw_1d(self, positions):
         f = idw(self.x, self.y)
         assert_allclose(f(positions), np.sin(positions), atol=1e-2)
@@ -109,68 +108,3 @@ class TestShepardIDWInterpolator:
     def test_positions_3d(self):
         with pytest.raises(ValueError):
             self.f(np.ones((3, 3, 3)))
-
-
-class TestMaskToMirroredNum:
-    def test_mask_to_mirrored_num(self):
-        """
-        Test mask_to_mirrored_num.
-        """
-        center = (1.5, 1.5)
-        data = np.arange(16).reshape(4, 4)
-        mask = np.zeros(data.shape, dtype=bool)
-        mask[0, 0] = True
-        mask[1, 1] = True
-        data_ref = data.copy()
-        data_ref[0, 0] = data[3, 3]
-        data_ref[1, 1] = data[2, 2]
-        mirror_data = _mask_to_mirrored_num(data, mask, center)
-        assert_allclose(mirror_data, data_ref, rtol=0, atol=1.e-6)
-
-    def test_mask_to_mirrored_num_range(self):
-        """
-        Test mask_to_mirrored_num when mirrored pixels are outside of the
-        image.
-        """
-        center = (2.5, 2.5)
-        data = np.arange(16).reshape(4, 4)
-        mask = np.zeros(data.shape, dtype=bool)
-        mask[0, 0] = True
-        mask[1, 1] = True
-        data_ref = data.copy()
-        data_ref[0, 0] = 0.
-        data_ref[1, 1] = 0.
-        mirror_data = _mask_to_mirrored_num(data, mask, center)
-        assert_allclose(mirror_data, data_ref, rtol=0, atol=1.e-6)
-
-    def test_mask_to_mirrored_num_masked(self):
-        """
-        Test mask_to_mirrored_num when mirrored pixels are also masked.
-        """
-        center = (0.5, 0.5)
-        data = np.arange(16).reshape(4, 4)
-        data[0, 0] = 100
-        mask = np.zeros(data.shape, dtype=bool)
-        mask[0, 0] = True
-        mask[1, 1] = True
-        data_ref = data.copy()
-        data_ref[0, 0] = 0.
-        data_ref[1, 1] = 0.
-        mirror_data = _mask_to_mirrored_num(data, mask, center)
-        assert_allclose(mirror_data, data_ref, rtol=0, atol=1.e-6)
-
-    def test_mask_to_mirrored_num_bbox(self):
-        """
-        Test mask_to_mirrored_num with a bounding box.
-        """
-        center = (1.5, 1.5)
-        data = np.arange(16).reshape(4, 4)
-        data[0, 0] = 100
-        mask = np.zeros(data.shape, dtype=bool)
-        mask[0, 0] = True
-        mask[1, 1] = True
-        data_ref = data.copy()
-        data_ref[1, 1] = data[2, 2]
-        bbox = (1, 2, 1, 2)
-        mirror_data = _mask_to_mirrored_num(data, mask, center, bbox=bbox)
-        assert_allclose(mirror_data, data_ref, rtol=0, atol=1.e-6)

@@ -12,7 +12,8 @@ from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyUserWarning,
+                                      AstropyDeprecationWarning)
 import numpy as np
 
 from .core import SegmentationImage
@@ -143,7 +144,8 @@ class SourceProperties:
                      MASK_TYPE=NONE in SourceExtractor).
           * 'mask':  mask pixels assigned to neighboring sources
                      (equivalent to MASK_TYPE=BLANK in SourceExtractor)
-          * 'mask_all':  mask all pixels outside of the source segment.
+          * 'mask_all':  mask all pixels outside of the source segment
+                         (deprecated).
           * 'correct':  replace pixels assigned to neighboring sources
                         by replacing them with pixels on the opposite
                         side of the source (equivalent to
@@ -291,6 +293,10 @@ class SourceProperties:
 
         if kron_params[0] not in ('none', 'mask', 'mask_all', 'correct'):
             raise ValueError('Invalid value for kron_params[0]')
+        if kron_params[0] == 'mask_all':
+            warnings.warn('The "mask_all" option is deprecated and will '
+                          'be removed in a future release.',
+                          AstropyDeprecationWarning)
         self.kron_params = kron_params
         self._kron_fluxerr = None
 
@@ -1492,35 +1498,39 @@ class SourceProperties:
 
         return segm_mask
 
-    def _prepare_kron_data(self, aperture_mask):
+    def _prepare_kron_data(self, aperture_mask, sub_bkg=False, correct=False):
+        apply_correct = correct and (self.kron_params[0] == 'correct')
+
         mask = ~np.isfinite(self._data)
         if self._mask is not None:
             mask |= self._mask
 
-        data = aperture_mask.cutout(self._data, copy=True)
-        mask = aperture_mask.cutout(mask)
-        data[mask] = 0.
-
+        data = aperture_mask.cutout(self._data, copy=True, fill_value=np.nan)
+        mask = aperture_mask.cutout(mask) | np.isnan(data)
         segm_mask = self._mask_neighbors(aperture_mask,
                                          method=self.kron_params[0])
-        if segm_mask is not None:
-            data[segm_mask] = 0.
+        if segm_mask is not None and not apply_correct:
+            mask |= segm_mask
+
+        if sub_bkg:
+            data -= self.local_background
+        data[mask] = 0.
 
         if self._error is not None:
             error = aperture_mask.cutout(self._error, copy=True)
-            if segm_mask is not None:
-                error[segm_mask] = 0.
+            error[mask] = 0.
         else:
             error = None
 
         # Correct masked pixels in neighboring segments.  Masked pixels
         # are replaced with pixels on the opposite side of the source.
-        if self.kron_params[0] == 'correct':
-            from ..utils.interpolation import _mask_to_mirrored_num
-            xypos = (self.xcentroid.value, self.ycentroid.value)
-            data = _mask_to_mirrored_num(data, segm_mask, xypos)
+        if apply_correct:
+            from ._utils import mask_to_mirrored_value
+            xycen = (self.xcentroid.value - aperture_mask.bbox.ixmin,
+                     self.ycentroid.value - aperture_mask.bbox.iymin)
+            data = mask_to_mirrored_value(data, segm_mask, xycen)
             if self._error is not None:
-                error = _mask_to_mirrored_num(error, segm_mask, xypos)
+                error = mask_to_mirrored_value(error, segm_mask, xycen)
 
         return data, error
 
@@ -1563,7 +1573,7 @@ class SourceProperties:
 
         # prepare cutouts of the data and error arrays based on the
         # aperture size
-        data, error = self._prepare_kron_data(aperture_mask)
+        data, error = self._prepare_kron_data(aperture_mask, sub_bkg=False)
         aperture.positions -= (aperture_mask.bbox.ixmin,
                                aperture_mask.bbox.iymin)
 
@@ -1629,14 +1639,14 @@ class SourceProperties:
 
         aperture = deepcopy(self.kron_aperture)
         aperture_mask = aperture.to_mask()
-        data, error = self._prepare_kron_data(aperture_mask)
+        data, error = self._prepare_kron_data(aperture_mask, sub_bkg=True)
         aperture.positions -= (aperture_mask.bbox.ixmin,
                                aperture_mask.bbox.iymin)
 
         method = self.kron_params[3]
         subpixels = self.kron_params[4]
-        flux, fluxerr = aperture.do_photometry(data - self.local_background,
-                                               error=error, method=method,
+        flux, fluxerr = aperture.do_photometry(data, error=error,
+                                               method=method,
                                                subpixels=subpixels)
         if len(fluxerr) > 0:
             self._kron_fluxerr = fluxerr[0]

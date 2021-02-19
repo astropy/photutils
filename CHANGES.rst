@@ -70,6 +70,11 @@ Bug Fixes
   - Fixed ``SourceProperties`` ``kron_radius`` for sources that are
     completely masked. [#1164]
 
+  - Fixed ``SourceProperties`` Kron properties for sources near the
+    image edges. [#1167]
+
+  - Fixed ``SourceProperties`` Kron mask correction. [#1167]
+
 API changes
 ^^^^^^^^^^^
 
@@ -82,6 +87,11 @@ API changes
 
   - Removed the deprecated ``fit_2dgaussian`` function and
     ``GaussianConst2D`` class. [#1147]
+
+- ``photutils.segmentation``
+
+  - Deprecated the ``"mask_all"`` option in the ``SourceProperties``
+    ``kron_params`` keyword. [#1167]
 
 
 1.0.2 (2021-01-20)
