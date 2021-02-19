@@ -179,6 +179,7 @@ if os.path.isfile(nitpick_filename):
 # -- Options for linkcheck output ---------------------------------------------
 linkcheck_retry = 5
 linkcheck_ignore = ['http://data.astropy.org',
+                    r'https://iraf.net/*',
                     r'https://github\.com/astropy/photutils/(?:issues|pull)/\d+']
 linkcheck_timeout = 180
 linkcheck_anchors = False
