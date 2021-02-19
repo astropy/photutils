@@ -1498,17 +1498,18 @@ class SourceProperties:
 
         return segm_mask
 
-    def _prepare_kron_data(self, aperture_mask, sub_bkg=False):
+    def _prepare_kron_data(self, aperture_mask, sub_bkg=False, correct=False):
+        apply_correct = correct and (self.kron_params[0] == 'correct')
+
         mask = ~np.isfinite(self._data)
         if self._mask is not None:
             mask |= self._mask
 
         data = aperture_mask.cutout(self._data, copy=True, fill_value=np.nan)
         mask = aperture_mask.cutout(mask) | np.isnan(data)
-
         segm_mask = self._mask_neighbors(aperture_mask,
                                          method=self.kron_params[0])
-        if segm_mask is not None:
+        if segm_mask is not None and not apply_correct:
             mask |= segm_mask
 
         if sub_bkg:
@@ -1517,14 +1518,13 @@ class SourceProperties:
 
         if self._error is not None:
             error = aperture_mask.cutout(self._error, copy=True)
-            if segm_mask is not None:
-                error[segm_mask] = 0.
+            error[mask] = 0.
         else:
             error = None
 
         # Correct masked pixels in neighboring segments.  Masked pixels
         # are replaced with pixels on the opposite side of the source.
-        if self.kron_params[0] == 'correct':
+        if apply_correct:
             from ..utils.interpolation import _mask_to_mirrored_num
             xycen = (self.xcentroid.value - aperture_mask.bbox.ixmin,
                      self.ycentroid.value - aperture_mask.bbox.iymin)
