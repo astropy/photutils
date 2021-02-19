@@ -1485,13 +1485,14 @@ class SourceCatalog:
                                                theta=theta_))
         return aperture
 
-    def _correct_kron_mask(self, data, mask, xycenter, error=None):
+    @staticmethod
+    def _correct_kron_mask(data, mask, xycenter, error=None):
         # Correct masked pixels in neighboring segments.  Masked pixels
         # are replaced with pixels on the opposite side of the source.
-        from ..utils.interpolation import _mask_to_mirrored_num
-        data = _mask_to_mirrored_num(data, mask, xycenter)
+        from ._utils import mask_to_mirrored_value
+        data = mask_to_mirrored_value(data, mask, xycenter)
         if error is not None:
-            error = _mask_to_mirrored_num(error, mask, xycenter)
+            error = mask_to_mirrored_value(error, mask, xycenter)
         return data, error
 
     def _make_kron_segm_mask(self, label, slices):
@@ -1582,12 +1583,6 @@ class SourceCatalog:
 
             xycen = (xcen_ - max(0, aperture_mask.bbox.ixmin),
                      ycen_ - max(0, aperture_mask.bbox.iymin))
-
-            # apply corrections to masked data based on source symmetry
-            if self.kron_params[0] == 'correct':
-                data, _ = self._correct_kron_mask(data, segm_mask, xycen,
-                                                  error=None)
-                mask = data_mask  # do not include the correct segm_mask
 
             xval = np.arange(data.shape[1]) - xycen[0]
             yval = np.arange(data.shape[0]) - xycen[1]
@@ -1680,7 +1675,7 @@ class SourceCatalog:
                 error = None
 
             segm_mask = self._make_kron_segm_mask(label, slc_lg)
-            if segm_mask is None:
+            if segm_mask is None or self.kron_params[0] == 'correct':
                 mask = data_mask
             else:
                 mask = data_mask | segm_mask
@@ -1688,22 +1683,20 @@ class SourceCatalog:
             xycen = (xcen - max(0, aperture_mask.bbox.ixmin),
                      ycen - max(0, aperture_mask.bbox.iymin))
 
-            # apply corrections to masked data based on source symmetry
+            data = data - bkg
+            # correct segment-masked data based on source symmetry
             if self.kron_params[0] == 'correct':
-                data, error = self._correct_kron_mask(data, mask, xycen,
+                data, error = self._correct_kron_mask(data, segm_mask, xycen,
                                                       error=error)
-                mask = data_mask  # do not include the correct segm_mask
 
             aperture_weights = aperture_mask.data[slc_sm]
             pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
-            kron_flux.append(np.sum((aperture_weights
-                                     * (data - bkg))[pixel_mask]))
+            kron_flux.append(np.sum((aperture_weights * data)[pixel_mask]))
             if error is None:
                 kron_fluxerr.append(np.nan)
             else:
                 kron_fluxerr.append(np.sqrt(np.sum((aperture_weights
                                                     * error**2)[pixel_mask])))
-
         return np.transpose((kron_flux, kron_fluxerr))
 
     @lazyproperty
