@@ -13,7 +13,6 @@ from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
@@ -31,9 +30,10 @@ __doctest_requires__ = {('SourceCatalog', 'SourceCatalog.*'): ['scipy']}
 DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'sky_centroid_icrs', 'source_sum', 'source_sum_err',
                    'background_sum', 'background_mean',
-                   'background_at_centroid', 'bbox_xmin', 'bbox_xmax',
+                   'background_centroid', 'bbox_xmin', 'bbox_xmax',
                    'bbox_ymin', 'bbox_ymax', 'min_value', 'max_value',
-                   'minval_xpos', 'minval_ypos', 'maxval_xpos', 'maxval_ypos',
+                   'minval_xindex', 'minval_yindex',
+                   'maxval_xindex', 'maxval_yindex',
                    'area', 'equivalent_radius', 'perimeter',
                    'semimajor_sigma', 'semiminor_sigma',
                    'orientation', 'eccentricity', 'ellipticity', 'elongation',
@@ -323,8 +323,53 @@ class SourceCatalog:
         return cutouts
 
     def to_table(self, columns=None, exclude_columns=None):
-        return _properties_table(self, columns=columns,
-                                 exclude_columns=exclude_columns)
+        """
+        Create a `~astropy.table.QTable` of properties.
+
+        If ``columns`` or ``exclude_columns`` are not input, then
+        the `~astropy.table.QTable` will include a default list of
+        scalar-valued properties as defined by the ``default_columns``
+        attribute.
+
+        Parameters
+        ----------
+        columns : str or list of str, optional
+            Names of columns, in order, to include in the output
+            `~astropy.table.QTable`. The allowed column names are any of
+            the attributes of `SourceProperties`.
+
+        exclude_columns : str or list of str, optional
+            Names of columns to exclude from the default columns in the
+            output `~astropy.table.QTable`. The default columns are
+            defined in the ``default_columns`` attribute.
+
+        Returns
+        -------
+        table : `~astropy.table.QTable`
+            A table of sources properties with one row per source.
+        """
+        # start with the default columns
+        columns_all = self.default_columns
+
+        table_columns = None
+        if exclude_columns is not None:
+            table_columns = [s for s in columns_all
+                             if s not in exclude_columns]
+        if columns is not None:
+            table_columns = np.atleast_1d(columns)
+        if table_columns is None:
+            table_columns = columns_all
+
+        tbl = QTable()
+        for column in table_columns:
+            values = getattr(self, column)
+
+            # column assignment requires an object with a length
+            if self.isscalar:
+                values = (values,)
+
+            tbl[column] = values
+        return tbl
 
     @lazyproperty
     def nlabels(self):
