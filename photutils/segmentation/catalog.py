@@ -325,6 +325,13 @@ class SourceCatalog:
             cutouts.append(cutout)
         return cutouts
 
+    def get_label(self, label):
+        return self.get_labels(label)
+
+    def get_labels(self, labels):
+        idx = np.searchsorted(self.label, labels)
+        return self[idx]
+
     def to_table(self, columns=None, exclude_columns=None):
         """
         Create a `~astropy.table.QTable` of properties.
