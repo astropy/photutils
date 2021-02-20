@@ -27,18 +27,13 @@ __doctest_requires__ = {('SourceCatalog', 'SourceCatalog.*'): ['scipy']}
 
 
 # default table columns for `to_table()` output
-DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
-                   'sky_centroid_icrs', 'source_sum', 'source_sum_err',
-                   'background_sum', 'background_mean',
-                   'background_centroid', 'bbox_xmin', 'bbox_xmax',
-                   'bbox_ymin', 'bbox_ymax', 'min_value', 'max_value',
-                   'minval_xindex', 'minval_yindex',
-                   'maxval_xindex', 'maxval_yindex',
-                   'area', 'equivalent_radius', 'perimeter',
-                   'semimajor_sigma', 'semiminor_sigma',
-                   'orientation', 'eccentricity', 'ellipticity', 'elongation',
-                   'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy',
-                   'cyy', 'gini']
+DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',
+                   'bbox_xmin', 'bbox_xmax', 'bbox_ymin', 'bbox_ymax',
+                   'area', 'semimajor_sigma', 'semiminor_sigma',
+                   'orientation', 'eccentricity',
+                   'min_value', 'max_value', 'local_background',
+                   'segment_flux', 'segment_fluxerr', 'kron_flux',
+                   'kron_fluxerr']
 
 
 def as_scalar(method):
@@ -310,7 +305,7 @@ class SourceCatalog:
         if self._mask is not None:
             mask |= self._mask
 
-        cutout = self.convdata_cutout
+        cutout = self.convdata
         if self.isscalar:
             cutout = (cutout,)
 
@@ -428,18 +423,18 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def segm_cutout(self):
+    def segment(self):
         return self._make_cutout(self._segment_img.data, units=True,
                                  masked=False)
 
     @lazyproperty
     @as_scalar
-    def segm_cutout_ma(self):
+    def segment_ma(self):
         return self._make_cutout(self._segment_img.data, units=False,
                                  masked=True)
 
     @lazyproperty
-    def data_cutout(self):
+    def data(self):
         """
         A 2D `~numpy.ndarray` cutout from the data using the minimal
         bounding box of the source segment.
@@ -447,7 +442,7 @@ class SourceCatalog:
         return self._make_cutout(self._data, units=True, masked=False)
 
     @lazyproperty
-    def data_cutout_ma(self):
+    def data_ma(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the ``data``.
 
@@ -458,38 +453,38 @@ class SourceCatalog:
         return self._make_cutout(self._data, units=False, masked=True)
 
     @lazyproperty
-    def convdata_cutout(self):
+    def convdata(self):
         return self._make_cutout(self._convolved_data, units=True,
                                  masked=False)
 
     @lazyproperty
-    def convdata_cutout_ma(self):
+    def convdata_ma(self):
         return self._make_cutout(self._convolved_data, units=False,
                                  masked=True)
 
     @lazyproperty
-    def error_cutout(self):
+    def error(self):
         if self._error is None:
             return self._null_object
         return self._make_cutout(self._error, units=True,
                                  masked=False)
 
     @lazyproperty
-    def error_cutout_ma(self):
+    def error_ma(self):
         if self._error is None:
             return self._null_object
         return self._make_cutout(self._error, units=False,
                                  masked=True)
 
     @lazyproperty
-    def background_cutout(self):
+    def background(self):
         if self._background is None:
             return self._null_object
         return self._make_cutout(self._background, units=True,
                                  masked=False)
 
     @lazyproperty
-    def background_cutout_ma(self):
+    def background_ma(self):
         if self._error is None:
             return self._null_object
         return self._make_cutout(self._background, units=False,
@@ -507,19 +502,19 @@ class SourceCatalog:
 
     @lazyproperty
     def _data_values(self):
-        return self._get_values(self.data_cutout_ma)
+        return self._get_values(self.data_ma)
 
     @lazyproperty
     def _error_values(self):
         if self._error is None:
             return self._null_value
-        return self._get_values(self.error_cutout_ma)
+        return self._get_values(self.error_ma)
 
     @lazyproperty
     def _background_values(self):
         if self._background is None:
             return self._null_value
-        return self._get_values(self.background_cutout_ma)
+        return self._get_values(self.background_ma)
 
     @lazyproperty
     @as_scalar
@@ -547,7 +542,7 @@ class SourceCatalog:
     @as_scalar
     def cutout_centroid(self):
         """
-        The ``(y, x)`` coordinate, relative to the `data_cutout`, of
+        The ``(y, x)`` coordinate, relative to the cutout data, of
         the centroid within the source segment.
         """
         moments = self.moments
@@ -808,15 +803,15 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def minval_cutout_index(self):
+    def cutout_minval_index(self):
         """
-        The ``(y, x)`` coordinate, relative to the `data_cutout`, of the
+        The ``(y, x)`` coordinate, relative to the cutout data, of the
         minimum pixel value of the ``data`` within the source segment.
 
         If there are multiple occurrences of the minimum value, only the
         first occurence is returned.
         """
-        data = self.data_cutout_ma
+        data = self.data_ma
         if self.isscalar:
             data = (data,)
         idx = []
@@ -829,15 +824,15 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def maxval_cutout_index(self):
+    def cutout_maxval_index(self):
         """
-        The ``(y, x)`` coordinate, relative to the `data_cutout`, of the
+        The ``(y, x)`` coordinate, relative to the cutout data, of the
         maximum pixel value of the ``data`` within the source segment.
 
         If there are multiple occurrences of the maximum value, only the
         first occurence is returned.
         """
-        data = self.data_cutout_ma
+        data = self.data_ma
         if self.isscalar:
             data = (data,)
         idx = []
@@ -858,7 +853,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurence is returned.
         """
-        index = self.minval_cutout_index
+        index = self.cutout_minval_index
         if self.isscalar:
             index = (index,)
         out = []
@@ -876,7 +871,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurence is returned.
         """
-        index = self.maxval_cutout_index
+        index = self.cutout_maxval_index
         if self.isscalar:
             index = (index,)
         out = []
@@ -934,7 +929,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def source_sum(self):
+    def segment_flux(self):
         """
         The sum of the unmasked ``data`` values within the source segment.
 
@@ -955,13 +950,13 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def source_sum_err(self):
+    def segment_fluxerr(self):
         """
         The uncertainty of
-        `~photutils.segmentation.LegacySourceProperties.source_sum`,
+        `~photutils.segmentation.LegacySourceProperties.segment_flux`,
         propagated from the input ``error`` array.
 
-        ``source_sum_err`` is the quadrature sum of the total errors
+        ``segment_fluxerr`` is the quadrature sum of the total errors
         over the non-masked pixels within the source segment:
 
         .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
