@@ -187,10 +187,8 @@ class SourceCatalog:
                 if np.isscalar(value):
                     continue
 
-                # TODO: copy(value)?
                 try:
                     val = value[index]
-
                     if newcls.isscalar and key.startswith('_'):
                         # keep _<attrs> as length-1 iterables
                         # NOTE: these attributes will not exactly match
@@ -208,7 +206,9 @@ class SourceCatalog:
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
-        fmt = [f'Sources: {len(self)}']
+        with np.printoptions(threshold=100, edgeitems=5):
+            fmt = [f'Sources: {self.nlabels}',
+                   f'Labels: {self.label}']
         return f'{cls_name}\n' + '\n'.join(fmt)
 
     def __repr__(self):
