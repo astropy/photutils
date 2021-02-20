@@ -69,9 +69,12 @@ class SourceCatalog:
         self._background = self._validate_array(background, 'background')
         self._wcs = wcs
 
-        if localbkg_width is not None and localbkg_width <= 0:
+        if localbkg_width <= 0:
             raise ValueError('localbkg_width must be > 0')
-        self.localbkg_width = localbkg_width
+        localbkg_width_int = int(localbkg_width)
+        if localbkg_width_int != localbkg_width:
+            raise ValueError('localbkg_width must be an integer')
+        self.localbkg_width = localbkg_width_int
 
         if kron_params[0] not in ('none', 'mask', 'mask_all', 'correct'):
             raise ValueError('Invalid value for kron_params[0]')
