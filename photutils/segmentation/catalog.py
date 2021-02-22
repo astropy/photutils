@@ -55,7 +55,7 @@ def as_scalar(method):
 
 class SourceCatalog:
     def __init__(self, data, segment_img, error=None, mask=None, kernel=None,
-                 background=None, wcs=None, localbkg_width=None,
+                 background=None, wcs=None, localbkg_width=0,
                  kron_params=('mask', 2.5, 0.0, 'exact', 5)):
 
         self._data_unit = None
@@ -69,8 +69,8 @@ class SourceCatalog:
         self._background = self._validate_array(background, 'background')
         self._wcs = wcs
 
-        if localbkg_width <= 0:
-            raise ValueError('localbkg_width must be > 0')
+        if localbkg_width < 0:
+            raise ValueError('localbkg_width must be >= 0')
         localbkg_width_int = int(localbkg_width)
         if localbkg_width_int != localbkg_width:
             raise ValueError('localbkg_width must be an integer')
@@ -1431,7 +1431,7 @@ class SourceCatalog:
         The rectangular annulus aperture used to estimate the local
         background.
         """
-        if self.localbkg_width is None:
+        if self.localbkg_width == 0:
             return self._null_object
 
         aperture = []
@@ -1458,7 +1458,7 @@ class SourceCatalog:
 
         This property is always an `~numpy.ndarray` without units.
         """
-        if self.localbkg_width is None:
+        if self.localbkg_width == 0:
             bkg = np.zeros(self.nlabels)
         else:
             mask = self._data_mask | self._segment_img.data.astype(bool)
