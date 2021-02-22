@@ -51,7 +51,7 @@ def as_scalar(method):
 class SourceCatalog:
     def __init__(self, data, segment_img, *, error=None, mask=None,
                  kernel=None, background=None, wcs=None, localbkg_width=0,
-                 kron_params=('mask', 2.5, 0.0, 'exact', 5)):
+                 kron_params=('mask', 2.5, 0.0)):
 
         self._data_unit = None
         data, error, background = self._process_quantities(data, error,
@@ -1714,8 +1714,7 @@ class SourceCatalog:
                 continue
 
             # prepare cutouts of the data based on the aperture size
-            aperture_mask = aperture.to_mask(method=self.kron_params[3],
-                                             subpixels=self.kron_params[4])
+            aperture_mask = aperture.to_mask(method='exact')
             slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data.shape)
             data = self._data[slc_lg]
             data_mask = self._data_mask[slc_lg]
