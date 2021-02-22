@@ -24,10 +24,10 @@ from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
 from ..utils._wcs_helpers import _pixel_to_world
 
-__all__ = ['SourceProperties', 'source_properties', 'SourceCatalog']
+__all__ = ['SourceProperties', 'source_properties', 'LegacySourceCatalog']
 
 __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
-                         'SourceCatalog', 'SourceCatalog.*',
+                         'LegacySourceCatalog', 'LegacySourceCatalog.*',
                          'source_properties', 'properties_table'):
                         ['scipy']}
 
@@ -1817,9 +1817,9 @@ def source_properties(data, segment_img, error=None, mask=None,
 
     Returns
     -------
-    output : `SourceCatalog` instance
-        A `SourceCatalog` instance containing the properties of each
-        source.
+    output : `LegacySourceCatalog` instance
+        A `LegacySourceCatalog` instance containing the properties of
+        each source.
 
     Notes
     -----
@@ -1938,10 +1938,10 @@ def source_properties(data, segment_img, error=None, mask=None,
     if not sources_props:
         raise ValueError('No sources are defined.')
 
-    return SourceCatalog(sources_props, wcs=wcs)
+    return LegacySourceCatalog(sources_props, wcs=wcs)
 
 
-class SourceCatalog:
+class LegacySourceCatalog:
     """
     Class to hold source catalogs.
     """
@@ -2076,7 +2076,7 @@ class SourceCatalog:
     def to_table(self, columns=None, exclude_columns=None):
         """
         Construct a `~astropy.table.QTable` of source properties from a
-        `SourceCatalog` object.
+        `LegacySourceCatalog` object.
 
         If ``columns`` or ``exclude_columns`` are not input, then the
         `~astropy.table.QTable` will include a default list of
@@ -2145,11 +2145,11 @@ class SourceCatalog:
 def _properties_table(obj, columns=None, exclude_columns=None):
     """
     Construct a `~astropy.table.QTable` of source properties from a
-    `SourceProperties` or `SourceCatalog` object.
+    `SourceProperties` or `LegacySourceCatalog` object.
 
     Parameters
     ----------
-    obj : `SourceProperties` or `SourceCatalog` instance
+    obj : `SourceProperties` or `LegacySourceCatalog` instance
         The object containing the source properties.
 
     columns : str or list of str, optional
