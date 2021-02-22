@@ -49,8 +49,8 @@ def as_scalar(method):
 
 
 class SourceCatalog:
-    def __init__(self, data, segment_img, error=None, mask=None, kernel=None,
-                 background=None, wcs=None, localbkg_width=0,
+    def __init__(self, data, segment_img, *, error=None, mask=None,
+                 kernel=None, background=None, wcs=None, localbkg_width=0,
                  kron_params=('mask', 2.5, 0.0, 'exact', 5)):
 
         self._data_unit = None
