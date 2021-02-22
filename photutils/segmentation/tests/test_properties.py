@@ -18,7 +18,8 @@ import pytest
 
 from ..core import SegmentationImage
 from ..detect import detect_sources
-from ..properties import SourceCatalog, SourceProperties, source_properties
+from ..properties import (LegacySourceCatalog, SourceProperties,
+                          source_properties)
 from ...datasets import make_gwcs, make_wcs
 
 try:
@@ -529,7 +530,7 @@ class TestSourcePropertiesFunction:
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSourceCatalog:
+class TestLegacySourceCatalog:
     def setup_class(self):
         self.segm = detect_sources(IMAGE, THRESHOLD, npixels=5)
 
@@ -541,7 +542,7 @@ class TestSourceCatalog:
         assert len(cat) == 9
         cat2 = cat[0:5]
         assert len(cat2) == 5
-        cat3 = SourceCatalog(cat2)
+        cat3 = LegacySourceCatalog(cat2)
         del cat3[4]
         assert len(cat3) == 4
 
@@ -551,14 +552,14 @@ class TestSourceCatalog:
 
     def test_inputs(self):
         cat = source_properties(IMAGE, self.segm)
-        cat2 = SourceCatalog(cat[0])
+        cat2 = LegacySourceCatalog(cat[0])
         assert len(cat) == 3
         assert len(cat2) == 1
 
         with pytest.raises(ValueError):
-            SourceCatalog([])
+            LegacySourceCatalog([])
         with pytest.raises(ValueError):
-            SourceCatalog('a')
+            LegacySourceCatalog('a')
 
     def test_table(self):
         cat = source_properties(IMAGE, self.segm)
