@@ -68,7 +68,7 @@ User Documentation
     psf.rst
     epsf.rst
     psf_matching.rst
-    segmentation.rst
+    legacy_segmentation.rst
     centroids.rst
     morphology.rst
     isophote.rst
