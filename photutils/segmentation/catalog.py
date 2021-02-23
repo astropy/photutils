@@ -1161,15 +1161,12 @@ class SourceCatalog:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             covar_det = np.linalg.det(covar)
-        idx = np.where(covar_det < delta2)[0]
-        while idx.size > 0:
-            covar[idx, 0, 0] += delta
-            covar[idx, 1, 1] += delta
-            # ignore RuntimeWarning from NaN values in covar
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                covar_det = np.linalg.det(covar)
             idx = np.where(covar_det < delta2)[0]
+            while idx.size > 0:
+                covar[idx, 0, 0] += delta
+                covar[idx, 1, 1] += delta
+                covar_det = np.linalg.det(covar)
+                idx = np.where(covar_det < delta2)[0]
         return covar
 
     @lazyproperty
@@ -1641,8 +1638,12 @@ class SourceCatalog:
 
             aperture_weights = aperture_mask.data[slc_sm]
             pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
-            flux_numer = np.sum((aperture_weights * data * rr)[pixel_mask])
-            flux_denom = np.sum((aperture_weights * data)[pixel_mask])
+
+            # ignore RuntimeWarning for invalid data values
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                flux_numer = np.sum((aperture_weights * data * rr)[pixel_mask])
+                flux_denom = np.sum((aperture_weights * data)[pixel_mask])
 
             if flux_numer <= 0 or flux_denom <= 0:
                 kron_radius.append(np.nan)
@@ -1740,12 +1741,17 @@ class SourceCatalog:
 
             aperture_weights = aperture_mask.data[slc_sm]
             pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
-            kron_flux.append(np.sum((aperture_weights * data)[pixel_mask]))
-            if error is None:
-                kron_fluxerr.append(np.nan)
-            else:
-                kron_fluxerr.append(np.sqrt(np.sum((aperture_weights
-                                                    * error**2)[pixel_mask])))
+            # ignore RuntimeWarning for invalid data or error values
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                kron_flux.append(np.sum((aperture_weights * data)[pixel_mask]))
+                if error is None:
+                    kron_fluxerr.append(np.nan)
+                else:
+                    kron_fluxerr.append(
+                        np.sqrt(np.sum((aperture_weights
+                                        * error**2)[pixel_mask])))
+
         return np.transpose((kron_flux, kron_fluxerr))
 
     @lazyproperty
