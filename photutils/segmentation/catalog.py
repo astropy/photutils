@@ -51,7 +51,7 @@ def as_scalar(method):
 class SourceCatalog:
     def __init__(self, data, segment_img, *, error=None, mask=None,
                  kernel=None, background=None, wcs=None, localbkg_width=0,
-                 kron_params=('mask', 2.5, 0.0)):
+                 kron_params=('mask', 2.5, 0.0), detection_cat=None):
 
         self._data_unit = None
         data, error, background = self._process_quantities(data, error,
@@ -79,6 +79,15 @@ class SourceCatalog:
         self._labels = self._segment_img.labels
         self._slices = self._segment_img.slices
         self.default_columns = DEFAULT_COLUMNS
+
+        if detection_cat is not None:
+            if not isinstance(detection_cat, SourceCatalog):
+                raise TypeError('detection_cat must be a SourceCatalog '
+                                'instance')
+            if len(detection_cat) != len(self):
+                raise ValueError('detection_cat must have the same number '
+                                 'of sources as the input segment_img')
+        self._detection_cat = detection_cat
 
     def _process_quantities(self, data, error, background):
         """
@@ -1597,6 +1606,9 @@ class SourceCatalog:
         ``kron_params[2]``. If ``kron_params[2] <= 0``, then the Kron
         aperture will be `None` and the Kron flux will be ``np.nan``.
         """
+        if self._detection_cat is not None:
+            return self._detection_cat.kron_radius
+
         labels = self._label_iter
         apertures = self._make_elliptical_apertures(scale=6.0)
         xcen = self._xcentroid
@@ -1673,6 +1685,9 @@ class SourceCatalog:
         Note that if the Kron aperture is `None`, the Kron flux will be
         ``np.nan``.
         """
+        if self._detection_cat is not None:
+            return self._detection_cat.kron_aperture
+
         scale = self.kron_radius.value * self.kron_params[1]
         kron_aperture = self._make_elliptical_apertures(scale=scale)
         kron_radius = self.kron_radius.value
@@ -1698,15 +1713,20 @@ class SourceCatalog:
 
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
-        kron_aperture = deepcopy(self.kron_aperture)
+        if self._detection_cat is not None:
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
+        kron_aperture = deepcopy(detcat.kron_aperture)
         if self.isscalar:
             kron_aperture = (kron_aperture,)
 
         kron_flux = []
         kron_fluxerr = []
-        for label, xcen, ycen, aperture, bkg in zip(self._label_iter,
-                                                    self._xcentroid,
-                                                    self._ycentroid,
+        for label, xcen, ycen, aperture, bkg in zip(detcat._label_iter,
+                                                    detcat._xcentroid,
+                                                    detcat._ycentroid,
                                                     kron_aperture,
                                                     self._local_background):
             if aperture is None:
