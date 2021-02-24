@@ -30,10 +30,9 @@ __doctest_requires__ = {('SourceCatalog', 'SourceCatalog.*'): ['scipy']}
 DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'bbox_xmin', 'bbox_xmax', 'bbox_ymin', 'bbox_ymax',
                    'area', 'semimajor_sigma', 'semiminor_sigma',
-                   'orientation', 'eccentricity',
-                   'min_value', 'max_value', 'local_background',
-                   'segment_flux', 'segment_fluxerr', 'kron_flux',
-                   'kron_fluxerr']
+                   'orientation', 'eccentricity', 'min_value', 'max_value',
+                   'local_background', 'segment_flux', 'segment_fluxerr',
+                   'kron_flux', 'kron_fluxerr']
 
 
 def as_scalar(method):
@@ -63,6 +62,9 @@ class SourceCatalog:
         self._kernel = kernel
         self._background = self._validate_array(background, 'background')
         self._wcs = wcs
+
+        self._convolved_data = self._convolve_data()
+        self._data_mask = self._make_data_mask()
 
         if localbkg_width < 0:
             raise ValueError('localbkg_width must be >= 0')
@@ -155,7 +157,8 @@ class SourceCatalog:
 
         # attributes defined in __init__ (_segment_img was set above)
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
-                     '_background', '_wcs', '_data_unit', 'localbkg_width',
+                     '_background', '_wcs', '_data_unit', '_convolved_data',
+                     '_data_mask', '_detection_cat', 'localbkg_width',
                      'kron_params', 'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
@@ -175,37 +178,32 @@ class SourceCatalog:
             value = value.tolist()
         setattr(newcls, attr, value)
 
-        # lazy properties to keep, but not slice
-        ref_attr = ('_convolved_data', '_data_mask')
-
         # evaluated lazyproperty objects
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
         for key in keys:
             value = self.__dict__[key]
-            if key in ref_attr:  # do not slice
-                newcls.__dict__[key] = value
-            else:
-                # do not insert attributes that are always scalar (e.g.,
-                # isscalar, nlabels), i.e., not an array/list for each
-                # source
-                if np.isscalar(value):
-                    continue
 
-                try:
-                    val = value[index]
-                    if newcls.isscalar and key.startswith('_'):
-                        # keep _<attrs> as length-1 iterables
-                        # NOTE: these attributes will not exactly match
-                        # the values if evaluated for the first time in
-                        # a scalar class (e.g., _bbox_corner_ll)
-                        val = (val,)
-                except TypeError:
-                    # apply fancy indices (e.g., array/list or bool
-                    # mask) to lists
-                    val = (np.array(value + [None],
-                                    dtype=object)[:-1][index]).tolist()
+            # do not insert attributes that are always scalar (e.g.,
+            # isscalar, nlabels), i.e., not an array/list for each
+            # source
+            if np.isscalar(value):
+                continue
 
-                newcls.__dict__[key] = val
+            try:
+                val = value[index]
+                if newcls.isscalar and key.startswith('_'):
+                    # keep _<attrs> as length-1 iterables
+                    # NOTE: these attributes will not exactly match
+                    # the values if evaluated for the first time in
+                    # a scalar class (e.g., _bbox_corner_ll)
+                    val = (val,)
+            except TypeError:
+                # apply fancy indices (e.g., array/list or bool
+                # mask) to lists
+                val = (np.array(value + [None],
+                                dtype=object)[:-1][index]).tolist()
+
+            newcls.__dict__[key] = val
         return newcls
 
     def __str__(self):
@@ -232,6 +230,18 @@ class SourceCatalog:
         for item in range(len(self)):
             yield self.__getitem__(item)
 
+    def _convolve_data(self):
+        if self._kernel is None:
+            return self._data
+        return _filter_data(self._data, self._kernel, mode='constant',
+                            fill_value=0.0, check_normalization=True)
+
+    def _make_data_mask(self):
+        mask = ~np.isfinite(self._data)
+        if self._mask is not None:
+            mask |= self._mask
+        return mask
+
     @lazyproperty
     def _null_object(self):
         """
@@ -251,20 +261,6 @@ class SourceCatalog:
         values = np.empty(self.nlabels)
         values.fill(np.nan)
         return values
-
-    @lazyproperty
-    def _convolved_data(self):
-        if self._kernel is None:
-            return self._data
-        return _filter_data(self._data, self._kernel, mode='constant',
-                            fill_value=0.0, check_normalization=True)
-
-    @lazyproperty
-    def _data_mask(self):
-        mask = ~np.isfinite(self._data)
-        if self._mask is not None:
-            mask |= self._mask
-        return mask
 
     @lazyproperty
     def _cutout_segment_mask(self):
