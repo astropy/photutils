@@ -65,17 +65,8 @@ class SourceCatalog:
 
         self._convolved_data = self._convolve_data()
         self._data_mask = self._make_data_mask()
-
-        if localbkg_width < 0:
-            raise ValueError('localbkg_width must be >= 0')
-        localbkg_width_int = int(localbkg_width)
-        if localbkg_width_int != localbkg_width:
-            raise ValueError('localbkg_width must be an integer')
-        self.localbkg_width = localbkg_width_int
-
-        if kron_params[0] not in ('none', 'mask', 'mask_all', 'correct'):
-            raise ValueError('Invalid value for kron_params[0]')
-        self.kron_params = kron_params
+        self._localbkg_width = self._validate_localbkg_width(localbkg_width)
+        self._kron_params = self._validate_kron_params(kron_params)
 
         # needed for ordering and isscalar
         self._labels = self._segment_img.labels
@@ -123,7 +114,7 @@ class SourceCatalog:
 
     def _validate_segment_img(self, segment_img):
         if not isinstance(segment_img, SegmentationImage):
-            raise ValueError('segment_img must be a SegmentationImage')
+            raise TypeError('segment_img must be a SegmentationImage')
         if segment_img.shape != self._data.shape:
             raise ValueError('segment_img and data must have the same shape.')
         return segment_img
@@ -136,6 +127,27 @@ class SourceCatalog:
             if array.shape != self._data.shape:
                 raise ValueError(f'error and {name} must have the same shape.')
         return array
+
+    @staticmethod
+    def _validate_localbkg_width(localbkg_width):
+        if localbkg_width < 0:
+            raise ValueError('localbkg_width must be >= 0')
+        localbkg_width_int = int(localbkg_width)
+        if localbkg_width_int != localbkg_width:
+            raise ValueError('localbkg_width must be an integer')
+        return localbkg_width_int
+
+    @staticmethod
+    def _validate_kron_params(kron_params):
+        if len(kron_params) != 3:
+            raise ValueError('kron_params must have 3 elements')
+        if kron_params[0] not in ('none', 'mask', 'correct'):
+            raise ValueError('Invalid value for kron_params[0]')
+        if kron_params[1] <= 0:
+            raise ValueError('kron_params[1] must be > 0')
+        if kron_params[2] < 0:
+            raise ValueError('kron_params[2] must be >= 0')
+        return kron_params
 
     @property
     def _lazyproperties(self):
@@ -158,8 +170,8 @@ class SourceCatalog:
         # attributes defined in __init__ (_segment_img was set above)
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
                      '_background', '_wcs', '_data_unit', '_convolved_data',
-                     '_data_mask', '_detection_cat', 'localbkg_width',
-                     'kron_params', 'default_columns')
+                     '_data_mask', '_detection_cat', '_localbkg_width',
+                     '_kron_params', 'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -249,6 +261,8 @@ class SourceCatalog:
 
         Used for SkyCoord properties if ``wcs`` is `None`.
         """
+        if self.isscalar:
+            return None
         return np.array([None] * self.nlabels)
 
     @lazyproperty
@@ -258,6 +272,8 @@ class SourceCatalog:
 
         Used for background properties if ``background`` is `None`.
         """
+        if self.isscalar:
+            return np.nan
         values = np.empty(self.nlabels)
         values.fill(np.nan)
         return values
@@ -401,15 +417,6 @@ class SourceCatalog:
         if self.isscalar:
             _label = (_label,)
         return _label
-
-    @property
-    @as_scalar
-    def id(self):
-        """
-        The source identification number corresponding to the object
-        label in the segmentation image.
-        """
-        return self.label
 
     @property
     @as_scalar
@@ -1428,7 +1435,7 @@ class SourceCatalog:
         The rectangular annulus aperture used to estimate the local
         background.
         """
-        if self.localbkg_width == 0:
+        if self._localbkg_width == 0:
             return self._null_object
 
         aperture = []
@@ -1438,10 +1445,10 @@ class SourceCatalog:
             scale = 1.5
             width_bbox = bbox_.ixmax - bbox_.ixmin
             width_in = width_bbox * scale
-            width_out = width_in + 2 * self.localbkg_width
+            width_out = width_in + 2 * self._localbkg_width
             height_bbox = bbox_.iymax - bbox_.iymin
             height_in = height_bbox * scale
-            height_out = height_in + 2 * self.localbkg_width
+            height_out = height_in + 2 * self._localbkg_width
             aperture.append(RectangularAnnulus((xpos, ypos), width_in,
                                                width_out, height_out,
                                                height_in, theta=0.))
@@ -1455,7 +1462,7 @@ class SourceCatalog:
 
         This property is always an `~numpy.ndarray` without units.
         """
-        if self.localbkg_width == 0:
+        if self._localbkg_width == 0:
             bkg = np.zeros(self.nlabels)
         else:
             mask = self._data_mask | self._segment_img.data.astype(bool)
@@ -1548,20 +1555,15 @@ class SourceCatalog:
         return data, error
 
     def _make_kron_segm_mask(self, label, slices):
-        method = self.kron_params[0]
+        method = self._kron_params[0]
         if method in ('none',):
             return None
 
-        # mask all pixels outside of the source segment
-        segment_img = self._segment_img.data[slices]
-        if method in ('mask_all',):
-            segm_mask = (segment_img != label)
-
         # mask pixels *only* in neighboring segments (do not include
         # background pixels)
-        elif method in ('mask', 'correct'):
+        segment_img = self._segment_img.data[slices]
+        if method in ('mask', 'correct'):
             segm_mask = np.logical_and(segment_img != label, segment_img != 0)
-
         else:
             raise ValueError('invalid Kron mask method')
 
@@ -1684,7 +1686,7 @@ class SourceCatalog:
         if self._detection_cat is not None:
             return self._detection_cat.kron_aperture
 
-        scale = self.kron_radius.value * self.kron_params[1]
+        scale = self.kron_radius.value * self._kron_params[1]
         kron_aperture = self._make_elliptical_apertures(scale=scale)
         kron_radius = self.kron_radius.value
 
@@ -1692,13 +1694,14 @@ class SourceCatalog:
         major_sigma = self.semimajor_sigma.value
         minor_sigma = self.semiminor_sigma.value
         circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
-        min_radius = self.kron_params[2]
+        min_radius = self._kron_params[2]
         mask = np.isnan(kron_radius) | (circ_radius < min_radius)
         idx = mask.nonzero()[0]
         if idx.size > 0:
-            circ_aperture = self._make_circular_apertures(self.kron_params[2])
+            circ_aperture = self._make_circular_apertures(self._kron_params[2])
             for i in idx:
-                kron_aperture[i] = circ_aperture[i]
+                if circ_aperture is not None:
+                    kron_aperture[i] = circ_aperture[i]
 
         return kron_aperture
 
@@ -1741,7 +1744,7 @@ class SourceCatalog:
                 error = None
 
             segm_mask = self._make_kron_segm_mask(label, slc_lg)
-            if segm_mask is None or self.kron_params[0] == 'correct':
+            if segm_mask is None or self._kron_params[0] == 'correct':
                 mask = data_mask
             else:
                 mask = data_mask | segm_mask
@@ -1751,7 +1754,7 @@ class SourceCatalog:
 
             data = data - bkg
             # correct segment-masked data based on source symmetry
-            if self.kron_params[0] == 'correct':
+            if self._kron_params[0] == 'correct':
                 data, error = self._correct_kron_mask(data, segm_mask, xycen,
                                                       error=error)
 
