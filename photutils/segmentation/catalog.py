@@ -50,7 +50,7 @@ def as_scalar(method):
 class SourceCatalog:
     def __init__(self, data, segment_img, *, error=None, mask=None,
                  kernel=None, background=None, wcs=None, localbkg_width=0,
-                 kron_params=('mask', 2.5, 0.0), detection_cat=None):
+                 kron_params=('correct', 2.5, 0.0), detection_cat=None):
 
         self._data_unit = None
         data, error, background = self._process_quantities(data, error,
@@ -1564,9 +1564,6 @@ class SourceCatalog:
         segment_img = self._segment_img.data[slices]
         if method in ('mask', 'correct'):
             segm_mask = np.logical_and(segment_img != label, segment_img != 0)
-        else:
-            raise ValueError('invalid Kron mask method')
-
         return segm_mask
 
     @lazyproperty
