@@ -518,14 +518,10 @@ class SourceCatalog:
 
     @lazyproperty
     def _error_values(self):
-        if self._error is None:
-            return self._null_value
         return self._get_values(self.error_ma)
 
     @lazyproperty
     def _background_values(self):
-        if self._background is None:
-            return self._null_value
         return self._get_values(self.background_ma)
 
     @lazyproperty
@@ -954,8 +950,11 @@ class SourceCatalog:
         Non-finite pixel values (NaN and inf) are excluded
         (automatically masked).
         """
+        localbkg = self._local_background
+        if self.isscalar:
+            localbkg = localbkg[0]
         source_sum = np.array([np.sum(arr) for arr in self._data_values])
-        source_sum -= self.area.value * self._local_background
+        source_sum -= self.area.value * localbkg
         if self._data_unit is not None:
             source_sum <<= self._data_unit
         return source_sum
@@ -1174,7 +1173,7 @@ class SourceCatalog:
             warnings.simplefilter('ignore', RuntimeWarning)
             covar_det = np.linalg.det(covar)
             idx = np.where(covar_det < delta2)[0]
-            while idx.size > 0:
+            while idx.size > 0:  # pragma: no cover
                 covar[idx, 0, 0] += delta
                 covar[idx, 1, 1] += delta
                 covar_det = np.linalg.det(covar)
@@ -1693,7 +1692,7 @@ class SourceCatalog:
         circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
         min_radius = self._kron_params[2]
         mask = np.isnan(kron_radius) | (circ_radius < min_radius)
-        idx = mask.nonzero()[0]
+        idx = np.atleast_1d(mask).nonzero()[0]
         if idx.size > 0:
             circ_aperture = self._make_circular_apertures(self._kron_params[2])
             for i in idx:
