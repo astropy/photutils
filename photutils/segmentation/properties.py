@@ -12,6 +12,7 @@ from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import (AstropyUserWarning,
                                       AstropyDeprecationWarning)
 import numpy as np
@@ -45,10 +46,11 @@ DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'cyy', 'gini']
 
 
+@deprecated('1.1', alternative='`~photutils.segmentation.SourceCatalog`')
 class SourceProperties:
     """
     Class to calculate photometry and morphological properties of a
-    single labeled source.
+    single labeled source (deprecated).
 
     Parameters
     ----------
@@ -1709,13 +1711,14 @@ class SourceProperties:
         return np.sum(kernel) / normalization
 
 
+@deprecated('1.1', alternative='`~photutils.segmentation.SourceCatalog`')
 def source_properties(data, segment_img, error=None, mask=None,
                       background=None, filter_kernel=None, wcs=None,
                       labels=None, localbkg_width=None,
                       kron_params=('mask', 2.5, 0.0, 'exact', 5)):
     """
     Calculate photometry and morphological properties of sources defined
-    by a labeled segmentation image.
+    by a labeled segmentation image (deprecated).
 
     Parameters
     ----------
@@ -1941,9 +1944,10 @@ def source_properties(data, segment_img, error=None, mask=None,
     return LegacySourceCatalog(sources_props, wcs=wcs)
 
 
+@deprecated('1.1', alternative='`~photutils.segmentation.SourceCatalog`')
 class LegacySourceCatalog:
     """
-    Class to hold source catalogs.
+    Class to hold source catalogs (deprecated).
     """
 
     def __init__(self, properties_list, wcs=None):
