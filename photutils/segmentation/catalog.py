@@ -36,18 +36,167 @@ DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',
 
 
 def as_scalar(method):
+    """
+    Decorator to return a scalar value from a method if the class is
+    scalar.
+    """
     @functools.wraps(method)
     def _decorator(*args, **kwargs):
         result = method(*args, **kwargs)
         try:
             return (result[0] if args[0].isscalar and len(result) == 1
                     else result)
-        except TypeError:
+        except TypeError:  # if result has no len
             return result
     return _decorator
 
 
 class SourceCatalog:
+    """
+    Class to create a catalog of photometry and morphological properties
+    for sources defined by a segmentation image.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+        The 2D array from which to calculate the source photometry and
+        properties. If ``kernel`` is input, then a convolved version
+        of ``data`` will be used instead of ``data`` to calculate the
+        source centroid and morphological properties. Source photometry
+        is always measured from ``data``. For accurate source properties
+        and photometry, ``data`` should be background-subtracted.
+        Non-finite ``data`` values (NaN and inf) are automatically
+        masked.
+
+    segment_img : `~photutils.segmentation.SegmentationImage`
+        A `~photutils.segmentation.SegmentationImage` object defining
+        the sources.
+
+    error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+        The total error array corresponding to the input ``data``
+        array. ``error`` is assumed to include *all* sources of
+        error, including the Poisson error of the sources (see
+        `~photutils.utils.calc_total_error`) . ``error`` must have
+        the same shape as the input ``data``. If ``data`` is a
+        `~astropy.units.Quantity` array then ``error`` must be a
+        `~astropy.units.Quantity` array (and vise versa) with identical
+        units. Non-finite ``error`` values (NaN and +/- inf) are not
+        automatically masked, unless they are at the same position of
+        non-finite values in the input ``data`` array. Such pixels can
+        be masked using the ``mask`` keyword. See the Notes section
+        below for details on the error propagation.
+
+    mask : 2D `~numpy.ndarray` (bool), optional
+        A boolean mask with the same shape as ``data`` where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from all calculations. Non-finite
+        values (NaN and inf) in the input ``data`` are automatically
+        masked.
+
+    background : float, 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+        The background level that was *previously* present in the input
+        ``data``. ``background`` may either be a scalar value or a 2D
+        image with the same shape as the input ``data``. If ``data``
+        is a `~astropy.units.Quantity` array then ``background`` must
+        be a `~astropy.units.Quantity` array (and vise versa) with
+        identical units. Inputing the ``background`` merely allows
+        for its properties to be measured within each source segment.
+        The input ``background`` does *not* get subtracted from the
+        input ``data``, which should already be background-subtracted.
+        Non-finite ``background`` values (NaN and inf) are not
+        automatically masked, unless they are at the same position of
+        non-finite values in the input ``data`` array. Such pixels can
+        be masked using the ``mask`` keyword.
+
+    wcs : WCS object or `None`, optional
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). If `None`, then all
+        sky-based properties will be set to `None`.
+
+    localbkg_width : int, optional
+        The width of the rectangular annulus used to compute a
+        local background around each source. If 0.0, then no local
+        background subtraction is performed. The local background
+        affects the ``min_value``, ``max_value``, ``segment_flux``, and
+        ``kron_flux`` properties. It does not affect the moment-based
+        morphological properties of the source.
+
+    kron_params : tuple or list, optional
+        A list of three parameters used to determine how the Kron radius
+        and flux are calculated. The first item represents how data
+        pixels are masked around the source. It must be one of:
+
+          * 'none':  do not mask any pixels (equivalent to
+                     MASK_TYPE=NONE in SourceExtractor).
+          * 'mask':  mask pixels assigned to neighboring sources
+                     (equivalent to MASK_TYPE=BLANK in SourceExtractor)
+          * 'correct':  replace pixels assigned to neighboring sources
+                        by replacing them with pixels on the opposite
+                        side of the source center (equivalent to
+                        MASK_TYPE=CORRECT in SourceExtractor).
+
+        The second item represents the scaling parameter of the Kron
+        radius as a scalar float. The third item represents the minimum
+        circular radius as a scalar float. If the Kron radius times
+        sqrt(``semimajor_sigma`` * ``semiminor_sigma``) is less than
+        than this radius, then the Kron flux will be measured in a
+        circle with this minimum radius.
+
+    detection_cat : `SourceCatalog`, optional
+        A `SourceCatalog` object for the detection image. If input, this
+        detection catalog will be used to define the Kron radius and
+        apertures of the sources.
+
+    Notes
+    -----
+    ``data`` should be background-subtracted for accurate source
+    photometry and properties. The previously-subtracted background can
+    be passed into this class to calculate properties of the background
+    for each source.
+
+    `SourceExtractor`_'s centroid and morphological parameters are
+    always calculated from a filtered "detection" image, i.e., the
+    image used to define the segmentation image. The usual downside of
+    the filtering is the sources will be made more circular than they
+    actually are. If you wish to reproduce `SourceExtractor`_ centroid
+    and morphology results, then input a ``kernel``. If ``kernel`` is
+    `None`, then the unfiltered ``data`` will be used for the source
+    centroid and morphological parameters.
+
+    Negative data values within the source segment are set to zero
+    when calculating morphological properties based on image moments.
+    Negative values could occur, for example, if the segmentation
+    image was defined from a different image (e.g., different
+    bandpass) or if the background was oversubtracted. However,
+    `~photutils.segmentation.SourceCatalog.segment_flux` always includes
+    the contribution of negative ``data`` values.
+
+    The input ``error`` array is assumed to include *all* sources
+    of error, including the Poisson error of the sources.
+    `~photutils.segmentation.SourceCatalog.segment_fluxerr` is simply
+    the quadrature sum of the pixel-wise total errors over the
+    non-masked pixels within the source segment:
+
+    .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
+              \\sigma_{\\mathrm{tot}, i}^2}
+
+    where :math:`\\Delta F` is
+    `~photutils.segmentation.SourceCatalog.segment_fluxerr`,
+    :math:`S` are the non-masked pixels in the source segment, and
+    :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
+
+    Custom errors for source segments can be calculated using
+    the `~photutils.segmentation.SourceCatalog.error_ma` and
+    `~photutils.segmentation.SourceCatalog.background_ma` properties,
+    which are 2D `~numpy.ma.MaskedArray` cutout versions of the input
+    ``error`` and ``background`` arrays. The mask is `True` for pixels
+    outside of the source segment, masked pixels from the ``mask``
+    input, or any non-finite ``data`` values (NaN and inf).
+
+    .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
+    """
     def __init__(self, data, segment_img, *, error=None, mask=None,
                  kernel=None, background=None, wcs=None, localbkg_width=0,
                  kron_params=('correct', 2.5, 0.0), detection_cat=None):
@@ -1067,7 +1216,7 @@ class SourceCatalog:
         pixels**2.
 
         Note that the source area may be smaller than its segment area
-        if a mask is input to `SourceProperties` or if the ``data``
+        if a mask is input to `SourceCatalog` or if the ``data``
         within the segment contains invalid values (NaN and inf).
         """
         return np.array([arr.shape[0]
