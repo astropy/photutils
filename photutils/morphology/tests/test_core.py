@@ -34,8 +34,8 @@ def test_data_properties():
     props = data_properties(data, mask=None)
     props2 = data_properties(data, mask=mask)
     properties = ['xcentroid', 'ycentroid']
-    result = [getattr(props, i)[0] for i in properties]
-    result2 = [getattr(props2, i)[0] for i in properties]
+    result = [getattr(props, i) for i in properties]
+    result2 = [getattr(props2, i) for i in properties]
     assert_allclose([0.5, 0.5], result, rtol=0, atol=1.e-6)
     assert_allclose([0.5, 0.0], result2, rtol=0, atol=1.e-6)
     assert props.area.value == 4.0

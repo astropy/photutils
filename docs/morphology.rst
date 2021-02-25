@@ -4,16 +4,16 @@ Morphological Properties (`photutils.morphology`)
 Introduction
 ------------
 
-The :func:`~photutils.morphology.data_properties` function can be used
-to calculate the morphological properties of a single source in a
-cutout image.  `~photutils.morphology.data_properties` returns a
-`~photutils.segmentation.SourceProperties` object.  Please see
-`~photutils.segmentation.SourceProperties` for the list of the many
-properties that are calculated.  Even more properties are likely to be
+The :func:`~photutils.morphology.data_properties` function can
+be used to calculate the morphological properties of a single
+source in a cutout image. `~photutils.morphology.data_properties`
+returns a `~photutils.segmentation.SourceCatalog` object. Please see
+`~photutils.segmentation.SourceCatalog` for the list of the many
+properties that are calculated. Even more properties are likely to be
 added in the future.
 
 If you have a segmentation image, the
-:func:`~photutils.segmentation.source_properties` function can be used
+:class:`~photutils.segmentation.SourceCatalog` class can be used
 to calculate the properties for all (or a specified subset) of the
 segmented sources. Please see :ref:`Source Photometry and Properties
 from Image Segmentation <image_segmentation>` for more details.
@@ -40,18 +40,19 @@ Then, calculate its properties:
 
     >>> from photutils import data_properties
     >>> cat = data_properties(data)
-    >>> columns = ['id', 'xcentroid', 'ycentroid', 'semimajor_axis_sigma',
-    ...            'semiminor_axis_sigma', 'orientation']
+    >>> columns = ['label', 'xcentroid', 'ycentroid', 'semimajor_sigma',
+    ...            'semiminor_sigma', 'orientation']
     >>> tbl = cat.to_table(columns=columns)
     >>> tbl['xcentroid'].info.format = '.10f'  # optional format
     >>> tbl['ycentroid'].info.format = '.10f'
-    >>> tbl['semiminor_axis_sigma'].info.format = '.10f'
+    >>> tbl['semiminor_sigma'].info.format = '.10f'
     >>> tbl['orientation'].info.format = '.10f'
     >>> print(tbl)
-     id   xcentroid     ycentroid   ... semiminor_axis_sigma  orientation
-             pix           pix      ...         pix               deg
-    --- ------------- ------------- ... -------------------- -------------
-      1 14.0225090502 16.9901801466 ...         3.6977761870 60.1283048753
+    label   xcentroid     ycentroid   ... semiminor_sigma  orientation
+                                      ...       pix            deg
+    ----- ------------- ------------- ... --------------- -------------
+        1 14.0225090502 16.9901801466 ...    3.6977761870 60.1283048753
+
 
 Now let's use the measured morphological properties to define an
 approximate isophotal ellipse for the source:
@@ -60,10 +61,10 @@ approximate isophotal ellipse for the source:
 
     >>> import astropy.units as u
     >>> from photutils import EllipticalAperture
-    >>> position = (cat.xcentroid.value, cat.ycentroid.value)
+    >>> position = (cat.xcentroid, cat.ycentroid)
     >>> r = 3.0  # approximate isophotal extent
-    >>> a = cat.semimajor_axis_sigma.value * r
-    >>> b = cat.semiminor_axis_sigma.value * r
+    >>> a = cat.semimajor_sigma.value * r
+    >>> b = cat.semiminor_sigma.value * r
     >>> theta = cat.orientation.to(u.rad).value
     >>> apertures = EllipticalAperture(position, a, b, theta=theta)
     >>> plt.imshow(data, origin='lower', cmap='viridis',
@@ -79,13 +80,13 @@ approximate isophotal ellipse for the source:
 
     data = make_4gaussians_image()[43:79, 76:104]  # extract single object
     cat = data_properties(data)
-    columns = ['id', 'xcentroid', 'ycentroid', 'semimajor_axis_sigma',
-               'semiminor_axis_sigma', 'orientation']
+    columns = ['label', 'xcentroid', 'ycentroid', 'semimajor_sigma',
+               'semiminor_sigma', 'orientation']
     tbl = cat.to_table(columns=columns)
     r = 2.5  # approximate isophotal extent
-    position = (cat.xcentroid.value, cat.ycentroid.value)
-    a = cat.semimajor_axis_sigma.value * r
-    b = cat.semiminor_axis_sigma.value * r
+    position = (cat.xcentroid, cat.ycentroid)
+    a = cat.semimajor_sigma.value * r
+    b = cat.semiminor_sigma.value * r
     theta = cat.orientation.to(u.rad).value
     apertures = EllipticalAperture(position, a, b, theta=theta)
     plt.imshow(data, origin='lower', cmap='viridis', interpolation='nearest')

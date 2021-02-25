@@ -45,4 +45,4 @@ def data_properties(data, mask=None, background=None):
     segment_image = SegmentationImage(np.ones(data.shape, dtype=int))
 
     return SourceCatalog(data, segment_image, mask=mask,
-                         background=background)
+                         background=background)[0]
