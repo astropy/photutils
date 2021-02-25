@@ -4,6 +4,11 @@
 
 .. _image_segmentation:
 
+.. toctree::
+   :hidden:
+
+   legacy_segmentation.rst
+
 Image Segmentation (`photutils.segmentation`)
 =============================================
 

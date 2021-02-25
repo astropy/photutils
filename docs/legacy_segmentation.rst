@@ -1,5 +1,7 @@
 :orphan:
 
+.. doctest-skip-all
+
 .. _legacy_segmentation:
 
 .. warning::
