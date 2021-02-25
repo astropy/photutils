@@ -385,6 +385,9 @@ class SourceCatalog:
 
     @lazyproperty
     def isscalar(self):
+        """
+        Whether the instance is scalar (e.g., a single source).
+        """
         return self._labels.shape == ()
 
     def __iter__(self):
@@ -392,12 +395,19 @@ class SourceCatalog:
             yield self.__getitem__(item)
 
     def _convolve_data(self):
+        """
+        Convolve the input data with the input kernel.
+        """
         if self._kernel is None:
             return self._data
         return _filter_data(self._data, self._kernel, mode='constant',
                             fill_value=0.0, check_normalization=True)
 
     def _make_data_mask(self):
+        """
+        Create a mask of non-finite ``data`` values combined with the
+        input ``mask`` array.
+        """
         mask = ~np.isfinite(self._data)
         if self._mask is not None:
             mask |= self._mask
@@ -406,9 +416,10 @@ class SourceCatalog:
     @lazyproperty
     def _null_object(self):
         """
-        Return None values.
+        Return `None` values.
 
-        Used for SkyCoord properties if ``wcs`` is `None`.
+        For example, this is used for SkyCoord properties if ``wcs`` is
+        `None`.
         """
         if self.isscalar:
             return None
@@ -419,7 +430,8 @@ class SourceCatalog:
         """
         Return np.nan values.
 
-        Used for background properties if ``background`` is `None`.
+        For example, this is used for background properties if
+        ``background`` is `None`.
         """
         if self.isscalar:
             return np.nan
@@ -429,6 +441,12 @@ class SourceCatalog:
 
     @lazyproperty
     def _cutout_segment_mask(self):
+        """
+        Boolean mask for source segment.
+
+        The mask is `True` for all pixels (background and from other
+        source segments) outside of the source segment.
+        """
         return [self._segment_img.data[slc] != label
                 for label, slc in zip(self._label_iter, self._slices_iter)]
 
@@ -448,6 +466,12 @@ class SourceCatalog:
 
     @as_scalar
     def _make_cutout(self, array, units=True, masked=False):
+        """
+        Make cutouts from in the input array using the source minimal
+        bounding box.
+
+        Masks and units are optionally applied.
+        """
         cutouts = [array[slc] for slc in self._slices_iter]
         if units and self._data_unit is not None:
             cutouts = [(cutout << self._data_unit) for cutout in cutouts]
@@ -459,9 +483,8 @@ class SourceCatalog:
     @lazyproperty
     def _cutout_moment_data(self):
         """
-        A list of 2D `~numpy.ndarray` cutouts from the input
-        ``convolved_data``. The following pixels are set to zero in
-        these arrays:
+        A list of 2D `~numpy.ndarray` cutouts from the (convolved) data
+        The following pixels are set to zero in these arrays:
 
             * any masked pixels
             * invalid values (NaN and inf)
@@ -491,15 +514,45 @@ class SourceCatalog:
         return cutouts
 
     def get_label(self, label):
+        """
+        Return a new `SourceCatalog` object for the input ``label``
+        only.
+
+        Parameters
+        ----------
+        label : int
+            The source label.
+
+        Returns
+        -------
+        cat : `SourceCatalog`
+            A new `SourceCatalog` object containing only the source with
+            the input ``label``.
+        """
         return self.get_labels(label)
 
     def get_labels(self, labels):
+        """
+        Return a new `SourceCatalog` object for the input ``labels``
+        only.
+
+        Parameters
+        ----------
+        labels : list, tuple, or `~numpy.ndarray` of int
+            The source label(s).
+
+        Returns
+        -------
+        cat : `SourceCatalog`
+            A new `SourceCatalog` object containing only the sources with
+            the input ``labels``.
+        """
         idx = np.searchsorted(self.label, labels)
         return self[idx]
 
     def to_table(self, columns=None, exclude_columns=None):
         """
-        Create a `~astropy.table.QTable` of properties.
+        Create a `~astropy.table.QTable` of source properties.
 
         If ``columns`` or ``exclude_columns`` are not input, then
         the `~astropy.table.QTable` will include a default list of
@@ -511,7 +564,7 @@ class SourceCatalog:
         columns : str or list of str, optional
             Names of columns, in order, to include in the output
             `~astropy.table.QTable`. The allowed column names are any of
-            the attributes of `SourceProperties`.
+            the attributes of `SourceCatalog`.
 
         exclude_columns : str or list of str, optional
             Names of columns to exclude from the default columns in the
@@ -548,6 +601,9 @@ class SourceCatalog:
 
     @lazyproperty
     def nlabels(self):
+        """
+        The number of source labels.
+        """
         if self.isscalar:
             return 1
         return len(self._labels)
@@ -556,12 +612,18 @@ class SourceCatalog:
     @as_scalar
     def label(self):
         """
-        The source label number(s) in the segmentation image
+        The source label number.
+
+        This label number corresponds to the assigned pixel value in the
+        `~photutils.segmentation.SegmentationImage`.
         """
         return self._labels
 
     @property
     def _label_iter(self):
+        """
+        The source label, always as a iterable.
+        """
         _label = self.label
         if self.isscalar:
             _label = (_label,)
@@ -571,12 +633,17 @@ class SourceCatalog:
     @as_scalar
     def slices(self):
         """
-        Slice tuples.
+        A tuple of slice objects defining the minimal bounding box of
+        the source.
         """
         return self._slices
 
     @lazyproperty
     def _slices_iter(self):
+        """
+        A tuple of slice objects defining the minimal bounding box of
+        the source, always as an iterable.
+        """
         _slices = self.slices
         if self.isscalar:
             _slices = (_slices,)
@@ -585,12 +652,24 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def segment(self):
+        """
+        A 2D `~numpy.ndarray` cutout of the segmentation image using the
+        minimal bounding box of the source.
+        """
         return self._make_cutout(self._segment_img.data, units=True,
                                  masked=False)
 
     @lazyproperty
     @as_scalar
     def segment_ma(self):
+        """
+        A 2D `~numpy.ma.MaskedArray` cutout of the segmentation image
+        using the minimal bounding box of the source.
+
+        The mask is `True` for pixels outside of the source segment
+        (labeled region of interest), masked pixels from the ``mask``
+        input, or any non-finite ``data`` values (NaN and inf).
+        """
         return self._make_cutout(self._segment_img.data, units=False,
                                  masked=True)
 
@@ -598,14 +677,15 @@ class SourceCatalog:
     def data(self):
         """
         A 2D `~numpy.ndarray` cutout from the data using the minimal
-        bounding box of the source segment.
+        bounding box of the source.
         """
         return self._make_cutout(self._data, units=True, masked=False)
 
     @lazyproperty
     def data_ma(self):
         """
-        A 2D `~numpy.ma.MaskedArray` cutout from the ``data``.
+        A 2D `~numpy.ma.MaskedArray` cutout from the data using the
+        minimal bounding box of the source.
 
         The mask is `True` for pixels outside of the source segment
         (labeled region of interest), masked pixels from the ``mask``
@@ -615,16 +695,32 @@ class SourceCatalog:
 
     @lazyproperty
     def convdata(self):
+        """
+        A 2D `~numpy.ndarray` cutout from the convolved data using the
+        minimal bounding box of the source.
+        """
         return self._make_cutout(self._convolved_data, units=True,
                                  masked=False)
 
     @lazyproperty
     def convdata_ma(self):
+        """
+        A 2D `~numpy.ma.MaskedArray` cutout from the convolved data
+        using the minimal bounding box of the source.
+
+        The mask is `True` for pixels outside of the source segment
+        (labeled region of interest), masked pixels from the ``mask``
+        input, or any non-finite ``data`` values (NaN and inf).
+        """
         return self._make_cutout(self._convolved_data, units=False,
                                  masked=True)
 
     @lazyproperty
     def error(self):
+        """
+        A 2D `~numpy.ndarray` cutout from the error array using the
+        minimal bounding box of the source.
+        """
         if self._error is None:
             return self._null_object
         return self._make_cutout(self._error, units=True,
@@ -632,6 +728,14 @@ class SourceCatalog:
 
     @lazyproperty
     def error_ma(self):
+        """
+        A 2D `~numpy.ma.MaskedArray` cutout from the error array using
+        the minimal bounding box of the source.
+
+        The mask is `True` for pixels outside of the source segment
+        (labeled region of interest), masked pixels from the ``mask``
+        input, or any non-finite ``data`` values (NaN and inf).
+        """
         if self._error is None:
             return self._null_object
         return self._make_cutout(self._error, units=False,
@@ -639,6 +743,10 @@ class SourceCatalog:
 
     @lazyproperty
     def background(self):
+        """
+        A 2D `~numpy.ndarray` cutout from the background array using the
+        minimal bounding box of the source.
+        """
         if self._background is None:
             return self._null_object
         return self._make_cutout(self._background, units=True,
@@ -646,6 +754,14 @@ class SourceCatalog:
 
     @lazyproperty
     def background_ma(self):
+        """
+        A 2D `~numpy.ma.MaskedArray` cutout from the background array.
+        using the minimal bounding box of the source.
+
+        The mask is `True` for pixels outside of the source segment
+        (labeled region of interest), masked pixels from the ``mask``
+        input, or any non-finite ``data`` values (NaN and inf).
+        """
         if self._error is None:
             return self._null_object
         return self._make_cutout(self._background, units=False,
@@ -653,9 +769,16 @@ class SourceCatalog:
 
     @lazyproperty
     def _all_masked(self):
+        """
+        True if all pixels over the source segment are masked.
+        """
         return [np.all(mask) for mask in self._cutout_total_mask]
 
     def _get_values(self, array):
+        """
+        Get a 1D array of unmasked values from the input array within
+        the source segment.
+        """
         if self.isscalar:
             array = (array,)
         return [arr.compressed() if len(arr.compressed()) > 0 else np.nan
@@ -663,20 +786,31 @@ class SourceCatalog:
 
     @lazyproperty
     def _data_values(self):
+        """
+        A 1D array of unmasked data values.
+        """
         return self._get_values(self.data_ma)
 
     @lazyproperty
     def _error_values(self):
+        """
+        A 1D array of unmasked error values.
+        """
         return self._get_values(self.error_ma)
 
     @lazyproperty
     def _background_values(self):
+        """
+        A 1D array of unmasked background values.
+        """
         return self._get_values(self.background_ma)
 
     @lazyproperty
     @as_scalar
     def moments(self):
-        """Spatial moments up to 3rd order of the source."""
+        """
+        Spatial moments up to 3rd order of the source.
+        """
         return np.array([_moments(arr, order=3) for arr in
                          self._cutout_moment_data])
 
@@ -726,7 +860,8 @@ class SourceCatalog:
     @lazyproperty
     def _xcentroid(self):
         """
-        The ``x`` coordinate of the centroid within the source segment.
+        The ``x`` coordinate of the centroid within the source segment,
+        always as an iterable.
         """
         xcentroid = np.transpose(self.centroid)[1]
         if self.isscalar:
@@ -744,7 +879,8 @@ class SourceCatalog:
     @lazyproperty
     def _ycentroid(self):
         """
-        The ``y`` coordinate of the centroid within the source segment.
+        The ``y`` coordinate of the centroid within the source segment,
+        always as an iterable.
         """
         ycentroid = np.transpose(self.centroid)[0]
         if self.isscalar:
@@ -765,7 +901,9 @@ class SourceCatalog:
         The sky coordinate of the centroid within the source segment,
         returned as a `~astropy.coordinates.SkyCoord` object.
 
-        The output coordinate frame is the same as the input WCS.
+        The output coordinate frame is the same as the input ``wcs``.
+
+        `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
             return self._null_object
@@ -774,9 +912,11 @@ class SourceCatalog:
     @lazyproperty
     def sky_centroid_icrs(self):
         """
-        The sky coordinate, in the International Celestial Reference
-        System (ICRS) frame, of the centroid within the source segment,
+        The sky coordinate in the International Celestial Reference
+        System (ICRS) frame of the centroid within the source segment,
         returned as a `~astropy.coordinates.SkyCoord` object.
+
+        `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
             return self._null_object
@@ -786,7 +926,7 @@ class SourceCatalog:
     def _bbox(self):
         """
         The `~photutils.aperture.BoundingBox` of the minimal rectangular
-        region containing the source segment.
+        region containing the source segment, always as an iterable.
         """
         return [BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
                             iymin=slc[0].start, iymax=slc[0].stop)
@@ -805,7 +945,7 @@ class SourceCatalog:
     @as_scalar
     def bbox_xmin(self):
         """
-        The minimum ``x`` pixel location within the minimal bounding box
+        The minimum ``x`` pixel index within the minimal bounding box
         containing the source segment.
         """
         return np.array([slc[1].start for slc in self._slices_iter])
@@ -814,7 +954,7 @@ class SourceCatalog:
     @as_scalar
     def bbox_xmax(self):
         """
-        The maximum ``x`` pixel location within the minimal bounding box
+        The maximum ``x`` pixel index within the minimal bounding box
         containing the source segment.
 
         Note that this value is inclusive, unlike numpy slice indices.
@@ -825,7 +965,7 @@ class SourceCatalog:
     @as_scalar
     def bbox_ymin(self):
         """
-        The minimum ``y`` pixel location within the minimal bounding box
+        The minimum ``y`` pixel index within the minimal bounding box
         containing the source segment.
         """
         return np.array([slc[0].start for slc in self._slices_iter])
@@ -834,7 +974,7 @@ class SourceCatalog:
     @as_scalar
     def bbox_ymax(self):
         """
-        The maximum ``y`` pixel location within the minimal bounding box
+        The maximum ``y`` pixel index within the minimal bounding box
         containing the source segment.
 
         Note that this value is inclusive, unlike numpy slice indices.
@@ -844,7 +984,7 @@ class SourceCatalog:
     @lazyproperty
     def _bbox_corner_ll(self):
         """
-        Lower-left outside pixel corner location.
+        Lower-left *outside* pixel corner location (not index).
         """
         xypos = []
         for bbox_ in self._bbox:
@@ -853,6 +993,9 @@ class SourceCatalog:
 
     @lazyproperty
     def _bbox_corner_ul(self):
+        """
+        Upper-left *outside* pixel corner location (not index).
+        """
         xypos = []
         for bbox_ in self._bbox:
             xypos.append((bbox_.ixmin - 0.5, bbox_.iymax + 0.5))
@@ -860,6 +1003,9 @@ class SourceCatalog:
 
     @lazyproperty
     def _bbox_corner_lr(self):
+        """
+        Lower-right *outside* pixel corner location (not index).
+        """
         xypos = []
         for bbox_ in self._bbox:
             xypos.append((bbox_.ixmax + 0.5, bbox_.iymin - 0.5))
@@ -867,6 +1013,9 @@ class SourceCatalog:
 
     @lazyproperty
     def _bbox_corner_ur(self):
+        """
+        Upper-right *outside* pixel corner location (not index).
+        """
         xypos = []
         for bbox_ in self._bbox:
             xypos.append((bbox_.ixmax + 0.5, bbox_.iymax + 0.5))
@@ -881,7 +1030,10 @@ class SourceCatalog:
         `~astropy.coordinates.SkyCoord` object.
 
         The bounding box encloses all of the source segment pixels in
-        their entirety, thus the vertices are at the pixel *corners*.
+        their entirety, thus the vertices are at the pixel *corners*,
+        not their centers.
+
+        `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
             return self._null_object
@@ -896,7 +1048,10 @@ class SourceCatalog:
         `~astropy.coordinates.SkyCoord` object.
 
         The bounding box encloses all of the source segment pixels in
-        their entirety, thus the vertices are at the pixel *corners*.
+        their entirety, thus the vertices are at the pixel *corners*,
+        not their centers.
+
+        `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
             return self._null_object
@@ -911,7 +1066,10 @@ class SourceCatalog:
         `~astropy.coordinates.SkyCoord` object.
 
         The bounding box encloses all of the source segment pixels in
-        their entirety, thus the vertices are at the pixel *corners*.
+        their entirety, thus the vertices are at the pixel *corners*,
+        not their centers.
+
+        `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
             return self._null_object
@@ -926,7 +1084,10 @@ class SourceCatalog:
         `~astropy.coordinates.SkyCoord` object.
 
         The bounding box encloses all of the source segment pixels in
-        their entirety, thus the vertices are at the pixel *corners*.
+        their entirety, thus the vertices are at the pixel *corners*,
+        not their centers.
+
+        `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
             return self._null_object
@@ -1092,7 +1253,7 @@ class SourceCatalog:
 
         .. math:: F = \\sum_{i \\in S} (I_i - B_i)
 
-        where :math:`F` is ``source_sum``, :math:`(I_i - B_i)` is the
+        where :math:`F` is ``segment_flux``, :math:`(I_i - B_i)` is the
         ``data``, and :math:`S` are the unmasked pixels in the source
         segment.
 
@@ -1112,9 +1273,8 @@ class SourceCatalog:
     @as_scalar
     def segment_fluxerr(self):
         """
-        The uncertainty of
-        `~photutils.segmentation.LegacySourceProperties.segment_flux`,
-        propagated from the input ``error`` array.
+        The uncertainty of `segment_flux` , propagated from the input
+        ``error`` array.
 
         ``segment_fluxerr`` is the quadrature sum of the total errors
         over the non-masked pixels within the source segment:
@@ -1122,7 +1282,7 @@ class SourceCatalog:
         .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
                   \\sigma_{\\mathrm{tot}, i}^2}
 
-        where :math:`\\Delta F` is ``source_sum_err``,
+        where :math:`\\Delta F` is the `segment_flux`,
         :math:`\\sigma_{\\mathrm{tot, i}}` are the pixel-wise total
         errors, and :math:`S` are the non-masked pixels in the source
         segment.
@@ -1298,7 +1458,7 @@ class SourceCatalog:
     def _covariance(self):
         """
         The covariance matrix of the 2D Gaussian function that has the
-        same second-order moments as the source.
+        same second-order moments as the source, always as an iterable.
         """
         moments = self.moments_central
         if self.isscalar:
@@ -1332,6 +1492,10 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def covariance(self):
+        """
+        The covariance matrix of the 2D Gaussian function that has the
+        same second-order moments as the source.
+        """
         return self._covariance * (u.pix**2)
 
     @lazyproperty
@@ -1554,7 +1718,7 @@ class SourceCatalog:
             \\sum^{n}_{i} (2i - n - 1) \\left | x_i \\right |
 
         where :math:`\\bar{x}` is the mean over all pixel values
-        :math:`x_i`.
+        :math:`x_i` within the source segment.
 
         The Gini coefficient is a way of measuring the inequality in a
         given set of values. In the context of galaxy morphology, it
@@ -1580,8 +1744,8 @@ class SourceCatalog:
     @as_scalar
     def local_background_aperture(self):
         """
-        The rectangular annulus aperture used to estimate the local
-        background.
+        The `~photutils.aperture.RectangularAnnulus` aperture used to
+        estimate the local background.
         """
         if self._localbkg_width == 0:
             return self._null_object
@@ -1694,8 +1858,10 @@ class SourceCatalog:
 
     @staticmethod
     def _correct_kron_mask(data, mask, xycenter, error=None):
-        # Correct masked pixels in neighboring segments.  Masked pixels
-        # are replaced with pixels on the opposite side of the source.
+        """
+        Correct masked pixels in neighboring segments. Masked pixels are
+        replaced with pixels on the opposite side of the source center.
+        """
         from ._utils import mask_to_mirrored_value
         data = mask_to_mirrored_value(data, mask, xycenter)
         if error is not None:
@@ -1703,6 +1869,9 @@ class SourceCatalog:
         return data, error
 
     def _make_kron_segm_mask(self, label, slices):
+        """
+        Make a segmentation mask based on the Kron mask method.
+        """
         method = self._kron_params[0]
         if method in ('none',):
             return None
@@ -1720,18 +1889,15 @@ class SourceCatalog:
         """
         The unscaled first-moment Kron radius.
 
-        If the source is completely masked, then ``np.nan`` will be
-        returned for both the Kron radius and Kron flux.
-
         The unscaled first-moment Kron radius is given by:
 
         .. math::
             k_r = \\frac{\\sum_{i \\in A} \\ r_i I_i}{\\sum_{i \\in A} I_i}
 
-        where the sum is over all pixels in an elliptical aperture whose
-        axes are defined by six times the ``semimajor_axis_sigma`` and
-        ``semiminor_axis_sigma`` at the calculated ``orientation``
-        (all properties derived from the central image moments of the
+        where the sum is over all pixels in an elliptical aperture
+        whose axes are defined by six times the `semimajor_sigma`
+        and `semiminor_sigma` at the calculated `orientation` (all
+        properties derived from the central image moments of the
         source). :math:`r_i` is the elliptical "radius" to the pixel
         given by:
 
@@ -1742,6 +1908,9 @@ class SourceCatalog:
 
         where :math:`\\bar{x}` and :math:`\\bar{y}` represent the source
         centroid.
+
+        If the source is completely masked, then ``np.nan`` will be
+        returned for both the Kron radius and Kron flux.
 
         If either the numerator or denominator <= 0, then ``np.nan``
         will be returned. In this case, the Kron aperture will
