@@ -762,7 +762,7 @@ class SourceCatalog:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
-        if self._error is None:
+        if self._background is None:
             return self._null_object
         return self._make_cutout(self._background, units=False,
                                  masked=True)

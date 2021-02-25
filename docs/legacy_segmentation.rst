@@ -1,7 +1,17 @@
-.. _image_segmentation:
+:orphan:
 
-Image Segmentation (`photutils.segmentation`)
-=============================================
+.. _legacy_segmentation:
+
+.. warning::
+
+    The :func:`~photutils.segmentation.source_properties` function
+    and :class:`~photutils.segmentation.SourceProperties` class
+    are deprecated. Please visit :ref:`Image Segmentation
+    <image_segmentation>` for the updated segmentation documentation.
+
+
+Legacy Image Segmentation (Deprecated)
+======================================
 
 Introduction
 ------------
@@ -269,6 +279,13 @@ measuring source photometry and other source properties, including:
 
 Centroids, Photometry, and Morphological Properties
 ---------------------------------------------------
+
+.. warning::
+
+    The :func:`~photutils.segmentation.source_properties` function
+    and :class:`~photutils.segmentation.SourceProperties` class
+    are deprecated. Please visit :ref:`Image Segmentation
+    <image_segmentation>` for the updated segmentation documentation.
 
 The :func:`~photutils.segmentation.source_properties` function is the
 primary tool for measuring the centroids, photometry, and
@@ -641,13 +658,6 @@ segmentation image. If ``filter_kernel`` is `None`, then the centroid
 and morphological measurements will be performed on the unfiltered
 ``data``. Note that photometry is *always* performed on the unfiltered
 ``data``.
-
-
-Reference/API
--------------
-
-.. automodapi:: photutils.segmentation
-    :no-heading:
 
 
 .. _SourceExtractor:  https://sextractor.readthedocs.io/en/latest/
