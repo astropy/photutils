@@ -123,3 +123,257 @@ class TestSourceCatalog:
 
         assert obj.local_background_aperture is None
         assert obj.local_background == 0.
+
+    def test_slicing(self):
+        self.cat.to_table()  # evaluate and cache several properties
+
+        obj1 = self.cat[0]
+        assert obj1.nlabels == 1
+        obj1b = self.cat.get_label(1)
+        assert obj1b.nlabels == 1
+
+        obj2 = self.cat[0:1]
+        assert obj2.nlabels == 1
+        assert len(obj2) == 1
+
+        obj3 = self.cat[0:3]
+        obj3b = self.cat.get_labels((1, 2, 3))
+        assert_equal(obj3.label, obj3b.label)
+        obj4 = self.cat[[0, 1, 2]]
+        assert obj3.nlabels == 3
+        assert obj3b.nlabels == 3
+        assert obj4.nlabels == 3
+        assert len(obj3) == 3
+        assert len(obj4) == 3
+
+        obj5 = self.cat[[3, 2, 1]]
+        labels = [4, 3, 2]
+        obj5b = self.cat.get_labels(labels)
+        assert_equal(obj5.label, obj5b.label)
+        assert obj5.nlabels == 3
+        assert len(obj5) == 3
+        assert_equal(obj5.label, labels)
+
+        obj6 = obj5[0]
+        assert obj6.label == labels[0]
+
+        mask = self.cat.label > 3
+        obj7 = self.cat[mask]
+        assert obj7.nlabels == 4
+        assert len(obj7) == 4
+
+        with pytest.raises(TypeError):
+            obj1 = self.cat[0]
+            obj2 = obj1[0]
+
+    def test_iter(self):
+        labels = []
+        for obj in self.cat:
+            labels.append(obj.label)
+        assert len(labels) == len(self.cat)
+
+    def test_table(self):
+        columns = ['label', 'xcentroid', 'ycentroid']
+        tbl = self.cat.to_table(columns=columns)
+        assert len(tbl) == 7
+        assert tbl.colnames == columns
+
+        tbl2 = self.cat.to_table(exclude_columns=columns)
+        assert len(tbl2) == 7
+        assert len(tbl2.colnames) > len(tbl.colnames)
+
+    def test_invalid_inputs(self):
+        wrong_shape = np.ones((3, 3))
+        with pytest.raises(ValueError):
+            SourceCatalog(self.data, self.segm, error=wrong_shape)
+
+        with pytest.raises(ValueError):
+            SourceCatalog(self.data, self.segm, background=wrong_shape)
+
+        with pytest.raises(ValueError):
+            SourceCatalog(self.data, self.segm, mask=wrong_shape)
+
+        with pytest.raises(ValueError):
+            segm = SegmentationImage(wrong_shape)
+            SourceCatalog(self.data, segm)
+
+        with pytest.raises(TypeError):
+            SourceCatalog(self.data, wrong_shape)
+
+        with pytest.raises(TypeError):
+            obj = SourceCatalog(self.data, self.segm)[0]
+            len(obj)
+
+        with pytest.raises(ValueError):
+            SourceCatalog(self.data, self.segm, localbkg_width=-1)
+        with pytest.raises(ValueError):
+            SourceCatalog(self.data, self.segm, localbkg_width=3.4)
+        with pytest.raises(ValueError):
+            kron_params = ('none', 2.5, 0.0, 3.0)
+            SourceCatalog(self.data, self.segm, kron_params=kron_params)
+        with pytest.raises(ValueError):
+            kron_params = ('invalid', 2.5, 0.0)
+            SourceCatalog(self.data, self.segm, kron_params=kron_params)
+        with pytest.raises(ValueError):
+            kron_params = ('none', -2.5, 0.0)
+            SourceCatalog(self.data, self.segm, kron_params=kron_params)
+        with pytest.raises(ValueError):
+            kron_params = ('none', 2.5, -4.0)
+            SourceCatalog(self.data, self.segm, kron_params=kron_params)
+
+    def test_invalid_units(self):
+        unit = u.uJy
+        wrong_unit = u.km
+
+        with pytest.raises(ValueError):
+            SourceCatalog(self.data << unit, self.segm,
+                          error=self.error << wrong_unit)
+
+        with pytest.raises(ValueError):
+            SourceCatalog(self.data << unit, self.segm,
+                          background=self.background << wrong_unit)
+
+        # all array inputs must have the same unit
+        with pytest.raises(ValueError):
+            SourceCatalog(self.data << unit, self.segm, error=self.error)
+
+        with pytest.raises(ValueError):
+            SourceCatalog(self.data, self.segm,
+                          background=self.background << unit)
+
+    def test_wcs(self):
+        mywcs = make_wcs(self.data.shape)
+        cat = SourceCatalog(self.data, self.segm, wcs=mywcs)
+        obj = cat[0]
+        assert obj.sky_centroid is not None
+        assert obj.sky_centroid_icrs is not None
+        assert obj.sky_bbox_ll is not None
+        assert obj.sky_bbox_ul is not None
+        assert obj.sky_bbox_lr is not None
+        assert obj.sky_bbox_ur is not None
+
+    @pytest.mark.skipif('not HAS_GWCS')
+    def test_gwcs(self):
+        mywcs = make_gwcs(self.data.shape)
+        cat = SourceCatalog(self.data, self.segm, wcs=mywcs)
+        obj = cat[1]
+        assert obj.sky_centroid is not None
+        assert obj.sky_centroid_icrs is not None
+        assert obj.sky_bbox_ll is not None
+        assert obj.sky_bbox_ul is not None
+        assert obj.sky_bbox_lr is not None
+        assert obj.sky_bbox_ur is not None
+
+    def test_nowcs(self):
+        cat = SourceCatalog(self.data, self.segm, wcs=None)
+        obj = cat[2]
+        assert obj.sky_centroid is None
+        assert obj.sky_centroid_icrs is None
+        assert obj.sky_bbox_ll is None
+        assert obj.sky_bbox_ul is None
+        assert obj.sky_bbox_lr is None
+        assert obj.sky_bbox_ur is None
+
+    def test_to_table(self):
+        cat = SourceCatalog(self.data, self.segm)
+        assert len(cat) == 7
+        tbl = cat.to_table()
+        assert isinstance(tbl, QTable)
+        assert len(tbl) == 7
+        obj = cat[0]
+        assert obj.nlabels == 1
+        tbl = obj.to_table()
+        assert len(tbl) == 1
+
+    def test_masks(self):
+        """
+        Test masks, including automatic masking of all non-finite (e.g.,
+        NaN, inf) values in the data array.
+        """
+        data = np.copy(self.data)
+        error = np.copy(self.error)
+        background = np.copy(self.background)
+        data[:, 55] = np.nan
+        data[16, :] = np.inf
+        error[:, 55] = np.nan
+        error[16, :] = np.inf
+        background[:, 55] = np.nan
+        background[16, :] = np.inf
+
+        cat = SourceCatalog(data, self.segm, error=error,
+                            background=background, mask=self.mask)
+
+        props = ('xcentroid', 'ycentroid', 'area', 'orientation',
+                 'segment_flux', 'segment_fluxerr', 'kron_flux',
+                 'kron_fluxerr', 'background_mean')
+        obj = cat[0]
+        for prop in props:
+            assert np.isnan(getattr(obj, prop))
+        objs = cat[1:]
+        for prop in props:
+            assert np.all(np.isfinite(getattr(objs, prop)))
+
+        # test that mask=None is the same as mask=np.ma.nomask
+        cat1 = SourceCatalog(data, self.segm, mask=None)
+        cat2 = SourceCatalog(data, self.segm, mask=np.ma.nomask)
+        assert cat1[0].xcentroid == cat2[0].xcentroid
+
+    def test_repr_str(self):
+        cat = SourceCatalog(self.data, self.segm)
+        assert repr(cat) == str(cat)
+
+        lines = ('Sources: 7', 'Labels: [1 2 3 4 5 6 7]')
+        for line in lines:
+            assert line in repr(cat)
+
+    def test_kernel(self):
+        kernel = np.array([[1., 2, 1], [2, 4, 2], [1, 2, 100]])
+        kernel /= kernel.sum()
+        cat1 = SourceCatalog(self.data, self.segm, kernel=None)
+        cat2 = SourceCatalog(self.data, self.segm, kernel=kernel)
+        assert not np.array_equal(cat1.xcentroid, cat2.xcentroid)
+        assert not np.array_equal(cat1.ycentroid, cat2.ycentroid)
+
+    def test_detection_cat(self):
+        data2 = self.data - 5
+        cat1 = SourceCatalog(data2, self.segm)
+        cat2 = SourceCatalog(data2, self.segm, detection_cat=self.cat)
+        assert len(cat2.kron_aperture) == len(cat2)
+        assert not np.array_equal(cat1.kron_radius, cat2.kron_radius)
+        assert not np.array_equal(cat1.kron_flux, cat2.kron_flux)
+        assert_allclose(cat2.kron_radius, self.cat.kron_radius)
+        assert not np.array_equal(cat2.kron_flux, self.cat.kron_flux)
+
+        with pytest.raises(TypeError):
+            SourceCatalog(data2, self.segm, detection_cat=np.arange(4))
+
+        with pytest.raises(ValueError):
+            segm = deepcopy(self.segm)
+            segm.remove_labels((6, 7))
+            cat = SourceCatalog(self.data, segm)
+            SourceCatalog(self.data, self.segm, detection_cat=cat)
+
+    def test_kron_minradius(self):
+        params = ('none', 2.5, 10.0)
+        cat = SourceCatalog(self.data, self.segm, kron_params=params,
+                            mask=self.mask)
+        assert cat.kron_aperture[0] is None
+        assert isinstance(cat.kron_aperture[2], EllipticalAperture)
+        assert isinstance(cat.kron_aperture[4], CircularAperture)
+
+    def test_kron_masking(self):
+        params = ('none', 2.5, 0.0)
+        cat1 = SourceCatalog(self.data, self.segm, kron_params=params)
+        params = ('mask', 2.5, 0.0)
+        cat2 = SourceCatalog(self.data, self.segm, kron_params=params)
+        params = ('correct', 2.5, 0.0)
+        cat3 = SourceCatalog(self.data, self.segm, kron_params=params)
+        idx = 2  # source with close neighbors
+        assert cat1[idx].kron_flux > cat2[idx].kron_flux
+        assert cat3[idx].kron_flux > cat2[idx].kron_flux
+        assert cat1[idx].kron_flux > cat3[idx].kron_flux
+
+    def test_kron_negative(self):
+        cat = SourceCatalog(self.data - 10, self.segm)
+        assert np.all(np.isnan(cat.kron_radius.value))
+        assert np.all(np.isnan(cat.kron_flux))
