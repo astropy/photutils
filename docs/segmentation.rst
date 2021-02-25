@@ -350,21 +350,22 @@ the list of the many properties that are calculated for each source:
     >>> tbl = cat.to_table()
     >>> tbl['xcentroid'].info.format = '.2f'  # optional format
     >>> tbl['ycentroid'].info.format = '.2f'
+    >>> tbl['kron_flux'].info.format = '.2f'
     >>> print(tbl)
-    label xcentroid ycentroid ... segment_fluxerr     kron_flux      kron_fluxerr
+    label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
                               ...
-    ----- --------- --------- ... --------------- ------------------ ------------
-        1    235.22      1.25 ...             nan 2010.8995226075795          nan
-        2    493.82      5.77 ...             nan  2169.351460338654          nan
-        3    207.30     10.02 ...             nan  4354.520810929725          nan
-        4    364.73     11.14 ...             nan  4782.250253400696          nan
-        5    258.39     11.80 ...             nan  4998.031581747131          nan
-      ...       ...       ... ...             ...                ...          ...
-       92    427.01    147.45 ...             nan  7993.353334331051          nan
-       93    426.60    211.14 ...             nan   2545.96172234352          nan
-       94    419.79    216.68 ...             nan  7076.410224048983          nan
-       95    433.91    280.70 ...             nan  4203.373120970329          nan
-       96    434.11    288.90 ...             nan  5137.097530338734          nan
+    ----- --------- --------- ... --------------- --------- ------------
+        1    235.22      1.25 ...             nan   2010.90          nan
+        2    493.82      5.77 ...             nan   2169.35          nan
+        3    207.30     10.02 ...             nan   4354.52          nan
+        4    364.73     11.14 ...             nan   4782.25          nan
+        5    258.39     11.80 ...             nan   4998.03          nan
+      ...       ...       ... ...             ...       ...          ...
+       92    427.01    147.45 ...             nan   7993.35          nan
+       93    426.60    211.14 ...             nan   2545.96          nan
+       94    419.79    216.68 ...             nan   7076.41          nan
+       95    433.91    280.70 ...             nan   4203.37          nan
+       96    434.11    288.90 ...             nan   5137.10          nan
     Length = 96 rows
 
 
