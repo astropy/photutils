@@ -140,14 +140,14 @@ def _detect_sources(data, thresholds, npixels, filter_kernel=None,
         data = _filter_data(data, filter_kernel, mode='constant',
                             fill_value=0.0, check_normalization=True)
 
-    # ignore RuntimeWarning caused by > comparison when data contains NaNs
-    warnings.simplefilter('ignore', category=RuntimeWarning)
-
     selem = _make_binary_structure(data.ndim, connectivity)
 
     segms = []
     for threshold in thresholds:
-        data2 = data > threshold
+        # ignore RuntimeWarning caused by > comparison when data contains NaNs
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=RuntimeWarning)
+            data2 = data > threshold
 
         if mask is not None:
             data2 &= ~mask

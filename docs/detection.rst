@@ -13,8 +13,9 @@ point-like (stellar) sources in an astronomical image.  Photutils also
 provides a function to identify local peaks in an image that are above
 a specified threshold value.
 
-For general-use source detection and extraction of both point-like and
-extended sources, please see :ref:`image_segmentation`.
+For general-use source detection and extraction of both point-like
+and extended sources, please see :ref:`Image Segmentation
+<image_segmentation>`.
 
 
 Detecting Stars

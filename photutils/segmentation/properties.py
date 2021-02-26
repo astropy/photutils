@@ -12,6 +12,7 @@ from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import (AstropyUserWarning,
                                       AstropyDeprecationWarning)
 import numpy as np
@@ -24,10 +25,10 @@ from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
 from ..utils._wcs_helpers import _pixel_to_world
 
-__all__ = ['SourceProperties', 'source_properties', 'SourceCatalog']
+__all__ = ['SourceProperties', 'source_properties', 'LegacySourceCatalog']
 
 __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
-                         'SourceCatalog', 'SourceCatalog.*',
+                         'LegacySourceCatalog', 'LegacySourceCatalog.*',
                          'source_properties', 'properties_table'):
                         ['scipy']}
 
@@ -45,10 +46,11 @@ DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'cyy', 'gini']
 
 
+@deprecated('1.1', alternative='`~photutils.segmentation.SourceCatalog`')
 class SourceProperties:
     """
     Class to calculate photometry and morphological properties of a
-    single labeled source.
+    single labeled source (deprecated).
 
     Parameters
     ----------
@@ -1709,13 +1711,14 @@ class SourceProperties:
         return np.sum(kernel) / normalization
 
 
+@deprecated('1.1', alternative='`~photutils.segmentation.SourceCatalog`')
 def source_properties(data, segment_img, error=None, mask=None,
                       background=None, filter_kernel=None, wcs=None,
                       labels=None, localbkg_width=None,
                       kron_params=('mask', 2.5, 0.0, 'exact', 5)):
     """
     Calculate photometry and morphological properties of sources defined
-    by a labeled segmentation image.
+    by a labeled segmentation image (deprecated).
 
     Parameters
     ----------
@@ -1817,9 +1820,9 @@ def source_properties(data, segment_img, error=None, mask=None,
 
     Returns
     -------
-    output : `SourceCatalog` instance
-        A `SourceCatalog` instance containing the properties of each
-        source.
+    output : `LegacySourceCatalog` instance
+        A `LegacySourceCatalog` instance containing the properties of
+        each source.
 
     Notes
     -----
@@ -1862,48 +1865,6 @@ def source_properties(data, segment_img, error=None, mask=None,
     See Also
     --------
     SegmentationImage, SourceProperties, detect_sources
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from photutils import SegmentationImage, source_properties
-    >>> image = np.arange(16.).reshape(4, 4)
-    >>> print(image)  # doctest: +SKIP
-    [[ 0.  1.  2.  3.]
-     [ 4.  5.  6.  7.]
-     [ 8.  9. 10. 11.]
-     [12. 13. 14. 15.]]
-    >>> segm = SegmentationImage([[1, 1, 0, 0],
-    ...                           [1, 0, 0, 2],
-    ...                           [0, 0, 2, 2],
-    ...                           [0, 2, 2, 0]])
-    >>> props = source_properties(image, segm)
-
-    Print some properties of the first object (labeled with ``1`` in the
-    segmentation image):
-
-    >>> props[0].id  # id corresponds to segment label number
-    1
-    >>> props[0].centroid  # doctest: +FLOAT_CMP
-    <Quantity [0.8, 0.2] pix>
-    >>> props[0].source_sum  # doctest: +FLOAT_CMP
-    5.0
-    >>> props[0].area  # doctest: +FLOAT_CMP
-    <Quantity 3. pix2>
-    >>> props[0].max_value  # doctest: +FLOAT_CMP
-    4.0
-
-    Print some properties of the second object (labeled with ``2`` in
-    the segmentation image):
-
-    >>> props[1].id  # id corresponds to segment label number
-    2
-    >>> props[1].centroid  # doctest: +FLOAT_CMP
-    <Quantity [2.36363636, 2.09090909] pix>
-    >>> props[1].perimeter  # doctest: +FLOAT_CMP
-    <Quantity 5.41421356 pix>
-    >>> props[1].orientation  # doctest: +FLOAT_CMP
-    <Quantity -42.4996777 deg>
     """
 
     if not isinstance(segment_img, SegmentationImage):
@@ -1938,12 +1899,13 @@ def source_properties(data, segment_img, error=None, mask=None,
     if not sources_props:
         raise ValueError('No sources are defined.')
 
-    return SourceCatalog(sources_props, wcs=wcs)
+    return LegacySourceCatalog(sources_props, wcs=wcs)
 
 
-class SourceCatalog:
+@deprecated('1.1', alternative='`~photutils.segmentation.SourceCatalog`')
+class LegacySourceCatalog:
     """
-    Class to hold source catalogs.
+    Class to hold source catalogs (deprecated).
     """
 
     def __init__(self, properties_list, wcs=None):
@@ -2076,7 +2038,7 @@ class SourceCatalog:
     def to_table(self, columns=None, exclude_columns=None):
         """
         Construct a `~astropy.table.QTable` of source properties from a
-        `SourceCatalog` object.
+        `LegacySourceCatalog` object.
 
         If ``columns`` or ``exclude_columns`` are not input, then the
         `~astropy.table.QTable` will include a default list of
@@ -2110,32 +2072,6 @@ class SourceCatalog:
         See Also
         --------
         SegmentationImage, SourceProperties, source_properties, detect_sources
-
-        Examples
-        --------
-        >>> import numpy as np
-        >>> from photutils import source_properties
-        >>> image = np.arange(16.).reshape(4, 4)
-        >>> print(image)  # doctest: +SKIP
-        [[ 0.  1.  2.  3.]
-         [ 4.  5.  6.  7.]
-         [ 8.  9. 10. 11.]
-         [12. 13. 14. 15.]]
-        >>> segm = SegmentationImage([[1, 1, 0, 0],
-        ...                           [1, 0, 0, 2],
-        ...                           [0, 0, 2, 2],
-        ...                           [0, 2, 2, 0]])
-        >>> cat = source_properties(image, segm)
-        >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum']
-        >>> tbl = cat.to_table(columns=columns)
-        >>> tbl['xcentroid'].info.format = '.10f'  # optional format
-        >>> tbl['ycentroid'].info.format = '.10f'  # optional format
-        >>> print(tbl)
-        id  xcentroid    ycentroid   source_sum
-                pix          pix
-        --- ------------ ------------ ----------
-        1 0.2000000000 0.8000000000        5.0
-        2 2.0909090909 2.3636363636       55.0
         """
 
         return _properties_table(self, columns=columns,
@@ -2145,11 +2081,11 @@ class SourceCatalog:
 def _properties_table(obj, columns=None, exclude_columns=None):
     """
     Construct a `~astropy.table.QTable` of source properties from a
-    `SourceProperties` or `SourceCatalog` object.
+    `SourceProperties` or `LegacySourceCatalog` object.
 
     Parameters
     ----------
-    obj : `SourceProperties` or `SourceCatalog` instance
+    obj : `SourceProperties` or `LegacySourceCatalog` instance
         The object containing the source properties.
 
     columns : str or list of str, optional

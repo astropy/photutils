@@ -35,6 +35,10 @@ New Features
   - Added the ability to specify the output columns in the
     ``IsophoteList`` ``to_table`` method. [#1117]
 
+- ``photutils.segmentation``
+
+  - Added a new, significantly faster, ``SourceCatalog`` class. [#1170]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -92,6 +96,10 @@ API changes
 
   - Deprecated the ``"mask_all"`` option in the ``SourceProperties``
     ``kron_params`` keyword. [#1167]
+
+  - Deprecated ``source_properties``, ``SourceProperties``, and
+    ``LegacySourceCatalog``.  Use the new ``SourceCatalog`` function
+    instead. [#1170]
 
 
 1.0.2 (2021-01-20)

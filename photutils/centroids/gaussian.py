@@ -202,10 +202,10 @@ def centroid_2dg(data, error=None, mask=None):
     constant_init = 0.  # subtracted data minimum above
     g_init = (Const2D(constant_init)
               + Gaussian2D(amplitude=np.ptp(data),
-                           x_mean=props.xcentroid.value,
-                           y_mean=props.ycentroid.value,
-                           x_stddev=props.semimajor_axis_sigma.value,
-                           y_stddev=props.semiminor_axis_sigma.value,
+                           x_mean=props.xcentroid,
+                           y_mean=props.ycentroid,
+                           x_stddev=props.semimajor_sigma.value,
+                           y_stddev=props.semiminor_sigma.value,
                            theta=props.orientation.value))
     fitter = LevMarLSQFitter()
     y, x = np.indices(data.shape)

@@ -1,0 +1,56 @@
+.. doctest-skip-all
+
+.. _whatsnew-1.1:
+
+****************************
+What's New in Photutils 1.1?
+****************************
+
+Overview
+========
+Photutils 1.1 is a major release that adds new functionality since the
+1.0 release. Here we highlight some of the major changes. Please see the
+:ref:`changelog` for the complete list of changes.
+
+
+New SourceCatalog class
+=======================
+A new, significantly faster, `~photutils.segmentation.SourceCatalog`
+class was implemented. This new class simplifies the API and takes
+the place of the :func:`~photutils.segmentation.source_properties`
+function and the :class:`~photutils.segmentation.SourceProperties`
+and `~photutils.segmentation.LegacySourceCatalog` classes. The
+:func:`~photutils.segmentation.source_properties` function
+and :class:`~photutils.segmentation.SourceProperties`
+are now deprecated and will eventually be removed. The
+:func:`~photutils.segmentation.source_properties` function now returns
+a `~photutils.segmentation.LegacySourceCatalog` class (deprecated) to
+distinguish it from the new `~photutils.segmentation.SourceCatalog`.
+
+Optional keyword arguments in `~photutils.segmentation.SourceCatalog`
+can not be input as positional arguments. Please see the
+`~photutils.segmentation.SourceCatalog` documentation for the keywords
+inputs and their allowed values.
+
+Note that many of the source properties have been slightly renamed
+in the new `~photutils.segmentation.SourceCatalog` class, e.g.,
+
+    * 'id' -> 'label'
+    * 'background_at_centroid' -> 'background_centroid'
+    * 'background_cutout' -> 'background'
+    * 'background_cutout_ma' -> 'background_ma'
+    * 'data_cutout' -> 'data'
+    * 'data_cutout_ma' -> 'data_ma'
+    * 'error_cutout' -> 'error'
+    * 'error_cutout_ma' -> 'error_ma'
+    * 'filtered_data_cutout_ma' -> 'convdata_ma'
+    * 'minval_pos' -> 'minval_index'
+    * 'minval_xpos' -> 'minval_xindex'
+    * 'minval_ypos' -> 'minval_yindex'
+    * 'maxval_pos' -> 'maxval_index'
+    * 'maxval_xpos' -> 'maxval_xindex'
+    * 'maxval_ypos' -> 'maxval_yindex'
+    * 'semimajor_axis_sigma' -> 'semimajor_sigma'
+    * 'semiminor_axis_sigma' -> 'semiminor_sigma'
+    * 'source_sum' -> 'segment_flux'
+    * 'source_sum_err' -> 'segment_fluxerr'

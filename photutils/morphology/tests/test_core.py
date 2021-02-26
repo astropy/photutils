@@ -33,8 +33,10 @@ def test_data_properties():
     mask = np.array([[False, False], [True, True]])
     props = data_properties(data, mask=None)
     props2 = data_properties(data, mask=mask)
-    properties = ['xcentroid', 'ycentroid', 'area']
-    result = [getattr(props, i).value for i in properties]
-    result2 = [getattr(props2, i).value for i in properties]
-    assert_allclose([0.5, 0.5, 4.0], result, rtol=0, atol=1.e-6)
-    assert_allclose([0.5, 0.0, 2.0], result2, rtol=0, atol=1.e-6)
+    properties = ['xcentroid', 'ycentroid']
+    result = [getattr(props, i) for i in properties]
+    result2 = [getattr(props2, i) for i in properties]
+    assert_allclose([0.5, 0.5], result, rtol=0, atol=1.e-6)
+    assert_allclose([0.5, 0.0], result2, rtol=0, atol=1.e-6)
+    assert props.area.value == 4.0
+    assert props2.area.value == 2.0
