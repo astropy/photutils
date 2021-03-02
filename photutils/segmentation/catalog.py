@@ -422,8 +422,6 @@ class SourceCatalog:
         For example, this is used for SkyCoord properties if ``wcs`` is
         `None`.
         """
-        if self.isscalar:
-            return None
         return np.array([None] * self.nlabels)
 
     @lazyproperty
@@ -434,8 +432,6 @@ class SourceCatalog:
         For example, this is used for background properties if
         ``background`` is `None`.
         """
-        if self.isscalar:
-            return np.nan
         values = np.empty(self.nlabels)
         values.fill(np.nan)
         return values
@@ -727,6 +723,7 @@ class SourceCatalog:
                                  masked=True)
 
     @lazyproperty
+    @as_scalar
     def error(self):
         """
         A 2D `~numpy.ndarray` cutout from the error array using the
@@ -738,6 +735,7 @@ class SourceCatalog:
                                  masked=False)
 
     @lazyproperty
+    @as_scalar
     def error_ma(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the error array using
@@ -753,6 +751,7 @@ class SourceCatalog:
                                  masked=True)
 
     @lazyproperty
+    @as_scalar
     def background(self):
         """
         A 2D `~numpy.ndarray` cutout from the background array using the
@@ -764,6 +763,7 @@ class SourceCatalog:
                                  masked=False)
 
     @lazyproperty
+    @as_scalar
     def background_ma(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the background array.
@@ -907,6 +907,7 @@ class SourceCatalog:
         return self._ycentroid
 
     @lazyproperty
+    @as_scalar
     def sky_centroid(self):
         """
         The sky coordinate of the centroid within the source segment,
@@ -921,6 +922,7 @@ class SourceCatalog:
         return self._wcs.pixel_to_world(self.xcentroid, self.ycentroid)
 
     @lazyproperty
+    @as_scalar
     def sky_centroid_icrs(self):
         """
         The sky coordinate in the International Celestial Reference
