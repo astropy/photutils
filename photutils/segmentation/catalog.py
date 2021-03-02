@@ -351,13 +351,14 @@ class SourceCatalog:
                 continue
 
             try:
-                val = value[index]
+                # keep _<attrs> as length-1 iterables
                 if newcls.isscalar and key.startswith('_'):
-                    # keep _<attrs> as length-1 iterables
-                    # NOTE: these attributes will not exactly match
-                    # the values if evaluated for the first time in
-                    # a scalar class (e.g., _bbox_corner_ll)
-                    val = (val,)
+                    if isinstance(value, np.ndarray):
+                        val = value[:, np.newaxis][index]
+                    else:
+                        val = [value[index]]
+                else:
+                    val = value[index]
             except TypeError:
                 # apply fancy indices (e.g., array/list or bool
                 # mask) to lists
@@ -782,7 +783,7 @@ class SourceCatalog:
         """
         True if all pixels over the source segment are masked.
         """
-        return [np.all(mask) for mask in self._cutout_total_mask]
+        return np.array([np.all(mask) for mask in self._cutout_total_mask])
 
     def _get_values(self, array):
         """
