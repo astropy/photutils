@@ -141,7 +141,7 @@ class TestFindPeaks:
         Test for an empty output table with the expected column names
         when no peaks are found.
         """
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with catch_warnings(NoDetectionsWarning):
             tbl = find_peaks(IMAGE, 10000)
             assert tbl is None
 
