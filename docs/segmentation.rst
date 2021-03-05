@@ -1,13 +1,5 @@
-
-.. note::
-    For the legacy image segmentation documentation using the deprecated :func:`~photutils.segmentation.source_properties` function and :class:`~photutils.segmentation.SourceProperties`, please visit :ref:`Legacy Image Segmentation <legacy_segmentation>`
-
 .. _image_segmentation:
 
-.. toctree::
-   :hidden:
-
-   legacy_segmentation.rst
 
 Image Segmentation (`photutils.segmentation`)
 =============================================
@@ -305,7 +297,8 @@ the threshold at 2 sigma (per pixel) above the background:
     >>> bkg_estimator = MedianBackground()
     >>> bkg = Background2D(data, (50, 50), filter_size=(3, 3),
     ...                    bkg_estimator=bkg_estimator)
-    >>> threshold = bkg.background + (2. * bkg.background_rms)
+    >>> data -= bkg.background  # subtract the background
+    >>> threshold = 2. * bkg.background_rms  # above the background
 
 Now we find sources that have 5 connected pixels that are each greater
 than the corresponding threshold image defined above. Because the
@@ -353,17 +346,17 @@ the list of the many properties that are calculated for each source:
     label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
                               ...
     ----- --------- --------- ... --------------- --------- ------------
-        1    235.22      1.25 ...             nan   2010.90          nan
-        2    493.82      5.77 ...             nan   2169.35          nan
-        3    207.30     10.02 ...             nan   4354.52          nan
-        4    364.73     11.14 ...             nan   4782.25          nan
-        5    258.39     11.80 ...             nan   4998.03          nan
+        1    235.16      1.10 ...             nan    511.47          nan
+        2    494.16      5.82 ...             nan    541.53          nan
+        3    207.29     10.04 ...             nan    692.64          nan
+        4    364.73     11.12 ...             nan    695.36          nan
+        5    258.36     11.79 ...             nan    667.71          nan
       ...       ...       ... ...             ...       ...          ...
-       92    427.01    147.45 ...             nan   7993.35          nan
-       93    426.60    211.14 ...             nan   2545.96          nan
-       94    419.79    216.68 ...             nan   7076.41          nan
-       95    433.91    280.70 ...             nan   4203.37          nan
-       96    434.11    288.90 ...             nan   5137.10          nan
+       92    427.01    147.46 ...             nan    888.26          nan
+       93    426.63    211.10 ...             nan    893.45          nan
+       94    419.74    216.64 ...             nan    867.93          nan
+       95    433.95    280.71 ...             nan    636.02          nan
+       96    434.09    288.93 ...             nan    925.67          nan
     Length = 96 rows
 
 
@@ -403,7 +396,8 @@ As an example, let's plot the calculated elliptical Kron apertures
     bkg_estimator = MedianBackground()
     bkg = Background2D(data, (50, 50), filter_size=(3, 3),
                        bkg_estimator=bkg_estimator)
-    threshold = bkg.background + (2. * bkg.background_rms)
+    data -= bkg.background
+    threshold = 2. * bkg.background_rms
     sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
@@ -421,7 +415,7 @@ As an example, let's plot the calculated elliptical Kron apertures
     cmap = segm_deblend.make_cmap(seed=123)
     ax2.imshow(segm_deblend, origin='lower', cmap=cmap,
                interpolation='nearest')
-    ax2.set_title('Segmentation Image')
+    ax2.set_title('Segmentation Image with Kron apertures')
     for aperture in cat.kron_aperture:
         aperture.plot(axes=ax1, color='white', lw=1.5)
         aperture.plot(axes=ax2, color='white', lw=1.5)
@@ -445,12 +439,12 @@ label numbers in the segmentation image:
     label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
                               ...
     ----- --------- --------- ... --------------- --------- ------------
-        1    235.22      1.25 ...             nan   2010.90          nan
-        5    258.39     11.80 ...             nan   4998.03          nan
-       20    347.00     66.94 ...             nan   8214.26          nan
-       50    145.06    168.55 ...             nan   1758.86          nan
-       75    301.86    239.25 ...             nan   4100.50          nan
-       80     43.26    250.01 ...             nan   6304.81          nan
+        1    235.16      1.10 ...             nan    511.47          nan
+        5    258.36     11.79 ...             nan    667.71          nan
+       20    347.02     66.92 ...             nan    815.06          nan
+       50    145.06    168.54 ...             nan    715.61          nan
+       75    301.87    239.26 ...             nan    506.95          nan
+       80     43.25    250.03 ...             nan    666.39          nan
 
 
 By default, the :meth:`~photutils.segmentation.SourceCatalog.to_table`
@@ -472,12 +466,12 @@ via the ``columns`` or ``exclude_columns`` keywords:
     label xcentroid ycentroid area segment_flux
                               pix2
     ----- --------- --------- ---- ------------
-        1  235.2160    1.2457 36.0     594.2193
-        5  258.3876   11.8024 59.0     691.7895
-       20  346.9998   66.9428 73.0     864.9778
-       50  145.0591  168.5496 33.0     885.9582
-       75  301.8641  239.2534 36.0     391.1656
-       80   43.2554  250.0099 56.0     634.7050
+        1  235.1599    1.1019 38.0     421.5506
+        5  258.3583   11.7944 59.0     384.3829
+       20  347.0213   66.9189 73.0     479.6836
+       50  145.0619  168.5415 33.0     714.7382
+       75  301.8673  239.2567 36.0     206.0899
+       80   43.2456  250.0334 56.0     342.9081
 
 A `~astropy.wcs.WCS` transformation can also be input to
 :class:`~photutils.segmentation.SourceCatalog` via the ``wcs`` keyword,
@@ -508,13 +502,12 @@ properties for each source will also be calculated:
     >>> print(tbl4)
     label background_centroid background_mean background_sum
     ----- ------------------- --------------- --------------
-        1        5.2046374629    5.2021410884 187.2770791841
-        5        5.2161668709    5.2102818673 307.4066301727
-       20        5.2363707110    5.2780021156 385.2941544392
-       50        5.1752755106    5.1884834993 171.2199554780
-       75        5.1101556991    5.1409912451 185.0756848238
-       80        5.1934978461    5.2106591322 291.7969114012
-
+        1        5.2045930090    5.2021426705 197.6814214808
+        5        5.2161445822    5.2102818673 307.4066301727
+       20        5.2363604148    5.2780021156 385.2941544392
+       50        5.1752766952    5.1884834993 171.2199554780
+       75        5.1101563277    5.1409912451 185.0756848238
+       80        5.1934988972    5.2106591322 291.7969114012
 
 Photometric Errors
 ^^^^^^^^^^^^^^^^^^
@@ -564,12 +557,12 @@ instrumental flux and propagated flux error within the source segments:
     >>> print(tbl5)
     label xcentroid ycentroid segment_flux segment_fluxerr
     ----- --------- --------- ------------ ---------------
-        1 235.21604 1.2457344    594.21933       12.784238
-        5 258.38765 11.802411    691.78952       16.457525
-       20 346.99975 66.942777    864.97776       18.667065
-       50 145.05911 168.54961     885.9582       11.904315
-       75 301.86414 239.25337    391.16559       12.080546
-       80 43.255435 250.00986    634.70498       15.926507
+        1 235.15995 1.1019364    421.55062       13.119038
+        5 258.35831 11.794386    384.38289       16.438836
+       20 347.02128 66.918889    479.68361       18.646413
+       50 145.06195 168.54152    714.73824       11.890069
+       75 301.86728 239.25667     206.0899       12.065216
+       80 43.245594 250.03337    342.90807       15.908175
 
 
 Pixel Masking
