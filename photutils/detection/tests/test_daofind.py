@@ -8,14 +8,12 @@ import os.path as op
 
 from astropy.table import Table
 from astropy.tests.helper import catch_warnings
-from astropy.tests.helper import catch_warnings
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
 from ..daofind import DAOStarFinder
 from ...datasets import make_100gaussians_image
-from ...utils.exceptions import NoDetectionsWarning
 from ...utils.exceptions import NoDetectionsWarning
 
 try:
