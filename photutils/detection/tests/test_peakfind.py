@@ -5,14 +5,15 @@ Tests for the core module.
 
 import warnings
 
-from astropy.tests.helper import assert_quantity_allclose
+from astropy.tests.helper import assert_quantity_allclose, catch_warnings
 import numpy as np
 from numpy.testing import assert_array_equal
 import pytest
 
-from ..findpeaks import find_peaks
+from ..peakfind import find_peaks
 from ...centroids import centroid_com
 from ...datasets import make_4gaussians_image, make_gwcs, make_wcs
+from ...utils.exceptions import NoDetectionsWarning
 
 try:
     import scipy  # noqa
@@ -38,7 +39,6 @@ FITSWCS = make_wcs(IMAGE.shape)
 class TestFindPeaks:
     def test_box_size(self):
         """Test with box_size."""
-
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3)
         assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
@@ -46,7 +46,6 @@ class TestFindPeaks:
 
     def test_footprint(self):
         """Test with footprint."""
-
         tbl = find_peaks(PEAKDATA, 0.1, footprint=np.ones((3, 3)))
         assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
@@ -54,7 +53,6 @@ class TestFindPeaks:
 
     def test_mask(self):
         """Test with mask."""
-
         mask = np.zeros(PEAKDATA.shape, dtype=bool)
         mask[0, 0] = True
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3, mask=mask)
@@ -65,52 +63,42 @@ class TestFindPeaks:
 
     def test_maskshape(self):
         """Test if make shape doesn't match data shape."""
-
         with pytest.raises(ValueError):
             find_peaks(PEAKDATA, 0.1, mask=np.ones((5, 5)))
 
     def test_thresholdshape(self):
         """Test if threshold shape doesn't match data shape."""
-
         with pytest.raises(ValueError):
             find_peaks(PEAKDATA, np.ones((2, 2)))
 
     def test_npeaks(self):
         """Test npeaks."""
-
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3, npeaks=1)
         assert_array_equal(tbl['x_peak'], PEAKREF1[1, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[1, 0])
 
     def test_border_width(self):
         """Test border exclusion."""
-        tbl = find_peaks(PEAKDATA, 0.1, box_size=3, border_width=3)
-        assert tbl is None
-        # temporarily disable this test due to upstream
-        # "Distutils was imported before Setuptools" warning
-        # with catch_warnings(NoDetectionsWarning) as warning_lines:
-        #     tbl = find_peaks(PEAKDATA, 0.1, box_size=3, border_width=3)
-        #     assert tbl is None
-        #     assert len(warning_lines) > 0
-        #     assert ('No local peaks were found.' in
-        #             str(warning_lines[0].message))
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            tbl = find_peaks(PEAKDATA, 0.1, box_size=3, border_width=3)
+            assert tbl is None
+            assert len(warning_lines) > 0
+            assert ('No local peaks were found.' in
+                    str(warning_lines[0].message))
 
     def test_box_size_int(self):
         """Test non-integer box_size."""
-
         tbl1 = find_peaks(PEAKDATA, 0.1, box_size=5.)
         tbl2 = find_peaks(PEAKDATA, 0.1, box_size=5.5)
         assert_array_equal(tbl1, tbl2)
 
     def test_centroid_func_callable(self):
         """Test that centroid_func is callable."""
-
         with pytest.raises(TypeError):
             find_peaks(PEAKDATA, 0.1, box_size=2, centroid_func=True)
 
     def test_wcs(self):
         """Test with astropy WCS."""
-
         columns = ['skycoord_peak', 'skycoord_centroid']
 
         tbl = find_peaks(IMAGE, 100, wcs=FITSWCS, centroid_func=centroid_com)
@@ -120,7 +108,6 @@ class TestFindPeaks:
     @pytest.mark.skipif('not HAS_GWCS')
     def test_gwcs(self):
         """Test with gwcs."""
-
         columns = ['skycoord_peak', 'skycoord_centroid']
 
         gwcs_obj = make_gwcs(IMAGE.shape)
@@ -141,41 +128,35 @@ class TestFindPeaks:
 
     def test_constant_array(self):
         """Test for empty output table when data is constant."""
-
         data = np.ones((10, 10))
-        tbl = find_peaks(data, 0.)
-        assert tbl is None
-        # temporarily disable this test due to upstream
-        # "Distutils was imported before Setuptools" warning
-        # with catch_warnings(NoDetectionsWarning) as warning_lines:
-        #     tbl = find_peaks(data, 0.)
-        #     assert tbl is None
-        #     assert len(warning_lines) > 0
-        #     assert ('Input data is constant.' in
-        #             str(warning_lines[0].message))
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            tbl = find_peaks(data, 0.)
+            assert tbl is None
+            assert len(warning_lines) > 0
+            assert ('Input data is constant.' in
+                    str(warning_lines[0].message))
 
     def test_no_peaks(self):
         """
         Test for an empty output table with the expected column names
         when no peaks are found.
         """
+        with catch_warnings(NoDetectionsWarning):
+            tbl = find_peaks(IMAGE, 10000)
+            assert tbl is None
 
-        tbl = find_peaks(IMAGE, 10000)
-        assert tbl is None
+            tbl = find_peaks(IMAGE, 100000, centroid_func=centroid_com)
+            assert tbl is None
 
-        tbl = find_peaks(IMAGE, 100000, centroid_func=centroid_com)
-        assert tbl is None
+            tbl = find_peaks(IMAGE, 100000, wcs=FITSWCS)
+            assert tbl is None
 
-        tbl = find_peaks(IMAGE, 100000, wcs=FITSWCS)
-        assert tbl is None
-
-        tbl = find_peaks(IMAGE, 100000, wcs=FITSWCS,
-                         centroid_func=centroid_com)
-        assert tbl is None
+            tbl = find_peaks(IMAGE, 100000, wcs=FITSWCS,
+                             centroid_func=centroid_com)
+            assert tbl is None
 
     def test_data_nans(self):
         """Test that data with NaNs does not issue Runtime warning."""
-
         data = np.copy(PEAKDATA)
         data[1, 1] = np.nan
 
