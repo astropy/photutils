@@ -184,10 +184,11 @@ def _detect_sources(data, thresholds, npixels, filter_kernel=None,
         The 2D array of the image.
 
     thresholds : array-like of floats or arrays
-        The data value or pixel-wise data values to be used for the
-        detection thresholds.  A 2D ``threshold`` must have the same
-        shape as ``data``.  See `~photutils.detection.detect_threshold`
-        for one way to create a ``threshold`` image.
+        The data value or pixel-wise data values to
+        be used for the detection thresholds. A 2D
+        ``threshold`` must have the same shape as ``data``. See
+        `~photutils.segmentation.detect_threshold` for one way to create
+        a ``threshold`` image.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
@@ -319,9 +320,9 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
     threshold : float or array-like
         The data value or pixel-wise data values to be used for the
-        detection threshold.  A 2D ``threshold`` must have the same
-        shape as ``data``.  See `~photutils.detection.detect_threshold`
-        for one way to create a ``threshold`` image.
+        detection threshold. A 2D ``threshold`` must have the same shape
+        as ``data``. See `~photutils.segmentation.detect_threshold` for
+        one way to create a ``threshold`` image.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
@@ -356,7 +357,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
     See Also
     --------
-    :func:`photutils.detection.detect_threshold`,
+    :func:`photutils.segmentation.detect_threshold`,
     :class:`photutils.segmentation.SegmentationImage`,
     :func:`photutils.segmentation.source_properties`
     :func:`photutils.segmentation.deblend_sources`
@@ -387,7 +388,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         image = sources + noise
 
         # detect the sources
-        from photutils import detect_threshold, detect_sources
+        from photutils.segmentation import detect_threshold, detect_sources
         threshold = detect_threshold(image, nsigma=3)
         from astropy.convolution import Gaussian2DKernel
         kernel_sigma = 3.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))  # FWHM = 3
