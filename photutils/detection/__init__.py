@@ -4,5 +4,7 @@ This subpackage contains tools for detecting sources in an astronomical
 image.
 """
 
+from .base import *  # noqa
+from .daofind import *  # noqa
 from .findpeaks import *  # noqa
-from .findstars import *  # noqa
+from .irafstarfind import *  # noqa
