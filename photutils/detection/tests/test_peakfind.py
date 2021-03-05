@@ -10,7 +10,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 import pytest
 
-from ..findpeaks import find_peaks
+from ..peakfind import find_peaks
 from ...centroids import centroid_com
 from ...datasets import make_4gaussians_image, make_gwcs, make_wcs
 

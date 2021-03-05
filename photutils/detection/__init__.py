@@ -6,5 +6,5 @@ image.
 
 from .base import *  # noqa
 from .daofind import *  # noqa
-from .findpeaks import *  # noqa
 from .irafstarfind import *  # noqa
+from .peakfind import *  # noqa
