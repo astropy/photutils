@@ -6,15 +6,120 @@ This module provides tools for detecting sources in an image.
 import warnings
 
 from astropy.convolution import Gaussian2DKernel
-from astropy.stats import gaussian_fwhm_to_sigma
+from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
 import numpy as np
 
 from .core import SegmentationImage
-from ..detection import detect_threshold
 from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
-__all__ = ['detect_sources', 'make_source_mask']
+__all__ = ['detect_threshold', 'detect_sources', 'make_source_mask']
+
+
+def detect_threshold(data, nsigma, background=None, error=None, mask=None,
+                     mask_value=None, sigclip_sigma=3.0, sigclip_iters=None):
+    """
+    Calculate a pixel-wise threshold image that can be used to detect
+    sources.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2D array of the image.
+
+    nsigma : float
+        The number of standard deviations per pixel above the
+        ``background`` for which to consider a pixel as possibly being
+        part of a source.
+
+    background : float or array_like, optional
+        The background value(s) of the input ``data``.  ``background``
+        may either be a scalar value or a 2D image with the same shape
+        as the input ``data``.  If the input ``data`` has been
+        background-subtracted, then set ``background`` to ``0.0``.  If
+        `None`, then a scalar background value will be estimated using
+        sigma-clipped statistics.
+
+    error : float or array_like, optional
+        The Gaussian 1-sigma standard deviation of the background noise
+        in ``data``.  ``error`` should include all sources of
+        "background" error, but *exclude* the Poisson error of the
+        sources.  If ``error`` is a 2D image, then it should represent
+        the 1-sigma background error in each pixel of ``data``.  If
+        `None`, then a scalar background rms value will be estimated
+        using sigma-clipped statistics.
+
+    mask : array_like, bool, optional
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked pixels are ignored when computing the image background
+        statistics.
+
+    mask_value : float, optional
+        An image data value (e.g., ``0.0``) that is ignored when
+        computing the image background statistics.  ``mask_value`` will
+        be ignored if ``mask`` is input.
+
+    sigclip_sigma : float, optional
+        The number of standard deviations to use as the clipping limit
+        when calculating the image background statistics.
+
+    sigclip_iters : int, optional
+       The maximum number of iterations to perform sigma clipping, or
+       `None` to clip until convergence is achieved (i.e., continue
+       until the last iteration clips nothing) when calculating the
+       image background statistics.
+
+    Returns
+    -------
+    threshold : 2D `~numpy.ndarray`
+        A 2D image with the same shape as ``data`` containing the
+        pixel-wise threshold values.
+
+    See Also
+    --------
+    :func:`photutils.segmentation.detect_sources`
+
+    Notes
+    -----
+    The ``mask``, ``mask_value``, ``sigclip_sigma``, and
+    ``sigclip_iters`` inputs are used only if it is necessary to
+    estimate ``background`` or ``error`` using sigma-clipped background
+    statistics.  If ``background`` and ``error`` are both input, then
+    ``mask``, ``mask_value``, ``sigclip_sigma``, and ``sigclip_iters``
+    are ignored.
+    """
+    if background is None or error is None:
+        data_mean, _, data_std = sigma_clipped_stats(
+            data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
+            maxiters=sigclip_iters)
+
+        bkgrd_image = np.zeros_like(data) + data_mean
+        bkgrdrms_image = np.zeros_like(data) + data_std
+
+    if background is None:
+        background = bkgrd_image
+    else:
+        if np.isscalar(background):
+            background = np.zeros_like(data) + background
+        else:
+            if background.shape != data.shape:
+                raise ValueError('If input background is 2D, then it '
+                                 'must have the same shape as the input '
+                                 'data.')
+
+    if error is None:
+        error = bkgrdrms_image
+    else:
+        if np.isscalar(error):
+            error = np.zeros_like(data) + error
+        else:
+            if error.shape != data.shape:
+                raise ValueError('If input error is 2D, then it '
+                                 'must have the same shape as the input '
+                                 'data.')
+
+    return background + (error * nsigma)
 
 
 def _make_binary_structure(ndim, connectivity):
@@ -39,7 +144,6 @@ def _make_binary_structure(ndim, connectivity):
         The binary structure element.  If ``ndim <= 2`` an array of int
         is returned, otherwise an array of bool is returned.
     """
-
     from scipy.ndimage import generate_binary_structure
 
     if ndim == 1:
@@ -124,7 +228,6 @@ def _detect_sources(data, thresholds, npixels, filter_kernel=None,
         will contain `None` for that threshold.  Also see the
         ``deblend_skip`` keyword.
     """
-
     from scipy import ndimage
 
     if (npixels <= 0) or (int(npixels) != npixels):
@@ -169,7 +272,7 @@ def _detect_sources(data, thresholds, npixels, filter_kernel=None,
         segm_slices = ndimage.find_objects(segm_img)
         for i, slices in enumerate(segm_slices):
             cutout = segm_img[slices]
-            segment_mask = (cutout == (i+1))
+            segment_mask = (cutout == (i + 1))
             if np.count_nonzero(segment_mask) < npixels:
                 cutout[segment_mask] = 0
 
@@ -299,7 +402,6 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         ax1.imshow(image, origin='lower', interpolation='nearest')
         ax2.imshow(segm.data, origin='lower', interpolation='nearest')
     """
-
     return _detect_sources(data, (threshold,), npixels,
                            filter_kernel=filter_kernel,
                            connectivity=connectivity, mask=mask)[0]
@@ -368,7 +470,6 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
     mask : 2D bool `~numpy.ndarray`
         A 2D boolean image containing the source mask.
     """
-
     from scipy import ndimage
 
     threshold = detect_threshold(data, nsigma, background=None, error=None,

@@ -12,7 +12,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 import pytest
 
 from ...utils.exceptions import NoDetectionsWarning
-from ..detect import detect_sources, make_source_mask
+from ..detect import detect_threshold, detect_sources, make_source_mask
 from ...datasets import make_4gaussians_image
 
 try:
@@ -20,6 +20,102 @@ try:
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
+
+DATA = np.array([[0, 1, 0], [0, 2, 0], [0, 0, 0]]).astype(float)
+REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+class TestDetectThreshold:
+    def test_nsigma(self):
+        """Test basic nsigma."""
+
+        threshold = detect_threshold(DATA, nsigma=0.1)
+        ref = 0.4 * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_nsigma_zero(self):
+        """Test nsigma=0."""
+
+        threshold = detect_threshold(DATA, nsigma=0.0)
+        ref = (1. / 3.) * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_background(self):
+        threshold = detect_threshold(DATA, nsigma=1.0, background=1)
+        ref = (5. / 3.) * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_background_image(self):
+        background = np.ones((3, 3))
+        threshold = detect_threshold(DATA, nsigma=1.0, background=background)
+        ref = (5. / 3.) * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_background_badshape(self):
+        wrong_shape = np.zeros((2, 2))
+        with pytest.raises(ValueError):
+            detect_threshold(DATA, nsigma=2., background=wrong_shape)
+
+    def test_error(self):
+        threshold = detect_threshold(DATA, nsigma=1.0, error=1)
+        ref = (4. / 3.) * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_error_image(self):
+        error = np.ones((3, 3))
+        threshold = detect_threshold(DATA, nsigma=1.0, error=error)
+        ref = (4. / 3.) * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_error_badshape(self):
+        wrong_shape = np.zeros((2, 2))
+        with pytest.raises(ValueError):
+            detect_threshold(DATA, nsigma=2., error=wrong_shape)
+
+    def test_background_error(self):
+        threshold = detect_threshold(DATA, nsigma=2.0, background=10.,
+                                     error=1.)
+        ref = 12. * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_background_error_images(self):
+        background = np.ones((3, 3)) * 10.
+        error = np.ones((3, 3))
+        threshold = detect_threshold(DATA, nsigma=2.0, background=background,
+                                     error=error)
+        ref = 12. * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_mask_value(self):
+        """Test detection with mask_value."""
+
+        threshold = detect_threshold(DATA, nsigma=1.0, mask_value=0.0)
+        ref = 2. * np.ones((3, 3))
+        assert_array_equal(threshold, ref)
+
+    def test_image_mask(self):
+        """
+        Test detection with image_mask.
+        Set sigma=10 and iters=1 to prevent sigma clipping after
+        applying the mask.
+        """
+
+        mask = REF1.astype(bool)
+        threshold = detect_threshold(DATA, nsigma=1., error=0, mask=mask,
+                                     sigclip_sigma=10, sigclip_iters=1)
+        ref = (1. / 8.) * np.ones((3, 3))
+        assert_array_equal(threshold, ref)
+
+    def test_image_mask_override(self):
+        """Test that image_mask overrides mask_value."""
+
+        mask = REF1.astype(bool)
+        threshold = detect_threshold(DATA, nsigma=0.1, error=0, mask_value=0.0,
+                                     mask=mask, sigclip_sigma=10,
+                                     sigclip_iters=1)
+        ref = np.ones((3, 3))
+        assert_array_equal(threshold, ref)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
