@@ -48,10 +48,10 @@ Let's start by detecting sources in a synthetic image provided by the
     >>> from photutils.datasets import make_100gaussians_image
     >>> data = make_100gaussians_image()
 
-The source segmentation/extraction is performed using the
-:func:`~photutils.segmentation.detect_sources` function.  We will use
-a convenience function called
-:func:`~photutils.detection.detect_threshold` to produce a 2D
+The source segmentation/extraction is performed using
+the :func:`~photutils.segmentation.detect_sources`
+function. We will use a convenience function called
+:func:`~photutils.segmentation.detect_threshold` to produce a 2D
 detection threshold image using simple sigma-clipped statistics to
 estimate the background level and RMS.
 
@@ -60,7 +60,7 @@ number of standard deviations (per pixel) above the background.  Here
 we generate a simple threshold at 2 sigma (per pixel) above the
 background::
 
-    >>> from photutils import detect_threshold
+    >>> from photutils.segmentation import detect_threshold
     >>> threshold = detect_threshold(data, nsigma=2.)
 
 For more sophisticated analyses, one should generate a 2D background
@@ -71,12 +71,12 @@ using :class:`~photutils.background.Background2D`).  In that case, a
     >>> threshold = bkg + (2.0 * bkg_rms)  # doctest: +SKIP
 
 Note that if the threshold includes the background level (as above),
-then the image input into
-:func:`~photutils.segmentation.detect_sources` should *not* be
-background subtracted.  In other words, the input threshold value(s)
-are compared directly to the input image.  Because the threshold
-returned by :func:`~photutils.detection.detect_threshold` includes the
-background, we do not subtract the background from the data here.
+then the image input into :func:`~photutils.segmentation.detect_sources`
+should *not* be background subtracted. In other words, the input
+threshold value(s) are compared directly to the input image. Because the
+threshold returned by :func:`~photutils.segmentation.detect_threshold`
+includes the background, we do not subtract the background from the data
+here.
 
 Let's find sources that have 5 connected pixels that are each greater
 than the corresponding pixel-wise ``threshold`` level defined above

@@ -101,6 +101,9 @@ API changes
     ``LegacySourceCatalog``.  Use the new ``SourceCatalog`` function
     instead. [#1170]
 
+  - The ``detect_threshold`` function was moved to the ``segmentation``
+    subpackage. [#1171]
+
 
 1.0.2 (2021-01-20)
 ------------------
