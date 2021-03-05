@@ -8,12 +8,14 @@ import os.path as op
 
 from astropy.table import Table
 from astropy.tests.helper import catch_warnings
+from astropy.tests.helper import catch_warnings
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
 from ..daofind import DAOStarFinder
 from ...datasets import make_100gaussians_image
+from ...utils.exceptions import NoDetectionsWarning
 from ...utils.exceptions import NoDetectionsWarning
 
 try:
@@ -64,44 +66,29 @@ class TestDAOStarFinder:
 
     def test_daofind_nosources(self):
         data = np.ones((3, 3))
-        starfinder = DAOStarFinder(threshold=10, fwhm=1)
-        tbl = starfinder(data)
-        assert tbl is None
-        # temporarily disable this test due to upstream
-        # "Distutils was imported before Setuptools" warning
-        # with catch_warnings(NoDetectionsWarning) as warning_lines:
-        #     starfinder = DAOStarFinder(threshold=10, fwhm=1)
-        #     tbl = starfinder(data)
-        #     assert tbl is None
-        #     assert 'No sources were found.' in str(warning_lines[0].message)
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = DAOStarFinder(threshold=10, fwhm=1)
+            tbl = starfinder(data)
+            assert tbl is None
+            assert 'No sources were found.' in str(warning_lines[0].message)
 
     def test_daofind_sharpness(self):
         """Sources found, but none pass the sharpness criteria."""
-        starfinder = DAOStarFinder(threshold=50, fwhm=1.0, sharplo=1.)
-        tbl = starfinder(DATA)
-        assert tbl is None
-        # temporarily disable this test due to upstream
-        # "Distutils was imported before Setuptools" warning
-        # with catch_warnings(NoDetectionsWarning) as warning_lines:
-        #     starfinder = DAOStarFinder(threshold=50, fwhm=1.0, sharplo=1.)
-        #     tbl = starfinder(DATA)
-        #     assert tbl is None
-        #     assert ('Sources were found, but none pass the sharpness and '
-        #             'roundness criteria.' in str(warning_lines[0].message))
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, sharplo=1.)
+            tbl = starfinder(DATA)
+            assert tbl is None
+            assert ('Sources were found, but none pass the sharpness and '
+                    'roundness criteria.' in str(warning_lines[0].message))
 
     def test_daofind_roundness(self):
         """Sources found, but none pass the roundness criteria."""
-        starfinder = DAOStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
-        tbl = starfinder(DATA)
-        assert tbl is None
-        # temporarily disable this test due to upstream
-        # "Distutils was imported before Setuptools" warning
-        # with catch_warnings(NoDetectionsWarning) as warning_lines:
-        #     starfinder = DAOStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
-        #     tbl = starfinder(DATA)
-        #     assert tbl is None
-        #     assert ('Sources were found, but none pass the sharpness and '
-        #             'roundness criteria.' in str(warning_lines[0].message))
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
+            tbl = starfinder(DATA)
+            assert tbl is None
+            assert ('Sources were found, but none pass the sharpness and '
+                    'roundness criteria.' in str(warning_lines[0].message))
 
     def test_daofind_flux_negative(self):
         """Test handling of negative flux (here created by large sky)."""
@@ -116,7 +103,6 @@ class TestDAOStarFinder:
         Regression test that sources with negative fit peaks (i.e.,
         hx/hy<=0) are excluded.
         """
-
         starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
                                    roundhi=np.inf, sharplo=-np.inf,
                                    sharphi=np.inf)
@@ -128,7 +114,6 @@ class TestDAOStarFinder:
         Regression test that objects with ``peak`` >= ``peakmax`` are
         filtered out.
         """
-
         peakmax = 20
         starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
                                    roundhi=np.inf, sharplo=-np.inf,
@@ -142,7 +127,6 @@ class TestDAOStarFinder:
         Regression test that only top ``brightest`` objects are
         selected.
         """
-
         brightest = 40
         peakmax = 20
         starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
@@ -160,7 +144,6 @@ class TestDAOStarFinder:
 
     def test_daofind_mask(self):
         """Test DAOStarFinder with a mask."""
-
         starfinder = DAOStarFinder(threshold=10, fwhm=1.5)
         mask = np.zeros(DATA.shape, dtype=bool)
         mask[100:200] = True
