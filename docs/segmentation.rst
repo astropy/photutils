@@ -1,13 +1,5 @@
-
-.. note::
-    For the legacy image segmentation documentation using the deprecated :func:`~photutils.segmentation.source_properties` function and :class:`~photutils.segmentation.SourceProperties`, please visit :ref:`Legacy Image Segmentation <legacy_segmentation>`
-
 .. _image_segmentation:
 
-.. toctree::
-   :hidden:
-
-   legacy_segmentation.rst
 
 Image Segmentation (`photutils.segmentation`)
 =============================================
@@ -305,7 +297,8 @@ the threshold at 2 sigma (per pixel) above the background:
     >>> bkg_estimator = MedianBackground()
     >>> bkg = Background2D(data, (50, 50), filter_size=(3, 3),
     ...                    bkg_estimator=bkg_estimator)
-    >>> threshold = bkg.background + (2. * bkg.background_rms)
+    >>> data -= bkg.background  # subtract the background
+    >>> threshold = 2. * bkg.background_rms  # above the background
 
 Now we find sources that have 5 connected pixels that are each greater
 than the corresponding threshold image defined above. Because the
@@ -403,7 +396,8 @@ As an example, let's plot the calculated elliptical Kron apertures
     bkg_estimator = MedianBackground()
     bkg = Background2D(data, (50, 50), filter_size=(3, 3),
                        bkg_estimator=bkg_estimator)
-    threshold = bkg.background + (2. * bkg.background_rms)
+    data -= bkg.background
+    threshold = 2. * bkg.background_rms
     sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
@@ -421,7 +415,7 @@ As an example, let's plot the calculated elliptical Kron apertures
     cmap = segm_deblend.make_cmap(seed=123)
     ax2.imshow(segm_deblend, origin='lower', cmap=cmap,
                interpolation='nearest')
-    ax2.set_title('Segmentation Image')
+    ax2.set_title('Segmentation Image with Kron apertures')
     for aperture in cat.kron_aperture:
         aperture.plot(axes=ax1, color='white', lw=1.5)
         aperture.plot(axes=ax2, color='white', lw=1.5)
