@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for the findstars module.
+Tests for IRAFStarFinder.
 """
 
 import itertools
@@ -12,7 +12,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..irafstarfind import IRAFStarFinder
+from ..irafstarfinder import IRAFStarFinder
 from ...datasets import make_100gaussians_image
 from ...utils.exceptions import NoDetectionsWarning
 

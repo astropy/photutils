@@ -12,7 +12,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..daofind import DAOStarFinder
+from ..daofinder import DAOStarFinder
 from ...datasets import make_100gaussians_image
 from ...utils.exceptions import NoDetectionsWarning
 

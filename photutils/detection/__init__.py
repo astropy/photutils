@@ -5,6 +5,6 @@ image.
 """
 
 from .base import *  # noqa
-from .daofind import *  # noqa
-from .irafstarfind import *  # noqa
-from .peakfind import *  # noqa
+from .daofinder import *  # noqa
+from .irafstarfinder import *  # noqa
+from .peakfinder import *  # noqa

@@ -1,0 +1,25 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""Temporary module to hold deprecations."""
+
+import warnings
+
+from astropy.utils.decorators import AstropyDeprecationWarning
+
+from .base import StarFinderBase as _StarFinderBase  # noqa
+from .daofinder import DAOStarFinder as _DAOStarFinder  # noqa
+from .irafstarfinder import IRAFStarFinder as _IRAFStarFinder  # noqa
+
+
+deprecated = {'StarFinderBase': 'photutils.detection.base',
+              'DAOStarFinder': 'photutils.detection.daostarfinder',
+              'IRAFStarFinder': 'photutils.detection.irafstarfinder',
+              }
+
+
+def __getattr__(name):
+    if name in deprecated.keys():
+        warnings.warn(f'{name} was moved to the {deprecated[name]} module. '
+                      'Please update your import statement.',
+                      AstropyDeprecationWarning)
+        return globals()[f'_{name}']
+    raise AttributeError(f'module {__name__} has no attribute {name}')
