@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for the core module.
+Tests for the peakfinder module.
 """
 
 import warnings
@@ -10,7 +10,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 import pytest
 
-from ..peakfind import find_peaks
+from ..peakfinder import find_peaks
 from ...centroids import centroid_com
 from ...datasets import make_4gaussians_image, make_gwcs, make_wcs
 from ...utils.exceptions import NoDetectionsWarning
