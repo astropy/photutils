@@ -6,14 +6,14 @@ Package Release Instructions
 
 This document outlines the steps for releasing Photutils to PyPI. This
 process currently requires admin-level access to the Photutils GitHub
-repository, as it relies on the ability to commit to master directly. It
+repository, as it relies on the ability to commit to main directly. It
 also requires a PyPI account with admin-level access for Photutils.
 
 These instructions assume the name of the git remote for the repo is
 called ``upstream``.
 
 #. Check out the branch that you are going to release. This will usually
-   be the ``master`` branch, unless you are making a bugfix release.
+   be the ``main`` branch, unless you are making a bugfix release.
 
    For a bugfix release, check out the ``A.B.x`` branch. Use ``git
    cherry-pick <hash>`` (or ``git cherry-pick -m1 <hash>`` for merge
@@ -114,9 +114,9 @@ called ``upstream``.
    Check that the entry on PyPI (https://pypi.org/project/photutils/) is
    correct, and that the tarfile is present.
 
-#. Go back to the master branch::
+#. Go back to the main branch::
 
-    git checkout master
+    git checkout main
 
 #. Push the released tag to the upstream repo::
 
@@ -136,12 +136,12 @@ called ``upstream``.
 
         git add CHANGES.rst
         git commit -m'Add version <x.y.z> to the changelog'
-        git push upstream master
+        git push upstream main
 
 #. After releasing a major version, tag this new commit with the
    development version of the next major version and push the tag to
    the upstream repo. This is needed if the latest package release is
-   the first bugfix release tagged on a bugfix branch (not the master
+   the first bugfix release tagged on a bugfix branch (not the main
    branch)::
 
         git tag -a <x.y.z.dev> -m'<x.y.z.dev>'

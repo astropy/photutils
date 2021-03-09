@@ -22,7 +22,7 @@ workflow
 <https://docs.astropy.org/en/latest/development/workflow/development_workflow.html>`_.
 
 Once you open a pull request (which should be opened against the
-``master`` branch, not against any other branch), please make sure
+``main`` branch, not against any other branch), please make sure
 that you include the following:
 
 - **Code**: the code you are adding, which should follow as much as

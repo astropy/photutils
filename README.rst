@@ -32,7 +32,7 @@ where (Bradley et al. 20XX) is a citation to the `Zenodo record
 <https://doi.org/10.5281/zenodo.596036>`_ of the Photutils version
 that was used.  We also encourage citations in the main text wherever
 appropriate.  Please see the `CITATION
-<https://github.com/astropy/photutils/blob/master/photutils/CITATION.rst>`_
+<https://github.com/astropy/photutils/blob/main/photutils/CITATION.rst>`_
 file for details and an example BibTeX entry.
 
 
@@ -41,7 +41,7 @@ License
 
 Photutils is licensed under a 3-clause BSD license.  Please see the
 `LICENSE
-<https://github.com/astropy/photutils/blob/master/LICENSE.rst>`_ file
+<https://github.com/astropy/photutils/blob/main/LICENSE.rst>`_ file
 for details.
 
 
@@ -73,7 +73,7 @@ for details.
     :target: https://codecov.io/gh/astropy/photutils
     :alt: Coverage Status
 
-.. |CircleCI Status| image:: https://img.shields.io/circleci/build/github/astropy/photutils/master?logo=circleci&label=CircleCI
+.. |CircleCI Status| image:: https://img.shields.io/circleci/build/github/astropy/photutils/main?logo=circleci&label=CircleCI
     :target: https://circleci.com/gh/astropy/photutils
     :alt: CircleCI Status
 
