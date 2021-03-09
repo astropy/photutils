@@ -8,11 +8,13 @@ from astropy.utils.decorators import AstropyDeprecationWarning
 from .base import StarFinderBase as _StarFinderBase  # noqa
 from .daofinder import DAOStarFinder as _DAOStarFinder  # noqa
 from .irafstarfinder import IRAFStarFinder as _IRAFStarFinder  # noqa
+from ._utils import _StarFinderKernel as __StarFinderKernel  # noqa
 
 
 deprecated = {'StarFinderBase': 'photutils.detection.base',
               'DAOStarFinder': 'photutils.detection.daostarfinder',
               'IRAFStarFinder': 'photutils.detection.irafstarfinder',
+              '_StarFinderKernel': 'photutils.detection._utils',
               }
 
 
