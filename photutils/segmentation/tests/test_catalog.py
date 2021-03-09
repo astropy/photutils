@@ -178,10 +178,6 @@ class TestSourceCatalog:
         assert len(tbl) == 7
         assert tbl.colnames == columns
 
-        tbl2 = self.cat.to_table(exclude_columns=columns)
-        assert len(tbl2) == 7
-        assert len(tbl2.colnames) > len(tbl.colnames)
-
     def test_invalid_inputs(self):
         wrong_shape = np.ones((3, 3))
         with pytest.raises(ValueError):

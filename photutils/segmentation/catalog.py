@@ -547,7 +547,7 @@ class SourceCatalog:
         idx = np.searchsorted(self.label, labels)
         return self[idx]
 
-    def to_table(self, columns=None, exclude_columns=None):
+    def to_table(self, columns=None):
         """
         Create a `~astropy.table.QTable` of source properties.
 
@@ -563,27 +563,15 @@ class SourceCatalog:
             `~astropy.table.QTable`. The allowed column names are any of
             the attributes of `SourceCatalog`.
 
-        exclude_columns : str or list of str, optional
-            Names of columns to exclude from the default columns in the
-            output `~astropy.table.QTable`. The default columns are
-            defined in the ``default_columns`` attribute.
-
         Returns
         -------
         table : `~astropy.table.QTable`
             A table of sources properties with one row per source.
         """
-        # start with the default columns
-        columns_all = self.default_columns
-
-        table_columns = None
-        if exclude_columns is not None:
-            table_columns = [s for s in columns_all
-                             if s not in exclude_columns]
-        if columns is not None:
+        if columns is None:
+            table_columns = self.default_columns
+        else:
             table_columns = np.atleast_1d(columns)
-        if table_columns is None:
-            table_columns = columns_all
 
         tbl = QTable()
         for column in table_columns:
