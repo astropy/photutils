@@ -252,7 +252,7 @@ class EllipseFitter:
         #         proceed = False
 
         # check if an acceptable gradient value could be computed.
-        if sample.gradient_error:
+        if sample.gradient_error and sample.gradient_relative_error:
             if not going_inwards and (
                     sample.gradient_relative_error > maxgerr
                     or sample.gradient >= 0.0):
