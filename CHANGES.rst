@@ -79,6 +79,11 @@ Bug Fixes
 
   - Fixed ``SourceProperties`` Kron mask correction. [#1167]
 
+- ``photutils.isophote``
+
+  - Fix computation of gradient relative error when gradient=0
+
+
 API changes
 ^^^^^^^^^^^
 
