@@ -109,7 +109,7 @@ class StarFinder(StarFinderBase):
         table : `~astropy.table.QTable` or `None`
             A table of found objects with the following parameters:
 
-            * ``label`: unique object label number.
+            * ``label``: unique object label number.
             * ``xcentroid, ycentroid``: object centroid.
             * ``fwhm``: object FWHM.
             * ``roundness``: object roundness.
