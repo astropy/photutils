@@ -30,6 +30,11 @@ New Features
   - The ``Background2D`` class now accepts astropy ``NDData``,
     ``CCDData``, and ``Quantity`` objects as data inputs. [#1140]
 
+- ``photutils.detection``
+
+  - Added a ``StarFinder`` class to detect stars with a user-defined
+    kernel. [#1182]
+
 - ``photutils.isophote``
 
   - Added the ability to specify the output columns in the
