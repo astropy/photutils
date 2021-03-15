@@ -40,6 +40,10 @@ New Features
   - Added the ability to specify the output columns in the
     ``IsophoteList`` ``to_table`` method. [#1117]
 
+- ``photutils.psf``
+
+  - The ``EPSFStars`` class is now usable with multiprocessing. [#1152]
+
 - ``photutils.segmentation``
 
   - Added a new, significantly faster, ``SourceCatalog`` class. [#1170]
@@ -63,6 +67,10 @@ Bug Fixes
   - Fixed an issue where ``RectangularAnnulus`` with a non-default
     ``h_in`` would give an incorrect ``ApertureMask``. [#1160]
 
+- ``photutils.isophote``
+
+  - Fix computation of gradient relative error when gradient=0. [#1180]
+
 - ``photutils.psf``
 
   - Fixed a bug in ``EPSFBuild`` where a warning was raised if the input
@@ -83,11 +91,6 @@ Bug Fixes
     image edges. [#1167]
 
   - Fixed ``SourceProperties`` Kron mask correction. [#1167]
-
-- ``photutils.isophote``
-
-  - Fix computation of gradient relative error when gradient=0. [#1180]
-
 
 API changes
 ^^^^^^^^^^^
