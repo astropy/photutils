@@ -10,7 +10,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
+from ..epsf_stars import extract_stars, EPSFStars
 from ..models import EPSFModel, IntegratedGaussianPRF
 
 try:

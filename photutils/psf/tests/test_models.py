@@ -7,7 +7,6 @@ from itertools import product
 
 from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.nddata import NDData
-import astropy.units as u
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest

@@ -14,7 +14,7 @@ from numpy.testing import assert_allclose, assert_almost_equal
 import pytest
 
 from ..epsf import EPSFBuilder, EPSFFitter
-from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
+from ..epsf_stars import extract_stars, EPSFStars
 from ..models import IntegratedGaussianPRF, EPSFModel
 from ...datasets import make_gaussian_prf_sources_image
 
