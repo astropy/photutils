@@ -81,7 +81,7 @@ Bug Fixes
 
 - ``photutils.isophote``
 
-  - Fix computation of gradient relative error when gradient=0
+  - Fix computation of gradient relative error when gradient=0. [#1180]
 
 
 API changes
