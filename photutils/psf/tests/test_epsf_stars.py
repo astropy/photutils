@@ -41,7 +41,7 @@ class TestExtractStars:
         stars = extract_stars(self.nddata, self.stars_tbl, size=size)
         assert len(stars) == 4
         assert isinstance(stars, EPSFStars)
-        assert isinstance(stars[0], EPSFStar)
+        assert isinstance(stars[0], EPSFStars)
         assert stars[0].data.shape == (size, size)
         assert stars.n_stars == stars.n_all_stars
         assert stars.n_stars == stars.n_good_stars

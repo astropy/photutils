@@ -77,7 +77,7 @@ class TestEPSFBuild:
 
         assert len(stars) == 81
         assert isinstance(stars, EPSFStars)
-        assert isinstance(stars[0], EPSFStar)
+        assert isinstance(stars[0], EPSFStars)
         assert stars[0].data.shape == (size, size)
 
     def test_epsf_build(self):
