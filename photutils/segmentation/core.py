@@ -185,10 +185,12 @@ class SegmentationImage:
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
 
         cls_info = []
-        params = ['shape', 'nlabels', 'max_label']
+        params = ['shape', 'nlabels']
         for param in params:
             cls_info.append((param, getattr(self, param)))
-        fmt = [f'{key}: {val}' for key, val in cls_info]
+        cls_info.append(('labels', self.labels))
+        with np.printoptions(threshold=25, edgeitems=5):
+            fmt = [f'{key}: {val}' for key, val in cls_info]
 
         return f'{cls_name}\n' + '\n'.join(fmt)
 

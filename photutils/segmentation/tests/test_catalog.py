@@ -322,7 +322,7 @@ class TestSourceCatalog:
         cat = SourceCatalog(self.data, self.segm)
         assert repr(cat) == str(cat)
 
-        lines = ('Sources: 7', 'Labels: [1 2 3 4 5 6 7]')
+        lines = ('Length: 7', 'labels: [1 2 3 4 5 6 7]')
         for line in lines:
             assert line in repr(cat)
 

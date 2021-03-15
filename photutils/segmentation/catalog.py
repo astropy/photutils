@@ -369,9 +369,9 @@ class SourceCatalog:
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
-        with np.printoptions(threshold=100, edgeitems=5):
-            fmt = [f'Sources: {self.nlabels}',
-                   f'Labels: {self.label}']
+        with np.printoptions(threshold=25, edgeitems=5):
+            fmt = [f'Length: {self.nlabels}',
+                   f'labels: {self.labels}']
         return f'{cls_name}\n' + '\n'.join(fmt)
 
     def __repr__(self):
@@ -620,13 +620,23 @@ class SourceCatalog:
         return self._labels
 
     @property
+    def labels(self):
+        """
+        The source label number(s).
+
+        This label number corresponds to the assigned pixel value in the
+        `~photutils.segmentation.SegmentationImage`.
+        """
+        return self._label_iter
+
+    @property
     def _label_iter(self):
         """
         The source label, always as a iterable.
         """
         _label = self.label
         if self.isscalar:
-            _label = (_label,)
+            _label = np.array((_label,))
         return _label
 
     @property
