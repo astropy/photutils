@@ -184,7 +184,6 @@ def _find_stars(data, kernel, threshold, min_separation=0.0, mask=None,
         pad = ((ypad, ypad), (xpad, xpad))
         pad_mode = 'constant'
         const_val = 0.
-        data = np.pad(data, pad, mode=pad_mode, constant_values=const_val)
         convolved_data = np.pad(convolved_data, pad, mode=pad_mode,
                                 constant_values=const_val)
         if mask is not None:
