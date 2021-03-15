@@ -5,13 +5,11 @@ This module defines the base aperture classes.
 
 import abc
 import copy
-import warnings
 
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.utils import deprecated
-from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import wcs_to_celestial_frame
 
 from .bounding_box import BoundingBox
@@ -128,9 +126,6 @@ class PixelAperture(Aperture):
             raise ValueError(f'Invalid mask mode: {mode}')
 
         if rectangle and mode == 'exact':
-            warnings.warn('The "exact" method is not yet implemented for '
-                          'rectangular apertures -- using "subpixel" method '
-                          'with "subpixels=32"', AstropyUserWarning)
             mode = 'subpixel'
             subpixels = 32
 
@@ -425,6 +420,19 @@ class PixelAperture(Aperture):
 
         aperture_sum_errs : `~numpy.ndarray` or `~astropy.units.Quantity`
             The errors on the sums within each aperture.
+
+        Notes
+        -----
+        `RectangularAperture` and `RectangularAnnulus` photometry with
+        the "exact" method uses a subpixel approximation by subdividing
+        each data pixel by a factor of 1024 (``subpixels = 32``). For
+        rectangular aperture widths and heights in the range from
+        2 to 100 pixels, this subpixel approximation gives results
+        typically within 0.001 percent or better of the exact value.
+        The differences can be larger for smaller apertures (e.g.,
+        aperture sizes of one pixel or smaller). For such small sizes,
+        it is recommend to set ``method='subpixel'`` with a larger
+        ``subpixels`` size.
         """
 
         # validate inputs
