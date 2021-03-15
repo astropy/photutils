@@ -331,7 +331,7 @@ class EllipseSample:
 
         self.gradient = gradient
         self.gradient_error = gradient_error
-        if gradient_error:
+        if gradient_error and gradient < 0.:
             self.gradient_relative_error = gradient_error / np.abs(gradient)
         else:
             self.gradient_relative_error = None
