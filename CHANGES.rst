@@ -44,6 +44,8 @@ New Features
 
   - The ``EPSFStars`` class is now usable with multiprocessing. [#1152]
 
+  - Slicing ``EPSFStars`` now returns an ``EPSFStars`` instance. [#1185]
+
 - ``photutils.segmentation``
 
   - Added a new, significantly faster, ``SourceCatalog`` class. [#1170]
