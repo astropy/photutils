@@ -36,13 +36,6 @@ class SegmentationImage:
     def __init__(self, data):
         self.data = data
 
-    def __getitem__(self, index):
-        return self.segments[index]
-
-    def __iter__(self):
-        for i in self.segments:
-            yield i
-
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
 
@@ -98,18 +91,6 @@ class SegmentationImage:
         This is a static method so it can be used in
         :meth:`remove_masked_labels` on a masked version of the
         segmentation array.
-
-        Examples
-        --------
-        >>> from photutils import SegmentationImage
-        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
-        ...                           [0, 0, 0, 0, 0, 4],
-        ...                           [0, 0, 3, 3, 0, 0],
-        ...                           [7, 0, 0, 0, 0, 5],
-        ...                           [7, 7, 0, 5, 5, 5],
-        ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm._get_labels(segm.data)
-        array([1, 3, 4, 5, 7])
         """
         # np.unique also sorts elements
         return np.unique(data[data != 0])
