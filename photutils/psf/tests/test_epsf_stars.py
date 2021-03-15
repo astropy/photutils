@@ -10,7 +10,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
+from ..epsf_stars import extract_stars, EPSFStars
 from ..models import EPSFModel, IntegratedGaussianPRF
 
 try:
@@ -41,7 +41,7 @@ class TestExtractStars:
         stars = extract_stars(self.nddata, self.stars_tbl, size=size)
         assert len(stars) == 4
         assert isinstance(stars, EPSFStars)
-        assert isinstance(stars[0], EPSFStar)
+        assert isinstance(stars[0], EPSFStars)
         assert stars[0].data.shape == (size, size)
         assert stars.n_stars == stars.n_all_stars
         assert stars.n_stars == stars.n_good_stars

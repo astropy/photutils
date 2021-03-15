@@ -312,7 +312,7 @@ class EPSFStars:
         return len(self._data)
 
     def __getitem__(self, index):
-        return self._data[index]
+        return self.__class__(self._data[index])
 
     def __delitem__(self, index):
         del self._data[index]
@@ -332,9 +332,12 @@ class EPSFStars:
     def __getattr__(self, attr):
         if attr in ['cutout_center', 'center', 'flux',
                     '_excluded_from_fit']:
-            return np.array([getattr(star, attr) for star in self._data])
+            result = np.array([getattr(star, attr) for star in self._data])
         else:
-            return [getattr(star, attr) for star in self._data]
+            result = [getattr(star, attr) for star in self._data]
+        if len(self._data) == 1:
+            result = result[0]
+        return result
 
     def _getattr_flat(self, attr):
         values = []

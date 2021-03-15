@@ -7,14 +7,13 @@ from itertools import product
 
 from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.nddata import NDData
-import astropy.units as u
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
 from ..models import (FittableImageModel, GriddedPSFModel,
                       IntegratedGaussianPRF, PRFAdapter)
-from ...segmentation import detect_sources, source_properties
+from ...segmentation import detect_sources, SourceCatalog
 
 try:
     import scipy  # noqa
@@ -283,12 +282,12 @@ class TestGriddedPSFModel:
                                                  y_0=yyi)
 
         segm = detect_sources(data, 0., 5)
-        props = source_properties(data, segm)
-        orients = props.orientation.to(u.deg)
-        assert_allclose(orients[1].value, 50., rtol=1.e-5)
-        assert_allclose(orients[2].value, -80., rtol=1.e-5)
-        assert 88.3 < orients[0].value < 88.4
-        assert 64. < orients[3].value < 64.2
+        cat = SourceCatalog(data, segm)
+        orients = cat.orientation.value
+        assert_allclose(orients[1], 50., rtol=1.e-5)
+        assert_allclose(orients[2], -80., rtol=1.e-5)
+        assert 88.3 < orients[0] < 88.4
+        assert 64. < orients[3] < 64.2
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

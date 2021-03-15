@@ -14,7 +14,7 @@ from numpy.testing import assert_allclose, assert_almost_equal
 import pytest
 
 from ..epsf import EPSFBuilder, EPSFFitter
-from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
+from ..epsf_stars import extract_stars, EPSFStars
 from ..models import IntegratedGaussianPRF, EPSFModel
 from ...datasets import make_gaussian_prf_sources_image
 
@@ -77,7 +77,7 @@ class TestEPSFBuild:
 
         assert len(stars) == 81
         assert isinstance(stars, EPSFStars)
-        assert isinstance(stars[0], EPSFStar)
+        assert isinstance(stars[0], EPSFStars)
         assert stars[0].data.shape == (size, size)
 
     def test_epsf_build(self):
