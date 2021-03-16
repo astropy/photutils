@@ -105,9 +105,9 @@ class SegmentationImage:
         of the ``labels`` attribute.
         """
         segments = []
-        for label, slc in zip(self.labels, self.slices):
-            segments.append(Segment(self.data, label, slc,
-                                    self.get_area(label)))
+        for label, slc, bbox, area in zip(self.labels, self.slices, self.bbox,
+                                          self.areas):
+            segments.append(Segment(self.data, label, slc, bbox, area))
         return segments
 
     @property
@@ -228,6 +228,20 @@ class SegmentationImage:
         from scipy.ndimage import find_objects
 
         return [slc for slc in find_objects(self._data) if slc is not None]
+
+    @lazyproperty
+    def bbox(self):
+        """
+        A list of `~photutils.aperture.BoundingBox` of the minimal
+        bounding boxes containing the labeled regions.
+        """
+        if self._ndim != 2:
+            raise ValueError('The "bbox" attribute requires a 2D '
+                             'segmentation image.')
+
+        return [BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
+                            iymin=slc[0].start, iymax=slc[0].stop)
+                for slc in self.slices]
 
     @lazyproperty
     def background_area(self):
@@ -1016,14 +1030,18 @@ class Segment:
         A tuple of two slices representing the minimal box that contains
         the labeled region.
 
+    bbox : `~photutils.aperture.BoundingBox`
+        The minimal bounding box that contains the labeled region.
+
     area : float
         The area of the segment in pixels**2.
     """
 
-    def __init__(self, segment_data, label, slices, area):
+    def __init__(self, segment_data, label, slices, bbox, area):
         self._segment_data = segment_data
         self.label = label
         self.slices = slices
+        self.bbox = bbox
         self.area = area
 
     def __str__(self):
@@ -1072,19 +1090,6 @@ class Segment:
         """
         mask = (self._segment_data[self.slices] != self.label)
         return np.ma.masked_array(self._segment_data[self.slices], mask=mask)
-
-    @lazyproperty
-    def bbox(self):
-        """
-        The `~photutils.aperture.BoundingBox` of the minimal rectangular
-        region containing the source segment.
-        """
-        if self._segment_data.ndim != 2:
-            raise ValueError('The "bbox" attribute requires a 2D '
-                             'segmentation image.')
-
-        return BoundingBox(self.slices[1].start, self.slices[1].stop,
-                           self.slices[0].start, self.slices[0].stop)
 
     def make_cutout(self, data, masked_array=False):
         """

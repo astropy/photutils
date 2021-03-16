@@ -98,8 +98,9 @@ class TestSegmentationImage:
         label = 4
         idx = self.segm.get_index(label)
         assert self.segm.segments[idx].label == label
-        assert self.segm.segments[idx].area == self.segm.get_area(label)
+        assert self.segm.segments[idx].area == self.segm.areas[idx]
         assert self.segm.segments[idx].slices == self.segm.slices[idx]
+        assert self.segm.segments[idx].bbox == self.segm.bbox[idx]
 
     def test_repr_str(self):
         assert repr(self.segm) == str(self.segm)
