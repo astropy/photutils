@@ -1810,7 +1810,23 @@ class SourceCatalog:
             bkg <<= self._data_unit
         return bkg
 
-    def _make_circular_apertures(self, radius):
+    def circular_aperture(self, radius):
+        """
+        A list of circular apertures of the input radius centered at the
+        source centroid position.
+
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
+
+        Returns
+        -------
+        result : list of `~photutils.aperture.CircularAperture`
+            A list of `~photutils.aperture.CircularAperture` instances.
+            The aperture will be `None` where the source centroid
+            position is not finite.
+        """
         if radius <= 0:
             return self._null_object
         apertures = []
@@ -2013,7 +2029,7 @@ class SourceCatalog:
         mask = np.isnan(kron_radius) | (circ_radius < min_radius)
         idx = np.atleast_1d(mask).nonzero()[0]
         if idx.size > 0:
-            circ_aperture = self._make_circular_apertures(self._kron_params[2])
+            circ_aperture = self.circular_aperture(self._kron_params[2])
             for i in idx:
                 if circ_aperture is not None:
                     kron_aperture[i] = circ_aperture[i]
