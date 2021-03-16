@@ -531,7 +531,7 @@ class BasicPSFPhotometry:
                     sub_models = [model for model
                                   in fit_model.traverse_postorder() if model.name == i]
                     if len(sub_models) != 1:
-                        raise ValueError('sub_models must have a length of 1')            
+                        raise ValueError('sub_models must have a length of 1')
                     sub_model = sub_models[0]
 
                     param_tab[param_tab_name][i] = getattr(sub_model,

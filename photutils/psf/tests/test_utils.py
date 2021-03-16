@@ -185,3 +185,15 @@ def test_get_grouped_psf_model_submodel_names(prf_model):
                 if submodel.name == 0]) == 1
     assert len([submodel for submodel in gpsf.traverse_postorder()
                 if submodel.name == 1]) == 1
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_subtract_psf():
+    """Test subtract_psf."""
+
+    prf = DiscretePRF(test_psf, subsampling=1)
+    posflux = INTAB.copy()
+    for n in posflux.colnames:
+        posflux.rename_column(n, n.split('_')[0] + '_fit')
+    residuals = subtract_psf(image, prf, posflux)
+    assert_allclose(residuals, np.zeros_like(image), atol=1E-4)
