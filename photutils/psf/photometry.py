@@ -505,7 +505,7 @@ class BasicPSFPhotometry:
             in this package like `~photutils.psf.sandbox.DiscretePRF`,
             `~photutils.psf.IntegratedGaussianPRF`, or any other
             suitable 2D model.
-        star_group : TODO
+        star_group : `~astropy.table.Table`
             the star group instance.
 
         Returns
