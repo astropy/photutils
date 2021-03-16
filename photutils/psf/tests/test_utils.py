@@ -166,10 +166,9 @@ def test_get_grouped_psf_model():
 def prf_model(request):
     # use this instead of pytest.mark.parameterize as we use scipy and
     # it still calls that even if not HAS_SCIPY is set...
-    prfs = [
-             IntegratedGaussianPRF(sigma=1.2),
-             Gaussian2D(x_stddev=2),
-             prepare_psf_model(Gaussian2D(x_stddev=2), renormalize_psf=False)]
+    prfs = [IntegratedGaussianPRF(sigma=1.2),
+            Gaussian2D(x_stddev=2),
+            prepare_psf_model(Gaussian2D(x_stddev=2), renormalize_psf=False)]
     return prfs[request.param]
 
 

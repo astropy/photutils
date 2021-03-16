@@ -691,9 +691,8 @@ def test_psf_fitting_group(overlap_image):
 
     separation_crit = 10
 
-    basic_phot = BasicPSFPhotometry(
-                                    # choose low threshold and fwhm to find stars no matter what
-                                    finder=DAOStarFinder(1, 1),
+    # choose low threshold and fwhm to find stars no matter what
+    basic_phot = BasicPSFPhotometry(finder=DAOStarFinder(1, 1),
                                     group_maker=DAOGroup(separation_crit),
                                     bkg_estimator=MADStdBackgroundRMS(),
                                     fitter=LevMarLSQFitter(),
