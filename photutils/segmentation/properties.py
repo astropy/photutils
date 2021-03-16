@@ -286,7 +286,7 @@ class SourceProperties:
         segment_img.check_labels(label)
         self.label = label
 
-        self.segment = segment_img[segment_img.get_index(label)]
+        self.segment = segment_img.segments[segment_img.get_index(label)]
         self.slices = self.segment.slices
 
         if localbkg_width is not None and localbkg_width <= 0:
