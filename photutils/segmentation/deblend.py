@@ -99,7 +99,6 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
     --------
     :func:`photutils.segmentation.detect_sources`
     """
-
     if not isinstance(segment_img, SegmentationImage):
         segment_img = SegmentationImage(segment_img)
 
@@ -217,7 +216,6 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         value of zero is reserved for the background.  Note that the
         returned `SegmentationImage` may *not* have consecutive labels.
     """
-
     from scipy.ndimage import label as ndilabel
     from skimage.segmentation import watershed
 

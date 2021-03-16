@@ -86,52 +86,52 @@ class TestSegmentationImage:
         assert np.ma.count_masked(self.segm.data_ma) == 18
 
     def test_segments(self):
-        assert isinstance(self.segm[0], Segment)
-        assert_allclose(self.segm[0].data, self.segm[0].__array__())
+        assert isinstance(self.segm.segments[0], Segment)
+        assert_allclose(self.segm.segments[0].data,
+                        self.segm.segments[0].__array__())
 
-        assert self.segm[0].data_ma.shape == self.segm[0].data.shape
-        assert (self.segm[0].data_ma.filled(0.).sum() ==
-                self.segm[0].data.sum())
+        assert (self.segm.segments[0].data_ma.shape
+                == self.segm.segments[0].data.shape)
+        assert (self.segm.segments[0].data_ma.filled(0.).sum()
+                == self.segm.segments[0].data.sum())
 
         label = 4
         idx = self.segm.get_index(label)
-        assert self.segm[idx].label == label
-        assert self.segm[idx].area == self.segm.get_area(label)
-        assert self.segm[idx].slices == self.segm.slices[idx]
-
-        for i, segment in enumerate(self.segm):
-            assert segment.label == self.segm.labels[i]
+        assert self.segm.segments[idx].label == label
+        assert self.segm.segments[idx].area == self.segm.areas[idx]
+        assert self.segm.segments[idx].slices == self.segm.slices[idx]
+        assert self.segm.segments[idx].bbox == self.segm.bbox[idx]
 
     def test_repr_str(self):
         assert repr(self.segm) == str(self.segm)
 
-        props = ['shape', 'nlabels', 'max_label']
+        props = ['shape', 'nlabels']
         for prop in props:
             assert f'{prop}:' in repr(self.segm)
 
     def test_segment_repr_str(self):
-        assert repr(self.segm[0]) == str(self.segm[0])
-
         props = ['label', 'slices', 'area']
         for prop in props:
-            assert f'{prop}:' in repr(self.segm[0])
+            assert f'{prop}:' in repr(self.segm.segments[0])
 
     def test_segment_data(self):
-        assert_allclose(self.segm[3].data.shape, (3, 3))
-        assert_allclose(np.unique(self.segm[3].data), [0, 5])
+        assert_allclose(self.segm.segments[3].data.shape, (3, 3))
+        assert_allclose(np.unique(self.segm.segments[3].data), [0, 5])
 
     def test_segment_make_cutout(self):
-        cutout = self.segm[3].make_cutout(self.data, masked_array=False)
+        cutout = self.segm.segments[3].make_cutout(self.data,
+                                                   masked_array=False)
         assert not np.ma.is_masked(cutout)
         assert_allclose(cutout.shape, (3, 3))
 
-        cutout = self.segm[3].make_cutout(self.data, masked_array=True)
+        cutout = self.segm.segments[3].make_cutout(self.data,
+                                                   masked_array=True)
         assert np.ma.is_masked(cutout)
         assert_allclose(cutout.shape, (3, 3))
 
     def test_segment_make_cutout_input(self):
         with pytest.raises(ValueError):
-            self.segm[0].make_cutout(np.arange(10))
+            self.segm.segments[0].make_cutout(np.arange(10))
 
     def test_labels(self):
         assert_allclose(self.segm.labels, [1, 3, 4, 5, 7])
@@ -146,8 +146,8 @@ class TestSegmentationImage:
         expected = np.array([2, 2, 3, 6, 5])
         assert_allclose(self.segm.areas, expected)
 
-        assert (self.segm.get_area(1) ==
-                self.segm.areas[self.segm.get_index(1)])
+        assert (self.segm.get_area(1)
+                == self.segm.areas[self.segm.get_index(1)])
         assert_allclose(self.segm.get_areas(self.segm.labels),
                         self.segm.areas)
 

@@ -48,7 +48,10 @@ New Features
 
 - ``photutils.segmentation``
 
-  - Added a new, significantly faster, ``SourceCatalog`` class. [#1170]
+  - Added a modified, significantly faster, ``SourceCatalog`` class.
+    [#1170]
+
+  - Added a ``bbox`` attribute to ``SegmentationImage``. [#1187]
 
 Bug Fixes
 ^^^^^^^^^
@@ -118,6 +121,9 @@ API changes
 
   - The ``detect_threshold`` function was moved to the ``segmentation``
     subpackage. [#1171]
+
+  - Removed the ability to slice ``SegmentationImage``. Instead slice
+    the ``segments`` attribute. [#1187]
 
 
 1.0.2 (2021-01-20)
