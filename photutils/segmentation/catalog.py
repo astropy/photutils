@@ -1837,6 +1837,40 @@ class SourceCatalog:
             apertures.append(CircularAperture((xcen, ycen), r=radius))
         return apertures
 
+    def circular_photometry(self, radius):
+        """
+        A list of circular apertures of the input radius centered at the
+        source centroid position.
+
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
+
+        Returns
+        -------
+        result : list of `~photutils.aperture.CircularAperture`
+            A list of `~photutils.aperture.CircularAperture` instances.
+            The aperture will be `None` where the source centroid
+            position is not finite.
+        """
+        apertures = self.circular_aperture(radius)
+
+        flux = []
+        fluxerr = []
+        for aperture in apertures:
+            # TODO: change to exact
+            flux_, fluxerr_ = aperture.do_photometry(self._data,
+                                                     error=self._error,
+                                                     mask=self._mask,
+                                                     method='subpixel',
+                                                     subpixels=5)
+            flux.append(flux_[0])
+            fluxerr.append(fluxerr_[0])
+        flux = np.array(flux)
+        fluxerr = np.array(fluxerr)
+        return flux, fluxerr
+
     def _make_elliptical_apertures(self, scale=6.):
         """
         Return a list of elliptical apertures based on the scaled
