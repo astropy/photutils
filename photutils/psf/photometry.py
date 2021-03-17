@@ -403,7 +403,7 @@ class BasicPSFPhotometry:
             fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
                                     image[usepixel])
             param_table = self._model_params2table(fit_model,
-                                                   len(star_groups.groups[n]))
+                                                   star_groups.groups[n])
             result_tab = vstack([result_tab, param_table])
 
             param_cov = self.fitter.fit_info.get('param_cov', None)
@@ -494,7 +494,7 @@ class BasicPSFPhotometry:
 
         return unc_tab
 
-    def _model_params2table(self, fit_model, star_group_size):
+    def _model_params2table(self, fit_model, star_group):
         """
         Place fitted parameters into an astropy table.
 
@@ -505,8 +505,8 @@ class BasicPSFPhotometry:
             in this package like `~photutils.psf.sandbox.DiscretePRF`,
             `~photutils.psf.IntegratedGaussianPRF`, or any other
             suitable 2D model.
-        star_group_size : int
-            Number of stars in the given group.
+        star_group : `~astropy.table.Table`
+            the star group instance.
 
         Returns
         -------
@@ -518,14 +518,24 @@ class BasicPSFPhotometry:
 
         for param_tab_name in self._pars_to_output.keys():
             param_tab.add_column(Column(name=param_tab_name,
-                                        data=np.empty(star_group_size)))
+                                        data=np.empty(len(star_group))))
 
-        if star_group_size > 1:
-            for i in range(star_group_size):
+        if len(star_group) > 1:
+            for i in range(len(star_group)):
                 for param_tab_name, param_name in self._pars_to_output.items():
-                    param_tab[param_tab_name][i] = getattr(fit_model,
-                                                           param_name +
-                                                           '_' + str(i)).value
+                    # get sub_model corresponding to star with index i as name
+                    # name was set in utils.get_grouped_psf_model()
+                    # we can't use model['name'] here as that only
+                    # searches leaves and we might want a intermediate
+                    # node of the tree
+                    sub_models = [model for model
+                                  in fit_model.traverse_postorder() if model.name == i]
+                    if len(sub_models) != 1:
+                        raise ValueError('sub_models must have a length of 1')
+                    sub_model = sub_models[0]
+
+                    param_tab[param_tab_name][i] = getattr(sub_model,
+                                                           param_name).value
         else:
             for param_tab_name, param_name in self._pars_to_output.items():
                 param_tab[param_tab_name] = getattr(fit_model,

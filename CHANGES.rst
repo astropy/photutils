@@ -81,6 +81,9 @@ Bug Fixes
   - Fixed a bug in ``EPSFBuild`` where a warning was raised if the input
     ``smoothing_kernel`` was an ``numpy.ndarray``. [#1146]
 
+  - Fixed a bug that caused photometry to fail on an ``EPSFmodel`` with
+    multiple stars in a group. [#1135]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceProperties`` ``local_background`` to work with

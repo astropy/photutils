@@ -128,8 +128,12 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
 
     group_psf = None
 
-    for star in star_group:
+    for index, star in enumerate(star_group):
         psf_to_add = template_psf_model.copy()
+        # we 'tag' the model here so that later we don't have to rely
+        # on possibly mangled names of the compound model to find
+        # the parameters again
+        psf_to_add.name = index
         for param_tab_name, param_name in pars_to_set.items():
             setattr(psf_to_add, param_name, star[param_tab_name])
 
@@ -137,7 +141,7 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
             # this is the first one only
             group_psf = psf_to_add
         else:
-            group_psf += psf_to_add
+            group_psf = group_psf + psf_to_add
 
     return group_psf
 

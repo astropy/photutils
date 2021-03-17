@@ -162,6 +162,31 @@ def test_get_grouped_psf_model():
     assert gpsf.sigma_0 == gpsf.sigma_1 == 1.2
 
 
+@pytest.fixture(params=[0, 1, 2])
+def prf_model(request):
+    # use this instead of pytest.mark.parameterize as we use scipy and
+    # it still calls that even if not HAS_SCIPY is set...
+    prfs = [IntegratedGaussianPRF(sigma=1.2),
+            Gaussian2D(x_stddev=2),
+            prepare_psf_model(Gaussian2D(x_stddev=2), renormalize_psf=False)]
+    return prfs[request.param]
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_get_grouped_psf_model_submodel_names(prf_model):
+    """Verify that submodel tagging works"""
+    tab = Table(names=['x_0', 'y_0', 'flux_0'],
+                data=[[1, 2], [3, 4], [0.5, 1]])
+    pars_to_set = {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux'}
+
+    gpsf = get_grouped_psf_model(prf_model, tab, pars_to_set)
+    # There should be two submodels one named 0 and one named 1
+    assert len([submodel for submodel in gpsf.traverse_postorder()
+                if submodel.name == 0]) == 1
+    assert len([submodel for submodel in gpsf.traverse_postorder()
+                if submodel.name == 1]) == 1
+
+
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_subtract_psf():
     """Test subtract_psf."""
