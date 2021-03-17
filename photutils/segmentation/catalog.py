@@ -825,14 +825,14 @@ class SourceCatalog:
             cutout_centroid = cutout_centroid[np.newaxis, :]
         return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
-                         zip(self._cutout_moment_data, cutout_centroid[:, 1],
-                             cutout_centroid[:, 0])])
+                         zip(self._cutout_moment_data, cutout_centroid[:, 0],
+                             cutout_centroid[:, 1])])
 
     @lazyproperty
     @as_scalar
     def cutout_centroid(self):
         """
-        The ``(y, x)`` coordinate, relative to the cutout data, of
+        The ``(x, y)`` coordinate, relative to the cutout data, of
         the centroid within the source segment.
         """
         moments = self.moments
@@ -844,16 +844,16 @@ class SourceCatalog:
             warnings.simplefilter('ignore', RuntimeWarning)
             ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
             xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
-        return np.transpose((ycentroid, xcentroid))
+        return np.transpose((xcentroid, ycentroid))
 
     @lazyproperty
     @as_scalar
     def centroid(self):
         """
-        The ``(y, x)`` coordinate of the centroid within the source
+        The ``(x, y)`` coordinate of the centroid within the source
         segment.
         """
-        origin = np.transpose((self.bbox_ymin, self.bbox_xmin))
+        origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.cutout_centroid + origin
 
     @lazyproperty
@@ -862,7 +862,7 @@ class SourceCatalog:
         The ``x`` coordinate of the centroid within the source segment,
         always as an iterable.
         """
-        xcentroid = np.transpose(self.centroid)[1]
+        xcentroid = np.transpose(self.centroid)[0]
         if self.isscalar:
             xcentroid = (xcentroid,)
         return xcentroid
@@ -881,7 +881,7 @@ class SourceCatalog:
         The ``y`` coordinate of the centroid within the source segment,
         always as an iterable.
         """
-        ycentroid = np.transpose(self.centroid)[0]
+        ycentroid = np.transpose(self.centroid)[1]
         if self.isscalar:
             ycentroid = (ycentroid,)
         return ycentroid
