@@ -1860,8 +1860,8 @@ class SourceCatalog:
 
     def circular_aperture(self, radius):
         """
-        A list of circular apertures of the input radius centered at the
-        source centroid position.
+        A list of circular apertures with the specified radius centered
+        at the source centroid position.
 
         Parameters
         ----------
@@ -1887,8 +1887,9 @@ class SourceCatalog:
 
     def circular_photometry(self, radius):
         """
-        A list of circular apertures of the input radius centered at the
-        source centroid position.
+        Perform aperture photometry for each source with a circular
+        aperture of the specified radius centered at the source centroid
+        position.
 
         Parameters
         ----------
@@ -1897,10 +1898,10 @@ class SourceCatalog:
 
         Returns
         -------
-        result : list of `~photutils.aperture.CircularAperture`
-            A list of `~photutils.aperture.CircularAperture` instances.
-            The aperture will be `None` where the source centroid
-            position is not finite.
+        flux, fluxerr : `~numpy.ndarray` of floats
+            The aperture fluxes and flux errors. NaN will be returned
+            where the circular aperture is `None` (e.g., where the
+            source centroid position is not finite).
         """
         apertures = self.circular_aperture(radius)
 
@@ -1915,19 +1916,25 @@ class SourceCatalog:
                 fluxerr.append(np.nan)
                 continue
 
-            aperture_bbox = aperture.to_mask(method='exact').bbox
-            data, error, mask, xycen, _ = self._make_aperture_data(
-                label, xcen, ycen, aperture_bbox, bkg)
+            # TODO: change to exact
+            # aperture_mask = aperture.to_mask(method='exact')
+            aperture_mask = aperture.to_mask(method='subpixel',
+                                             subpixels=5)
+            data, error, mask, _, slc_sm = self._make_aperture_data(
+                label, xcen, ycen, aperture_mask.bbox, bkg)
 
-            # TODO: change method to exact
-            aperture.positions = xycen
-            flux_, fluxerr_ = aperture.do_photometry(data, error=error,
-                                                     mask=mask,
-                                                     method='subpixel',
-                                                     subpixels=5)
+            aperture_weights = aperture_mask.data[slc_sm]
+            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
+            # ignore RuntimeWarning for invalid data or error values
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                flux.append(np.sum((aperture_weights * data)[pixel_mask]))
+                if error is None:
+                    fluxerr.append(np.nan)
+                else:
+                    fluxerr.append(np.sqrt(np.sum(
+                        (aperture_weights * error**2)[pixel_mask])))
 
-            flux.append(flux_[0])
-            fluxerr.append(fluxerr_[0])
         flux = np.array(flux)
         fluxerr = np.array(fluxerr)
         return flux, fluxerr
