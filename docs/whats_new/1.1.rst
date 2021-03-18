@@ -32,6 +32,8 @@ can not be input as positional arguments. Please see the
 `~photutils.segmentation.SourceCatalog` documentation for the keywords
 inputs and their allowed values.
 
+Renamed properties
+------------------
 Note that many of the source properties have been slightly renamed
 in the new `~photutils.segmentation.SourceCatalog` class, e.g.,
 
@@ -54,3 +56,22 @@ in the new `~photutils.segmentation.SourceCatalog` class, e.g.,
     * 'semiminor_axis_sigma' -> 'semiminor_sigma'
     * 'source_sum' -> 'segment_flux'
     * 'source_sum_err' -> 'segment_fluxerr'
+
+Also the 'centroid' and 'cutout_centroid' properties now return
+centroids in (x, y) order to be consistent with the tools in
+``photutils.centroid``.
+
+New methods and attributes
+--------------------------
+The new `~photutils.segmentation.SourceCatalog` class has the following
+new methods:
+
+    * :meth:`~photutils.segmentation.SourceCatalog.circular_aperture`
+    * :meth:`~photutils.segmentation.SourceCatalog.circular_photometry`
+    * :meth:`~photutils.segmentation.SourceCatalog.get_label`
+    * :meth:`~photutils.segmentation.SourceCatalog.get_labels`
+
+and new attributes:
+
+    * :attr:`~photutils.segmentation.SourceCatalog.segment`
+    * :attr:`~photutils.segmentation.SourceCatalog.segment_ma`

@@ -559,17 +559,14 @@ class SourceCatalog:
         """
         Create a `~astropy.table.QTable` of source properties.
 
-        If ``columns`` or ``exclude_columns`` are not input, then
-        the `~astropy.table.QTable` will include a default list of
-        scalar-valued properties as defined by the ``default_columns``
-        attribute.
-
         Parameters
         ----------
-        columns : str or list of str, optional
+        columns : str, list of str, `None`, optional
             Names of columns, in order, to include in the output
             `~astropy.table.QTable`. The allowed column names are any of
-            the attributes of `SourceCatalog`.
+            the attributes of `SourceCatalog`. If ``columns`` is `None`,
+            then a default list of scalar-valued properties (as defined
+            by the ``default_columns`` attribute) will be used.
 
         Returns
         -------
@@ -1607,8 +1604,8 @@ class SourceCatalog:
     @as_scalar
     def ellipticity(self):
         """
-        ``1`` minus the ratio of the lengths of the semimajor and
-        semiminor axes (or ``1`` minus the `elongation`):
+        1.0 minus the ratio of the lengths of the semimajor and
+        semiminor axes (or 1.0 minus the `elongation`):
 
         .. math:: \\mathrm{ellipticity} = 1 - \\frac{b}{a}
 
@@ -2007,7 +2004,7 @@ class SourceCatalog:
         If either the numerator or denominator <= 0, then ``np.nan``
         will be returned. In this case, the Kron aperture will
         be defined as a circular aperture with a radius equal to
-        ``kron_params[2]``. If ``kron_params[2] <= 0``, then the Kron
+        ``kron_params[1]``. If ``kron_params[1] <= 0``, then the Kron
         aperture will be `None` and the Kron flux will be ``np.nan``.
         """
         if self._detection_cat is not None:
