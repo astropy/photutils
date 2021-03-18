@@ -205,8 +205,9 @@ class TestSourceCatalog:
         with pytest.raises(ValueError):
             SourceCatalog(self.data, self.segm, localbkg_width=3.4)
         with pytest.raises(ValueError):
-            aperture_mask = 'invalid'
-            SourceCatalog(self.data, self.segm, aperture_mask=aperture_mask)
+            apermask_method = 'invalid'
+            SourceCatalog(self.data, self.segm,
+                          apermask_method=apermask_method)
         with pytest.raises(ValueError):
             kron_params = (2.5, 0.0, 3.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
@@ -352,18 +353,21 @@ class TestSourceCatalog:
     def test_kron_minradius(self):
         kron_params = (2.5, 10.0)
         cat = SourceCatalog(self.data, self.segm, mask=self.mask,
-                            aperture_mask='none', kron_params=kron_params)
+                            apermask_method='none', kron_params=kron_params)
         assert cat.kron_aperture[0] is None
         assert isinstance(cat.kron_aperture[2], EllipticalAperture)
         assert isinstance(cat.kron_aperture[4], CircularAperture)
 
     def test_kron_masking(self):
-        aperture_mask = 'none'
-        cat1 = SourceCatalog(self.data, self.segm, aperture_mask=aperture_mask)
-        aperture_mask = 'mask'
-        cat2 = SourceCatalog(self.data, self.segm, aperture_mask=aperture_mask)
-        aperture_mask = 'correct'
-        cat3 = SourceCatalog(self.data, self.segm, aperture_mask=aperture_mask)
+        apermask_method = 'none'
+        cat1 = SourceCatalog(self.data, self.segm,
+                             apermask_method=apermask_method)
+        apermask_method = 'mask'
+        cat2 = SourceCatalog(self.data, self.segm,
+                             apermask_method=apermask_method)
+        apermask_method = 'correct'
+        cat3 = SourceCatalog(self.data, self.segm,
+                             apermask_method=apermask_method)
         idx = 2  # source with close neighbors
         assert cat1[idx].kron_flux > cat2[idx].kron_flux
         assert cat3[idx].kron_flux > cat2[idx].kron_flux

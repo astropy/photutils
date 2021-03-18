@@ -123,7 +123,7 @@ class SourceCatalog:
         ``kron_flux`` properties. It does not affect the moment-based
         morphological properties of the source.
 
-    aperture_mask : {'correct', 'mask', 'none'}, optional
+    apermask_method : {'correct', 'mask', 'none'}, optional
         The method used to handle neighboring sources when performing
         aperture photometry (e.g., circular apertures or elliptical Kron
         apertures).  This parameter also affects the Kron radius.
@@ -201,7 +201,7 @@ class SourceCatalog:
     """
     def __init__(self, data, segment_img, *, error=None, mask=None,
                  kernel=None, background=None, wcs=None, localbkg_width=0,
-                 aperture_mask='correct', kron_params=(2.5, 0.0),
+                 apermask_method='correct', kron_params=(2.5, 0.0),
                  detection_cat=None):
 
         self._data_unit = None
@@ -218,7 +218,7 @@ class SourceCatalog:
         self._convolved_data = self._convolve_data()
         self._data_mask = self._make_data_mask()
         self._localbkg_width = self._validate_localbkg_width(localbkg_width)
-        self._aperture_mask = self._validate_aperture_mask(aperture_mask)
+        self._apermask_method = self._validate_apermask_method(apermask_method)
         self._kron_params = self._validate_kron_params(kron_params)
 
         # needed for ordering and isscalar
@@ -291,10 +291,10 @@ class SourceCatalog:
         return localbkg_width_int
 
     @staticmethod
-    def _validate_aperture_mask(aperture_mask):
-        if aperture_mask not in ('none', 'mask', 'correct'):
-            raise ValueError('Invalid aperture_mask value')
-        return aperture_mask
+    def _validate_apermask_method(apermask_method):
+        if apermask_method not in ('none', 'mask', 'correct'):
+            raise ValueError('Invalid apertmask_method value')
+        return apermask_method
 
     @staticmethod
     def _validate_kron_params(kron_params):
@@ -328,7 +328,7 @@ class SourceCatalog:
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
                      '_background', '_wcs', '_data_unit', '_convolved_data',
                      '_data_mask', '_detection_cat', '_localbkg_width',
-                     '_aperture_mask', '_kron_params', 'default_columns')
+                     '_apermask_method', '_kron_params', 'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -1822,7 +1822,7 @@ class SourceCatalog:
         photometry (e.g., circular or Kron).
 
         Neighboring sources can be included, masked, or corrected based
-        on the ``aperture_mask`` keyword.
+        on the ``apermask_method`` keyword.
         """
         # make cutouts of the data based on the aperture bbox
         slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
@@ -1838,16 +1838,16 @@ class SourceCatalog:
                         ycentroid - max(0, aperture_bbox.iymin))
 
         # mask or correct neighboring sources
-        if self._aperture_mask != 'none':
+        if self._apermask_method != 'none':
             segment_img = self._segment_img.data[slc_lg]
             segm_mask = np.logical_and(segment_img != label,
                                        segment_img != 0)
-        if self._aperture_mask == 'mask':
+        if self._apermask_method == 'mask':
             mask = data_mask | segm_mask
         else:
             mask = data_mask
 
-        if self._aperture_mask == 'correct':
+        if self._apermask_method == 'correct':
             from ._utils import mask_to_mirrored_value
             data = mask_to_mirrored_value(data, segm_mask, cutout_xycen)
             if error is not None:
