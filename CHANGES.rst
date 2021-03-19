@@ -56,6 +56,9 @@ New Features
 
   - Added ``fwhm`` property to the ``SourceCatalog`` class. [#1191]
 
+  - Added ``fluxfrac_radius`` method to the ``SourceCatalog`` class.
+    [#1192]
+
   - Added a ``bbox`` attribute to ``SegmentationImage``. [#1187]
 
 Bug Fixes
