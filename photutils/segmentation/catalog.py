@@ -2246,7 +2246,7 @@ class SourceCatalog:
         kron_flux = self._kron_flux_fluxerr[:, 0]
 
         for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
-                self._labels, self._xcentroid, self._ycentroid,
+                self.labels, self._xcentroid, self._ycentroid,
                 kron_flux, self._local_background, max_radius):
 
             if np.any(~np.isfinite((xcen, ycen))):
@@ -2268,7 +2268,8 @@ class SourceCatalog:
                 result = root_scalar(self._fluxfrac_radius_fcn, args=args,
                                      bracket=bracket, method='brentq')
                 result = result.root
-            except ValueError:  # bracket points must have different signs
+            # bracket points must have different signs
+            except ValueError:  # pragma: no cover
                 result = np.nan
             radius.append(result)
 
