@@ -1817,7 +1817,7 @@ class SourceCatalog:
         return bkg
 
     def _make_aperture_data(self, label, xcentroid, ycentroid, aperture_bbox,
-                            local_background):
+                            local_background, make_error=True):
         """
         Make cutouts of data, error, and mask arrays for aperture
         photometry (e.g., circular or Kron).
@@ -1829,7 +1829,7 @@ class SourceCatalog:
         slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
         data = self._data[slc_lg] - local_background
         data_mask = self._data_mask[slc_lg]
-        if self._error is not None:
+        if make_error and self._error is not None:
             error = self._error[slc_lg]
         else:
             error = None
@@ -1914,10 +1914,7 @@ class SourceCatalog:
                 fluxerr.append(np.nan)
                 continue
 
-            # TODO: change to exact
-            # aperture_mask = aperture.to_mask(method='exact')
-            aperture_mask = aperture.to_mask(method='subpixel',
-                                             subpixels=5)
+            aperture_mask = aperture.to_mask(method='exact')
             data, error, mask, _, slc_sm = self._make_aperture_data(
                 label, xcen, ycen, aperture_mask.bbox, bkg)
 
@@ -2037,7 +2034,7 @@ class SourceCatalog:
             # prepare cutouts of the data based on the aperture size
             # local background explicitly set to zero for SE agreement
             data, _, mask, xycen, slc_sm = self._make_aperture_data(
-                label, xcen_, ycen_, aperture_mask.bbox, 0.0)
+                label, xcen_, ycen_, aperture_mask.bbox, 0.0, make_error=False)
 
             xval = np.arange(data.shape[1]) - xycen[0]
             yval = np.arange(data.shape[0]) - xycen[1]
