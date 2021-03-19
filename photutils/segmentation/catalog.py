@@ -123,23 +123,25 @@ class SourceCatalog:
         ``kron_flux`` properties. It does not affect the moment-based
         morphological properties of the source.
 
-    kron_params : tuple or list, optional
-        A list of three parameters used to determine how the Kron radius
-        and flux are calculated. The first item represents how data
-        pixels are masked around the source. It must be one of:
+    apermask_method : {'correct', 'mask', 'none'}, optional
+        The method used to handle neighboring sources when performing
+        aperture photometry (e.g., circular apertures or elliptical Kron
+        apertures).  This parameter also affects the Kron radius.
 
           * 'none':  do not mask any pixels (equivalent to
                      MASK_TYPE=NONE in SourceExtractor).
           * 'mask':  mask pixels assigned to neighboring sources
-                     (equivalent to MASK_TYPE=BLANK in SourceExtractor)
+                     (equivalent to MASK_TYPE=BLANK in SourceExtractor).
           * 'correct':  replace pixels assigned to neighboring sources
                         by replacing them with pixels on the opposite
                         side of the source center (equivalent to
                         MASK_TYPE=CORRECT in SourceExtractor).
 
-        The second item represents the scaling parameter of the Kron
-        radius as a scalar float. The third item represents the minimum
-        circular radius as a scalar float. If the Kron radius times
+    kron_params : list of 2 floats, optional
+        A list of two parameters used to determine how the Kron
+        radius and flux are calculated. The first item is the scaling
+        parameter of the Kron radius and the second item represents
+        the minimum circular radius. If the Kron radius times
         sqrt(``semimajor_sigma`` * ``semiminor_sigma``) is less than
         than this radius, then the Kron flux will be measured in a
         circle with this minimum radius.
@@ -199,7 +201,8 @@ class SourceCatalog:
     """
     def __init__(self, data, segment_img, *, error=None, mask=None,
                  kernel=None, background=None, wcs=None, localbkg_width=0,
-                 kron_params=('correct', 2.5, 0.0), detection_cat=None):
+                 apermask_method='correct', kron_params=(2.5, 0.0),
+                 detection_cat=None):
 
         self._data_unit = None
         data, error, background = self._process_quantities(data, error,
@@ -215,6 +218,7 @@ class SourceCatalog:
         self._convolved_data = self._convolve_data()
         self._data_mask = self._make_data_mask()
         self._localbkg_width = self._validate_localbkg_width(localbkg_width)
+        self._apermask_method = self._validate_apermask_method(apermask_method)
         self._kron_params = self._validate_kron_params(kron_params)
 
         # needed for ordering and isscalar
@@ -287,15 +291,19 @@ class SourceCatalog:
         return localbkg_width_int
 
     @staticmethod
+    def _validate_apermask_method(apermask_method):
+        if apermask_method not in ('none', 'mask', 'correct'):
+            raise ValueError('Invalid apermask_method value')
+        return apermask_method
+
+    @staticmethod
     def _validate_kron_params(kron_params):
-        if len(kron_params) != 3:
-            raise ValueError('kron_params must have 3 elements')
-        if kron_params[0] not in ('none', 'mask', 'correct'):
-            raise ValueError('Invalid value for kron_params[0]')
-        if kron_params[1] <= 0:
-            raise ValueError('kron_params[1] must be > 0')
-        if kron_params[2] < 0:
-            raise ValueError('kron_params[2] must be >= 0')
+        if len(kron_params) != 2:
+            raise ValueError('kron_params must have 2 elements')
+        if kron_params[0] <= 0:
+            raise ValueError('kron_params[0] must be > 0')
+        if kron_params[1] < 0:
+            raise ValueError('kron_params[1] must be >= 0')
         return kron_params
 
     @property
@@ -320,7 +328,7 @@ class SourceCatalog:
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
                      '_background', '_wcs', '_data_unit', '_convolved_data',
                      '_data_mask', '_detection_cat', '_localbkg_width',
-                     '_kron_params', 'default_columns')
+                     '_apermask_method', '_kron_params', 'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -351,13 +359,14 @@ class SourceCatalog:
                 continue
 
             try:
-                val = value[index]
+                # keep _<attrs> as length-1 iterables
                 if newcls.isscalar and key.startswith('_'):
-                    # keep _<attrs> as length-1 iterables
-                    # NOTE: these attributes will not exactly match
-                    # the values if evaluated for the first time in
-                    # a scalar class (e.g., _bbox_corner_ll)
-                    val = (val,)
+                    if isinstance(value, np.ndarray):
+                        val = value[:, np.newaxis][index]
+                    else:
+                        val = [value[index]]
+                else:
+                    val = value[index]
             except TypeError:
                 # apply fancy indices (e.g., array/list or bool
                 # mask) to lists
@@ -421,8 +430,6 @@ class SourceCatalog:
         For example, this is used for SkyCoord properties if ``wcs`` is
         `None`.
         """
-        if self.isscalar:
-            return None
         return np.array([None] * self.nlabels)
 
     @lazyproperty
@@ -433,8 +440,6 @@ class SourceCatalog:
         For example, this is used for background properties if
         ``background`` is `None`.
         """
-        if self.isscalar:
-            return np.nan
         values = np.empty(self.nlabels)
         values.fill(np.nan)
         return values
@@ -550,43 +555,28 @@ class SourceCatalog:
         idx = np.searchsorted(self.label, labels)
         return self[idx]
 
-    def to_table(self, columns=None, exclude_columns=None):
+    def to_table(self, columns=None):
         """
         Create a `~astropy.table.QTable` of source properties.
 
-        If ``columns`` or ``exclude_columns`` are not input, then
-        the `~astropy.table.QTable` will include a default list of
-        scalar-valued properties as defined by the ``default_columns``
-        attribute.
-
         Parameters
         ----------
-        columns : str or list of str, optional
+        columns : str, list of str, `None`, optional
             Names of columns, in order, to include in the output
             `~astropy.table.QTable`. The allowed column names are any of
-            the attributes of `SourceCatalog`.
-
-        exclude_columns : str or list of str, optional
-            Names of columns to exclude from the default columns in the
-            output `~astropy.table.QTable`. The default columns are
-            defined in the ``default_columns`` attribute.
+            the attributes of `SourceCatalog`. If ``columns`` is `None`,
+            then a default list of scalar-valued properties (as defined
+            by the ``default_columns`` attribute) will be used.
 
         Returns
         -------
         table : `~astropy.table.QTable`
             A table of sources properties with one row per source.
         """
-        # start with the default columns
-        columns_all = self.default_columns
-
-        table_columns = None
-        if exclude_columns is not None:
-            table_columns = [s for s in columns_all
-                             if s not in exclude_columns]
-        if columns is not None:
+        if columns is None:
+            table_columns = self.default_columns
+        else:
             table_columns = np.atleast_1d(columns)
-        if table_columns is None:
-            table_columns = columns_all
 
         tbl = QTable()
         for column in table_columns:
@@ -726,6 +716,7 @@ class SourceCatalog:
                                  masked=True)
 
     @lazyproperty
+    @as_scalar
     def error(self):
         """
         A 2D `~numpy.ndarray` cutout from the error array using the
@@ -737,6 +728,7 @@ class SourceCatalog:
                                  masked=False)
 
     @lazyproperty
+    @as_scalar
     def error_ma(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the error array using
@@ -752,6 +744,7 @@ class SourceCatalog:
                                  masked=True)
 
     @lazyproperty
+    @as_scalar
     def background(self):
         """
         A 2D `~numpy.ndarray` cutout from the background array using the
@@ -763,6 +756,7 @@ class SourceCatalog:
                                  masked=False)
 
     @lazyproperty
+    @as_scalar
     def background_ma(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the background array.
@@ -782,7 +776,7 @@ class SourceCatalog:
         """
         True if all pixels over the source segment are masked.
         """
-        return [np.all(mask) for mask in self._cutout_total_mask]
+        return np.array([np.all(mask) for mask in self._cutout_total_mask])
 
     def _get_values(self, array):
         """
@@ -836,14 +830,14 @@ class SourceCatalog:
             cutout_centroid = cutout_centroid[np.newaxis, :]
         return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
-                         zip(self._cutout_moment_data, cutout_centroid[:, 1],
-                             cutout_centroid[:, 0])])
+                         zip(self._cutout_moment_data, cutout_centroid[:, 0],
+                             cutout_centroid[:, 1])])
 
     @lazyproperty
     @as_scalar
     def cutout_centroid(self):
         """
-        The ``(y, x)`` coordinate, relative to the cutout data, of
+        The ``(x, y)`` coordinate, relative to the cutout data, of
         the centroid within the source segment.
         """
         moments = self.moments
@@ -855,16 +849,16 @@ class SourceCatalog:
             warnings.simplefilter('ignore', RuntimeWarning)
             ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
             xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
-        return np.transpose((ycentroid, xcentroid))
+        return np.transpose((xcentroid, ycentroid))
 
     @lazyproperty
     @as_scalar
     def centroid(self):
         """
-        The ``(y, x)`` coordinate of the centroid within the source
+        The ``(x, y)`` coordinate of the centroid within the source
         segment.
         """
-        origin = np.transpose((self.bbox_ymin, self.bbox_xmin))
+        origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.cutout_centroid + origin
 
     @lazyproperty
@@ -873,7 +867,7 @@ class SourceCatalog:
         The ``x`` coordinate of the centroid within the source segment,
         always as an iterable.
         """
-        xcentroid = np.transpose(self.centroid)[1]
+        xcentroid = np.transpose(self.centroid)[0]
         if self.isscalar:
             xcentroid = (xcentroid,)
         return xcentroid
@@ -892,7 +886,7 @@ class SourceCatalog:
         The ``y`` coordinate of the centroid within the source segment,
         always as an iterable.
         """
-        ycentroid = np.transpose(self.centroid)[0]
+        ycentroid = np.transpose(self.centroid)[1]
         if self.isscalar:
             ycentroid = (ycentroid,)
         return ycentroid
@@ -906,6 +900,7 @@ class SourceCatalog:
         return self._ycentroid
 
     @lazyproperty
+    @as_scalar
     def sky_centroid(self):
         """
         The sky coordinate of the centroid within the source segment,
@@ -920,6 +915,7 @@ class SourceCatalog:
         return self._wcs.pixel_to_world(self.xcentroid, self.ycentroid)
 
     @lazyproperty
+    @as_scalar
     def sky_centroid_icrs(self):
         """
         The sky coordinate in the International Celestial Reference
@@ -1608,8 +1604,8 @@ class SourceCatalog:
     @as_scalar
     def ellipticity(self):
         """
-        ``1`` minus the ratio of the lengths of the semimajor and
-        semiminor axes (or ``1`` minus the `elongation`):
+        1.0 minus the ratio of the lengths of the semimajor and
+        semiminor axes (or 1.0 minus the `elongation`):
 
         .. math:: \\mathrm{ellipticity} = 1 - \\frac{b}{a}
 
@@ -1798,7 +1794,8 @@ class SourceCatalog:
             for aperture in bkg_aper:
                 aperture_mask = aperture.to_mask(method='center')
                 values = aperture_mask.get_values(self._data, mask=mask)
-                if len(values) < 10:  # not enough unmasked pixels
+                # check not enough unmasked pixels
+                if len(values) < 10:  # pragma: no cover
                     bkg.append(0.)
                     continue
                 bkg.append(bkg_func(values))
@@ -1819,7 +1816,63 @@ class SourceCatalog:
             bkg <<= self._data_unit
         return bkg
 
-    def _make_circular_apertures(self, radius):
+    def _make_aperture_data(self, label, xcentroid, ycentroid, aperture_bbox,
+                            local_background, make_error=True):
+        """
+        Make cutouts of data, error, and mask arrays for aperture
+        photometry (e.g., circular or Kron).
+
+        Neighboring sources can be included, masked, or corrected based
+        on the ``apermask_method`` keyword.
+        """
+        # make cutouts of the data based on the aperture bbox
+        slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
+        data = self._data[slc_lg] - local_background
+        data_mask = self._data_mask[slc_lg]
+        if make_error and self._error is not None:
+            error = self._error[slc_lg]
+        else:
+            error = None
+
+        # calculate cutout centroid position
+        cutout_xycen = (xcentroid - max(0, aperture_bbox.ixmin),
+                        ycentroid - max(0, aperture_bbox.iymin))
+
+        # mask or correct neighboring sources
+        if self._apermask_method != 'none':
+            segment_img = self._segment_img.data[slc_lg]
+            segm_mask = np.logical_and(segment_img != label,
+                                       segment_img != 0)
+        if self._apermask_method == 'mask':
+            mask = data_mask | segm_mask
+        else:
+            mask = data_mask
+
+        if self._apermask_method == 'correct':
+            from ._utils import mask_to_mirrored_value
+            data = mask_to_mirrored_value(data, segm_mask, cutout_xycen)
+            if error is not None:
+                error = mask_to_mirrored_value(error, segm_mask, cutout_xycen)
+
+        return data, error, mask, cutout_xycen, slc_sm
+
+    def circular_aperture(self, radius):
+        """
+        A list of circular apertures with the specified radius centered
+        at the source centroid position.
+
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
+
+        Returns
+        -------
+        result : list of `~photutils.aperture.CircularAperture`
+            A list of `~photutils.aperture.CircularAperture` instances.
+            The aperture will be `None` where the source centroid
+            position is not finite.
+        """
         if radius <= 0:
             return self._null_object
         apertures = []
@@ -1829,6 +1882,57 @@ class SourceCatalog:
                 continue
             apertures.append(CircularAperture((xcen, ycen), r=radius))
         return apertures
+
+    def circular_photometry(self, radius):
+        """
+        Perform aperture photometry for each source with a circular
+        aperture of the specified radius centered at the source centroid
+        position.
+
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
+
+        Returns
+        -------
+        flux, fluxerr : `~numpy.ndarray` of floats
+            The aperture fluxes and flux errors. NaN will be returned
+            where the circular aperture is `None` (e.g., where the
+            source centroid position is not finite).
+        """
+        apertures = self.circular_aperture(radius)
+
+        flux = []
+        fluxerr = []
+        for (label, aperture, xcen, ycen, bkg) in zip(
+                self.labels, apertures, self._xcentroid, self._ycentroid,
+                self._local_background):
+
+            if aperture is None:
+                flux.append(np.nan)
+                fluxerr.append(np.nan)
+                continue
+
+            aperture_mask = aperture.to_mask(method='exact')
+            data, error, mask, _, slc_sm = self._make_aperture_data(
+                label, xcen, ycen, aperture_mask.bbox, bkg)
+
+            aperture_weights = aperture_mask.data[slc_sm]
+            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
+            # ignore RuntimeWarning for invalid data or error values
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                flux.append(np.sum((aperture_weights * data)[pixel_mask]))
+                if error is None:
+                    fluxerr.append(np.nan)
+                else:
+                    fluxerr.append(np.sqrt(np.sum(
+                        (aperture_weights * error**2)[pixel_mask])))
+
+        flux = np.array(flux)
+        fluxerr = np.array(fluxerr)
+        return flux, fluxerr
 
     def _make_elliptical_apertures(self, scale=6.):
         """
@@ -1866,33 +1970,6 @@ class SourceCatalog:
                                                theta=theta_))
         return aperture
 
-    @staticmethod
-    def _correct_kron_mask(data, mask, xycenter, error=None):
-        """
-        Correct masked pixels in neighboring segments. Masked pixels are
-        replaced with pixels on the opposite side of the source center.
-        """
-        from ._utils import mask_to_mirrored_value
-        data = mask_to_mirrored_value(data, mask, xycenter)
-        if error is not None:
-            error = mask_to_mirrored_value(error, mask, xycenter)
-        return data, error
-
-    def _make_kron_segm_mask(self, label, slices):
-        """
-        Make a segmentation mask based on the Kron mask method.
-        """
-        method = self._kron_params[0]
-        if method in ('none',):
-            return None
-
-        # mask pixels *only* in neighboring segments (do not include
-        # background pixels)
-        segment_img = self._segment_img.data[slices]
-        if method in ('mask', 'correct'):
-            segm_mask = np.logical_and(segment_img != label, segment_img != 0)
-        return segm_mask
-
     @lazyproperty
     @as_scalar
     def kron_radius(self):
@@ -1925,7 +2002,7 @@ class SourceCatalog:
         If either the numerator or denominator <= 0, then ``np.nan``
         will be returned. In this case, the Kron aperture will
         be defined as a circular aperture with a radius equal to
-        ``kron_params[2]``. If ``kron_params[2] <= 0``, then the Kron
+        ``kron_params[1]``. If ``kron_params[1] <= 0``, then the Kron
         aperture will be `None` and the Kron flux will be ``np.nan``.
         """
         if self._detection_cat is not None:
@@ -1946,24 +2023,18 @@ class SourceCatalog:
         kron_radius = []
         for (label, aperture, xcen_, ycen_, cxx_, cxy_, cyy_) in zip(
                 labels, apertures, xcen, ycen, cxx, cxy, cyy):
+
             if aperture is None:
                 kron_radius.append(np.nan)
                 continue
 
-            # prepare cutouts of the data based on the aperture size
-            method = 'center'  # need whole pixels to compute Kron radius
-            aperture_mask = aperture.to_mask(method=method)
-            slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data.shape)
-            data = self._data[slc_lg]
-            data_mask = self._data_mask[slc_lg]
-            segm_mask = self._make_kron_segm_mask(label, slc_lg)
-            if segm_mask is None:
-                mask = data_mask
-            else:
-                mask = data_mask | segm_mask
+            # use 'center' (whole pixels) to compute Kron radius
+            aperture_mask = aperture.to_mask(method='center')
 
-            xycen = (xcen_ - max(0, aperture_mask.bbox.ixmin),
-                     ycen_ - max(0, aperture_mask.bbox.iymin))
+            # prepare cutouts of the data based on the aperture size
+            # local background explicitly set to zero for SE agreement
+            data, _, mask, xycen, slc_sm = self._make_aperture_data(
+                label, xcen_, ycen_, aperture_mask.bbox, 0.0, make_error=False)
 
             xval = np.arange(data.shape[1]) - xycen[0]
             yval = np.arange(data.shape[0]) - xycen[1]
@@ -1995,12 +2066,12 @@ class SourceCatalog:
         The Kron aperture.
 
         If ``kron_radius * np.sqrt(semimajor_sigma * semiminor__sigma) <
-        kron_params[2]`` then a circular aperture with a radius equal to
-        ``kron_params[2]`` will be returned. If ``kron_params[2] <= 0``,
+        kron_params[1]`` then a circular aperture with a radius equal to
+        ``kron_params[1]`` will be returned. If ``kron_params[1] <= 0``,
         then the Kron aperture will be `None`.
 
         If ``kron_radius = np.nan`` then a circular aperture with a
-        radius equal to ``kron_params[2]`` will be returned if the
+        radius equal to ``kron_params[1]`` will be returned if the
         source is not completely masked, otherwise `None` will be
         returned.
 
@@ -2010,7 +2081,7 @@ class SourceCatalog:
         if self._detection_cat is not None:
             return self._detection_cat.kron_aperture
 
-        scale = self.kron_radius.value * self._kron_params[1]
+        scale = self.kron_radius.value * self._kron_params[0]
         kron_aperture = self._make_elliptical_apertures(scale=scale)
         kron_radius = self.kron_radius.value
 
@@ -2018,11 +2089,11 @@ class SourceCatalog:
         major_sigma = self.semimajor_sigma.value
         minor_sigma = self.semiminor_sigma.value
         circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
-        min_radius = self._kron_params[2]
+        min_radius = self._kron_params[1]
         mask = np.isnan(kron_radius) | (circ_radius < min_radius)
         idx = np.atleast_1d(mask).nonzero()[0]
         if idx.size > 0:
-            circ_aperture = self._make_circular_apertures(self._kron_params[2])
+            circ_aperture = self.circular_aperture(self._kron_params[1])
             for i in idx:
                 if circ_aperture is not None:
                     kron_aperture[i] = circ_aperture[i]
@@ -2057,30 +2128,11 @@ class SourceCatalog:
                 kron_fluxerr.append(np.nan)
                 continue
 
-            # prepare cutouts of the data based on the aperture size
             aperture_mask = aperture.to_mask(method='exact')
-            slc_lg, slc_sm = aperture_mask.get_overlap_slices(self._data.shape)
-            data = self._data[slc_lg]
-            data_mask = self._data_mask[slc_lg]
-            if self._error is not None:
-                error = self._error[slc_lg]
-            else:
-                error = None
 
-            segm_mask = self._make_kron_segm_mask(label, slc_lg)
-            if segm_mask is None or self._kron_params[0] == 'correct':
-                mask = data_mask
-            else:
-                mask = data_mask | segm_mask
-
-            xycen = (xcen - max(0, aperture_mask.bbox.ixmin),
-                     ycen - max(0, aperture_mask.bbox.iymin))
-
-            data = data - bkg
-            # correct segment-masked data based on source symmetry
-            if self._kron_params[0] == 'correct':
-                data, error = self._correct_kron_mask(data, segm_mask, xycen,
-                                                      error=error)
+            # prepare cutouts of the data based on the aperture size
+            data, error, mask, _, slc_sm = self._make_aperture_data(
+                label, xcen, ycen, aperture_mask.bbox, bkg)
 
             aperture_weights = aperture_mask.data[slc_sm]
             pixel_mask = (aperture_weights > 0) & ~mask  # good pixels

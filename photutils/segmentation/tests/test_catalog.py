@@ -178,10 +178,6 @@ class TestSourceCatalog:
         assert len(tbl) == 7
         assert tbl.colnames == columns
 
-        tbl2 = self.cat.to_table(exclude_columns=columns)
-        assert len(tbl2) == 7
-        assert len(tbl2.colnames) > len(tbl.colnames)
-
     def test_invalid_inputs(self):
         wrong_shape = np.ones((3, 3))
         with pytest.raises(ValueError):
@@ -209,16 +205,17 @@ class TestSourceCatalog:
         with pytest.raises(ValueError):
             SourceCatalog(self.data, self.segm, localbkg_width=3.4)
         with pytest.raises(ValueError):
-            kron_params = ('none', 2.5, 0.0, 3.0)
+            apermask_method = 'invalid'
+            SourceCatalog(self.data, self.segm,
+                          apermask_method=apermask_method)
+        with pytest.raises(ValueError):
+            kron_params = (2.5, 0.0, 3.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
         with pytest.raises(ValueError):
-            kron_params = ('invalid', 2.5, 0.0)
+            kron_params = (-2.5, 0.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
         with pytest.raises(ValueError):
-            kron_params = ('none', -2.5, 0.0)
-            SourceCatalog(self.data, self.segm, kron_params=kron_params)
-        with pytest.raises(ValueError):
-            kron_params = ('none', 2.5, -4.0)
+            kron_params = (2.5, -4.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
 
     def test_invalid_units(self):
@@ -354,20 +351,23 @@ class TestSourceCatalog:
             SourceCatalog(self.data, self.segm, detection_cat=cat)
 
     def test_kron_minradius(self):
-        params = ('none', 2.5, 10.0)
-        cat = SourceCatalog(self.data, self.segm, kron_params=params,
-                            mask=self.mask)
+        kron_params = (2.5, 10.0)
+        cat = SourceCatalog(self.data, self.segm, mask=self.mask,
+                            apermask_method='none', kron_params=kron_params)
         assert cat.kron_aperture[0] is None
         assert isinstance(cat.kron_aperture[2], EllipticalAperture)
         assert isinstance(cat.kron_aperture[4], CircularAperture)
 
     def test_kron_masking(self):
-        params = ('none', 2.5, 0.0)
-        cat1 = SourceCatalog(self.data, self.segm, kron_params=params)
-        params = ('mask', 2.5, 0.0)
-        cat2 = SourceCatalog(self.data, self.segm, kron_params=params)
-        params = ('correct', 2.5, 0.0)
-        cat3 = SourceCatalog(self.data, self.segm, kron_params=params)
+        apermask_method = 'none'
+        cat1 = SourceCatalog(self.data, self.segm,
+                             apermask_method=apermask_method)
+        apermask_method = 'mask'
+        cat2 = SourceCatalog(self.data, self.segm,
+                             apermask_method=apermask_method)
+        apermask_method = 'correct'
+        cat3 = SourceCatalog(self.data, self.segm,
+                             apermask_method=apermask_method)
         idx = 2  # source with close neighbors
         assert cat1[idx].kron_flux > cat2[idx].kron_flux
         assert cat3[idx].kron_flux > cat2[idx].kron_flux
@@ -377,3 +377,14 @@ class TestSourceCatalog:
         cat = SourceCatalog(self.data - 10, self.segm)
         assert np.all(np.isnan(cat.kron_radius.value))
         assert np.all(np.isnan(cat.kron_flux))
+
+    def test_circular_photometry(self):
+        flux1, fluxerr1 = self.cat.circular_photometry(1.0)
+        flux2, fluxerr2 = self.cat.circular_photometry(5.0)
+        assert np.all((flux2 > flux1) | (np.isnan(flux2) & np.isnan(flux1)))
+        assert np.all((fluxerr2 > fluxerr1)
+                      | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
+
+        cat = SourceCatalog(self.data, self.segm)
+        flux, fluxerr = cat.circular_photometry(1.0)
+        assert np.all(np.isnan(fluxerr))
