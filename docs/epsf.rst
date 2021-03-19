@@ -41,8 +41,8 @@ quality (e.g., no cosmic rays, detector artifacts, etc.).
 
 Let's start by loading a simulated HST/WFC3 image in the F160W band::
 
-    >>> from photutils import datasets
-    >>> hdu = datasets.load_simulated_hst_star_image()  # doctest: +REMOTE_DATA
+    >>> from photutils.datasets import load_simulated_hst_star_image
+    >>> hdu = load_simulated_hst_star_image()  # doctest: +REMOTE_DATA
     >>> data = hdu.data  # doctest: +REMOTE_DATA
 
 The simulated image does not contain any background or noise, so let's add
@@ -59,10 +59,10 @@ Let's show the image:
 
     import matplotlib.pyplot as plt
     from astropy.visualization import simple_norm
-    from photutils import datasets
+    from photutils.datasets import load_simulated_hst_star_image
     from photutils.datasets import make_noise_image
 
-    hdu = datasets.load_simulated_hst_star_image()
+    hdu = load_simulated_hst_star_image()
     data = hdu.data
     data +=  make_noise_image(data.shape, distribution='gaussian', mean=10.,
                               stddev=5., seed=123)
@@ -79,7 +79,7 @@ stars:
 
 .. doctest-requires:: scipy
 
-    >>> from photutils import find_peaks
+    >>> from photutils.detection import find_peaks
     >>> peaks_tbl = find_peaks(data, threshold=500.)  # doctest: +REMOTE_DATA
     >>> peaks_tbl['peak_value'].info.format = '%.8g'  # for consistent table output  # doctest: +REMOTE_DATA
     >>> print(peaks_tbl)  # doctest: +REMOTE_DATA
@@ -190,15 +190,15 @@ from which we'll build our ePSF.  Let's show the first 25 of them:
 .. plot::
 
     from astropy.visualization import simple_norm
-    from photutils import datasets
-
-    hdu = datasets.load_simulated_hst_star_image()
-    data = hdu.data
+    from photutils.datasets import load_simulated_hst_star_image
     from photutils.datasets import make_noise_image
+    from photutils.detection import find_peaks
+
+    hdu = load_simulated_hst_star_image()
+    data = hdu.data
     data +=  make_noise_image(data.shape, distribution='gaussian', mean=10.,
                               stddev=5., seed=123)
 
-    from photutils import find_peaks
     peaks_tbl = find_peaks(data, threshold=500.)
 
     size = 25
@@ -250,7 +250,7 @@ stars to the instance:
 
 .. doctest-requires:: scipy
 
-    >>> from photutils import EPSFBuilder
+    >>> from photutils.psf import EPSFBuilder
     >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
     >>> epsf, fitted_stars = epsf_builder(stars)  # doctest: +REMOTE_DATA
@@ -273,15 +273,15 @@ Finally, let's show the constructed ePSF:
 .. plot::
 
     from astropy.visualization import simple_norm
-    from photutils import datasets
-
-    hdu = datasets.load_simulated_hst_star_image()
-    data = hdu.data
+    from photutils.datasets import load_simulated_hst_star_image
     from photutils.datasets import make_noise_image
+    from photutils.detection import find_peaks
+
+    hdu = load_simulated_hst_star_image()
+    data = hdu.data
     data +=  make_noise_image(data.shape, distribution='gaussian', mean=10.,
                               stddev=5., seed=123)
 
-    from photutils import find_peaks
     peaks_tbl = find_peaks(data, threshold=500.)
 
     size = 25
@@ -306,7 +306,7 @@ Finally, let's show the constructed ePSF:
     from photutils.psf import extract_stars
     stars = extract_stars(nddata, stars_tbl, size=25)
 
-    from photutils import EPSFBuilder
+    from photutils.psf import EPSFBuilder
     epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
                                progress_bar=False)
     epsf, fitted_stars = epsf_builder(stars)

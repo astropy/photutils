@@ -669,8 +669,8 @@ def make_4gaussians_image(noise=True):
     .. plot::
         :include-source:
 
-        from photutils import datasets
-        image = datasets.make_4gaussians_image()
+        from photutils.datasets import make_4gaussians_image
+        image = make_4gaussians_image()
         plt.imshow(image, origin='lower', interpolation='nearest')
     """
 
@@ -722,8 +722,8 @@ def make_100gaussians_image(noise=True):
     .. plot::
         :include-source:
 
-        from photutils import datasets
-        image = datasets.make_100gaussians_image()
+        from photutils.datasets import make_100gaussians_image
+        image = make_100gaussians_image()
         plt.imshow(image, origin='lower', interpolation='nearest')
     """
 

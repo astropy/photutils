@@ -426,7 +426,7 @@ class SegmentationImage:
 
         Examples
         --------
-        >>> from photutils import SegmentationImage
+        >>> from photutils.segmentation import SegmentationImage
         >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
         ...                           [0, 0, 0, 0, 0, 4],
         ...                           [0, 0, 3, 3, 0, 0],
@@ -498,7 +498,7 @@ class SegmentationImage:
 
         Examples
         --------
-        >>> from photutils import SegmentationImage
+        >>> from photutils.segmentation import SegmentationImage
         >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
         ...                           [0, 0, 0, 0, 0, 4],
         ...                           [0, 0, 3, 3, 0, 0],
@@ -578,7 +578,7 @@ class SegmentationImage:
 
         Examples
         --------
-        >>> from photutils import SegmentationImage
+        >>> from photutils.segmentation import SegmentationImage
         >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
         ...                           [0, 0, 0, 0, 0, 4],
         ...                           [0, 0, 3, 3, 0, 0],
@@ -623,7 +623,7 @@ class SegmentationImage:
 
         Examples
         --------
-        >>> from photutils import SegmentationImage
+        >>> from photutils.segmentation import SegmentationImage
         >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
         ...                           [0, 0, 0, 0, 0, 4],
         ...                           [0, 0, 3, 3, 0, 0],
@@ -672,7 +672,7 @@ class SegmentationImage:
 
         Examples
         --------
-        >>> from photutils import SegmentationImage
+        >>> from photutils.segmentation import SegmentationImage
         >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
         ...                           [0, 0, 0, 0, 0, 4],
         ...                           [0, 0, 3, 3, 0, 0],
@@ -728,7 +728,7 @@ class SegmentationImage:
 
         Examples
         --------
-        >>> from photutils import SegmentationImage
+        >>> from photutils.segmentation import SegmentationImage
         >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
         ...                           [0, 0, 0, 0, 0, 4],
         ...                           [0, 0, 3, 3, 0, 0],
@@ -779,7 +779,7 @@ class SegmentationImage:
 
         Examples
         --------
-        >>> from photutils import SegmentationImage
+        >>> from photutils.segmentation import SegmentationImage
         >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
         ...                           [0, 0, 0, 0, 0, 4],
         ...                           [0, 0, 3, 3, 0, 0],
@@ -839,7 +839,7 @@ class SegmentationImage:
 
         Examples
         --------
-        >>> from photutils import SegmentationImage
+        >>> from photutils.segmentation import SegmentationImage
         >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
         ...                           [0, 0, 0, 0, 0, 4],
         ...                           [0, 0, 3, 3, 0, 0],
@@ -910,7 +910,7 @@ class SegmentationImage:
 
         Examples
         --------
-        >>> from photutils import SegmentationImage
+        >>> from photutils.segmentation import SegmentationImage
         >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
         ...                           [0, 0, 0, 0, 0, 4],
         ...                           [0, 0, 3, 3, 0, 0],
@@ -977,7 +977,7 @@ class SegmentationImage:
 
         Examples
         --------
-        >>> from photutils import SegmentationImage
+        >>> from photutils.segmentation import SegmentationImage
         >>> segm = SegmentationImage([[0, 0, 0, 0, 0, 0],
         ...                           [0, 2, 2, 2, 2, 0],
         ...                           [0, 2, 2, 2, 2, 0],

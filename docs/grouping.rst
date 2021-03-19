@@ -142,7 +142,7 @@ in the same group have the same aperture color:
 .. doctest-skip::
 
     >>> import numpy as np
-    >>> from photutils import CircularAperture
+    >>> from photutils.aperture import CircularAperture
     >>> from photutils.utils import make_random_cmap
     >>> plt.imshow(sim_image, origin='lower', interpolation='nearest',
     ...            cmap='Greys_r')
@@ -160,7 +160,7 @@ in the same group have the same aperture color:
     from photutils.datasets import (make_random_gaussians_table,
                                     make_gaussian_sources_image)
     from photutils.psf.groupstars import DAOGroup
-    from photutils import CircularAperture
+    from photutils.aperture import CircularAperture
     from photutils.utils import make_random_cmap
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
@@ -222,7 +222,7 @@ to use :class:`~photutils.psf.DBSCANGroup`.
     from photutils.datasets import (make_random_gaussians_table,
                                     make_gaussian_sources_image)
     from photutils.psf.groupstars import DBSCANGroup
-    from photutils import CircularAperture
+    from photutils.aperture import CircularAperture
     from photutils.utils import make_random_cmap
     import matplotlib.pyplot as plt
     from matplotlib import rcParams

@@ -44,8 +44,8 @@ def get_path(filename, location='local', cache=True, show_progress=False):
     Examples
     --------
     >>> from astropy.io import fits
-    >>> from photutils import datasets
-    >>> hdulist = fits.open(datasets.get_path('fermi_counts.fits.gz'))
+    >>> from photutils.datasets import get_path
+    >>> hdulist = fits.open(get_path('fermi_counts.fits.gz'))
     """
 
     datasets_url = ('https://github.com/astropy/photutils-datasets/raw/'
@@ -97,8 +97,8 @@ def load_spitzer_image(show_progress=False):  # pragma: no cover
     .. plot::
         :include-source:
 
-        from photutils import datasets
-        hdu = datasets.load_spitzer_image()
+        from photutils.datasets import load_spitzer_image
+        hdu = load_spitzer_image()
         plt.imshow(hdu.data, origin='lower', vmax=50)
     """
 
@@ -136,8 +136,8 @@ def load_spitzer_catalog(show_progress=False):  # pragma: no cover
     .. plot::
         :include-source:
 
-        from photutils import datasets
-        catalog = datasets.load_spitzer_catalog()
+        from photutils.datasets import load_spitzer_catalog
+        catalog = load_spitzer_catalog()
         plt.scatter(catalog['l'], catalog['b'])
         plt.xlabel('Galactic l')
         plt.ylabel('Galactic b')
@@ -237,8 +237,8 @@ def load_fermi_image(show_progress=False):
     .. plot::
         :include-source:
 
-        from photutils import datasets
-        hdu = datasets.load_fermi_image()
+        from photutils.datasets import load_fermi_image
+        hdu = load_fermi_image()
         plt.imshow(hdu.data, vmax=10, origin='lower', interpolation='nearest')
     """
 
@@ -275,8 +275,8 @@ def load_star_image(show_progress=False):  # pragma: no cover
     .. plot::
         :include-source:
 
-        from photutils import datasets
-        hdu = datasets.load_star_image()
+        from photutils.datasets import load_star_image
+        hdu = load_star_image()
         plt.imshow(hdu.data, origin='lower', interpolation='nearest')
     """
 
@@ -309,8 +309,8 @@ def load_simulated_hst_star_image(show_progress=False):  # pragma: no cover
     .. plot::
         :include-source:
 
-        from photutils import datasets
-        hdu = datasets.load_simulated_hst_star_image()
+        from photutils.datasets import load_simulated_hst_star_image
+        hdu = load_simulated_hst_star_image()
         plt.imshow(hdu.data, origin='lower', interpolation='nearest')
     """
 

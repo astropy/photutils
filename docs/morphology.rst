@@ -38,7 +38,7 @@ Then, calculate its properties:
 
 .. doctest-requires:: scipy
 
-    >>> from photutils import data_properties
+    >>> from photutils.morphology import data_properties
     >>> cat = data_properties(data)
     >>> columns = ['label', 'xcentroid', 'ycentroid', 'semimajor_sigma',
     ...            'semiminor_sigma', 'orientation']
@@ -60,7 +60,7 @@ approximate isophotal ellipse for the source:
 .. doctest-skip::
 
     >>> import astropy.units as u
-    >>> from photutils import EllipticalAperture
+    >>> from photutils.aperture import EllipticalAperture
     >>> position = (cat.xcentroid, cat.ycentroid)
     >>> r = 3.0  # approximate isophotal extent
     >>> a = cat.semimajor_sigma.value * r
@@ -75,7 +75,8 @@ approximate isophotal ellipse for the source:
 
     import astropy.units as u
     import matplotlib.pyplot as plt
-    from photutils import data_properties, EllipticalAperture
+    from photutils.aperture import EllipticalAperture
+    from photutils.morphology import data_properties
     from photutils.datasets import make_4gaussians_image
 
     data = make_4gaussians_image()[43:79, 76:104]  # extract single object

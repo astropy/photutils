@@ -32,8 +32,8 @@ Getting Started
 Let's load an example image of M67 with
 :func:`~photutils.datasets.load_star_image`::
 
-    >>> from photutils import datasets
-    >>> hdu = datasets.load_star_image()  # doctest: +REMOTE_DATA
+    >>> from photutils.datasets import load_star_image
+    >>> hdu = load_star_image()  # doctest: +REMOTE_DATA
     >>> print(hdu.data.shape)  # doctest: +REMOTE_DATA
     (1059, 1059)
 
@@ -45,8 +45,8 @@ Let's plot the image:
 .. plot::
     :include-source:
 
-     from photutils import datasets
-     hdu = datasets.load_star_image()
+     from photutils.datasets import load_star_image
+     hdu = load_star_image()
      plt.imshow(hdu.data, origin='lower', interpolation='nearest')
      plt.tight_layout()
      plt.show()

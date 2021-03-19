@@ -12,7 +12,7 @@ from ..core import (BiweightLocationBackground, BiweightScaleBackgroundRMS,
                     MADStdBackgroundRMS, MeanBackground, MedianBackground,
                     MMMBackground, ModeEstimatorBackground,
                     SExtractorBackground, StdBackgroundRMS)
-from ...datasets.make import make_noise_image
+from ...datasets import make_noise_image
 
 BKG = 0.0
 STD = 0.5

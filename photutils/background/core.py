@@ -154,7 +154,7 @@ class MeanBackground(BackgroundBase):
     Examples
     --------
     >>> from astropy.stats import SigmaClip
-    >>> from photutils import MeanBackground
+    >>> from photutils.background import MeanBackground
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg = MeanBackground(sigma_clip)
@@ -197,7 +197,7 @@ class MedianBackground(BackgroundBase):
     Examples
     --------
     >>> from astropy.stats import SigmaClip
-    >>> from photutils import MedianBackground
+    >>> from photutils.background import MedianBackground
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg = MedianBackground(sigma_clip)
@@ -244,7 +244,7 @@ class ModeEstimatorBackground(BackgroundBase):
     Examples
     --------
     >>> from astropy.stats import SigmaClip
-    >>> from photutils import ModeEstimatorBackground
+    >>> from photutils.background import ModeEstimatorBackground
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg = ModeEstimatorBackground(median_factor=3.0, mean_factor=2.0,
@@ -296,7 +296,7 @@ class MMMBackground(ModeEstimatorBackground):
     Examples
     --------
     >>> from astropy.stats import SigmaClip
-    >>> from photutils import MMMBackground
+    >>> from photutils.background import MMMBackground
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg = MMMBackground(sigma_clip=sigma_clip)
@@ -345,7 +345,7 @@ class SExtractorBackground(BackgroundBase):
     Examples
     --------
     >>> from astropy.stats import SigmaClip
-    >>> from photutils import SExtractorBackground
+    >>> from photutils.background import SExtractorBackground
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg = SExtractorBackground(sigma_clip)
@@ -409,7 +409,7 @@ class BiweightLocationBackground(BackgroundBase):
     Examples
     --------
     >>> from astropy.stats import SigmaClip
-    >>> from photutils import BiweightLocationBackground
+    >>> from photutils.background import BiweightLocationBackground
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg = BiweightLocationBackground(sigma_clip=sigma_clip)
@@ -457,7 +457,7 @@ class StdBackgroundRMS(BackgroundRMSBase):
     Examples
     --------
     >>> from astropy.stats import SigmaClip
-    >>> from photutils import StdBackgroundRMS
+    >>> from photutils.background import StdBackgroundRMS
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkgrms = StdBackgroundRMS(sigma_clip)
@@ -511,7 +511,7 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
     Examples
     --------
     >>> from astropy.stats import SigmaClip
-    >>> from photutils import MADStdBackgroundRMS
+    >>> from photutils.background import MADStdBackgroundRMS
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkgrms = MADStdBackgroundRMS(sigma_clip)
@@ -560,7 +560,7 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     Examples
     --------
     >>> from astropy.stats import SigmaClip
-    >>> from photutils import BiweightScaleBackgroundRMS
+    >>> from photutils.background import BiweightScaleBackgroundRMS
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkgrms = BiweightScaleBackgroundRMS(sigma_clip=sigma_clip)

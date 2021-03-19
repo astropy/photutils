@@ -9,8 +9,8 @@ We start by loading an image from the bundled datasets and selecting a
 subset of the image::
 
     >>> import numpy as np
-    >>> from photutils import datasets
-    >>> hdu = datasets.load_star_image()  # doctest: +REMOTE_DATA
+    >>> from photutils.datasets import load_star_image
+    >>> hdu = load_star_image()  # doctest: +REMOTE_DATA
     >>> image = hdu.data[500:700, 500:700].astype(float)  # doctest: +REMOTE_DATA
 
 We then subtract a rough estimate of the background, calculated using
@@ -30,7 +30,7 @@ detected sources are returned as an Astropy `~astropy.table.Table`:
 
 .. doctest-requires:: scipy
 
-    >>> from photutils import DAOStarFinder
+    >>> from photutils.detection import DAOStarFinder
     >>> from astropy.stats import mad_std
     >>> bkg_sigma = mad_std(image)  # doctest: +REMOTE_DATA
     >>> daofind = DAOStarFinder(fwhm=4., threshold=3.*bkg_sigma)  # doctest: +REMOTE_DATA
@@ -63,7 +63,7 @@ Astropy `~astropy.table.QTable` with the results of the photometry:
 
 .. doctest-requires:: scipy
 
-    >>> from photutils import aperture_photometry, CircularAperture
+    >>> from photutils.aperture import aperture_photometry, CircularAperture
     >>> positions = np.transpose((sources['xcentroid'], sources['ycentroid']))  # doctest: +REMOTE_DATA
     >>> apertures = CircularAperture(positions, r=4.)  # doctest: +REMOTE_DATA
     >>> phot_table = aperture_photometry(image, apertures)  # doctest: +REMOTE_DATA
@@ -102,9 +102,10 @@ Finally, we plot the image and the defined apertures:
     import numpy as np
     import matplotlib.pyplot as plt
     from astropy.stats import mad_std
-    from photutils import (datasets, DAOStarFinder, aperture_photometry,
-                           CircularAperture)
-    hdu = datasets.load_star_image()
+    from photutils.aperture import aperture_photometry, CircularAperture
+    from photutils.datasets import load_star_image
+    from photutils.detection import DAOStarFinder
+    hdu = load_star_image()
     image = hdu.data[500:700, 500:700].astype(float)
     image -= np.median(image)
     bkg_sigma = mad_std(image)
