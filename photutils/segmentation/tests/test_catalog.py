@@ -75,7 +75,7 @@ class TestSourceCatalog:
     def test_catalog(self, with_units):
         props1 = ('background_centroid', 'background_mean', 'background_sum',
                   'bbox', 'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx',
-                  'cxy', 'cyy', 'ellipticity', 'elongation',
+                  'cxy', 'cyy', 'ellipticity', 'elongation', 'fwhm',
                   'equivalent_radius', 'gini', 'kron_radius', 'maxval_xindex',
                   'maxval_yindex', 'minval_xindex', 'minval_yindex',
                   'perimeter', 'sky_bbox_ll', 'sky_bbox_lr', 'sky_bbox_ul',

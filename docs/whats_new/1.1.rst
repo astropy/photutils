@@ -73,5 +73,6 @@ new methods:
 
 and new attributes:
 
+    * :attr:`~photutils.segmentation.SourceCatalog.fwhm`
     * :attr:`~photutils.segmentation.SourceCatalog.segment`
     * :attr:`~photutils.segmentation.SourceCatalog.segment_ma`

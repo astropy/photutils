@@ -1558,6 +1558,25 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
+    def fwhm(self):
+        """
+        Circularized FWHM of the 2D Gaussian function that has the same
+        second-order central moments as the source.
+
+        .. math::
+
+           \\mathrm{FWHM} & = 2 \\sqrt{2 \\ln(2)} \\sqrt{0.5 (a^2 + b^2)}
+           \\\\
+                          & = 2 \\sqrt{\\ln(2) \\ (a^2 + b^2)}
+
+        where :math:`a` and :math:`b` are the 1-sigma lengths of the
+        semimajor and semiminor axes, respectively.
+        """
+        return 2.0 * np.sqrt(np.log(2.0) * (self.semimajor_sigma**2
+                                            + self.semiminor_sigma**2))
+
+    @lazyproperty
+    @as_scalar
     def orientation(self):
         """
         The angle between the ``x`` axis and the major axis of the 2D

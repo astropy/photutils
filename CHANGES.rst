@@ -49,10 +49,12 @@ New Features
 - ``photutils.segmentation``
 
   - Added a modified, significantly faster, ``SourceCatalog`` class.
-    [#1170, #1188]
+    [#1170, #1188, #1191]
 
   - Added ``circular_aperture`` and ``circular_phometry`` methods to the
     ``SourceCatalog`` class. [#1188]
+
+  - Added ``fwhm`` property to the ``SourceCatalog`` class. [#1191]
 
   - Added a ``bbox`` attribute to ``SegmentationImage``. [#1187]
 
