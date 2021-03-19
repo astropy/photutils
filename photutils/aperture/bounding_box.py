@@ -25,7 +25,7 @@ class BoundingBox:
 
     Examples
     --------
-    >>> from photutils import BoundingBox
+    >>> from photutils.aperture import BoundingBox
 
     >>> # constructing a BoundingBox like this is cryptic:
     >>> bbox = BoundingBox(1, 10, 2, 20)
@@ -106,7 +106,7 @@ class BoundingBox:
 
         Examples
         --------
-        >>> from photutils import BoundingBox
+        >>> from photutils.aperture import BoundingBox
         >>> BoundingBox.from_float(xmin=1.0, xmax=10.0, ymin=2.0, ymax=20.0)
         BoundingBox(ixmin=1, ixmax=11, iymin=2, iymax=21)
 
@@ -275,7 +275,7 @@ class BoundingBox:
             :include-source:
 
             import matplotlib.pyplot as plt
-            from photutils import BoundingBox
+            from photutils.aperture import BoundingBox
             bbox = BoundingBox(2, 7, 3, 8)
             fig = plt.figure()
             ax = fig.add_subplot(1, 1, 1)

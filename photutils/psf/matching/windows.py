@@ -55,7 +55,7 @@ class SplitCosineBellWindow:
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils import SplitCosineBellWindow
+        from photutils.psf import SplitCosineBellWindow
         taper = SplitCosineBellWindow(alpha=0.4, beta=0.3)
         data = taper((101, 101))
         plt.imshow(data, cmap='viridis', origin='lower')
@@ -67,7 +67,7 @@ class SplitCosineBellWindow:
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils import SplitCosineBellWindow
+        from photutils.psf import SplitCosineBellWindow
         taper = SplitCosineBellWindow(alpha=0.4, beta=0.3)
         data = taper((101, 101))
         plt.plot(data[50, :])
@@ -124,7 +124,7 @@ class HanningWindow(SplitCosineBellWindow):
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils import HanningWindow
+        from photutils.psf import HanningWindow
         taper = HanningWindow()
         data = taper((101, 101))
         plt.imshow(data, cmap='viridis', origin='lower')
@@ -136,7 +136,7 @@ class HanningWindow(SplitCosineBellWindow):
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils import HanningWindow
+        from photutils.psf import HanningWindow
         taper = HanningWindow()
         data = taper((101, 101))
         plt.plot(data[50, :])
@@ -166,7 +166,7 @@ class TukeyWindow(SplitCosineBellWindow):
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils import TukeyWindow
+        from photutils.psf import TukeyWindow
         taper = TukeyWindow(alpha=0.4)
         data = taper((101, 101))
         plt.imshow(data, cmap='viridis', origin='lower')
@@ -178,7 +178,7 @@ class TukeyWindow(SplitCosineBellWindow):
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils import TukeyWindow
+        from photutils.psf import TukeyWindow
         taper = TukeyWindow(alpha=0.4)
         data = taper((101, 101))
         plt.plot(data[50, :])
@@ -204,7 +204,7 @@ class CosineBellWindow(SplitCosineBellWindow):
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils import CosineBellWindow
+        from photutils.psf import CosineBellWindow
         taper = CosineBellWindow(alpha=0.3)
         data = taper((101, 101))
         plt.imshow(data, cmap='viridis', origin='lower')
@@ -216,7 +216,7 @@ class CosineBellWindow(SplitCosineBellWindow):
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils import CosineBellWindow
+        from photutils.psf import CosineBellWindow
         taper = CosineBellWindow(alpha=0.3)
         data = taper((101, 101))
         plt.plot(data[50, :])
@@ -242,7 +242,7 @@ class TopHatWindow(SplitCosineBellWindow):
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils import TopHatWindow
+        from photutils.psf import TopHatWindow
         taper = TopHatWindow(beta=0.4)
         data = taper((101, 101))
         plt.imshow(data, cmap='viridis', origin='lower',
@@ -255,7 +255,7 @@ class TopHatWindow(SplitCosineBellWindow):
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils import TopHatWindow
+        from photutils.psf import TopHatWindow
         taper = TopHatWindow(beta=0.4)
         data = taper((101, 101))
         plt.plot(data[50, :])

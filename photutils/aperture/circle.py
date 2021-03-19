@@ -129,7 +129,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
     Examples
     --------
-    >>> from photutils import CircularAperture
+    >>> from photutils.aperture import CircularAperture
     >>> aper = CircularAperture([10., 20.], 3.)
     >>> aper = CircularAperture((10., 20.), 3.)
 
@@ -249,7 +249,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     Examples
     --------
-    >>> from photutils import CircularAnnulus
+    >>> from photutils.aperture import CircularAnnulus
     >>> aper = CircularAnnulus([10., 20.], 3., 5.)
     >>> aper = CircularAnnulus((10., 20.), 3., 5.)
 
@@ -362,7 +362,7 @@ class SkyCircularAperture(SkyAperture):
     --------
     >>> from astropy.coordinates import SkyCoord
     >>> import astropy.units as u
-    >>> from photutils import SkyCircularAperture
+    >>> from photutils.aperture import SkyCircularAperture
     >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
     >>> aper = SkyCircularAperture(positions, 0.5*u.arcsec)
     """
@@ -422,7 +422,7 @@ class SkyCircularAnnulus(SkyAperture):
     --------
     >>> from astropy.coordinates import SkyCoord
     >>> import astropy.units as u
-    >>> from photutils import SkyCircularAnnulus
+    >>> from photutils.aperture import SkyCircularAnnulus
     >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
     >>> aper = SkyCircularAnnulus(positions, 0.5*u.arcsec, 1.0*u.arcsec)
     """

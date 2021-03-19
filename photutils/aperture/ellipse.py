@@ -159,7 +159,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
     Examples
     --------
-    >>> from photutils import EllipticalAperture
+    >>> from photutils.aperture import EllipticalAperture
     >>> aper = EllipticalAperture([10., 20.], 5., 3.)
     >>> aper = EllipticalAperture((10., 20.), 5., 3., theta=np.pi)
 
@@ -301,7 +301,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     Examples
     --------
-    >>> from photutils import EllipticalAnnulus
+    >>> from photutils.aperture import EllipticalAnnulus
     >>> aper = EllipticalAnnulus([10., 20.], 3., 8., 5.)
     >>> aper = EllipticalAnnulus((10., 20.), 3., 8., 5., theta=np.pi)
 
@@ -441,7 +441,7 @@ class SkyEllipticalAperture(SkyAperture):
     --------
     >>> from astropy.coordinates import SkyCoord
     >>> import astropy.units as u
-    >>> from photutils import SkyEllipticalAperture
+    >>> from photutils.aperture import SkyEllipticalAperture
     >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
     >>> aper = SkyEllipticalAperture(positions, 1.0*u.arcsec, 0.5*u.arcsec)
     """
@@ -523,7 +523,7 @@ class SkyEllipticalAnnulus(SkyAperture):
     --------
     >>> from astropy.coordinates import SkyCoord
     >>> import astropy.units as u
-    >>> from photutils import SkyEllipticalAnnulus
+    >>> from photutils.aperture import SkyEllipticalAnnulus
     >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
     >>> aper = SkyEllipticalAnnulus(positions, 0.5*u.arcsec, 2.0*u.arcsec,
     ...                             1.0*u.arcsec)
