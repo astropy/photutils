@@ -116,6 +116,14 @@ API changes
   - Removed the deprecated ``fit_2dgaussian`` function and
     ``GaussianConst2D`` class. [#1147]
 
+  - Importing tools from the centroids subpackge without including the
+    subpackage name is deprecated. [#1190]
+
+- ``photutils.morphology``
+
+  - Importing tools from the morphology subpackge without including the
+    subpackage name is deprecated. [#1190]
+
 - ``photutils.segmentation``
 
   - Deprecated the ``"mask_all"`` option in the ``SourceProperties``
