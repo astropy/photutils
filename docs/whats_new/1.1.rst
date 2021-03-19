@@ -68,6 +68,7 @@ new methods:
 
     * :meth:`~photutils.segmentation.SourceCatalog.circular_aperture`
     * :meth:`~photutils.segmentation.SourceCatalog.circular_photometry`
+    * :meth:`~photutils.segmentation.SourceCatalog.fluxfrac_radius`
     * :meth:`~photutils.segmentation.SourceCatalog.get_label`
     * :meth:`~photutils.segmentation.SourceCatalog.get_labels`
 

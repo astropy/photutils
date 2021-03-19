@@ -386,5 +386,21 @@ class TestSourceCatalog:
                       | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
 
         cat = SourceCatalog(self.data, self.segm)
-        flux, fluxerr = cat.circular_photometry(1.0)
+        _, fluxerr = cat.circular_photometry(1.0)
         assert np.all(np.isnan(fluxerr))
+
+    def test_fluxfrac_radius(self):
+        radius1 = self.cat.fluxfrac_radius(0.1)
+        radius2 = self.cat.fluxfrac_radius(0.5)
+        assert np.all((radius2 > radius1)
+                      | (np.isnan(radius2) & np.isnan(radius1)))
+
+        cat = SourceCatalog(self.data, self.segm)
+        obj = cat[1]
+        radius = obj.fluxfrac_radius(0.5)
+        assert_allclose(radius, 7.899648)
+
+        with pytest.raises(ValueError):
+            radius = self.cat.fluxfrac_radius(0)
+        with pytest.raises(ValueError):
+            radius = self.cat.fluxfrac_radius(-1)
