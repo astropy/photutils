@@ -352,16 +352,18 @@ the list of the many properties that are calculated for each source:
         4    364.73     11.12 ...             nan    695.36          nan
         5    258.36     11.79 ...             nan    667.71          nan
       ...       ...       ... ...             ...       ...          ...
-       92    427.01    147.46 ...             nan    888.26          nan
-       93    426.63    211.10 ...             nan    893.45          nan
-       94    419.74    216.64 ...             nan    867.93          nan
-       95    433.95    280.71 ...             nan    636.02          nan
-       96    434.09    288.93 ...             nan    925.67          nan
+       92    427.01    147.46 ...             nan    888.12          nan
+       93    426.63    211.10 ...             nan    893.63          nan
+       94    419.74    216.64 ...             nan    866.92          nan
+       95    433.95    280.71 ...             nan    631.41          nan
+       96    434.09    288.93 ...             nan    930.15          nan
     Length = 96 rows
 
+The error columns are NaN because we did not input an error array (see
+the Photometric Errors section below).
 
-As an example, let's plot the calculated elliptical Kron apertures
-(based on the shapes for of each source) on the data:
+Let's now plot the calculated elliptical Kron apertures (based on the
+shapes for of each source) on the data:
 
 .. doctest-skip::
 
@@ -443,9 +445,8 @@ label numbers in the segmentation image:
         5    258.36     11.79 ...             nan    667.71          nan
        20    347.02     66.92 ...             nan    815.06          nan
        50    145.06    168.54 ...             nan    715.61          nan
-       75    301.87    239.26 ...             nan    506.95          nan
-       80     43.25    250.03 ...             nan    666.39          nan
-
+       75    301.87    239.26 ...             nan    512.10          nan
+       80     43.25    250.03 ...             nan    662.00          nan
 
 By default, the :meth:`~photutils.segmentation.SourceCatalog.to_table`
 includes only a small subset of source properties. The output table
