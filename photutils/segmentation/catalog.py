@@ -293,7 +293,7 @@ class SourceCatalog:
     @staticmethod
     def _validate_apermask_method(apermask_method):
         if apermask_method not in ('none', 'mask', 'correct'):
-            raise ValueError('Invalid apertmask_method value')
+            raise ValueError('Invalid apermask_method value')
         return apermask_method
 
     @staticmethod
