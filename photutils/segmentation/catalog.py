@@ -2193,3 +2193,83 @@ class SourceCatalog:
         if self._data_unit is not None:
             kron_fluxerr <<= self._data_unit
         return kron_fluxerr
+
+    @lazyproperty
+    def _max_circular_kron_radius(self):
+        """
+        The maximum circular Kron radius used as the upper limit of
+        fluxfrac_radius.
+        """
+        semimajor_sig = self.semimajor_sigma.value
+        kron_radius = self.kron_radius.value
+        radius = semimajor_sig * kron_radius * self._kron_params[0]
+        if self.isscalar:
+            radius = np.array([radius])
+        return radius
+
+    @staticmethod
+    def _fluxfrac_radius_fcn(radius, data, mask, aperture, normflux):
+        """
+        Function whose root is found to compute the fluxfrac_radius.
+        """
+        aperture.r = radius
+        flux, _ = aperture.do_photometry(data, mask=mask)
+        return 1.0 - (flux[0] / normflux)
+
+    @as_scalar
+    def fluxfrac_radius(self, fluxfrac):
+        """
+        Calculate the circular radius that encloses the specified
+        fraction of the Kron flux.
+
+        To estimate the half-light radius, use ``fluxfrac = 0.5``.
+
+        Parameters
+        ----------
+        fluxfrac : float
+            The fraction of the Kron flux at which to find the circular
+            radius.
+
+        Returns
+        -------
+        radius : float
+            The circular radius that encloses the specified fraction of
+            the Kron flux.
+        """
+        if fluxfrac <= 0 or fluxfrac > 1:
+            raise ValueError('fluxfrac must be > 0 and <= 1')
+
+        from scipy.optimize import root_scalar
+
+        radius = []
+        max_radius = self._max_circular_kron_radius
+        kron_flux = self._kron_flux_fluxerr[:, 0]
+
+        for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
+                self._labels, self._xcentroid, self._ycentroid,
+                kron_flux, self._local_background, max_radius):
+
+            if np.any(~np.isfinite((xcen, ycen))):
+                radius.append(np.nan)
+                continue
+
+            aperture = CircularAperture((xcen, ycen), r=max_radius_)
+            aperture_mask = aperture.to_mask(method='exact')
+
+            # prepare cutouts of the data based on the maximum aperture size
+            data, _, mask, xycen, _ = self._make_aperture_data(
+                label, xcen, ycen, aperture_mask.bbox, bkg,
+                make_error=False)
+
+            aperture.positions = xycen
+            args = (data, mask, aperture, kronflux * fluxfrac)
+            bracket = [0.1, max_radius_]
+            try:
+                result = root_scalar(self._fluxfrac_radius_fcn, args=args,
+                                     bracket=bracket, method='brentq')
+                result = result.root
+            except ValueError:  # bracket points must have different signs
+                result = np.nan
+            radius.append(result)
+
+        return np.array(radius)
