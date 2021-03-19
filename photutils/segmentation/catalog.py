@@ -1794,7 +1794,8 @@ class SourceCatalog:
             for aperture in bkg_aper:
                 aperture_mask = aperture.to_mask(method='center')
                 values = aperture_mask.get_values(self._data, mask=mask)
-                if len(values) < 10:  # not enough unmasked pixels
+                # check not enough unmasked pixels
+                if len(values) < 10:  # pragma: no cover
                     bkg.append(0.)
                     continue
                 bkg.append(bkg_func(values))

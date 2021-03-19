@@ -377,3 +377,14 @@ class TestSourceCatalog:
         cat = SourceCatalog(self.data - 10, self.segm)
         assert np.all(np.isnan(cat.kron_radius.value))
         assert np.all(np.isnan(cat.kron_flux))
+
+    def test_circular_photometry(self):
+        flux1, fluxerr1 = self.cat.circular_photometry(1.0)
+        flux2, fluxerr2 = self.cat.circular_photometry(5.0)
+        assert np.all((flux2 > flux1) | (np.isnan(flux2) & np.isnan(flux1)))
+        assert np.all((fluxerr2 > fluxerr1)
+                      | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
+
+        cat = SourceCatalog(self.data, self.segm)
+        flux, fluxerr = cat.circular_photometry(1.0)
+        assert np.all(np.isnan(fluxerr))
