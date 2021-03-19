@@ -39,7 +39,8 @@ not subtract the background from the data (but in practice, one should
 subtract the background)::
 
     >>> from photutils.datasets import make_4gaussians_image
-    >>> from photutils import centroid_com, centroid_1dg, centroid_2dg
+    >>> from photutils.centroids import centroid_com
+    >>> from photutils.centroids import centroid_1dg, centroid_2dg
     >>> data = make_4gaussians_image()[43:79, 76:104]
 
     >>> x1, y1 = centroid_com(data)
@@ -65,7 +66,7 @@ similar, we also include an inset plot zoomed in near the centroid:
     :include-source:
 
     from photutils.datasets import make_4gaussians_image
-    from photutils import centroid_com, centroid_1dg, centroid_2dg
+    from photutils.centroids import centroid_com, centroid_1dg, centroid_2dg
     import matplotlib.pyplot as plt
 
     data = make_4gaussians_image()[43:79, 76:104]  # extract single object
@@ -115,7 +116,7 @@ then calculated within the cutout image for each source:
 
 .. doctest-requires:: scipy
 
-    >>> from photutils import centroid_sources
+    >>> from photutils.centroids import centroid_sources
     >>> data = make_4gaussians_image()
     >>> x_init = (25, 91, 151, 160)
     >>> y_init = (40, 61, 24, 71)
@@ -132,7 +133,7 @@ Let's plot the results:
     :include-source:
 
     from photutils.datasets import make_4gaussians_image
-    from photutils import centroid_sources, centroid_com
+    from photutils.centroids import centroid_sources, centroid_com
     data = make_4gaussians_image()
     x_init = (25, 91, 151, 160)
     y_init = (40, 61, 24, 71)

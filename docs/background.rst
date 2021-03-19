@@ -131,7 +131,7 @@ source detections and dilate using a 11x11 box:
 
 .. doctest-requires:: scipy
 
-    >>> from photutils import make_source_mask
+    >>> from photutils.segmentation import make_source_mask
     >>> mask = make_source_mask(data, nsigma=2, npixels=5, dilate_size=11)
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
     >>> print((mean, median, std))  # doctest: +FLOAT_CMP
@@ -255,7 +255,7 @@ instance of :class:`~photutils.background.MedianBackground`.
 .. doctest-requires:: scipy
 
     >>> from astropy.stats import SigmaClip
-    >>> from photutils import Background2D, MedianBackground
+    >>> from photutils.background import Background2D, MedianBackground
     >>> sigma_clip = SigmaClip(sigma=3.)
     >>> bkg_estimator = MedianBackground()
     >>> bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
@@ -290,7 +290,7 @@ Let's plot the background image:
     import matplotlib.pyplot as plt
     from astropy.stats import SigmaClip
     from photutils.datasets import make_100gaussians_image
-    from photutils import Background2D, MedianBackground
+    from photutils.background import Background2D, MedianBackground
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
@@ -317,7 +317,7 @@ and the background-subtracted image:
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
-    from photutils import Background2D, MedianBackground
+    from photutils.background import Background2D, MedianBackground
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]

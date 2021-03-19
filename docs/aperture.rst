@@ -50,7 +50,7 @@ We start with an example of creating a circular aperture in pixel
 coordinates using the :class:`~photutils.aperture.CircularAperture`
 class::
 
-    >>> from photutils import CircularAperture
+    >>> from photutils.aperture import CircularAperture
     >>> positions = [(30., 30.), (40., 40.)]
     >>> aperture = CircularAperture(positions, r=3.)
 
@@ -68,7 +68,7 @@ aperture object::
 
     >>> from astropy import units as u
     >>> from astropy.coordinates import SkyCoord
-    >>> from photutils import SkyCircularAperture
+    >>> from photutils.aperture import SkyCircularAperture
     >>> positions = SkyCoord(l=[1.2, 2.3] * u.deg, b=[0.1, 0.2] * u.deg,
     ...                      frame='galactic')
     >>> aperture = SkyCircularAperture(positions, r=4. * u.arcsec)
@@ -121,7 +121,7 @@ We then call the :func:`~photutils.aperture.aperture_photometry`
 function with the data and the apertures::
 
     >>> import numpy as np
-    >>> from photutils import aperture_photometry
+    >>> from photutils.aperture import aperture_photometry
     >>> data = np.ones((100, 100))
     >>> phot_table = aperture_photometry(data, aperture)
     >>> phot_table['aperture_sum'].info.format = '%.8g'  # for consistent table output
@@ -215,7 +215,7 @@ Other apertures have multiple parameters specifying the aperture size
 and orientation.  For example, for elliptical apertures, one must
 specify ``a``, ``b``, and ``theta``::
 
-    >>> from photutils import EllipticalAperture
+    >>> from photutils.aperture import EllipticalAperture
     >>> a = 5.
     >>> b = 3.
     >>> theta = np.pi / 4.
@@ -285,7 +285,7 @@ is estimated as the mean value within a circular annulus of inner
 radius 6 pixels and outer radius 8 pixels.  We start by defining the
 apertures::
 
-    >>> from photutils import CircularAnnulus
+    >>> from photutils.aperture import CircularAnnulus
     >>> aperture = CircularAperture(positions, r=3)
     >>> annulus_aperture = CircularAnnulus(positions, r_in=6., r_out=8.)
 
@@ -342,7 +342,7 @@ annulus of inner radius 10 pixels and outer radius 15 pixels.  We
 start by defining an example image and an aperture for three sources::
 
     >>> from photutils.datasets import make_100gaussians_image
-    >>> from photutils import CircularAperture, CircularAnnulus
+    >>> from photutils.aperture import CircularAperture, CircularAnnulus
     >>> data = make_100gaussians_image()
     >>> positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
     >>> aperture = CircularAperture(positions, r=5)
@@ -354,7 +354,7 @@ apertures (red) on the image:
 .. plot::
 
    from photutils.datasets import make_100gaussians_image
-   from photutils import CircularAperture, CircularAnnulus
+   from photutils.aperture import CircularAperture, CircularAnnulus
    from astropy.visualization import simple_norm
 
    data = make_100gaussians_image()
@@ -401,7 +401,7 @@ Let's focus on just the first annulus.  Let's plot its aperture mask:
 
 .. plot::
 
-    from photutils import CircularAperture, CircularAnnulus
+    from photutils.aperture import CircularAperture, CircularAnnulus
     import matplotlib.pyplot as plt
     positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
     aperture = CircularAperture(positions, r=5)
@@ -421,7 +421,7 @@ Let's plot the annulus data:
 
 .. plot::
 
-    from photutils import CircularAperture, CircularAnnulus
+    from photutils.aperture import CircularAperture, CircularAnnulus
     from photutils.datasets import make_100gaussians_image
     import matplotlib.pyplot as plt
     positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
@@ -466,8 +466,8 @@ the pixels in the background annuli for the background estimates of
 each source::
 
     >>> from astropy.stats import sigma_clipped_stats
-    >>> from photutils import aperture_photometry
-    >>> from photutils import CircularAperture, CircularAnnulus
+    >>> from photutils.aperture import aperture_photometry
+    >>> from photutils.aperture import CircularAperture, CircularAnnulus
     >>> from photutils.datasets import make_100gaussians_image
     >>>
     >>> data = make_100gaussians_image()
@@ -596,11 +596,11 @@ Galactic plane::
 
     >>> import astropy.units as u
     >>> from astropy.wcs import WCS
-    >>> from photutils import datasets
-    >>> hdu = datasets.load_spitzer_image()  # doctest: +REMOTE_DATA
+    >>> from photutils.datasets import load_spitzer_image, load_spitzer_catalog
+    >>> hdu = load_spitzer_image()  # doctest: +REMOTE_DATA
     >>> data = u.Quantity(hdu.data, unit=hdu.header['BUNIT'])  # doctest: +REMOTE_DATA
     >>> wcs = WCS(hdu.header)  # doctest: +REMOTE_DATA
-    >>> catalog = datasets.load_spitzer_catalog()  # doctest: +REMOTE_DATA
+    >>> catalog = load_spitzer_catalog()  # doctest: +REMOTE_DATA
 
 The catalog contains (among other things) the Galactic coordinates of
 the sources in the image as well as the PSF-fitted fluxes from the
@@ -646,14 +646,14 @@ Finally, we can plot the comparison of the photometry:
   from astropy import units as u
   from astropy.coordinates import SkyCoord
   from astropy.wcs import WCS
-  from photutils import aperture_photometry, SkyCircularAperture
+  from photutils.aperture import aperture_photometry, SkyCircularAperture
 
   # Load dataset
-  from photutils import datasets
-  hdu = datasets.load_spitzer_image()
+  from photutils.datasets import load_spitzer_image, load_spitzer_catalog
+  hdu = load_spitzer_image()
   data = u.Quantity(hdu.data, unit=hdu.header['BUNIT'])
   wcs = WCS(hdu.header)
-  catalog = datasets.load_spitzer_catalog()
+  catalog = load_spitzer_catalog()
 
   # Set up apertures
   positions = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
@@ -700,7 +700,7 @@ no overlap of the aperture mask with the data.
 
 Let's start by creating an aperture object::
 
-    >>> from photutils import CircularAperture
+    >>> from photutils.aperture import CircularAperture
     >>> positions = [(30., 30.), (40., 40.)]
     >>> aperture = CircularAperture(positions, r=3.)
 

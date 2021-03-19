@@ -568,10 +568,9 @@ the fainter star as well. Also, note that both of the stars have
                                     make_gaussian_sources_image)
     from photutils.psf import (IterativelySubtractedPSFPhotometry,
                                BasicPSFPhotometry)
-    from photutils import MMMBackground
+    from photutils.background import MMMBackground
     from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    from photutils.detection import DAOStarFinder
-    from photutils.detection import IRAFStarFinder
+    from photutils.detection import DAOStarFinder, IRAFStarFinder
     from astropy.table import Table
     from astropy.modeling.fitting import LevMarLSQFitter
 
@@ -647,11 +646,10 @@ Let's take a look at the residual image::
                                BasicPSFPhotometry)
     from astropy.stats import gaussian_sigma_to_fwhm
     from astropy.table import Table
-    from photutils import MMMBackground
+    from photutils.background import MMMBackground
     from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    from photutils.detection import DAOStarFinder
+    from photutils.detection import DAOStarFinder, IRAFStarFinder
     from astropy.modeling.fitting import LevMarLSQFitter
-    from photutils.detection import IRAFStarFinder
 
     sources = Table()
     sources['flux'] = [10000, 1000]

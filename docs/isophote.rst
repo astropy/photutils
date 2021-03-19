@@ -56,7 +56,7 @@ Let's show this initial ellipse guess:
 .. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
-    >>> from photutils import EllipticalAperture
+    >>> from photutils.aperture import EllipticalAperture
     >>> aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
     ...                            geometry.sma*(1 - geometry.eps),
     ...                            geometry.pa)
@@ -70,7 +70,7 @@ Let's show this initial ellipse guess:
     from astropy.modeling.models import Gaussian2D
     from photutils.datasets import make_noise_image
     from photutils.isophote import EllipseGeometry
-    from photutils import EllipticalAperture
+    from photutils.aperture import EllipticalAperture
 
     g = Gaussian2D(100., 75, 75, 20, 12, theta=40.*np.pi/180.)
     ny = nx = 150
