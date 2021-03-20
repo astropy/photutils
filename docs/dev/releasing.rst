@@ -64,14 +64,14 @@ called ``upstream``.
         git checkout <X.Y.Z>
 
 #. Generate the source distribution tar file by first making sure the
-   `pep517 <https://pypi.org/project/pep517/>`_ package is installed and
+   `build <https://pypi.org/project/build/>`_ package is installed and
    up to date::
 
-        pip install pep517 --upgrade
+        pip install build --upgrade
 
    then creating the source distribution with::
 
-        python -m pep517.build --source .
+        python -m build --sdist .
 
 #. Run tests on the generated source distribution by going inside the
    ``dist`` directory, expanding the tar file, going inside the expanded
@@ -93,7 +93,7 @@ called ``upstream``.
    or::
 
         <install and activate virtual environment>
-        pip install './<file>.tar.gz[all,test]'
+        pip install '../<file>.tar.gz[all,test]'
         cd <any-directory-outside-of-photutils-source>
         python
         >>> import photutils
@@ -107,7 +107,7 @@ called ``upstream``.
 
 #. Generate the source distribution and upload it to PyPI::
 
-        python -m pep517.build --source .
+        python -m build --sdist .
         twine check dist/*
         twine upload dist/*
 
