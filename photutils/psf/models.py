@@ -1031,7 +1031,6 @@ class IntegratedGaussianPRF(Fittable2DModel):
     sigma = Parameter(default=1, fixed=True)
 
     _erf = None
-    fit_deriv = None
 
     @property
     def bounding_box(self):
