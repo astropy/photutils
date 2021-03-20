@@ -2,7 +2,7 @@
 Photutils
 =========
 
-|PyPI Version| |Conda Version| |Conda Downloads| |Astropy|
+|PyPI Version| |Conda Version| |PyPI Downloads| |Astropy|
 
 |CI Status| |CircleCI Status| |Codecov Status| |Latest RTD Status| |LGTM Grade|
 
@@ -49,13 +49,13 @@ for details.
     :target: https://pypi.org/project/photutils/
     :alt: PyPI Latest Release
 
-.. |Conda Version| image:: https://img.shields.io/conda/vn/astropy/photutils?label=conda%20package
-    :target: https://anaconda.org/astropy/photutils
+.. |Conda Version| image:: https://img.shields.io/conda/vn/conda-forge/photutils
+    :target: https://anaconda.org/conda-forge/photutils
     :alt: Conda Latest Release
 
-.. |Conda Downloads| image:: https://img.shields.io/conda/dn/astropy/photutils?label=conda%20downloads
-    :target: https://anaconda.org/astropy/photutils
-    :alt: Conda Downloads
+.. |PyPI Downloads| image:: https://img.shields.io/pypi/dm/photutils?label=PyPI%20Downloads
+    :target: https://pypistats.org/packages/photutils
+    :alt: PyPI Downloads
 
 .. |Astropy| image:: https://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
     :target: https://www.astropy.org/
