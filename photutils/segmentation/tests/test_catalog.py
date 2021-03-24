@@ -179,7 +179,16 @@ class TestSourceCatalog:
         assert tbl.colnames == columns
 
     def test_invalid_inputs(self):
+        # test 1D arrays
+        img1d = np.arange(4)
+        segm = SegmentationImage(img1d)
+        with pytest.raises(ValueError):
+            SourceCatalog(img1d, segm)
+
         wrong_shape = np.ones((3, 3))
+        with pytest.raises(ValueError):
+            SourceCatalog(wrong_shape, self.segm)
+
         with pytest.raises(ValueError):
             SourceCatalog(self.data, self.segm, error=wrong_shape)
 
