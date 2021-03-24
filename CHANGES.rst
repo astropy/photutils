@@ -10,6 +10,10 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.detection``
+
+  - Fixed the ``DAOStarFinder`` import deprecation message. [#1195]
+
 
 1.1.0 (2021-03-20)
 ------------------
