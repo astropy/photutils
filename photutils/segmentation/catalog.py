@@ -278,7 +278,7 @@ class SourceCatalog:
         if array is not None:
             array = np.asanyarray(array)
             if array.shape != self._data.shape:
-                raise ValueError(f'error and {name} must have the same shape.')
+                raise ValueError(f'data and {name} must have the same shape.')
         return array
 
     @staticmethod
