@@ -10,6 +10,10 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.detection``
+
+  - Fixed the ``DAOStarFinder`` import deprecation message. [#1195]
+
 
 1.1.0 (2021-03-20)
 ------------------
@@ -139,6 +143,17 @@ API changes
 
   - Importing tools from the centroids subpackge without including the
     subpackage name is deprecated. [#1190]
+
+- ``photutils.detection``
+
+  - Importing the ``DAOStarFinder``, ``IRAFStarFinder``, and
+    ``StarFinderBase`` classes from the deprecated ``findstars.py``
+    module is now deprecated. These classes can be imported using ``from
+    photutils.detection import <class>``. [#1173]
+
+  - Importing the ``find_peaks`` function from the deprecated
+    ``core.py`` module is now deprecated. This function can be imported
+    using ``from photutils.detection import find_peaks``. [#1173]
 
 - ``photutils.morphology``
 
