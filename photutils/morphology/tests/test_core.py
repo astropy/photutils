@@ -40,3 +40,14 @@ def test_data_properties():
     assert_allclose([0.5, 0.0], result2, rtol=0, atol=1.e-6)
     assert props.area.value == 4.0
     assert props2.area.value == 2.0
+
+
+@pytest.mark.skipif('not HAS_SKIMAGE')
+def test_data_properties_bkg():
+    data = np.ones((3, 3)).astype(float)
+    props = data_properties(data, background=1.0)
+    assert props.area.value == 9.0
+    assert props.background_sum == 9.0
+
+    with pytest.raises(ValueError):
+        data_properties(data, background=[1.0, 2.0])
