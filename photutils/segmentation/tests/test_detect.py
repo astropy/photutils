@@ -288,5 +288,7 @@ class TestMakeSourceMask:
         assert_allclose(mask1, mask2)
 
     def test_no_detections(self):
-        mask = make_source_mask(self.data, 100, 100)
-        assert np.count_nonzero(mask) == 0
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            mask = make_source_mask(self.data, 100, 100)
+            assert np.count_nonzero(mask) == 0
+            assert warning_lines[0].category == NoDetectionsWarning
