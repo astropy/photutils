@@ -18,9 +18,9 @@ from ._utils import _find_stars as __find_stars  # noqa
 
 
 deprecated = {'StarFinderBase': 'photutils.detection.base',
-              'DAOStarFinder': 'photutils.detection.daostarfinder',
+              'DAOStarFinder': 'photutils.detection.daofinder',
               'IRAFStarFinder': 'photutils.detection.irafstarfinder',
-              '_DAOFindProperties': 'photutils.detection.daostarfinder',
+              '_DAOFindProperties': 'photutils.detection.daofinder',
               '_IRAFStarFindProperties': 'photutils.detection.irafstarfinder',
               '_StarFinderKernel': 'photutils.detection._utils',
               '_StarCutout': 'photutils.detection._utils',
