@@ -14,6 +14,11 @@ Bug Fixes
 
   - Fixed the ``DAOStarFinder`` import deprecation message. [#1195]
 
+- ``photutils.morphology``
+
+  - Fixed an issue in ``data_properties`` where a scalar background
+    input would raise an error. [#1198]
+
 
 1.1.0 (2021-03-20)
 ------------------

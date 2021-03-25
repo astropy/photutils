@@ -38,11 +38,15 @@ def data_properties(data, mask=None, background=None):
     result : `~photutils.segmentation.SourceCatalog` instance
         A `~photutils.segmentation.SourceCatalog` object.
     """
-
     # prevent circular imports
     from ..segmentation import SegmentationImage, SourceCatalog
 
     segment_image = SegmentationImage(np.ones(data.shape, dtype=int))
+
+    if background is not None:
+        background = np.atleast_1d(background)
+        if background.shape == (1,):
+            background = np.zeros(data.shape) + background
 
     return SourceCatalog(data, segment_image, mask=mask,
                          background=background)[0]
