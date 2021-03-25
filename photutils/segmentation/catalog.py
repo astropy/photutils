@@ -207,7 +207,7 @@ class SourceCatalog:
         self._data_unit = None
         data, error, background = self._process_quantities(data, error,
                                                            background)
-        self._data = data
+        self._data = self._validate_array(data, 'data', shape=False)
         self._segment_img = self._validate_segment_img(segment_img)
         self._error = self._validate_array(error, 'error')
         self._mask = self._validate_array(mask, 'mask')
@@ -272,12 +272,14 @@ class SourceCatalog:
             raise ValueError('segment_img and data must have the same shape.')
         return segment_img
 
-    def _validate_array(self, array, name):
+    def _validate_array(self, array, name, shape=True):
         if name == 'mask' and array is np.ma.nomask:
             array = None
         if array is not None:
             array = np.asanyarray(array)
-            if array.shape != self._data.shape:
+            if array.ndim != 2:
+                raise ValueError(f'{name} must be a 2D array.')
+            if shape and array.shape != self._data.shape:
                 raise ValueError(f'data and {name} must have the same shape.')
         return array
 
