@@ -363,7 +363,7 @@ The error columns are NaN because we did not input an error array (see
 the Photometric Errors section below).
 
 Let's now plot the calculated elliptical Kron apertures (based on the
-shapes for of each source) on the data:
+shapes of each source) on the data:
 
 .. doctest-skip::
 
