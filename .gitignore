@@ -10,13 +10,13 @@ __pycache__
 *.c
 
 # Other generated files
-MANIFEST
 */version.py
 */cython_version.py
+MANIFEST
 htmlcov
 .coverage
 .ipynb_checkpoints
-benchmarks/_results
+.pytest_cache
 
 # Sphinx
 docs/_build
@@ -43,19 +43,17 @@ pip-wheel-metadata
 .tox
 .*.sw[op]
 *~
+
+# Eclipse editor project files
 .project
 .pydevproject
 .settings
 
-# Mac OSX
-.DS_Store
-
-# PyCharm
+# PyCharm editor project files
 .idea
 
-# Pytest
-.pytest_cache
-v
-
-# VSCode
+# Visual Studio Code project files
 .vscode
+
+# Mac OSX
+.DS_Store
