@@ -41,9 +41,6 @@ jobs:
             tox_env: 'codestyle'
           - os: ubuntu-latest
             python: '3.8'
-            tox_env: 'build_docs'
-          - os: ubuntu-latest
-            python: '3.8'
             tox_env: 'bandit'
           - os: ubuntu-latest
             python: '3.7'
@@ -65,9 +62,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install tox
-    - name: Install graphviz dependency
-      if: "contains(matrix.tox_env, 'build_docs')"
-      run: sudo apt-get -y install graphviz
     - name: Print Python, pip, setuptools, and tox versions
       run: |
         python -c "import sys; print(f'Python {sys.version}')"
