@@ -17,7 +17,7 @@ __all__ = ['find_peaks']
 
 def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
                border_width=None, npeaks=np.inf, centroid_func=None,
-               subpixel=False, error=None, wcs=None):
+               error=None, wcs=None):
     """
     Find local peaks in an image that are above above a specified
     threshold value.
@@ -190,10 +190,10 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         table['x_centroid'] = x_centroids
         table['y_centroid'] = y_centroids
 
-    if (centroid_func is not None or subpixel) and wcs is not None:
-        skycoord_centroids = _pixel_to_world(x_centroids, y_centroids, wcs)
-        idx = table.colnames.index('y_centroid') + 1
-        table.add_column(skycoord_centroids, name='skycoord_centroid',
-                         index=idx)
+        if wcs is not None:
+            skycoord_centroids = _pixel_to_world(x_centroids, y_centroids, wcs)
+            idx = table.colnames.index('y_centroid') + 1
+            table.add_column(skycoord_centroids, name='skycoord_centroid',
+                             index=idx)
 
     return table
