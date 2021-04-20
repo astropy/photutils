@@ -360,6 +360,7 @@ class BasicPSFPhotometry:
         ----------
         image : numpy.ndarray
             Background-subtracted image.
+
         star_groups : `~astropy.table.Table`
             This table must contain the following columns: ``id``,
             ``group_id``, ``x_0``, ``y_0``, ``flux_0``.  ``x_0`` and
@@ -373,6 +374,7 @@ class BasicPSFPhotometry:
         -------
         result_tab : `~astropy.table.Table`
             Astropy table that contains photometry results.
+
         image : numpy.ndarray
             Residual image.
         """
@@ -506,6 +508,7 @@ class BasicPSFPhotometry:
             in this package like `~photutils.psf.sandbox.DiscretePRF`,
             `~photutils.psf.IntegratedGaussianPRF`, or any other
             suitable 2D model.
+
         star_group : `~astropy.table.Table`
             the star group instance.
 

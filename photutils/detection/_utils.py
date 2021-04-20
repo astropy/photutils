@@ -215,6 +215,9 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         threshold should be the threshold input to the star finder class
         multiplied by the kernel relerr.
 
+    min_separation : float, optional
+        The minimum separation for detected objects in pixels.
+
     mask : 2D bool array, optional
         A boolean mask with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
@@ -233,6 +236,7 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         each source.
 
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
+
     .. _starfind: https://iraf.net/irafhelp.php?val=starfind
     """
 

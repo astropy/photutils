@@ -25,15 +25,22 @@ class _Integrator:
     ----------
     image : 2D `~numpy.ndarray`
          The image array.
+
     geometry : `~photutils.isophote.EllipseGeometry` instance
-        object that encapsulates geometry information about current ellipse
+        Object that encapsulates geometry information about current
+        ellipse.
+
     angles : list
-        output list; contains the angle values along the elliptical path
+        Output list; contains the angle values along the elliptical
+        path.
+
     radii : list
-        output list; contains the radius values along the elliptical path
+        Output list; contains the radius values along the elliptical
+        path.
+
     intensities : list
-        output list; contains the extracted intensity values along the
-        elliptical path
+        Output list; contains the extracted intensity values along the
+        elliptical path.
     """
 
     def __init__(self, image, geometry, angles, radii, intensities):
@@ -59,9 +66,10 @@ class _Integrator:
         Parameters
         ----------
         radius : float
-            length of radius vector in pixels
+            The length of the radius vector in pixels.
+
         phi : float
-            polar angle of radius vector
+            The polar angle of radius vector.
         """
 
         raise NotImplementedError
@@ -93,8 +101,8 @@ class _Integrator:
 
         Returns
         -------
-        float
-           the polar angle step
+        result : float
+            The polar angle step.
         """
 
         raise NotImplementedError
@@ -111,8 +119,8 @@ class _Integrator:
 
         Returns
         -------
-        float
-           the sector area
+        result : float
+            The sector area.
         """
 
         raise NotImplementedError
@@ -132,8 +140,8 @@ class _Integrator:
 
         Returns
         -------
-        boolean
-           True if this is an area integrator, False otherwise
+        result : boolean
+            True if this is an area integrator, False otherwise.
         """
 
         raise NotImplementedError

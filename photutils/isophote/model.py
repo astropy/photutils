@@ -30,13 +30,16 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
     shape : 2-tuple
         The (ny, nx) shape of the array used to generate the input
         ``isolist``.
+
     isolist : `~photutils.isophote.IsophoteList` instance
         The isophote list created by the `~photutils.isophote.Ellipse`
         class.
+
     fill : float, optional
         The constant value to fill empty pixels. If an output pixel has
         no contribution from any isophote, it will be assigned this
         value.  The default is 0.
+
     high_harmonics : bool, optional
         Whether to add the higher-order harmonics (i.e., ``a3``, ``b3``,
         ``a4``, and ``b4``; see `~photutils.isophote.Isophote` for

@@ -166,7 +166,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        kwargs : `dict`
+        **kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -291,7 +291,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        kwargs : `dict`
+        **kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 

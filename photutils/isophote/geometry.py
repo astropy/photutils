@@ -167,9 +167,11 @@ class EllipseGeometry:
         image : 2D `~numpy.ndarray`
             The image array.  Masked arrays are not recognized here. This
             assumes that centering should always be done on valid pixels.
+
         threshold : float, optional
             The centerer threshold.  To turn off the centerer, set this
             to a large value (i.e., >> 1).  The default is 0.1.
+
         verbose : bool, optional
             Whether to print object centering information.  The default is
             `True`.

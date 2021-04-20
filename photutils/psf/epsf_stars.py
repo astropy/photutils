@@ -729,7 +729,7 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
         the stars then the `~astropy.nddata.NDData` object must have a
         valid ``wcs`` attribute.
 
-    catalogs : `~astropy.table.Table`
+    catalog : `~astropy.table.Table`
         A single catalog of sources to be extracted from the input
         ``data``.  The center of each source can be defined either in
         pixel coordinates (in ``x`` and ``y`` columns) or sky

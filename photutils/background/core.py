@@ -34,6 +34,7 @@ def _masked_median(data, axis=None):
     ----------
     data : array-like
         The input data.
+
     axis : int or `None`, optional
         The array axis along which the median is calculated.  If
         `None`, then the entire array is used.
@@ -80,6 +81,7 @@ class BackgroundBase(metaclass=abc.ABCMeta):
         ----------
         data : array_like or `~numpy.ma.MaskedArray`
             The array for which to calculate the background value.
+
         axis : int or `None`, optional
             The array axis along which the background is calculated.  If
             `None`, then the entire array is used.
@@ -123,6 +125,7 @@ class BackgroundRMSBase(metaclass=abc.ABCMeta):
         ----------
         data : array_like or `~numpy.ma.MaskedArray`
             The array for which to calculate the background RMS value.
+
         axis : int or `None`, optional
             The array axis along which the background RMS is calculated.
             If `None`, then the entire array is used.

@@ -610,14 +610,17 @@ class EPSFBuilder:
             and optionally an ``error`` keyword. The callable object
             must return a tuple of two 1D `~numpy.ndarray` variables,
             representing the x and y centroids.
+
         box_size : float or tuple of two floats, optional
             The size (in pixels) of the box used to calculate the
             centroid of the ePSF during each build iteration.  If a
             single integer number is provided, then a square box will be
             used.  If two values are provided, then they should be in
             ``(ny, nx)`` order.
+
         maxiters : int, optional
             The maximum number of recentering iterations to perform.
+
         center_accuracy : float, optional
             The desired accuracy for the centers of stars.  The building
             iterations will stop if the center of the ePSF changes by

@@ -111,12 +111,16 @@ class DiscretePRF(Fittable2DModel):
         ----------
         x : float
             x coordinate array in pixel coordinates.
+
         y : float
             y coordinate array in pixel coordinates.
+
         flux : float
             Model flux.
+
         x_0 : float
             x position of the center of the PRF.
+
         y_0 : float
             y position of the center of the PRF.
         """
@@ -167,24 +171,31 @@ class DiscretePRF(Fittable2DModel):
         ----------
         imdata : array
             Data array with the image to extract the PRF from
+
         positions : List or array or `~astropy.table.Table`
             List of pixel coordinate source positions to use in creating
             the PRF.  If this is a `~astropy.table.Table` it must have
             columns called ``x_0`` and ``y_0``.
+
         size : odd int
             Size of the quadratic PRF image in pixels.
+
         mask : bool array, optional
             Boolean array to mask out bad values.
+
         fluxes : array, optional
             Object fluxes to normalize extracted PRFs. If not given (or
             None), the flux is estimated from an aperture of the same
             size as the PRF image.
+
         mode : {'mean', 'median'}
             One of the following modes to combine the extracted PRFs:
                 * 'mean':  Take the pixelwise mean of the extracted PRFs.
                 * 'median':  Take the pixelwise median of the extracted PRFs.
+
         subsampling : int
             Factor of subsampling of the PRF (default = 1).
+
         fix_nan : bool
             Fix NaN values in the data by replacing it with the
             mirrored value. Assuming that the PRF is symmetrical.
@@ -324,10 +335,13 @@ class Reproject:
             <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
             (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
+        x, y : float or array-like of float
+            The input pixel coordinates.
+
         Returns
         -------
         x, y:  float or array-like of float
-            The pixel coordinates.
+            The reprojected pixel coordinates.
         """
 
         try:
@@ -344,7 +358,7 @@ class Reproject:
 
         Parameters
         ----------
-        x, y:  float or array-like of float
+        x, y : float or array-like of float
             The zero-index pixel coordinates in the original
             (unrectified) image.
 
@@ -363,7 +377,7 @@ class Reproject:
 
         Parameters
         ----------
-        x, y:  float or array-like of float
+        x, y : float or array-like of float
             The zero-index pixel coordinates in the rectified image.
 
         Returns

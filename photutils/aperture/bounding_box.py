@@ -190,6 +190,7 @@ class BoundingBox:
             of the large array that overlaps with the small array.
             `None` is returned if there is no overlap of the bounding
             box with the given image shape.
+
         slices_small : tuple of slices or `None`
             A tuple of slice objects for each axis of an array enclosed
             by the bounding box such that ``small_array[slices_small]``
@@ -242,7 +243,7 @@ class BoundingBox:
 
         Parameters
         ----------
-        kwargs : `dict`
+        **kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -260,7 +261,7 @@ class BoundingBox:
 
         Parameters
         ----------
-        kwargs : `dict`
+        **kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -316,7 +317,7 @@ class BoundingBox:
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        kwargs : `dict`
+        **kwargs : `dict`
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
         aper = self.to_aperture()

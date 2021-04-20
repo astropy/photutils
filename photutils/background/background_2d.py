@@ -617,7 +617,7 @@ class Background2D:
         result : 2D `~numpy.ndarray`
             A 2D array of the mesh values where masked pixels have been
             filled by IDW interpolation.
-       """
+        """
 
         yx = np.column_stack([self.mesh_yidx, self.mesh_xidx])
         coords = np.array(list(product(range(self.nyboxes),
@@ -857,7 +857,7 @@ class Background2D:
             Whether or not to plot the box outlines in addition to the
             box centers.
 
-        kwargs : `dict`
+        **kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.  Used only if ``outlines`` is
             True.

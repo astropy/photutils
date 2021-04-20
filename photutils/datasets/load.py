@@ -23,15 +23,18 @@ def get_path(filename, location='local', cache=True, show_progress=False):
     ----------
     filename : str
         File name in the local or remote data folder.
+
     location : {'local', 'remote', 'photutils-datasets'}
         File location.  ``'local'`` means bundled with ``photutils``.
         ``'remote'`` means the astropy data server (or the
         photutils-datasets repo as a backup) or the Astropy cache on
         your machine. ``'photutils-datasets'`` means the
         photutils-datasets repo or the Astropy cache on your machine.
+
     cache : bool, optional
         Whether to cache the contents of remote URLs.  Default is
         `True`.
+
     show_progress : bool, optional
         Whether to display a progress bar during the download (default
         is `False`).

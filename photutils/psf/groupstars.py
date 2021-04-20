@@ -159,6 +159,7 @@ class DAOGroup(GroupStarsBase):
         star : `~astropy.table.Row`
             Star which will be either the head of a cluster or an
             isolated one.
+
         starlist : `~astropy.table.Table`
             List of star positions. Columns named as ``x_0`` and
             ``y_0``, which corresponds to the centroid coordinates of
@@ -166,10 +167,10 @@ class DAOGroup(GroupStarsBase):
 
         Returns
         -------
-        Array containing the ids of those stars which are at a distance less
-        than ``crit_separation`` from ``star``.
+        result : `~numpy.ndarray`
+            Array containing the ids of those stars which are at a
+            distance less than ``crit_separation`` from ``star``.
         """
-
         star_distance = np.hypot(star['x_0'] - starlist['x_0'],
                                  star['y_0'] - starlist['y_0'])
         distance_criteria = star_distance < self.crit_separation

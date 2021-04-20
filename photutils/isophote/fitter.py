@@ -56,6 +56,7 @@ class EllipseFitter:
             largest harmonic amplitude becomes smaller (in absolute
             value) than ``conver`` times the harmonic fit rms.  The
             default is 0.05.
+
         minit : int, optional
             The minimum number of iterations to perform. A minimum of 10
             (the default) iterations guarantees that, on average, 2
@@ -65,9 +66,11 @@ class EllipseFitter:
             iterations is 2 * ``minit`` to ensure that, even departing
             from not-so-good initial values, the algorithm has a better
             chance to converge to a sensible solution.
+
         maxit : int, optional
             The maximum number of iterations to perform.  The default is
             50.
+
         fflag : float, optional
             The acceptable fraction of flagged data points in the
             sample.  If the actual fraction of valid data points is
@@ -76,6 +79,7 @@ class EllipseFitter:
             data points are points that either lie outside the image
             frame, are masked, or were rejected by sigma-clipping.  The
             default is 0.7.
+
         maxgerr : float, optional
             The maximum acceptable relative error in the local radial
             intensity gradient. This is the main control for preventing
@@ -102,6 +106,7 @@ class EllipseFitter:
             value is larger than the current semimajor axis length, the
             algorithm enters non-iterative mode and proceeds outwards
             until reaching ``maxsma``.  The default is 0.5.
+
         going_inwards : bool, optional
             Parameter to define the sense of SMA growth. When fitting
             just one isophote, this parameter is used only by the code

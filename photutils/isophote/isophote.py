@@ -729,17 +729,18 @@ class IsophoteList:
         return _isophote_list_to_table(self, columns)
 
     def get_names(self):
-        '''Print the names of the properties of an \
-                `~photutils.isophote.IsophoteList` instance.
-        '''
+        """
+        Print the names of the properties of an
+        `~photutils.isophote.IsophoteList` instance.
+        """
         list_names = list(_get_properties(self).keys())
         return list_names
 
 
 def _get_properties(isophote_list):
     """
-    Return the properties of an \
-            `~photutils.isophote.IsophoteList` instance.
+    Return the properties of an `~photutils.isophote.IsophoteList`
+    instance.
 
     Parameters
     ----------
@@ -748,13 +749,13 @@ def _get_properties(isophote_list):
 
     Returns
     -------
-    result : `OrderedDict`
-        An OrderedDict with the list of the isophote_list properties
+    result : `dict`
+        An OrderedDict with the list of the isophote_list properties.
     """
     properties = dict()
     for an_item in isophote_list.__class__.__dict__:
         p_type = isophote_list.__class__.__dict__[an_item]
-        '''Exclude the sample property'''
+        # Exclude the sample property
         if type(p_type) == property and 'sample' not in an_item:
             properties[str(an_item)] = str(an_item)
     return properties
@@ -771,9 +772,10 @@ def _isophote_list_to_table(isophote_list, columns='main'):
             `~photutils.isophote.IsophoteList` instance
         A list of isophotes.
 
-    key_properties : A list of properties to export from the isophote_list
-        If ``columns`` is 'all' or 'main', it will pick all or few
-        of the main properties.
+    columns : list of str
+        A list of properties to export from the isophote_list. If
+        ``columns`` is 'all' or 'main', it will pick all or few of the
+        main properties.
 
     Returns
     -------
@@ -794,25 +796,27 @@ def _isophote_list_to_table(isophote_list, columns='main'):
                             new_names=['intens_err', 'ellipticity',
                                        'ellipticity_err', 'grad_rerror',
                                        'nflag']):
-        '''
+        """
         Simple renaming for some of the isophote_list parameters.
 
         Parameters
         ----------
-        properties: `dict`
-            A dictionary with the list of the isophote_list parameters
-        orig_names: list
-            A list of original names in the isophote_list parameters
-            to be renamed
-        new_names: list
-            A list of new names matching in length of the orig_names
+        properties : `dict`
+            A dictionary with the list of the isophote_list parameters.
+
+        orig_names : list
+            A list of original names in the isophote_list parameters to
+            be renamed.
+
+        new_names : list
+            A list of new names matching in length of the orig_names.
 
         Returns
         -------
         properties: `dict`
             A dictionary with the list of the renamed isophote_list
-            parameters
-        '''
+            parameters.
+        """
         main_properties = ['sma', 'intens', 'int_err', 'eps', 'ellip_err',
                            'pa', 'pa_err', 'grad', 'grad_error',
                            'grad_r_error', 'x0', 'x0_err', 'y0', 'y0_err',
