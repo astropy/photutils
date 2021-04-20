@@ -60,6 +60,7 @@ class _Integrator:
         ----------
         radius : float
             length of radius vector in pixels
+
         phi : float
             polar angle of radius vector
         """
@@ -94,7 +95,7 @@ class _Integrator:
         Returns
         -------
         float
-           the polar angle step
+            the polar angle step
         """
 
         raise NotImplementedError
@@ -112,7 +113,7 @@ class _Integrator:
         Returns
         -------
         float
-           the sector area
+            the sector area
         """
 
         raise NotImplementedError
@@ -133,7 +134,7 @@ class _Integrator:
         Returns
         -------
         boolean
-           True if this is an area integrator, False otherwise
+            True if this is an area integrator, False otherwise
         """
 
         raise NotImplementedError

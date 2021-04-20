@@ -224,7 +224,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        kwargs : `dict`
+        **kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -386,7 +386,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        kwargs : `dict`
+        **kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 

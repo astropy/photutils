@@ -233,6 +233,7 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         each source.
 
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
+
     .. _starfind: https://iraf.net/irafhelp.php?val=starfind
     """
 

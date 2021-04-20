@@ -799,12 +799,14 @@ def _isophote_list_to_table(isophote_list, columns='main'):
 
         Parameters
         ----------
-        properties: `dict`
+        properties : `dict`
             A dictionary with the list of the isophote_list parameters
-        orig_names: list
+
+        orig_names : list
             A list of original names in the isophote_list parameters
             to be renamed
-        new_names: list
+
+        new_names : list
             A list of new names matching in length of the orig_names
 
         Returns

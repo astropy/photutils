@@ -175,7 +175,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        labels : int
+        label : int
             The label numbers to find.
 
         Returns
@@ -413,7 +413,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        labels : int
+        label : int
             The label number to reassign.
 
         new_label : int

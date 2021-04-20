@@ -245,25 +245,30 @@ class Ellipse:
             the `~photutils.isophote.Ellipse` constructor, its ``sma``
             value will be used.  Otherwise, a default value of 10. will
             be used.
+
         minsma : float, optional
             The minimum value for the semimajor axis length (pixels).
             The default is 0.
+
         maxsma : float or `None`, optional
             The maximum value for the semimajor axis length (pixels).
             When set to `None` (default), the algorithm will increase
             the semimajor axis until one of several conditions will
             cause it to stop and revert to fit ellipses with sma <
             ``sma0``.
+
         step : float, optional
             The step value used to grow/shrink the semimajor axis length
             (pixels if ``linear=True``, or a relative value if
             ``linear=False``). See the ``linear`` parameter.  The
             default is 0.1.
+
         conver : float, optional
             The main convergence criterion. Iterations stop when the
             largest harmonic amplitude becomes smaller (in absolute
             value) than ``conver`` times the harmonic fit rms.  The
             default is 0.05.
+
         minit : int, optional
             The minimum number of iterations to perform. A minimum of 10
             (the default) iterations guarantees that, on average, 2
@@ -273,9 +278,11 @@ class Ellipse:
             iterations is 2 * ``minit`` to ensure that, even departing
             from not-so-good initial values, the algorithm has a better
             chance to converge to a sensible solution.
+
         maxit : int, optional
             The maximum number of iterations to perform.  The default is
             50.
+
         fflag : float, optional
             The acceptable fraction of flagged data points in the
             sample.  If the actual fraction of valid data points is
@@ -284,6 +291,7 @@ class Ellipse:
             data points are points that either lie outside the image
             frame, are masked, or were rejected by sigma-clipping.  The
             default is 0.7.
+
         maxgerr : float, optional
             The maximum acceptable relative error in the local radial
             intensity gradient. This is the main control for preventing
@@ -310,13 +318,17 @@ class Ellipse:
             value is larger than the current semimajor axis length, the
             algorithm enters non-iterative mode and proceeds outwards
             until reaching ``maxsma``.  The default is 0.5.
+
         sclip : float, optional
             The sigma-clip sigma value.  The default is 3.0.
+
         nclip : int, optional
             The number of sigma-clip interations.  The default is 0,
             which means sigma-clipping is skipped.
+
         integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, optional
             The area integration mode.  The default is 'bilinear'.
+
         linear : bool, optional
             The semimajor axis growing/shrinking mode. If `False`
             (default), the geometric growing mode is chosen, thus the
@@ -332,6 +344,7 @@ class Ellipse:
             given directly by ``step`` in pixels.  If ``maxsma`` is set
             to `None`, the semimajor axis will grow until a low
             signal-to-noise criterion is met. See ``maxgerr``.
+
         maxrit : float or `None`, optional
             The maximum value of semimajor axis to perform an actual
             fit.  Whenever the current semimajor axis length is larger
@@ -344,11 +357,14 @@ class Ellipse:
             whenever the ellipticity exceeds 1.0 or the ellipse center
             crosses the image boundaries.  If `None` (default), then no
             maximum value is used.
+
         fix_center : bool, optional
             Keep center of ellipse fixed during fit? The default is False.
+
         fix_pa : bool, optional
             Keep position angle of semi-major axis of ellipse fixed during fit?
             The default is False.
+
         fix_eps : bool, optional
             Keep ellipticity of ellipse fixed during fit? The default is False.
 
@@ -507,16 +523,19 @@ class Ellipse:
         ----------
         sma : float
             The semimajor axis length (pixels).
+
         step : float, optional
             The step value used to grow/shrink the semimajor axis length
             (pixels if ``linear=True``, or a relative value if
             ``linear=False``). See the ``linear`` parameter.  The
             default is 0.1.
+
         conver : float, optional
             The main convergence criterion. Iterations stop when the
             largest harmonic amplitude becomes smaller (in absolute
             value) than ``conver`` times the harmonic fit rms.  The
             default is 0.05.
+
         minit : int, optional
             The minimum number of iterations to perform. A minimum of 10
             (the default) iterations guarantees that, on average, 2
@@ -526,9 +545,11 @@ class Ellipse:
             iterations is 2 * ``minit`` to ensure that, even departing
             from not-so-good initial values, the algorithm has a better
             chance to converge to a sensible solution.
+
         maxit : int, optional
             The maximum number of iterations to perform.  The default is
             50.
+
         fflag : float, optional
             The acceptable fraction of flagged data points in the
             sample.  If the actual fraction of valid data points is
@@ -537,23 +558,29 @@ class Ellipse:
             data points are points that either lie outside the image
             frame, are masked, or were rejected by sigma-clipping.  The
             default is 0.7.
+
         maxgerr : float, optional
             The maximum acceptable relative error in the local radial
             intensity gradient.  When fitting a single isophote by
             itself this paramter doesn't have any effect on the outcome.
+
         sclip : float, optional
             The sigma-clip sigma value.  The default is 3.0.
+
         nclip : int, optional
             The number of sigma-clip interations.  The default is 0,
             which means sigma-clipping is skipped.
+
         integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, optional
             The area integration mode.  The default is 'bilinear'.
+
         linear : bool, optional
             The semimajor axis growing/shrinking mode.  When fitting
             just one isophote, this parameter is used only by the code
             that define the details of how elliptical arc segments
             ("sectors") are extracted from the image when using area
             extraction modes (see the ``integrmode`` parameter).
+
         maxrit : float or `None`, optional
             The maximum value of semimajor axis to perform an actual
             fit.  Whenever the current semimajor axis length is larger
@@ -566,6 +593,7 @@ class Ellipse:
             whenever the ellipticity exceeds 1.0 or the ellipse center
             crosses the image boundaries.  If `None` (default), then no
             maximum value is used.
+
         noniterate : bool, optional
             Whether the fitting algorithm should be bypassed and an
             isophote should be extracted with the geometry taken
@@ -577,6 +605,7 @@ class Ellipse:
             along the sequence of isophotes. When set to `True`, this
             parameter overrides the behavior associated with parameter
             ``maxrit``.  The default is `False`.
+
         going_inwards : bool, optional
             Parameter to define the sense of SMA growth. When fitting
             just one isophote, this parameter is used only by the code
@@ -584,6 +613,7 @@ class Ellipse:
             ("sectors") are extracted from the image, when using area
             extraction modes (see the ``integrmode`` parameter).  The
             default is `False`.
+
         isophote_list : list or `None`, optional
             If not `None` (the default), the fitted
             `~photutils.isophote.Isophote` instance is appended to this

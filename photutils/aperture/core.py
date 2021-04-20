@@ -486,7 +486,7 @@ class PixelAperture(Aperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        kwargs : `dict`
+        **kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -520,7 +520,7 @@ class PixelAperture(Aperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        kwargs : `dict`
+        **kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -549,7 +549,7 @@ class PixelAperture(Aperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        kwargs : `dict`
+        **kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 

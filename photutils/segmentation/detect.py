@@ -65,10 +65,10 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
         when calculating the image background statistics.
 
     sigclip_iters : int, optional
-       The maximum number of iterations to perform sigma clipping, or
-       `None` to clip until convergence is achieved (i.e., continue
-       until the last iteration clips nothing) when calculating the
-       image background statistics.
+        The maximum number of iterations to perform sigma clipping, or
+        `None` to clip until convergence is achieved (i.e., continue
+        until the last iteration clips nothing) when calculating the
+        image background statistics.
 
     Returns
     -------
@@ -357,14 +357,13 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
     See Also
     --------
-    :func:`photutils.segmentation.detect_threshold`,
-    :class:`photutils.segmentation.SegmentationImage`,
+    :func:`photutils.segmentation.detect_threshold`
+    :class:`photutils.segmentation.SegmentationImage`
     :func:`photutils.segmentation.source_properties`
     :func:`photutils.segmentation.deblend_sources`
 
     Examples
     --------
-
     .. plot::
         :include-source:
 
@@ -457,10 +456,10 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
         when calculating the image background statistics.
 
     sigclip_iters : int, optional
-       The maximum number of iterations to perform sigma clipping, or
-       `None` to clip until convergence is achieved (i.e., continue
-       until the last iteration clips nothing) when calculating the
-       image background statistics.
+        The maximum number of iterations to perform sigma clipping, or
+        `None` to clip until convergence is achieved (i.e., continue
+        until the last iteration clips nothing) when calculating the
+        image background statistics.
 
     dilate_size : int, optional
         The size of the square array used to dilate the segmentation

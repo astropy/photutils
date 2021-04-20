@@ -418,7 +418,7 @@ class FittableImageModel(Fittable2DModel):
 
         Parameters
         ----------
-        kwargs : dict, optional
+        **kwargs : dict, optional
             Additional optional keyword arguments:
 
             - **degree** : int, tuple, optional
@@ -638,7 +638,7 @@ class EPSFModel(FittableImageModel):
 
         Parameters
         ----------
-        kwargs : dict, optional
+        **kwargs : dict, optional
             Additional optional keyword arguments:
 
             - **degree** : int, tuple, optional
@@ -879,7 +879,7 @@ class GriddedPSFModel(Fittable2DModel):
         xyref : list of 4 (x, y) pairs
             A list of 4 ``(x, y)`` pairs that form a rectangle.
 
-        refdata : 3D `~numpy.ndarray`
+        zref : 3D `~numpy.ndarray`
             A 3D `~numpy.ndarray` of shape ``(4, nx, ny)``. The first
             axis corresponds to ``xyref``, i.e., ``refdata[0, :, :]`` is
             the 2D array located at ``xyref[0]``.

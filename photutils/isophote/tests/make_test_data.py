@@ -20,20 +20,28 @@ def make_test_image(nx=512, ny=512, x0=None, y0=None,
     ----------
     nx, ny : int, optional
         The image size.
+
     x0, y0 : int, optional
         The center position.  If `None`, the default is the image center.
+
     background : float, optional
         The constant background level to add to the image values.
+
     noise : float, optional
         The standard deviation of the Gaussian noise to add to the image.
+
     i0 : float, optional
         The surface brightness over the reference elliptical isophote.
+
     sma : float, optional
         The semi-major axis length of the reference elliptical isophote.
+
     eps : float, optional
         The ellipticity of the reference isophote.
+
     pa : float, optional
         The position angle of the reference isophote.
+
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
         then fresh, unpredictable entropy will be pulled from the OS.

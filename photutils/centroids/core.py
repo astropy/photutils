@@ -95,7 +95,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     Parameters
     ----------
-    image_data : numpy.ndarray
+    data : numpy.ndarray
         Image data.
 
     xpeak, ypeak : float or `None`, optional
@@ -110,7 +110,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         ``(ny, nx)`` order. If ``fit_boxsize`` is a scalar then a square
         box of size ``fit_boxsize`` will be used.
 
-    search_boxsize: int or tuple of int, optional
+    search_boxsize : int or tuple of int, optional
         The size (in pixels) of the box used to search for the maximum
         pixel value if ``xpeak`` and ``ypeak`` are both `None`. If
         ``fit_boxsize`` has two elements, they should be in ``(ny, nx)``
@@ -391,14 +391,17 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     ----------
     data : array_like
         The input n-dimensional array.
+
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
+
     oversampling : int or tuple of two int, optional
         Oversampling factors of pixel indices. If ``oversampling`` is a
         scalar this is treated as both x and y directions having the
         same oversampling factor.  Otherwise it is treated as
         ``(x_oversamp, y_oversamp)``.
+
     shift_val : float, optional
         The undersampled value at which to compute the shifts. Default
         is half a pixel. It must be a strictly positive number.

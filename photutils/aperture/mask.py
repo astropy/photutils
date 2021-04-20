@@ -66,6 +66,7 @@ class ApertureMask:
             of the large array that overlaps with the small array.
             `None` is returned if there is no overlap of the bounding
             box with the given image shape.
+
         slices_small : tuple of slices or `None`
             A tuple of slice objects for each axis of the aperture mask
             array such that ``small_array[slices_small]`` extracts the

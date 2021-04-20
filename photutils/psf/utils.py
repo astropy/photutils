@@ -24,20 +24,24 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
     ----------
     psfmodel : a 2D model
         The model to assume as representative of the PSF.
+
     xname : str or None
         The name of the ``psfmodel`` parameter that corresponds to the
         x-axis center of the PSF.  If None, the model will be assumed to
         be centered at x=0, and a new parameter will be added for the
         offset.
+
     yname : str or None
         The name of the ``psfmodel`` parameter that corresponds to the
         y-axis center of the PSF.  If None, the model will be assumed to
         be centered at y=0, and a new parameter will be added for the
         offset.
+
     fluxname : str or None
         The name of the ``psfmodel`` parameter that corresponds to the
         total flux of the star.  If None, a scaling factor will be added
         to the model.
+
     renormalize_psf : bool
         If True, the model will be integrated from -inf to inf and
         re-scaled so that the total integrates to 1.  Note that this
@@ -115,6 +119,7 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
     template_psf_model : `astropy.modeling.Fittable2DModel` instance
         The model to use for *individual* objects.  Must have parameters named
         ``x_0``, ``y_0``, and ``flux``.
+
     star_group : `~astropy.table.Table`
         Table of stars for which the compound PSF will be constructed.  It
         must have columns named ``x_0``, ``y_0``, and ``flux_0``.
@@ -198,12 +203,15 @@ def subtract_psf(data, psf, posflux, subshape=None):
     ----------
     data : `~astropy.nddata.NDData` or array (must be 2D)
         Image data.
+
     psf : `astropy.modeling.Fittable2DModel` instance
         PSF/PRF model to be substracted from the data.
+
     posflux : Array-like of shape (3, N) or `~astropy.table.Table`
         Positions and fluxes for the objects to subtract.  If an array,
         it is interpreted as ``(x, y, flux)``  If a table, the columns
         'x_fit', 'y_fit', and 'flux_fit' must be present.
+
     subshape : length-2 or None
         The shape of the region around the center of the location to
         subtract the PSF from.  If None, subtract from the whole image.
