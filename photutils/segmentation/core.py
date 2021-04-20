@@ -176,7 +176,7 @@ class SegmentationImage:
         Parameters
         ----------
         label : int
-            The label numbers to find.
+            The label number to find.
 
         Returns
         -------

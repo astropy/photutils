@@ -124,6 +124,9 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
         Table of stars for which the compound PSF will be constructed.  It
         must have columns named ``x_0``, ``y_0``, and ``flux_0``.
 
+    pars_to_set : `dict`
+        A dictionary of parameter names and values to set.
+
     Returns
     -------
     group_psf

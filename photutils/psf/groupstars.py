@@ -167,11 +167,10 @@ class DAOGroup(GroupStarsBase):
 
         Returns
         -------
-        Array containing the ids of those stars which are at a distance less
-
-        than ``crit_separation`` from ``star``.
+        result : `~numpy.ndarray`
+            Array containing the ids of those stars which are at a
+            distance less than ``crit_separation`` from ``star``.
         """
-
         star_distance = np.hypot(star['x_0'] - starlist['x_0'],
                                  star['y_0'] - starlist['y_0'])
         distance_criteria = star_distance < self.crit_separation

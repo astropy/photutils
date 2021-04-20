@@ -335,10 +335,13 @@ class Reproject:
             <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
             (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
+        x, y : float or array-like of float
+            The input pixel coordinates.
+
         Returns
         -------
         x, y:  float or array-like of float
-            The pixel coordinates.
+            The reprojected pixel coordinates.
         """
 
         try:
