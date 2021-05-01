@@ -2017,9 +2017,12 @@ class SourceCatalog:
                 cxy (x_i - \\bar{x})(y_i - \\bar{y}) +
                 cyy (y_i - \\bar{y})^2
 
-        where :math:`\\bar{x}` and :math:`\\bar{y}` represent the source
-        centroid. See the ``apermask_method`` keyword for options to
-        mask neighboring sources.
+        where :math:`\\bar{x}` and :math:`\\bar{y}` represent
+        the source centroid. The scaling parameter of
+        :attr:`~photutils.segmentation.SourceCatalog.kron_radius`
+        is defined using the ``kron_params`` keyword. See the
+        ``apermask_method`` keyword for options to mask neighboring
+        sources.
 
         If either the numerator or denominator is less than or equal
         to 0, then ``np.nan`` will be returned. In this case, the Kron
