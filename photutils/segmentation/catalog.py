@@ -1744,8 +1744,8 @@ class SourceCatalog:
             G = \\frac{1}{\\left | \\bar{x} \\right | n (n - 1)}
             \\sum^{n}_{i} (2i - n - 1) \\left | x_i \\right |
 
-        where :math:`\\bar{x}` is the mean over all pixel values
-        :math:`x_i` within the source segment.
+        where :math:`\\bar{x}` is the mean over pixel values :math:`x_i`
+        within the source segment.
 
         The Gini coefficient is a way of measuring the inequality in a
         given set of values. In the context of galaxy morphology, it
@@ -1910,6 +1910,9 @@ class SourceCatalog:
         aperture of the specified radius centered at the source centroid
         position.
 
+        See the ``apermask_method`` keyword for options to mask
+        neighboring sources.
+
         Parameters
         ----------
         radius : float
@@ -2002,7 +2005,7 @@ class SourceCatalog:
         .. math::
             k_r = \\frac{\\sum_{i \\in A} \\ r_i I_i}{\\sum_{i \\in A} I_i}
 
-        where the sum is over all pixels in an elliptical aperture
+        where the sum is over pixels in an elliptical aperture
         whose axes are defined by six times the `semimajor_sigma`
         and `semiminor_sigma` at the calculated `orientation` (all
         properties derived from the central image moments of the
@@ -2015,7 +2018,8 @@ class SourceCatalog:
                 cyy (y_i - \\bar{y})^2
 
         where :math:`\\bar{x}` and :math:`\\bar{y}` represent the source
-        centroid.
+        centroid. See the ``apermask_method`` keyword for options to
+        mask neighboring sources.
 
         If either the numerator or denominator is less than or equal
         to 0, then ``np.nan`` will be returned. In this case, the Kron
@@ -2127,6 +2131,9 @@ class SourceCatalog:
         """
         The flux and flux error in the Kron aperture.
 
+        See the ``apermask_method`` keyword for options to mask
+        neighboring sources.
+
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
         if self._detection_cat is not None:
@@ -2177,6 +2184,9 @@ class SourceCatalog:
         """
         The flux in the Kron aperture.
 
+        See the ``apermask_method`` keyword for options to mask
+        neighboring sources.
+
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
         kron_flux = self._kron_flux_fluxerr[:, 0]
@@ -2189,6 +2199,9 @@ class SourceCatalog:
     def kron_fluxerr(self):
         """
         The flux error in the Kron aperture.
+
+        See the ``apermask_method`` keyword for options to mask
+        neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
