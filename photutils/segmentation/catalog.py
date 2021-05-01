@@ -128,14 +128,14 @@ class SourceCatalog:
         aperture photometry (e.g., circular apertures or elliptical Kron
         apertures).  This parameter also affects the Kron radius.
 
-          * 'none':  do not mask any pixels (equivalent to
-                     MASK_TYPE=NONE in SourceExtractor).
-          * 'mask':  mask pixels assigned to neighboring sources
-                     (equivalent to MASK_TYPE=BLANK in SourceExtractor).
           * 'correct':  replace pixels assigned to neighboring sources
                         by replacing them with pixels on the opposite
                         side of the source center (equivalent to
                         MASK_TYPE=CORRECT in SourceExtractor).
+          * 'mask':  mask pixels assigned to neighboring sources
+                     (equivalent to MASK_TYPE=BLANK in SourceExtractor).
+          * 'none':  do not mask any pixels (equivalent to
+                     MASK_TYPE=NONE in SourceExtractor).
 
     kron_params : list of 2 floats, optional
         A list of two parameters used to determine how the Kron
