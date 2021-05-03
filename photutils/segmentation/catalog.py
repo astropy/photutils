@@ -128,14 +128,14 @@ class SourceCatalog:
         aperture photometry (e.g., circular apertures or elliptical Kron
         apertures).  This parameter also affects the Kron radius.
 
-          * 'none':  do not mask any pixels (equivalent to
-                     MASK_TYPE=NONE in SourceExtractor).
-          * 'mask':  mask pixels assigned to neighboring sources
-                     (equivalent to MASK_TYPE=BLANK in SourceExtractor).
           * 'correct':  replace pixels assigned to neighboring sources
                         by replacing them with pixels on the opposite
                         side of the source center (equivalent to
                         MASK_TYPE=CORRECT in SourceExtractor).
+          * 'mask':  mask pixels assigned to neighboring sources
+                     (equivalent to MASK_TYPE=BLANK in SourceExtractor).
+          * 'none':  do not mask any pixels (equivalent to
+                     MASK_TYPE=NONE in SourceExtractor).
 
     kron_params : list of 2 floats, optional
         A list of two parameters used to determine how the Kron
@@ -179,14 +179,14 @@ class SourceCatalog:
     of error, including the Poisson error of the sources.
     `~photutils.segmentation.SourceCatalog.segment_fluxerr` is simply
     the quadrature sum of the pixel-wise total errors over the
-    non-masked pixels within the source segment:
+    unmasked pixels within the source segment:
 
     .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
               \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\\Delta F` is
     `~photutils.segmentation.SourceCatalog.segment_fluxerr`,
-    :math:`S` are the non-masked pixels in the source segment, and
+    :math:`S` are the unmasked pixels in the source segment, and
     :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
     Custom errors for source segments can be calculated using
@@ -1259,11 +1259,11 @@ class SourceCatalog:
         """
         The sum of the unmasked ``data`` values within the source segment.
 
-        .. math:: F = \\sum_{i \\in S} (I_i - B_i)
+        .. math:: F = \\sum_{i \\in S} I_i
 
-        where :math:`F` is ``segment_flux``, :math:`(I_i - B_i)` is the
-        ``data``, and :math:`S` are the unmasked pixels in the source
-        segment.
+        where :math:`F` is ``segment_flux``, :math:`I_i` is the
+        background-subtracted ``data``, and :math:`S` are the unmasked
+        pixels in the source segment.
 
         Non-finite pixel values (NaN and inf) are excluded
         (automatically masked).
@@ -1285,15 +1285,15 @@ class SourceCatalog:
         ``error`` array.
 
         ``segment_fluxerr`` is the quadrature sum of the total errors
-        over the non-masked pixels within the source segment:
+        over the unmasked pixels within the source segment:
 
         .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
                   \\sigma_{\\mathrm{tot}, i}^2}
 
         where :math:`\\Delta F` is the `segment_flux`,
         :math:`\\sigma_{\\mathrm{tot, i}}` are the pixel-wise total
-        errors, and :math:`S` are the non-masked pixels in the source
-        segment.
+        errors (``error``), and :math:`S` are the unmasked pixels in the
+        source segment.
 
         Pixel values that are masked in the input ``data``, including
         any non-finite pixel values (NaN and inf) that are automatically
@@ -1744,8 +1744,8 @@ class SourceCatalog:
             G = \\frac{1}{\\left | \\bar{x} \\right | n (n - 1)}
             \\sum^{n}_{i} (2i - n - 1) \\left | x_i \\right |
 
-        where :math:`\\bar{x}` is the mean over all pixel values
-        :math:`x_i` within the source segment.
+        where :math:`\\bar{x}` is the mean over pixel values :math:`x_i`
+        within the source segment.
 
         The Gini coefficient is a way of measuring the inequality in a
         given set of values. In the context of galaxy morphology, it
@@ -1910,6 +1910,9 @@ class SourceCatalog:
         aperture of the specified radius centered at the source centroid
         position.
 
+        See the ``apermask_method`` keyword for options to mask
+        neighboring sources.
+
         Parameters
         ----------
         radius : float
@@ -2002,7 +2005,7 @@ class SourceCatalog:
         .. math::
             k_r = \\frac{\\sum_{i \\in A} \\ r_i I_i}{\\sum_{i \\in A} I_i}
 
-        where the sum is over all pixels in an elliptical aperture
+        where the sum is over pixels in an elliptical aperture
         whose axes are defined by six times the `semimajor_sigma`
         and `semiminor_sigma` at the calculated `orientation` (all
         properties derived from the central image moments of the
@@ -2010,21 +2013,26 @@ class SourceCatalog:
         given by:
 
         .. math::
-            r_i^2 = cxx(x_i - \\bar{x})^2 +
-                cxx \\ cyy (x_i - \\bar{x})(y_i - \\bar{y}) +
-                cyy(y_i - \\bar{y})^2
+            r_i^2 = cxx (x_i - \\bar{x})^2 +
+                cxy (x_i - \\bar{x})(y_i - \\bar{y}) +
+                cyy (y_i - \\bar{y})^2
 
-        where :math:`\\bar{x}` and :math:`\\bar{y}` represent the source
-        centroid.
+        where :math:`\\bar{x}` and :math:`\\bar{y}` represent
+        the source centroid. The scaling parameter of
+        :attr:`~photutils.segmentation.SourceCatalog.kron_radius`
+        is defined using the ``kron_params`` keyword. See the
+        ``apermask_method`` keyword for options to mask neighboring
+        sources.
+
+        If either the numerator or denominator is less than or equal
+        to 0, then ``np.nan`` will be returned. In this case, the Kron
+        aperture will be defined as a circular aperture with a radius
+        equal to ``kron_params[1]``. If ``kron_params[1] <= 0``, then
+        the Kron aperture will be `None` and the Kron flux will be
+        ``np.nan``.
 
         If the source is completely masked, then ``np.nan`` will be
         returned for both the Kron radius and Kron flux.
-
-        If either the numerator or denominator <= 0, then ``np.nan``
-        will be returned. In this case, the Kron aperture will
-        be defined as a circular aperture with a radius equal to
-        ``kron_params[1]``. If ``kron_params[1] <= 0``, then the Kron
-        aperture will be `None` and the Kron flux will be ``np.nan``.
         """
         if self._detection_cat is not None:
             return self._detection_cat.kron_radius
@@ -2126,6 +2134,9 @@ class SourceCatalog:
         """
         The flux and flux error in the Kron aperture.
 
+        See the ``apermask_method`` keyword for options to mask
+        neighboring sources.
+
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
         if self._detection_cat is not None:
@@ -2176,6 +2187,9 @@ class SourceCatalog:
         """
         The flux in the Kron aperture.
 
+        See the ``apermask_method`` keyword for options to mask
+        neighboring sources.
+
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
         kron_flux = self._kron_flux_fluxerr[:, 0]
@@ -2188,6 +2202,9 @@ class SourceCatalog:
     def kron_fluxerr(self):
         """
         The flux error in the Kron aperture.
+
+        See the ``apermask_method`` keyword for options to mask
+        neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
