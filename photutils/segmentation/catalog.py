@@ -2029,9 +2029,7 @@ class SourceCatalog:
         If either the numerator or denominator is less than or equal
         to 0, then ``np.nan`` will be returned. In this case, the Kron
         aperture will be defined as a circular aperture with a radius
-        equal to ``kron_params[1]``. If ``kron_params[1] <= 0``, then
-        the Kron aperture will be `None` and the Kron flux will be
-        ``np.nan``.
+        equal to ``kron_params[1]``.
 
         If the source is completely masked, then ``np.nan`` will be
         returned for both the Kron radius and Kron flux.
