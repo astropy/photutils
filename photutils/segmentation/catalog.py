@@ -2270,7 +2270,7 @@ class SourceCatalog:
                 self.labels, self._xcentroid, self._ycentroid,
                 kron_flux, self._local_background, max_radius):
 
-            if np.any(~np.isfinite((xcen, ycen))):
+            if np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_))):
                 radius.append(np.nan)
                 continue
 
