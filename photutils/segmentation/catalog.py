@@ -1871,9 +1871,11 @@ class SourceCatalog:
 
         if self._apermask_method == 'correct':
             from ._utils import mask_to_mirrored_value
-            data = mask_to_mirrored_value(data, segm_mask, cutout_xycen)
+            data = mask_to_mirrored_value(data, segm_mask, cutout_xycen,
+                                          mask=mask)
             if error is not None:
-                error = mask_to_mirrored_value(error, segm_mask, cutout_xycen)
+                error = mask_to_mirrored_value(error, segm_mask, cutout_xycen,
+                                               mask=mask)
 
         return data, error, mask, cutout_xycen, slc_sm
 
