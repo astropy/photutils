@@ -19,6 +19,12 @@ Bug Fixes
   - Fixed an issue in ``data_properties`` where a scalar background
     input would raise an error. [#1198]
 
+- ``photutils.segmentation``
+
+  - Fixed an issue in ``SourceCatalog`` where the user-input ``mask``
+    was ignored when ``apermask_method='correct'`` for Kron-related
+    calculations. [#1210]
+
 
 1.1.0 (2021-03-20)
 ------------------
