@@ -413,3 +413,9 @@ class TestSourceCatalog:
             radius = self.cat.fluxfrac_radius(0)
         with pytest.raises(ValueError):
             radius = self.cat.fluxfrac_radius(-1)
+
+        cat = SourceCatalog(self.data - 50., self.segm, error=self.error,
+                            background=self.background, mask=self.mask,
+                            wcs=self.wcs, localbkg_width=24)
+        radius_hl = cat.fluxfrac_radius(0.5)
+        assert np.all(np.isnan(radius_hl))

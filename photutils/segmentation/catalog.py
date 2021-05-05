@@ -1871,9 +1871,11 @@ class SourceCatalog:
 
         if self._apermask_method == 'correct':
             from ._utils import mask_to_mirrored_value
-            data = mask_to_mirrored_value(data, segm_mask, cutout_xycen)
+            data = mask_to_mirrored_value(data, segm_mask, cutout_xycen,
+                                          mask=mask)
             if error is not None:
-                error = mask_to_mirrored_value(error, segm_mask, cutout_xycen)
+                error = mask_to_mirrored_value(error, segm_mask, cutout_xycen,
+                                               mask=mask)
 
         return data, error, mask, cutout_xycen, slc_sm
 
@@ -2027,9 +2029,7 @@ class SourceCatalog:
         If either the numerator or denominator is less than or equal
         to 0, then ``np.nan`` will be returned. In this case, the Kron
         aperture will be defined as a circular aperture with a radius
-        equal to ``kron_params[1]``. If ``kron_params[1] <= 0``, then
-        the Kron aperture will be `None` and the Kron flux will be
-        ``np.nan``.
+        equal to ``kron_params[1]``.
 
         If the source is completely masked, then ``np.nan`` will be
         returned for both the Kron radius and Kron flux.
@@ -2268,7 +2268,7 @@ class SourceCatalog:
                 self.labels, self._xcentroid, self._ycentroid,
                 kron_flux, self._local_background, max_radius):
 
-            if np.any(~np.isfinite((xcen, ycen))):
+            if np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_))):
                 radius.append(np.nan)
                 continue
 
