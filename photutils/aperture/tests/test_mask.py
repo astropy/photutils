@@ -31,6 +31,14 @@ def test_mask_array():
     assert_allclose(data, mask.data)
 
 
+def test_mask_get_overlap_slices():
+    aper = CircularAperture((5, 5), r=10.)
+    mask = aper.to_mask()
+    slc = ((slice(0, 16, None), slice(0, 16, None)),
+           (slice(5, 21, None), slice(5, 21, None)))
+    assert mask.get_overlap_slices((25, 25)) == slc
+
+
 def test_mask_cutout_shape():
     mask_data = np.ones((10, 10))
     bbox = BoundingBox(5, 15, 5, 15)
@@ -140,6 +148,17 @@ def test_mask_multiply_fill_value():
         assert np.isnan(cutout[y, x])
 
 
+def test_mask_cutout_copy_quantity():
+    data = np.ones((50, 50)) * u.adu
+    aper = CircularAperture((25, 25), r=10.)
+    mask = aper.to_mask()
+    cutout = mask.cutout(data, copy=True)
+    assert cutout.unit == data.unit
+
+    data[25, 25] = 100. * u.adu
+    assert cutout[10, 10].value == 1.
+
+
 def test_mask_get_values():
     aper = CircularAnnulus(((0, 0), (50, 50), (100, 100)), 10, 20)
     data = np.ones((101, 101))
@@ -161,21 +180,6 @@ def test_mask_get_values_no_overlap():
     assert np.isnan(values[0])
 
 
-def test_rectangular_annulus_hin():
-    aper = RectangularAnnulus((25, 25), 2, 4, 20, h_in=18, theta=0)
-    mask = aper.to_mask(method='center')
-    assert mask.data.shape == (21, 5)
-    assert np.count_nonzero(mask.data) == 40
-
-
-def test_mask_get_overlap_slices():
-    aper = CircularAperture((5, 5), r=10.)
-    mask = aper.to_mask()
-    slc = ((slice(0, 16, None), slice(0, 16, None)),
-           (slice(5, 21, None), slice(5, 21, None)))
-    assert mask.get_overlap_slices((25, 25)) == slc
-
-
 def test_mask_get_values_mask():
     aper = CircularAperture((24.5, 24.5), r=10.)
     data = np.ones((51, 51))
@@ -190,3 +194,10 @@ def test_mask_get_values_mask():
     data_mask[25:] = True
     arr2 = mask.get_values(data, mask=data_mask)
     assert_allclose(np.sum(arr2), 100. * np.pi / 2.)
+
+
+def test_rectangular_annulus_hin():
+    aper = RectangularAnnulus((25, 25), 2, 4, 20, h_in=18, theta=0)
+    mask = aper.to_mask(method='center')
+    assert mask.data.shape == (21, 5)
+    assert np.count_nonzero(mask.data) == 40
