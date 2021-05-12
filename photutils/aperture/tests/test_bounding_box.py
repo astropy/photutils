@@ -105,13 +105,15 @@ def test_bounding_box_slices():
     with pytest.warns(AstropyDeprecationWarning):
         assert bbox.slices == (slice(2, 20), slice(1, 10))
 
-    with pytest.raises(ValueError):
-        bbox = BoundingBox(-1, 10, 2, 20)
-        _ = bbox.slices
+    with pytest.warns(AstropyDeprecationWarning):
+        with pytest.raises(ValueError):
+            bbox = BoundingBox(-1, 10, 2, 20)
+            _ = bbox.slices
 
-    with pytest.raises(ValueError):
-        bbox = BoundingBox(1, 10, -2, 20)
-        _ = bbox.slices
+    with pytest.warns(AstropyDeprecationWarning):
+        with pytest.raises(ValueError):
+            bbox = BoundingBox(1, 10, -2, 20)
+            _ = bbox.slices
 
 
 def test_bounding_box_extent():
