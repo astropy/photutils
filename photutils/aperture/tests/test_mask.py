@@ -10,8 +10,8 @@ import pytest
 
 from ..bounding_box import BoundingBox
 from ..circle import CircularAperture, CircularAnnulus
-from ..rectangle import RectangularAnnulus
 from ..mask import ApertureMask
+from ..rectangle import RectangularAnnulus
 
 POSITIONS = [(-20, -20), (-20, 20), (20, -20), (60, 60)]
 
@@ -59,16 +59,12 @@ def test_mask_cutout_copy():
     data[25, 25] = 100.
     assert cutout[10, 10] == 1.
 
-
-def test_mask_cutout_copy_quantity():
-    data = np.ones((50, 50)) * u.adu
-    aper = CircularAperture((25, 25), r=10.)
-    mask = aper.to_mask()
-    cutout = mask.cutout(data, copy=True)
-    assert cutout.unit == data.unit
-
-    data[25, 25] = 100. * u.adu
-    assert cutout[10, 10].value == 1.
+    # test quantity data
+    data2 = np.ones((50, 50)) * u.adu
+    cutout2 = mask.cutout(data2, copy=True)
+    assert cutout2.unit == data2.unit
+    data2[25, 25] = 100. * u.adu
+    assert cutout2[10, 10].value == 1.
 
 
 @pytest.mark.parametrize('position', POSITIONS)
@@ -109,7 +105,7 @@ def test_mask_multiply():
     aper = CircularAperture((25, 25), r=radius)
     mask = aper.to_mask()
     data_weighted = mask.multiply(data)
-    assert_almost_equal(np.sum(data_weighted), radius**2 * np.pi)
+    assert_almost_equal(np.sum(data_weighted), np.pi * radius**2)
 
     # test that multiply() returns a copy
     data[25, 25] = 100.
@@ -121,10 +117,9 @@ def test_mask_multiply_quantity():
     data = np.ones((50, 50)) * u.adu
     aper = CircularAperture((25, 25), r=radius)
     mask = aper.to_mask()
-
     data_weighted = mask.multiply(data)
     assert data_weighted.unit == u.adu
-    assert_almost_equal(np.sum(data_weighted.value), radius**2 * np.pi)
+    assert_almost_equal(np.sum(data_weighted.value), np.pi * radius**2)
 
     # test that multiply() returns a copy
     data[25, 25] = 100. * u.adu
@@ -148,15 +143,27 @@ def test_mask_multiply_fill_value():
         assert np.isnan(cutout[y, x])
 
 
-def test_mask_cutout_copy_quantity():
-    data = np.ones((50, 50)) * u.adu
-    aper = CircularAperture((25, 25), r=10.)
-    mask = aper.to_mask()
-    cutout = mask.cutout(data, copy=True)
-    assert cutout.unit == data.unit
+def test_mask_nonfinite_in_bbox():
+    """
+    Regression test that non-finite data values outside of the mask but
+    within the bounding box are set to zero.
+    """
+    data = np.ones((101, 101))
+    data[33, 33] = np.nan
+    data[67, 67] = np.inf
+    data[33, 67] = -np.inf
+    data[22, 22] = np.nan
+    data[22, 23] = np.inf
 
-    data[25, 25] = 100. * u.adu
-    assert cutout[10, 10].value == 1.
+    radius = 20.
+    aper1 = CircularAperture((50, 50), r=radius)
+    aper2 = CircularAperture((5, 5), r=radius)
+
+    wdata1 = aper1.to_mask(method='exact').multiply(data)
+    assert_allclose(np.sum(wdata1), np.pi * radius**2)
+
+    wdata2 = aper2.to_mask(method='exact').multiply(data)
+    assert_allclose(np.sum(wdata2), 561.6040111923013)
 
 
 def test_mask_get_values():
