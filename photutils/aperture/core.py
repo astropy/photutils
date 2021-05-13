@@ -322,12 +322,13 @@ class PixelAperture(Aperture):
         areas : float or array_like
             The overlapping areas between the aperture masks and the data.
         """
-
         masks = self.to_mask(method=method, subpixels=subpixels)
         if self.isscalar:
             masks = (masks,)
         data = np.ones_like(data)
-        areas = [mask.get_values(data).sum() for mask in masks]
+        values = [mask.get_values(data) for mask in masks]
+        # if the aperture does not overlap the data return np.nan
+        areas = [val.sum() if val.shape != (0,) else np.nan for val in vals]
         if self.isscalar:
             return areas[0]
         else:
@@ -344,10 +345,16 @@ class PixelAperture(Aperture):
             masks = (masks,)
 
         for apermask in masks:
-            aperture_sums.append(apermask.get_values(data).sum())
+            values = apermask.get_values(data)
+            # if the aperture does not overlap the data return np.nan
+            aper_sum = values.sum() if values.shape != (0,) else np.nan
+            aperture_sums.append(aper_sum)
+
             if variance is not None:
-                aperture_sum_errs.append(
-                    np.sqrt(apermask.get_values(variance).sum()))
+                values = apermask.get_values(variance)
+                # if the aperture does not overlap the data return np.nan
+                aper_var = values.sum() if values.shape != (0,) else np.nan
+                aperture_sum_errs.append(np.sqrt(aper_var))
 
         aperture_sums = np.array(aperture_sums)
         aperture_sum_errs = np.array(aperture_sum_errs)
