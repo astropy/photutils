@@ -326,7 +326,7 @@ class PixelAperture(Aperture):
         if self.isscalar:
             masks = (masks,)
         data = np.ones_like(data)
-        values = [mask.get_values(data) for mask in masks]
+        vals = [mask.get_values(data) for mask in masks]
         # if the aperture does not overlap the data return np.nan
         areas = [val.sum() if val.shape != (0,) else np.nan for val in vals]
         if self.isscalar:
