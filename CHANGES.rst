@@ -25,6 +25,14 @@ Bug Fixes
     was ignored when ``apermask_method='correct'`` for Kron-related
     calculations. [#1210]
 
+API changes
+^^^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - The ``ApertureMask.get_values()`` function now returns an empty
+    array if there is no overlap with the data. [#1212]
+
 
 1.1.0 (2021-03-20)
 ------------------

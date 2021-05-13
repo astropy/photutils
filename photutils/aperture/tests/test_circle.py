@@ -6,6 +6,7 @@ Tests for the circle module.
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 import numpy as np
+from numpy.testing import assert_allclose
 import pytest
 
 from .test_aperture_common import BaseTestAperture
@@ -86,4 +87,12 @@ def test_slicing():
         len(aper3)
 
     with pytest.raises(TypeError):
-        aper3[0]
+        _ = aper3[0]
+
+
+def test_area_overlap():
+    data = np.ones((11, 11))
+    xypos = [(0, 0), (5, 5), (50, 50)]
+    aper = CircularAperture(xypos, r=3)
+    areas = aper.area_overlap(data)
+    assert_allclose(areas, [10.304636, np.pi*9., np.nan])

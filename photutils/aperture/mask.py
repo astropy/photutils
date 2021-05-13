@@ -37,7 +37,8 @@ class ApertureMask:
 
     def __array__(self):
         """
-        Array representation of the mask data array (e.g., for matplotlib).
+        Array representation of the mask data array (e.g., for
+        matplotlib).
         """
         return self.data
 
@@ -95,7 +96,7 @@ class ApertureMask:
             raise ValueError('input shape must have 2 elements.')
 
         # find the overlap of the mask on the output image shape
-        slices_large, slices_small = self.bbox.get_overlap_slices(shape)
+        slices_large, slices_small = self.get_overlap_slices(shape)
 
         if slices_small is None:
             return None  # no overlap
@@ -131,7 +132,7 @@ class ApertureMask:
 
         Returns
         -------
-        result : `~numpy.ndarray`
+        result : `~numpy.ndarray` or `None`
             A 2D array cut out from the input ``data`` representing the
             same cutout region as the aperture mask.  If there is a
             partial overlap of the aperture mask with the input data,
@@ -144,7 +145,7 @@ class ApertureMask:
             raise ValueError('data must be a 2D array.')
 
         # find the overlap of the mask on the output image shape
-        slices_large, slices_small = self.bbox.get_overlap_slices(data.shape)
+        slices_large, slices_small = self.get_overlap_slices(data.shape)
 
         if slices_small is None:
             return None  # no overlap
@@ -232,12 +233,12 @@ class ApertureMask:
         result : `~numpy.ndarray`
             A 1D array of mask-weighted pixel values from the input
             ``data``. If there is no overlap of the aperture with the
-            input ``data``, the result will be a 1-element array of
-            ``numpy.nan``.
+            input ``data``, the result will be an empty array with shape
+            (0,).
         """
-        slc_large, slc_small = self.bbox.get_overlap_slices(data.shape)
+        slc_large, slc_small = self.get_overlap_slices(data.shape)
         if slc_large is None:
-            return np.array([np.nan])
+            return np.array([])
         cutout = data[slc_large]
         apermask = self.data[slc_small]
         pixel_mask = (apermask > 0)  # good pixels
