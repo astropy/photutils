@@ -105,6 +105,16 @@ def test_bounding_box_slices():
     with pytest.warns(AstropyDeprecationWarning):
         assert bbox.slices == (slice(2, 20), slice(1, 10))
 
+    with pytest.warns(AstropyDeprecationWarning):
+        with pytest.raises(ValueError):
+            bbox = BoundingBox(-1, 10, 2, 20)
+            _ = bbox.slices
+
+    with pytest.warns(AstropyDeprecationWarning):
+        with pytest.raises(ValueError):
+            bbox = BoundingBox(1, 10, -2, 20)
+            _ = bbox.slices
+
 
 def test_bounding_box_extent():
     bbox = BoundingBox(1, 10, 2, 20)
@@ -124,10 +134,10 @@ def test_bounding_box_as_artist():
 @pytest.mark.skipif('not HAS_MATPLOTLIB')
 def test_bounding_box_to_aperture():
     bbox = BoundingBox(1, 10, 2, 20)
-    aper = RectangularAperture((5, 10.5), w=9., h=18., theta=0.)
+    aper = RectangularAperture((5.0, 10.5), w=9., h=18., theta=0.)
     bbox_aper = bbox.to_aperture()
-    assert_allclose(bbox_aper.positions, aper.positions)
 
+    assert_allclose(bbox_aper.positions, aper.positions)
     assert bbox_aper.w == aper.w
     assert bbox_aper.h == aper.h
     assert bbox_aper.theta == aper.theta

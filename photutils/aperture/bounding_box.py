@@ -168,9 +168,9 @@ class BoundingBox:
         therefore can be used to slice numpy arrays.
         """
         if self.iymin < 0 or self.ixmin < 0:
-            return ValueError('cannot create slices when ixmin or iymin '
-                              'is negative')
-        return (slice(self.iymin, self.iymax), slice(self.ixmin, self.ixmax))
+            raise ValueError('cannot create slices when ixmin or iymin is '
+                             'negative')
+        return slice(self.iymin, self.iymax), slice(self.ixmin, self.ixmax)
 
     def get_overlap_slices(self, shape):
         """
