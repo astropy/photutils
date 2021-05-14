@@ -243,7 +243,7 @@ class BoundingBox:
 
         Parameters
         ----------
-        **kwargs : `dict`
+        **kwargs : dict
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -261,7 +261,7 @@ class BoundingBox:
 
         Parameters
         ----------
-        **kwargs : `dict`
+        **kwargs : dict
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -317,7 +317,7 @@ class BoundingBox:
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
         aper = self.to_aperture()

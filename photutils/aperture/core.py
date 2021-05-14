@@ -241,7 +241,7 @@ class PixelAperture(Aperture):
             generally slower.  The following methods are available:
 
                 * ``'exact'`` (default):
-                  The the exact fractional overlap of the aperture and
+                  The exact fractional overlap of the aperture and
                   each pixel is calculated.  The returned mask will
                   contain values between 0 and 1.
 
