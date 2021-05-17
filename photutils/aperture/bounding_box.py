@@ -158,20 +158,6 @@ class BoundingBox:
         """
         return self.iymax - self.iymin, self.ixmax - self.ixmin
 
-    @property
-    @deprecated('1.1', alternative='get_overlap_slices')
-    def slices(self):
-        """
-        The bounding box as a tuple of `slice` objects.
-
-        The slice tuple is in numpy axis order (i.e., ``(y, x)``) and
-        therefore can be used to slice numpy arrays.
-        """
-        if self.iymin < 0 or self.ixmin < 0:
-            raise ValueError('cannot create slices when ixmin or iymin is '
-                             'negative')
-        return slice(self.iymin, self.iymax), slice(self.ixmin, self.ixmax)
-
     def get_overlap_slices(self, shape):
         """
         Get slices for the overlapping part of the bounding box and an

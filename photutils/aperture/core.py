@@ -9,7 +9,6 @@ import copy
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from astropy.utils import deprecated
 from astropy.wcs.utils import wcs_to_celestial_frame
 
 from .bounding_box import BoundingBox
@@ -157,15 +156,6 @@ class PixelAperture(Aperture):
         """
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
-
-    @property
-    @deprecated('0.7', alternative='bbox')
-    def bounding_boxes(self):
-        """
-        The minimal bounding box for the aperture.
-        """
-
-        return self.bbox
 
     @property
     def bbox(self):
