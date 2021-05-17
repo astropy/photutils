@@ -3,7 +3,6 @@
 Tests for the bounding_box module.
 """
 
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 import pytest
 
@@ -98,22 +97,6 @@ def test_bounding_box_get_overlap_slices():
     slc = ((slice(0, 20, None), slice(0, 10, None)),
            (slice(10, 30, None), slice(10, 20, None)))
     assert bbox.get_overlap_slices((50, 50)) == slc
-
-
-def test_bounding_box_slices():
-    bbox = BoundingBox(1, 10, 2, 20)
-    with pytest.warns(AstropyDeprecationWarning):
-        assert bbox.slices == (slice(2, 20), slice(1, 10))
-
-    with pytest.warns(AstropyDeprecationWarning):
-        with pytest.raises(ValueError):
-            bbox = BoundingBox(-1, 10, 2, 20)
-            _ = bbox.slices
-
-    with pytest.warns(AstropyDeprecationWarning):
-        with pytest.raises(ValueError):
-            bbox = BoundingBox(1, 10, -2, 20)
-            _ = bbox.slices
 
 
 def test_bounding_box_extent():
