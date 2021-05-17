@@ -62,13 +62,14 @@ class Aperture(metaclass=abc.ABCMeta):
                             'or SkyAperture')
 
     def __repr__(self):
-        prefix = f'<{self.__class__.__name__}('
+        prefix = f'{self.__class__.__name__}'
         cls_info = [self._positions_str(prefix)]
-        for param in self._shape_params:
-            cls_info.append(f'{param}={getattr(self, param)}')
+        if self._shape_params is not None:
+            for param in self._shape_params:
+                cls_info.append(f'{param}={getattr(self, param)}')
         cls_info = ', '.join(cls_info)
 
-        return f'{prefix}{cls_info})>'
+        return f'<{prefix}({cls_info})>'
 
     def __str__(self):
         prefix = 'positions'

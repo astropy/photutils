@@ -137,11 +137,9 @@ class BoundingBox:
         return self.intersection(other)
 
     def __repr__(self):
-        data = self.__dict__
-        data['name'] = self.__class__.__name__
-        fmt = ('{name}(ixmin={ixmin}, ixmax={ixmax}, iymin={iymin}, '
-               'iymax={iymax})')
-        return fmt.format(**data)
+        return (f'{self.__class__.__name__}(ixmin={self.ixmin}, '
+                f'ixmax={self.ixmax}, iymin={self.iymin}, '
+                f'iymax={self.iymax})')
 
     @property
     def center(self):
