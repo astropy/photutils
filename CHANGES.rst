@@ -33,6 +33,9 @@ API changes
   - The ``ApertureMask.get_values()`` function now returns an empty
     array if there is no overlap with the data. [#1212]
 
+  - Removed the deprecated ``BoundingBox.slices`` and
+    ``PixelAperture.bounding_boxes`` attributes. [#1215]
+
 
 1.1.0 (2021-03-20)
 ------------------
