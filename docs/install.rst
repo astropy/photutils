@@ -105,7 +105,7 @@ distribution (assuming you are using MacOS X 10.9 or later).
 Building and installing manually
 --------------------------------
 
-Photutils is being developed on `github`_.  The latest development
+Photutils is being developed on `GitHub`_.  The latest development
 version of the Photutils source code can be retrieved using git::
 
     git clone https://github.com/astropy/photutils.git
@@ -125,7 +125,7 @@ Building and installing using pip
 ---------------------------------
 
 Alternatively, `pip`_ can be used to retrieve, build, and install the
-latest development version from `github`_::
+latest development version from `GitHub`_::
 
     pip install git+https://github.com/astropy/photutils.git
 
@@ -156,5 +156,5 @@ the `Photutils issue tracker
 
 .. _pip: https://pip.pypa.io/en/latest/
 .. _conda: https://conda.io/en/latest/
-.. _github: https://github.com/astropy/photutils
+.. _GitHub: https://github.com/astropy/photutils
 .. _Xcode: https://developer.apple.com/xcode/
