@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-#cython: language_level=3
+# cython: language_level=3
 """
 This module provides tools to calculate the area of overlap between a
 rectangle and a pixel grid.
