@@ -14,6 +14,7 @@
 # else. See astropy.sphinx.conf for which values are set there.
 
 from configparser import ConfigParser
+from datetime import datetime
 import os
 import sys
 
@@ -62,7 +63,7 @@ rst_epilog = """
 # -- Project information ------------------------------------------------------
 project = setup_cfg['name']
 author = setup_cfg['author']
-copyright = f'2011, {author}'
+copyright = f'2011-{datetime.utcnow().year}, {author}'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
