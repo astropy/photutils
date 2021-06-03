@@ -413,7 +413,7 @@ shapes of each source) on the data:
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     norm = simple_norm(data, 'sqrt')
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    ax1.set_title('Data with Kron aperture')
+    ax1.set_title('Data with Kron apertures')
     cmap = segm_deblend.make_cmap(seed=123)
     ax2.imshow(segm_deblend, origin='lower', cmap=cmap,
                interpolation='nearest')
