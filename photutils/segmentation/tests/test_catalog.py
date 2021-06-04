@@ -419,3 +419,13 @@ class TestSourceCatalog:
                             wcs=self.wcs, localbkg_width=24)
         radius_hl = cat.fluxfrac_radius(0.5)
         assert np.all(np.isnan(radius_hl))
+
+    def test_cutout_units(self):
+        obj = self.cat_units[0]
+        quantities = (obj.data, obj.error, obj.background)
+        ndarray = (obj.segment, obj.segment_ma, obj.data_ma, obj.error_ma,
+                   obj.background_ma)
+        for arr in quantities:
+            assert isinstance(arr, u.Quantity)
+        for arr in ndarray:
+            assert not isinstance(arr, u.Quantity)
