@@ -658,7 +658,7 @@ class SourceCatalog:
         A 2D `~numpy.ndarray` cutout of the segmentation image using the
         minimal bounding box of the source.
         """
-        return self._make_cutout(self._segment_img.data, units=True,
+        return self._make_cutout(self._segment_img.data, units=False,
                                  masked=False)
 
     @lazyproperty
