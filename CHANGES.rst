@@ -25,6 +25,9 @@ Bug Fixes
     was ignored when ``apermask_method='correct'`` for Kron-related
     calculations. [#1210]
 
+  - Fixed an issue in ``SourceCatalog`` where the ``segment`` array
+    could incorrectly have units. [#1220]
+
 API changes
 ^^^^^^^^^^^
 
