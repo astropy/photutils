@@ -23,7 +23,6 @@ from ..aperture import (BoundingBox, CircularAperture, EllipticalAperture,
                         RectangularAnnulus)
 from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
-from ..utils._wcs_helpers import _pixel_to_world
 
 __all__ = ['SourceProperties', 'source_properties', 'LegacySourceCatalog']
 
@@ -706,8 +705,8 @@ class SourceProperties:
         The output coordinate frame is the same as the input WCS.
         """
 
-        return _pixel_to_world(self.xcentroid.value, self.ycentroid.value,
-                               self._wcs)
+        return self._wcs.pixel_to_world(self.xcentroid.value,
+                                        self.ycentroid.value)
 
     @lazyproperty
     def sky_centroid_icrs(self):
@@ -1997,8 +1996,8 @@ class LegacySourceCatalog:
             # SkyCoord array from a loop-generated SkyCoord list.  The
             # assumption here is that the wcs is the same for each
             # SourceProperties instance.
-            return _pixel_to_world(self.xcentroid.value, self.ycentroid.value,
-                                   self.wcs)
+            return self.wcs.pixel_to_world(self.xcentroid.value,
+                                           self.ycentroid.value)
 
     @lazyproperty
     def sky_centroid_icrs(self):
@@ -2185,4 +2184,4 @@ def _calc_sky_bbox_corner(bbox, corner, wcs):
     else:
         raise ValueError('Invalid corner name.')
 
-    return _pixel_to_world(xpos, ypos, wcs)
+    return wcs.pixel_to_world(xpos, ypos)
