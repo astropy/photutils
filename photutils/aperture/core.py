@@ -9,7 +9,6 @@ import copy
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from astropy.wcs.utils import wcs_to_celestial_frame
 
 from .bounding_box import BoundingBox
 from ._photometry_utils import (_handle_units, _prepare_photometry_data,
