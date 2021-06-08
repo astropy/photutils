@@ -23,7 +23,13 @@ from ..ellipse import (EllipticalAperture, EllipticalAnnulus,
                        SkyEllipticalAperture, SkyEllipticalAnnulus)
 from ..rectangle import (RectangularAperture, RectangularAnnulus,
                          SkyRectangularAperture, SkyRectangularAnnulus)
-from ...datasets import get_path, make_4gaussians_image, make_wcs
+from ...datasets import get_path, make_4gaussians_image, make_wcs, make_gwcs
+
+try:
+    import gwcs  # noqa
+    HAS_GWCS = True
+except ImportError:
+    HAS_GWCS = False
 
 try:
     import matplotlib  # noqa
@@ -708,9 +714,15 @@ def test_elliptical_bbox():
     assert ap.bbox.shape == (2*a, 2*b)
 
 
-def test_to_sky_pixel():
+@pytest.mark.skipif('not HAS_GWCS')
+@pytest.mark.parametrize('wcs_type', ('wcs', 'gwcs'))
+def test_to_sky_pixel(wcs_type):
     data = make_4gaussians_image()
-    wcs = make_wcs(data.shape)
+
+    if wcs_type == 'wcs':
+        wcs = make_wcs(data.shape)
+    elif wcs_type == 'gwcs':
+        wcs = make_gwcs(data.shape)
 
     ap = CircularAperture(((12.3, 15.7), (48.19, 98.14)), r=3.14)
     ap2 = ap.to_sky(wcs).to_pixel(wcs)

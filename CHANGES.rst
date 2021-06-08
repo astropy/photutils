@@ -10,6 +10,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Fixed a bug when converting between pixel and sky apertures with a
+    ``gwcs`` object. [#1221]
+
 - ``photutils.detection``
 
   - Fixed the ``DAOStarFinder`` import deprecation message. [#1195]

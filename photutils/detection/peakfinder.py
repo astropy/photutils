@@ -10,7 +10,6 @@ from astropy.table import Table
 import numpy as np
 
 from ..utils.exceptions import NoDetectionsWarning
-from ..utils._wcs_helpers import _pixel_to_world
 
 __all__ = ['find_peaks']
 
@@ -172,7 +171,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     table = Table(coldata, names=colnames)
 
     if wcs is not None:
-        skycoord_peaks = _pixel_to_world(x_peaks, y_peaks, wcs)
+        skycoord_peaks = wcs.pixel_to_world(x_peaks, y_peaks)
         table.add_column(skycoord_peaks, name='skycoord_peak', index=2)
 
     # perform centroiding
@@ -191,7 +190,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         table['y_centroid'] = y_centroids
 
         if wcs is not None:
-            skycoord_centroids = _pixel_to_world(x_centroids, y_centroids, wcs)
+            skycoord_centroids = wcs.pixel_to_world(x_centroids, y_centroids)
             idx = table.colnames.index('y_centroid') + 1
             table.add_column(skycoord_centroids, name='skycoord_centroid',
                              index=idx)
