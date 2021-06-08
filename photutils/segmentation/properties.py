@@ -705,6 +705,8 @@ class SourceProperties:
         The output coordinate frame is the same as the input WCS.
         """
 
+        if self._wcs is None:
+            return None
         return self._wcs.pixel_to_world(self.xcentroid.value,
                                         self.ycentroid.value)
 
@@ -2168,6 +2170,8 @@ def _calc_sky_bbox_corner(bbox, corner, wcs):
         The sky coordinate at the bounding box corner.  If ``wcs`` is
         `None`, then `None` will be returned.
     """
+    if wcs is None:
+        return None
 
     if corner == 'll':
         xpos = bbox.ixmin - 0.5
