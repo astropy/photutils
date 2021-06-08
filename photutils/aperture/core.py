@@ -14,9 +14,7 @@ from astropy.wcs.utils import wcs_to_celestial_frame
 from .bounding_box import BoundingBox
 from ._photometry_utils import (_handle_units, _prepare_photometry_data,
                                 _validate_inputs)
-from ..utils._wcs_helpers import (_pixel_to_world,
-                                  _pixel_scale_angle_at_skycoord,
-                                  _world_to_pixel)
+from ..utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture']
 
@@ -593,14 +591,22 @@ class PixelAperture(Aperture):
 
         sky_params = {}
         xpos, ypos = np.transpose(self.positions)
-        sky_params['positions'] = _pixel_to_world(xpos, ypos, wcs)
+        sky_params['positions'] = wcs.pixel_to_world(xpos, ypos)
 
-        # The aperture object must have a single value for each shape
-        # parameter so we must use a single pixel scale for all positions.
-        # Here, we define the scale at the WCS CRVAL position.
-        crval = SkyCoord(*wcs.wcs.crval, frame=wcs_to_celestial_frame(wcs),
-                         unit=wcs.wcs.cunit)
-        pixscale, angle = _pixel_scale_angle_at_skycoord(crval, wcs)
+        # Aperture objects require scalar shape parameters (e.g.,
+        # radius, a, b, theta, etc.), therefore we must calculate the
+        # pixel scale and angle at only a single sky position, which
+        # we take as the first aperture position. For apertures with
+        # multiple positions used with a WCS that contains distortions
+        # (e.g., a spatially-dependent pixel scale), this may lead to
+        # unexpected results (e.g., results that are dependent of the
+        # order of the positions). There is no good way to fix this with
+        # the current Aperture API allowing multiple positions.
+        skypos = sky_params['positions']
+        if not self.isscalar:
+            skypos = skypos[0]
+
+        _, pixscale, angle = _pixel_scale_angle_at_skycoord(skypos, wcs)
 
         shape_params = list(self._shape_params)
 
@@ -668,15 +674,14 @@ class SkyAperture(Aperture):
         pixel_params['positions'] = np.transpose((xpos, ypos))
 
         # Aperture objects require scalar shape parameters (e.g.,
-        # radius, a, b, theta, etc.), therefore we must calculate
-        # the pixel scale and angle at only a single sky position,
-        # which we take as the first aperture position. For apertures
-        # with multiple sky positions used with a WCS that contains
-        # distortions (e.g., a spatially-dependent pixel scale), this
-        # may lead to unexpected results (e.g., results that are
-        # dependent of the order of the sky positions). There is no
-        # good way to fix this with the current Aperture API allowing
-        # multiple sky positions.
+        # radius, a, b, theta, etc.), therefore we must calculate the
+        # pixel scale and angle at only a single sky position, which
+        # we take as the first aperture position. For apertures with
+        # multiple positions used with a WCS that contains distortions
+        # (e.g., a spatially-dependent pixel scale), this may lead to
+        # unexpected results (e.g., results that are dependent of the
+        # order of the positions). There is no good way to fix this with
+        # the current Aperture API allowing multiple positions.
         if self.isscalar:
             skypos = self.positions
         else:
