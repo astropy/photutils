@@ -26,6 +26,12 @@ from ..rectangle import (RectangularAperture, RectangularAnnulus,
 from ...datasets import get_path, make_4gaussians_image, make_wcs, make_gwcs
 
 try:
+    import gwcs  # noqa
+    HAS_GWCS = True
+except ImportError:
+    HAS_GWCS = False
+
+try:
     import matplotlib  # noqa
     HAS_MATPLOTLIB = True
 except ImportError:
@@ -708,6 +714,7 @@ def test_elliptical_bbox():
     assert ap.bbox.shape == (2*a, 2*b)
 
 
+@pytest.mark.skipif('not HAS_GWCS')
 @pytest.mark.parametrize('wcs_type', ('wcs', 'gwcs'))
 def test_to_sky_pixel(wcs_type):
     data = make_4gaussians_image()
