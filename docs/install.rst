@@ -155,6 +155,6 @@ the `Photutils issue tracker
 
 
 .. _pip: https://pip.pypa.io/en/latest/
-.. _conda: https://conda.io/en/latest/
+.. _conda: https://docs.conda.io/en/latest/
 .. _GitHub: https://github.com/astropy/photutils
 .. _Xcode: https://developer.apple.com/xcode/
