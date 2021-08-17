@@ -441,8 +441,8 @@ class Background2D:
             The cropped data and mask as a masked array.
         """
 
-        ny_crop = self.nyboxes * self.box_size[1]
-        nx_crop = self.nxboxes * self.box_size[0]
+        ny_crop = self.nyboxes * self.box_size[0]
+        nx_crop = self.nxboxes * self.box_size[1]
         crop_slc = index_exp[0:ny_crop, 0:nx_crop]
         if self.mask is not None:
             mask = self.mask[crop_slc]
