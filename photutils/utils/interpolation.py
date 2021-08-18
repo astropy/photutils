@@ -119,10 +119,14 @@ class ShepardIDWInterpolator:
     def __init__(self, coordinates, values, weights=None, leafsize=10):
         from scipy.spatial import cKDTree
 
-        coordinates = np.atleast_2d(coordinates)
-        if coordinates.shape[0] == 1:
-            coordinates = np.transpose(coordinates)
-        if coordinates.ndim != 2:
+        coordinates = np.asarray(coordinates)
+        if coordinates.ndim == 0:  # scalar coordinate
+            coordinates = np.atleast_2d(coordinates)
+
+        if coordinates.ndim == 1:
+            coordinates = np.transpose(np.atleast_2d(coordinates))
+
+        if coordinates.ndim > 2:
             coordinates = np.reshape(coordinates, (-1, coordinates.shape[-1]))
 
         values = np.asanyarray(values).ravel()
