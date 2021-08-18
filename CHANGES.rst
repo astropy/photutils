@@ -15,6 +15,11 @@ Bug Fixes
   - Fixed a bug when converting between pixel and sky apertures with a
     ``gwcs`` object. [#1221]
 
+- ``photutils.background``
+
+  - Fixed an issue where ``Background2D`` could fail when using the
+    ``'pad'`` edge method. [#1227]
+
 - ``photutils.detection``
 
   - Fixed the ``DAOStarFinder`` import deprecation message. [#1195]
@@ -1571,7 +1576,7 @@ API changes
 Bug Fixes
 ^^^^^^^^^
 
-- ``photutils.aperture_photometry``
+- ``photutils.aperture``
 
   - Fixed an issue where ``np.nan`` or ``np.inf`` were not properly
     masked. [#267]
