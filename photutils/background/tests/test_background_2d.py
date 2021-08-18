@@ -141,7 +141,7 @@ class TestBackground2D:
         assert_allclose(b.background, DATA, rtol=2.e-5)
         assert_allclose(b.background_rms, BKG_RMS)
 
-        # test edge crop with
+        # test edge crop with mask
         b2 = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
                           bkg_estimator=MeanBackground(), edge_method='crop')
         assert_allclose(b2.background, DATA, rtol=2.e-5)
@@ -275,6 +275,12 @@ class TestBackground2D:
         This test should run without any errors, but there is no return
         value.
         """
-
         b = Background2D(DATA, (25, 25))
         b.plot_meshes(outlines=True)
+
+    def test_crop(self):
+        data = np.ones((300, 500))
+        bkg = Background2D(data, (74, 99), edge_method='crop')
+        assert_allclose(bkg.background_median, 1.0)
+        assert_allclose(bkg.background_rms_median, 0.0)
+        assert_allclose(bkg.background_mesh.shape, (4, 5))
