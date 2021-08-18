@@ -33,6 +33,12 @@ Bug Fixes
   - Fixed an issue in ``SourceCatalog`` where the ``segment`` array
     could incorrectly have units. [#1220]
 
+- ``photutils.utils``
+
+  - Fixed an issue in ``ShepardIDWInterpolator`` to allow its
+    initialization with scalar data values and coordinate arrays having
+    more than one dimension. [#1226]
+
 API changes
 ^^^^^^^^^^^
 
