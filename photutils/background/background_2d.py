@@ -223,19 +223,20 @@ class Background2D:
 
     exclude_percentile : float in the range of [0, 100], optional
         The percentage of masked pixels in a mesh, used as a threshold
-        for determining if the mesh is excluded.  If a mesh has more
-        than ``exclude_percentile`` percent of its pixels masked then it
-        will be excluded from the low-resolution map.  Masked pixels
-        include those from the input ``mask``, those resulting from the
-        data padding (i.e., if ``edge_method='pad'``), and those
-        resulting from any sigma clipping (i.e., if ``sigma_clip`` is
-        used).  Setting ``exclude_percentile=0`` will exclude meshes
-        that have any masked pixels.  Setting ``exclude_percentile=100``
-        will only exclude meshes that are completely masked.  Note that
-        completely masked meshes are *always* excluded.  For best
-        results, ``exclude_percentile`` should be kept as low as
-        possible (as long as there are sufficient pixels for reasonable
-        statistical estimates).  The default is 10.0.
+        for determining if the mesh is excluded. If a mesh has
+        more than ``exclude_percentile`` percent of its pixels
+        masked then it will be excluded from the low-resolution map.
+        Masked pixels include those from the input ``mask`` and
+        ``coverage_mask``, those resulting from the data padding
+        (i.e., if ``edge_method='pad'``), and those resulting from
+        any sigma clipping (i.e., if ``sigma_clip`` is used). Setting
+        ``exclude_percentile=0`` will exclude meshes that have any
+        masked pixels. Setting ``exclude_percentile=100`` will only
+        exclude meshes that are completely masked. Note that completely
+        masked meshes are *always* excluded. For best results,
+        ``exclude_percentile`` should be kept as low as possible (as
+        long as there are sufficient pixels for reasonable statistical
+        estimates). The default is 10.0.
 
     filter_size : int or array_like (int), optional
         The window size of the 2D median filter to apply to the
@@ -488,7 +489,8 @@ class Background2D:
         if mesh_idx.size == 0:
             raise ValueError('All meshes contain > {0} ({1} percent per '
                              'mesh) masked pixels.  Please check your data '
-                             'or decrease "exclude_percentile".'
+                             'or increase "exclude_percentile" to allow more '
+                             'meshes to be included.'
                              .format(threshold_npixels,
                                      self.exclude_percentile))
 
