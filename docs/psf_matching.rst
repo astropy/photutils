@@ -199,7 +199,7 @@ kernel images:
     kernel = create_matching_kernel(g1, g2, window=window)
     kernel /= kernel.sum()
     plt.plot(kernel[25, :], label='Matching kernel')
-    plt.plot(g3[25, :], label='$\sigma=4$ Gaussian')
+    plt.plot(g3[25, :], label='$\\sigma=4$ Gaussian')
     plt.xlabel('x')
     plt.ylabel('Flux')
     plt.legend()
