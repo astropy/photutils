@@ -6,3 +6,4 @@ RMS in an image.
 
 from .background_2d import *  # noqa
 from .core import *  # noqa
+from .interpolators import *  # noqa
