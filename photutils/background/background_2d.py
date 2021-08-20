@@ -254,7 +254,6 @@ class Background2D:
         result : `~numpy.ma.MaskedArray`
             The padded data and mask as a masked array.
         """
-
         ypad = 0
         xpad = 0
         if yextra > 0:
@@ -294,7 +293,6 @@ class Background2D:
         result : `~numpy.ma.MaskedArray`
             The cropped data and mask as a masked array.
         """
-
         ny_crop = self.nyboxes * self.box_size[0]
         nx_crop = self.nxboxes * self.box_size[1]
         crop_slc = index_exp[0:ny_crop, 0:nx_crop]
@@ -325,7 +323,6 @@ class Background2D:
         mesh_idx : 1D `~numpy.ndarray`
             The 1D mesh indices.
         """
-
         # the number of masked pixels in each mesh
         nmasked = np.ma.count_masked(data, axis=1)
 
@@ -336,8 +333,8 @@ class Background2D:
         #   - meshes where nmasked=self.box_npixels are *always* excluded
         #     (second conditional needed for exclude_percentile=100)
         threshold_npixels = self.exclude_percentile / 100. * self.box_npixels
-        mesh_idx = np.where((nmasked <= threshold_npixels) &
-                            (nmasked != self.box_npixels))[0]  # good meshes
+        mesh_idx = np.where((nmasked <= threshold_npixels)
+                            & (nmasked != self.box_npixels))[0]  # good meshes
 
         if mesh_idx.size == 0:
             raise ValueError('All meshes contain > {0} ({1} percent per '
@@ -362,7 +359,6 @@ class Background2D:
         a first cut at rejecting certain meshes as specified by the
         input keywords.
         """
-
         self.nyboxes = self.data.shape[0] // self.box_size[0]
         self.nxboxes = self.data.shape[1] // self.box_size[1]
         yextra = self.data.shape[0] % self.box_size[0]
@@ -414,7 +410,6 @@ class Background2D:
             A 2D masked array.  Pixels not defined in ``mesh_idx`` are
             masked.
         """
-
         if data.shape != self.mesh_idx.shape:
             raise ValueError('data and mesh_idx must have the same shape')
 
@@ -473,7 +468,6 @@ class Background2D:
             A 2D array of the mesh values where masked pixels have been
             filled by IDW interpolation.
         """
-
         yx = np.column_stack([self.mesh_yidx, self.mesh_xidx])
         coords = np.array(list(product(range(self.nyboxes),
                                        range(self.nxboxes))))
@@ -505,7 +499,6 @@ class Background2D:
         filtered_data : 2D `~numpy.ndarray`
             The filtered 2D array of mesh values.
         """
-
         data_out = np.copy(data)
         for i, j in zip(*indices):
             yfs, xfs = self.filter_size
@@ -523,7 +516,6 @@ class Background2D:
         Apply a 2D median filter to the low-resolution 2D mesh,
         including only pixels inside the image at the borders.
         """
-
         from scipy.ndimage import generic_filter
 
         if self.filter_threshold is None:
@@ -554,7 +546,6 @@ class Background2D:
         are equivalent to the low-resolution "MINIBACKGROUND" and
         "MINIBACK_RMS" background maps in SourceExtractor, respectively.
         """
-
         if self.sigma_clip is not None:
             data_sigclip = self.sigma_clip(self._mesh_data, axis=1)
         else:
@@ -597,13 +588,13 @@ class Background2D:
 
     @lazyproperty
     def _mesh_ypos(self):
-        return (self.mesh_yidx * self.box_size[0] +
-                (self.box_size[0] - 1) / 2.)
+        return (self.mesh_yidx * self.box_size[0]
+                + (self.box_size[0] - 1) / 2.)
 
     @lazyproperty
     def _mesh_xpos(self):
-        return (self.mesh_xidx * self.box_size[1] +
-                (self.box_size[1] - 1) / 2.)
+        return (self.mesh_xidx * self.box_size[1]
+                + (self.box_size[1] - 1) / 2.)
 
     @lazyproperty
     def mesh_nmasked(self):
@@ -612,7 +603,6 @@ class Background2D:
         Only meshes included in the background estimation are included.
         The array is masked only if meshes were excluded.
         """
-
         return self._make_2d_array(
             np.ma.count_masked(self._data_sigclip, axis=1))
 
@@ -623,7 +613,6 @@ class Background2D:
         interpolation.  The array is masked only if meshes were
         excluded.
         """
-
         if len(self._bkg1d) == self.nboxes:
             return self.background_mesh
         else:
@@ -636,7 +625,6 @@ class Background2D:
         interpolation.  The array is masked only if meshes were
         excluded.
         """
-
         if len(self._bkgrms1d) == self.nboxes:
             return self.background_rms_mesh
         else:
@@ -717,7 +705,6 @@ class Background2D:
             `matplotlib.patches.Patch`.  Used only if ``outlines`` is
             True.
         """
-
         import matplotlib.pyplot as plt
 
         kwargs['color'] = color

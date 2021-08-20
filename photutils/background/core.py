@@ -45,7 +45,6 @@ def _masked_median(data, axis=None):
         The resulting median.  If ``axis`` is `None`, then a float is
         returned, otherwise a `~numpy.ma.MaskedArray` is returned.
     """
-
     _median = np.ma.median(data, axis=axis)
     if axis is None and np.ma.isMaskedArray(_median):
         _median = _median.item()
@@ -93,7 +92,6 @@ class BackgroundBase(metaclass=abc.ABCMeta):
             a scalar will be returned, otherwise a
             `~numpy.ma.MaskedArray` will be returned.
         """
-
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
@@ -137,7 +135,6 @@ class BackgroundRMSBase(metaclass=abc.ABCMeta):
             then a scalar will be returned, otherwise a
             `~numpy.ma.MaskedArray` will be returned.
         """
-
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
@@ -276,8 +273,8 @@ class ModeEstimatorBackground(BackgroundBase):
     def calc_background(self, data, axis=None):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis)
-        return ((self.median_factor * _masked_median(data, axis=axis)) -
-                (self.mean_factor * np.ma.mean(data, axis=axis)))
+        return ((self.median_factor * _masked_median(data, axis=axis))
+                - (self.mean_factor * np.ma.mean(data, axis=axis)))
 
 
 class MMMBackground(ModeEstimatorBackground):

@@ -60,7 +60,6 @@ class BkgZoomInterpolator:
         result : 2D `~numpy.ndarray`
             The resized background or background RMS image.
         """
-
         mesh = np.asanyarray(mesh)
         if np.ptp(mesh) == 0:
             return np.zeros_like(bkg2d_obj.data) + np.min(mesh)
@@ -71,10 +70,10 @@ class BkgZoomInterpolator:
             # The mesh is first resized to the larger padded-data size
             # (i.e., zoom_factor should be an integer) and then cropped
             # back to the final data size.
-            zoom_factor = (int(bkg2d_obj.nyboxes * bkg2d_obj.box_size[0] /
-                               mesh.shape[0]),
-                           int(bkg2d_obj.nxboxes * bkg2d_obj.box_size[1] /
-                               mesh.shape[1]))
+            zoom_factor = (int(bkg2d_obj.nyboxes * bkg2d_obj.box_size[0]
+                               / mesh.shape[0]),
+                           int(bkg2d_obj.nxboxes * bkg2d_obj.box_size[1]
+                               / mesh.shape[1]))
             result = zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
                           cval=self.cval)
 
@@ -140,7 +139,6 @@ class BkgIDWInterpolator:
         result : 2D `~numpy.ndarray`
             The resized background or background RMS image.
         """
-
         mesh = np.asanyarray(mesh)
         if np.ptp(mesh) == 0:
             return np.zeros_like(bkg2d_obj.data) + np.min(mesh)
