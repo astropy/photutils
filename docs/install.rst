@@ -32,6 +32,10 @@ Photutils also optionally depends on other packages for some features:
   Used in `~photutils.datasets.make_gwcs` to create a simple celestial
   gwcs object.
 
+* `bottleneck <https://github.com/pydata/bottleneck>`_: Improves the
+  performance of sigma clipping and other functionality that may require
+  computing statistics on arrays with NaN values.
+
 Photutils depends on `pytest-astropy
 <https://github.com/astropy/pytest-astropy>`_ (0.4 or later) to run
 the test suite.

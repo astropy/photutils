@@ -7,7 +7,8 @@ import importlib
 # This list is a duplicate of the dependencies in setup.cfg "all".
 # Note that in some cases the package names are different from the
 # pip-install name (e.g.k scikit-image -> skimage).
-optional_deps = ['scipy', 'matplotlib', 'skimage', 'sklearn', 'gwcs']
+optional_deps = ['scipy', 'matplotlib', 'skimage', 'sklearn', 'gwcs',
+                 'bottleneck']
 deps = {key.upper(): key for key in optional_deps}
 __all__ = [f'HAS_{pkg}' for pkg in deps]
 
