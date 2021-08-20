@@ -14,12 +14,7 @@ from ..ellipse import Ellipse
 from ..geometry import EllipseGeometry
 from ..isophote import Isophote, IsophoteList
 from ...datasets import get_path, make_noise_image
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 # define an off-center position and a tilted sma

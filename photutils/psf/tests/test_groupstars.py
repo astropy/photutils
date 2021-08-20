@@ -9,12 +9,7 @@ from numpy.testing import assert_almost_equal
 import pytest
 
 from ..groupstars import DAOGroup, DBSCANGroup
-
-try:
-    import sklearn.cluster  # noqa
-    HAS_SKLEARN = True
-except ImportError:
-    HAS_SKLEARN = False
+from ...utils._optional_deps import HAS_SKLEARN  # noqa
 
 
 def assert_table_almost_equal(table1, table2):

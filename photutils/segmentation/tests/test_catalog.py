@@ -17,18 +17,7 @@ from ..core import SegmentationImage
 from ..detect import detect_sources
 from ...aperture import CircularAperture, EllipticalAperture
 from ...datasets import make_gwcs, make_wcs, make_noise_image
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
-
-try:
-    import gwcs  # noqa
-    HAS_GWCS = True
-except ImportError:
-    HAS_GWCS = False
+from ...utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

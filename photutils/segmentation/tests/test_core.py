@@ -8,18 +8,7 @@ from numpy.testing import assert_allclose
 import pytest
 
 from ..core import Segment, SegmentationImage
-
-try:
-    import matplotlib  # noqa
-    HAS_MATPLOTLIB = True
-except ImportError:
-    HAS_MATPLOTLIB = False
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from ...utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

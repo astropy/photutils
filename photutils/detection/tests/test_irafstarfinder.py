@@ -15,12 +15,7 @@ import pytest
 from ..irafstarfinder import IRAFStarFinder
 from ...datasets import make_100gaussians_image
 from ...utils.exceptions import NoDetectionsWarning
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 DATA = make_100gaussians_image()

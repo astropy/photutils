@@ -24,12 +24,7 @@ from ..utils import prepare_psf_model
 from ...background import MMMBackground, StdBackgroundRMS
 from ...datasets import make_gaussian_prf_sources_image, make_noise_image
 from ...detection import DAOStarFinder
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 def make_psf_photometry_objs(std=1, sigma_psf=1):

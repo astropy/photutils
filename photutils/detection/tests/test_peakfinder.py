@@ -14,19 +14,8 @@ from ..peakfinder import find_peaks
 from ...centroids import centroid_com
 from ...datasets import make_4gaussians_image, make_gwcs, make_wcs
 from ...utils.exceptions import NoDetectionsWarning
+from ...utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
 
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
-
-try:
-    # shared WCS interface requires gwcs >= 0.10
-    import gwcs  # noqa
-    HAS_GWCS = True
-except ImportError:
-    HAS_GWCS = False
 
 PEAKDATA = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]).astype(float)
 PEAKREF1 = np.array([[0, 0], [2, 2]])

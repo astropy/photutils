@@ -21,18 +21,8 @@ from ..detect import detect_sources
 from ..properties import (LegacySourceCatalog, SourceProperties,
                           source_properties)
 from ...datasets import make_gwcs, make_wcs
+from ...utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
 
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
-
-try:
-    import gwcs  # noqa
-    HAS_GWCS = True
-except ImportError:
-    HAS_GWCS = False
 
 XCEN = 51.
 YCEN = 52.7
