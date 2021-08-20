@@ -11,7 +11,7 @@ from numpy.testing import assert_allclose
 import pytest
 
 from .._convolution import _filter_data
-from .._optional_deps import HAS_SCIPY
+from .._optional_deps import HAS_SCIPY  # noqa
 from ...datasets import make_100gaussians_image
 
 

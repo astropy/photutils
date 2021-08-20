@@ -8,7 +8,7 @@ from numpy.testing import assert_allclose
 import pytest
 
 from .. import ShepardIDWInterpolator as idw
-from .._optional_deps import HAS_SCIPY
+from .._optional_deps import HAS_SCIPY  # noqa
 
 
 SHAPE = (5, 5)
