@@ -15,18 +15,8 @@ from .. import (apply_poisson_noise, make_4gaussians_image,
                 make_model_sources_image, make_noise_image,
                 make_random_gaussians_table, make_random_models_table,
                 make_wcs)
+from ...utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
 
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
-
-try:
-    import gwcs  # noqa
-    HAS_GWCS = True
-except ImportError:
-    HAS_GWCS = False
 
 SOURCE_TABLE = Table()
 SOURCE_TABLE['flux'] = [1, 2, 3]
@@ -100,7 +90,7 @@ def test_make_gaussian_sources_image():
     assert_allclose(image.sum(), SOURCE_TABLE['flux'].sum())
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_make_gaussian_prf_sources_image():
     shape = (100, 100)
     image = make_gaussian_prf_sources_image(shape, SOURCE_TABLE_PRF)

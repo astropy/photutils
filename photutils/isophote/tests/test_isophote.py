@@ -15,14 +15,10 @@ from ..geometry import EllipseGeometry
 from ..isophote import Isophote, IsophoteList
 from ..sample import EllipseSample
 from ...datasets import get_path
+from ...utils._optional_deps import HAS_SCIPY  # noqa
+
 
 DEFAULT_FIX = np.array([False, False, False, False])
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
 
 
 @pytest.mark.remote_data

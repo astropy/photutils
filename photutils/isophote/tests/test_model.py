@@ -13,12 +13,7 @@ from ..ellipse import Ellipse
 from ..geometry import EllipseGeometry
 from ..model import build_ellipse_model
 from ...datasets import get_path
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.remote_data

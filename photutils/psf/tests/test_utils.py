@@ -13,12 +13,7 @@ import pytest
 from ..models import IntegratedGaussianPRF
 from ..sandbox import DiscretePRF
 from ..utils import get_grouped_psf_model, prepare_psf_model, subtract_psf
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 PSF_SIZE = 11

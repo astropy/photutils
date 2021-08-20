@@ -14,12 +14,8 @@ import pytest
 from ...utils.exceptions import NoDetectionsWarning
 from ..detect import detect_threshold, detect_sources, make_source_mask
 from ...datasets import make_4gaussians_image
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
 
 DATA = np.array([[0, 1, 0], [0, 2, 0], [0, 0, 0]]).astype(float)
 REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])

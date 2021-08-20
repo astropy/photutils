@@ -8,12 +8,7 @@ from numpy.testing import assert_allclose
 import pytest
 
 from ..core import data_properties
-
-try:
-    import skimage  # noqa
-    HAS_SKIMAGE = True
-except ImportError:
-    HAS_SKIMAGE = False
+from ...utils._optional_deps import HAS_SKIMAGE  # noqa
 
 
 XCS = [25.7]

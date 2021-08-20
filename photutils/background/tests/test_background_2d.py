@@ -14,18 +14,7 @@ import pytest
 from ..core import MeanBackground
 from ..background_2d import (BkgZoomInterpolator, BkgIDWInterpolator,
                              Background2D)
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
-
-try:
-    import matplotlib  # noqa
-    HAS_MATPLOTLIB = True
-except ImportError:
-    HAS_MATPLOTLIB = False
+from ...utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 
 DATA = np.ones((100, 100))

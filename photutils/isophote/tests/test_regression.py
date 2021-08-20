@@ -57,12 +57,7 @@ import pytest
 from ..ellipse import Ellipse
 from ..integrator import BILINEAR
 from ...datasets import get_path
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.remote_data

@@ -7,12 +7,7 @@ from numpy.testing import assert_allclose
 import pytest
 
 from ..colormaps import make_random_cmap
-
-try:
-    import matplotlib  # noqa
-    HAS_MATPLOTLIB = True
-except ImportError:
-    HAS_MATPLOTLIB = False
+from .._optional_deps import HAS_MATPLOTLIB  # noqa
 
 
 @pytest.mark.skipif('not HAS_MATPLOTLIB')

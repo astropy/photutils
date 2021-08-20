@@ -19,13 +19,9 @@ import numpy as np
 from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from .models import EPSFModel
 from ..centroids import centroid_com, centroid_epsf
+from ..utils._optional_deps import HAS_BOTTLENECK  # noqa
 from ..utils._round import _py2intround
 
-try:
-    import bottleneck  # pylint: disable=W0611
-    HAS_BOTTLENECK = True
-except ImportError:
-    HAS_BOTTLENECK = False
 
 __all__ = ['EPSFFitter', 'EPSFBuilder']
 
@@ -311,6 +307,13 @@ class EPSFBuilder:
         are ignored based on the star sampling flux residuals, when
         computing the average residual of ePSF grid points in each iteration
         step.
+
+    Notes
+    -----
+    If your image image contains NaN values, you may see better
+    performance if you have the `bottleneck`_ package installed.
+
+    .. _bottleneck:  https://github.com/pydata/bottleneck
     """
 
     def __init__(self, oversampling=4., shape=None,
@@ -751,6 +754,7 @@ class EPSFBuilder:
                                                    masked=False,
                                                    return_bounds=False)
             if HAS_BOTTLENECK:
+                import bottleneck
                 residuals = bottleneck.nanmedian(residuals, axis=0)
             else:
                 residuals = np.nanmedian(residuals, axis=0)

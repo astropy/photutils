@@ -24,18 +24,8 @@ from ..ellipse import (EllipticalAperture, EllipticalAnnulus,
 from ..rectangle import (RectangularAperture, RectangularAnnulus,
                          SkyRectangularAperture, SkyRectangularAnnulus)
 from ...datasets import get_path, make_4gaussians_image, make_wcs, make_gwcs
+from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB  # noqa
 
-try:
-    import gwcs  # noqa
-    HAS_GWCS = True
-except ImportError:
-    HAS_GWCS = False
-
-try:
-    import matplotlib  # noqa
-    HAS_MATPLOTLIB = True
-except ImportError:
-    HAS_MATPLOTLIB = False
 
 APERTURE_CL = [CircularAperture,
                CircularAnnulus,

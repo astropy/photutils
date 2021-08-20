@@ -12,17 +12,13 @@ from ..harmonics import (first_and_second_harmonic_function,
                          fit_first_and_second_harmonics, fit_upper_harmonic)
 from ..sample import EllipseSample
 from ..fitter import EllipseFitter
-
-
-try:
-    from scipy.optimize import leastsq  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_harmonics_1():
+    from scipy.optimize import leastsq  # noqa
+
     # this is an almost as-is example taken from stackoverflow
     N = 100  # number of data points
     t = np.linspace(0, 4*np.pi, N)

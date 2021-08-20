@@ -9,12 +9,7 @@ import pytest
 
 from ..windows import (CosineBellWindow, HanningWindow, SplitCosineBellWindow,
                        TopHatWindow, TukeyWindow)
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from ....utils._optional_deps import HAS_SCIPY  # noqa
 
 
 def test_hanning():

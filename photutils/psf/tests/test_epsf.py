@@ -17,12 +17,7 @@ from ..epsf import EPSFBuilder, EPSFFitter
 from ..epsf_stars import extract_stars, EPSFStars
 from ..models import IntegratedGaussianPRF, EPSFModel
 from ...datasets import make_gaussian_prf_sources_image
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
