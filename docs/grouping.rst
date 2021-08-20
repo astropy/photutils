@@ -48,10 +48,10 @@ sources and the latter will make an actual image using that table.
 .. plot::
     :include-source:
 
+    import matplotlib.pyplot as plt
     import numpy as np
     from photutils.datasets import (make_random_gaussians_table,
                                     make_gaussian_sources_image)
-    import matplotlib.pyplot as plt
 
     n_sources = 350
     sigma_psf = 2.0
@@ -94,7 +94,7 @@ to measure the FWHM of the stellar profiles.
     >>> from astropy.stats import gaussian_sigma_to_fwhm
     >>> from photutils.psf.groupstars import DAOGroup
     >>> fwhm = sigma_psf * gaussian_sigma_to_fwhm
-    >>> daogroup = DAOGroup(crit_separation=2.5*fwhm)
+    >>> daogroup = DAOGroup(crit_separation=2.5 * fwhm)
 
 ``daogroup`` is a `~photutils.psf.DAOGroup` instance that can be used
 as a calling function that receives as input a table of stars (e.g.,
@@ -155,15 +155,15 @@ in the same group have the same aperture color:
 
 .. plot::
 
-    import numpy as np
     from astropy.stats import gaussian_sigma_to_fwhm
+    from matplotlib import rcParams
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.aperture import CircularAperture
     from photutils.datasets import (make_random_gaussians_table,
                                     make_gaussian_sources_image)
     from photutils.psf.groupstars import DAOGroup
-    from photutils.aperture import CircularAperture
     from photutils.utils import make_random_cmap
-    import matplotlib.pyplot as plt
-    from matplotlib import rcParams
 
     rcParams['image.aspect'] = 1  # to get images with square pixels
     rcParams['figure.figsize'] = (7, 7)
@@ -185,7 +185,7 @@ in the same group have the same aperture color:
     starlist['y_mean'].name = 'y_0'
 
     fwhm = sigma_psf * gaussian_sigma_to_fwhm
-    daogroup = DAOGroup(crit_separation=2.5*fwhm)
+    daogroup = DAOGroup(crit_separation=2.5 * fwhm)
     star_groups = daogroup(starlist)
     star_groups = star_groups.group_by('group_id')
 
@@ -217,15 +217,15 @@ to use :class:`~photutils.psf.DBSCANGroup`.
 
 .. plot::
 
-    import numpy as np
     from astropy.stats import gaussian_sigma_to_fwhm
+    from matplotlib import rcParams
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.aperture import CircularAperture
     from photutils.datasets import (make_random_gaussians_table,
                                     make_gaussian_sources_image)
     from photutils.psf.groupstars import DBSCANGroup
-    from photutils.aperture import CircularAperture
     from photutils.utils import make_random_cmap
-    import matplotlib.pyplot as plt
-    from matplotlib import rcParams
 
     rcParams['image.aspect'] = 1  # to get images with square pixels
     rcParams['figure.figsize'] = (7, 7)
@@ -247,7 +247,7 @@ to use :class:`~photutils.psf.DBSCANGroup`.
     starlist['y_mean'].name = 'y_0'
 
     fwhm = sigma_psf * gaussian_sigma_to_fwhm
-    group = DBSCANGroup(crit_separation=2.5*fwhm)
+    group = DBSCANGroup(crit_separation=2.5 * fwhm)
     star_groups = group(starlist)
     star_groups = star_groups.group_by('group_id')
 

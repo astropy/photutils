@@ -64,10 +64,11 @@ Let's plot the image:
 
 .. plot::
 
-    import matplotlib.pyplot as plt
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
+    import matplotlib.pyplot as plt
     from photutils.datasets import make_100gaussians_image
+
     data = make_100gaussians_image()
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, norm=norm, origin='lower', cmap='Greys_r',
@@ -227,21 +228,23 @@ background gradient to the image defined above::
 
     >>> ny, nx = data.shape
     >>> y, x = np.mgrid[:ny, :nx]
-    >>> gradient =  x * y / 5000.
+    >>> gradient = x * y / 5000.
     >>> data2 = data + gradient
     >>> plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r',
     ...            interpolation='nearest')  # doctest: +SKIP
 
 .. plot::
 
-    import matplotlib.pyplot as plt
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
+    import matplotlib.pyplot as plt
+    import numpy as np
     from photutils.datasets import make_100gaussians_image
+
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient =  x * y / 5000.
+    gradient = x * y / 5000.
     data2 = data + gradient
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r',
@@ -287,14 +290,16 @@ Let's plot the background image:
 
 .. plot::
 
-    import matplotlib.pyplot as plt
     from astropy.stats import SigmaClip
-    from photutils.datasets import make_100gaussians_image
+    import matplotlib.pyplot as plt
+    import numpy as np
     from photutils.background import Background2D, MedianBackground
+    from photutils.datasets import make_100gaussians_image
+
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient =  x * y / 5000.
+    gradient = x * y / 5000.
     data2 = data + gradient
     sigma_clip = SigmaClip(sigma=3.)
     bkg_estimator = MedianBackground()
@@ -312,16 +317,18 @@ and the background-subtracted image:
 
 .. plot::
 
-    import matplotlib.pyplot as plt
     from astropy.stats import SigmaClip
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    from photutils.datasets import make_100gaussians_image
+    import matplotlib.pyplot as plt
+    import numpy as np
     from photutils.background import Background2D, MedianBackground
+    from photutils.datasets import make_100gaussians_image
+
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient =  x * y / 5000.
+    gradient = x * y / 5000.
     data2 = data + gradient
     sigma_clip = SigmaClip(sigma=3.)
     bkg_estimator = MedianBackground()
@@ -361,15 +368,17 @@ this example requires `scipy`_):
 
 .. plot::
 
-    from photutils.datasets import make_100gaussians_image
-    from scipy.ndimage.interpolation import rotate
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.datasets import make_100gaussians_image
+    from scipy.ndimage.interpolation import rotate
+
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient =  x * y / 5000.
+    gradient = x * y / 5000.
     data2 = data + gradient
     data3 = rotate(data2, -45.)
     norm = ImageNormalize(stretch=SqrtStretch())
@@ -400,16 +409,18 @@ image (values assigned to ``fill_value``):
 
 .. plot::
 
-    from photutils.datasets import make_100gaussians_image
-    from photutils.background import Background2D
-    from scipy.ndimage.interpolation import rotate
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.background import Background2D
+    from photutils.datasets import make_100gaussians_image
+    from scipy.ndimage.interpolation import rotate
+
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient =  x * y / 5000.
+    gradient = x * y / 5000.
     data2 = data + gradient
     data3 = rotate(data2, -45.)
     coverage_mask = (data3 == 0)
@@ -429,16 +440,18 @@ Finally, let's subtract the background from the image and plot it:
 
 .. plot::
 
-    from photutils.datasets import make_100gaussians_image
-    from photutils.background import Background2D
-    from scipy.ndimage.interpolation import rotate
-    import matplotlib.pyplot as plt
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.background import Background2D
+    from photutils.datasets import make_100gaussians_image
+    from scipy.ndimage.interpolation import rotate
+
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient =  x * y / 5000.
+    gradient = x * y / 5000.
     data2 = data + gradient
     data3 = rotate(data2, -45.)
     coverage_mask = (data3 == 0)
@@ -468,16 +481,18 @@ be plotted on the original image using the
 
 .. plot::
 
-    from photutils.datasets import make_100gaussians_image
-    from photutils.background import Background2D
-    from scipy.ndimage.interpolation import rotate
-    import matplotlib.pyplot as plt
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.background import Background2D
+    from photutils.datasets import make_100gaussians_image
+    from scipy.ndimage.interpolation import rotate
+
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient =  x * y / 5000.
+    gradient = x * y / 5000.
     data2 = data + gradient
     data3 = rotate(data2, -45.)
     coverage_mask = (data3 == 0)

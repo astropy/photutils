@@ -105,14 +105,14 @@ segmentation image showing the detected sources:
 
 .. plot::
 
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
+    from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
+    import matplotlib.pyplot as plt
     from photutils.datasets import make_100gaussians_image
     from photutils.segmentation import detect_threshold, detect_sources
+
     data = make_100gaussians_image()
     threshold = detect_threshold(data, nsigma=2.)
     sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
@@ -170,12 +170,11 @@ deblended segmentation image:
 
 .. plot::
 
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
+    from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
+    import matplotlib.pyplot as plt
     from photutils.datasets import make_100gaussians_image
     from photutils.segmentation import (detect_threshold, detect_sources,
                                         deblend_sources)
@@ -199,12 +198,9 @@ Let's plot one of the deblended sources:
 
 .. plot::
 
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
+    from astropy.stats import gaussian_fwhm_to_sigma
+    import matplotlib.pyplot as plt
     from photutils.datasets import make_100gaussians_image
     from photutils.segmentation import (detect_threshold, detect_sources,
                                         deblend_sources)
@@ -384,16 +380,15 @@ shapes of each source) on the data:
 
 .. plot::
 
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
-    import astropy.units as u
+    from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.visualization import simple_norm
+    import matplotlib.pyplot as plt
     from photutils.datasets import make_100gaussians_image
     from photutils.background import Background2D, MedianBackground
-    from photutils.segmentation import (detect_threshold, detect_sources,
-                                        deblend_sources, SourceCatalog)
+    from photutils.segmentation import (detect_sources, deblend_sources,
+                                        SourceCatalog)
+
     data = make_100gaussians_image()
     bkg_estimator = MedianBackground()
     bkg = Background2D(data, (50, 50), filter_size=(3, 3),
