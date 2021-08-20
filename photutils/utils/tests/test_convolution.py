@@ -11,13 +11,8 @@ from numpy.testing import assert_allclose
 import pytest
 
 from .._convolution import _filter_data
+from .._optional_deps import HAS_SCIPY
 from ...datasets import make_100gaussians_image
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

@@ -8,12 +8,7 @@ import pytest
 
 from ..bounding_box import BoundingBox
 from ..rectangle import RectangularAperture
-
-try:
-    import matplotlib  # noqa
-    HAS_MATPLOTLIB = True
-except ImportError:
-    HAS_MATPLOTLIB = False
+from ...utils._optional_deps import HAS_MATPLOTLIB  # noqa
 
 
 def test_bounding_box_init():

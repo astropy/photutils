@@ -12,12 +12,8 @@ import pytest
 from .test_aperture_common import BaseTestAperture
 from ..circle import (CircularAperture, CircularAnnulus, SkyCircularAperture,
                       SkyCircularAnnulus)
+from ...utils._optional_deps import HAS_MATPLOTLIB  # noqa
 
-try:
-    import matplotlib  # noqa
-    HAS_MATPLOTLIB = True
-except ImportError:
-    HAS_MATPLOTLIB = False
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)
@@ -28,18 +24,19 @@ UNIT = u.arcsec
 class TestCircularAperture(BaseTestAperture):
     aperture = CircularAperture(POSITIONS, r=3.)
 
-    @pytest.mark.skipif("not HAS_MATPLOTLIB")
+    @pytest.mark.skipif('not HAS_MATPLOTLIB')
     def test_plot(self):
         self.aperture.plot()
 
-    @pytest.mark.skipif("not HAS_MATPLOTLIB")
+    @pytest.mark.skipif('not HAS_MATPLOTLIB')
     def test_plot_returns_patches(self):
         from matplotlib import pyplot as plt
+        from matplotlib.patches import Patch
 
         my_patches = self.aperture.plot()
         assert isinstance(my_patches, list)
         for patch in my_patches:
-            assert isinstance(patch, matplotlib.patches.Patch)
+            assert isinstance(patch, Patch)
 
         # test creating a legend with these patches
         plt.legend(my_patches, list(range(len(my_patches))))
@@ -48,19 +45,20 @@ class TestCircularAperture(BaseTestAperture):
 class TestCircularAnnulus(BaseTestAperture):
     aperture = CircularAnnulus(POSITIONS, r_in=3., r_out=7.)
 
-    @pytest.mark.skipif("not HAS_MATPLOTLIB")
+    @pytest.mark.skipif('not HAS_MATPLOTLIB')
     def test_plot(self):
         self.aperture.plot()
 
-    @pytest.mark.skipif("not HAS_MATPLOTLIB")
+    @pytest.mark.skipif('not HAS_MATPLOTLIB')
     def test_plot_returns_patches(self):
         from matplotlib import pyplot as plt
+        from matplotlib.patches import Patch
 
         my_patches = self.aperture.plot()
         assert isinstance(my_patches, list)
 
         for p in my_patches:
-            assert isinstance(p, matplotlib.patches.Patch)
+            assert isinstance(p, Patch)
 
         # make sure I can create a legend with these patches
         labels = list(range(len(my_patches)))

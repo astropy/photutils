@@ -13,13 +13,7 @@ from numpy.testing import assert_allclose
 import pytest
 
 from ..gaussian import centroid_1dg, centroid_2dg, gaussian1d_moments
-
-try:
-    # the fitting routines in astropy use scipy.optimize
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 XCEN = 25.7
@@ -34,6 +28,7 @@ DATA[1, 0:2] = 1.
 DATA[1, 1] = 2.
 
 
+# NOTE: the fitting routines in astropy use scipy.optimize
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize(('x_std', 'y_std', 'theta'),
                          list(itertools.product(XSTDS, YSTDS, THETAS)))

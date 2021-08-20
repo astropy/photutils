@@ -8,12 +8,7 @@ from numpy.testing import assert_allclose
 import pytest
 
 from .. import ShepardIDWInterpolator as idw
-
-try:
-    import scipy  # noqa
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
+from .._optional_deps import HAS_SCIPY
 
 
 SHAPE = (5, 5)
