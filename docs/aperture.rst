@@ -353,27 +353,28 @@ apertures (red) on the image:
 
 .. plot::
 
-   from photutils.datasets import make_100gaussians_image
-   from photutils.aperture import CircularAperture, CircularAnnulus
-   from astropy.visualization import simple_norm
+    from astropy.visualization import simple_norm
+    import matplotlib.pyplot as plt
+    from photutils.aperture import CircularAperture, CircularAnnulus
+    from photutils.datasets import make_100gaussians_image
 
-   data = make_100gaussians_image()
-   positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
-   aperture = CircularAperture(positions, r=5)
-   annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
+    data = make_100gaussians_image()
+    positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
+    aperture = CircularAperture(positions, r=5)
+    annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
 
-   norm = simple_norm(data, 'sqrt', percent=99)
-   plt.imshow(data, norm=norm, interpolation='nearest')
-   plt.xlim(0, 170)
-   plt.ylim(130, 250)
+    norm = simple_norm(data, 'sqrt', percent=99)
+    plt.imshow(data, norm=norm, interpolation='nearest')
+    plt.xlim(0, 170)
+    plt.ylim(130, 250)
 
-   ap_patches = aperture.plot(color='white', lw=2,
-                              label='Photometry aperture')
-   ann_patches = annulus_aperture.plot(color='red', lw=2,
-                                       label='Background annulus')
-   handles = (ap_patches[0], ann_patches[0])
-   plt.legend(loc=(0.17, 0.05), facecolor='#458989', labelcolor='white',
-              handles=handles, prop={'weight': 'bold', 'size': 11})
+    ap_patches = aperture.plot(color='white', lw=2,
+                               label='Photometry aperture')
+    ann_patches = annulus_aperture.plot(color='red', lw=2,
+                                        label='Background annulus')
+    handles = (ap_patches[0], ann_patches[0])
+    plt.legend(loc=(0.17, 0.05), facecolor='#458989', labelcolor='white',
+               handles=handles, prop={'weight': 'bold', 'size': 11})
 
 We can use aperture masks to directly access the pixel values in any
 aperture.  Let's do that for the annulus aperture::
@@ -401,8 +402,9 @@ Let's focus on just the first annulus.  Let's plot its aperture mask:
 
 .. plot::
 
-    from photutils.aperture import CircularAperture, CircularAnnulus
     import matplotlib.pyplot as plt
+    from photutils.aperture import CircularAperture, CircularAnnulus
+
     positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
     aperture = CircularAperture(positions, r=5)
     annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
@@ -421,9 +423,10 @@ Let's plot the annulus data:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
     from photutils.aperture import CircularAperture, CircularAnnulus
     from photutils.datasets import make_100gaussians_image
-    import matplotlib.pyplot as plt
+
     positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
     aperture = CircularAperture(positions, r=5)
     annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
@@ -643,34 +646,35 @@ Finally, we can plot the comparison of the photometry:
 
 .. plot::
 
-  from astropy import units as u
-  from astropy.coordinates import SkyCoord
-  from astropy.wcs import WCS
-  from photutils.aperture import aperture_photometry, SkyCircularAperture
+    from astropy import units as u
+    from astropy.coordinates import SkyCoord
+    from astropy.wcs import WCS
+    import matplotlib.pyplot as plt
+    from photutils.aperture import aperture_photometry, SkyCircularAperture
+    from photutils.datasets import load_spitzer_image, load_spitzer_catalog
 
-  # Load dataset
-  from photutils.datasets import load_spitzer_image, load_spitzer_catalog
-  hdu = load_spitzer_image()
-  data = u.Quantity(hdu.data, unit=hdu.header['BUNIT'])
-  wcs = WCS(hdu.header)
-  catalog = load_spitzer_catalog()
+    # Load dataset
+    hdu = load_spitzer_image()
+    data = u.Quantity(hdu.data, unit=hdu.header['BUNIT'])
+    wcs = WCS(hdu.header)
+    catalog = load_spitzer_catalog()
 
-  # Set up apertures
-  positions = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
-  aperture = SkyCircularAperture(positions, r=4.8 * u.arcsec)
-  phot_table = aperture_photometry(data, aperture, wcs=wcs)
+    # Set up apertures
+    positions = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
+    aperture = SkyCircularAperture(positions, r=4.8 * u.arcsec)
+    phot_table = aperture_photometry(data, aperture, wcs=wcs)
 
-  # Convert to correct units
-  factor = (1.2 * u.arcsec) ** 2 / u.pixel
-  fluxes_catalog = catalog['f4_5']
-  converted_aperture_sum = (phot_table['aperture_sum'] * factor).to(u.mJy / u.pixel)
+    # Convert to correct units
+    factor = (1.2 * u.arcsec) ** 2 / u.pixel
+    fluxes_catalog = catalog['f4_5']
+    converted_aperture_sum = (phot_table['aperture_sum']
+                              * factor).to(u.mJy / u.pixel)
 
-  # Plot
-  import matplotlib.pyplot as plt
-  plt.scatter(fluxes_catalog, converted_aperture_sum.value)
-  plt.xlabel('Spitzer catalog PSF-fit fluxes ')
-  plt.ylabel('Aperture photometry fluxes')
-  plt.plot([40, 100, 450],[40, 100, 450], color='black', lw=2)
+    # Plot
+    plt.scatter(fluxes_catalog, converted_aperture_sum.value)
+    plt.xlabel('Spitzer catalog PSF-fit fluxes ')
+    plt.ylabel('Aperture photometry fluxes')
+    plt.plot([40, 100, 450], [40, 100, 450], color='black', lw=2)
 
 Despite using different methods, the two catalogs are in good
 agreement.  The aperture photometry fluxes are based on a circular

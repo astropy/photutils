@@ -103,19 +103,19 @@ Let's plot the image and mark the location of detected sources:
 
 .. plot::
 
-    import numpy as np
-    import matplotlib.pyplot as plt
     from astropy.stats import sigma_clipped_stats
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.aperture import CircularAperture
     from photutils.datasets import load_star_image
     from photutils.detection import DAOStarFinder
-    from photutils.aperture import CircularAperture
 
     hdu = load_star_image()
     data = hdu.data[0:401, 0:401]
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
-    daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
+    daofind = DAOStarFinder(fwhm=3.0, threshold=5. * std)
     sources = daofind(data - median)
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
     apertures = CircularAperture(positions, r=4.)
@@ -138,7 +138,7 @@ regions:
 .. doctest-skip::
 
    >>> from photutils.detection import DAOStarFinder
-   >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
+   >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5. * std)
    >>> mask = np.zeros(data.shape, dtype=bool)
    >>> mask[50:151, 50:351] = True
    >>> mask[250:351, 150:351] = True
@@ -149,19 +149,19 @@ regions:
 
 .. plot::
 
-    import numpy as np
-    import matplotlib.pyplot as plt
     from astropy.stats import sigma_clipped_stats
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    from photutils.datasets import load_star_image
+    import matplotlib.pyplot as plt
+    import numpy as np
     from photutils.aperture import CircularAperture, RectangularAperture
+    from photutils.datasets import load_star_image
     from photutils.detection import DAOStarFinder
 
     hdu = load_star_image()
     data = hdu.data[0:401, 0:401]
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
-    daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
+    daofind = DAOStarFinder(fwhm=3.0, threshold=5. * std)
     mask = np.zeros(data.shape, dtype=bool)
     mask[50:151, 50:351] = True
     mask[250:351, 150:351] = True
@@ -241,31 +241,32 @@ And let's plot the location of the detected peaks in the image:
     >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm,
     ...            interpolation='nearest')
     >>> apertures.plot(color='#0547f9', lw=1.5)
-    >>> plt.xlim(0, data.shape[1]-1)
-    >>> plt.ylim(0, data.shape[0]-1)
+    >>> plt.xlim(0, data.shape[1] - 1)
+    >>> plt.ylim(0, data.shape[0] - 1)
 
 .. plot::
 
-    import numpy as np
     from astropy.stats import sigma_clipped_stats
-    from photutils.detection import find_peaks
+    from astropy.visualization import simple_norm
+    import matplotlib.pyplot as plt
+    import numpy as np
     from photutils.aperture import CircularAperture
     from photutils.datasets import make_100gaussians_image
+    from photutils.detection import find_peaks
+
     data = make_100gaussians_image()
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     threshold = median + (5.0 * std)
     tbl = find_peaks(data, threshold, box_size=11)
 
-    import matplotlib.pyplot as plt
-    from astropy.visualization import simple_norm
     positions = np.transpose((tbl['x_peak'], tbl['y_peak']))
     apertures = CircularAperture(positions, r=5.)
     norm = simple_norm(data, 'sqrt', percent=99.9)
     plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm,
                interpolation='nearest')
     apertures.plot(color='#0547f9', lw=1.5)
-    plt.xlim(0, data.shape[1]-1)
-    plt.ylim(0, data.shape[0]-1)
+    plt.xlim(0, data.shape[1] - 1)
+    plt.ylim(0, data.shape[0] - 1)
 
 
 Reference/API

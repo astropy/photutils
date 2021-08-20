@@ -65,9 +65,11 @@ similar, we also include an inset plot zoomed in near the centroid:
 .. plot::
     :include-source:
 
-    from photutils.datasets import make_4gaussians_image
-    from photutils.centroids import centroid_com, centroid_1dg, centroid_2dg
     import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+    from mpl_toolkits.axes_grid1.inset_locator import mark_inset
+    from photutils.centroids import centroid_com, centroid_1dg, centroid_2dg
+    from photutils.datasets import make_4gaussians_image
 
     data = make_4gaussians_image()[43:79, 76:104]  # extract single object
     x1, y1 = centroid_com(data)
@@ -81,8 +83,6 @@ similar, we also include an inset plot zoomed in near the centroid:
     plt.plot(x2, y2, color='white', marker=marker, ms=ms, mew=mew)
     plt.plot(x3, y3, color='red', marker=marker, ms=ms, mew=mew)
 
-    from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
-    from mpl_toolkits.axes_grid1.inset_locator import mark_inset
     ax2 = zoomed_inset_axes(ax, zoom=6, loc=9)
     ax2.imshow(data, vmin=190, vmax=220, origin='lower',
                interpolation='nearest')
@@ -95,9 +95,8 @@ similar, we also include an inset plot zoomed in near the centroid:
     mark_inset(ax, ax2, loc1=3, loc2=4, fc='none', ec='0.5')
     ax2.axes.get_xaxis().set_visible(False)
     ax2.axes.get_yaxis().set_visible(False)
-    ax.set_xlim(0, data.shape[1]-1)
-    ax.set_ylim(0, data.shape[0]-1)
-
+    ax.set_xlim(0, data.shape[1] - 1)
+    ax.set_ylim(0, data.shape[0] - 1)
 
 
 Centroiding several sources in an image
@@ -132,8 +131,10 @@ Let's plot the results:
 .. plot::
     :include-source:
 
-    from photutils.datasets import make_4gaussians_image
+    import matplotlib.pyplot as plt
     from photutils.centroids import centroid_sources, centroid_com
+    from photutils.datasets import make_4gaussians_image
+
     data = make_4gaussians_image()
     x_init = (25, 91, 151, 160)
     y_init = (40, 61, 24, 71)

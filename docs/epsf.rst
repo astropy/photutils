@@ -49,23 +49,23 @@ The simulated image does not contain any background or noise, so let's add
 those to the image::
 
     >>> from photutils.datasets import make_noise_image
-    >>> data +=  make_noise_image(data.shape, distribution='gaussian',
-    ...                           mean=10., stddev=5., seed=123)  # doctest: +REMOTE_DATA
+    >>> data += make_noise_image(data.shape, distribution='gaussian',
+    ...                          mean=10., stddev=5., seed=123)  # doctest: +REMOTE_DATA
 
 Let's show the image:
 
 .. plot::
     :include-source:
 
-    import matplotlib.pyplot as plt
     from astropy.visualization import simple_norm
+    import matplotlib.pyplot as plt
     from photutils.datasets import load_simulated_hst_star_image
     from photutils.datasets import make_noise_image
 
     hdu = load_simulated_hst_star_image()
     data = hdu.data
-    data +=  make_noise_image(data.shape, distribution='gaussian', mean=10.,
-                              stddev=5., seed=123)
+    data += make_noise_image(data.shape, distribution='gaussian', mean=10.,
+                             stddev=5., seed=123)
     norm = simple_norm(data, 'sqrt', percent=99.)
     plt.imshow(data, norm=norm, origin='lower', cmap='viridis')
 
@@ -183,21 +183,26 @@ from which we'll build our ePSF.  Let's show the first 25 of them:
     >>> fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 20),
     ...                        squeeze=True)
     >>> ax = ax.ravel()
-    >>> for i in range(nrows*ncols):
+    >>> for i in range(nrows * ncols):
     ...     norm = simple_norm(stars[i], 'log', percent=99.)
     ...     ax[i].imshow(stars[i], norm=norm, origin='lower', cmap='viridis')
 
 .. plot::
 
+    from astropy.nddata import NDData
+    from astropy.stats import sigma_clipped_stats
+    from astropy.table import Table
     from astropy.visualization import simple_norm
+    import matplotlib.pyplot as plt
     from photutils.datasets import load_simulated_hst_star_image
     from photutils.datasets import make_noise_image
     from photutils.detection import find_peaks
+    from photutils.psf import extract_stars
 
     hdu = load_simulated_hst_star_image()
     data = hdu.data
-    data +=  make_noise_image(data.shape, distribution='gaussian', mean=10.,
-                              stddev=5., seed=123)
+    data += make_noise_image(data.shape, distribution='gaussian', mean=10.,
+                             stddev=5., seed=123)
 
     peaks_tbl = find_peaks(data, threshold=500.)
 
@@ -205,31 +210,26 @@ from which we'll build our ePSF.  Let's show the first 25 of them:
     hsize = (size - 1) / 2
     x = peaks_tbl['x_peak']
     y = peaks_tbl['y_peak']
-    mask = ((x > hsize) & (x < (data.shape[1] -1 - hsize)) &
-            (y > hsize) & (y < (data.shape[0] -1 - hsize)))
+    mask = ((x > hsize) & (x < (data.shape[1] - 1 - hsize))
+            & (y > hsize) & (y < (data.shape[0] - 1 - hsize)))
 
-    from astropy.table import Table
     stars_tbl = Table()
     stars_tbl['x'] = x[mask]
     stars_tbl['y'] = y[mask]
 
-    from astropy.stats import sigma_clipped_stats
     mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.)
     data -= median_val
 
-    from astropy.nddata import NDData
     nddata = NDData(data=data)
 
-    from photutils.psf import extract_stars
     stars = extract_stars(nddata, stars_tbl, size=25)
 
-    import matplotlib.pyplot as plt
     nrows = 5
     ncols = 5
     fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 20),
                            squeeze=True)
     ax = ax.ravel()
-    for i in range(nrows*ncols):
+    for i in range(nrows * ncols):
         norm = simple_norm(stars[i], 'log', percent=99.)
         ax[i].imshow(stars[i], norm=norm, origin='lower', cmap='viridis')
 
@@ -272,15 +272,20 @@ Finally, let's show the constructed ePSF:
 
 .. plot::
 
+    from astropy.nddata import NDData
+    from astropy.stats import sigma_clipped_stats
+    from astropy.table import Table
     from astropy.visualization import simple_norm
+    import matplotlib.pyplot as plt
     from photutils.datasets import load_simulated_hst_star_image
     from photutils.datasets import make_noise_image
     from photutils.detection import find_peaks
+    from photutils.psf import extract_stars, EPSFBuilder
 
     hdu = load_simulated_hst_star_image()
     data = hdu.data
-    data +=  make_noise_image(data.shape, distribution='gaussian', mean=10.,
-                              stddev=5., seed=123)
+    data += make_noise_image(data.shape, distribution='gaussian', mean=10.,
+                             stddev=5., seed=123)
 
     peaks_tbl = find_peaks(data, threshold=500.)
 
@@ -288,30 +293,24 @@ Finally, let's show the constructed ePSF:
     hsize = (size - 1) / 2
     x = peaks_tbl['x_peak']
     y = peaks_tbl['y_peak']
-    mask = ((x > hsize) & (x < (data.shape[1] -1 - hsize)) &
-            (y > hsize) & (y < (data.shape[0] -1 - hsize)))
+    mask = ((x > hsize) & (x < (data.shape[1] - 1 - hsize))
+            & (y > hsize) & (y < (data.shape[0] - 1 - hsize)))
 
-    from astropy.table import Table
     stars_tbl = Table()
     stars_tbl['x'] = x[mask]
     stars_tbl['y'] = y[mask]
 
-    from astropy.stats import sigma_clipped_stats
     mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.)
     data -= median_val
 
-    from astropy.nddata import NDData
     nddata = NDData(data=data)
 
-    from photutils.psf import extract_stars
     stars = extract_stars(nddata, stars_tbl, size=25)
 
-    from photutils.psf import EPSFBuilder
     epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
                                progress_bar=False)
     epsf, fitted_stars = epsf_builder(stars)
 
-    import matplotlib.pyplot as plt
     norm = simple_norm(epsf.data, 'log', percent=99.)
     plt.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
     plt.colorbar()
