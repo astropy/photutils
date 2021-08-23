@@ -1,72 +1,24 @@
 SceneMaker
 ==========
 
-EJT: This object is not currently in the block diagram, as it represents a step
-beyond the "baseline" PSF fitting machinery. It should be developed in parallel
-with the ``SingleObjectModel``, which really doesn't have reason to exist without
-the scene maker.
+SceneMaker does not yet exist in the framework of PSF Photometry. This API
+is therefore a work in progress and should be considered as such.
 
-A single sentence summarizing this block.
+However, the block will likely involve an additional column or variable attributed
+to each source in the input `~astropy.table.Table` indicating whether sources are
+stars or more extended objects. This column will be used in conjunction with
+``SingleObjectModel``, which already has the framework to accept ``object_type`` which
+allows for individual extended sources to be handled, depending on the specific
+class used for the specific purpose. The given list of single object models allowed
+by, and available to, ``SingleObjectModel`` must be the same list of physical
+source classes (stars, galaxies, etc.) as ``SceneMaker`` uses to group and merge
+detected sources into point sources or extended objects. The block must also handle
+the possibility of merging several point sources into an extended object and vice
+versa.
 
-A longer descrption.  Can be multiple paragraphs.  You can link to other things
-like `photutils.background`.
-
-Parameters
-----------
-
-first_parameter_name : `~astropy.table.Table`
-    Description of first input
-
-second_parameter_name : SomeOtherType
-    Description of second input (if any)
-
-Returns
--------
-
-first_return : `~astropy.table.Table`
-    Description of the first thing this block outputs.
-
-second_return
-    Many blocks will only return one object, but if more things are returned
-    they can be described here (e.g., in python this is
-    ``first, second = some_function(...)``)
-
-
-Methods
--------
-
-Not all blocks will have these, but if desired some blocks can have methods that
-let you do something other than just running the block.  E.g::
-
-    some_block = BlockClassName()
-    output = some_block(input1, input2, ...)  # this is what is documented above
-    result = some_block.method_name(...)  #this is documented here
-
-method_name
-^^^^^^^^^^^
-
-Description of method
-
-Parameters
-""""""""""
-
-first_parameter : type
-    Description ...
-
-second_parameter : type
-    Description ...
-
-Returns
-"""""""
-
-first_return : type
-    Description ...
-
-
-Example Usage
--------------
-
-An example of *using* the block should be provided.  This needs to be after a
-``::`` in the rst and indented::
-
-    print("This is example code")
+SceneMaker should be considered an extension of GroupMaker, and will likely accept
+outputs from that block. Sources grouped together by GroupMaker will subsequently
+be assigned as multiple single sources or one larger, extended source erroneously split
+up by the Finder, or some combination of the two. This information will then be used by
+SingleObjectModel to fit the grouped sources as either individual point sources or
+extended sources, based on ``object_type``.
