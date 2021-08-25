@@ -183,8 +183,8 @@ class Background2D:
 
         box_size = self._process_size_input(box_size)
         # box_size cannot be larger than the data array size
-        self.box_size = (min(box_size[0], data.shape[0]),
-                         min(box_size[1], data.shape[1]))
+        self.box_size = np.array((min(box_size[0], data.shape[0]),
+                                  min(box_size[1], data.shape[1])))
 
         self.fill_value = fill_value
         if exclude_percentile < 0 or exclude_percentile > 100:
@@ -201,12 +201,11 @@ class Background2D:
         self.bkgrms_estimator = bkgrms_estimator
         self.interpolator = interpolator
 
-        self.box_npixels = np.prod(self.box_size)
         self.background_mesh = None
         self.background_rms_mesh = None
 
         self._prepare_data()
-        #self._reshape_data()
+        self._reshape_data()
         #self._calc_bkg_bkgrms()
 
     @staticmethod
@@ -240,74 +239,64 @@ class Background2D:
         else:
             return np.logical_or(self.mask, self.coverage_mask)
 
-    def _pad_data(self, yextra, xextra):
+    def _prepare_data(self):
         """
-        Pad the ``data`` and ``mask`` to have an integer number of
-        background meshes of size ``box_size`` in both dimensions.  The
-        padding is added on the top and/or right edges (this is the best
-        option for the "zoom" interpolator).
+        Prepare the data.
+
+        This method:
+          * converts the data to float dtype (and makes a copy)
+          * automatically masks non-finite values
+          * replaces all masked values with NaN
+          * converts MaskedArray to ndarray using NaN as masked values
+        """
+        # float array type is needed to insert nans into the array
+        self.data = self.data.astype(float)  # makes a copy
+
+        # include non-finite values in the total mask
+        bad_mask = ~np.isfinite(self.data)
+        if np.any(bad_mask):
+            self.total_mask |= bad_mask
+            warnings.warn('Input data contains invalid values (NaNs or '
+                          'infs), which were automatically masked.',
+                          AstropyUserWarning)
+
+        # replace all masked values with NaN
+        self.data[self.total_mask] = np.nan
+
+        # convert MaskedArray to ndarray using np.nan as masked values
+        if isinstance(self.data, np.ma.MaskedArray):
+            self.data = self.data.filled(np.nan)
+
+    def _pad_data(self, extra_size):
+        """
+        Pad the data to have an integer number of background meshes of
+        size ``box_size`` in both dimensions.
+
+        The padding is added on the top and/or right edges.
 
         Parameters
         ----------
-        yextra, xextra : int
+        extra_size : tuple of 2 int
             The modulus of the data size and the box size in both the
             ``y`` and ``x`` dimensions.  This is the number of extra
             pixels beyond a multiple of the box size in the ``y`` and
             ``x`` dimensions.
-
-        Returns
-        -------
-        result : `~numpy.ma.MaskedArray`
-            The padded data and mask as a masked array.
         """
-        ypad = 0
-        xpad = 0
-        if yextra > 0:
-            ypad = self.box_size[0] - yextra
-        if xextra > 0:
-            xpad = self.box_size[1] - xextra
-        pad_width = ((0, ypad), (0, xpad))
-        data = np.pad(self.data, pad_width, mode='constant',
-                      constant_values=[1.e10])
-
-        # mask the padded regions
-        pad_mask = np.zeros(data.shape, dtype=bool)
-        yidx = data.shape[0] - ypad
-        xidx = data.shape[1] - xpad
-        pad_mask[yidx:, :] = True
-        pad_mask[:, xidx:] = True
-
-        # pad the input mask separately (there is no np.ma.pad function)
-        if self.total_mask is not None:
-            mask = np.pad(self.total_mask, pad_width, mode='constant',
-                          constant_values=[True])
-            mask = np.logical_or(mask, pad_mask)
-        else:
-            mask = pad_mask
-
-        return np.ma.masked_array(data, mask=mask)
+        pad_size = self.box_size - extra_size
+        pad_width = ((0, pad_size[0]), (0, pad_size[1]))
+        return np.pad(self.data, pad_width, mode='constant',
+                      constant_values=np.nan)
 
     def _crop_data(self):
         """
-        Crop the ``data`` and ``mask`` to have an integer number of
-        background meshes of size ``box_size`` in both dimensions.  The
-        data are cropped on the top and/or right edges (this is the best
-        option for the "zoom" interpolator).
+        Crop the data to have an integer number of background meshes of
+        size ``box_size`` in both dimensions.
 
-        Returns
-        -------
-        result : `~numpy.ma.MaskedArray`
-            The cropped data and mask as a masked array.
+        The data are cropped on the top and/or right edges.
         """
-        ny_crop = self.nyboxes * self.box_size[0]
-        nx_crop = self.nxboxes * self.box_size[1]
-        crop_slc = index_exp[0:ny_crop, 0:nx_crop]
-        if self.total_mask is not None:
-            mask = self.total_mask[crop_slc]
-        else:
-            mask = False
-
-        return np.ma.masked_array(self.data[crop_slc], mask=mask)
+        crop_size = self.nboxes * self.box_size
+        crop_slc = index_exp[0:crop_size[0], 0:crop_size[1]]
+        return self.data[crop_slc]
 
     def _select_meshes(self, data):
         """
@@ -352,34 +341,6 @@ class Background2D:
 
         return mesh_idx
 
-    def _prepare_data(self):
-        """
-        Prepare the data.
-
-        This method:
-          * converts the data to float dtype (and makes a copy)
-          * automatically masks non-finite values
-          * replaces all masked values with NaN
-          * converts MaskedArray to ndarray using NaN as masked values
-        """
-        # float array type is needed to insert nans into the array
-        self.data = self.data.astype(float)  # makes a copy
-
-        # include non-finite values in the total mask
-        bad_mask = ~np.isfinite(self.data)
-        if np.any(bad_mask):
-            self.total_mask |= bad_mask
-            warnings.warn('Input data contains invalid values (NaNs or '
-                          'infs), which were automatically masked.',
-                          AstropyUserWarning)
-
-        # replace all masked values with NaN
-        self.data[self.total_mask] = np.nan
-
-        # convert MaskedArray to ndarray using np.nan as masked values
-        if isinstance(self.data, np.ma.MaskedArray):
-            self.data = self.data.filled(np.nan)
-
     def _reshape_data(self):
         """
         First, pad or crop the 2D data array so that there are an
@@ -389,34 +350,38 @@ class Background2D:
         the data in a single mesh. This method also performs a first cut
         at rejecting certain meshes as specified by the input keywords.
         """
-        self.nyboxes = self.data.shape[0] // self.box_size[0]
-        self.nxboxes = self.data.shape[1] // self.box_size[1]
-        yextra = self.data.shape[0] % self.box_size[0]
-        xextra = self.data.shape[1] % self.box_size[1]
+        self.nboxes = self.data.shape // self.box_size
+        extra_size = self.data.shape % self.box_size
 
-        if (xextra + yextra) != 0:
+        if np.sum(extra_size) != 0:
             # pad or crop the data
             if self.edge_method == 'pad':
-                data_ma = self._pad_data(yextra, xextra)
-                self.nyboxes = data_ma.shape[0] // self.box_size[0]
-                self.nxboxes = data_ma.shape[1] // self.box_size[1]
+                pad_size = self.box_size - extra_size
+                pad_width = ((0, pad_size[0]), (0, pad_size[1]))
+                data = np.pad(self.data, pad_width, mode='constant',
+                              constant_values=np.nan)
+                self.nboxes = data.shape // self.box_size
             elif self.edge_method == 'crop':
-                data_ma = self._crop_data()
+                crop_size = self.nboxes * self.box_size
+                crop_slc = index_exp[0:crop_size[0], 0:crop_size[1]]
+                data = self.data[crop_slc]
             else:
                 raise ValueError('edge_method must be "pad" or "crop"')
 
-        self.nboxes = self.nxboxes * self.nyboxes
+        self.box_npixels = np.prod(self.box_size)
+        self.nboxes_tot = np.prod(self.nboxes)
 
-        # a reshaped 2D masked array with mesh data along the x axis
-        mesh_data = np.ma.swapaxes(data_ma.reshape(
-            self.nyboxes, self.box_size[0],
-            self.nxboxes, self.box_size[1]),
-            1, 2).reshape(self.nyboxes * self.nxboxes,
-                          self.box_npixels)
+        # a reshaped 2D array with mesh data along the x axis
+        self.mesh_data = np.swapaxes(data.reshape(
+            self.nboxes[0], self.box_size[0],
+            self.nboxes[1], self.box_size[1]),
+            1, 2).reshape(self.nboxes_tot, self.box_npixels)
 
-        # first cut on rejecting meshes
-        self.mesh_idx = self._select_meshes(mesh_data)
-        self._mesh_data = mesh_data[self.mesh_idx, :]
+
+
+        # # first cut on rejecting meshes
+        # self.mesh_idx = self._select_meshes(mesh_data)
+        # self._mesh_data = mesh_data[self.mesh_idx, :]
 
     def _make_2d_array(self, data):
         """
