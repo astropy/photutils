@@ -174,43 +174,26 @@ class Background2D:
             data = data.data
         else:
             self.unit = None
-            data = np.asanyarray(data)
 
-        box_size = np.atleast_1d(box_size).astype(int)
-        if len(box_size) == 1:
-            box_size = np.repeat(box_size, 2)
+        self.data = self._validate_array(data, 'data', shape=False)
+        self.mask = self._validate_array(mask, 'mask')
+        self.coverage_mask = self._validate_array(coverage_mask,
+                                                  'coverage_mask')
+        self.total_mask = self._combine_masks()
+
+        box_size = self._process_size_input(box_size)
+        # box_size cannot be larger than the data array size
         self.box_size = (min(box_size[0], data.shape[0]),
                          min(box_size[1], data.shape[1]))
-        self.box_npixels = self.box_size[0] * self.box_size[1]
 
-        if mask is not None:
-            mask = np.asanyarray(mask)
-            if mask.shape != data.shape:
-                raise ValueError('mask and data must have the same shape')
-        if coverage_mask is not None:
-            coverage_mask = np.asanyarray(coverage_mask)
-            if coverage_mask.shape != data.shape:
-                raise ValueError('coverage_mask and data must have the same '
-                                 'shape')
-
+        self.fill_value = fill_value
         if exclude_percentile < 0 or exclude_percentile > 100:
             raise ValueError('exclude_percentile must be between 0 and 100 '
                              '(inclusive).')
-
-        self.data = data
-        self._mask = mask
-        self.coverage_mask = coverage_mask
-        self.fill_value = fill_value
-        self.mask = self._combine_masks()
         self.exclude_percentile = exclude_percentile
-
-        filter_size = np.atleast_1d(filter_size)
-        if len(filter_size) == 1:
-            filter_size = np.repeat(filter_size, 2)
-        self.filter_size = filter_size
+        self.filter_size = self._process_size_input(filter_size)
         self.filter_threshold = filter_threshold
         self.edge_method = edge_method
-
         self.sigma_clip = sigma_clip
         bkg_estimator.sigma_clip = None
         bkgrms_estimator.sigma_clip = None
@@ -218,21 +201,43 @@ class Background2D:
         self.bkgrms_estimator = bkgrms_estimator
         self.interpolator = interpolator
 
+        self.box_npixels = np.prod(self.box_size)
         self.background_mesh = None
         self.background_rms_mesh = None
 
         self._prepare_data()
         self._calc_bkg_bkgrms()
 
+    @staticmethod
+    def _process_size_input(array):
+        array = np.atleast_1d(array).astype(int)
+        if len(array) == 1:
+            array = np.repeat(array, 2)
+            if len(array) != 2:
+                raise ValueError('box_size and filter_size inputs must '
+                                 'have only 1 or 2 elements')
+        return array
+
+    def _validate_array(self, array, name, shape=True):
+        if name in ('mask', 'coverage_mask') and array is np.ma.nomask:
+            array = None
+        if array is not None:
+            array = np.asanyarray(array)
+            if array.ndim != 2:
+                raise ValueError(f'{name} must be a 2D array.')
+            if shape and array.shape != self.data.shape:
+                raise ValueError(f'data and {name} must have the same shape.')
+        return array
+
     def _combine_masks(self):
-        if self._mask is None and self.coverage_mask is None:
+        if self.mask is None and self.coverage_mask is None:
             return None
-        if self._mask is None:
+        if self.mask is None:
             return self.coverage_mask
         elif self.coverage_mask is None:
-            return self._mask
+            return self.mask
         else:
-            return np.logical_or(self._mask, self.coverage_mask)
+            return np.logical_or(self.mask, self.coverage_mask)
 
     def _pad_data(self, yextra, xextra):
         """
@@ -272,8 +277,8 @@ class Background2D:
         pad_mask[:, xidx:] = True
 
         # pad the input mask separately (there is no np.ma.pad function)
-        if self.mask is not None:
-            mask = np.pad(self.mask, pad_width, mode='constant',
+        if self.total_mask is not None:
+            mask = np.pad(self.total_mask, pad_width, mode='constant',
                           constant_values=[True])
             mask = np.logical_or(mask, pad_mask)
         else:
@@ -296,8 +301,8 @@ class Background2D:
         ny_crop = self.nyboxes * self.box_size[0]
         nx_crop = self.nxboxes * self.box_size[1]
         crop_slc = index_exp[0:ny_crop, 0:nx_crop]
-        if self.mask is not None:
-            mask = self.mask[crop_slc]
+        if self.total_mask is not None:
+            mask = self.total_mask[crop_slc]
         else:
             mask = False
 
@@ -366,7 +371,7 @@ class Background2D:
 
         if (xextra + yextra) == 0:
             # no resizing of the data is necessary
-            mask = self.mask
+            mask = self.total_mask
             if mask is None:
                 mask = False
             data_ma = np.ma.masked_array(self.data, mask=mask)
