@@ -206,7 +206,8 @@ class Background2D:
         self.background_rms_mesh = None
 
         self._prepare_data()
-        self._calc_bkg_bkgrms()
+        #self._reshape_data()
+        #self._calc_bkg_bkgrms()
 
     @staticmethod
     def _process_size_input(array):
@@ -355,27 +356,45 @@ class Background2D:
         """
         Prepare the data.
 
-        First, pad or crop the 2D data array so that there are an
-        integer number of meshes in both dimensions, creating a masked
-        array.
+        This method:
+          * converts the data to float dtype (and makes a copy)
+          * automatically masks non-finite values
+          * replaces all masked values with NaN
+          * converts MaskedArray to ndarray using NaN as masked values
+        """
+        # float array type is needed to insert nans into the array
+        self.data = self.data.astype(float)  # makes a copy
 
-        Then reshape into a different 2D masked array where each row
-        represents the data in a single mesh.  This method also performs
-        a first cut at rejecting certain meshes as specified by the
-        input keywords.
+        # include non-finite values in the total mask
+        bad_mask = ~np.isfinite(self.data)
+        if np.any(bad_mask):
+            self.total_mask |= bad_mask
+            warnings.warn('Input data contains invalid values (NaNs or '
+                          'infs), which were automatically masked.',
+                          AstropyUserWarning)
+
+        # replace all masked values with NaN
+        self.data[self.total_mask] = np.nan
+
+        # convert MaskedArray to ndarray using np.nan as masked values
+        if isinstance(self.data, np.ma.MaskedArray):
+            self.data = self.data.filled(np.nan)
+
+    def _reshape_data(self):
+        """
+        First, pad or crop the 2D data array so that there are an
+        integer number of meshes in both dimensions.
+
+        Then reshape into a different 2D array where each row represents
+        the data in a single mesh. This method also performs a first cut
+        at rejecting certain meshes as specified by the input keywords.
         """
         self.nyboxes = self.data.shape[0] // self.box_size[0]
         self.nxboxes = self.data.shape[1] // self.box_size[1]
         yextra = self.data.shape[0] % self.box_size[0]
         xextra = self.data.shape[1] % self.box_size[1]
 
-        if (xextra + yextra) == 0:
-            # no resizing of the data is necessary
-            mask = self.total_mask
-            if mask is None:
-                mask = False
-            data_ma = np.ma.masked_array(self.data, mask=mask)
-        else:
+        if (xextra + yextra) != 0:
             # pad or crop the data
             if self.edge_method == 'pad':
                 data_ma = self._pad_data(yextra, xextra)
