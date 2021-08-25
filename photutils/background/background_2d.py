@@ -176,7 +176,7 @@ class Background2D:
             self.unit = None
             data = np.asanyarray(data)
 
-        box_size = np.atleast_1d(box_size)
+        box_size = np.atleast_1d(box_size).astype(int)
         if len(box_size) == 1:
             box_size = np.repeat(box_size, 2)
         self.box_size = (min(box_size[0], data.shape[0]),
