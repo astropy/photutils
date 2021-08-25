@@ -7,5 +7,6 @@ image.
 from .base import *  # noqa
 from .daofinder import *  # noqa
 from .irafstarfinder import *  # noqa
+from .userstarfinder import *  # noqa
 from .peakfinder import *  # noqa
 from .starfinder import *  # noqa
