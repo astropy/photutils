@@ -210,7 +210,6 @@ class Background2D:
         self._compute_box_statistics()
         self._make_meshes()
         self._filter_meshes()
-        #self._calc_bkg_bkgrms()
 
     @staticmethod
     def _process_size_input(array):
@@ -296,6 +295,8 @@ class Background2D:
                 data = self.data[crop_slc]
             else:
                 raise ValueError('edge_method must be "pad" or "crop"')
+        else:
+            data = self.data
 
         self.box_npixels = np.prod(self.box_size)
         self.nboxes_tot = np.prod(self.nboxes)
@@ -374,7 +375,6 @@ class Background2D:
         #self._bkgrms1d = np.nanstd(self._box_data, axis=1)
         #self._bkg1d = self.bkg_estimator(self._box_data, axis=1)
         #self._bkgrms1d = self.bkgrms_estimator(self._box_data, axis=1)
-
 
     def _make_2d_array(self, data):
         """

@@ -70,10 +70,8 @@ class BkgZoomInterpolator:
             # The mesh is first resized to the larger padded-data size
             # (i.e., zoom_factor should be an integer) and then cropped
             # back to the final data size.
-            zoom_factor = (int(bkg2d_obj.nyboxes * bkg2d_obj.box_size[0]
-                               / mesh.shape[0]),
-                           int(bkg2d_obj.nxboxes * bkg2d_obj.box_size[1]
-                               / mesh.shape[1]))
+            zoom_factor = (bkg2d_obj.nboxes * bkg2d_obj.box_size
+                           // mesh.shape[0])
             result = zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
                           cval=self.cval)
 
@@ -81,9 +79,7 @@ class BkgZoomInterpolator:
                           0:bkg2d_obj.data.shape[1]]
         else:
             # The mesh is resized directly to the final data size.
-            zoom_factor = (float(bkg2d_obj.data.shape[0] / mesh.shape[0]),
-                           float(bkg2d_obj.data.shape[1] / mesh.shape[1]))
-
+            zoom_factor = np.array(bkg2d_obj.data.shape) / mesh.shape
             return zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
                         cval=self.cval)
 
