@@ -548,12 +548,11 @@ class Background2D:
     @lazyproperty
     def mesh_nmasked(self):
         """
-        A 2D (masked) array of the number of masked pixels in each mesh.
-        Only meshes included in the background estimation are included.
-        The array is masked only if meshes were excluded.
+        A 2D array of the number of masked pixels in each mesh. NaN
+        values indiciate where meshes were excluded.
         """
         return self._make_2d_array(
-            np.ma.count_masked(self._data_sigclip, axis=1))
+            np.count_nonzero(np.isnan(self._box_data), axis=1))
 
     @lazyproperty
     def background_mesh_ma(self):
@@ -562,10 +561,10 @@ class Background2D:
         interpolation.  The array is masked only if meshes were
         excluded.
         """
-        if len(self._bkg1d) == self.nboxes:
+        if len(self._bkg1d) == self.nboxes_tot:
             return self.background_mesh
         else:
-            return self._make_2d_array(self._bkg1d)  # masked array
+            return self._make_2d_array(self._bkg1d)
 
     @lazyproperty
     def background_rms_mesh_ma(self):
@@ -574,10 +573,10 @@ class Background2D:
         interpolation.  The array is masked only if meshes were
         excluded.
         """
-        if len(self._bkgrms1d) == self.nboxes:
+        if len(self._bkgrms1d) == self.nboxes_tot:
             return self.background_rms_mesh
         else:
-            return self._make_2d_array(self._bkgrms1d)  # masked array
+            return self._make_2d_array(self._bkgrms1d)
 
     @lazyproperty
     def background_median(self):
