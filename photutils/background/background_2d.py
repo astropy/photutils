@@ -537,12 +537,12 @@ class Background2D:
 
     @lazyproperty
     def _mesh_ypos(self):
-        return (self.mesh_yidx * self.box_size[0]
+        return (self._mesh_idx[0] * self.box_size[0]
                 + (self.box_size[0] - 1) / 2.)
 
     @lazyproperty
     def _mesh_xpos(self):
-        return (self.mesh_xidx * self.box_size[1]
+        return (self._mesh_idx[1] * self.box_size[1]
                 + (self.box_size[1] - 1) / 2.)
 
     @lazyproperty
