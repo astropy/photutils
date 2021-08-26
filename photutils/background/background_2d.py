@@ -19,8 +19,6 @@ from .core import SExtractorBackground, StdBackgroundRMS
 from .interpolators import BkgZoomInterpolator
 from ..utils import ShepardIDWInterpolator
 
-SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
-
 __all__ = ['Background2D']
 
 __doctest_requires__ = {('Background2D'): ['scipy']}
@@ -166,7 +164,7 @@ class Background2D:
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
                  fill_value=0.0, exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, edge_method='pad',
-                 sigma_clip=SIGMA_CLIP,
+                 sigma_clip=SigmaClip(sigma=3.0, maxiters=10),
                  bkg_estimator=SExtractorBackground(sigma_clip=None),
                  bkgrms_estimator=StdBackgroundRMS(sigma_clip=None),
                  interpolator=BkgZoomInterpolator()):
