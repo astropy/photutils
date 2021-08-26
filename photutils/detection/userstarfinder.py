@@ -16,7 +16,6 @@ from ..utils.exceptions import NoDetectionsWarning
 __all__ = ['UserStarFinder']
 
 
-
 class UserStarFinder(StarFinderBase):
     """
     Measure stars in an image using the DAOFIND (`Stetson 1987
@@ -229,9 +228,9 @@ class UserStarFinder(StarFinderBase):
         """
         if self.coords:
             star_cutouts = get_cutouts(data, self.coords,
-                                        self.kernel,
-                                        self.threshold_eff,
-                                        exclude_border=self.exclude_border)
+                                       self.kernel,
+                                       self.threshold_eff,
+                                       exclude_border=self.exclude_border)
         else:
             star_cutouts = _find_stars(data, self.kernel, self.threshold_eff,
                                        mask=mask,
