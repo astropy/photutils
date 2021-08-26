@@ -258,13 +258,17 @@ class Background2D:
         # include non-finite values in the total mask
         bad_mask = ~np.isfinite(self.data)
         if np.any(bad_mask):
-            self.total_mask |= bad_mask
+            if self.total_mask is None:
+                self.total_mask = bad_mask
+            else:
+                self.total_mask |= bad_mask
             warnings.warn('Input data contains invalid values (NaNs or '
                           'infs), which were automatically masked.',
                           AstropyUserWarning)
 
         # replace all masked values with NaN
-        self.data[self.total_mask] = np.nan
+        if self.total_mask is not None:
+            self.data[self.total_mask] = np.nan
 
         # convert MaskedArray to ndarray using np.nan as masked values
         if isinstance(self.data, np.ma.MaskedArray):
@@ -371,10 +375,9 @@ class Background2D:
         import bottleneck
         self._bkg1d = bottleneck.nanmedian(self._box_data, axis=1)
         self._bkgrms1d = bottleneck.nanstd(self._box_data, axis=1)
-        #self._bkg1d = np.nanmedian(self._box_data, axis=1)
-        #self._bkgrms1d = np.nanstd(self._box_data, axis=1)
-        #self._bkg1d = self.bkg_estimator(self._box_data, axis=1)
-        #self._bkgrms1d = self.bkgrms_estimator(self._box_data, axis=1)
+        # TODO
+        # self._bkg1d = self.bkg_estimator(self._box_data, axis=1)
+        # self._bkgrms1d = self.bkgrms_estimator(self._box_data, axis=1)
 
     def _make_2d_array(self, data):
         """
@@ -392,10 +395,6 @@ class Background2D:
             A 2D array. Pixels not defined in ``mesh_idx`` are assigned
             a value of np.nan.
         """
-        #if data.shape != self.mesh_idx.shape:
-        #    raise ValueError('data and mesh_idx must have the same shape')
-        #if np.ma.is_masked(data):
-        #    raise ValueError('data must not be a masked array')
         data2d = np.full(self.nboxes, np.nan)
         data2d[self._mesh_idx] = data
         return data2d
@@ -534,16 +533,14 @@ class Background2D:
             self.background_rms_mesh = self._selective_filter(
                 self.background_rms_mesh, indices)
 
+    @lazyproperty
+    def _mesh_yxpos(self):
+        box_cen = (self.box_size - 1) / 2.
+        return (self._mesh_idx * self.box_size[:, None]) + box_cen[:, None]
 
     @lazyproperty
-    def _mesh_ypos(self):
-        return (self._mesh_idx[0] * self.box_size[0]
-                + (self.box_size[0] - 1) / 2.)
-
-    @lazyproperty
-    def _mesh_xpos(self):
-        return (self._mesh_idx[1] * self.box_size[1]
-                + (self.box_size[1] - 1) / 2.)
+    def _mesh_xypos(self):
+        return np.flipud(self._mesh_yxpos)
 
     @lazyproperty
     def mesh_nmasked(self):
@@ -658,11 +655,10 @@ class Background2D:
         kwargs['color'] = color
         if axes is None:
             axes = plt.gca()
-        axes.scatter(self._mesh_xpos, self._mesh_ypos, marker=marker,
-                     color=color)
+        axes.scatter(*self._mesh_xypos, marker=marker, color=color)
         if outlines:
             from ..aperture import RectangularAperture
-            xypos = np.column_stack([self._mesh_xpos, self._mesh_ypos])
+            xypos = np.column_stack(self._mesh_xypos)
             apers = RectangularAperture(xypos, self.box_size[1],
                                         self.box_size[0], 0.)
             apers.plot(axes=axes, **kwargs)
