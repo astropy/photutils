@@ -5,6 +5,7 @@ RMS in an image.
 """
 
 from itertools import product
+import warnings
 
 from astropy.nddata import NDData
 from astropy.stats import SigmaClip
@@ -30,7 +31,7 @@ class Background2D:
     image.
 
     The background is estimated using sigma-clipped statistics in each
-    mesh of a grid that covers the input ``data`` to create a
+    box of a grid that covers the input ``data`` to create a
     low-resolution, and possibly irregularly-gridded, background map.
 
     The final background map is calculated by interpolating the
@@ -75,18 +76,18 @@ class Background2D:
         maps where the input ``coverage_mask`` is `True`.
 
     exclude_percentile : float in the range of [0, 100], optional
-        The percentage of masked pixels in a mesh, used as a threshold
-        for determining if the mesh is excluded. If a mesh has
+        The percentage of masked pixels in a box, used as a threshold
+        for determining if the box is excluded. If a box has
         more than ``exclude_percentile`` percent of its pixels
         masked then it will be excluded from the low-resolution map.
         Masked pixels include those from the input ``mask`` and
         ``coverage_mask``, those resulting from the data padding
         (i.e., if ``edge_method='pad'``), and those resulting from
         any sigma clipping (i.e., if ``sigma_clip`` is used). Setting
-        ``exclude_percentile=0`` will exclude meshes that have any
+        ``exclude_percentile=0`` will exclude boxes that have any
         masked pixels. Setting ``exclude_percentile=100`` will only
-        exclude meshes that are completely masked. Note that completely
-        masked meshes are *always* excluded. For best results,
+        exclude boxes that are completely masked. Note that completely
+        masked boxes are *always* excluded. For best results,
         ``exclude_percentile`` should be kept as low as possible (as
         long as there are sufficient pixels for reasonable statistical
         estimates). The default is 10.0.
@@ -101,9 +102,9 @@ class Background2D:
 
     filter_threshold : int, optional
         The threshold value for used for selective median filtering of
-        the low-resolution 2D background map.  The median filter will be
-        applied to only the background meshes with values larger than
-        ``filter_threshold``.  Set to `None` to filter all meshes
+        the low-resolution 2D background map. The median filter will
+        be applied to only the background boxes with values larger
+        than ``filter_threshold``. Set to `None` to filter all boxes
         (default).
 
     edge_method : {'pad', 'crop'}, optional
@@ -125,7 +126,7 @@ class Background2D:
     bkg_estimator : callable, optional
         A callable object (a function or e.g., an instance of any
         `~photutils.background.BackgroundBase` subclass) used to
-        estimate the background in each of the meshes.  The callable
+        estimate the background in each of the boxes.  The callable
         object must take in a 2D `~numpy.ndarray` or
         `~numpy.ma.MaskedArray` and have an ``axis`` keyword
         (internally, the background will be calculated along
@@ -138,7 +139,7 @@ class Background2D:
     bkgrms_estimator : callable, optional
         A callable object (a function or e.g., an instance of any
         `~photutils.background.BackgroundRMSBase` subclass) used to
-        estimate the background RMS in each of the meshes.  The callable
+        estimate the background RMS in each of the boxes.  The callable
         object must take in a 2D `~numpy.ndarray` or
         `~numpy.ma.MaskedArray` and have an ``axis`` keyword
         (internally, the background RMS will be calculated along
@@ -150,15 +151,15 @@ class Background2D:
 
     interpolator : callable, optional
         A callable object (a function or object) used to interpolate the
-        low-resolution background or background RMS mesh to the
+        low-resolution background or background RMS image to the
         full-size background or background RMS maps.  The default is an
         instance of `BkgZoomInterpolator`.
 
     Notes
     -----
-    If there is only one background mesh element (i.e., ``box_size`` is
-    the same size as the ``data``), then the background map will simply
-    be a constant image.
+    If there is only one background box element (i.e., ``box_size`` is
+    the same size as (or larger than) the ``data``), then the background
+    map will simply be a constant image.
     """
 
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
@@ -206,6 +207,8 @@ class Background2D:
 
         self._prepare_data()
         self._reshape_data()
+        self._select_initial_boxes()
+        self._compute_box_statistics()
         #self._calc_bkg_bkgrms()
 
     @staticmethod
@@ -267,88 +270,13 @@ class Background2D:
         if isinstance(self.data, np.ma.MaskedArray):
             self.data = self.data.filled(np.nan)
 
-    def _pad_data(self, extra_size):
-        """
-        Pad the data to have an integer number of background meshes of
-        size ``box_size`` in both dimensions.
-
-        The padding is added on the top and/or right edges.
-
-        Parameters
-        ----------
-        extra_size : tuple of 2 int
-            The modulus of the data size and the box size in both the
-            ``y`` and ``x`` dimensions.  This is the number of extra
-            pixels beyond a multiple of the box size in the ``y`` and
-            ``x`` dimensions.
-        """
-        pad_size = self.box_size - extra_size
-        pad_width = ((0, pad_size[0]), (0, pad_size[1]))
-        return np.pad(self.data, pad_width, mode='constant',
-                      constant_values=np.nan)
-
-    def _crop_data(self):
-        """
-        Crop the data to have an integer number of background meshes of
-        size ``box_size`` in both dimensions.
-
-        The data are cropped on the top and/or right edges.
-        """
-        crop_size = self.nboxes * self.box_size
-        crop_slc = index_exp[0:crop_size[0], 0:crop_size[1]]
-        return self.data[crop_slc]
-
-    def _select_meshes(self, data):
-        """
-        Define the x and y indices with respect to the low-resolution
-        mesh image of the meshes to use for the background
-        interpolation.
-
-        The ``exclude_percentile`` keyword determines which meshes are
-        not used for the background interpolation.
-
-        Parameters
-        ----------
-        data : 2D `~numpy.ma.MaskedArray`
-            A 2D array where the y dimension represents each mesh and
-            the x dimension represents the data in each mesh.
-
-        Returns
-        -------
-        mesh_idx : 1D `~numpy.ndarray`
-            The 1D mesh indices.
-        """
-        # the number of masked pixels in each mesh
-        nmasked = np.ma.count_masked(data, axis=1)
-
-        # meshes that contain more than ``exclude_percentile`` percent
-        # masked pixels are excluded:
-        #   - for exclude_percentile=0, good meshes will be only where
-        #     nmasked=0
-        #   - meshes where nmasked=self.box_npixels are *always* excluded
-        #     (second conditional needed for exclude_percentile=100)
-        threshold_npixels = self.exclude_percentile / 100. * self.box_npixels
-        mesh_idx = np.where((nmasked <= threshold_npixels)
-                            & (nmasked != self.box_npixels))[0]  # good meshes
-
-        if mesh_idx.size == 0:
-            raise ValueError('All meshes contain > {0} ({1} percent per '
-                             'mesh) masked pixels.  Please check your data '
-                             'or increase "exclude_percentile" to allow more '
-                             'meshes to be included.'
-                             .format(threshold_npixels,
-                                     self.exclude_percentile))
-
-        return mesh_idx
-
     def _reshape_data(self):
         """
         First, pad or crop the 2D data array so that there are an
-        integer number of meshes in both dimensions.
+        integer number of boxes in both dimensions.
 
         Then reshape into a different 2D array where each row represents
-        the data in a single mesh. This method also performs a first cut
-        at rejecting certain meshes as specified by the input keywords.
+        the data in a single box.
         """
         self.nboxes = self.data.shape // self.box_size
         extra_size = self.data.shape % self.box_size
@@ -371,17 +299,70 @@ class Background2D:
         self.box_npixels = np.prod(self.box_size)
         self.nboxes_tot = np.prod(self.nboxes)
 
-        # a reshaped 2D array with mesh data along the x axis
-        self.mesh_data = np.swapaxes(data.reshape(
+        # a reshaped 2D array with box data along the x axis
+        self._box_data = np.swapaxes(data.reshape(
             self.nboxes[0], self.box_size[0],
             self.nboxes[1], self.box_size[1]),
             1, 2).reshape(self.nboxes_tot, self.box_npixels)
 
+    @lazyproperty
+    def _box_npixels_threshold(self):
+        # boxes that are completely masked are always excluded.
+        # boxes that contain more than ``exclude_percentile`` percent
+        # masked pixels are also excluded:
+        #   - for exclude_percentile=0, only boxes where nmasked=0 will
+        #     be included
+        #   - for exclude_percentile=100, all boxes will be included
+        #     *unless* they are completely masked
+        threshold = self.exclude_percentile / 100. * self.box_npixels
 
+        # always exclude completely masked boxes
+        if self.exclude_percentile == 100:
+            threshold += 1
+        return threshold
 
-        # # first cut on rejecting meshes
-        # self.mesh_idx = self._select_meshes(mesh_data)
-        # self._mesh_data = mesh_data[self.mesh_idx, :]
+    def _get_box_indices(self):
+        """
+        Define the x and y indices of the low-resolution box image that
+        are used to compute background statistics.
+
+        The ``exclude_percentile`` keyword determines which boxes are
+        not used for the background interpolation.
+        """
+        # the number of NaN pixels in each box
+        nmasked = np.count_nonzero(np.isnan(self._box_data), axis=1)
+
+        # define indices of good (included) boxes
+        box_idx = np.where(nmasked <= self._box_npixels_threshold)[0]
+
+        if box_idx.size == 0:
+            raise ValueError('All boxes contain > {0} ({1} percent per '
+                             'box) masked pixels (or all are completely '
+                             'masked). Please check your data or increase '
+                             '"exclude_percentile" to allow more boxes to '
+                             'be included.'
+                             .format(self._box_npixels_threshold,
+                                     self.exclude_percentile))
+
+        return box_idx
+
+    def _select_initial_boxes(self):
+        # perform a first cut on rejecting boxes
+        self._box_idx = self._get_box_indices()
+        if self._box_idx.size != self._box_data.shape[0]:
+            self._box_data = self._box_data[self._box_idx, :]
+
+    def _compute_box_statistics(self):
+        if self.sigma_clip is not None:
+            self._box_data = self.sigma_clip(self._box_data, axis=1,
+                                             masked=False)
+
+        # perform box rejection on sigma-clipped data (i.e., for any
+        # newly-masked pixels)
+        idx = self._get_box_indices()
+        self._box_idx = self._box_idx[idx]
+        if self._box_idx.size != self._box_data.shape[0]:
+            self._box_data = self._box_data[idx, :]
 
     def _make_2d_array(self, data):
         """
