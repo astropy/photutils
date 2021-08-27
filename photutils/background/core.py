@@ -68,11 +68,11 @@ class BackgroundBase(metaclass=abc.ABCMeta):
     def __init__(self, sigma_clip=SIGMA_CLIP):
         self.sigma_clip = sigma_clip
 
-    def __call__(self, data, axis=None):
-        return self.calc_background(data, axis=axis)
+    def __call__(self, data, axis=None, masked=False):
+        return self.calc_background(data, axis=axis, masked=masked)
 
     @abc.abstractmethod
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         """
         Calculate the background value.
 
@@ -82,17 +82,23 @@ class BackgroundBase(metaclass=abc.ABCMeta):
             The array for which to calculate the background value.
 
         axis : int or `None`, optional
-            The array axis along which the background is calculated.  If
+            The array axis along which the background is calculated. If
             `None`, then the entire array is used.
+
+        masked : bool, optional
+            If `True`, then a `~numpy.ma.MaskedArray` is returned. If
+            `False`, then a `~numpy.ndarray` is returned, where masked
+            values have a value of NaN. The default is `False`.
 
         Returns
         -------
-        result : float or `~numpy.ma.MaskedArray`
-            The calculated background value.  If ``axis`` is `None` then
-            a scalar will be returned, otherwise a
-            `~numpy.ma.MaskedArray` will be returned.
+        result : float, `~numpy.ndarray`, or `~numpy.ma.MaskedArray`
+            The calculated background value. If ``masked`` is
+            `False`, then a `~numpy.ndarray` is returned, otherwise a
+            `~numpy.ma.MaskedArray` is returned. A scalar result is
+            always returned as a float.
         """
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        raise NotImplementedError()  # pragma: no cover
 
 
 class BackgroundRMSBase(metaclass=abc.ABCMeta):
@@ -111,11 +117,11 @@ class BackgroundRMSBase(metaclass=abc.ABCMeta):
     def __init__(self, sigma_clip=SIGMA_CLIP):
         self.sigma_clip = sigma_clip
 
-    def __call__(self, data, axis=None):
-        return self.calc_background_rms(data, axis=axis)
+    def __call__(self, data, axis=None, masked=False):
+        return self.calc_background_rms(data, axis=axis, masked=masked)
 
     @abc.abstractmethod
-    def calc_background_rms(self, data, axis=None):
+    def calc_background_rms(self, data, axis=None, masked=False):
         """
         Calculate the background RMS value.
 
@@ -128,14 +134,20 @@ class BackgroundRMSBase(metaclass=abc.ABCMeta):
             The array axis along which the background RMS is calculated.
             If `None`, then the entire array is used.
 
+        masked : bool, optional
+            If `True`, then a `~numpy.ma.MaskedArray` is returned. If
+            `False`, then a `~numpy.ndarray` is returned, where masked
+            values have a value of NaN. The default is `False`.
+
         Returns
         -------
-        result : float or `~numpy.ma.MaskedArray`
-            The calculated background RMS value.  If ``axis`` is `None`
-            then a scalar will be returned, otherwise a
-            `~numpy.ma.MaskedArray` will be returned.
+        result : float, `~numpy.ndarray`, or `~numpy.ma.MaskedArray`
+            The calculated background RMS value. If ``masked`` is
+            `False`, then a `~numpy.ndarray` is returned, otherwise a
+            `~numpy.ma.MaskedArray` is returned. A scalar result is
+            always returned as a float.
         """
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        raise NotImplementedError()  # pragma: no cover
 
 
 class MeanBackground(BackgroundBase):
