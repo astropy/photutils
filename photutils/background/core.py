@@ -242,11 +242,23 @@ class MedianBackground(BackgroundBase):
     49.5
     """
 
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return _masked_median(data, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = np.nanmedian(data, axis=axis)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class ModeEstimatorBackground(BackgroundBase):
@@ -295,11 +307,24 @@ class ModeEstimatorBackground(BackgroundBase):
         self.median_factor = median_factor
         self.mean_factor = mean_factor
 
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
-        return ((self.median_factor * _masked_median(data, axis=axis))
-                - (self.mean_factor * np.ma.mean(data, axis=axis)))
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
+
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = ((self.median_factor * np.nanmedian(data, axis=axis))
+                      - (self.mean_factor * np.nanmean(data, axis=axis)))
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class MMMBackground(ModeEstimatorBackground):
@@ -343,8 +368,8 @@ class MMMBackground(ModeEstimatorBackground):
     """
 
     def __init__(self, **kwargs):
-        kwargs['median_factor'] = 3.
-        kwargs['mean_factor'] = 2.
+        kwargs['median_factor'] = 3.0
+        kwargs['mean_factor'] = 2.0
         super().__init__(**kwargs)
 
 
