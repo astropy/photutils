@@ -5,6 +5,7 @@ RMS in an array of any dimension.
 """
 
 import abc
+import warnings
 
 from astropy.stats import (biweight_location, biweight_scale, mad_std,
                            SigmaClip)
@@ -186,11 +187,23 @@ class MeanBackground(BackgroundBase):
     49.5
     """
 
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return np.ma.mean(data, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = np.nanmean(data, axis=axis)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class MedianBackground(BackgroundBase):
