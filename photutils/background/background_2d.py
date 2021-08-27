@@ -4,7 +4,6 @@ This module defines classes to estimate the 2D background and background
 RMS in an image.
 """
 
-from itertools import product
 import warnings
 
 from astropy.nddata import NDData
@@ -444,8 +443,8 @@ class Background2D:
         yx = np.column_stack(self._mesh_idx)
         interp_func = ShepardIDWInterpolator(yx, data)
 
-        coords = np.array(list(product(range(self.nboxes[0]),
-                                       range(self.nboxes[1]))))
+        ny, nx = self.nboxes
+        coords = np.indices((nx, ny)).T.reshape(nx * ny, 2)[:, [1, 0]]
         img1d = interp_func(coords, n_neighbors=n_neighbors, power=power,
                             eps=eps, reg=reg)
 
