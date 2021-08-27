@@ -140,7 +140,7 @@ class BkgIDWInterpolator:
             return np.zeros_like(bkg2d_obj.data) + np.min(mesh)
 
         yxpos = np.column_stack(bkg2d_obj._mesh_yxpos)
-        mesh1d = mesh[bkg2d_obj._box_idx]
+        mesh1d = mesh[bkg2d_obj._mesh_idx]
         interp_func = ShepardIDWInterpolator(yxpos, mesh1d,
                                              leafsize=self.leafsize)
 

@@ -372,9 +372,12 @@ class Background2D:
         if self._box_idx.size != self._box_data.shape[0]:
             self._box_data = self._box_data[idx, :]
 
-        import bottleneck
-        self._bkg1d = bottleneck.nanmedian(self._box_data, axis=1)
-        self._bkgrms1d = bottleneck.nanstd(self._box_data, axis=1)
+        self._bkg1d = np.nanmean(self._box_data, axis=1)
+        self._bkgrms1d = np.nanstd(self._box_data, axis=1)
+        #import bottleneck
+        #self._bkg1d = bottleneck.nanmean(self._box_data, axis=1)
+        #self._bkgrms1d = bottleneck.nanstd(self._box_data, axis=1)
+
         # TODO
         # self._bkg1d = self.bkg_estimator(self._box_data, axis=1)
         # self._bkgrms1d = self.bkgrms_estimator(self._box_data, axis=1)

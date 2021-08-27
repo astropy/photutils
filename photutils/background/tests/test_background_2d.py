@@ -6,7 +6,9 @@ Tests for the background_2d module.
 import itertools
 
 from astropy.nddata import NDData, CCDData
+from astropy.tests.helper import catch_warnings
 import astropy.units as u
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 import pytest
@@ -144,23 +146,27 @@ class TestBackground2D:
 
         assert_equal(bkg1.background_mesh, bkg1.background_mesh_ma)
         assert_equal(bkg1.background_rms_mesh, bkg1.background_rms_mesh_ma)
-        assert not np.ma.is_masked(bkg1.mesh_nmasked)
+        assert np.count_nonzero(np.isnan(bkg1.mesh_nmasked)) == 0
 
         bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
                             bkg_estimator=MeanBackground())
 
-        assert np.ma.count(bkg2.background_mesh_ma) < bkg2.nboxes
-        assert np.ma.count(bkg2.background_rms_mesh_ma) < bkg2.nboxes
-        assert np.ma.is_masked(bkg2.mesh_nmasked)
+        assert (np.count_nonzero(~np.isnan(bkg2.background_mesh_ma))
+                < bkg2.nboxes_tot)
+        assert (np.count_nonzero(~np.isnan(bkg2.background_rms_mesh_ma))
+                < bkg2.nboxes_tot)
+        assert np.count_nonzero(np.isnan(bkg2.mesh_nmasked)) == 1
 
     @pytest.mark.parametrize('fill_value', [0., np.nan, -1.])
     def test_coverage_mask(self, fill_value):
         data = np.copy(DATA)
         data[:50, :50] = np.nan
         mask = np.isnan(data)
-        bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
-                            coverage_mask=mask, fill_value=fill_value,
-                            bkg_estimator=MeanBackground())
+
+        with catch_warnings(AstropyUserWarning) as warning_lines:
+            bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
+                                coverage_mask=mask, fill_value=fill_value,
+                                bkg_estimator=MeanBackground())
         assert_equal(bkg1.background[:50, :50], fill_value)
         assert_equal(bkg1.background_rms[:50, :50], fill_value)
 
