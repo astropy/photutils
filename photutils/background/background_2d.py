@@ -29,8 +29,8 @@ class Background2D:
     Class to estimate a 2D background and background RMS noise in an
     image.
 
-    The background is estimated using sigma-clipped statistics in each
-    box of a grid that covers the input ``data`` to create a
+    The background is estimated using (sigma-clipped) statistics in
+    each box of a grid that covers the input ``data`` to create a
     low-resolution, and possibly irregularly-gridded, background map.
 
     The final background map is calculated by interpolating the
@@ -76,20 +76,18 @@ class Background2D:
 
     exclude_percentile : float in the range of [0, 100], optional
         The percentage of masked pixels in a box, used as a threshold
-        for determining if the box is excluded. If a box has
-        more than ``exclude_percentile`` percent of its pixels
-        masked then it will be excluded from the low-resolution map.
+        for determining if the box is excluded. If a box has more
+        than ``exclude_percentile`` percent of its pixels masked
+        then it will be excluded from the low-resolution map.
         Masked pixels include those from the input ``mask`` and
         ``coverage_mask``, those resulting from the data padding
-        (i.e., if ``edge_method='pad'``), and those resulting from
-        any sigma clipping (i.e., if ``sigma_clip`` is used). Setting
-        ``exclude_percentile=0`` will exclude boxes that have any
-        masked pixels. Setting ``exclude_percentile=100`` will only
-        exclude boxes that are completely masked. Note that completely
-        masked boxes are *always* excluded. For best results,
-        ``exclude_percentile`` should be kept as low as possible (as
-        long as there are sufficient pixels for reasonable statistical
-        estimates). The default is 10.0.
+        (i.e., if ``edge_method='pad'``), and those resulting
+        from sigma clipping (if ``sigma_clip`` is used). Setting
+        ``exclude_percentile=0`` will exclude boxes that have any masked
+        pixels. Note that completely masked boxes are always excluded.
+        For best results, ``exclude_percentile`` should be kept as
+        low as possible (as long as there are sufficient pixels for
+        reasonable statistical estimates). The default is 10.0.
 
     filter_size : int or array_like (int), optional
         The window size of the 2D median filter to apply to the
@@ -113,46 +111,56 @@ class Background2D:
         exact multiple of ``box_size`` in both dimensions.
 
         * ``'pad'``: pad the image along the top and/or right edges.
-          This is the default and recommended method.
+          This is the default and recommended method. Ideally, the
+          ``box_size`` should be chosen such that an integer number
+          of boxes is only slightly larger than the ``data`` size to
+          minimize the amount of padding.
         * ``'crop'``: crop the image along the top and/or right edges.
+          This method should be used sparingly. Best results will occur
+          when ``box_size`` is chosen such that an integer number of
+          boxes is only slighly smaller than the ``data`` size to
+          minimize the amount of cropping.
 
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters.  If `None` then no sigma clipping will be
-        performed.  The default is to perform sigma clipping with
+        clipping parameters. If `None` then no sigma clipping will
+        be performed. The default is to perform sigma clipping with
         ``sigma=3.0`` and ``maxiters=10``.
 
     bkg_estimator : callable, optional
-        A callable object (a function or e.g., an instance of any
-        `~photutils.background.BackgroundBase` subclass) used to
-        estimate the background in each of the boxes.  The callable
-        object must take in a 2D `~numpy.ndarray` or
-        `~numpy.ma.MaskedArray` and have an ``axis`` keyword
-        (internally, the background will be calculated along
-        ``axis=1``).  The callable object must return a 1D
-        `~numpy.ma.MaskedArray`.  If ``bkg_estimator`` includes sigma
-        clipping, it will be ignored (use the ``sigma_clip`` keyword to
-        define sigma clipping).  The default is an instance of
+        A callable object (a function or e.g., an instance of
+        any `~photutils.background.BackgroundBase` subclass)
+        used to estimate the background in each of the boxes.
+        The callable object must take in a 2D `~numpy.ndarray`
+        or `~numpy.ma.MaskedArray` and have an ``axis`` keyword.
+        Internally, the background will be calculated along ``axis=1``
+        and in this case the callable object must return a 1D
+        `~numpy.ndarray`, where np.nan values are used for masked
+        pixels. If ``bkg_estimator`` includes sigma clipping, it
+        will be ignored (use the ``sigma_clip`` keyword here to
+        define sigma clipping). The default is an instance of
         `~photutils.background.SExtractorBackground`.
 
     bkgrms_estimator : callable, optional
-        A callable object (a function or e.g., an instance of any
-        `~photutils.background.BackgroundRMSBase` subclass) used to
-        estimate the background RMS in each of the boxes.  The callable
-        object must take in a 2D `~numpy.ndarray` or
-        `~numpy.ma.MaskedArray` and have an ``axis`` keyword
-        (internally, the background RMS will be calculated along
-        ``axis=1``).  The callable object must return a 1D
-        `~numpy.ma.MaskedArray`.  If ``bkgrms_estimator`` includes sigma
-        clipping, it will be ignored (use the ``sigma_clip`` keyword to
-        define sigma clipping).  The default is an instance of
+        A callable object (a function or e.g., an instance of
+        any `~photutils.background.BackgroundRMSBase` subclass)
+        used to estimate the background RMS in each of the boxes.
+        The callable object must take in a 2D `~numpy.ndarray`
+        or `~numpy.ma.MaskedArray` and have an ``axis`` keyword.
+        Internally, the background RMS will be calculated along
+        ``axis=1`` and in this case the callable object must return a
+        1D `~numpy.ndarray`, where np.nan values are used for masked
+        pixels. If ``bkgrms_estimator`` includes sigma clipping,
+        it will be ignored (use the ``sigma_clip`` keyword here
+        to define sigma clipping). The default is an instance of
         `~photutils.background.StdBackgroundRMS`.
 
     interpolator : callable, optional
-        A callable object (a function or object) used to interpolate the
-        low-resolution background or background RMS image to the
-        full-size background or background RMS maps.  The default is an
-        instance of `BkgZoomInterpolator`.
+        A callable object (a function or object) used to interpolate
+        the low-resolution background or background RMS image to the
+        full-size background or background RMS maps. The default
+        is an instance of `BkgZoomInterpolator`, which uses the
+        `scipy.ndimage.zoom` function.
 
     Notes
     -----
