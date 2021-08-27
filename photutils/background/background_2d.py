@@ -209,15 +209,18 @@ class Background2D:
         self.bkgrms_estimator = bkgrms_estimator
         self.interpolator = interpolator
 
+        self.nboxes = None
+        self.box_npixels = None
+        self.nboxes_tot = None
+        self._box_data = None
+        self._box_idx = None
+        self._bkg1d = None
+        self._bkgrms1d = None
+        self._mesh_idx = None
         self.background_mesh = None
         self.background_rms_mesh = None
 
-        self._prepare_data()
-        self._reshape_data()
-        self._select_initial_boxes()
-        self._compute_box_statistics()
-        self._make_meshes()
-        self._filter_meshes()
+        self._make_lowres_mesh_images()
 
     @staticmethod
     def _process_size_input(array):
@@ -385,8 +388,8 @@ class Background2D:
 
     def _make_2d_array(self, data):
         """
-        Convert a 1D array of values to a 2D array given the 1D indices
-        in ``self._box_idx``.
+        Convert a 1D array of values to a 2D array given the indices in
+        ``self._mesh_idx``.
 
         Parameters
         ----------
@@ -536,6 +539,17 @@ class Background2D:
                 self.background_mesh, indices)
             self.background_rms_mesh = self._selective_filter(
                 self.background_rms_mesh, indices)
+
+    def _make_lowres_mesh_images(self):
+        """
+        Make the low-resolution background and background RMS images.
+        """
+        self._prepare_data()
+        self._reshape_data()
+        self._select_initial_boxes()
+        self._compute_box_statistics()
+        self._make_meshes()
+        self._filter_meshes()
 
     @lazyproperty
     def _mesh_yxpos(self):
