@@ -520,10 +520,10 @@ class Background2D:
         if self.filter_threshold is None:
             # filter the entire arrays
             self.background_mesh = generic_filter(
-                self.background_mesh, np.median, size=self.filter_size,
+                self.background_mesh, np.nanmedian, size=self.filter_size,
                 mode='constant', cval=np.nan)
             self.background_rms_mesh = generic_filter(
-                self.background_rms_mesh, np.median,
+                self.background_rms_mesh, np.nanmedian,
                 size=self.filter_size, mode='constant', cval=np.nan)
         else:
             # selectively filter
