@@ -550,11 +550,23 @@ class StdBackgroundRMS(BackgroundRMSBase):
     28.86607004772212
     """
 
-    def calc_background_rms(self, data, axis=None):
+    def calc_background_rms(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return np.ma.std(data, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = np.nanstd(data, axis=axis)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class MADStdBackgroundRMS(BackgroundRMSBase):
@@ -604,11 +616,23 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
     37.06505546264005
     """
 
-    def calc_background_rms(self, data, axis=None):
+    def calc_background_rms(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return mad_std(data, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = mad_std(data, axis=axis, ignore_nan=True)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class BiweightScaleBackgroundRMS(BackgroundRMSBase):
@@ -658,8 +682,21 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
         self.c = c
         self.M = M
 
-    def calc_background_rms(self, data, axis=None):
+    def calc_background_rms(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return biweight_scale(data, c=self.c, M=self.M, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = biweight_scale(data, c=self.c, M=self.M, axis=axis,
+                                    ignore_nan=True)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
