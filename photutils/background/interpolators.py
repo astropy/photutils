@@ -71,7 +71,7 @@ class BkgZoomInterpolator:
             # (i.e., zoom_factor should be an integer) and then cropped
             # back to the final data size.
             zoom_factor = (bkg2d_obj.nboxes * bkg2d_obj.box_size
-                           // mesh.shape[0])
+                           // mesh.shape)
             result = zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
                           cval=self.cval)
 
