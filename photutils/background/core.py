@@ -415,26 +415,36 @@ class SExtractorBackground(BackgroundBase):
     49.5
     """
 
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        _median = np.atleast_1d(_masked_median(data, axis=axis))
-        _mean = np.atleast_1d(np.ma.mean(data, axis=axis))
-        _std = np.atleast_1d(np.ma.std(data, axis=axis))
-        bkg = np.atleast_1d((2.5 * _median) - (1.5 * _mean))
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
 
-        bkg = np.ma.where(_std == 0, _mean, bkg)
+            _median = np.atleast_1d(np.nanmedian(data, axis=axis))
+            _mean = np.atleast_1d(np.nanmean(data, axis=axis))
+            _std = np.atleast_1d(np.nanstd(data, axis=axis))
+            bkg = np.atleast_1d((2.5 * _median) - (1.5 * _mean))
 
-        idx = np.ma.where(_std != 0)
-        condition = (np.abs(_mean[idx] - _median[idx]) / _std[idx]) < 0.3
-        bkg[idx] = np.ma.where(condition, bkg[idx], _median[idx])
+            bkg = np.where(_std == 0, _mean, bkg)
 
-        # np.ma.where always returns a masked array
-        if axis is None and np.ma.isMaskedArray(bkg):
-            bkg = bkg.item()
+            idx = np.where(_std != 0)
+            condition = (np.abs(_mean[idx] - _median[idx]) / _std[idx]) < 0.3
+            bkg[idx] = np.where(condition, bkg[idx], _median[idx])
+            if bkg.size == 1:
+                bkg = bkg[0]
+            result = bkg
 
-        return bkg
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class BiweightLocationBackground(BackgroundBase):
@@ -484,11 +494,24 @@ class BiweightLocationBackground(BackgroundBase):
         self.c = c
         self.M = M
 
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return biweight_location(data, c=self.c, M=self.M, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = biweight_location(data, c=self.c, M=self.M, axis=axis,
+                                       ignore_nan=True)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class StdBackgroundRMS(BackgroundRMSBase):
