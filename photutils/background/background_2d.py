@@ -16,6 +16,7 @@ from numpy.lib.index_tricks import index_exp
 
 from .core import SExtractorBackground, StdBackgroundRMS
 from .interpolators import BkgZoomInterpolator
+from ._utils import nanmedian
 from ..utils import ShepardIDWInterpolator
 
 __all__ = ['Background2D']
@@ -515,10 +516,10 @@ class Background2D:
         if self.filter_threshold is None:
             # filter the entire arrays
             self.background_mesh = generic_filter(
-                self.background_mesh, np.nanmedian, size=self.filter_size,
+                self.background_mesh, nanmedian, size=self.filter_size,
                 mode='constant', cval=np.nan)
             self.background_rms_mesh = generic_filter(
-                self.background_rms_mesh, np.nanmedian,
+                self.background_rms_mesh, nanmedian,
                 size=self.filter_size, mode='constant', cval=np.nan)
         else:
             # selectively filter
