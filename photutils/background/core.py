@@ -11,6 +11,8 @@ from astropy.stats import (biweight_location, biweight_scale, mad_std,
                            SigmaClip)
 import numpy as np
 
+from ._utils import nanmean, nanmedian, nanstd
+
 SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
 
 __all__ = ['BackgroundBase', 'BackgroundRMSBase', 'MeanBackground',
@@ -18,39 +20,6 @@ __all__ = ['BackgroundBase', 'BackgroundRMSBase', 'MeanBackground',
            'MMMBackground', 'SExtractorBackground',
            'BiweightLocationBackground', 'StdBackgroundRMS',
            'MADStdBackgroundRMS', 'BiweightScaleBackgroundRMS']
-
-
-def _masked_median(data, axis=None):
-    """
-    Calculate the median of a (masked) array.
-
-    This function is necessary for a consistent interface across all
-    numpy versions.  A bug was introduced in numpy v1.10 where
-    `numpy.ma.median` (with ``axis=None``) returns a single-valued
-    `~numpy.ma.MaskedArray` if the input data is a `~numpy.ndarray` or
-    if the data is a `~numpy.ma.MaskedArray`, but the mask is `False`
-    everywhere.
-
-    Parameters
-    ----------
-    data : array-like
-        The input data.
-
-    axis : int or `None`, optional
-        The array axis along which the median is calculated.  If
-        `None`, then the entire array is used.
-
-    Returns
-    -------
-    result : float or `~numpy.ma.MaskedArray`
-        The resulting median.  If ``axis`` is `None`, then a float is
-        returned, otherwise a `~numpy.ma.MaskedArray` is returned.
-    """
-    _median = np.ma.median(data, axis=axis)
-    if axis is None and np.ma.isMaskedArray(_median):
-        _median = _median.item()
-
-    return _median
 
 
 class BackgroundBase(metaclass=abc.ABCMeta):
@@ -198,7 +167,7 @@ class MeanBackground(BackgroundBase):
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            result = np.nanmean(data, axis=axis)
+            result = nanmean(data, axis=axis)
 
         if masked and isinstance(result, np.ndarray):
             result = np.ma.masked_where(np.isnan(result), result)
@@ -253,7 +222,7 @@ class MedianBackground(BackgroundBase):
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            result = np.nanmedian(data, axis=axis)
+            result = nanmedian(data, axis=axis)
 
         if masked and isinstance(result, np.ndarray):
             result = np.ma.masked_where(np.isnan(result), result)
@@ -318,8 +287,8 @@ class ModeEstimatorBackground(BackgroundBase):
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            result = ((self.median_factor * np.nanmedian(data, axis=axis))
-                      - (self.mean_factor * np.nanmean(data, axis=axis)))
+            result = ((self.median_factor * nanmedian(data, axis=axis))
+                      - (self.mean_factor * nanmean(data, axis=axis)))
 
         if masked and isinstance(result, np.ndarray):
             result = np.ma.masked_where(np.isnan(result), result)
@@ -427,9 +396,9 @@ class SExtractorBackground(BackgroundBase):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
 
-            _median = np.atleast_1d(np.nanmedian(data, axis=axis))
-            _mean = np.atleast_1d(np.nanmean(data, axis=axis))
-            _std = np.atleast_1d(np.nanstd(data, axis=axis))
+            _median = np.atleast_1d(nanmedian(data, axis=axis))
+            _mean = np.atleast_1d(nanmean(data, axis=axis))
+            _std = np.atleast_1d(nanstd(data, axis=axis))
             bkg = np.atleast_1d((2.5 * _median) - (1.5 * _mean))
 
             bkg = np.where(_std == 0, _mean, bkg)
@@ -561,7 +530,7 @@ class StdBackgroundRMS(BackgroundRMSBase):
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            result = np.nanstd(data, axis=axis)
+            result = nanstd(data, axis=axis)
 
         if masked and isinstance(result, np.ndarray):
             result = np.ma.masked_where(np.isnan(result), result)
