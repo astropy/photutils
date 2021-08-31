@@ -144,16 +144,16 @@ class TestBackground2D:
         bkg1 = Background2D(data, (25, 25), filter_size=(1, 1), mask=None,
                             bkg_estimator=MeanBackground())
 
-        assert_equal(bkg1.background_mesh, bkg1.background_mesh_ma)
-        assert_equal(bkg1.background_rms_mesh, bkg1.background_rms_mesh_ma)
+        assert_equal(bkg1.background_mesh, bkg1.background_mesh_masked)
+        assert_equal(bkg1.background_rms_mesh, bkg1.background_rms_mesh_masked)
         assert np.count_nonzero(np.isnan(bkg1.mesh_nmasked)) == 0
 
         bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
                             bkg_estimator=MeanBackground())
 
-        assert (np.count_nonzero(~np.isnan(bkg2.background_mesh_ma))
+        assert (np.count_nonzero(~np.isnan(bkg2.background_mesh_masked))
                 < bkg2.nboxes_tot)
-        assert (np.count_nonzero(~np.isnan(bkg2.background_rms_mesh_ma))
+        assert (np.count_nonzero(~np.isnan(bkg2.background_rms_mesh_masked))
                 < bkg2.nboxes_tot)
         assert np.count_nonzero(np.isnan(bkg2.mesh_nmasked)) == 1
 
