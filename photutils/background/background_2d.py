@@ -665,8 +665,8 @@ class Background2D:
             bkg_rms <<= self.unit
         return bkg_rms
 
-    def plot_meshes(self, axes=None, marker='+', color='blue', outlines=False,
-                    **kwargs):
+    def plot_meshes(self, *, axes=None, marker='+', markersize=None,
+                    color='blue', outlines=False, **kwargs):
         """
         Plot the low-resolution mesh boxes on a matplotlib Axes
         instance.
@@ -680,6 +680,11 @@ class Background2D:
         marker : str, optional
             The marker to use to mark the center of the boxes.  Default
             is '+'.
+
+        markersize: float, optional
+            The marker size in points**2. The default is
+            ``matplotlib.rcParams['lines.markersize'] ** 2``. If set to
+            0, then the box center markers will not be plotted.
 
         color : str, optional
             The color for the markers and the box outlines.  Default is
@@ -699,7 +704,8 @@ class Background2D:
         kwargs['color'] = color
         if axes is None:
             axes = plt.gca()
-        axes.scatter(*self._mesh_xypos, marker=marker, color=color)
+        axes.scatter(*self._mesh_xypos, s=markersize, marker=marker,
+                     color=color)
         if outlines:
             from ..aperture import RectangularAperture
             xypos = np.column_stack(self._mesh_xypos)
