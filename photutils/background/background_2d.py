@@ -10,6 +10,7 @@ from astropy.nddata import NDData
 from astropy.stats import SigmaClip
 import astropy.units as u
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.lib.index_tricks import index_exp
@@ -214,9 +215,9 @@ class Background2D:
         self.nboxes_tot = None
         self._box_data = None
         self._box_idx = None
-        self._bkg1d = None
-        self._bkgrms1d = None
         self._mesh_idx = None
+        self._bkg_stats = None
+        self._bkgrms_stats = None
 
         self._prepare_box_data()
 
@@ -519,7 +520,7 @@ class Background2D:
         Apply a 2D median filter to a low-resolution 2D mesh image.
         """
         if np.array_equal(self.filter_size, [1, 1]):
-            return
+            return data
 
         if self.filter_threshold is None:
             # filter the entire array
@@ -528,9 +529,7 @@ class Background2D:
                                       mode='constant', cval=np.nan)
         else:
             # selectively filter the array
-            indices = np.nonzero(self._unfiltered_background_mesh
-                                 > self.filter_threshold)
-            filtdata = self._selective_filter(data, indices)
+            filtdata = self._selective_filter(data)
 
         return filtdata
 
@@ -539,8 +538,9 @@ class Background2D:
         """
         The unfiltered low-resolution background image.
 
-        This array is needed to compute which pixels are selectively
-        filtered (if ``filter_threshold`` is input).
+        This array is needed separately from background_mesh to
+        compute which pixels are to be selectively filtered (if
+        ``filter_threshold`` is input).
         """
         self._bkg_stats = self.bkg_estimator(self._box_data, axis=1)
         return self._make_mesh_image(self._bkg_stats)
@@ -568,28 +568,36 @@ class Background2D:
         return self._filter_meshes(mesh_img)
 
     @lazyproperty
-    def background_mesh_ma(self):
+    def background_mesh_masked(self):
         """
         The background 2D (masked) array mesh prior to any
-        interpolation.  The array is masked only if meshes were
+        interpolation. The array has NaN values where meshes were
         excluded.
         """
-        if len(self._bkg1d) == self.nboxes_tot:
-            return self.background_mesh
-        else:
-            return self._make_2d_array(self._bkg1d)
+        data = np.full(self.background_mesh.shape, np.nan)
+        data[self._mesh_idx] = self.background_mesh[self._mesh_idx]
+        return data
 
     @lazyproperty
-    def background_rms_mesh_ma(self):
+    def background_rms_mesh_masked(self):
         """
         The background RMS 2D (masked) array mesh prior to any
-        interpolation.  The array is masked only if meshes were
+        interpolation. The array has NaN values where meshes were
         excluded.
         """
-        if len(self._bkgrms1d) == self.nboxes_tot:
-            return self.background_rms_mesh
-        else:
-            return self._make_2d_array(self._bkgrms1d)
+        data = np.full(self.background_rms_mesh.shape, np.nan)
+        data[self._mesh_idx] = self.background_rms_mesh[self._mesh_idx]
+        return data
+
+    @lazyproperty
+    @deprecated('1.2', alternative='background_mesh_masked')
+    def background_mesh_ma(self):
+        return self.background_mesh_masked
+
+    @lazyproperty
+    @deprecated('1.2', alternative='background_rms_mesh_masked')
+    def background_rms_mesh_ma(self):
+        return self.background_rms_mesh_masked
 
     @lazyproperty
     def _mesh_yxpos(self):
