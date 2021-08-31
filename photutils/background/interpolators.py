@@ -144,9 +144,9 @@ class BkgIDWInterpolator:
 
         # the position coordinates used when calling the interpolator
         ny, nx = bkg2d_obj.data.shape
-        data_coords = np.indices((nx, ny)).T.reshape(nx * ny, 2)[:, [1, 0]]
-
-        data = interp_func(data_coords,
+        yi, xi = np.mgrid[0:ny, 0:nx]
+        yx_indices = np.column_stack((yi.ravel(), xi.ravel()))
+        data = interp_func(yx_indices,
                            n_neighbors=self.n_neighbors, power=self.power,
                            reg=self.reg)
 
