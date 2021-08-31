@@ -217,10 +217,8 @@ class Background2D:
         self._bkg1d = None
         self._bkgrms1d = None
         self._mesh_idx = None
-        self.background_mesh = None
-        self.background_rms_mesh = None
 
-        self._make_lowres_mesh_images()
+        self._prepare_box_data()
 
     @staticmethod
     def _process_size_input(array):
@@ -290,8 +288,8 @@ class Background2D:
         First, pad or crop the 2D data array so that there are an
         integer number of boxes in both dimensions.
 
-        Then reshape into a different 2D array where each row represents
-        the data in a single box.
+        Then reshape it into a different 2D array where each row
+        represents the data in a single box.
         """
         self.nboxes = self.data.shape // self.box_size
         extra_size = self.data.shape % self.box_size
@@ -324,13 +322,13 @@ class Background2D:
 
     @lazyproperty
     def _box_npixels_threshold(self):
-        # boxes that are completely masked are always excluded.
-        # boxes that contain more than ``exclude_percentile`` percent
-        # masked pixels are also excluded:
-        #   - for exclude_percentile=0, only boxes where nmasked=0 will
-        #     be included
-        #   - for exclude_percentile=100, all boxes will be included
-        #     *unless* they are completely masked
+        # * boxes that are completely masked are always excluded
+        # * boxes that contain more than ``exclude_percentile`` percent
+        #   masked pixels are also excluded:
+        #     - for exclude_percentile=0, only boxes where nmasked=0 will
+        #       be included
+        #     - for exclude_percentile=100, all boxes will be included
+        #       *unless* they are completely masked
         threshold = self.exclude_percentile / 100. * self.box_npixels
 
         # always exclude completely masked boxes
@@ -340,8 +338,11 @@ class Background2D:
 
     def _get_box_indices(self):
         """
-        Define the x and y indices of the low-resolution box image that
-        are used to compute background statistics.
+        Define the x and y indices of the boxes that will be used to
+        compute background statistics.
+
+        The box array (self._box_data) is a 2D array where each row
+        represents the data in a single box.
 
         The ``exclude_percentile`` keyword determines which boxes are
         not used for the background interpolation.
@@ -369,7 +370,7 @@ class Background2D:
         if self._box_idx.size != self._box_data.shape[0]:
             self._box_data = self._box_data[self._box_idx, :]
 
-    def _compute_box_statistics(self):
+    def _sigmaclip_boxes(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=AstropyUserWarning)
             if self.sigma_clip is not None:
@@ -383,8 +384,18 @@ class Background2D:
         if self._box_idx.size != self._box_data.shape[0]:
             self._box_data = self._box_data[idx, :]
 
-        self._bkg1d = self.bkg_estimator(self._box_data, axis=1)
-        self._bkgrms1d = self.bkgrms_estimator(self._box_data, axis=1)
+        # the indices of the good pixels in the low-resolution 2D mesh
+        self._mesh_idx = np.unravel_index(self._box_idx, self.nboxes)
+
+    def _prepare_box_data(self):
+        """
+        Prepare the box data by reshaping, masking (with NaNs), and
+        sigma clipping the data.
+        """
+        self._prepare_data()
+        self._reshape_data()
+        self._select_initial_boxes()
+        self._sigmaclip_boxes()
 
     def _make_2d_array(self, data):
         """
@@ -448,36 +459,29 @@ class Background2D:
         yx = np.column_stack(self._mesh_idx)
         interp_func = ShepardIDWInterpolator(yx, data)
 
-        ny, nx = self.nboxes
-        coords = np.indices((nx, ny)).T.reshape(nx * ny, 2)[:, [1, 0]]
-        img1d = interp_func(coords, n_neighbors=n_neighbors, power=power,
+        yi, xi = np.mgrid[0:self.nboxes[0], 0:self.nboxes[1]]
+        yx_indices = np.column_stack((yi.ravel(), xi.ravel()))
+        img1d = interp_func(yx_indices, n_neighbors=n_neighbors, power=power,
                             eps=eps, reg=reg)
 
         return img1d.reshape(self.nboxes)
 
-    def _make_meshes(self):
+    def _make_mesh_image(self, box_stats):
         """
-        Calculate the low-resolution background and background RMS
-        "mesh" images.
-
-        The ``background_mesh`` and ``background_rms_mesh`` images
-        are equivalent to the low-resolution "MINIBACKGROUND" and
-        "MINIBACK_RMS" background maps in SourceExtractor, respectively.
+        Calculate the filtered low-resolution background or background
+        RMS "mesh" image from the 1D box statistics data.
         """
-        self._mesh_idx = np.unravel_index(self._box_idx, self.nboxes)
-
         # make the unfiltered 2D mesh arrays (these are not masked)
-        if self._bkg1d.size == self.nboxes_tot:
-            bkg = self._make_2d_array(self._bkg1d)
-            bkgrms = self._make_2d_array(self._bkgrms1d)
+        if box_stats.size == self.nboxes_tot:
+            # no masked boxes
+            mesh_img = self._make_2d_array(box_stats)
         else:
-            bkg = self._interpolate_meshes(self._bkg1d)
-            bkgrms = self._interpolate_meshes(self._bkgrms1d)
+            # interpolate masked boxes
+            mesh_img = self._interpolate_meshes(box_stats)
 
-        self.background_mesh = bkg
-        self.background_rms_mesh = bkgrms
+        return mesh_img
 
-    def _selective_filter(self, data, indices):
+    def _selective_filter(self, data):
         """
         Selectively filter only pixels above ``filter_threshold`` in the
         background mesh.
@@ -490,17 +494,16 @@ class Background2D:
         data : 2D `~numpy.ndarray`
             A 2D array of mesh values.
 
-        indices : 2 tuple of int
-            A tuple of the ``y`` and ``x`` indices of the pixels to
-            filter.
-
         Returns
         -------
         filtered_data : 2D `~numpy.ndarray`
             The filtered 2D array of mesh values.
         """
         data_out = np.copy(data)
-        for i, j in zip(*indices):
+        yx_indices = np.column_stack(
+            np.nonzero(self._unfiltered_background_mesh
+                       > self.filter_threshold))
+        for i, j in yx_indices:
             yfs, xfs = self.filter_size
             hyfs, hxfs = yfs // 2, xfs // 2
             yidx0 = max(i - hyfs, 0)
@@ -511,63 +514,58 @@ class Background2D:
 
         return data_out
 
-    def _filter_meshes(self):
+    def _filter_meshes(self, data):
         """
-        Apply a 2D median filter to the low-resolution 2D meshes.
-
-        Both the background and background RMS meshes are computed at
-        the same time here because the filtering of both depends on the
-        background mesh filter threshold.
+        Apply a 2D median filter to a low-resolution 2D mesh image.
         """
         if np.array_equal(self.filter_size, [1, 1]):
             return
 
-        from scipy.ndimage import generic_filter
-
         if self.filter_threshold is None:
-            # filter the entire arrays
-            self.background_mesh = generic_filter(
-                self.background_mesh, nanmedian, size=self.filter_size,
-                mode='constant', cval=np.nan)
-            self.background_rms_mesh = generic_filter(
-                self.background_rms_mesh, nanmedian,
-                size=self.filter_size, mode='constant', cval=np.nan)
+            # filter the entire array
+            from scipy.ndimage import generic_filter
+            filtdata = generic_filter(data, nanmedian, size=self.filter_size,
+                                      mode='constant', cval=np.nan)
         else:
-            # selectively filter
-            indices = np.nonzero(self.background_mesh > self.filter_threshold)
-            self.background_mesh = self._selective_filter(
-                self.background_mesh, indices)
-            self.background_rms_mesh = self._selective_filter(
-                self.background_rms_mesh, indices)
+            # selectively filter the array
+            indices = np.nonzero(self._unfiltered_background_mesh
+                                 > self.filter_threshold)
+            filtdata = self._selective_filter(data, indices)
 
-    def _make_lowres_mesh_images(self):
-        """
-        Make the low-resolution background and background RMS images.
-        """
-        self._prepare_data()
-        self._reshape_data()
-        self._select_initial_boxes()
-        self._compute_box_statistics()
-        self._make_meshes()
-        self._filter_meshes()
+        return filtdata
 
     @lazyproperty
-    def _mesh_yxpos(self):
-        box_cen = (self.box_size - 1) / 2.
-        return (self._mesh_idx * self.box_size[:, None]) + box_cen[:, None]
+    def _unfiltered_background_mesh(self):
+        """
+        The unfiltered low-resolution background image.
+
+        This array is needed to compute which pixels are selectively
+        filtered (if ``filter_threshold`` is input).
+        """
+        self._bkg_stats = self.bkg_estimator(self._box_data, axis=1)
+        return self._make_mesh_image(self._bkg_stats)
 
     @lazyproperty
-    def _mesh_xypos(self):
-        return np.flipud(self._mesh_yxpos)
+    def background_mesh(self):
+        """
+        The low-resolution background image.
+
+        This image is equivalent to the low-resolution "MINIBACKGROUND"
+        background map in SourceExtractor.
+        """
+        return self._filter_meshes(self._unfiltered_background_mesh)
 
     @lazyproperty
-    def mesh_nmasked(self):
+    def background_rms_mesh(self):
         """
-        A 2D array of the number of masked pixels in each mesh. NaN
-        values indiciate where meshes were excluded.
+        The low-resolution background RMS image.
+
+        This image is equivalent to the low-resolution "MINIBACKGROUND"
+        background rms map in SourceExtractor.
         """
-        return self._make_2d_array(
-            np.count_nonzero(np.isnan(self._box_data), axis=1))
+        self._bkgrms_stats = self.bkgrms_estimator(self._box_data, axis=1)
+        mesh_img = self._make_mesh_image(self._bkgrms_stats)
+        return self._filter_meshes(mesh_img)
 
     @lazyproperty
     def background_mesh_ma(self):
@@ -592,6 +590,24 @@ class Background2D:
             return self.background_rms_mesh
         else:
             return self._make_2d_array(self._bkgrms1d)
+
+    @lazyproperty
+    def _mesh_yxpos(self):
+        box_cen = (self.box_size - 1) / 2.
+        return (self._mesh_idx * self.box_size[:, None]) + box_cen[:, None]
+
+    @lazyproperty
+    def _mesh_xypos(self):
+        return np.flipud(self._mesh_yxpos)
+
+    @lazyproperty
+    def mesh_nmasked(self):
+        """
+        A 2D array of the number of masked pixels in each mesh. NaN
+        values indiciate where meshes were excluded.
+        """
+        return self._make_2d_array(
+            np.count_nonzero(np.isnan(self._box_data), axis=1))
 
     @lazyproperty
     def background_median(self):
