@@ -4,12 +4,13 @@ This module defines nan-ignoring statistical functions, using bottleneck
 for performance if available.
 """
 
+import astropy.units as u
 import numpy as np
 
 from ..utils._optional_deps import HAS_BOTTLENECK
 
 if HAS_BOTTLENECK:
-    import bottleneck
+    import bottleneck as bn
 
 
 def move_tuple_axes_first(array, axis):
@@ -46,7 +47,11 @@ def nanmean(array, axis=None):
         if isinstance(axis, tuple):
             array = move_tuple_axes_first(array, axis=axis)
             axis = 0
-        return bottleneck.nanmean(array, axis=axis)
+
+        if isinstance(array, u.Quantity):
+            return array.__array_wrap__(bn.nanmean(array, axis=axis))
+        else:
+            return bn.nanmean(array, axis=axis)
     else:
         return np.nanmean(array, axis=axis)
 
@@ -59,7 +64,11 @@ def nanmedian(array, axis=None):
         if isinstance(axis, tuple):
             array = move_tuple_axes_first(array, axis=axis)
             axis = 0
-        return bottleneck.nanmedian(array, axis=axis)
+
+        if isinstance(array, u.Quantity):
+            return array.__array_wrap__(bn.nanmedian(array, axis=axis))
+        else:
+            return bn.nanmedian(array, axis=axis)
     else:
         return np.nanmedian(array, axis=axis)
 
@@ -72,6 +81,10 @@ def nanstd(array, axis=None, ddof=0):
         if isinstance(axis, tuple):
             array = move_tuple_axes_first(array, axis=axis)
             axis = 0
-        return bottleneck.nanstd(array, axis=axis, ddof=ddof)
+
+        if isinstance(array, u.Quantity):
+            return array.__array_wrap__(bn.nanstd(array, axis=axis, ddof=ddof))
+        else:
+            return bn.nanstd(array, axis=axis, ddof=ddof)
     else:
         return np.nanstd(array, axis=axis, ddof=ddof)
