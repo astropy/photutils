@@ -163,7 +163,7 @@ class TestBackground2D:
         data[:50, :50] = np.nan
         mask = np.isnan(data)
 
-        with catch_warnings(AstropyUserWarning) as warning_lines:
+        with catch_warnings(AstropyUserWarning):
             bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
                                 coverage_mask=mask, fill_value=fill_value,
                                 bkg_estimator=MeanBackground())
@@ -181,6 +181,26 @@ class TestBackground2D:
         assert_equal(bkg1.background_mesh, bkg2.background_mesh)
         assert_equal(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
 
+    def test_mask_nonfinite(self):
+        data = DATA.copy()
+        data[0, 0:50] = np.nan
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1))
+        assert_allclose(bkg.background, DATA, rtol=1e-5)
+
+    def test_masked_array(self):
+        data = DATA.copy()
+        data[0, 0:50] = True
+        mask = np.zeros(DATA.shape, dtype=bool)
+        mask[0, 0:50] = True
+        data_ma1 = np.ma.MaskedArray(DATA, mask=mask)
+        data_ma2 = np.ma.MaskedArray(data, mask=mask)
+
+        bkg1 = Background2D(data, (25, 25), filter_size=(1, 1))
+        bkg2 = Background2D(data_ma1, (25, 25), filter_size=(1, 1))
+        bkg3 = Background2D(data_ma2, (25, 25), filter_size=(1, 1))
+        assert_allclose(bkg1.background, bkg2.background, rtol=1e-5)
+        assert_allclose(bkg2.background, bkg3.background, rtol=1e-5)
+
     def test_completely_masked(self):
         with pytest.raises(ValueError):
             mask = np.ones(DATA.shape, dtype=bool)
@@ -193,6 +213,14 @@ class TestBackground2D:
         assert_allclose(bkg.background_rms, BKG_RMS)
         assert bkg.background_median == 1.0
         assert bkg.background_rms_median == 0.0
+
+    def test_exclude_percentile(self):
+        """Only meshes greater than filter_threshold are filtered."""
+        data = np.copy(DATA)
+        data[0:50, 0:50] = np.nan
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1),
+                           exclude_percentile=100.)
+        assert len(bkg._box_idx) == 12
 
     def test_filter_threshold(self):
         """Only meshes greater than filter_threshold are filtered."""
@@ -232,22 +260,47 @@ class TestBackground2D:
         assert_allclose(bkg1.background, bkg2.background)
         assert_allclose(bkg1.background_rms, bkg2.background_rms)
 
-    def test_exclude_percentile(self):
+    def test_invalid_box_size(self):
+        with pytest.raises(ValueError):
+            Background2D(DATA, (5, 5, 3))
+
+    def test_invalid_filter_size(self):
+        with pytest.raises(ValueError):
+            Background2D(DATA, (5, 5), filter_size=(3, 3, 3))
+
+    def test_invalid_exclude_percentile(self):
         with pytest.raises(ValueError):
             Background2D(DATA, (5, 5), exclude_percentile=-1)
 
         with pytest.raises(ValueError):
             Background2D(DATA, (5, 5), exclude_percentile=101)
 
-    def test_mask_badshape(self):
+    def test_mask_nomask(self):
+        bkg = Background2D(DATA, (25, 25), filter_size=(1, 1),
+                           mask=np.ma.nomask)
+        assert bkg.mask is None
+
+        bkg = Background2D(DATA, (25, 25), filter_size=(1, 1),
+                           coverage_mask=np.ma.nomask)
+        assert bkg.coverage_mask is None
+
+    def test_invalid_mask(self):
         with pytest.raises(ValueError):
             Background2D(DATA, (25, 25), filter_size=(1, 1),
                          mask=np.zeros((2, 2)))
 
-    def test_coverage_mask_badshape(self):
+        with pytest.raises(ValueError):
+            Background2D(DATA, (25, 25), filter_size=(1, 1),
+                         mask=np.zeros((2, 2, 2)))
+
+    def test_invalid_coverage_mask(self):
         with pytest.raises(ValueError):
             Background2D(DATA, (25, 25), filter_size=(1, 1),
                          coverage_mask=np.zeros((2, 2)))
+
+        with pytest.raises(ValueError):
+            Background2D(DATA, (25, 25), filter_size=(1, 1),
+                         coverage_mask=np.zeros((2, 2, 2)))
 
     def test_invalid_edge_method(self):
         with pytest.raises(ValueError):

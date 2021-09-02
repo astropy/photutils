@@ -226,9 +226,9 @@ class Background2D:
         array = np.atleast_1d(array).astype(int)
         if len(array) == 1:
             array = np.repeat(array, 2)
-            if len(array) != 2:
-                raise ValueError('box_size and filter_size inputs must '
-                                 'have only 1 or 2 elements')
+        if len(array) != 2:
+            raise ValueError('box_size and filter_size inputs must have only '
+                             '1 or 2 elements')
         return array
 
     def _validate_array(self, array, name, shape=True):
@@ -334,7 +334,7 @@ class Background2D:
 
         # always exclude completely masked boxes
         if self.exclude_percentile == 100:
-            threshold += 1
+            threshold -= 1
         return threshold
 
     def _get_box_indices(self):
@@ -592,12 +592,12 @@ class Background2D:
     @lazyproperty
     @deprecated('1.2', alternative='background_mesh_masked')
     def background_mesh_ma(self):
-        return self.background_mesh_masked
+        return self.background_mesh_masked  # pragma: no cover
 
     @lazyproperty
     @deprecated('1.2', alternative='background_rms_mesh_masked')
     def background_rms_mesh_ma(self):
-        return self.background_rms_mesh_masked
+        return self.background_rms_mesh_masked  # pragma: no cover
 
     @lazyproperty
     def _mesh_yxpos(self):
