@@ -25,6 +25,8 @@ New Features
   - Added a ``markersize`` keyword to the ``Background2D`` method
     ``plot_meshes``. [#1234]
 
+  - Added ``__repr__`` methods to all background classes. [#1236]
+
 Bug Fixes
 ^^^^^^^^^
 
