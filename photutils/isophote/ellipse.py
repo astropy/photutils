@@ -221,10 +221,10 @@ class Ellipse:
         of them is set via this call, the others will assume their default
         (False) values. This effectively overrides any settings that are
         present in the internal `~photutils.isophote.EllipseGeometry`
-        instance that is carried along as a property of this class. If an
-        instance of `~photutils.isophote.EllipseGeometry` was passed to this
-        class' constructor, that instance will be effectively overriden by
-        the fix_XXX parameters in this call.
+        instance that is carried along as a property of this class. If
+        an instance of `~photutils.isophote.EllipseGeometry` was passed
+        to this class' constructor, that instance will be effectively
+        overridden by the fix_XXX parameters in this call.
 
         Parameters
         ----------
@@ -323,8 +323,8 @@ class Ellipse:
             The sigma-clip sigma value.  The default is 3.0.
 
         nclip : int, optional
-            The number of sigma-clip interations.  The default is 0,
-            which means sigma-clipping is skipped.
+            The number of sigma-clip iterations. The default is 0, which
+            means sigma-clipping is skipped.
 
         integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, optional
             The area integration mode.  The default is 'bilinear'.
@@ -561,15 +561,15 @@ class Ellipse:
 
         maxgerr : float, optional
             The maximum acceptable relative error in the local radial
-            intensity gradient.  When fitting a single isophote by
-            itself this paramter doesn't have any effect on the outcome.
+            intensity gradient. When fitting a single isophote by itself
+            this parameter doesn't have any effect on the outcome.
 
         sclip : float, optional
             The sigma-clip sigma value.  The default is 3.0.
 
         nclip : int, optional
-            The number of sigma-clip interations.  The default is 0,
-            which means sigma-clipping is skipped.
+            The number of sigma-clip iterations. The default is 0, which
+            means sigma-clipping is skipped.
 
         integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, optional
             The area integration mode.  The default is 'bilinear'.

@@ -23,7 +23,7 @@ def _radial_distance(shape):
     Returns
     -------
     result : `~numpy.ndarray`
-        An array containing the Euclidian radial distances from the
+        An array containing the Euclidean radial distances from the
         array center.
     """
 

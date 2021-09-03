@@ -341,7 +341,7 @@ class Isophote:
         -------
         result : `~astropy.table.QTable`
             An astropy `~astropy.table.QTable` containing the main
-            isophote paramters.
+            isophote parameters.
         """
 
         return _isophote_list_to_table([self])
@@ -655,7 +655,7 @@ class IsophoteList:
     @property
     def a3(self):
         """
-        A third-order harmonic coefficent.  See the
+        A third-order harmonic coefficient.  See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """
@@ -664,7 +664,7 @@ class IsophoteList:
     @property
     def b3(self):
         """
-        A third-order harmonic coefficent.  See the
+        A third-order harmonic coefficient.  See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """
@@ -673,7 +673,7 @@ class IsophoteList:
     @property
     def a4(self):
         """
-        A fourth-order harmonic coefficent.  See the
+        A fourth-order harmonic coefficient.  See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """
@@ -682,7 +682,7 @@ class IsophoteList:
     @property
     def b4(self):
         """
-        A fourth-order harmonic coefficent.  See the
+        A fourth-order harmonic coefficient.  See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """

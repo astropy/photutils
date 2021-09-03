@@ -81,7 +81,7 @@ def fit_first_and_second_harmonics(phi, intensities):
     Returns
     -------
     y0, a1, b1, a2, b2 : float
-        The fitted harmonic coefficent values.
+        The fitted harmonic coefficient values.
     """
 
     a1 = b1 = a2 = b2 = 1.

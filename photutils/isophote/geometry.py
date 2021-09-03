@@ -90,11 +90,11 @@ class EllipseGeometry:
         The ellipticity of the ellipse.
     pa : float
         The position angle (in radians) of the semimajor axis in
-        relation to the postive x axis of the image array (rotating
+        relation to the positive x axis of the image array (rotating
         towards the positive y axis). Position angles are defined in the
         range :math:`0 < PA <= \\pi`. Avoid using as starting position
-        angle of 0., since the fit algorithm may not work properly. When
-        the ellipses are such that position angles are near either
+        angle of 0., since the fit algorithm may not work properly.
+        When the ellipses are such that position angles are near either
         extreme of the range, noise can make the solution jump back and
         forth between successive isophotes, by amounts close to 180
         degrees.

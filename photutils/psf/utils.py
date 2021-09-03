@@ -208,7 +208,7 @@ def subtract_psf(data, psf, posflux, subshape=None):
         Image data.
 
     psf : `astropy.modeling.Fittable2DModel` instance
-        PSF/PRF model to be substracted from the data.
+        PSF/PRF model to be subtracted from the data.
 
     posflux : Array-like of shape (3, N) or `~astropy.table.Table`
         Positions and fluxes for the objects to subtract.  If an array,
@@ -240,7 +240,7 @@ def subtract_psf(data, psf, posflux, subshape=None):
     else:
         posflux = Table(names=['x_fit', 'y_fit', 'flux_fit'], data=posflux)
 
-    # Set up contstants across the loop
+    # Set up constants across the loop
     psf = psf.copy()
     xname, yname, fluxname = _extract_psf_fitting_names(psf)
     indices = np.indices(data.shape)

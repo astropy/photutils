@@ -179,10 +179,9 @@ class FittableImageModel(Fittable2DModel):
         computed as the *sum of all pixel values*.
 
         .. note::
-            This function is intended to be overriden in a subclass if
+            This function is intended to be overridden in a subclass if
             one desires to change the way the normalization factor is
             computed.
-
         """
         return np.sum(self._data, dtype=float)
 
@@ -206,7 +205,7 @@ class FittableImageModel(Fittable2DModel):
 
         .. note::
             Normally, this function should not be called by the
-            end-user. It is intended to be overriden in a subclass if
+            end-user. It is intended to be overridden in a subclass if
             one desires to change the way the normalization factor is
             computed.
         """
@@ -238,7 +237,7 @@ class FittableImageModel(Fittable2DModel):
         """
         The factor by which the stored image is oversampled.
 
-        An input to this model is multipled by this factor to yield the
+        An input to this model is multiplied by this factor to yield the
         index into the stored image.
         """
 
@@ -287,12 +286,11 @@ class FittableImageModel(Fittable2DModel):
         """
         Get normalization status. Possible status values are:
 
-        - 0: **Performed**. Model has been successfuly normalized at
+        - 0: **Performed**. Model has been successfully normalized at
              user's request.
         - 1: **Failed**. Attempt to normalize has failed.
         - 2: **NotRequested**. User did not request model to be normalized.
         """
-
         return self._normalization_status
 
     @property
@@ -306,7 +304,6 @@ class FittableImageModel(Fittable2DModel):
             to some target image before, then it will remain a good fit
             after correction factor change.
         """
-
         return self._normalization_correction
 
     @normalization_correction.setter
@@ -325,7 +322,6 @@ class FittableImageModel(Fittable2DModel):
         """
         A tuple of dimensions of the data array in numpy style (ny, nx).
         """
-
         return self._shape
 
     @property
@@ -353,7 +349,6 @@ class FittableImageModel(Fittable2DModel):
             Modifying ``origin`` will not adjust (modify) model's
             parameters ``x_0`` and ``y_0``.
         """
-
         return (self._x_origin, self._y_origin)
 
     @origin.setter
@@ -385,7 +380,6 @@ class FittableImageModel(Fittable2DModel):
         then values outside of the domain of definition are the ones
         returned by the interpolator.
         """
-
         return self._fill_value
 
     @fill_value.setter
@@ -397,7 +391,6 @@ class FittableImageModel(Fittable2DModel):
         This function should be called in a subclass whenever model's
         interpolator is (re-)computed.
         """
-
         self._interpolator_kwargs = copy.deepcopy(kwargs)
 
     @property
@@ -406,14 +399,13 @@ class FittableImageModel(Fittable2DModel):
         Get current interpolator's arguments used when interpolator was
         created.
         """
-
         return self._interpolator_kwargs
 
     def compute_interpolator(self, **kwargs):
         """
         Compute/define the interpolating spline.
 
-        This function can be overriden in a subclass to define custom
+        This function can be overridden in a subclass to define custom
         interpolators.
 
         Parameters
@@ -436,8 +428,8 @@ class FittableImageModel(Fittable2DModel):
         -----
         * When subclassing :py:class:`FittableImageModel` for the
           purpose of overriding :py:func:`compute_interpolator`, the
-          :py:func:`evaluate` may need to overriden as well depending on
-          the behavior of the new interpolator. In addition, for
+          :py:func:`evaluate` may need to overridden as well depending
+          on the behavior of the new interpolator. In addition, for
           improved future compatibility, make sure that the overriding
           method stores keyword arguments ``kwargs`` by calling
           ``_store_interpolator_kwargs`` method.
@@ -484,10 +476,9 @@ class FittableImageModel(Fittable2DModel):
         ----------
         use_oversampling : bool, optional
             Whether to use the oversampling factor to calculate the
-            model pixel indices.  The default is `True`, which means the
-            input indices will be multipled by this factor.
+            model pixel indices. The default is `True`, which means the
+            input indices will be multiplied by this factor.
         """
-
         if use_oversampling:
             xi = self._oversampling[0] * (np.asarray(x) - x_0)
             yi = self._oversampling[1] * (np.asarray(y) - y_0)
@@ -591,7 +582,6 @@ class EPSFModel(FittableImageModel):
         sum over the inner N (default=5.5) pixels of the non-oversampled
         image. Will re-normalize the data to the value calculated.
         """
-
         if self._img_norm is None:
             if np.sum(self._data) == 0:
                 self._img_norm = 1
@@ -615,7 +605,6 @@ class EPSFModel(FittableImageModel):
         and as such self._data will sum, accounting for
         under/oversampled pixels, to 1/self._normalization_correction.
         """
-
         return self._data
 
     @FittableImageModel.origin.setter
@@ -633,7 +622,7 @@ class EPSFModel(FittableImageModel):
         """
         Compute/define the interpolating spline.
 
-        This function can be overriden in a subclass to define custom
+        This function can be overridden in a subclass to define custom
         interpolators.
 
         Parameters
@@ -656,8 +645,8 @@ class EPSFModel(FittableImageModel):
         -----
         * When subclassing :py:class:`FittableImageModel` for the
           purpose of overriding :py:func:`compute_interpolator`, the
-          :py:func:`evaluate` may need to overriden as well depending on
-          the behavior of the new interpolator. In addition, for
+          :py:func:`evaluate` may need to overridden as well depending
+          on the behavior of the new interpolator. In addition, for
           improved future compatibility, make sure that the overriding
           method stores keyword arguments ``kwargs`` by calling
           ``_store_interpolator_kwargs`` method.
@@ -667,7 +656,6 @@ class EPSFModel(FittableImageModel):
           decrease code performance due to the need to recompute
           interpolator.
         """
-
         from scipy.interpolate import RectBivariateSpline
 
         if 'degree' in kwargs:
@@ -704,7 +692,6 @@ class EPSFModel(FittableImageModel):
         Evaluate the model on some input variables and provided model
         parameters.
         """
-
         xi = np.asarray(x) - x_0 + self._x_origin
         yi = np.asarray(y) - y_0 + self._y_origin
 
@@ -821,7 +808,6 @@ class GriddedPSFModel(Fittable2DModel):
         index : int
             The index of the lower bound.
         """
-
         idx = np.searchsorted(data, x)
         if idx == 0:
             idx0 = 0
@@ -847,7 +833,6 @@ class GriddedPSFModel(Fittable2DModel):
         indices : list of int
             A list of indices of the bounding grid points.
         """
-
         if not np.isscalar(x) or not np.isscalar(y):  # pragma: no cover
             raise TypeError('x and y must be scalars')
 
@@ -894,7 +879,6 @@ class GriddedPSFModel(Fittable2DModel):
         result : 2D `~numpy.ndarray`
             The 2D interpolated array.
         """
-
         if len(xyref) != 4:
             raise ValueError('xyref must contain only 4 (x, y) pairs')
 
@@ -930,7 +914,6 @@ class GriddedPSFModel(Fittable2DModel):
         """
         Returns `FittableImageModel` for interpolated PSF at some (x_0, y_0)
         """
-
         # NOTE: this is needed because the PSF photometry routines input
         # length-1 values instead of scalars.  TODO: fix the photometry
         # routines.
@@ -964,7 +947,6 @@ class GriddedPSFModel(Fittable2DModel):
         """
         Evaluate the `GriddedPSFModel` for the input parameters.
         """
-
         # Get the local PSF at the (x_0,y_0)
         psfmodel = self._compute_local_model(x_0, y_0)
 
@@ -1050,7 +1032,6 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
     def evaluate(self, x, y, flux, x_0, y_0, sigma):
         """Model function Gaussian PSF model."""
-
         return (flux / 4 *
                 ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma)) -
                   self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma))) *
@@ -1127,7 +1108,6 @@ class PRFAdapter(Fittable2DModel):
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """The evaluation function for PRFAdapter."""
-
         if self.xname is None:
             dx = x - x_0
         else:

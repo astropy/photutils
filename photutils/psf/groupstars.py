@@ -124,9 +124,8 @@ class DAOGroup(GroupStarsBase):
                                                   dtype=int)))
 
         if not np.array_equal(cstarlist['id'], np.arange(len(cstarlist)) + 1):
-            raise ValueError('id colum must be an integer-valued ' +
-                             'sequence starting from 1. ' +
-                             f"Got {cstarlist['id']}")
+            raise ValueError('id column must be an integer-valued sequence '
+                             f'starting from 1. Got {cstarlist["id"]}')
 
         n = 1
         while (cstarlist['group_id'] == 0).sum() > 0:
@@ -235,9 +234,8 @@ class DBSCANGroup(GroupStarsBase):
                                         data=np.arange(len(cstarlist)) + 1))
 
         if not np.array_equal(cstarlist['id'], np.arange(len(cstarlist)) + 1):
-            raise ValueError('id colum must be an integer-valued ' +
-                             'sequence starting from 1. ' +
-                             f"Got {cstarlist['id']}")
+            raise ValueError('id column must be an integer-valued sequence '
+                             'starting from 1. Got {cstarlist["id"]}')
 
         pos_stars = np.transpose((cstarlist['x_0'], cstarlist['y_0']))
         dbscan = DBSCAN(eps=self.crit_separation,
