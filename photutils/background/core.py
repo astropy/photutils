@@ -37,6 +37,9 @@ class BackgroundBase(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, sigma_clip=SIGMA_CLIP):
+        if not isinstance(sigma_clip, SigmaClip) and sigma_clip is not None:
+            raise TypeError('sigma_clip must be an astropy SigmaClip '
+                            'instance or None')
         self.sigma_clip = sigma_clip
 
     def __call__(self, data, axis=None, masked=False):
@@ -86,6 +89,9 @@ class BackgroundRMSBase(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, sigma_clip=SIGMA_CLIP):
+        if not isinstance(sigma_clip, SigmaClip) and sigma_clip is not None:
+            raise TypeError('sigma_clip must be an astropy SigmaClip '
+                            'instance or None')
         self.sigma_clip = sigma_clip
 
     def __call__(self, data, axis=None, masked=False):
