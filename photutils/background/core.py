@@ -5,10 +5,13 @@ RMS in an array of any dimension.
 """
 
 import abc
+import warnings
 
 from astropy.stats import (biweight_location, biweight_scale, mad_std,
                            SigmaClip)
 import numpy as np
+
+from ._utils import nanmean, nanmedian, nanstd
 
 SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
 
@@ -17,40 +20,6 @@ __all__ = ['BackgroundBase', 'BackgroundRMSBase', 'MeanBackground',
            'MMMBackground', 'SExtractorBackground',
            'BiweightLocationBackground', 'StdBackgroundRMS',
            'MADStdBackgroundRMS', 'BiweightScaleBackgroundRMS']
-
-
-def _masked_median(data, axis=None):
-    """
-    Calculate the median of a (masked) array.
-
-    This function is necessary for a consistent interface across all
-    numpy versions.  A bug was introduced in numpy v1.10 where
-    `numpy.ma.median` (with ``axis=None``) returns a single-valued
-    `~numpy.ma.MaskedArray` if the input data is a `~numpy.ndarray` or
-    if the data is a `~numpy.ma.MaskedArray`, but the mask is `False`
-    everywhere.
-
-    Parameters
-    ----------
-    data : array-like
-        The input data.
-
-    axis : int or `None`, optional
-        The array axis along which the median is calculated.  If
-        `None`, then the entire array is used.
-
-    Returns
-    -------
-    result : float or `~numpy.ma.MaskedArray`
-        The resulting median.  If ``axis`` is `None`, then a float is
-        returned, otherwise a `~numpy.ma.MaskedArray` is returned.
-    """
-
-    _median = np.ma.median(data, axis=axis)
-    if axis is None and np.ma.isMaskedArray(_median):
-        _median = _median.item()
-
-    return _median
 
 
 class BackgroundBase(metaclass=abc.ABCMeta):
@@ -69,11 +38,11 @@ class BackgroundBase(metaclass=abc.ABCMeta):
     def __init__(self, sigma_clip=SIGMA_CLIP):
         self.sigma_clip = sigma_clip
 
-    def __call__(self, data, axis=None):
-        return self.calc_background(data, axis=axis)
+    def __call__(self, data, axis=None, masked=False):
+        return self.calc_background(data, axis=axis, masked=masked)
 
     @abc.abstractmethod
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         """
         Calculate the background value.
 
@@ -83,18 +52,23 @@ class BackgroundBase(metaclass=abc.ABCMeta):
             The array for which to calculate the background value.
 
         axis : int or `None`, optional
-            The array axis along which the background is calculated.  If
+            The array axis along which the background is calculated. If
             `None`, then the entire array is used.
+
+        masked : bool, optional
+            If `True`, then a `~numpy.ma.MaskedArray` is returned. If
+            `False`, then a `~numpy.ndarray` is returned, where masked
+            values have a value of NaN. The default is `False`.
 
         Returns
         -------
-        result : float or `~numpy.ma.MaskedArray`
-            The calculated background value.  If ``axis`` is `None` then
-            a scalar will be returned, otherwise a
-            `~numpy.ma.MaskedArray` will be returned.
+        result : float, `~numpy.ndarray`, or `~numpy.ma.MaskedArray`
+            The calculated background value. If ``masked`` is
+            `False`, then a `~numpy.ndarray` is returned, otherwise a
+            `~numpy.ma.MaskedArray` is returned. A scalar result is
+            always returned as a float.
         """
-
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        raise NotImplementedError()  # pragma: no cover
 
 
 class BackgroundRMSBase(metaclass=abc.ABCMeta):
@@ -113,11 +87,11 @@ class BackgroundRMSBase(metaclass=abc.ABCMeta):
     def __init__(self, sigma_clip=SIGMA_CLIP):
         self.sigma_clip = sigma_clip
 
-    def __call__(self, data, axis=None):
-        return self.calc_background_rms(data, axis=axis)
+    def __call__(self, data, axis=None, masked=False):
+        return self.calc_background_rms(data, axis=axis, masked=masked)
 
     @abc.abstractmethod
-    def calc_background_rms(self, data, axis=None):
+    def calc_background_rms(self, data, axis=None, masked=False):
         """
         Calculate the background RMS value.
 
@@ -130,15 +104,20 @@ class BackgroundRMSBase(metaclass=abc.ABCMeta):
             The array axis along which the background RMS is calculated.
             If `None`, then the entire array is used.
 
+        masked : bool, optional
+            If `True`, then a `~numpy.ma.MaskedArray` is returned. If
+            `False`, then a `~numpy.ndarray` is returned, where masked
+            values have a value of NaN. The default is `False`.
+
         Returns
         -------
-        result : float or `~numpy.ma.MaskedArray`
-            The calculated background RMS value.  If ``axis`` is `None`
-            then a scalar will be returned, otherwise a
-            `~numpy.ma.MaskedArray` will be returned.
+        result : float, `~numpy.ndarray`, or `~numpy.ma.MaskedArray`
+            The calculated background RMS value. If ``masked`` is
+            `False`, then a `~numpy.ndarray` is returned, otherwise a
+            `~numpy.ma.MaskedArray` is returned. A scalar result is
+            always returned as a float.
         """
-
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        raise NotImplementedError()  # pragma: no cover
 
 
 class MeanBackground(BackgroundBase):
@@ -177,11 +156,23 @@ class MeanBackground(BackgroundBase):
     49.5
     """
 
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return np.ma.mean(data, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = nanmean(data, axis=axis)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class MedianBackground(BackgroundBase):
@@ -220,11 +211,23 @@ class MedianBackground(BackgroundBase):
     49.5
     """
 
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return _masked_median(data, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = nanmedian(data, axis=axis)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class ModeEstimatorBackground(BackgroundBase):
@@ -273,11 +276,24 @@ class ModeEstimatorBackground(BackgroundBase):
         self.median_factor = median_factor
         self.mean_factor = mean_factor
 
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
-        return ((self.median_factor * _masked_median(data, axis=axis)) -
-                (self.mean_factor * np.ma.mean(data, axis=axis)))
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
+
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = ((self.median_factor * nanmedian(data, axis=axis))
+                      - (self.mean_factor * nanmean(data, axis=axis)))
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class MMMBackground(ModeEstimatorBackground):
@@ -321,8 +337,8 @@ class MMMBackground(ModeEstimatorBackground):
     """
 
     def __init__(self, **kwargs):
-        kwargs['median_factor'] = 3.
-        kwargs['mean_factor'] = 2.
+        kwargs['median_factor'] = 3.0
+        kwargs['mean_factor'] = 2.0
         super().__init__(**kwargs)
 
 
@@ -368,26 +384,36 @@ class SExtractorBackground(BackgroundBase):
     49.5
     """
 
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        _median = np.atleast_1d(_masked_median(data, axis=axis))
-        _mean = np.atleast_1d(np.ma.mean(data, axis=axis))
-        _std = np.atleast_1d(np.ma.std(data, axis=axis))
-        bkg = np.atleast_1d((2.5 * _median) - (1.5 * _mean))
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
 
-        bkg = np.ma.where(_std == 0, _mean, bkg)
+            _median = np.atleast_1d(nanmedian(data, axis=axis))
+            _mean = np.atleast_1d(nanmean(data, axis=axis))
+            _std = np.atleast_1d(nanstd(data, axis=axis))
+            bkg = np.atleast_1d((2.5 * _median) - (1.5 * _mean))
 
-        idx = np.ma.where(_std != 0)
-        condition = (np.abs(_mean[idx] - _median[idx]) / _std[idx]) < 0.3
-        bkg[idx] = np.ma.where(condition, bkg[idx], _median[idx])
+            bkg = np.where(_std == 0, _mean, bkg)
 
-        # np.ma.where always returns a masked array
-        if axis is None and np.ma.isMaskedArray(bkg):
-            bkg = bkg.item()
+            idx = np.where(_std != 0)
+            condition = (np.abs(_mean[idx] - _median[idx]) / _std[idx]) < 0.3
+            bkg[idx] = np.where(condition, bkg[idx], _median[idx])
+            if bkg.size == 1:
+                bkg = bkg[0]
+            result = bkg
 
-        return bkg
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class BiweightLocationBackground(BackgroundBase):
@@ -437,11 +463,24 @@ class BiweightLocationBackground(BackgroundBase):
         self.c = c
         self.M = M
 
-    def calc_background(self, data, axis=None):
+    def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return biweight_location(data, c=self.c, M=self.M, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = biweight_location(data, c=self.c, M=self.M, axis=axis,
+                                       ignore_nan=True)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class StdBackgroundRMS(BackgroundRMSBase):
@@ -480,11 +519,23 @@ class StdBackgroundRMS(BackgroundRMSBase):
     28.86607004772212
     """
 
-    def calc_background_rms(self, data, axis=None):
+    def calc_background_rms(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return np.ma.std(data, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = nanstd(data, axis=axis)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class MADStdBackgroundRMS(BackgroundRMSBase):
@@ -534,11 +585,23 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
     37.06505546264005
     """
 
-    def calc_background_rms(self, data, axis=None):
+    def calc_background_rms(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return mad_std(data, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = mad_std(data, axis=axis, ignore_nan=True)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result
 
 
 class BiweightScaleBackgroundRMS(BackgroundRMSBase):
@@ -588,8 +651,21 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
         self.c = c
         self.M = M
 
-    def calc_background_rms(self, data, axis=None):
+    def calc_background_rms(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
-            data = self.sigma_clip(data, axis=axis)
+            data = self.sigma_clip(data, axis=axis, masked=False)
+        else:
+            # convert to ndarray with masked values as np.nan
+            if isinstance(data, np.ma.MaskedArray):
+                data = data.filled(np.nan)
 
-        return biweight_scale(data, c=self.c, M=self.M, axis=axis)
+        # ignore RuntimeWarning where axis is all NaN
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            result = biweight_scale(data, c=self.c, M=self.M, axis=axis,
+                                    ignore_nan=True)
+
+        if masked and isinstance(result, np.ndarray):
+            result = np.ma.masked_where(np.isnan(result), result)
+
+        return result

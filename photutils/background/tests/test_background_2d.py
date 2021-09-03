@@ -6,14 +6,16 @@ Tests for the background_2d module.
 import itertools
 
 from astropy.nddata import NDData, CCDData
+from astropy.tests.helper import catch_warnings
 import astropy.units as u
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 import pytest
 
 from ..core import MeanBackground
-from ..background_2d import (BkgZoomInterpolator, BkgIDWInterpolator,
-                             Background2D)
+from ..background_2d import Background2D
+from ..interpolators import BkgZoomInterpolator, BkgIDWInterpolator
 from ...utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 
@@ -38,31 +40,31 @@ class TestBackground2D:
                              list(itertools.product(FILTER_SIZES,
                                                     INTERPOLATORS)))
     def test_background(self, filter_size, interpolator):
-        b = Background2D(DATA, (25, 25), filter_size=filter_size,
-                         interpolator=interpolator)
-        assert_allclose(b.background, DATA)
-        assert_allclose(b.background_rms, BKG_RMS)
-        assert_allclose(b.background_mesh, BKG_MESH)
-        assert_allclose(b.background_rms_mesh, BKG_RMS_MESH)
-        assert b.background_median == 1.0
-        assert b.background_rms_median == 0.0
+        bkg = Background2D(DATA, (25, 25), filter_size=filter_size,
+                           interpolator=interpolator)
+        assert_allclose(bkg.background, DATA)
+        assert_allclose(bkg.background_rms, BKG_RMS)
+        assert_allclose(bkg.background_mesh, BKG_MESH)
+        assert_allclose(bkg.background_rms_mesh, BKG_RMS_MESH)
+        assert bkg.background_median == 1.0
+        assert bkg.background_rms_median == 0.0
 
     @pytest.mark.parametrize('data', [DATA1, DATA3, DATA4])
     def test_background_nddata(self, data):
         """ Test with NDData and CCDData, and also test units. """
-        b = Background2D(data, (25, 25), filter_size=3)
-        assert isinstance(b.background, u.Quantity)
-        assert isinstance(b.background_rms, u.Quantity)
-        assert isinstance(b.background_median, u.Quantity)
-        assert isinstance(b.background_rms_median, u.Quantity)
+        bkg = Background2D(data, (25, 25), filter_size=3)
+        assert isinstance(bkg.background, u.Quantity)
+        assert isinstance(bkg.background_rms, u.Quantity)
+        assert isinstance(bkg.background_median, u.Quantity)
+        assert isinstance(bkg.background_rms_median, u.Quantity)
 
-        b = Background2D(DATA2, (25, 25), filter_size=3)
-        assert_allclose(b.background, DATA)
-        assert_allclose(b.background_rms, BKG_RMS)
-        assert_allclose(b.background_mesh, BKG_MESH)
-        assert_allclose(b.background_rms_mesh, BKG_RMS_MESH)
-        assert b.background_median == 1.0
-        assert b.background_rms_median == 0.0
+        bkg = Background2D(DATA2, (25, 25), filter_size=3)
+        assert_allclose(bkg.background, DATA)
+        assert_allclose(bkg.background_rms, BKG_RMS)
+        assert_allclose(bkg.background_mesh, BKG_MESH)
+        assert_allclose(bkg.background_rms_mesh, BKG_RMS_MESH)
+        assert bkg.background_median == 1.0
+        assert bkg.background_rms_median == 0.0
 
     @pytest.mark.parametrize('interpolator', INTERPOLATORS)
     def test_background_rect(self, interpolator):
@@ -71,14 +73,14 @@ class TestBackground2D:
         """
         data = np.arange(12).reshape(3, 4)
         rms = np.zeros((3, 4))
-        b = Background2D(data, (1, 1), filter_size=1,
-                         interpolator=interpolator)
-        assert_allclose(b.background, data, atol=0.005)
-        assert_allclose(b.background_rms, rms)
-        assert_allclose(b.background_mesh, data)
-        assert_allclose(b.background_rms_mesh, rms)
-        assert b.background_median == 5.5
-        assert b.background_rms_median == 0.0
+        bkg = Background2D(data, (1, 1), filter_size=1,
+                           interpolator=interpolator)
+        assert_allclose(bkg.background, data, atol=0.005)
+        assert_allclose(bkg.background_rms, rms)
+        assert_allclose(bkg.background_mesh, data)
+        assert_allclose(bkg.background_rms_mesh, rms)
+        assert bkg.background_median == 5.5
+        assert bkg.background_rms_median == 0.0
 
     @pytest.mark.parametrize('interpolator', INTERPOLATORS)
     def test_background_nonconstant(self, interpolator):
@@ -86,33 +88,33 @@ class TestBackground2D:
         data[25:50, 50:75] = 10.
         bkg_low_res = np.copy(BKG_MESH)
         bkg_low_res[1, 2] = 10.
-        b1 = Background2D(data, (25, 25), filter_size=(1, 1),
-                          interpolator=interpolator)
-        assert_allclose(b1.background_mesh, bkg_low_res)
-        assert b1.background.shape == data.shape
-        b2 = Background2D(data, (25, 25), filter_size=(1, 1),
-                          edge_method='pad', interpolator=interpolator)
-        assert_allclose(b2.background_mesh, bkg_low_res)
-        assert b2.background.shape == data.shape
+        bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
+                            interpolator=interpolator)
+        assert_allclose(bkg1.background_mesh, bkg_low_res)
+        assert bkg1.background.shape == data.shape
+        bkg2 = Background2D(data, (25, 25), filter_size=(1, 1),
+                            edge_method='pad', interpolator=interpolator)
+        assert_allclose(bkg2.background_mesh, bkg_low_res)
+        assert bkg2.background.shape == data.shape
 
     def test_no_sigma_clipping(self):
         data = np.copy(DATA)
         data[10, 10] = 100.
-        b1 = Background2D(data, (25, 25), filter_size=(1, 1),
-                          bkg_estimator=MeanBackground())
-        b2 = Background2D(data, (25, 25), filter_size=(1, 1), sigma_clip=None,
-                          bkg_estimator=MeanBackground())
+        bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
+                            bkg_estimator=MeanBackground())
+        bkg2 = Background2D(data, (25, 25), filter_size=(1, 1),
+                            sigma_clip=None, bkg_estimator=MeanBackground())
 
-        assert b2.background_mesh[0, 0] > b1.background_mesh[0, 0]
+        assert bkg2.background_mesh[0, 0] > bkg1.background_mesh[0, 0]
 
     @pytest.mark.parametrize('filter_size', FILTER_SIZES)
     def test_resizing(self, filter_size):
-        b1 = Background2D(DATA, (23, 22), filter_size=filter_size,
-                          bkg_estimator=MeanBackground(), edge_method='crop')
-        b2 = Background2D(DATA, (23, 22), filter_size=filter_size,
-                          bkg_estimator=MeanBackground(), edge_method='pad')
-        assert_allclose(b1.background, b2.background, rtol=2e-6)
-        assert_allclose(b1.background_rms, b2.background_rms)
+        bkg1 = Background2D(DATA, (23, 22), filter_size=filter_size,
+                            bkg_estimator=MeanBackground(), edge_method='crop')
+        bkg2 = Background2D(DATA, (23, 22), filter_size=filter_size,
+                            bkg_estimator=MeanBackground(), edge_method='pad')
+        assert_allclose(bkg1.background, bkg2.background, rtol=2e-6)
+        assert_allclose(bkg1.background_rms, bkg2.background_rms)
 
     @pytest.mark.parametrize('box_size', ([(25, 25), (23, 22)]))
     def test_background_mask(self, box_size):
@@ -120,61 +122,84 @@ class TestBackground2D:
         Test with an input mask.  Note that box_size=(23, 22) tests the
         resizing of the image and mask.
         """
-
         data = np.copy(DATA)
         data[25:50, 25:50] = 100.
         mask = np.zeros(DATA.shape, dtype=bool)
         mask[25:50, 25:50] = True
-        b = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
-                         bkg_estimator=MeanBackground())
-        assert_allclose(b.background, DATA, rtol=2.e-5)
-        assert_allclose(b.background_rms, BKG_RMS)
+        bkg = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
+                           bkg_estimator=MeanBackground())
+        assert_allclose(bkg.background, DATA, rtol=2.e-5)
+        assert_allclose(bkg.background_rms, BKG_RMS)
 
         # test edge crop with mask
-        b2 = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
-                          bkg_estimator=MeanBackground(), edge_method='crop')
-        assert_allclose(b2.background, DATA, rtol=2.e-5)
+        bkg2 = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
+                            bkg_estimator=MeanBackground(), edge_method='crop')
+        assert_allclose(bkg2.background, DATA, rtol=2.e-5)
 
     def test_mask(self):
         data = np.copy(DATA)
         data[25:50, 25:50] = 100.
         mask = np.zeros(DATA.shape, dtype=bool)
         mask[25:50, 25:50] = True
-        b1 = Background2D(data, (25, 25), filter_size=(1, 1), mask=None,
-                          bkg_estimator=MeanBackground())
+        bkg1 = Background2D(data, (25, 25), filter_size=(1, 1), mask=None,
+                            bkg_estimator=MeanBackground())
 
-        assert_equal(b1.background_mesh, b1.background_mesh_ma)
-        assert_equal(b1.background_rms_mesh, b1.background_rms_mesh_ma)
-        assert not np.ma.is_masked(b1.mesh_nmasked)
+        assert_equal(bkg1.background_mesh, bkg1.background_mesh_masked)
+        assert_equal(bkg1.background_rms_mesh, bkg1.background_rms_mesh_masked)
+        assert np.count_nonzero(np.isnan(bkg1.mesh_nmasked)) == 0
 
-        b2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
-                          bkg_estimator=MeanBackground())
+        bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
+                            bkg_estimator=MeanBackground())
 
-        assert np.ma.count(b2.background_mesh_ma) < b2.nboxes
-        assert np.ma.count(b2.background_rms_mesh_ma) < b2.nboxes
-        assert np.ma.is_masked(b2.mesh_nmasked)
+        assert (np.count_nonzero(~np.isnan(bkg2.background_mesh_masked))
+                < bkg2.nboxes_tot)
+        assert (np.count_nonzero(~np.isnan(bkg2.background_rms_mesh_masked))
+                < bkg2.nboxes_tot)
+        assert np.count_nonzero(np.isnan(bkg2.mesh_nmasked)) == 1
 
     @pytest.mark.parametrize('fill_value', [0., np.nan, -1.])
     def test_coverage_mask(self, fill_value):
         data = np.copy(DATA)
         data[:50, :50] = np.nan
         mask = np.isnan(data)
-        b1 = Background2D(data, (25, 25), filter_size=(1, 1),
-                          coverage_mask=mask, fill_value=fill_value,
-                          bkg_estimator=MeanBackground())
-        assert_equal(b1.background[:50, :50], fill_value)
-        assert_equal(b1.background_rms[:50, :50], fill_value)
+
+        with catch_warnings(AstropyUserWarning):
+            bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
+                                coverage_mask=mask, fill_value=fill_value,
+                                bkg_estimator=MeanBackground())
+        assert_equal(bkg1.background[:50, :50], fill_value)
+        assert_equal(bkg1.background_rms[:50, :50], fill_value)
 
         # test combination of masks
         mask = np.zeros(DATA.shape, dtype=bool)
         coverage_mask = np.zeros(DATA.shape, dtype=bool)
         mask[:50, :25] = True
         coverage_mask[:50, 25:50] = True
-        b2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
-                          coverage_mask=mask, fill_value=0.0,
-                          bkg_estimator=MeanBackground())
-        assert_equal(b1.background_mesh, b2.background_mesh)
-        assert_equal(b1.background_rms_mesh, b2.background_rms_mesh)
+        bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
+                            coverage_mask=mask, fill_value=0.0,
+                            bkg_estimator=MeanBackground())
+        assert_equal(bkg1.background_mesh, bkg2.background_mesh)
+        assert_equal(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
+
+    def test_mask_nonfinite(self):
+        data = DATA.copy()
+        data[0, 0:50] = np.nan
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1))
+        assert_allclose(bkg.background, DATA, rtol=1e-5)
+
+    def test_masked_array(self):
+        data = DATA.copy()
+        data[0, 0:50] = True
+        mask = np.zeros(DATA.shape, dtype=bool)
+        mask[0, 0:50] = True
+        data_ma1 = np.ma.MaskedArray(DATA, mask=mask)
+        data_ma2 = np.ma.MaskedArray(data, mask=mask)
+
+        bkg1 = Background2D(data, (25, 25), filter_size=(1, 1))
+        bkg2 = Background2D(data_ma1, (25, 25), filter_size=(1, 1))
+        bkg3 = Background2D(data_ma2, (25, 25), filter_size=(1, 1))
+        assert_allclose(bkg1.background, bkg2.background, rtol=1e-5)
+        assert_allclose(bkg2.background, bkg3.background, rtol=1e-5)
 
     def test_completely_masked(self):
         with pytest.raises(ValueError):
@@ -183,29 +208,34 @@ class TestBackground2D:
 
     def test_zero_padding(self):
         """Test case where padding is added only on one axis."""
+        bkg = Background2D(DATA, (25, 22), filter_size=(1, 1))
+        assert_allclose(bkg.background, DATA, rtol=1e-5)
+        assert_allclose(bkg.background_rms, BKG_RMS)
+        assert bkg.background_median == 1.0
+        assert bkg.background_rms_median == 0.0
 
-        b = Background2D(DATA, (25, 22), filter_size=(1, 1))
-        assert_allclose(b.background, DATA, rtol=1e-5)
-        assert_allclose(b.background_rms, BKG_RMS)
-        assert b.background_median == 1.0
-        assert b.background_rms_median == 0.0
+    def test_exclude_percentile(self):
+        """Only meshes greater than filter_threshold are filtered."""
+        data = np.copy(DATA)
+        data[0:50, 0:50] = np.nan
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1),
+                           exclude_percentile=100.)
+        assert len(bkg._box_idx) == 12
 
     def test_filter_threshold(self):
         """Only meshes greater than filter_threshold are filtered."""
-
         data = np.copy(DATA)
         data[25:50, 50:75] = 10.
-        b = Background2D(data, (25, 25), filter_size=(3, 3),
-                         filter_threshold=9.)
-        assert_allclose(b.background, DATA)
-        assert_allclose(b.background_mesh, BKG_MESH)
-        b2 = Background2D(data, (25, 25), filter_size=(3, 3),
-                          filter_threshold=11.)  # no filtering
-        assert b2.background_mesh[1, 2] == 10
+        bkg = Background2D(data, (25, 25), filter_size=(3, 3),
+                           filter_threshold=9.)
+        assert_allclose(bkg.background, DATA)
+        assert_allclose(bkg.background_mesh, BKG_MESH)
+        bkg2 = Background2D(data, (25, 25), filter_size=(3, 3),
+                            filter_threshold=11.)  # no filtering
+        assert bkg2.background_mesh[1, 2] == 10
 
     def test_filter_threshold_high(self):
         """No filtering because filter_threshold is too large."""
-
         data = np.copy(DATA)
         data[25:50, 50:75] = 10.
         ref_data = np.copy(BKG_MESH)
@@ -216,7 +246,6 @@ class TestBackground2D:
 
     def test_filter_threshold_nofilter(self):
         """No filtering because filter_size is (1, 1)."""
-
         data = np.copy(DATA)
         data[25:50, 50:75] = 10.
         ref_data = np.copy(BKG_MESH)
@@ -226,27 +255,52 @@ class TestBackground2D:
         assert_allclose(b.background_mesh, ref_data)
 
     def test_scalar_sizes(self):
-        b1 = Background2D(DATA, (25, 25), filter_size=(3, 3))
-        b2 = Background2D(DATA, 25, filter_size=3)
-        assert_allclose(b1.background, b2.background)
-        assert_allclose(b1.background_rms, b2.background_rms)
+        bkg1 = Background2D(DATA, (25, 25), filter_size=(3, 3))
+        bkg2 = Background2D(DATA, 25, filter_size=3)
+        assert_allclose(bkg1.background, bkg2.background)
+        assert_allclose(bkg1.background_rms, bkg2.background_rms)
 
-    def test_exclude_percentile(self):
+    def test_invalid_box_size(self):
+        with pytest.raises(ValueError):
+            Background2D(DATA, (5, 5, 3))
+
+    def test_invalid_filter_size(self):
+        with pytest.raises(ValueError):
+            Background2D(DATA, (5, 5), filter_size=(3, 3, 3))
+
+    def test_invalid_exclude_percentile(self):
         with pytest.raises(ValueError):
             Background2D(DATA, (5, 5), exclude_percentile=-1)
 
         with pytest.raises(ValueError):
             Background2D(DATA, (5, 5), exclude_percentile=101)
 
-    def test_mask_badshape(self):
+    def test_mask_nomask(self):
+        bkg = Background2D(DATA, (25, 25), filter_size=(1, 1),
+                           mask=np.ma.nomask)
+        assert bkg.mask is None
+
+        bkg = Background2D(DATA, (25, 25), filter_size=(1, 1),
+                           coverage_mask=np.ma.nomask)
+        assert bkg.coverage_mask is None
+
+    def test_invalid_mask(self):
         with pytest.raises(ValueError):
             Background2D(DATA, (25, 25), filter_size=(1, 1),
                          mask=np.zeros((2, 2)))
 
-    def test_coverage_mask_badshape(self):
+        with pytest.raises(ValueError):
+            Background2D(DATA, (25, 25), filter_size=(1, 1),
+                         mask=np.zeros((2, 2, 2)))
+
+    def test_invalid_coverage_mask(self):
         with pytest.raises(ValueError):
             Background2D(DATA, (25, 25), filter_size=(1, 1),
                          coverage_mask=np.zeros((2, 2)))
+
+        with pytest.raises(ValueError):
+            Background2D(DATA, (25, 25), filter_size=(1, 1),
+                         coverage_mask=np.zeros((2, 2, 2)))
 
     def test_invalid_edge_method(self):
         with pytest.raises(ValueError):
@@ -264,8 +318,8 @@ class TestBackground2D:
         This test should run without any errors, but there is no return
         value.
         """
-        b = Background2D(DATA, (25, 25))
-        b.plot_meshes(outlines=True)
+        bkg = Background2D(DATA, (25, 25))
+        bkg.plot_meshes(outlines=True)
 
     def test_crop(self):
         data = np.ones((300, 500))
