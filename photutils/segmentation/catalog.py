@@ -79,7 +79,7 @@ class SourceCatalog:
         `~photutils.utils.calc_total_error`) . ``error`` must have
         the same shape as the input ``data``. If ``data`` is a
         `~astropy.units.Quantity` array then ``error`` must be a
-        `~astropy.units.Quantity` array (and vise versa) with identical
+        `~astropy.units.Quantity` array (and vice versa) with identical
         units. Non-finite ``error`` values (NaN and +/- inf) are not
         automatically masked, unless they are at the same position of
         non-finite values in the input ``data`` array. Such pixels can
@@ -98,7 +98,7 @@ class SourceCatalog:
         ``data``. ``background`` may either be a scalar value or a 2D
         image with the same shape as the input ``data``. If ``data``
         is a `~astropy.units.Quantity` array then ``background`` must
-        be a `~astropy.units.Quantity` array (and vise versa) with
+        be a `~astropy.units.Quantity` array (and vice versa) with
         identical units. Inputing the ``background`` merely allows
         for its properties to be measured within each source segment.
         The input ``background`` does *not* get subtracted from the
@@ -1135,7 +1135,7 @@ class SourceCatalog:
         minimum pixel value of the ``data`` within the source segment.
 
         If there are multiple occurrences of the minimum value, only the
-        first occurence is returned.
+        first occurrence is returned.
         """
         data = self.data_ma
         if self.isscalar:
@@ -1156,7 +1156,7 @@ class SourceCatalog:
         maximum pixel value of the ``data`` within the source segment.
 
         If there are multiple occurrences of the maximum value, only the
-        first occurence is returned.
+        first occurrence is returned.
         """
         data = self.data_ma
         if self.isscalar:
@@ -1177,7 +1177,7 @@ class SourceCatalog:
         ``data`` within the source segment.
 
         If there are multiple occurrences of the minimum value, only the
-        first occurence is returned.
+        first occurrence is returned.
         """
         index = self.cutout_minval_index
         if self.isscalar:
@@ -1195,7 +1195,7 @@ class SourceCatalog:
         ``data`` within the source segment.
 
         If there are multiple occurrences of the maximum value, only the
-        first occurence is returned.
+        first occurrence is returned.
         """
         index = self.cutout_maxval_index
         if self.isscalar:
@@ -1213,7 +1213,7 @@ class SourceCatalog:
         within the source segment.
 
         If there are multiple occurrences of the minimum value, only the
-        first occurence is returned.
+        first occurrence is returned.
         """
         return np.transpose(self.minval_index)[1]
 
@@ -1225,7 +1225,7 @@ class SourceCatalog:
         within the source segment.
 
         If there are multiple occurrences of the minimum value, only the
-        first occurence is returned.
+        first occurrence is returned.
         """
         return np.transpose(self.minval_index)[0]
 
@@ -1237,7 +1237,7 @@ class SourceCatalog:
         within the source segment.
 
         If there are multiple occurrences of the maximum value, only the
-        first occurence is returned.
+        first occurrence is returned.
         """
         return np.transpose(self.maxval_index)[1]
 
@@ -1249,7 +1249,7 @@ class SourceCatalog:
         within the source segment.
 
         If there are multiple occurrences of the maximum value, only the
-        first occurence is returned.
+        first occurrence is returned.
         """
         return np.transpose(self.maxval_index)[0]
 

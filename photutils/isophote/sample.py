@@ -45,8 +45,8 @@ class EllipseSample:
     sclip : float, optional
         The sigma-clip sigma value.  The default is 3.0.
     nclip : int, optional
-        The number of sigma-clip interations.  Set to zero to skip
-        sigma-clipping.  The default is 0.
+        The number of sigma-clip iterations. Set to zero to skip
+        sigma-clipping. The default is 0.
     linear_growth : bool, optional
         The semimajor axis growing/shrinking mode.  The default is
         `False`.

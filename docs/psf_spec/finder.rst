@@ -7,8 +7,8 @@ https://photutils.readthedocs.io/en/stable/api/photutils.detection.StarFinderBas
 
 A single sentence summarizing this block.
 
-A longer descrption.  Can be multiple paragraphs.  You can link to other things
-like `photutils.background`.
+A longer description. Can be multiple paragraphs. You can link to other
+things like `photutils.background`.
 
 Parameters
 ----------

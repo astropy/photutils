@@ -121,7 +121,7 @@ class Background2D:
         * ``'crop'``: crop the image along the top and/or right edges.
           This method should be used sparingly. Best results will occur
           when ``box_size`` is chosen such that an integer number of
-          boxes is only slighly smaller than the ``data`` size to
+          boxes is only slightly smaller than the ``data`` size to
           minimize the amount of cropping.
 
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
@@ -614,7 +614,7 @@ class Background2D:
     def mesh_nmasked(self):
         """
         A 2D array of the number of masked pixels in each mesh. NaN
-        values indiciate where meshes were excluded.
+        values indicate where meshes were excluded.
         """
         return self._make_2d_array(
             np.count_nonzero(np.isnan(self._box_data), axis=1))

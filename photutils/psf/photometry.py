@@ -40,16 +40,16 @@ class BasicPSFPhotometry:
     Parameters
     ----------
     group_maker : callable or `~photutils.psf.GroupStarsBase`
-        ``group_maker`` should be able to decide whether a given star
-        overlaps with any other and label them as beloging to the same
-        group.  ``group_maker`` receives as input an
+        ``group_maker`` should be able to decide whether a given
+        star overlaps with any other and label them as belonging
+        to the same group. ``group_maker`` receives as input an
         `~astropy.table.Table` object with columns named as ``id``,
         ``x_0``, ``y_0``, in which ``x_0`` and ``y_0`` have the same
-        meaning of ``xcentroid`` and ``ycentroid``.  This callable must
+        meaning of ``xcentroid`` and ``ycentroid``. This callable must
         return an `~astropy.table.Table` with columns ``id``, ``x_0``,
-        ``y_0``, and ``group_id``. The column ``group_id`` should cotain
-        integers starting from ``1`` that indicate which group a given
-        source belongs to. See, e.g., `~photutils.psf.DAOGroup`.
+        ``y_0``, and ``group_id``. The column ``group_id`` should
+        contain integers starting from ``1`` that indicate which group a
+        given source belongs to. See, e.g., `~photutils.psf.DAOGroup`.
     bkg_estimator : callable, instance of any \
             `~photutils.background.BackgroundBase` subclass, or None
         ``bkg_estimator`` should be able to compute either a scalar
@@ -322,9 +322,9 @@ class BasicPSFPhotometry:
                 sources['aperture_flux'] = aperture_photometry(
                     image, apertures)['aperture_sum']
 
-                # init_guesses should be the initial 3 required parameters --
-                # x, y, flux -- and then concatentated with any additional
-                # sources, if there are any
+                # init_guesses should be the initial 3 required
+                # parameters (x, y, flux) and then concatenated with any
+                # additional sources, if there are any
                 init_guesses = Table(names=['x_0', 'y_0', 'flux_0'],
                                      data=[sources['xcentroid'],
                                            sources['ycentroid'],
@@ -559,16 +559,16 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     Parameters
     ----------
     group_maker : callable or `~photutils.psf.GroupStarsBase`
-        ``group_maker`` should be able to decide whether a given star
-        overlaps with any other and label them as beloging to the same
-        group.  ``group_maker`` receives as input an
+        ``group_maker`` should be able to decide whether a given
+        star overlaps with any other and label them as belonging
+        to the same group. ``group_maker`` receives as input an
         `~astropy.table.Table` object with columns named as ``id``,
         ``x_0``, ``y_0``, in which ``x_0`` and ``y_0`` have the same
-        meaning of ``xcentroid`` and ``ycentroid``.  This callable must
+        meaning of ``xcentroid`` and ``ycentroid``. This callable must
         return an `~astropy.table.Table` with columns ``id``, ``x_0``,
-        ``y_0``, and ``group_id``. The column ``group_id`` should cotain
-        integers starting from ``1`` that indicate which group a given
-        source belongs to. See, e.g., `~photutils.psf.DAOGroup`.
+        ``y_0``, and ``group_id``. The column ``group_id`` should
+        contain integers starting from ``1`` that indicate which group a
+        given source belongs to. See, e.g., `~photutils.psf.DAOGroup`.
     bkg_estimator : callable, instance of any \
             `~photutils.background.BackgroundBase` subclass, or None
         ``bkg_estimator`` should be able to compute either a scalar

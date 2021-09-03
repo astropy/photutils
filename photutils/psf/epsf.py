@@ -888,7 +888,7 @@ def _interpolate_missing_data(data, mask, method='cubic'):
         An array containing the 2D image.
 
     mask : 2D bool `~numpy.ndarray`
-        A 2D booleen mask array with the same shape as the input
+        A 2D boolean mask array with the same shape as the input
         ``data``, where a `True` value indicates the corresponding
         element of ``data`` is masked.  The masked data points are
         those that will be interpolated.

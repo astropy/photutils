@@ -307,7 +307,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
             if remove_marker:
                 # remove only the faintest source (one at a time)
                 # because several faint sources could combine to meet the
-                # constrast criterion
+                # contrast criterion
                 markers[markers == labels[np.argmin(flux_frac)]] = 0.
 
         segm_new = object.__new__(SegmentationImage)

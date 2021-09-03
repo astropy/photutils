@@ -197,7 +197,7 @@ The basic usage of, e.g.,
 Where ``my_finder``, ``my_group_maker``, and ``my_bkg_estimator``
 may be any suitable class or callable function. This approach allows
 one to customize every part of the photometry process provided that
-their input/output are compatible with the input/ouput expected by
+their input/output are compatible with the input/output expected by
 `~photutils.psf.IterativelySubtractedPSFPhotometry`. `photutils.psf`
 provides all the necessary classes to reproduce the DAOPHOT algorithm,
 but any individual part of that algorithm can be swapped for a
