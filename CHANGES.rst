@@ -221,7 +221,7 @@ API changes
   - Removed the deprecated ``fit_2dgaussian`` function and
     ``GaussianConst2D`` class. [#1147]
 
-  - Importing tools from the centroids subpackge without including the
+  - Importing tools from the centroids subpackage without including the
     subpackage name is deprecated. [#1190]
 
 - ``photutils.detection``
@@ -237,7 +237,7 @@ API changes
 
 - ``photutils.morphology``
 
-  - Importing tools from the morphology subpackge without including the
+  - Importing tools from the morphology subpackage without including the
     subpackage name is deprecated. [#1190]
 
 - ``photutils.segmentation``
@@ -1472,8 +1472,8 @@ Bug Fixes
 
 - ``photutils.centroids``
 
-  - Fixed a bug in ``centroid_1dg`` and ``centroid_2dg`` that occured
-    when the input data contained invalid (NaN or inf) values.  [#428]
+  - Fixed a bug in ``centroid_1dg`` and ``centroid_2dg`` that occurred
+    when the input data contained invalid (NaN or inf) values. [#428]
 
 - ``photutils.segmentation``
 
