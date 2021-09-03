@@ -7,8 +7,8 @@ BlockClassName
 
 A single sentence summarizing this block.
 
-A longer descrption.  Can be multiple paragraphs.  You can link to other things
-like `photutils.background`.
+A longer description. Can be multiple paragraphs. You can link to other
+things like `photutils.background`.
 
 Parameters
 ----------

@@ -2,16 +2,17 @@ BackgroundEstimator
 ===================
 
 EJT: Existing code documented at
-https://photutils.readthedocs.io/en/stable/api/photutils.background.BackgroundBase.html
-- while the ``__call__`` function has no docstring, the ``calc_background``
-function is the actual block API.  I'm providing this as an *example* block
-because it is heavily used in other parts of `photutils` and therefore probably
-should not be changed much unless absolutely necessary.
+https://photutils.readthedocs.io/en/stable/api/photutils.background.Back
+groundBase.html - while the ``__call__`` function has no docstring, the
+``calc_background`` function is the actual block API. I'm providing
+this as an *example* block because it is heavily used in other parts of
+`photutils` and therefore probably should not be changed much unless
+absolutely necessary.
 
 A single sentence summarizing this block.
 
-A longer descrption.  Can be multiple paragraphs.  You can link to other things
-like `photutils.background`.
+A longer description. Can be multiple paragraphs. You can link to other
+things like `photutils.background`.
 
 
 Parameters
