@@ -7,6 +7,18 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.background``
+
+  - Improved the performance of ``Background2D`` by up to 10-50% when
+    the optional ``bottleneck`` package is installed. [#1232]
+
+  - Added a ``masked`` keyword to the background
+    classes ``MeanBackground``, ``MedianBackground``,
+    ``ModeEstimatorBackground``, ``MMMBackground``,
+    ``SExtractorBackground``, ``BiweightLocationBackground``,
+    ``StdBackgroundRMS``, ``MADStdBackgroundRMS``, and
+    ``BiweightScaleBackgroundRMS``. [#1232]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -54,6 +66,22 @@ API changes
 
   - Removed the deprecated ``BoundingBox.slices`` and
     ``PixelAperture.bounding_boxes`` attributes. [#1215]
+
+- ``photutils.background``
+
+  - The background classes ``MeanBackground``, ``MedianBackground``,
+    ``ModeEstimatorBackground``, ``MMMBackground``,
+    ``SExtractorBackground``, ``BiweightLocationBackground``,
+    ``StdBackgroundRMS``, ``MADStdBackgroundRMS``, and
+    ``BiweightScaleBackgroundRMS`` now return by default a
+    ``numpy.ndarray`` with ``np.nan`` values representing masked pixels
+    instead of a masked array. A masked array can be returned by setting
+    ``masked=True``. [#1232]
+
+  - Deprecated the ``Background2D`` attributes ``background_mesh_ma``
+    and ``background_rms_mesh_ma``. They have been renamed to
+    ``background_mesh_masked`` and ``background_rms_mesh_masked``.
+    [#1232]
 
 
 1.1.0 (2021-03-20)
