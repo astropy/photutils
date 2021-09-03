@@ -4,6 +4,7 @@ Tests for the core module.
 """
 
 from astropy.stats import SigmaClip
+import astropy.units as u
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -192,3 +193,19 @@ def test_background_axis_tuple(bkg_class):
     bkg_val1 = bkg.calc_background(DATA, axis=None)
     bkg_val2 = bkg.calc_background(DATA, axis=(0, 1))
     assert_allclose(bkg_val1, bkg_val2)
+
+
+@pytest.mark.parametrize('bkg_class', BKG_CLASS)
+def test_background_units(bkg_class):
+    data = np.ones((100, 100)) << u.Jy
+    bkg = bkg_class(sigma_clip=SIGMA_CLIP)
+    bkgval = bkg.calc_background(data)
+    assert isinstance(bkgval, u.Quantity)
+
+
+@pytest.mark.parametrize('rms_class', RMS_CLASS)
+def test_background_rms_units(rms_class):
+    data = np.ones((100, 100)) << u.Jy
+    bkgrms = rms_class(sigma_clip=SIGMA_CLIP)
+    rmsval = bkgrms.calc_background_rms(data)
+    assert isinstance(rmsval, u.Quantity)

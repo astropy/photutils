@@ -19,6 +19,9 @@ New Features
     ``StdBackgroundRMS``, ``MADStdBackgroundRMS``, and
     ``BiweightScaleBackgroundRMS``. [#1232]
 
+  - Enable all background classes to work with ``Quantity`` inputs.
+    [#1233]
+
 Bug Fixes
 ^^^^^^^^^
 

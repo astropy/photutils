@@ -9,6 +9,7 @@ import warnings
 
 from astropy.stats import (biweight_location, biweight_scale, mad_std,
                            SigmaClip)
+import astropy.units as u
 import numpy as np
 
 from ._utils import nanmean, nanmedian, nanstd
@@ -662,8 +663,16 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            result = biweight_scale(data, c=self.c, M=self.M, axis=axis,
-                                    ignore_nan=True)
+
+            # this is need to fix a bug in astropy 4.3.1 where
+            # biweight_scale can drop the unit in some cases
+            if isinstance(data, u.Quantity):
+                result = data.__array_wrap__(
+                    biweight_scale(data, c=self.c, M=self.M, axis=axis,
+                                   ignore_nan=True))
+            else:
+                result = biweight_scale(data, c=self.c, M=self.M, axis=axis,
+                                        ignore_nan=True)
 
         if masked and isinstance(result, np.ndarray):
             result = np.ma.masked_where(np.isnan(result), result)
