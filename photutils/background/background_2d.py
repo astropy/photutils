@@ -37,6 +37,8 @@ class Background2D:
     The final background map is calculated by interpolating the
     low-resolution background map.
 
+    Invalid data values (i.e., NaN or inf) are automatically masked.
+
     Parameters
     ----------
     data : array_like or `~astropy.nddata.NDData`

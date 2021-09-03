@@ -69,6 +69,9 @@ API changes
 
 - ``photutils.background``
 
+  - Invalid data values (i.e., NaN or inf) are now automatically masked
+    in ``Background2D``. [#1232]
+
   - The background classes ``MeanBackground``, ``MedianBackground``,
     ``ModeEstimatorBackground``, ``MMMBackground``,
     ``SExtractorBackground``, ``BiweightLocationBackground``,
