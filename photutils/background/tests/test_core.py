@@ -209,3 +209,15 @@ def test_background_rms_units(rms_class):
     bkgrms = rms_class(sigma_clip=SIGMA_CLIP)
     rmsval = bkgrms.calc_background_rms(data)
     assert isinstance(rmsval, u.Quantity)
+
+
+@pytest.mark.parametrize('bkg_class', BKG_CLASS)
+def test_background_invalid_sigmaclip(bkg_class):
+    with pytest.raises(TypeError):
+        bkg_class(sigma_clip=3)
+
+
+@pytest.mark.parametrize('rms_class', RMS_CLASS)
+def test_background_rms_invalid_sigmaclip(rms_class):
+    with pytest.raises(TypeError):
+        rms_class(sigma_clip=3)
