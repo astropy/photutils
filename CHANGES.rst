@@ -22,6 +22,9 @@ New Features
   - Enable all background classes to work with ``Quantity`` inputs.
     [#1233]
 
+  - Added a ``markersize`` keyword to the ``Background2D`` method
+    ``plot_meshes``. [#1234]
+
 Bug Fixes
 ^^^^^^^^^
 
