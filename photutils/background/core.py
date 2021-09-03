@@ -42,6 +42,10 @@ class BackgroundBase(metaclass=abc.ABCMeta):
                             'instance or None')
         self.sigma_clip = sigma_clip
 
+    def __repr__(self):
+        return (f'<{self.__class__.__name__}'
+                f'(sigma_clip={repr(self.sigma_clip)})>')
+
     def __call__(self, data, axis=None, masked=False):
         return self.calc_background(data, axis=axis, masked=masked)
 
@@ -93,6 +97,10 @@ class BackgroundRMSBase(metaclass=abc.ABCMeta):
             raise TypeError('sigma_clip must be an astropy SigmaClip '
                             'instance or None')
         self.sigma_clip = sigma_clip
+
+    def __repr__(self):
+        return (f'<{self.__class__.__name__}'
+                f'(sigma_clip={repr(self.sigma_clip)})>')
 
     def __call__(self, data, axis=None, masked=False):
         return self.calc_background_rms(data, axis=axis, masked=masked)
