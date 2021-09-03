@@ -221,3 +221,19 @@ def test_background_invalid_sigmaclip(bkg_class):
 def test_background_rms_invalid_sigmaclip(rms_class):
     with pytest.raises(TypeError):
         rms_class(sigma_clip=3)
+
+
+@pytest.mark.parametrize('bkg_class', BKG_CLASS)
+def test_background_repr(bkg_class):
+    bkg = bkg_class()
+    bkg_repr = repr(bkg)
+    assert bkg_repr == str(bkg)
+    assert bkg_repr.startswith(f'<{bkg.__class__.__name__}(sigma_clip=')
+
+
+@pytest.mark.parametrize('rms_class', RMS_CLASS)
+def test_background_rms_repr(rms_class):
+    bkgrms = rms_class()
+    rms_repr = repr(bkgrms)
+    assert rms_repr == str(bkgrms)
+    assert rms_repr.startswith(f'<{bkgrms.__class__.__name__}(sigma_clip=')
