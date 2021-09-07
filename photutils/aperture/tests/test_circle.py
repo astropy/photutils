@@ -95,6 +95,10 @@ def test_area_overlap():
     areas = aper.area_overlap(data)
     assert_allclose(areas, [10.304636, np.pi*9., np.nan])
 
+    aper2 = CircularAperture(xypos[1], r=3)
+    area2 = aper2.area_overlap(data)
+    assert_allclose(area2, np.pi * 9.)
+
 
 def test_area_overlap_mask():
     data = np.ones((11, 11))
@@ -106,3 +110,7 @@ def test_area_overlap_mask():
     areas = aper.area_overlap(data, mask=mask)
     areas_exp = np.array([10.304636, np.pi*9., np.nan]) - 2.
     assert_allclose(areas, areas_exp)
+
+    with pytest.raises(ValueError):
+        mask = np.zeros((3, 3), dtype=bool)
+        aper.area_overlap(data, mask=mask)
