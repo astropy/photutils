@@ -35,12 +35,22 @@ class BkgZoomInterpolator:
     cval : float, optional
         The value used for points outside the boundaries of the input if
         ``mode='constant'``. Default is 0.0
+
+    grid_mode : bool, optional
+        If `True` (default), the samples are considered as the centers
+        of regularly-spaced grid elements. If `False`, the samples
+        are treated as isolated points. For zooming 2D images,
+        this keyword should be set to `True`, which makes zoom's
+        behavior consistent with `scipy.ndimage.map_coordinates` and
+        `skimage.transform.resize`. The `False` option is provided only
+        for backwards-compatibility.
     """
 
-    def __init__(self, order=3, mode='reflect', cval=0.0):
+    def __init__(self, *, order=3, mode='reflect', cval=0.0, grid_mode=True):
         self.order = order
         self.mode = mode
         self.cval = cval
+        self.grid_mode = grid_mode
 
     def __call__(self, mesh, bkg2d_obj):
         """
@@ -71,7 +81,7 @@ class BkgZoomInterpolator:
             # back to the final data size.
             zoom_factor = bkg2d_obj.box_size
             result = zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
-                          cval=self.cval)
+                          cval=self.cval, grid_mode=self.grid_mode)
             return result[0:bkg2d_obj.data.shape[0],
                           0:bkg2d_obj.data.shape[1]]
         else:
@@ -109,7 +119,7 @@ class BkgIDWInterpolator:
         smoothness of the interpolator.
     """
 
-    def __init__(self, leafsize=10, n_neighbors=10, power=1.0, reg=0.0):
+    def __init__(self, *, leafsize=10, n_neighbors=10, power=1.0, reg=0.0):
         self.leafsize = leafsize
         self.n_neighbors = n_neighbors
         self.power = power
