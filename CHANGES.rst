@@ -9,6 +9,10 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Add ``mask`` keyword to the ``area_overlap`` method. [#1241]
+
 - ``photutils.background``
 
   - Improved the performance of ``Background2D`` by up to 10-50% when

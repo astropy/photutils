@@ -264,15 +264,21 @@ class PixelAperture(Aperture):
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
-    def area_overlap(self, data, method='exact', subpixels=5):
+    def area_overlap(self, data, *, mask=None, method='exact', subpixels=5):
         """
-        Return the areas of the aperture masks that overlap with the data,
-        i.e., how many pixels are actually used to calculate each sum
+        Return the areas of the aperture masks that overlap with the
+        data, i.e., how many pixels are actually used to calculate each
+        sum.
 
         Parameters
         ----------
         data : array_like or `~astropy.units.Quantity`
             The 2D array to multiply with the aperture mask.
+
+        mask : array_like (bool), optional
+            A boolean mask with the same shape as ``data`` where a
+            `True` value indicates the corresponding element of ``data``
+            is masked. Masked data are excluded from the area overlap.
 
         method : {'exact', 'center', 'subpixel'}, optional
             The method used to determine the overlap of the aperture on
@@ -310,11 +316,17 @@ class PixelAperture(Aperture):
         areas : float or array_like
             The overlapping areas between the aperture masks and the data.
         """
-        masks = self.to_mask(method=method, subpixels=subpixels)
+        apermasks = self.to_mask(method=method, subpixels=subpixels)
         if self.isscalar:
-            masks = (masks,)
+            apermasks = (apermasks,)
+
+        if mask is not None:
+            mask = np.asarray(mask)
+            if mask.shape != data.shape:
+                raise ValueError('mask and data must have the same shape')
+
         data = np.ones_like(data)
-        vals = [mask.get_values(data) for mask in masks]
+        vals = [apermask.get_values(data, mask=mask) for apermask in apermasks]
         # if the aperture does not overlap the data return np.nan
         areas = [val.sum() if val.shape != (0,) else np.nan for val in vals]
         if self.isscalar:
