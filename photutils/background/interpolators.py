@@ -42,7 +42,7 @@ class BkgZoomInterpolator:
         are treated as isolated points. For zooming 2D images,
         this keyword should be set to `True`, which makes zoom's
         behavior consistent with `scipy.ndimage.map_coordinates` and
-        `skimage.transform,resize`. The `False` option is provided only
+        `skimage.transform.resize`. The `False` option is provided only
         for backwards-compatibility.
     """
 
