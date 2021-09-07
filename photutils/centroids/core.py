@@ -7,6 +7,7 @@ import inspect
 import warnings
 
 from astropy.nddata.utils import overlap_slices
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -163,8 +164,8 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         if search_boxsize is not None:
             search_boxsize = _process_boxsize(search_boxsize, data.shape)
 
-            slc_data, slc_cutout = overlap_slices(data.shape, search_boxsize,
-                                                  (yidx, xidx), mode='trim')
+            slc_data, _ = overlap_slices(data.shape, search_boxsize,
+                                         (yidx, xidx), mode='trim')
             cutout = data[slc_data]
             yidx, xidx = np.unravel_index(np.nanargmax(cutout), cutout.shape)
             xidx += slc_data[1].start
@@ -178,8 +179,8 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         return np.array((xidx, yidx), dtype=float)
 
     # extract the fitting region
-    slc_data, slc_cutout = overlap_slices(data.shape, fit_boxsize,
-                                          (yidx, xidx), mode='trim')
+    slc_data, _ = overlap_slices(data.shape, fit_boxsize, (yidx, xidx),
+                                 mode='trim')
     xidx0, xidx1 = (slc_data[1].start, slc_data[1].stop)
     yidx0, yidx1 = (slc_data[0].start, slc_data[0].stop)
 
@@ -226,7 +227,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     xm = (c01 * c11 - 2.0 * c02 * c10) / det
     ym = (c10 * c11 - 2.0 * c20 * c01) / det
-    if xm > 0.0 and xm < (nx - 1.0) and ym > 0.0 and ym < (ny - 1.0):
+    if 0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0):
         xycen = np.array((xm, ym), dtype=float)
     else:
         warnings.warn('quadratic polynomial maximum value falls outside '
@@ -363,12 +364,10 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
             # combine the input mask and footprint mask
             mask_cutout = np.logical_or(mask_cutout, footprint_mask)
 
+        kwargs = {'mask': mask_cutout}
         if error is not None and use_error:
-            error_cutout = error[slices_large]
-            xcen, ycen = centroid_func(data_cutout, mask=mask_cutout,
-                                       error=error_cutout)
-        else:
-            xcen, ycen = centroid_func(data_cutout, mask=mask_cutout)
+            kwargs['error'] = error[slices_large]
+        xcen, ycen = centroid_func(data_cutout, **kwargs)
 
         xcentroids.append(xcen + slices_large[1].start)
         ycentroids.append(ycen + slices_large[0].start)
@@ -376,6 +375,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     return np.array(xcentroids), np.array(ycentroids)
 
 
+@deprecated('1.2')
 def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     """
     Calculate centering shift of data using pixel symmetry, as described

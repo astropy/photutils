@@ -12,7 +12,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..gaussian import centroid_1dg, centroid_2dg, gaussian1d_moments
+from ..gaussian import centroid_1dg, centroid_2dg, _gaussian1d_moments
 from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
@@ -101,7 +101,7 @@ def test_invalid_mask_shape():
     with pytest.raises(ValueError):
         centroid_2dg(data, mask=mask)
     with pytest.raises(ValueError):
-        gaussian1d_moments(data, mask=mask)
+        _gaussian1d_moments(data, mask=mask)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -125,20 +125,20 @@ def test_gaussian1d_moments():
     desired = (75, 50, 5)
     g = Gaussian1D(*desired)
     data = g(x)
-    result = gaussian1d_moments(data)
+    result = _gaussian1d_moments(data)
     assert_allclose(result, desired, rtol=0, atol=1.e-6)
 
     data[0] = 1.e5
     mask = np.zeros(data.shape).astype(bool)
     mask[0] = True
-    result = gaussian1d_moments(data, mask=mask)
+    result = _gaussian1d_moments(data, mask=mask)
     assert_allclose(result, desired, rtol=0, atol=1.e-6)
 
     data[0] = np.nan
     mask = np.zeros(data.shape).astype(bool)
     mask[0] = True
     with warnings.catch_warnings(record=True) as warnlist:
-        result = gaussian1d_moments(data, mask=mask)
+        result = _gaussian1d_moments(data, mask=mask)
         assert_allclose(result, desired, rtol=0, atol=1.e-6)
     assert len(warnlist) == 1
     assert issubclass(warnlist[0].category, AstropyUserWarning)
