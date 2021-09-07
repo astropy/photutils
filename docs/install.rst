@@ -15,7 +15,7 @@ Photutils has the following strict requirements:
 
 Photutils also optionally depends on other packages for some features:
 
-* `Scipy <https://www.scipy.org/>`_ 0.19 or later:  To power a variety of
+* `Scipy <https://www.scipy.org/>`_ 1.6.0 or later:  To power a variety of
   features in several modules (strongly recommended).
 
 * `matplotlib <https://matplotlib.org/>`_ 2.2 or later:  To power a
