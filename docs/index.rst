@@ -27,34 +27,15 @@ Photutils
 **Photutils** is an  `affiliated package
 <https://www.astropy.org/affiliated/index.html>`_ of `Astropy`_ that
 primarily provides tools for detecting and performing photometry of
-astronomical sources.  It is an open source Python package and is
-licensed under a :ref:`3-clause BSD license <photutils_license>`.
+astronomical sources.  It is an open source Python package and is.
 
 |br|
 
 .. Important::
     If you use Photutils for a project that leads to a publication,
-    whether directly or as a dependency of another package, please
-    include an :doc:`acknowledgment and/or citation <citation>`.
+    whether directly or as a dependency of another package, please.
 
 |br|
-
-Getting Started
-===============
-
-.. toctree::
-    :maxdepth: 1
-
-    install.rst
-    whats_new/1.1.rst
-    overview.rst
-    pixel_conventions.rst
-    getting_started.rst
-    contributing.rst
-    citation.rst
-    license.rst
-    changelog
-
 
 User Documentation
 ==================
@@ -62,35 +43,9 @@ User Documentation
 .. toctree::
     :maxdepth: 1
 
-    background.rst
-    detection.rst
-    grouping.rst
-    aperture.rst
     psf.rst
-    epsf.rst
     psf_matching.rst
-    segmentation.rst
-    centroids.rst
-    morphology.rst
-    isophote.rst
-    geometry.rst
-    datasets.rst
-    utils.rst
 
-
-Developer Documentation
-=======================
-
-.. toctree::
-    :maxdepth: 1
-
-    dev/releasing.rst
-
-
-.. toctree::
-    :hidden:
-
-    test_function.rst
 
 |br|
 
