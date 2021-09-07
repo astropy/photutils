@@ -7,6 +7,7 @@ import inspect
 import warnings
 
 from astropy.nddata.utils import overlap_slices
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -376,6 +377,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     return np.array(xcentroids), np.array(ycentroids)
 
 
+@deprecated('1.2')
 def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     """
     Calculate centering shift of data using pixel symmetry, as described
