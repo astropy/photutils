@@ -7,6 +7,7 @@ import warnings
 
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling.models import Const1D, Const2D, Gaussian1D, Gaussian2D
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -75,7 +76,7 @@ def centroid_1dg(data, error=None, mask=None):
     constant_init = np.ma.min(data)
     centroid = []
     for (data_i, weights_i) in zip(xy_data, xy_weights):
-        params_init = gaussian1d_moments(data_i)
+        params_init = _gaussian1d_moments(data_i)
         g_init = Const1D(constant_init) + Gaussian1D(*params_init)
         fitter = LevMarLSQFitter()
         x = np.arange(data_i.size)
@@ -85,7 +86,7 @@ def centroid_1dg(data, error=None, mask=None):
     return np.array(centroid)
 
 
-def gaussian1d_moments(data, mask=None):
+def _gaussian1d_moments(data, mask=None):
     """
     Estimate 1D Gaussian parameters from the moments of 1D data.
 
@@ -129,6 +130,31 @@ def gaussian1d_moments(data, mask=None):
     amplitude = np.ptp(data)
 
     return amplitude, x_mean, x_stddev
+
+
+@deprecated('1.2')
+def gaussian1d_moments(data, mask=None):
+    """
+    Estimate 1D Gaussian parameters from the moments of 1D data.
+
+    This function can be useful for providing initial parameter values
+    when fitting a 1D Gaussian to the ``data``.
+
+    Parameters
+    ----------
+    data : array_like (1D)
+        The 1D array.
+
+    mask : array_like (1D bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+
+    Returns
+    -------
+    amplitude, mean, stddev : float
+        The estimated parameters of a 1D Gaussian.
+    """
+    return _gaussian1d_moments(data, mask=mask)  # pragma: no cover
 
 
 def centroid_2dg(data, error=None, mask=None):
