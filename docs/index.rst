@@ -43,7 +43,6 @@ User Documentation
 .. toctree::
     :maxdepth: 1
 
-    psf.rst
     psf_matching.rst
 
 
