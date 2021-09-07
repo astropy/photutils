@@ -4,6 +4,8 @@
 General
 ^^^^^^^
 
+- The minimum required scipy version is 1.6.0 [#1239]
+
 New Features
 ^^^^^^^^^^^^
 
@@ -26,6 +28,8 @@ New Features
     ``plot_meshes``. [#1234]
 
   - Added ``__repr__`` methods to all background classes. [#1236]
+
+  - Added a ``grid_mode`` keyword to ``BkgZoomInterpolator``. [#1239]
 
 Bug Fixes
 ^^^^^^^^^
@@ -93,6 +97,13 @@ API changes
     and ``background_rms_mesh_ma``. They have been renamed to
     ``background_mesh_masked`` and ``background_rms_mesh_masked``.
     [#1232]
+
+  - By default, ``BkgZoomInterpolator`` now uses ``grid_mode=True``.
+    For zooming 2D images, this keyword should be set to True,
+    which makes the interpolator's behavior consistent with
+    ``scipy.ndimage.map_coordinates``, ``skimage.transform.resize``, and
+    ``OpenCV (cv2.resize)``. If backwards-compatiblity is needed with
+    older Photutils' versions, set ``grid_mode=False``.
 
 
 1.1.0 (2021-03-20)
