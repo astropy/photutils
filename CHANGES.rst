@@ -103,7 +103,12 @@ API changes
     which makes the interpolator's behavior consistent with
     ``scipy.ndimage.map_coordinates``, ``skimage.transform.resize``, and
     ``OpenCV (cv2.resize)``. If backwards-compatiblity is needed with
-    older Photutils' versions, set ``grid_mode=False``.
+    older Photutils' versions, set ``grid_mode=False``. [#1239]
+
+- ``photutils.centroid``
+
+  - Deprecated the ``gaussian1d_moments`` and ``centroid_epsf``
+    functions. [#1240]
 
 
 1.1.0 (2021-03-20)
