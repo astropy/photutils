@@ -7,6 +7,7 @@ import warnings
 
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
+from astropy.utils.decorators import deprecated_renamed_argument
 import numpy as np
 
 from .core import SegmentationImage
@@ -162,8 +163,8 @@ def _make_binary_structure(ndim, connectivity):
     return selem
 
 
-def _detect_sources(data, thresholds, npixels, filter_kernel=None,
-                    connectivity=8, mask=None, deblend_skip=False):
+def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
+                    mask=None, deblend_skip=False):
     """
     Detect sources above a specified threshold value in an image and
     return a `~photutils.segmentation.SegmentationImage` object.
@@ -195,9 +196,9 @@ def _detect_sources(data, thresholds, npixels, filter_kernel=None,
         that an object must have to be detected.  ``npixels`` must be a
         positive integer.
 
-    filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
+    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the image before
-        thresholding.  Filtering the image will smooth the noise and
+        thresholding. Filtering the image will smooth the noise and
         maximize detectability of objects with a shape similar to the
         kernel.
 
@@ -240,9 +241,9 @@ def _detect_sources(data, thresholds, npixels, filter_kernel=None,
             raise ValueError('mask must have the same shape as the input '
                              'image.')
 
-    if filter_kernel is not None:
-        data = _filter_data(data, filter_kernel, mode='constant',
-                            fill_value=0.0, check_normalization=True)
+    if kernel is not None:
+        data = _filter_data(data, kernel, mode='constant', fill_value=0.0,
+                            check_normalization=True)
 
     selem = _make_binary_structure(data.ndim, connectivity)
 
@@ -297,8 +298,9 @@ def _detect_sources(data, thresholds, npixels, filter_kernel=None,
     return segms
 
 
-def detect_sources(data, threshold, npixels, filter_kernel=None,
-                   connectivity=8, mask=None):
+@deprecated_renamed_argument('filter_kernel', 'kernel', '1.2')
+def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
+                   mask=None):
     """
     Detect sources above a specified threshold value in an image and
     return a `~photutils.segmentation.SegmentationImage` object.
@@ -329,9 +331,9 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         that an object must have to be detected.  ``npixels`` must be a
         positive integer.
 
-    filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
+    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the image before
-        thresholding.  Filtering the image will smooth the noise and
+        thresholding. Filtering the image will smooth the noise and
         maximize detectability of objects with a shape similar to the
         kernel.
 
@@ -393,8 +395,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         kernel_sigma = 3.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))  # FWHM = 3
         kernel = Gaussian2DKernel(kernel_sigma, x_size=3, y_size=3)
         kernel.normalize()
-        segm = detect_sources(image, threshold, npixels=5,
-                              filter_kernel=kernel)
+        segm = detect_sources(image, threshold, npixels=5, kernel=kernel)
 
         # plot the image and the segmentation image
         import matplotlib.pyplot as plt
@@ -402,13 +403,13 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         ax1.imshow(image, origin='lower', interpolation='nearest')
         ax2.imshow(segm.data, origin='lower', interpolation='nearest')
     """
-    return _detect_sources(data, (threshold,), npixels,
-                           filter_kernel=filter_kernel,
+    return _detect_sources(data, (threshold,), npixels, kernel=kernel,
                            connectivity=connectivity, mask=mask)[0]
 
 
+@deprecated_renamed_argument('filter_kernel', 'kernel', '1.2')
 def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
-                     filter_size=3, filter_kernel=None, sigclip_sigma=3.0,
+                     filter_size=3, kernel=None, sigclip_sigma=3.0,
                      sigclip_iters=5, dilate_size=11):
     """
     Make a source mask using source segmentation and binary dilation.
@@ -437,18 +438,18 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
     filter_fwhm : float, optional
         The full-width at half-maximum (FWHM) of the Gaussian kernel to
         filter the image before thresholding.  ``filter_fwhm`` and
-        ``filter_size`` are ignored if ``filter_kernel`` is defined.
+        ``filter_size`` are ignored if ``kernel`` is defined.
 
     filter_size : float, optional
         The size of the square Gaussian kernel image.  Used only if
         ``filter_fwhm`` is defined.  ``filter_fwhm`` and ``filter_size``
-        are ignored if ``filter_kernel`` is defined.
+        are ignored if ``kernel`` is defined.
 
-    filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
+    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the image before
-        thresholding.  Filtering the image will smooth the noise and
-        maximize detectability of objects with a shape similar to the
-        kernel.  ``filter_kernel`` overrides ``filter_fwhm`` and
+        thresholding. Filtering the image will smooth the noise
+        and maximize detectability of objects with a shape similar
+        to the kernel. ``kernel`` overrides ``filter_fwhm`` and
         ``filter_size``.
 
     sigclip_sigma : float, optional
@@ -476,17 +477,14 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
                                  mask=mask, sigclip_sigma=sigclip_sigma,
                                  sigclip_iters=sigclip_iters)
 
-    kernel = None
-    if filter_kernel is not None:
-        kernel = filter_kernel
-    if filter_fwhm is not None:
+    if kernel is None and filter_fwhm is not None:
         kernel_sigma = filter_fwhm * gaussian_fwhm_to_sigma
         kernel = Gaussian2DKernel(kernel_sigma, x_size=filter_size,
                                   y_size=filter_size)
     if kernel is not None:
         kernel.normalize()
 
-    segm = detect_sources(data, threshold, npixels, filter_kernel=kernel)
+    segm = detect_sources(data, threshold, npixels, kernel=kernel)
     if segm is None:
         return np.zeros(data.shape, dtype=bool)
 
