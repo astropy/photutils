@@ -114,6 +114,13 @@ API changes
   - Deprecated the ``gaussian1d_moments`` and ``centroid_epsf``
     functions. [#1240]
 
+- ``photutils.segmentation``
+
+  - Deprecated the ``filter_kernel`` keyword in the ``detect_sources``,
+    ``deblend_sources``, and ``make_source_mask`` functions. It has been
+    renamed to simply ``kernel`` for consistency with ``SourceCatalog``.
+    [#1242]
+
 
 1.1.0 (2021-03-20)
 ------------------

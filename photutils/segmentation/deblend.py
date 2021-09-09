@@ -6,6 +6,7 @@ a segmentation image.
 
 import warnings
 
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -17,9 +18,10 @@ from ..utils.exceptions import NoDetectionsWarning
 __all__ = ['deblend_sources']
 
 
-def deblend_sources(data, segment_img, npixels, filter_kernel=None,
-                    labels=None, nlevels=32, contrast=0.001,
-                    mode='exponential', connectivity=8, relabel=True):
+@deprecated_renamed_argument('filter_kernel', 'kernel', '1.2')
+def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
+                    nlevels=32, contrast=0.001, mode='exponential',
+                    connectivity=8, relabel=True):
     """
     Deblend overlapping sources labeled in a segmentation image.
 
@@ -45,7 +47,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
         that an object must have to be detected.  ``npixels`` must be a
         positive integer.
 
-    filter_kernel : array-like or `~astropy.convolution.Kernel2D`, optional
+    filter : array-like or `~astropy.convolution.Kernel2D`, optional
         The array of the kernel used to filter the image before
         thresholding.  Filtering the image will smooth the noise and
         maximize detectability of objects with a shape similar to the
@@ -111,9 +113,8 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
     labels = np.atleast_1d(labels)
     segment_img.check_labels(labels)
 
-    if filter_kernel is not None:
-        data = _filter_data(data, filter_kernel, mode='constant',
-                            fill_value=0.0)
+    if kernel is not None:
+        data = _filter_data(data, kernel, mode='constant', fill_value=0.0)
 
     last_label = segment_img.max_label
     segm_deblended = object.__new__(SegmentationImage)

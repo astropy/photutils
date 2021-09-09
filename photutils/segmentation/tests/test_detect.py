@@ -122,9 +122,9 @@ class TestDetectSources:
         self.refdata = np.array([[0, 1, 0], [0, 1, 0], [0, 0, 0]])
 
         fwhm2sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
-        filter_kernel = Gaussian2DKernel(2. * fwhm2sigma, x_size=3, y_size=3)
-        filter_kernel.normalize()
-        self.filter_kernel = filter_kernel
+        kernel = Gaussian2DKernel(2. * fwhm2sigma, x_size=3, y_size=3)
+        kernel.normalize()
+        self.kernel = kernel
 
     def test_detection(self):
         """Test basic detection."""
@@ -204,15 +204,14 @@ class TestDetectSources:
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=4)
         assert_array_equal(segm.data, ref)
 
-    def test_basic_filter_kernel(self):
-        """Test detection with filter_kernel."""
+    def test_basic_kernel(self):
+        """Test detection with kernel."""
 
         kernel = np.ones((3, 3)) / 9.
         threshold = 0.3
         expected = np.ones((3, 3))
         expected[2] = 0
-        segm = detect_sources(self.data, threshold, npixels=1,
-                              filter_kernel=kernel)
+        segm = detect_sources(self.data, threshold, npixels=1, kernel=kernel)
         assert_array_equal(segm.data, expected)
 
     def test_npixels_nonint(self):
@@ -233,20 +232,19 @@ class TestDetectSources:
         with pytest.raises(ValueError):
             detect_sources(self.data, threshold=1, npixels=1, connectivity=10)
 
-    def test_filter_kernel_array(self):
+    def test_kernel_array(self):
         segm = detect_sources(self.data, 0.1, npixels=1,
-                              filter_kernel=self.filter_kernel.array)
+                              kernel=self.kernel.array)
         assert_array_equal(segm.data, np.ones((3, 3)))
 
-    def test_filter_kernel(self):
-        segm = detect_sources(self.data, 0.1, npixels=1,
-                              filter_kernel=self.filter_kernel)
+    def test_kernel(self):
+        segm = detect_sources(self.data, 0.1, npixels=1, kernel=self.kernel)
         assert_array_equal(segm.data, np.ones((3, 3)))
 
-    def test_unnormalized_filter_kernel(self):
+    def test_unnormalized_kernel(self):
         with catch_warnings(AstropyUserWarning) as warning_lines:
             detect_sources(self.data, 0.1, npixels=1,
-                           filter_kernel=self.filter_kernel*10.)
+                           kernel=self.kernel * 10.)
             assert warning_lines[0].category == AstropyUserWarning
             assert ('The kernel is not normalized.'
                     in str(warning_lines[0].message))
@@ -280,7 +278,7 @@ class TestMakeSourceMask:
                                  filter_size=3)
         sigma = 2 * gaussian_fwhm_to_sigma
         kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
-        mask2 = make_source_mask(self.data, 5, 10, filter_kernel=kernel)
+        mask2 = make_source_mask(self.data, 5, 10, kernel=kernel)
         assert_allclose(mask1, mask2)
 
     def test_no_detections(self):
