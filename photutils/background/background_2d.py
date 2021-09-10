@@ -167,9 +167,14 @@ class Background2D:
 
     Notes
     -----
+    Better performance will generally be obtained if you have the
+    `bottleneck`_ package installed.
+
     If there is only one background box element (i.e., ``box_size`` is
     the same size as (or larger than) the ``data``), then the background
     map will simply be a constant image.
+
+    .. _bottleneck:  https://github.com/pydata/bottleneck
     """
 
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
