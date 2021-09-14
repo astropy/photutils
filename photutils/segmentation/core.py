@@ -7,7 +7,6 @@ segment within a segmentation image.
 from copy import deepcopy
 
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 import numpy as np
 
 from ..aperture import BoundingBox
@@ -368,7 +367,6 @@ class SegmentationImage:
             else:
                 raise ValueError(f'labels {bad_labels} are invalid')
 
-    @deprecated_renamed_argument('random_state', 'seed', '1.0')
     def make_cmap(self, background_color='#000000', seed=None):
         """
         Define a matplotlib colormap consisting of (random) muted

@@ -10,7 +10,6 @@ from astropy.io import fits
 from astropy.modeling import models
 from astropy.table import Table
 import astropy.units as u
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.wcs import WCS
 import numpy as np
 
@@ -26,7 +25,6 @@ __all__ = ['apply_poisson_noise', 'make_noise_image',
 __doctest_requires__ = {('make_gwcs'): ['gwcs']}
 
 
-@deprecated_renamed_argument('random_state', 'seed', '1.0')
 def apply_poisson_noise(data, seed=None):
     """
     Apply Poisson noise to an array, where the value of each element in
@@ -83,7 +81,6 @@ def apply_poisson_noise(data, seed=None):
     return rng.poisson(data)
 
 
-@deprecated_renamed_argument('random_state', 'seed', '1.0')
 def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
                      seed=None):
     """
@@ -162,7 +159,6 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
     return image
 
 
-@deprecated_renamed_argument('random_state', 'seed', '1.0')
 def make_random_models_table(n_sources, param_ranges, seed=None):
     """
     Make a `~astropy.table.Table` containing randomly generated
@@ -243,7 +239,6 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     return sources
 
 
-@deprecated_renamed_argument('random_state', 'seed', '1.0')
 def make_random_gaussians_table(n_sources, param_ranges, seed=None):
     """
     Make a `~astropy.table.Table` containing randomly generated
