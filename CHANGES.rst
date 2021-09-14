@@ -114,12 +114,29 @@ API changes
   - Deprecated the ``gaussian1d_moments`` and ``centroid_epsf``
     functions. [#1240]
 
+- ``photutils.datasets``
+
+  - Removed the deprecated ``random_state`` keyword in the
+    ``apply_poisson_noise``, ``make_noise_image``,
+    ``make_random_models_table``, and ``make_random_gaussians_table``
+    functions. [#1244]
+
 - ``photutils.segmentation``
 
   - Deprecated the ``filter_kernel`` keyword in the ``detect_sources``,
     ``deblend_sources``, and ``make_source_mask`` functions. It has been
     renamed to simply ``kernel`` for consistency with ``SourceCatalog``.
     [#1242]
+
+  - Removed the deprecated ``random_state`` keyword in the ``make_cmap``
+    method. [#1244]
+
+- ``photutils.utils``
+
+  - Removed the deprecated ``check_random_state`` function. [#1244]
+
+  - Removed the deprecated ``random_state`` keyword in the
+    ``make_random_cmap`` function. [#1244]
 
 
 1.1.0 (2021-03-20)
