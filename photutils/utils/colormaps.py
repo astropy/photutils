@@ -3,13 +3,11 @@
 This module provides tools for generating matplotlib colormaps.
 """
 
-from astropy.utils.decorators import deprecated_renamed_argument
 import numpy as np
 
 __all__ = ['make_random_cmap']
 
 
-@deprecated_renamed_argument('random_state', 'seed', '1.0')
 def make_random_cmap(ncolors=256, seed=None):
     """
     Make a matplotlib colormap consisting of (random) muted colors.
