@@ -216,9 +216,9 @@ class _StarFinderCatalog:
     data : 2D `~numpy.ndarray`
         The 2D image.
 
-    xypos:  list of 2-tuples
-        A list of (x, y) tuples denoting the central positions of the
-        stars.
+    xypos: Nx2 `numpy.ndarray`
+        A Nx2 array of (x, y) pixel coordinates denoting the central
+        positions of the stars.
 
     shape:  tuple of int
         The shape of the stars cutouts. The shape in both dimensions
