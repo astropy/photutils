@@ -5,7 +5,7 @@ This module implements the DAOStarFinder class.
 import inspect
 import warnings
 
-from astropy.nddata import overlap_slices, extract_array
+from astropy.nddata import extract_array
 from astropy.table import Table
 from astropy.utils import lazyproperty
 import numpy as np
@@ -481,25 +481,25 @@ class _DAOStarFinderCatalog:
             y (depending on ``axis`` value) distribution of the
             unconvolved source data.
         """
-
         # define triangular weighting functions along each axis, peaked
         # in the middle and equal to one at the edge
-        x = self.xcenter - np.abs(np.arange(self.nx) - self.xcenter) + 1
-        y = self.ycenter - np.abs(np.arange(self.ny) - self.ycenter) + 1
-        xwt, ywt = np.meshgrid(x, y)
+        ycen, xcen = self.cutout_center
+        xx = xcen - np.abs(np.arange(self.cutout_shape[1]) - xcen) + 1
+        yy = ycen - np.abs(np.arange(self.cutout_shape[0]) - ycen) + 1
+        xwt, ywt = np.meshgrid(xx, yy)
 
         if axis == 0:  # marginal distributions along x axis
             wt = xwt[0]  # 1D
             wts = ywt  # 2D
-            size = self.nx
-            center = self.xcenter
+            size = self.cutout_shape[1]
+            center = xcen
             sigma = self.kernel.xsigma
             dxx = center - np.arange(size)
         elif axis == 1:  # marginal distributions along y axis
             wt = np.transpose(ywt)[0]  # 1D
             wts = xwt  # 2D
-            size = self.ny
-            center = self.ycenter
+            size = self.cutout_shape[0]
+            center = ycen
             sigma = self.kernel.ysigma
             dxx = np.arange(size) - center
 
@@ -518,22 +518,20 @@ class _DAOStarFinderCatalog:
         dkern_dx2_sum = np.sum(dkern_dx**2 * wt)
         kern_dkern_dx_sum = np.sum(kern_sum_1d * dkern_dx * wt)
 
-        data_sum_1d = np.sum(self.data * wts, axis=axis)
-        data_sum = np.sum(data_sum_1d * wt)
-        data_kern_sum = np.sum(data_sum_1d * kern_sum_1d * wt)
-        data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt)
-        data_dx_sum = np.sum(data_sum_1d * dxx * wt)
+        data_sum_1d = np.sum(self.cutout_data * wts, axis=axis + 1)
+        data_sum = np.sum(data_sum_1d * wt, axis=1)
+        data_kern_sum = np.sum(data_sum_1d * kern_sum_1d * wt, axis=1)
+        data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt, axis=1)
+        #data_dx_sum = np.sum(data_sum_1d * dxx * wt, axis=1)
 
         # perform linear least-squares fit (where data = sky + hx*kernel)
         # to find the amplitude (hx)
         # reject the star if the fit amplitude is not positive
         hx_numer = data_kern_sum - (data_sum * kern_sum) / wt_sum
-        if hx_numer <= 0.:
-            return np.nan, np.nan
-
         hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
-        if hx_denom <= 0.:
-            return np.nan, np.nan
+
+        mask = (hx_numer <= 0.) | (hx_denom <= 0.)
+        #    return np.nan, np.nan
 
         # compute fit amplitude
         hx = hx_numer / hx_denom
@@ -544,16 +542,17 @@ class _DAOStarFinderCatalog:
                - (data_dkern_dx_sum - dkern_dx_sum * data_sum))
               / (hx * dkern_dx2_sum / sigma**2))
 
-        hsize = size / 2.
-        if abs(dx) > hsize:
-            if data_sum == 0.:
-                dx = 0.0
-            else:
-                dx = data_dx_sum / data_sum
-                if abs(dx) > hsize:
-                    dx = 0.0
+        #hsize = size / 2.
+        #if abs(dx) > hsize:
+        #    if data_sum == 0.:
+        #        dx = 0.0
+        #    else:
+        #        dx = data_dx_sum / data_sum
+        #        if abs(dx) > hsize:
+        #            dx = 0.0
 
-        return dx, hx
+        print('dx_hx_axis', np.transpose((dx, hx)), axis)
+        return np.transpose((dx, hx))
 
     @lazyproperty
     def dx_hx(self):
@@ -565,27 +564,27 @@ class _DAOStarFinderCatalog:
 
     @lazyproperty
     def dx(self):
-        return self.dx_hx[0]
+        return np.transpose(self.dx_hx)[0]
 
     @lazyproperty
     def dy(self):
-        return self.dy_hy[0]
-
-    @lazyproperty
-    def xcentroid(self):
-        return self.cutout.xpeak + self.dx
-
-    @lazyproperty
-    def ycentroid(self):
-        return self.cutout.ypeak + self.dy
+        return np.transpose(self.dy_hy)[0]
 
     @lazyproperty
     def hx(self):
-        return self.dx_hx[1]
+        return np.transpose(self.dx_hx)[1]
 
     @lazyproperty
     def hy(self):
-        return self.dy_hy[1]
+        return np.transpose(self.dy_hy)[1]
+
+    @lazyproperty
+    def xcentroid(self):
+        return self.cutout_center[1] + self.dx
+
+    @lazyproperty
+    def ycentroid(self):
+        return self.cutout_center[0] + self.dy
 
     @lazyproperty
     def roundness2(self):
