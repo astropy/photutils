@@ -2,9 +2,10 @@
 """
 This module implements the DAOStarFinder class.
 """
-
+import inspect
 import warnings
 
+from astropy.nddata import overlap_slices
 from astropy.table import Table
 from astropy.utils import lazyproperty
 import numpy as np
@@ -153,12 +154,12 @@ class DAOStarFinder(StarFinderBase):
 
         if not np.isscalar(threshold):
             raise TypeError('threshold must be a scalar value.')
-        self.threshold = threshold
 
         if not np.isscalar(fwhm):
             raise TypeError('fwhm must be a scalar value.')
-        self.fwhm = fwhm
 
+        self.threshold = threshold
+        self.fwhm = fwhm
         self.ratio = ratio
         self.theta = theta
         self.sigma_radius = sigma_radius
@@ -168,13 +169,12 @@ class DAOStarFinder(StarFinderBase):
         self.roundhi = roundhi
         self.sky = sky
         self.exclude_border = exclude_border
+        self.brightest = brightest
+        self.peakmax = peakmax
 
         self.kernel = _StarFinderKernel(self.fwhm, self.ratio, self.theta,
                                         self.sigma_radius)
         self.threshold_eff = self.threshold * self.kernel.relerr
-        self.brightest = brightest
-        self.peakmax = peakmax
-        self._star_cutouts = None
 
     def find_stars(self, data, mask=None):
         """
@@ -214,78 +214,70 @@ class DAOStarFinder(StarFinderBase):
               `DAOFIND`_ if ``sky`` is 0.0.
 
             `None` is returned if no stars are found.
-
         """
+        xypos = _find_stars(data, self.kernel, self.threshold_eff, mask=mask,
+                            exclude_border=self.exclude_border)
 
-        star_cutouts = _find_stars(data, self.kernel, self.threshold_eff,
-                                   mask=mask,
-                                   exclude_border=self.exclude_border)
-
-        if star_cutouts is None:
+        if xypos is None:
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        self._star_cutouts = star_cutouts
+        cat = _DAOStarFinderCatalog(data, xypos, self.kernel, self.sky)
+        return cat
 
-        star_props = []
-        for star_cutout in star_cutouts:
-            props = _DAOFindProperties(star_cutout, self.kernel, self.sky)
+        # # filter the catalog
+        # mask = ((cat.sharpness > self.sharplo)
+        #         & (cat.sharpness < self.sharphi)
+        #         & (cat.roundess1 > self.roundlo)
+        #         & (cat.roundness1 < self.roundhi)
+        #         & (cat.roundness2 > self.roundlo)
+        #         & (cat.roundness2 < self.roundhi))
 
-            if np.isnan(props.dx_hx).any() or np.isnan(props.dy_hy).any():
-                continue
+        # # TODO:
+        # # if np.isnan(props.dx_hx).any() or np.isnan(props.dy_hy).any():
+        # #     continue
 
-            if (props.sharpness <= self.sharplo
-                    or props.sharpness >= self.sharphi):
-                continue
+        # if self.peakmax is not None:
+        #     mask &= (cat.max_value < self.peakmax)
 
-            if (props.roundness1 <= self.roundlo
-                    or props.roundness1 >= self.roundhi):
-                continue
+        # cat = cat[mask]
 
-            if (props.roundness2 <= self.roundlo
-                    or props.roundness2 >= self.roundhi):
-                continue
+        # if len(cat) == 0:
+        #     warnings.warn('Sources were found, but none pass the sharpness, '
+        #                   'roundness, or peakmax criteria',
+        #                   NoDetectionsWarning)
+        #     return None
 
-            if self.peakmax is not None and props.peak >= self.peakmax:
-                continue
+        # # sort the catalog by the brightest fluxes
+        # if self.brightest is not None:
+        #     idx = np.argsort(cat.flux)[::-1][:self.brightest]
+        #     cat = cat[idx]
 
-            star_props.append(props)
+        # # create the output table
+        # columns = ('xcentroid', 'ycentroid', 'sharpness', 'roundness1',
+        #            'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag')
+        # table = cat.to_table(columns=columns)
+        # table.add_column(np.arange(len(cat)) + 1, name='id', index=0)
 
-        nstars = len(star_props)
-        if nstars == 0:
-            warnings.warn('Sources were found, but none pass the sharpness '
-                          'and roundness criteria.', NoDetectionsWarning)
-            return None
-
-        if self.brightest is not None:
-            fluxes = [props.flux for props in star_props]
-            idx = sorted(np.argsort(fluxes)[-self.brightest:].tolist())
-            star_props = [star_props[k] for k in idx]
-            nstars = len(star_props)
-
-        table = Table()
-        table['id'] = np.arange(nstars) + 1
-        columns = ('xcentroid', 'ycentroid', 'sharpness', 'roundness1',
-                   'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag')
-        for column in columns:
-            table[column] = [getattr(props, column) for props in star_props]
-
-        return table
+        # return table
 
 
-class _DAOFindProperties:
+class _DAOStarFinderCatalog:
     """
     Class to calculate the properties of each detected star, as defined
     by `DAOFIND`_.
 
     Parameters
     ----------
-    star_cutout : `_StarCutout`
-        A `_StarCutout` object containing the image cutout for the star.
+    data : 2D `~numpy.ndarray`
+        The 2D image.
+
+    xypos: Nx2 `numpy.ndarray`
+        A Nx2 array of (x, y) pixel coordinates denoting the central
+        positions of the stars.
 
     kernel : `_StarFinderKernel`
-        The convolution kernel.  The shape of the kernel must match that
-        of the input ``star_cutout``.
+        The convolution kernel.
 
     sky : float, optional
         The local sky level around the source.  ``sky`` is used only to
@@ -295,24 +287,99 @@ class _DAOFindProperties:
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
     """
 
-    def __init__(self, star_cutout, kernel, sky=0.):
-        if not isinstance(star_cutout, _StarCutout):
-            raise ValueError('data must be an _StarCutout object')
+#    star_cutout
+#        data
+#        data_masked -> kernel.mask
+#        convdata
+#        npixels -> kernel.npixels
+#        nx
+#        ny
+#        xpeak
+#        ypeak
+#        cutout_xcenter
+#        cutout_ycenter
+#        threshold_eff
+#   kernel
+#      xsigma
+#      ysigma
+#      gaussian_kernel_unmasked
 
-        if star_cutout.data.shape != kernel.shape:
-            raise ValueError('cutout and kernel must have the same shape')
-
-        self.cutout = star_cutout
+    def __init__(self, data, xypos, kernel, sky=0.):
+        self.data = data
+        self.xypos = np.atleast_2d(xypos)
         self.kernel = kernel
         self.sky = sky  # DAOFIND has no sky input -> same as sky=0.
 
-        self.data = star_cutout.data
-        self.data_masked = star_cutout.data_masked
-        self.npixels = star_cutout.npixels  # unmasked pixels
-        self.nx = star_cutout.nx
-        self.ny = star_cutout.ny
-        self.xcenter = star_cutout.cutout_xcenter
-        self.ycenter = star_cutout.cutout_ycenter
+        self.shape = kernel.shape
+
+        # self.data = star_cutout.data
+        # self.data_masked = star_cutout.data_masked
+        # self.npixels = star_cutout.npixels  # unmasked pixels
+        # self.nx = star_cutout.nx
+        # self.ny = star_cutout.ny
+        # self.xcenter = star_cutout.cutout_xcenter
+        # self.ycenter = star_cutout.cutout_ycenter
+
+    def __len__(self):
+        return len(self.xypos)
+
+    def __getitem__(self, index):
+        newcls = object.__new__(self.__class__)
+        init_attr = ('data', 'kernel', 'sky')
+        for attr in init_attr:
+            setattr(newcls, attr, getattr(self, attr))
+
+        # xypos determines ordering and isscalar
+        # NOTE: always keep as 2D array, even for a single source
+        attr = 'xypos'
+        value = getattr(self, attr)[index]
+        isscalar = value.shape == (2,)
+        setattr(newcls, attr, np.atleast_2d(value))
+
+        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        for key in keys:
+            value = self.__dict__[key]
+            if key in ('slices', 'cutout_data'):
+                # apply fancy indices to list properties
+                value = np.array(value + [None], dtype=object)[:-1][index]
+                if isscalar:
+                    value = [value]  # noqa
+                else:
+                    value = value.tolist()
+            else:
+                # always keep as 1D array, even for a single source
+                value = np.atleast_1d(value[index])
+
+            newcls.__dict__[key] = value
+        return newcls
+
+    @property
+    def _lazyproperties(self):
+        """
+        Return all lazyproperties (even in superclasses).
+        """
+        def islazyproperty(obj):
+            return isinstance(obj, lazyproperty)
+        return [i[0] for i in inspect.getmembers(self.__class__,
+                                                 predicate=islazyproperty)]
+
+    @lazyproperty
+    def slices(self):
+        slices = []
+        for xpos, ypos in self.xypos:
+            slc, _ = overlap_slices(self.data.shape, self.shape, (ypos, xpos),
+                                    mode='trim')
+            slices.append(slc)
+        return slices
+
+    @lazyproperty
+    def cutout_data(self):
+        cutout = []
+        for slc in self.slices:
+            cdata = self.data[slc]
+            cdata[cdata < 0] = 0.0  # exclude negative pixels
+            cutout.append(cdata)
+        return cutout
 
     @lazyproperty
     def data_peak(self):
@@ -515,7 +582,7 @@ class _DAOFindProperties:
             return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
 
     @lazyproperty
-    def peak(self):
+    def max_value(self):
         return self.data_peak - self.sky
 
     @lazyproperty
@@ -523,7 +590,6 @@ class _DAOFindProperties:
         """
         The total number of pixels in the rectangular cutout image.
         """
-
         return self.data.size
 
     @lazyproperty

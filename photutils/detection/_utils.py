@@ -197,8 +197,8 @@ class _StarCutout:
         self.data_masked = self.data * self.mask
 
 
-def _find_stars(data, kernel, threshold_eff, min_separation=None,
-                mask=None, exclude_border=False):
+def _find_stars(data, kernel, threshold, min_separation=0.0, mask=None,
+                exclude_border=False):
     """
     Find stars in an image.
 
@@ -210,7 +210,7 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     kernel : `_StarFinderKernel`
         The convolution kernel.
 
-    threshold_eff : float
+    threshold : float
         The absolute image value above which to select sources.  This
         threshold should be the threshold input to the star finder class
         multiplied by the kernel relerr.
@@ -231,81 +231,52 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
 
     Returns
     -------
-    objects : list of `_StarCutout`
-        A list of `_StarCutout` objects containing the image cutout for
-        each source.
+    result : Nx2 `~numpy.ndarray`
+        A Nx2 array containing the (x, y) pixel coordinates.
 
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
 
     .. _starfind: https://iraf.net/irafhelp.php?val=starfind
     """
-
     convolved_data = _filter_data(data, kernel.data, mode='constant',
                                   fill_value=0.0, check_normalization=False)
 
     # define a local footprint for the peak finder
-    if min_separation is None:  # daofind
+    if min_separation == 0:  # daofind
         footprint = kernel.mask.astype(bool)
     else:
-        # define a circular footprint
+        # define a local circular footprint for the peak finder
         idx = np.arange(-min_separation, min_separation + 1)
         xx, yy = np.meshgrid(idx, idx)
         footprint = np.array((xx**2 + yy**2) <= min_separation**2, dtype=int)
 
-    # pad the data and convolved image by the kernel x/y radius to allow
-    # for detections near the edges
+    # pad the data, convolved data, and mask by the kernel x/y radius to
+    # allow for detections near the edges
     if not exclude_border:
         ypad = kernel.yradius
         xpad = kernel.xradius
         pad = ((ypad, ypad), (xpad, xpad))
         pad_mode = 'constant'
-        data = np.pad(data, pad, mode=pad_mode, constant_values=[0.])
-        if mask is not None:
-            mask = np.pad(mask, pad, mode=pad_mode, constant_values=[0.])
+        const_val = 0.
+        data = np.pad(data, pad, mode=pad_mode, constant_values=const_val)
         convolved_data = np.pad(convolved_data, pad, mode=pad_mode,
-                                constant_values=[0.])
+                                constant_values=const_val)
+        if mask is not None:
+            mask = np.pad(mask, pad, mode=pad_mode, constant_values=const_val)
 
     # find local peaks in the convolved data
+    # suppress any NoDetectionsWarning from find_peaks
     with warnings.catch_warnings():
-        # suppress any NoDetectionsWarning from find_peaks
         warnings.filterwarnings('ignore', category=NoDetectionsWarning)
-        tbl = find_peaks(convolved_data, threshold_eff, footprint=footprint,
+        tbl = find_peaks(convolved_data, threshold, footprint=footprint,
                          mask=mask)
 
     if tbl is None:
         return None
 
-    coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
+    xpos, ypos = tbl['x_peak'], tbl['y_peak']
+    if not exclude_border:
+        xpos -= xpad
+        ypos -= ypad
 
-    star_cutouts = []
-    for (ypeak, xpeak) in coords:
-        # now extract the object from the data, centered on the peak
-        # pixel in the convolved image, with the same size as the kernel
-        x0 = xpeak - kernel.xradius
-        x1 = xpeak + kernel.xradius + 1
-        y0 = ypeak - kernel.yradius
-        y1 = ypeak + kernel.yradius + 1
-
-        if x0 < 0 or x1 > data.shape[1]:
-            continue  # pragma: no cover
-        if y0 < 0 or y1 > data.shape[0]:
-            continue  # pragma: no cover
-
-        slices = (slice(y0, y1), slice(x0, x1))
-        data_cutout = data[slices]
-        convdata_cutout = convolved_data[slices]
-
-        # correct pixel values for the previous image padding
-        if not exclude_border:
-            x0 -= kernel.xradius
-            x1 -= kernel.xradius
-            y0 -= kernel.yradius
-            y1 -= kernel.yradius
-            xpeak -= kernel.xradius
-            ypeak -= kernel.yradius
-            slices = (slice(y0, y1), slice(x0, x1))
-
-        star_cutouts.append(_StarCutout(data_cutout, convdata_cutout, slices,
-                                        xpeak, ypeak, kernel, threshold_eff))
-
-    return star_cutouts
+    return np.transpose((xpos, ypos))
