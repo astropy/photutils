@@ -5,13 +5,14 @@ This module implements the DAOStarFinder class.
 import inspect
 import warnings
 
-from astropy.nddata import overlap_slices
+from astropy.nddata import overlap_slices, extract_array
 from astropy.table import Table
 from astropy.utils import lazyproperty
 import numpy as np
 
 from .base import StarFinderBase
 from ._utils import _StarCutout, _StarFinderKernel, _find_stars
+from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
 __all__ = ['DAOStarFinder']
@@ -215,14 +216,19 @@ class DAOStarFinder(StarFinderBase):
 
             `None` is returned if no stars are found.
         """
-        xypos = _find_stars(data, self.kernel, self.threshold_eff, mask=mask,
-                            exclude_border=self.exclude_border)
+        convolved_data = _filter_data(data, self.kernel.data, mode='constant',
+                                      fill_value=0.0,
+                                      check_normalization=False)
 
+        xypos = _find_stars(data, convolved_data, self.kernel,
+                            self.threshold_eff, mask=mask,
+                            exclude_border=self.exclude_border)
         if xypos is None:
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        cat = _DAOStarFinderCatalog(data, xypos, self.kernel, self.sky)
+        cat = _DAOStarFinderCatalog(data, convolved_data, xypos, self.kernel,
+                                    self.sky)
         return cat
 
         # # filter the catalog
@@ -304,13 +310,15 @@ class _DAOStarFinderCatalog:
 #      ysigma
 #      gaussian_kernel_unmasked
 
-    def __init__(self, data, xypos, kernel, sky=0.):
+    def __init__(self, data, convolved_data, xypos, kernel, sky=0.):
         self.data = data
+        self.convolved_data = convolved_data
         self.xypos = np.atleast_2d(xypos)
         self.kernel = kernel
         self.sky = sky  # DAOFIND has no sky input -> same as sky=0.
 
-        self.shape = kernel.shape
+        self.cutout_shape = kernel.shape
+        self.cutout_center = tuple([(size - 1) // 2 for size in kernel.shape])
 
         # self.data = star_cutout.data
         # self.data_masked = star_cutout.data_masked
@@ -363,40 +371,48 @@ class _DAOStarFinderCatalog:
         return [i[0] for i in inspect.getmembers(self.__class__,
                                                  predicate=islazyproperty)]
 
-    @lazyproperty
-    def slices(self):
-        slices = []
+    #@lazyproperty
+    #def slices(self):
+    #    slices = []
+    #    for xpos, ypos in self.xypos:
+    #        slc, _ = overlap_slices(self.data.shape, self.shape, (ypos, xpos),
+    #                                mode='trim')
+    #        slices.append(slc)
+    #    return slices
+
+    def make_cutouts(self, data):
+        cutouts = []
         for xpos, ypos in self.xypos:
-            slc, _ = overlap_slices(self.data.shape, self.shape, (ypos, xpos),
-                                    mode='trim')
-            slices.append(slc)
-        return slices
+            cutouts.append(extract_array(data, self.cutout_shape, (ypos, xpos),
+                                         fill_value=0.0))
+        return np.array(cutouts)
 
     @lazyproperty
     def cutout_data(self):
-        cutout = []
-        for slc in self.slices:
-            cdata = self.data[slc]
-            cdata[cdata < 0] = 0.0  # exclude negative pixels
-            cutout.append(cdata)
-        return cutout
+        return self.make_cutouts(self.data)
+
+    @lazyproperty
+    def cutout_convdata(self):
+        return self.make_cutouts(self.convolved_data)
 
     @lazyproperty
     def data_peak(self):
-        return self.data[self.ycenter, self.xcenter]
+        return self.cutout_data[:, self.cutout_center[0],
+                                self.cutout_center[1]]
 
     @lazyproperty
-    def conv_peak(self):
-        return self.cutout.convdata[self.ycenter, self.xcenter]
+    def convdata_peak(self):
+        return self.cutout_convdata[:, self.cutout_center[0],
+                                    self.cutout_center[1]]
 
     @lazyproperty
     def roundness1(self):
-        # set the central (peak) pixel to zero
-        cutout_conv = self.cutout.convdata.copy()
-        cutout_conv[self.ycenter, self.xcenter] = 0.0  # for sum4
+        # set the central (peak) pixel to zero for sum4 calculation
+        cutout_conv = self.cutout_convdata.copy()
+        cutout_conv[:, self.cutout_center[0], self.cutout_center[1]] = 0.0
 
         # calculate the four roundness quadrants.
-        # the cutout size always matches the kernel size, which have odd
+        # the cutout size always matches the kernel size, which has odd
         # dimensions.
         # quad1 = bottom right
         # quad2 = bottom left
@@ -407,20 +423,26 @@ class _DAOStarFinderCatalog:
         # 3 3 x 1 1
         # 2 2 2 1 1
         # 2 2 2 1 1
-        quad1 = cutout_conv[0:self.ycenter + 1, self.xcenter + 1:]
-        quad2 = cutout_conv[0:self.ycenter, 0:self.xcenter + 1]
-        quad3 = cutout_conv[self.ycenter:, 0:self.xcenter]
-        quad4 = cutout_conv[self.ycenter + 1:, self.xcenter:]
+        quad1 = cutout_conv[:, 0:self.cutout_center[0] + 1,
+                            self.cutout_center[1] + 1:]
+        quad2 = cutout_conv[:, 0:self.cutout_center[0],
+                            0:self.cutout_center[1] + 1]
+        quad3 = cutout_conv[:, self.cutout_center[0]:,
+                            0:self.cutout_center[1]]
+        quad4 = cutout_conv[:, self.cutout_center[0] + 1:,
+                            self.cutout_center[1]:]
 
-        sum2 = -quad1.sum() + quad2.sum() - quad3.sum() + quad4.sum()
-        if sum2 == 0:
-            return 0.
+        axis = (1, 2)
+        sum2 = (-quad1.sum(axis=axis) + quad2.sum(axis=axis)
+                - quad3.sum(axis=axis) + quad4.sum(axis=axis))
+        sum4 = np.abs(cutout_conv).sum(axis=axis)
 
-        sum4 = np.abs(cutout_conv).sum()
-        if sum4 <= 0:
-            return None
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            roundness1 = 2.0 * sum2 / sum4
 
-        return 2.0 * sum2 / sum4
+        return roundness1
 
     @lazyproperty
     def sharpness(self):

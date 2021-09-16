@@ -197,8 +197,8 @@ class _StarCutout:
         self.data_masked = self.data * self.mask
 
 
-def _find_stars(data, kernel, threshold, min_separation=0.0, mask=None,
-                exclude_border=False):
+def _find_stars(data, convolved_data, kernel, threshold, min_separation=0.0,
+                mask=None, exclude_border=False):
     """
     Find stars in an image.
 
@@ -238,9 +238,6 @@ def _find_stars(data, kernel, threshold, min_separation=0.0, mask=None,
 
     .. _starfind: https://iraf.net/irafhelp.php?val=starfind
     """
-    convolved_data = _filter_data(data, kernel.data, mode='constant',
-                                  fill_value=0.0, check_normalization=False)
-
     # define a local footprint for the peak finder
     if min_separation == 0:  # daofind
         footprint = kernel.mask.astype(bool)
