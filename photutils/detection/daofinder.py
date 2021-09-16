@@ -407,7 +407,7 @@ class _DAOStarFinderCatalog:
 
     @lazyproperty
     def roundness1(self):
-        # set the central (peak) pixel to zero for sum4 calculation
+        # set the central (peak) pixel to zero for the sum4 calculation
         cutout_conv = self.cutout_convdata.copy()
         cutout_conv[:, self.cutout_center[0], self.cutout_center[1]] = 0.0
 
@@ -446,10 +446,12 @@ class _DAOStarFinderCatalog:
 
     @lazyproperty
     def sharpness(self):
-        npixels = self.npixels - 1  # exclude the peak pixel
-        data_mean = (np.sum(self.data_masked) - self.data_peak) / npixels
+        # mean value of the unconvolved data (excluding the peak)
+        cutout_data_masked = self.cutout_data * self.kernel.mask
+        data_mean = ((np.sum(cutout_data_masked, axis=(1, 2)) - self.data_peak)
+                     / (self.kernel.npixels - 1))
 
-        return (self.data_peak - data_mean) / self.conv_peak
+        return (self.data_peak - data_mean) / self.convdata_peak
 
     def daofind_marginal_fit(self, axis=0):
         """
