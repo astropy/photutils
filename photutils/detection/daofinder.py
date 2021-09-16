@@ -515,34 +515,44 @@ class _DAOStarFinderCatalog:
         data_sum = np.sum(data_sum_1d * wt, axis=1)
         data_kern_sum = np.sum(data_sum_1d * kern_sum_1d * wt, axis=1)
         data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt, axis=1)
-        #data_dx_sum = np.sum(data_sum_1d * dxx * wt, axis=1)
+        data_dx_sum = np.sum(data_sum_1d * dxx * wt, axis=1)
 
         # perform linear least-squares fit (where data = sky + hx*kernel)
         # to find the amplitude (hx)
-        # reject the star if the fit amplitude is not positive
         hx_numer = data_kern_sum - (data_sum * kern_sum) / wt_sum
         hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
 
-        mask = (hx_numer <= 0.) | (hx_denom <= 0.)
-        #    return np.nan, np.nan
+        # reject the star if the fit amplitude is not positive
+        mask1 = (hx_numer <= 0.) | (hx_denom <= 0.)
 
-        # compute fit amplitude
-        hx = hx_numer / hx_denom
-        # sky = (data_sum - (hx * kern_sum)) / wt_sum
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            # compute fit amplitude
+            hx = hx_numer / hx_denom
 
-        # compute centroid shift
-        dx = ((kern_dkern_dx_sum
-               - (data_dkern_dx_sum - dkern_dx_sum * data_sum))
-              / (hx * dkern_dx2_sum / sigma**2))
+            # sky = (data_sum - (hx * kern_sum)) / wt_sum
 
-        #hsize = size / 2.
-        #if abs(dx) > hsize:
-        #    if data_sum == 0.:
-        #        dx = 0.0
-        #    else:
-        #        dx = data_dx_sum / data_sum
-        #        if abs(dx) > hsize:
-        #            dx = 0.0
+            # compute centroid shift
+            dx = ((kern_dkern_dx_sum
+                   - (data_dkern_dx_sum - dkern_dx_sum * data_sum))
+                  / (hx * dkern_dx2_sum / sigma**2))
+
+            dx2 = data_dx_sum / data_sum
+
+        hsize = size / 2.
+        mask2 = (np.abs(dx) > hsize)
+        mask3 = (data_sum == 0.)
+        mask4 = (mask2 & mask3)
+        mask5 = (mask2 & ~mask3)
+
+        dx[mask4] = 0.0
+        dx[mask5] = dx2[mask5]
+        mask6 = (np.abs(dx) > hsize)
+        dx[mask6] = 0.0
+
+        hx[mask1] = np.nan
+        dx[mask1] = np.nan
 
         return np.transpose((dx, hx))
 
@@ -572,11 +582,11 @@ class _DAOStarFinderCatalog:
 
     @lazyproperty
     def xcentroid(self):
-        return self.cutout_center[1] + self.dx
+        return np.transpose(self.xypos)[0] + self.dx
 
     @lazyproperty
     def ycentroid(self):
-        return self.cutout_center[0] + self.dy
+        return np.transpose(self.xypos)[1] + self.dy
 
     @lazyproperty
     def roundness2(self):
