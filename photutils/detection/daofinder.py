@@ -347,16 +347,9 @@ class _DAOStarFinderCatalog:
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
         for key in keys:
             value = self.__dict__[key]
-            if key in ('slices', 'cutout_data'):
-                # apply fancy indices to list properties
-                value = np.array(value + [None], dtype=object)[:-1][index]
-                if isscalar:
-                    value = [value]  # noqa
-                else:
-                    value = value.tolist()
-            else:
-                # always keep as 1D array, even for a single source
-                value = np.atleast_1d(value[index])
+
+            # always keep as 1D array, even for a single source
+            value = np.atleast_1d(value[index])
 
             newcls.__dict__[key] = value
         return newcls
@@ -551,7 +544,6 @@ class _DAOStarFinderCatalog:
         #        if abs(dx) > hsize:
         #            dx = 0.0
 
-        print('dx_hx_axis', np.transpose((dx, hx)), axis)
         return np.transpose((dx, hx))
 
     @lazyproperty
