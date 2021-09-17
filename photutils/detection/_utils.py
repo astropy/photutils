@@ -141,61 +141,6 @@ class _StarFinderKernel:
         self.shape = self.data.shape
 
 
-class _StarCutout:
-    """
-    Class to hold a 2D image cutout of a single star for the star finder
-    classes.
-
-    Parameters
-    ----------
-    data : 2D array_like
-        The cutout 2D image from the input unconvolved 2D image.
-
-    convdata : 2D array_like
-        The cutout 2D image from the convolved 2D image.
-
-    slices : tuple of two slices
-        A tuple of two slices representing the minimal box of the cutout
-        from the original image.
-
-    xpeak, ypeak : float
-        The (x, y) pixel coordinates of the peak pixel.
-
-    kernel : `_StarFinderKernel`
-        The convolution kernel.  The shape of the kernel must match that
-        of the input ``data``.
-
-    threshold_eff : float
-        The absolute image value above which to select sources.  This
-        threshold should be the threshold value input to the star finder
-        class multiplied by the kernel relerr.
-    """
-
-    def __init__(self, data, convdata, slices, xpeak, ypeak, kernel,
-                 threshold_eff):
-
-        self.data = data
-        self.convdata = convdata
-        self.slices = slices
-        self.xpeak = xpeak
-        self.ypeak = ypeak
-        self.kernel = kernel
-        self.threshold_eff = threshold_eff
-
-        self.shape = data.shape
-        self.nx = self.shape[1]  # always odd
-        self.ny = self.shape[0]  # always odd
-        self.cutout_xcenter = int(self.nx // 2)
-        self.cutout_ycenter = int(self.ny // 2)
-
-        self.xorigin = self.slices[1].start  # in original image
-        self.yorigin = self.slices[0].start  # in original image
-
-        self.mask = kernel.mask  # kernel mask
-        self.npixels = kernel.npixels  # unmasked pixels
-        self.data_masked = self.data * self.mask
-
-
 def _find_stars(convolved_data, kernel, threshold, min_separation=0.0,
                 mask=None, exclude_border=False):
     """
