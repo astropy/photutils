@@ -11,7 +11,7 @@ from astropy.utils import lazyproperty
 import numpy as np
 
 from .base import StarFinderBase
-from ._utils import _StarCutout, _StarFinderKernel, _find_stars
+from ._utils import _StarFinderKernel, _find_stars
 from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
@@ -228,7 +228,7 @@ class DAOStarFinder(StarFinderBase):
             return None
 
         cat = _DAOStarFinderCatalog(data, convolved_data, xypos, self.kernel,
-                                    self.sky)
+                                    self.threshold_eff, self.sky)
         return cat
 
         # # filter the catalog
@@ -293,66 +293,65 @@ class _DAOStarFinderCatalog:
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
     """
 
-#    star_cutout
-#        data
-#        data_masked -> kernel.mask
-#        convdata
-#        npixels -> kernel.npixels
-#        nx
-#        ny
-#        xpeak
-#        ypeak
-#        cutout_xcenter
-#        cutout_ycenter
-#        threshold_eff
-#   kernel
-#      xsigma
-#      ysigma
-#      gaussian_kernel_unmasked
-
-    def __init__(self, data, convolved_data, xypos, kernel, sky=0.):
+    def __init__(self, data, convolved_data, xypos, kernel, threshold_eff,
+                 sky=0.):
         self.data = data
         self.convolved_data = convolved_data
         self.xypos = np.atleast_2d(xypos)
         self.kernel = kernel
+        self.threshold_eff = threshold_eff
         self.sky = sky  # DAOFIND has no sky input -> same as sky=0.
+        self.npix = kernel.data.size
 
+        self.id = np.arange(len(self)) + 1
         self.cutout_shape = kernel.shape
         self.cutout_center = tuple([(size - 1) // 2 for size in kernel.shape])
-
-        # self.data = star_cutout.data
-        # self.data_masked = star_cutout.data_masked
-        # self.npixels = star_cutout.npixels  # unmasked pixels
-        # self.nx = star_cutout.nx
-        # self.ny = star_cutout.ny
-        # self.xcenter = star_cutout.cutout_xcenter
-        # self.ycenter = star_cutout.cutout_ycenter
+        self.default_columns = ('id', 'xcentroid', 'ycentroid', 'sharpness',
+                                'roundness1', 'roundness2', 'npix', 'sky',
+                                'peak', 'flux', 'mag')
 
     def __len__(self):
         return len(self.xypos)
 
     def __getitem__(self, index):
+        if self.isscalar:
+            raise TypeError(f'A scalar {self.__class__.__name__!r} object '
+                            'cannot be indexed')
+
         newcls = object.__new__(self.__class__)
-        init_attr = ('data', 'kernel', 'sky')
+        init_attr = ('data', 'convolved_data', 'kernel', 'threshold_eff',
+                     'sky', 'npix', 'cutout_shape', 'cutout_center')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
         # xypos determines ordering and isscalar
-        # NOTE: always keep as 2D array, even for a single source
+        # NOTE: always keep as a 2D array, even for a single source
         attr = 'xypos'
         value = getattr(self, attr)[index]
-        isscalar = value.shape == (2,)
         setattr(newcls, attr, np.atleast_2d(value))
 
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        keys.add('id')
         for key in keys:
             value = self.__dict__[key]
 
-            # always keep as 1D array, even for a single source
+            # do not insert attributes that are always scalar (e.g.,
+            # isscalar), i.e., not an array/list for each source
+            if np.isscalar(value):
+                continue
+
+            # value is always at least a 1D array, even for a single source
             value = np.atleast_1d(value[index])
 
             newcls.__dict__[key] = value
         return newcls
+
+    @lazyproperty
+    def isscalar(self):
+        """
+        Whether the instance is scalar (e.g., a single source).
+        """
+        return self.xypos.shape == (1, 2)
 
     @property
     def _lazyproperties(self):
@@ -363,15 +362,6 @@ class _DAOStarFinderCatalog:
             return isinstance(obj, lazyproperty)
         return [i[0] for i in inspect.getmembers(self.__class__,
                                                  predicate=islazyproperty)]
-
-    #@lazyproperty
-    #def slices(self):
-    #    slices = []
-    #    for xpos, ypos in self.xypos:
-    #        slc, _ = overlap_slices(self.data.shape, self.shape, (ypos, xpos),
-    #                                mode='trim')
-    #        slices.append(slc)
-    #    return slices
 
     def make_cutouts(self, data):
         cutouts = []
@@ -600,31 +590,31 @@ class _DAOStarFinderCatalog:
         source will have a zero roundness.  A source extended in x or y
         will have a negative or positive roundness, respectively.
         """
-
-        if np.isnan(self.hx) or np.isnan(self.hy):
-            return np.nan
-        else:
-            return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
+        return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
 
     @lazyproperty
-    def max_value(self):
+    def peak(self):
         return self.data_peak - self.sky
 
     @lazyproperty
-    def npix(self):
-        """
-        The total number of pixels in the rectangular cutout image.
-        """
-        return self.data.size
-
-    @lazyproperty
     def flux(self):
-        return ((self.conv_peak / self.cutout.threshold_eff)
+        return ((self.convdata_peak / self.threshold_eff)
                 - (self.sky * self.npix))
 
     @lazyproperty
     def mag(self):
-        if self.flux <= 0:
-            return np.nan
-        else:
-            return -2.5 * np.log10(self.flux)
+        # ignore RunTimeWarning if flux is <= 0
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=RuntimeWarning)
+            mag = -2.5 * np.log10(self.flux)
+            mag[self.flux <= 0] = np.nan
+
+        return mag
+
+    def to_table(self, columns=None):
+        table = Table()
+        if columns is None:
+            columns = self.default_columns
+        for column in columns:
+            table[column] = getattr(self, column)
+        return table
