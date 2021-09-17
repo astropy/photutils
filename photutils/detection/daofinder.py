@@ -159,6 +159,9 @@ class DAOStarFinder(StarFinderBase):
         if not np.isscalar(fwhm):
             raise TypeError('fwhm must be a scalar value.')
 
+        if brightest is not None and brightest <= 0:
+            raise ValueError('brightest must be > 0')
+
         self.threshold = threshold
         self.fwhm = fwhm
         self.ratio = ratio
@@ -229,43 +232,35 @@ class DAOStarFinder(StarFinderBase):
 
         cat = _DAOStarFinderCatalog(data, convolved_data, xypos, self.kernel,
                                     self.threshold_eff, self.sky)
-        return cat
 
-        # # filter the catalog
-        # mask = ((cat.sharpness > self.sharplo)
-        #         & (cat.sharpness < self.sharphi)
-        #         & (cat.roundess1 > self.roundlo)
-        #         & (cat.roundness1 < self.roundhi)
-        #         & (cat.roundness2 > self.roundlo)
-        #         & (cat.roundness2 < self.roundhi))
+        # filter the catalog
+        mask = (~np.isnan(cat.dx) & ~np.isnan(cat.dy)
+                & ~np.isnan(cat.hx) & ~np.isnan(cat.hy))
+        mask &= ((cat.sharpness > self.sharplo)
+                 & (cat.sharpness < self.sharphi)
+                 & (cat.roundness1 > self.roundlo)
+                 & (cat.roundness1 < self.roundhi)
+                 & (cat.roundness2 > self.roundlo)
+                 & (cat.roundness2 < self.roundhi))
+        if self.peakmax is not None:
+            mask &= (cat.peak < self.peakmax)
+        cat = cat[mask]
 
-        # # TODO:
-        # # if np.isnan(props.dx_hx).any() or np.isnan(props.dy_hy).any():
-        # #     continue
+        if len(cat) == 0:
+            warnings.warn('Sources were found, but none pass the sharpness, '
+                          'roundness, or peakmax criteria',
+                          NoDetectionsWarning)
+            return None
 
-        # if self.peakmax is not None:
-        #     mask &= (cat.max_value < self.peakmax)
+        # sort the catalog by the brightest fluxes
+        if self.brightest is not None:
+            idx = np.argsort(cat.flux)[::-1][:self.brightest]
+            cat = cat[idx]
 
-        # cat = cat[mask]
-
-        # if len(cat) == 0:
-        #     warnings.warn('Sources were found, but none pass the sharpness, '
-        #                   'roundness, or peakmax criteria',
-        #                   NoDetectionsWarning)
-        #     return None
-
-        # # sort the catalog by the brightest fluxes
-        # if self.brightest is not None:
-        #     idx = np.argsort(cat.flux)[::-1][:self.brightest]
-        #     cat = cat[idx]
-
-        # # create the output table
-        # columns = ('xcentroid', 'ycentroid', 'sharpness', 'roundness1',
-        #            'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag')
-        # table = cat.to_table(columns=columns)
-        # table.add_column(np.arange(len(cat)) + 1, name='id', index=0)
-
-        # return table
+        # create the output table
+        table = cat.to_table()
+        table['id'] = np.arange(len(cat)) + 1  # reset id column
+        return table
 
 
 class _DAOStarFinderCatalog:
@@ -314,13 +309,10 @@ class _DAOStarFinderCatalog:
         return len(self.xypos)
 
     def __getitem__(self, index):
-        if self.isscalar:
-            raise TypeError(f'A scalar {self.__class__.__name__!r} object '
-                            'cannot be indexed')
-
         newcls = object.__new__(self.__class__)
         init_attr = ('data', 'convolved_data', 'kernel', 'threshold_eff',
-                     'sky', 'npix', 'cutout_shape', 'cutout_center')
+                     'sky', 'npix', 'cutout_shape', 'cutout_center',
+                     'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -335,7 +327,7 @@ class _DAOStarFinderCatalog:
         for key in keys:
             value = self.__dict__[key]
 
-            # do not insert attributes that are always scalar (e.g.,
+            # do not insert lazy attributes that are always scalar (e.g.,
             # isscalar), i.e., not an array/list for each source
             if np.isscalar(value):
                 continue
@@ -442,7 +434,7 @@ class _DAOStarFinderCatalog:
         distributions, to the marginal x/y distributions of the original
         (unconvolved) image.
 
-        These fits are used calculate the star centroid and roundness
+        These fits are used calculate the star centroid and roundness2
         ("GROUND") properties.
 
         Parameters
@@ -530,7 +522,7 @@ class _DAOStarFinderCatalog:
 
             dx2 = data_dx_sum / data_sum
 
-        hsize = size / 2.
+        hsize = size / 2.0
         mask2 = (np.abs(dx) > hsize)
         mask3 = (data_sum == 0.)
         mask4 = (mask2 & mask3)
@@ -608,7 +600,6 @@ class _DAOStarFinderCatalog:
             warnings.simplefilter('ignore', category=RuntimeWarning)
             mag = -2.5 * np.log10(self.flux)
             mag[self.flux <= 0] = np.nan
-
         return mag
 
     def to_table(self, columns=None):
