@@ -2,15 +2,17 @@
 """
 This module implements the IRAFStarFinder class.
 """
-
+import inspect
 import warnings
 
+from astropy.nddata import extract_array
 from astropy.table import Table
 from astropy.utils import lazyproperty
 import numpy as np
 
 from .base import StarFinderBase
-from ._utils import _StarCutout, _StarFinderKernel, _find_stars
+from ._utils import _StarFinderKernel, _find_stars
+from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
 from ..utils.exceptions import NoDetectionsWarning
 
@@ -126,12 +128,12 @@ class IRAFStarFinder(StarFinderBase):
 
         if not np.isscalar(threshold):
             raise TypeError('threshold must be a scalar value.')
-        self.threshold = threshold
 
         if not np.isscalar(fwhm):
             raise TypeError('fwhm must be a scalar value.')
-        self.fwhm = fwhm
 
+        self.threshold = threshold
+        self.fwhm = fwhm
         self.sigma_radius = sigma_radius
         self.minsep_fwhm = minsep_fwhm
         self.sharplo = sharplo
@@ -140,13 +142,23 @@ class IRAFStarFinder(StarFinderBase):
         self.roundhi = roundhi
         self.sky = sky
         self.exclude_border = exclude_border
+        self.brightest = self._validate_brightest(brightest)
+        self.peakmax = peakmax
 
-        self.min_separation = max(2, int((self.fwhm * self.minsep_fwhm) + 0.5))
         self.kernel = _StarFinderKernel(self.fwhm, ratio=1.0, theta=0.0,
                                         sigma_radius=self.sigma_radius)
-        self.brightest = brightest
-        self.peakmax = peakmax
-        self._star_cutouts = None
+        self.min_separation = max(2, int((self.fwhm * self.minsep_fwhm) + 0.5))
+
+    @staticmethod
+    def _validate_brightest(brightest):
+        if brightest is not None:
+            if brightest <= 0:
+                raise ValueError('brightest must be >= 0')
+            bright_int = int(brightest)
+            if bright_int != brightest:
+                raise ValueError('brightest must be an integer')
+            brightest = bright_int
+        return brightest
 
     def find_stars(self, data, mask=None):
         """
@@ -184,62 +196,48 @@ class IRAFStarFinder(StarFinderBase):
 
             `None` is returned if no stars are found.
         """
-        star_cutouts = _find_stars(data, self.kernel, self.threshold,
-                                   min_separation=self.min_separation,
-                                   mask=mask,
-                                   exclude_border=self.exclude_border)
+        convolved_data = _filter_data(data, self.kernel.data, mode='constant',
+                                      fill_value=0.0,
+                                      check_normalization=False)
 
-        if star_cutouts is None:
+        xypos = _find_stars(convolved_data, self.kernel, self.threshold,
+                            min_separation=self.min_separation, mask=mask,
+                            exclude_border=self.exclude_border)
+        if xypos is None:
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        self._star_cutouts = star_cutouts
+        cat = _IRAFStarFinderCatalog(data, convolved_data, xypos, self.kernel,
+                                     self.threshold, self.sky)
 
-        star_props = []
-        for star_cutout in star_cutouts:
-            props = _IRAFStarFindProperties(star_cutout, self.kernel,
-                                            self.sky)
+        # filter the catalog
+        mask = np.count_nonzero(cat.cutout_data, axis=(1, 2)) > 1
+        mask &= ((cat.sharpness > self.sharplo)
+                 & (cat.sharpness < self.sharphi)
+                 & (cat.roundness > self.roundlo)
+                 & (cat.roundness < self.roundhi))
+        if self.peakmax is not None:
+            mask &= (cat.peak < self.peakmax)
+        cat = cat[mask]
 
-            # star cutout needs more than one non-zero value
-            if np.count_nonzero(props.data) <= 1:
-                continue
-
-            if (props.sharpness <= self.sharplo
-                    or props.sharpness >= self.sharphi):
-                continue
-
-            if (props.roundness <= self.roundlo
-                    or props.roundness >= self.roundhi):
-                continue
-
-            if self.peakmax is not None and props.peak >= self.peakmax:
-                continue
-
-            star_props.append(props)
-
-        nstars = len(star_props)
-        if nstars == 0:
-            warnings.warn('Sources were found, but none pass the sharpness '
-                          'and roundness criteria.', NoDetectionsWarning)
+        if len(cat) == 0:
+            warnings.warn('Sources were found, but none pass the sharpness, '
+                          'roundness, or peakmax criteria',
+                          NoDetectionsWarning)
             return None
 
+        # sort the catalog by the brightest fluxes
         if self.brightest is not None:
-            fluxes = [props.flux for props in star_props]
-            idx = sorted(np.argsort(fluxes)[-self.brightest:].tolist())
-            star_props = [star_props[k] for k in idx]
-            nstars = len(star_props)
+            idx = np.argsort(cat.flux)[::-1][:self.brightest]
+            cat = cat[idx]
 
-        table = Table()
-        table['id'] = np.arange(nstars) + 1
-        columns = ('xcentroid', 'ycentroid', 'fwhm', 'sharpness', 'roundness',
-                   'pa', 'npix', 'sky', 'peak', 'flux', 'mag')
-        for column in columns:
-            table[column] = [getattr(props, column) for props in star_props]
-
+        # create the output table
+        table = cat.to_table()
+        table['id'] = np.arange(len(cat)) + 1  # reset the id column
         return table
 
 
-class _IRAFStarFindProperties:
+class _IRAFStarFinderCatalog:
     """
     Class to calculate the properties of each detected star, as defined
     by IRAF's ``starfind`` task.
@@ -260,6 +258,11 @@ class _IRAFStarFindProperties:
     """
 
     def __init__(self, star_cutout, kernel, sky=None):
+
+        self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
+                                'sharpness', 'roundness', 'pa', 'npix',
+                                'sky', 'peak', 'flux', 'mag')
+
         if not isinstance(star_cutout, _StarCutout):
             raise ValueError('data must be an _StarCutout object')
 
