@@ -309,9 +309,8 @@ class _DAOStarFinderCatalog:
         self.xypos = np.atleast_2d(xypos)
         self.kernel = kernel
         self.threshold = threshold
-        self.sky = sky  # DAOFIND has no sky input -> same as sky=0.
+        self._sky = sky  # DAOFIND has no sky input -> same as sky=0.
 
-        self.npix = kernel.data.size
         self.id = np.arange(len(self)) + 1
         self.threshold_eff = threshold * kernel.relerr
         self.cutout_shape = kernel.shape
@@ -325,9 +324,9 @@ class _DAOStarFinderCatalog:
 
     def __getitem__(self, index):
         newcls = object.__new__(self.__class__)
-        init_attr = ('data', 'convolved_data', 'kernel', 'threshold',
-                     'sky', 'npix', 'threshold_eff', 'cutout_shape',
-                     'cutout_center', 'default_columns')
+        init_attr = ('data', 'convolved_data', 'kernel', 'threshold', '_sky',
+                     'threshold_eff', 'cutout_shape', 'cutout_center',
+                     'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -616,6 +615,14 @@ class _DAOStarFinderCatalog:
             mag = -2.5 * np.log10(self.flux)
             mag[self.flux <= 0] = np.nan
         return mag
+
+    @lazyproperty
+    def sky(self):
+        return np.full(len(self), fill_value=self._sky)
+
+    @lazyproperty
+    def npix(self):
+        return np.full(len(self), fill_value=self.kernel.data.size)
 
     def to_table(self, columns=None):
         table = Table()

@@ -11,7 +11,6 @@ from astropy.stats import gaussian_fwhm_to_sigma
 import numpy as np
 
 from .peakfinder import find_peaks
-from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
 
