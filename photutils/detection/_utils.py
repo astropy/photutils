@@ -249,9 +249,9 @@ def _find_stars(data, convolved_data, kernel, threshold, min_separation=0.0,
 
     # pad the data, convolved data, and mask by the kernel x/y radius to
     # allow for detections near the edges
+    ypad = kernel.yradius
+    xpad = kernel.xradius
     if not exclude_border:
-        ypad = kernel.yradius
-        xpad = kernel.xradius
         pad = ((ypad, ypad), (xpad, xpad))
         pad_mode = 'constant'
         const_val = 0.
@@ -259,7 +259,7 @@ def _find_stars(data, convolved_data, kernel, threshold, min_separation=0.0,
         convolved_data = np.pad(convolved_data, pad, mode=pad_mode,
                                 constant_values=const_val)
         if mask is not None:
-            mask = np.pad(mask, pad, mode=pad_mode, constant_values=const_val)
+            mask = np.pad(mask, pad, mode=pad_mode, constant_values=False)
 
     # find local peaks in the convolved data
     # suppress any NoDetectionsWarning from find_peaks
@@ -267,6 +267,13 @@ def _find_stars(data, convolved_data, kernel, threshold, min_separation=0.0,
         warnings.filterwarnings('ignore', category=NoDetectionsWarning)
         tbl = find_peaks(convolved_data, threshold, footprint=footprint,
                          mask=mask)
+
+    if exclude_border:
+        xmax = data.shape[1] - xpad
+        ymax = data.shape[0] - ypad
+        mask = ((tbl['x_peak'] > xpad) & (tbl['y_peak'] > ypad)
+                & (tbl['x_peak'] < xmax) & (tbl['y_peak'] < ymax))
+        tbl = tbl[mask]
 
     if tbl is None:
         return None
