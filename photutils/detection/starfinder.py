@@ -154,11 +154,8 @@ class StarFinder(StarFinderBase):
             cat = cat[idx]
 
         # create the output table
-        columns = ('xcentroid', 'ycentroid', 'fwhm', 'roundness', 'pa',
-                   'max_value', 'flux', 'mag')
-        table = cat.to_table(columns=columns)
-        table.add_column(np.arange(len(cat)) + 1, name='label', index=0)
-
+        table = cat.to_table()
+        table['label'] = np.arange(len(cat)) + 1  # reset the label column
         return table
 
 
@@ -230,12 +227,16 @@ class _StarFinderCatalog:
         self.xypos = np.atleast_2d(xypos)
         self.shape = shape
 
+        self.label = np.arange(len(self)) + 1
+        self.default_columns = ('label', 'xcentroid', 'ycentroid', 'fwhm',
+                                'roundness', 'pa', 'max_value', 'flux', 'mag')
+
     def __len__(self):
         return len(self.xypos)
 
     def __getitem__(self, index):
         newcls = object.__new__(self.__class__)
-        init_attr = ('data', 'shape')
+        init_attr = ('data', 'shape', 'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -247,6 +248,7 @@ class _StarFinderCatalog:
         setattr(newcls, attr, np.atleast_2d(value))
 
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        keys.add('label')
         for key in keys:
             value = self.__dict__[key]
             if key in ('slices', 'cutout_data'):
@@ -257,11 +259,19 @@ class _StarFinderCatalog:
                 else:
                     value = value.tolist()
             else:
-                # always keep as 1D array, even for a single source
+                # value is always at least a 1D array, even for a single
+                # source
                 value = np.atleast_1d(value[index])
 
             newcls.__dict__[key] = value
         return newcls
+
+    @lazyproperty
+    def isscalar(self):
+        """
+        Whether the instance is scalar (e.g., a single source).
+        """
+        return self.xypos.shape == (1, 2)
 
     @property
     def _lazyproperties(self):
@@ -375,8 +385,10 @@ class _StarFinderCatalog:
         pa = np.where(pa < 0, pa + 180, pa)
         return pa
 
-    def to_table(self, columns):
+    def to_table(self, columns=None):
         table = QTable()
+        if columns is None:
+            columns = self.default_columns
         for column in columns:
             table[column] = getattr(self, column)
         return table
