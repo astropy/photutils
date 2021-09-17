@@ -127,3 +127,9 @@ class TestIRAFStarFinder:
         tbl1 = starfinder(DATA)
         tbl2 = starfinder(DATA, mask=mask)
         assert len(tbl1) > len(tbl2)
+
+    def test_inputs(self):
+        with pytest.raises(ValueError):
+            IRAFStarFinder(10, 1.5, brightest=-1)
+        with pytest.raises(ValueError):
+            IRAFStarFinder(10, 1.5, brightest=3.1)

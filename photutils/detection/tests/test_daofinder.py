@@ -152,3 +152,9 @@ class TestDAOStarFinder:
         tbl1 = starfinder(DATA)
         tbl2 = starfinder(DATA, mask=mask)
         assert len(tbl1) > len(tbl2)
+
+    def test_inputs(self):
+        with pytest.raises(ValueError):
+            DAOStarFinder(threshold=10, fwhm=1.5, brightest=-1)
+        with pytest.raises(ValueError):
+            DAOStarFinder(threshold=10, fwhm=1.5, brightest=3.1)
