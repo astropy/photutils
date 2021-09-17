@@ -10,6 +10,7 @@ from astropy.table import Table
 import numpy as np
 
 from ..utils.exceptions import NoDetectionsWarning
+from ..utils._misc import _get_version_info
 
 __all__ = ['find_peaks']
 
@@ -166,9 +167,10 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         return None
 
     # construct the output Table
+    meta = {'version': _get_version_info()}
     colnames = ['x_peak', 'y_peak', 'peak_value']
     coldata = [x_peaks, y_peaks, peak_values]
-    table = Table(coldata, names=colnames)
+    table = Table(coldata, names=colnames, meta=meta)
 
     if wcs is not None:
         skycoord_peaks = wcs.pixel_to_world(x_peaks, y_peaks)

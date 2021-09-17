@@ -19,6 +19,7 @@ from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
 from ..detection import DAOStarFinder
 from ..utils.exceptions import NoDetectionsWarning
+from ..utils._misc import _get_version_info
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']
@@ -346,6 +347,8 @@ class BasicPSFPhotometry:
 
         star_groups = star_groups.group_by('group_id')
         output_tab = hstack([star_groups, output_tab])
+
+        output_tab.meta = {'version': _get_version_info()}
 
         return output_tab
 
@@ -743,6 +746,9 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                 self.set_aperture_radius()
 
             output_table = self._do_photometry()
+
+        output_table.meta = {'version': _get_version_info()}
+
         return output_table
 
     def _do_photometry(self, n_start=1):

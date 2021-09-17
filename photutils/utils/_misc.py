@@ -7,15 +7,24 @@ versions.
 
 def _get_version_info():
     """
-    Return astropy and photutils versions.
+    Return a dictionary of the installed version numbers for photutils
+    and its dependencies.
 
     Returns
     -------
-    result : str
-        The astropy and photutils versions.
+    result : dict
+        A dictionary containing the version numbers for photutils and
+        its dependencies.
     """
+    versions = {}
+    packages = ('photutils', 'astropy', 'numpy', 'scipy', 'skimage')
+    for package in packages:
+        try:
+            pkg = __import__(package)
+            version = pkg.__version__
+        except ImportError:
+            version = None
 
-    from astropy import __version__ as astropy_version
-    from photutils import __version__ as photutils_version
+        versions[package] = version
 
-    return f'astropy: {astropy_version}, photutils: {photutils_version}'
+    return versions

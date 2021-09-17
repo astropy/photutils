@@ -14,6 +14,7 @@ from astropy.wcs import WCS
 import numpy as np
 
 from ..psf import IntegratedGaussianPRF
+from ..utils._misc import _get_version_info
 
 __all__ = ['apply_poisson_noise', 'make_noise_image',
            'make_random_models_table', 'make_random_gaussians_table',
@@ -229,7 +230,8 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
 
     rng = np.random.default_rng(seed)
 
-    sources = Table()
+    meta = {'version': _get_version_info()}
+    sources = Table(meta=meta)
     for param_name, (lower, upper) in param_ranges.items():
         # Generate a column for every item in param_ranges, even if it
         # is not in the model (e.g., flux). However, such columns will be
