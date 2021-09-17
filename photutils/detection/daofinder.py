@@ -231,7 +231,7 @@ class DAOStarFinder(StarFinderBase):
             return None
 
         cat = _DAOStarFinderCatalog(data, convolved_data, xypos, self.kernel,
-                                    self.threshold_eff, self.sky)
+                                    self.threshold, self.sky)
 
         # filter the catalog
         mask = (~np.isnan(cat.dx) & ~np.isnan(cat.dy)
@@ -259,26 +259,33 @@ class DAOStarFinder(StarFinderBase):
 
         # create the output table
         table = cat.to_table()
-        table['id'] = np.arange(len(cat)) + 1  # reset id column
+        table['id'] = np.arange(len(cat)) + 1  # reset the id column
         return table
 
 
 class _DAOStarFinderCatalog:
     """
-    Class to calculate the properties of each detected star, as defined
-    by `DAOFIND`_.
+    Class to create a catalog of the properties of each detected star,
+    as defined by `DAOFIND`_.
 
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
         The 2D image.
 
+    convolved_data : 2D `~numpy.ndarray`
+        The convolved 2D image.
+
     xypos: Nx2 `numpy.ndarray`
         A Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
     kernel : `_StarFinderKernel`
-        The convolution kernel.
+        The convolution kernel. This kernel must match the kernel used
+        to create the ``convolved_data``.
+
+    threshold : float
+        The absolute image value above which sources were selected.
 
     sky : float, optional
         The local sky level around the source.  ``sky`` is used only to
@@ -288,17 +295,18 @@ class _DAOStarFinderCatalog:
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
     """
 
-    def __init__(self, data, convolved_data, xypos, kernel, threshold_eff,
+    def __init__(self, data, convolved_data, xypos, kernel, threshold,
                  sky=0.):
         self.data = data
         self.convolved_data = convolved_data
         self.xypos = np.atleast_2d(xypos)
         self.kernel = kernel
-        self.threshold_eff = threshold_eff
+        self.threshold = threshold
         self.sky = sky  # DAOFIND has no sky input -> same as sky=0.
         self.npix = kernel.data.size
 
         self.id = np.arange(len(self)) + 1
+        self.threshold_eff = threshold * kernel.relerr
         self.cutout_shape = kernel.shape
         self.cutout_center = tuple([(size - 1) // 2 for size in kernel.shape])
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'sharpness',
@@ -310,9 +318,9 @@ class _DAOStarFinderCatalog:
 
     def __getitem__(self, index):
         newcls = object.__new__(self.__class__)
-        init_attr = ('data', 'convolved_data', 'kernel', 'threshold_eff',
-                     'sky', 'npix', 'cutout_shape', 'cutout_center',
-                     'default_columns')
+        init_attr = ('data', 'convolved_data', 'kernel', 'threshold',
+                     'sky', 'npix', 'threshold_eff', 'cutout_shape',
+                     'cutout_center', 'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
