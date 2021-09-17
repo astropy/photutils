@@ -12,7 +12,7 @@ from astropy.utils import lazyproperty
 import numpy as np
 
 from .base import StarFinderBase
-from .peakfinder import find_peaks
+from ._utils import _find_stars
 from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
 from ..utils.exceptions import NoDetectionsWarning
@@ -128,7 +128,11 @@ class StarFinder(StarFinderBase):
         denom = np.sum(kernel**2) - (np.sum(kernel)**2 / kernel.size)
         kernel = (kernel - np.sum(kernel) / kernel.size) / denom
 
-        xypos = _find_stars(data, kernel, self.threshold,
+        convolved_data = _filter_data(data, kernel, mode='constant',
+                                      fill_value=0.0,
+                                      check_normalization=False)
+
+        xypos = _find_stars(convolved_data, kernel, self.threshold,
                             min_separation=self.min_separation,
                             mask=mask, exclude_border=self.exclude_border)
 
@@ -154,57 +158,9 @@ class StarFinder(StarFinderBase):
             cat = cat[idx]
 
         # create the output table
-        columns = ('xcentroid', 'ycentroid', 'fwhm', 'roundness', 'pa',
-                   'max_value', 'flux', 'mag')
-        table = cat.to_table(columns=columns)
-        table.add_column(np.arange(len(cat)) + 1, name='label', index=0)
-
+        table = cat.to_table()
+        table['label'] = np.arange(len(cat)) + 1  # reset the label column
         return table
-
-
-def _find_stars(data, kernel, threshold, min_separation=0.0, mask=None,
-                exclude_border=False):
-
-    convolved_data = _filter_data(data, kernel, mode='constant',
-                                  fill_value=0.0, check_normalization=False)
-
-    if min_separation == 0:
-        footprint = np.ones(kernel.shape)
-    else:
-        # define a local circular footprint for the peak finder
-        idx = np.arange(-min_separation, min_separation + 1)
-        xx, yy = np.meshgrid(idx, idx)
-        footprint = np.array((xx**2 + yy**2) <= min_separation**2, dtype=int)
-
-    # pad the data, convolved data, and mask by half the kernel size to
-    # allow for detections near the edges
-    if not exclude_border:
-        ypad = (kernel.shape[0] - 1) // 2
-        xpad = (kernel.shape[1] - 1) // 2
-        pad = ((ypad, ypad), (xpad, xpad))
-        pad_mode = 'constant'
-        const_val = 0.
-        convolved_data = np.pad(convolved_data, pad, mode=pad_mode,
-                                constant_values=const_val)
-        if mask is not None:
-            mask = np.pad(mask, pad, mode=pad_mode, constant_values=const_val)
-
-    # find local peaks in the convolved data
-    # suppress any NoDetectionsWarning from find_peaks
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', category=NoDetectionsWarning)
-        tbl = find_peaks(convolved_data, threshold, footprint=footprint,
-                         mask=mask)
-
-    if tbl is None:
-        return None
-
-    xpos, ypos = tbl['x_peak'], tbl['y_peak']
-    if not exclude_border:
-        xpos -= xpad
-        ypos -= ypad
-
-    return np.transpose((xpos, ypos))
 
 
 class _StarFinderCatalog:
@@ -216,9 +172,9 @@ class _StarFinderCatalog:
     data : 2D `~numpy.ndarray`
         The 2D image.
 
-    xypos:  list of 2-tuples
-        A list of (x, y) tuples denoting the central positions of the
-        stars.
+    xypos: Nx2 `numpy.ndarray`
+        A Nx2 array of (x, y) pixel coordinates denoting the central
+        positions of the stars.
 
     shape:  tuple of int
         The shape of the stars cutouts. The shape in both dimensions
@@ -230,12 +186,16 @@ class _StarFinderCatalog:
         self.xypos = np.atleast_2d(xypos)
         self.shape = shape
 
+        self.label = np.arange(len(self)) + 1
+        self.default_columns = ('label', 'xcentroid', 'ycentroid', 'fwhm',
+                                'roundness', 'pa', 'max_value', 'flux', 'mag')
+
     def __len__(self):
         return len(self.xypos)
 
     def __getitem__(self, index):
         newcls = object.__new__(self.__class__)
-        init_attr = ('data', 'shape')
+        init_attr = ('data', 'shape', 'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -247,6 +207,7 @@ class _StarFinderCatalog:
         setattr(newcls, attr, np.atleast_2d(value))
 
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        keys.add('label')
         for key in keys:
             value = self.__dict__[key]
             if key in ('slices', 'cutout_data'):
@@ -257,11 +218,19 @@ class _StarFinderCatalog:
                 else:
                     value = value.tolist()
             else:
-                # always keep as 1D array, even for a single source
+                # value is always at least a 1D array, even for a single
+                # source
                 value = np.atleast_1d(value[index])
 
             newcls.__dict__[key] = value
         return newcls
+
+    @lazyproperty
+    def isscalar(self):
+        """
+        Whether the instance is scalar (e.g., a single source).
+        """
+        return self.xypos.shape == (1, 2)
 
     @property
     def _lazyproperties(self):
@@ -375,8 +344,10 @@ class _StarFinderCatalog:
         pa = np.where(pa < 0, pa + 180, pa)
         return pa
 
-    def to_table(self, columns):
+    def to_table(self, columns=None):
         table = QTable()
+        if columns is None:
+            columns = self.default_columns
         for column in columns:
             table[column] = getattr(self, column)
         return table

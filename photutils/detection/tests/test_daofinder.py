@@ -71,8 +71,8 @@ class TestDAOStarFinder:
             starfinder = DAOStarFinder(threshold=50, fwhm=1.0, sharplo=1.)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass the sharpness and '
-                    'roundness criteria.' in str(warning_lines[0].message))
+            assert ('Sources were found, but none pass' in
+                    str(warning_lines[0].message))
 
     def test_daofind_roundness(self):
         """Sources found, but none pass the roundness criteria."""
@@ -80,8 +80,17 @@ class TestDAOStarFinder:
             starfinder = DAOStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass the sharpness and '
-                    'roundness criteria.' in str(warning_lines[0].message))
+            assert ('Sources were found, but none pass' in
+                    str(warning_lines[0].message))
+
+    def test_daofind_peakmax(self):
+        """Sources found, but none pass the peakmax criteria."""
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, peakmax=1.0)
+            tbl = starfinder(DATA)
+            assert tbl is None
+            assert ('Sources were found, but none pass' in
+                    str(warning_lines[0].message))
 
     def test_daofind_flux_negative(self):
         """Test handling of negative flux (here created by large sky)."""
@@ -143,3 +152,9 @@ class TestDAOStarFinder:
         tbl1 = starfinder(DATA)
         tbl2 = starfinder(DATA, mask=mask)
         assert len(tbl1) > len(tbl2)
+
+    def test_inputs(self):
+        with pytest.raises(ValueError):
+            DAOStarFinder(threshold=10, fwhm=1.5, brightest=-1)
+        with pytest.raises(ValueError):
+            DAOStarFinder(threshold=10, fwhm=1.5, brightest=3.1)

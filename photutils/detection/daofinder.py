@@ -2,15 +2,17 @@
 """
 This module implements the DAOStarFinder class.
 """
-
+import inspect
 import warnings
 
+from astropy.nddata import extract_array
 from astropy.table import Table
 from astropy.utils import lazyproperty
 import numpy as np
 
 from .base import StarFinderBase
-from ._utils import _StarCutout, _StarFinderKernel, _find_stars
+from ._utils import _StarFinderKernel, _find_stars
+from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
 __all__ = ['DAOStarFinder']
@@ -153,12 +155,12 @@ class DAOStarFinder(StarFinderBase):
 
         if not np.isscalar(threshold):
             raise TypeError('threshold must be a scalar value.')
-        self.threshold = threshold
 
         if not np.isscalar(fwhm):
             raise TypeError('fwhm must be a scalar value.')
-        self.fwhm = fwhm
 
+        self.threshold = threshold
+        self.fwhm = fwhm
         self.ratio = ratio
         self.theta = theta
         self.sigma_radius = sigma_radius
@@ -168,13 +170,23 @@ class DAOStarFinder(StarFinderBase):
         self.roundhi = roundhi
         self.sky = sky
         self.exclude_border = exclude_border
+        self.brightest = self._validate_brightest(brightest)
+        self.peakmax = peakmax
 
         self.kernel = _StarFinderKernel(self.fwhm, self.ratio, self.theta,
                                         self.sigma_radius)
         self.threshold_eff = self.threshold * self.kernel.relerr
-        self.brightest = brightest
-        self.peakmax = peakmax
-        self._star_cutouts = None
+
+    @staticmethod
+    def _validate_brightest(brightest):
+        if brightest is not None:
+            if brightest <= 0:
+                raise ValueError('brightest must be >= 0')
+            bright_int = int(brightest)
+            if bright_int != brightest:
+                raise ValueError('brightest must be an integer')
+            brightest = bright_int
+        return brightest
 
     def find_stars(self, data, mask=None):
         """
@@ -214,78 +226,73 @@ class DAOStarFinder(StarFinderBase):
               `DAOFIND`_ if ``sky`` is 0.0.
 
             `None` is returned if no stars are found.
-
         """
+        convolved_data = _filter_data(data, self.kernel.data, mode='constant',
+                                      fill_value=0.0,
+                                      check_normalization=False)
 
-        star_cutouts = _find_stars(data, self.kernel, self.threshold_eff,
-                                   mask=mask,
-                                   exclude_border=self.exclude_border)
-
-        if star_cutouts is None:
+        xypos = _find_stars(convolved_data, self.kernel, self.threshold_eff,
+                            mask=mask, exclude_border=self.exclude_border)
+        if xypos is None:
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        self._star_cutouts = star_cutouts
+        cat = _DAOStarFinderCatalog(data, convolved_data, xypos, self.kernel,
+                                    self.threshold, self.sky)
 
-        star_props = []
-        for star_cutout in star_cutouts:
-            props = _DAOFindProperties(star_cutout, self.kernel, self.sky)
+        # filter the catalog
+        mask = (~np.isnan(cat.dx) & ~np.isnan(cat.dy)
+                & ~np.isnan(cat.hx) & ~np.isnan(cat.hy))
+        mask &= ((cat.sharpness > self.sharplo)
+                 & (cat.sharpness < self.sharphi)
+                 & (cat.roundness1 > self.roundlo)
+                 & (cat.roundness1 < self.roundhi)
+                 & (cat.roundness2 > self.roundlo)
+                 & (cat.roundness2 < self.roundhi))
+        if self.peakmax is not None:
+            mask &= (cat.peak < self.peakmax)
+        cat = cat[mask]
 
-            if np.isnan(props.dx_hx).any() or np.isnan(props.dy_hy).any():
-                continue
-
-            if (props.sharpness <= self.sharplo
-                    or props.sharpness >= self.sharphi):
-                continue
-
-            if (props.roundness1 <= self.roundlo
-                    or props.roundness1 >= self.roundhi):
-                continue
-
-            if (props.roundness2 <= self.roundlo
-                    or props.roundness2 >= self.roundhi):
-                continue
-
-            if self.peakmax is not None and props.peak >= self.peakmax:
-                continue
-
-            star_props.append(props)
-
-        nstars = len(star_props)
-        if nstars == 0:
-            warnings.warn('Sources were found, but none pass the sharpness '
-                          'and roundness criteria.', NoDetectionsWarning)
+        if len(cat) == 0:
+            warnings.warn('Sources were found, but none pass the sharpness, '
+                          'roundness, or peakmax criteria',
+                          NoDetectionsWarning)
             return None
 
+        # sort the catalog by the brightest fluxes
         if self.brightest is not None:
-            fluxes = [props.flux for props in star_props]
-            idx = sorted(np.argsort(fluxes)[-self.brightest:].tolist())
-            star_props = [star_props[k] for k in idx]
-            nstars = len(star_props)
+            idx = np.argsort(cat.flux)[::-1][:self.brightest]
+            cat = cat[idx]
 
-        table = Table()
-        table['id'] = np.arange(nstars) + 1
-        columns = ('xcentroid', 'ycentroid', 'sharpness', 'roundness1',
-                   'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag')
-        for column in columns:
-            table[column] = [getattr(props, column) for props in star_props]
-
+        # create the output table
+        table = cat.to_table()
+        table['id'] = np.arange(len(cat)) + 1  # reset the id column
         return table
 
 
-class _DAOFindProperties:
+class _DAOStarFinderCatalog:
     """
-    Class to calculate the properties of each detected star, as defined
-    by `DAOFIND`_.
+    Class to create a catalog of the properties of each detected star,
+    as defined by `DAOFIND`_.
 
     Parameters
     ----------
-    star_cutout : `_StarCutout`
-        A `_StarCutout` object containing the image cutout for the star.
+    data : 2D `~numpy.ndarray`
+        The 2D image.
+
+    convolved_data : 2D `~numpy.ndarray`
+        The convolved 2D image.
+
+    xypos: Nx2 `numpy.ndarray`
+        A Nx2 array of (x, y) pixel coordinates denoting the central
+        positions of the stars.
 
     kernel : `_StarFinderKernel`
-        The convolution kernel.  The shape of the kernel must match that
-        of the input ``star_cutout``.
+        The convolution kernel. This kernel must match the kernel used
+        to create the ``convolved_data``.
+
+    threshold : float
+        The absolute image value above which sources were selected.
 
     sky : float, optional
         The local sky level around the source.  ``sky`` is used only to
@@ -295,41 +302,106 @@ class _DAOFindProperties:
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
     """
 
-    def __init__(self, star_cutout, kernel, sky=0.):
-        if not isinstance(star_cutout, _StarCutout):
-            raise ValueError('data must be an _StarCutout object')
-
-        if star_cutout.data.shape != kernel.shape:
-            raise ValueError('cutout and kernel must have the same shape')
-
-        self.cutout = star_cutout
+    def __init__(self, data, convolved_data, xypos, kernel, threshold,
+                 sky=0.):
+        self.data = data
+        self.convolved_data = convolved_data
+        self.xypos = np.atleast_2d(xypos)
         self.kernel = kernel
-        self.sky = sky  # DAOFIND has no sky input -> same as sky=0.
+        self.threshold = threshold
+        self._sky = sky  # DAOFIND has no sky input -> same as sky=0.
 
-        self.data = star_cutout.data
-        self.data_masked = star_cutout.data_masked
-        self.npixels = star_cutout.npixels  # unmasked pixels
-        self.nx = star_cutout.nx
-        self.ny = star_cutout.ny
-        self.xcenter = star_cutout.cutout_xcenter
-        self.ycenter = star_cutout.cutout_ycenter
+        self.id = np.arange(len(self)) + 1
+        self.threshold_eff = threshold * kernel.relerr
+        self.cutout_shape = kernel.shape
+        self.cutout_center = tuple([(size - 1) // 2 for size in kernel.shape])
+        self.default_columns = ('id', 'xcentroid', 'ycentroid', 'sharpness',
+                                'roundness1', 'roundness2', 'npix', 'sky',
+                                'peak', 'flux', 'mag')
+
+    def __len__(self):
+        return len(self.xypos)
+
+    def __getitem__(self, index):
+        newcls = object.__new__(self.__class__)
+        init_attr = ('data', 'convolved_data', 'kernel', 'threshold', '_sky',
+                     'threshold_eff', 'cutout_shape', 'cutout_center',
+                     'default_columns')
+        for attr in init_attr:
+            setattr(newcls, attr, getattr(self, attr))
+
+        # xypos determines ordering and isscalar
+        # NOTE: always keep as a 2D array, even for a single source
+        attr = 'xypos'
+        value = getattr(self, attr)[index]
+        setattr(newcls, attr, np.atleast_2d(value))
+
+        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        keys.add('id')
+        for key in keys:
+            value = self.__dict__[key]
+
+            # do not insert lazy attributes that are always scalar (e.g.,
+            # isscalar), i.e., not an array/list for each source
+            if np.isscalar(value):
+                continue
+
+            # value is always at least a 1D array, even for a single source
+            value = np.atleast_1d(value[index])
+
+            newcls.__dict__[key] = value
+        return newcls
+
+    @lazyproperty
+    def isscalar(self):
+        """
+        Whether the instance is scalar (e.g., a single source).
+        """
+        return self.xypos.shape == (1, 2)
+
+    @property
+    def _lazyproperties(self):
+        """
+        Return all lazyproperties (even in superclasses).
+        """
+        def islazyproperty(obj):
+            return isinstance(obj, lazyproperty)
+        return [i[0] for i in inspect.getmembers(self.__class__,
+                                                 predicate=islazyproperty)]
+
+    def make_cutouts(self, data):
+        cutouts = []
+        for xpos, ypos in self.xypos:
+            cutouts.append(extract_array(data, self.cutout_shape, (ypos, xpos),
+                                         fill_value=0.0))
+        return np.array(cutouts)
+
+    @lazyproperty
+    def cutout_data(self):
+        return self.make_cutouts(self.data)
+
+    @lazyproperty
+    def cutout_convdata(self):
+        return self.make_cutouts(self.convolved_data)
 
     @lazyproperty
     def data_peak(self):
-        return self.data[self.ycenter, self.xcenter]
+        return self.cutout_data[:, self.cutout_center[0],
+                                self.cutout_center[1]]
 
     @lazyproperty
-    def conv_peak(self):
-        return self.cutout.convdata[self.ycenter, self.xcenter]
+    def convdata_peak(self):
+        return self.cutout_convdata[:, self.cutout_center[0],
+                                    self.cutout_center[1]]
 
     @lazyproperty
     def roundness1(self):
-        # set the central (peak) pixel to zero
-        cutout_conv = self.cutout.convdata.copy()
-        cutout_conv[self.ycenter, self.xcenter] = 0.0  # for sum4
+        # set the central (peak) pixel to zero for the sum4 calculation
+        cutout_conv = self.cutout_convdata.copy()
+        cutout_conv[:, self.cutout_center[0], self.cutout_center[1]] = 0.0
 
         # calculate the four roundness quadrants.
-        # the cutout size always matches the kernel size, which have odd
+        # the cutout size always matches the kernel size, which has odd
         # dimensions.
         # quad1 = bottom right
         # quad2 = bottom left
@@ -340,27 +412,35 @@ class _DAOFindProperties:
         # 3 3 x 1 1
         # 2 2 2 1 1
         # 2 2 2 1 1
-        quad1 = cutout_conv[0:self.ycenter + 1, self.xcenter + 1:]
-        quad2 = cutout_conv[0:self.ycenter, 0:self.xcenter + 1]
-        quad3 = cutout_conv[self.ycenter:, 0:self.xcenter]
-        quad4 = cutout_conv[self.ycenter + 1:, self.xcenter:]
+        quad1 = cutout_conv[:, 0:self.cutout_center[0] + 1,
+                            self.cutout_center[1] + 1:]
+        quad2 = cutout_conv[:, 0:self.cutout_center[0],
+                            0:self.cutout_center[1] + 1]
+        quad3 = cutout_conv[:, self.cutout_center[0]:,
+                            0:self.cutout_center[1]]
+        quad4 = cutout_conv[:, self.cutout_center[0] + 1:,
+                            self.cutout_center[1]:]
 
-        sum2 = -quad1.sum() + quad2.sum() - quad3.sum() + quad4.sum()
-        if sum2 == 0:
-            return 0.
+        axis = (1, 2)
+        sum2 = (-quad1.sum(axis=axis) + quad2.sum(axis=axis)
+                - quad3.sum(axis=axis) + quad4.sum(axis=axis))
+        sum4 = np.abs(cutout_conv).sum(axis=axis)
 
-        sum4 = np.abs(cutout_conv).sum()
-        if sum4 <= 0:
-            return None
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            roundness1 = 2.0 * sum2 / sum4
 
-        return 2.0 * sum2 / sum4
+        return roundness1
 
     @lazyproperty
     def sharpness(self):
-        npixels = self.npixels - 1  # exclude the peak pixel
-        data_mean = (np.sum(self.data_masked) - self.data_peak) / npixels
+        # mean value of the unconvolved data (excluding the peak)
+        cutout_data_masked = self.cutout_data * self.kernel.mask
+        data_mean = ((np.sum(cutout_data_masked, axis=(1, 2)) - self.data_peak)
+                     / (self.kernel.npixels - 1))
 
-        return (self.data_peak - data_mean) / self.conv_peak
+        return (self.data_peak - data_mean) / self.convdata_peak
 
     def daofind_marginal_fit(self, axis=0):
         """
@@ -368,7 +448,7 @@ class _DAOFindProperties:
         distributions, to the marginal x/y distributions of the original
         (unconvolved) image.
 
-        These fits are used calculate the star centroid and roundness
+        These fits are used calculate the star centroid and roundness2
         ("GROUND") properties.
 
         Parameters
@@ -390,25 +470,25 @@ class _DAOFindProperties:
             y (depending on ``axis`` value) distribution of the
             unconvolved source data.
         """
-
         # define triangular weighting functions along each axis, peaked
         # in the middle and equal to one at the edge
-        x = self.xcenter - np.abs(np.arange(self.nx) - self.xcenter) + 1
-        y = self.ycenter - np.abs(np.arange(self.ny) - self.ycenter) + 1
-        xwt, ywt = np.meshgrid(x, y)
+        ycen, xcen = self.cutout_center
+        xx = xcen - np.abs(np.arange(self.cutout_shape[1]) - xcen) + 1
+        yy = ycen - np.abs(np.arange(self.cutout_shape[0]) - ycen) + 1
+        xwt, ywt = np.meshgrid(xx, yy)
 
         if axis == 0:  # marginal distributions along x axis
             wt = xwt[0]  # 1D
             wts = ywt  # 2D
-            size = self.nx
-            center = self.xcenter
+            size = self.cutout_shape[1]
+            center = xcen
             sigma = self.kernel.xsigma
             dxx = center - np.arange(size)
         elif axis == 1:  # marginal distributions along y axis
             wt = np.transpose(ywt)[0]  # 1D
             wts = xwt  # 2D
-            size = self.ny
-            center = self.ycenter
+            size = self.cutout_shape[0]
+            center = ycen
             sigma = self.kernel.ysigma
             dxx = np.arange(size) - center
 
@@ -427,42 +507,50 @@ class _DAOFindProperties:
         dkern_dx2_sum = np.sum(dkern_dx**2 * wt)
         kern_dkern_dx_sum = np.sum(kern_sum_1d * dkern_dx * wt)
 
-        data_sum_1d = np.sum(self.data * wts, axis=axis)
-        data_sum = np.sum(data_sum_1d * wt)
-        data_kern_sum = np.sum(data_sum_1d * kern_sum_1d * wt)
-        data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt)
-        data_dx_sum = np.sum(data_sum_1d * dxx * wt)
+        data_sum_1d = np.sum(self.cutout_data * wts, axis=axis + 1)
+        data_sum = np.sum(data_sum_1d * wt, axis=1)
+        data_kern_sum = np.sum(data_sum_1d * kern_sum_1d * wt, axis=1)
+        data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt, axis=1)
+        data_dx_sum = np.sum(data_sum_1d * dxx * wt, axis=1)
 
         # perform linear least-squares fit (where data = sky + hx*kernel)
         # to find the amplitude (hx)
-        # reject the star if the fit amplitude is not positive
         hx_numer = data_kern_sum - (data_sum * kern_sum) / wt_sum
-        if hx_numer <= 0.:
-            return np.nan, np.nan
-
         hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
-        if hx_denom <= 0.:
-            return np.nan, np.nan
 
-        # compute fit amplitude
-        hx = hx_numer / hx_denom
-        # sky = (data_sum - (hx * kern_sum)) / wt_sum
+        # reject the star if the fit amplitude is not positive
+        mask1 = (hx_numer <= 0.) | (hx_denom <= 0.)
 
-        # compute centroid shift
-        dx = ((kern_dkern_dx_sum
-               - (data_dkern_dx_sum - dkern_dx_sum * data_sum))
-              / (hx * dkern_dx2_sum / sigma**2))
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            # compute fit amplitude
+            hx = hx_numer / hx_denom
 
-        hsize = size / 2.
-        if abs(dx) > hsize:
-            if data_sum == 0.:
-                dx = 0.0
-            else:
-                dx = data_dx_sum / data_sum
-                if abs(dx) > hsize:
-                    dx = 0.0
+            # sky = (data_sum - (hx * kern_sum)) / wt_sum
 
-        return dx, hx
+            # compute centroid shift
+            dx = ((kern_dkern_dx_sum
+                   - (data_dkern_dx_sum - dkern_dx_sum * data_sum))
+                  / (hx * dkern_dx2_sum / sigma**2))
+
+            dx2 = data_dx_sum / data_sum
+
+        hsize = size / 2.0
+        mask2 = (np.abs(dx) > hsize)
+        mask3 = (data_sum == 0.)
+        mask4 = (mask2 & mask3)
+        mask5 = (mask2 & ~mask3)
+
+        dx[mask4] = 0.0
+        dx[mask5] = dx2[mask5]
+        mask6 = (np.abs(dx) > hsize)
+        dx[mask6] = 0.0
+
+        hx[mask1] = np.nan
+        dx[mask1] = np.nan
+
+        return np.transpose((dx, hx))
 
     @lazyproperty
     def dx_hx(self):
@@ -474,27 +562,27 @@ class _DAOFindProperties:
 
     @lazyproperty
     def dx(self):
-        return self.dx_hx[0]
+        return np.transpose(self.dx_hx)[0]
 
     @lazyproperty
     def dy(self):
-        return self.dy_hy[0]
-
-    @lazyproperty
-    def xcentroid(self):
-        return self.cutout.xpeak + self.dx
-
-    @lazyproperty
-    def ycentroid(self):
-        return self.cutout.ypeak + self.dy
+        return np.transpose(self.dy_hy)[0]
 
     @lazyproperty
     def hx(self):
-        return self.dx_hx[1]
+        return np.transpose(self.dx_hx)[1]
 
     @lazyproperty
     def hy(self):
-        return self.dy_hy[1]
+        return np.transpose(self.dy_hy)[1]
+
+    @lazyproperty
+    def xcentroid(self):
+        return np.transpose(self.xypos)[0] + self.dx
+
+    @lazyproperty
+    def ycentroid(self):
+        return np.transpose(self.xypos)[1] + self.dy
 
     @lazyproperty
     def roundness2(self):
@@ -508,32 +596,38 @@ class _DAOFindProperties:
         source will have a zero roundness.  A source extended in x or y
         will have a negative or positive roundness, respectively.
         """
-
-        if np.isnan(self.hx) or np.isnan(self.hy):
-            return np.nan
-        else:
-            return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
+        return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
 
     @lazyproperty
     def peak(self):
         return self.data_peak - self.sky
 
     @lazyproperty
-    def npix(self):
-        """
-        The total number of pixels in the rectangular cutout image.
-        """
-
-        return self.data.size
-
-    @lazyproperty
     def flux(self):
-        return ((self.conv_peak / self.cutout.threshold_eff)
+        return ((self.convdata_peak / self.threshold_eff)
                 - (self.sky * self.npix))
 
     @lazyproperty
     def mag(self):
-        if self.flux <= 0:
-            return np.nan
-        else:
-            return -2.5 * np.log10(self.flux)
+        # ignore RunTimeWarning if flux is <= 0
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=RuntimeWarning)
+            mag = -2.5 * np.log10(self.flux)
+            mag[self.flux <= 0] = np.nan
+        return mag
+
+    @lazyproperty
+    def sky(self):
+        return np.full(len(self), fill_value=self._sky)
+
+    @lazyproperty
+    def npix(self):
+        return np.full(len(self), fill_value=self.kernel.data.size)
+
+    def to_table(self, columns=None):
+        table = Table()
+        if columns is None:
+            columns = self.default_columns
+        for column in columns:
+            table[column] = getattr(self, column)
+        return table

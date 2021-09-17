@@ -60,8 +60,8 @@ class TestIRAFStarFinder:
             starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, sharplo=2.)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass the sharpness and '
-                    'roundness criteria.' in str(warning_lines[0].message))
+            assert ('Sources were found, but none pass' in
+                    str(warning_lines[0].message))
 
     def test_irafstarfind_roundness(self):
         """Sources found, but none pass the roundness criteria."""
@@ -69,8 +69,17 @@ class TestIRAFStarFinder:
             starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass the sharpness and '
-                    'roundness criteria.' in str(warning_lines[0].message))
+            assert ('Sources were found, but none pass' in
+                    str(warning_lines[0].message))
+
+    def test_irafstarfind_peakmax(self):
+        """Sources found, but none pass the peakmax criteria."""
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, peakmax=1.)
+            tbl = starfinder(DATA)
+            assert tbl is None
+            assert ('Sources were found, but none pass' in
+                    str(warning_lines[0].message))
 
     def test_irafstarfind_sky(self):
         starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=10.)
@@ -82,8 +91,8 @@ class TestIRAFStarFinder:
             starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass the sharpness and '
-                    'roundness criteria.' in str(warning_lines[0].message))
+            assert ('Sources were found, but none pass' in
+                    str(warning_lines[0].message))
 
     def test_irafstarfind_peakmax_filtering(self):
         """
@@ -118,3 +127,9 @@ class TestIRAFStarFinder:
         tbl1 = starfinder(DATA)
         tbl2 = starfinder(DATA, mask=mask)
         assert len(tbl1) > len(tbl2)
+
+    def test_inputs(self):
+        with pytest.raises(ValueError):
+            IRAFStarFinder(10, 1.5, brightest=-1)
+        with pytest.raises(ValueError):
+            IRAFStarFinder(10, 1.5, brightest=3.1)
