@@ -159,9 +159,6 @@ class DAOStarFinder(StarFinderBase):
         if not np.isscalar(fwhm):
             raise TypeError('fwhm must be a scalar value.')
 
-        if brightest is not None and brightest <= 0:
-            raise ValueError('brightest must be > 0')
-
         self.threshold = threshold
         self.fwhm = fwhm
         self.ratio = ratio
@@ -173,12 +170,23 @@ class DAOStarFinder(StarFinderBase):
         self.roundhi = roundhi
         self.sky = sky
         self.exclude_border = exclude_border
-        self.brightest = brightest
+        self.brightest = self._validate_brightest(brightest)
         self.peakmax = peakmax
 
         self.kernel = _StarFinderKernel(self.fwhm, self.ratio, self.theta,
                                         self.sigma_radius)
         self.threshold_eff = self.threshold * self.kernel.relerr
+
+    @staticmethod
+    def _validate_brightest(brightest):
+        if brightest is not None:
+            if brightest <= 0:
+                raise ValueError('brightest must be >= 0')
+            bright_int = int(brightest)
+            if bright_int != brightest:
+                raise ValueError('brightest must be an integer')
+            brightest = bright_int
+        return brightest
 
     def find_stars(self, data, mask=None):
         """
