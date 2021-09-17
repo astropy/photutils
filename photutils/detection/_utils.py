@@ -197,15 +197,15 @@ class _StarCutout:
         self.data_masked = self.data * self.mask
 
 
-def _find_stars(data, convolved_data, kernel, threshold, min_separation=0.0,
+def _find_stars(convolved_data, kernel, threshold, min_separation=0.0,
                 mask=None, exclude_border=False):
     """
     Find stars in an image.
 
     Parameters
     ----------
-    data : 2D array_like
-        The 2D array of the image.
+    convolved_data : 2D array_like
+        The convolved 2D array.
 
     kernel : `_StarFinderKernel`
         The convolution kernel.
@@ -240,24 +240,30 @@ def _find_stars(data, convolved_data, kernel, threshold, min_separation=0.0,
     """
     # define a local footprint for the peak finder
     if min_separation == 0:  # daofind
-        footprint = kernel.mask.astype(bool)
+        if isinstance(kernel, np.ndarray):
+            footprint = np.ones(kernel.shape)
+        else:
+            footprint = kernel.mask.astype(bool)
     else:
         # define a local circular footprint for the peak finder
         idx = np.arange(-min_separation, min_separation + 1)
         xx, yy = np.meshgrid(idx, idx)
         footprint = np.array((xx**2 + yy**2) <= min_separation**2, dtype=int)
 
-    # pad the data, convolved data, and mask by the kernel x/y radius to
-    # allow for detections near the edges
-    ypad = kernel.yradius
-    xpad = kernel.xradius
+    # pad the convolved data and mask by half the kernel size (or
+    # x/y radius) to allow for detections near the edges
+    if isinstance(kernel, np.ndarray):
+        ypad = (kernel.shape[0] - 1) // 2
+        xpad = (kernel.shape[1] - 1) // 2
+    else:
+        ypad = kernel.yradius
+        xpad = kernel.xradius
+
     if not exclude_border:
         pad = ((ypad, ypad), (xpad, xpad))
         pad_mode = 'constant'
-        const_val = 0.
-        data = np.pad(data, pad, mode=pad_mode, constant_values=const_val)
         convolved_data = np.pad(convolved_data, pad, mode=pad_mode,
-                                constant_values=const_val)
+                                constant_values=0.0)
         if mask is not None:
             mask = np.pad(mask, pad, mode=pad_mode, constant_values=False)
 
@@ -269,8 +275,8 @@ def _find_stars(data, convolved_data, kernel, threshold, min_separation=0.0,
                          mask=mask)
 
     if exclude_border:
-        xmax = data.shape[1] - xpad
-        ymax = data.shape[0] - ypad
+        xmax = convolved_data.shape[1] - xpad
+        ymax = convolved_data.shape[0] - ypad
         mask = ((tbl['x_peak'] > xpad) & (tbl['y_peak'] > ypad)
                 & (tbl['x_peak'] < xmax) & (tbl['y_peak'] < ymax))
         tbl = tbl[mask]
