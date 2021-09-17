@@ -310,8 +310,8 @@ class _DAOStarFinderCatalog:
         self.kernel = kernel
         self.threshold = threshold
         self.sky = sky  # DAOFIND has no sky input -> same as sky=0.
-        self.npix = kernel.data.size
 
+        self.npix = kernel.data.size
         self.id = np.arange(len(self)) + 1
         self.threshold_eff = threshold * kernel.relerr
         self.cutout_shape = kernel.shape

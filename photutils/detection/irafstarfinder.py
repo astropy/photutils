@@ -208,7 +208,7 @@ class IRAFStarFinder(StarFinderBase):
             return None
 
         cat = _IRAFStarFinderCatalog(data, convolved_data, xypos, self.kernel,
-                                     self.threshold, self.sky)
+                                     self.sky)
 
         # filter the catalog
         mask = np.count_nonzero(cat.cutout_data, axis=(1, 2)) > 1
@@ -239,94 +239,183 @@ class IRAFStarFinder(StarFinderBase):
 
 class _IRAFStarFinderCatalog:
     """
-    Class to calculate the properties of each detected star, as defined
-    by IRAF's ``starfind`` task.
+    Class to create a catalog of the properties of each detected star,
+    as defined by IRAF's ``starfind`` task.
 
     Parameters
     ----------
-    star_cutout : `_StarCutout`
-        A `_StarCutout` object containing the image cutout for the star.
+    data : 2D `~numpy.ndarray`
+        The 2D image.
+
+    convolved_data : 2D `~numpy.ndarray`
+        The convolved 2D image.
+
+    xypos: Nx2 `numpy.ndarray`
+        A Nx2 array of (x, y) pixel coordinates denoting the central
+        positions of the stars.
 
     kernel : `_StarFinderKernel`
-        The convolution kernel.  The shape of the kernel must match that
-        of the input ``star_cutout``.
+        The convolution kernel. This kernel must match the kernel used
+        to create the ``convolved_data``.
 
     sky : `None` or float, optional
-        The local sky level around the source.  If sky is ``None``, then
+        The local sky level around the source. If sky is ``None``, then
         a local sky level will be (crudely) estimated using the IRAF
         ``starfind`` calculation.
     """
 
-    def __init__(self, star_cutout, kernel, sky=None):
+    def __init__(self, data, convolved_data, xypos, kernel, sky=None):
+        self.data = data
+        self.convolved_data = convolved_data
+        self.xypos = xypos
+        self.kernel = kernel
+        self._sky = sky
 
+        self.id = np.arange(len(self)) + 1
+        self.cutout_shape = kernel.shape
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'sharpness', 'roundness', 'pa', 'npix',
                                 'sky', 'peak', 'flux', 'mag')
 
-        if not isinstance(star_cutout, _StarCutout):
-            raise ValueError('data must be an _StarCutout object')
+    def __len__(self):
+        return len(self.xypos)
 
-        if star_cutout.data.shape != kernel.shape:
-            raise ValueError('cutout and kernel must have the same shape')
+    def __getitem__(self, index):
+        newcls = object.__new__(self.__class__)
+        init_attr = ('data', 'convolved_data', 'kernel', '_sky',
+                     'cutout_shape', 'default_columns')
+        for attr in init_attr:
+            setattr(newcls, attr, getattr(self, attr))
 
-        self.cutout = star_cutout
-        self.kernel = kernel
+        # xypos determines ordering and isscalar
+        # NOTE: always keep as a 2D array, even for a single source
+        attr = 'xypos'
+        value = getattr(self, attr)[index]
+        setattr(newcls, attr, np.atleast_2d(value))
 
-        if sky is None:
-            skymask = ~self.kernel.mask.astype(bool)  # 1=sky, 0=obj
-            nsky = np.count_nonzero(skymask)
-            if nsky == 0:
-                mean_sky = (np.max(self.cutout.data)
-                            - np.max(self.cutout.convdata))
-            else:
-                mean_sky = np.sum(self.cutout.data * skymask) / nsky
-            self.sky = mean_sky
-        else:
-            self.sky = sky
+        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        keys.add('id')
+        for key in keys:
+            value = self.__dict__[key]
 
-    @lazyproperty
-    def data(self):
-        cutout = np.array((self.cutout.data - self.sky) * self.cutout.mask)
-        # IRAF starfind discards negative pixels
-        cutout = np.where(cutout > 0, cutout, 0)
+            # do not insert lazy attributes that are always scalar (e.g.,
+            # isscalar), i.e., not an array/list for each source
+            if np.isscalar(value):
+                continue
 
-        return cutout
+            # value is always at least a 1D array, even for a single source
+            value = np.atleast_1d(value[index])
 
-    @lazyproperty
-    def moments(self):
-        return _moments(self.data, order=1)
-
-    @lazyproperty
-    def cutout_xcentroid(self):
-        return self.moments[0, 1] / self.moments[0, 0]
+            newcls.__dict__[key] = value
+        return newcls
 
     @lazyproperty
-    def cutout_ycentroid(self):
-        return self.moments[1, 0] / self.moments[0, 0]
+    def isscalar(self):
+        """
+        Whether the instance is scalar (e.g., a single source).
+        """
+        return self.xypos.shape == (1, 2)
 
-    @lazyproperty
-    def xcentroid(self):
-        return self.cutout_xcentroid + self.cutout.xorigin
-
-    @lazyproperty
-    def ycentroid(self):
-        return self.cutout_ycentroid + self.cutout.yorigin
-
-    @lazyproperty
-    def npix(self):
-        return np.count_nonzero(self.data)
+    @property
+    def _lazyproperties(self):
+        """
+        Return all lazyproperties (even in superclasses).
+        """
+        def islazyproperty(obj):
+            return isinstance(obj, lazyproperty)
+        return [i[0] for i in inspect.getmembers(self.__class__,
+                                                 predicate=islazyproperty)]
 
     @lazyproperty
     def sky(self):
-        return self.sky
+        if self._sky is None:
+            skymask = ~self.kernel.mask.astype(bool)  # 1=sky, 0=obj
+            nsky = np.count_nonzero(skymask)
+            axis = (1, 2)
+            if nsky == 0.:
+                sky = (np.max(self.cutout_data_nosub, axis=axis)
+                       - np.max(self.cutout_convdata, axis=axis))
+            else:
+                sky = (np.sum(self.cutout_data_nosub * skymask, axis=axis)
+                       / nsky)
+        else:
+            sky = np.full(len(self), fill_value=self._sky)
+
+        return sky
+
+    def make_cutouts(self, data):
+        cutouts = []
+        for xpos, ypos in self.xypos:
+            cutouts.append(extract_array(data, self.cutout_shape, (ypos, xpos),
+                                         fill_value=0.0))
+        return np.array(cutouts)
+
+    @lazyproperty
+    def cutout_data_nosub(self):
+        return self.make_cutouts(self.data)
+
+    @lazyproperty
+    def cutout_data(self):
+        data = ((self.cutout_data_nosub - self.sky[:, np.newaxis, np.newaxis])
+                * self.kernel.mask)
+        # IRAF starfind discards negative pixels
+        data[data < 0] = 0.0
+        return data
+
+    @lazyproperty
+    def cutout_convdata(self):
+        return self.make_cutouts(self.convolved_data)
+
+    @lazyproperty
+    def npix(self):
+        return np.count_nonzero(self.cutout_data, axis=(1, 2))
+
+    @lazyproperty
+    def moments(self):
+        return np.array([_moments(arr, order=1) for arr in self.cutout_data])
+
+    @lazyproperty
+    def cutout_centroid(self):
+        moments = self.moments
+
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
+            xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
+        return np.transpose((ycentroid, xcentroid))
+
+    @lazyproperty
+    def cutout_xcentroid(self):
+        return np.transpose(self.cutout_centroid)[1]
+
+    @lazyproperty
+    def cutout_ycentroid(self):
+        return np.transpose(self.cutout_centroid)[0]
+
+    @lazyproperty
+    def cutout_xorigin(self):
+        return np.transpose(self.xypos)[0] - self.kernel.xradius
+
+    @lazyproperty
+    def cutout_yorigin(self):
+        return np.transpose(self.xypos)[1] - self.kernel.yradius
+
+    @lazyproperty
+    def xcentroid(self):
+        return self.cutout_xcentroid + self.cutout_xorigin
+
+    @lazyproperty
+    def ycentroid(self):
+        return self.cutout_ycentroid + self.cutout_yorigin
 
     @lazyproperty
     def peak(self):
-        return np.max(self.data)
+        return np.array([np.max(arr) for arr in self.cutout_data])
 
     @lazyproperty
     def flux(self):
-        return np.sum(self.data)
+        return np.array([np.sum(arr) for arr in self.cutout_data])
 
     @lazyproperty
     def mag(self):
@@ -334,36 +423,45 @@ class _IRAFStarFinderCatalog:
 
     @lazyproperty
     def moments_central(self):
-        return _moments_central(
-            self.data, (self.cutout_xcentroid, self.cutout_ycentroid),
-            order=2) / self.moments[0, 0]
+        moments = np.array([_moments_central(arr, center=(xcen_, ycen_),
+                                             order=2)
+                            for arr, xcen_, ycen_ in
+                            zip(self.cutout_data, self.cutout_xcentroid,
+                                self.cutout_ycentroid)])
+        return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
 
     @lazyproperty
     def mu_sum(self):
-        return self.moments_central[0, 2] + self.moments_central[2, 0]
+        return self.moments_central[:, 0, 2] + self.moments_central[:, 2, 0]
 
     @lazyproperty
     def mu_diff(self):
-        return self.moments_central[0, 2] - self.moments_central[2, 0]
+        return self.moments_central[:, 0, 2] - self.moments_central[:, 2, 0]
 
     @lazyproperty
     def fwhm(self):
         return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
 
     @lazyproperty
+    def roundness(self):
+        return np.sqrt(self.mu_diff**2
+                       + 4.0 * self.moments_central[:, 1, 1]**2) / self.mu_sum
+
+    @lazyproperty
     def sharpness(self):
         return self.fwhm / self.kernel.fwhm
 
     @lazyproperty
-    def roundness(self):
-        return np.sqrt(self.mu_diff**2
-                       + 4.0 * self.moments_central[1, 1]**2) / self.mu_sum
-
-    @lazyproperty
     def pa(self):
-        pa = np.rad2deg(0.5 * np.arctan2(2.0 * self.moments_central[1, 1],
+        pa = np.rad2deg(0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
                                          self.mu_diff))
-        if pa < 0.:
-            pa += 180.
-
+        pa = np.where(pa < 0, pa + 180, pa)
         return pa
+
+    def to_table(self, columns=None):
+        table = Table()
+        if columns is None:
+            columns = self.default_columns
+        for column in columns:
+            table[column] = getattr(self, column)
+        return table
