@@ -231,9 +231,8 @@ class DAOStarFinder(StarFinderBase):
                                       fill_value=0.0,
                                       check_normalization=False)
 
-        xypos = _find_stars(data, convolved_data, self.kernel,
-                            self.threshold_eff, mask=mask,
-                            exclude_border=self.exclude_border)
+        xypos = _find_stars(convolved_data, self.kernel, self.threshold_eff,
+                            mask=mask, exclude_border=self.exclude_border)
         if xypos is None:
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
