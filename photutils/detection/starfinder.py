@@ -12,7 +12,7 @@ from astropy.utils import lazyproperty
 import numpy as np
 
 from .base import StarFinderBase
-from .peakfinder import find_peaks
+from ._utils import _find_stars
 from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
 from ..utils.exceptions import NoDetectionsWarning
@@ -128,7 +128,11 @@ class StarFinder(StarFinderBase):
         denom = np.sum(kernel**2) - (np.sum(kernel)**2 / kernel.size)
         kernel = (kernel - np.sum(kernel) / kernel.size) / denom
 
-        xypos = _find_stars(data, kernel, self.threshold,
+        convolved_data = _filter_data(data, kernel, mode='constant',
+                                      fill_value=0.0,
+                                      check_normalization=False)
+
+        xypos = _find_stars(convolved_data, kernel, self.threshold,
                             min_separation=self.min_separation,
                             mask=mask, exclude_border=self.exclude_border)
 
@@ -157,51 +161,6 @@ class StarFinder(StarFinderBase):
         table = cat.to_table()
         table['label'] = np.arange(len(cat)) + 1  # reset the label column
         return table
-
-
-def _find_stars(data, kernel, threshold, min_separation=0.0, mask=None,
-                exclude_border=False):
-
-    convolved_data = _filter_data(data, kernel, mode='constant',
-                                  fill_value=0.0, check_normalization=False)
-
-    if min_separation == 0:
-        footprint = np.ones(kernel.shape)
-    else:
-        # define a local circular footprint for the peak finder
-        idx = np.arange(-min_separation, min_separation + 1)
-        xx, yy = np.meshgrid(idx, idx)
-        footprint = np.array((xx**2 + yy**2) <= min_separation**2, dtype=int)
-
-    # pad the data, convolved data, and mask by half the kernel size to
-    # allow for detections near the edges
-    if not exclude_border:
-        ypad = (kernel.shape[0] - 1) // 2
-        xpad = (kernel.shape[1] - 1) // 2
-        pad = ((ypad, ypad), (xpad, xpad))
-        pad_mode = 'constant'
-        const_val = 0.
-        convolved_data = np.pad(convolved_data, pad, mode=pad_mode,
-                                constant_values=const_val)
-        if mask is not None:
-            mask = np.pad(mask, pad, mode=pad_mode, constant_values=const_val)
-
-    # find local peaks in the convolved data
-    # suppress any NoDetectionsWarning from find_peaks
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', category=NoDetectionsWarning)
-        tbl = find_peaks(convolved_data, threshold, footprint=footprint,
-                         mask=mask)
-
-    if tbl is None:
-        return None
-
-    xpos, ypos = tbl['x_peak'], tbl['y_peak']
-    if not exclude_border:
-        xpos -= xpad
-        ypos -= ypad
-
-    return np.transpose((xpos, ypos))
 
 
 class _StarFinderCatalog:
