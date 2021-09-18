@@ -8,7 +8,7 @@ from astropy import coordinates as coord
 from astropy.convolution import discretize_model
 from astropy.io import fits
 from astropy.modeling import models
-from astropy.table import Table
+from astropy.table import QTable
 import astropy.units as u
 from astropy.wcs import WCS
 import numpy as np
@@ -162,7 +162,7 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
 
 def make_random_models_table(n_sources, param_ranges, seed=None):
     """
-    Make a `~astropy.table.Table` containing randomly generated
+    Make a `~astropy.table.QTable` containing randomly generated
     parameters for an Astropy model to simulate a set of sources.
 
     Each row of the table corresponds to a source whose parameters are
@@ -188,7 +188,7 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
 
     Returns
     -------
-    table : `~astropy.table.Table`
+    table : `~astropy.table.QTable`
         A table of parameters for the randomly generated sources.  Each
         row of the table corresponds to a source whose model parameters
         are defined by the column names.  The column names will be the
@@ -231,7 +231,7 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     rng = np.random.default_rng(seed)
 
     meta = {'version': _get_version_info()}
-    sources = Table(meta=meta)
+    sources = QTable(meta=meta)
     for param_name, (lower, upper) in param_ranges.items():
         # Generate a column for every item in param_ranges, even if it
         # is not in the model (e.g., flux). However, such columns will be
@@ -243,7 +243,7 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
 
 def make_random_gaussians_table(n_sources, param_ranges, seed=None):
     """
-    Make a `~astropy.table.Table` containing randomly generated
+    Make a `~astropy.table.QTable` containing randomly generated
     parameters for 2D Gaussian sources.
 
     Each row of the table corresponds to a Gaussian source whose
@@ -278,7 +278,7 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
 
     Returns
     -------
-    table : `~astropy.table.Table`
+    table : `~astropy.table.QTable`
         A table of parameters for the randomly generated Gaussian
         sources.  Each row of the table corresponds to a Gaussian source
         whose parameters are defined by the column names.
@@ -502,8 +502,8 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         :include-source:
 
         # make a table of Gaussian sources
-        from astropy.table import Table
-        table = Table()
+        from astropy.table import QTable
+        table = QTable()
         table['amplitude'] = [50, 70, 150, 210]
         table['x_mean'] = [160, 25, 150, 90]
         table['y_mean'] = [70, 40, 25, 60]
@@ -589,8 +589,8 @@ def make_gaussian_prf_sources_image(shape, source_table):
         :include-source:
 
         # make a table of Gaussian sources
-        from astropy.table import Table
-        table = Table()
+        from astropy.table import QTable
+        table = QTable()
         table['amplitude'] = [50, 70, 150, 210]
         table['x_0'] = [160, 25, 150, 90]
         table['y_0'] = [70, 40, 25, 60]
@@ -671,7 +671,7 @@ def make_4gaussians_image(noise=True):
         plt.imshow(image, origin='lower', interpolation='nearest')
     """
 
-    table = Table()
+    table = QTable()
     table['amplitude'] = [50, 70, 150, 210]
     table['x_mean'] = [160, 25, 150, 90]
     table['y_mean'] = [70, 40, 25, 60]
@@ -738,7 +738,7 @@ def make_100gaussians_image(noise=True):
               'theta': [0, 2 * np.pi]}
 
     rng = np.random.RandomState(12345)
-    sources = Table()
+    sources = QTable()
     for param_name, (lower, upper) in params.items():
         # Generate a column for every item in param_ranges, even if it
         # is not in the model (e.g., flux).  However, such columns will

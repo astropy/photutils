@@ -6,7 +6,7 @@ import inspect
 import warnings
 
 from astropy.nddata import extract_array
-from astropy.table import Table
+from astropy.table import QTable
 from astropy.utils import lazyproperty
 import numpy as np
 
@@ -206,7 +206,7 @@ class DAOStarFinder(StarFinderBase):
 
         Returns
         -------
-        table : `~astropy.table.Table` or `None`
+        table : `~astropy.table.QTable` or `None`
             A table of found stars with the following parameters:
 
             * ``id``: unique object identification number.
@@ -627,7 +627,7 @@ class _DAOStarFinderCatalog:
 
     def to_table(self, columns=None):
         meta = {'version': _get_version_info()}
-        table = Table(meta=meta)
+        table = QTable(meta=meta)
         if columns is None:
             columns = self.default_columns
         for column in columns:
