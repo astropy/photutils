@@ -35,6 +35,11 @@ New Features
 
   - Added a ``grid_mode`` keyword to ``BkgZoomInterpolator``. [#1239]
 
+- ``photutils.detection``
+
+    - Added a ``xycoords`` keyword to ``DAOStarFinder`` and
+      ``IRAFStarFinder``. [#1248]
+
 Bug Fixes
 ^^^^^^^^^
 

@@ -87,6 +87,11 @@ class IRAFStarFinder(StarFinderBase):
             pixel values are negative. Therefore, setting ``peakmax`` to a
             non-positive value would result in exclusion of all objects.
 
+    xycoords : `None` or Nx2 `~numpy.ndarray`
+        The (x, y) pixel coordinates of the approximate centroid
+        positions of identified sources. If ``xycoords`` are input, the
+        algorithm will skip the source-finding step.
+
     Notes
     -----
     For the convolution step, this routine sets pixels beyond the image
@@ -125,7 +130,8 @@ class IRAFStarFinder(StarFinderBase):
 
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
                  sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
-                 exclude_border=False, brightest=None, peakmax=None):
+                 exclude_border=False, brightest=None, peakmax=None,
+                 xycoords=None):
 
         if not np.isscalar(threshold):
             raise TypeError('threshold must be a scalar value.')
@@ -145,6 +151,12 @@ class IRAFStarFinder(StarFinderBase):
         self.exclude_border = exclude_border
         self.brightest = self._validate_brightest(brightest)
         self.peakmax = peakmax
+
+        if xycoords is not None:
+            xycoords = np.asarray(xycoords)
+            if xycoords.ndim != 2 or xycoords.shape[1] != 2:
+                raise ValueError('xycoords must be shaped as a Nx2 array')
+        self.xycoords = xycoords
 
         self.kernel = _StarFinderKernel(self.fwhm, ratio=1.0, theta=0.0,
                                         sigma_radius=self.sigma_radius)
@@ -201,9 +213,13 @@ class IRAFStarFinder(StarFinderBase):
                                       fill_value=0.0,
                                       check_normalization=False)
 
-        xypos = _find_stars(convolved_data, self.kernel, self.threshold,
-                            min_separation=self.min_separation, mask=mask,
-                            exclude_border=self.exclude_border)
+        if self.xycoords is None:
+            xypos = _find_stars(convolved_data, self.kernel, self.threshold,
+                                min_separation=self.min_separation, mask=mask,
+                                exclude_border=self.exclude_border)
+        else:
+            xypos = self.xycoords
+
         if xypos is None:
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
