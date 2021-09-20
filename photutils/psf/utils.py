@@ -3,7 +3,7 @@
 This module provides utilities for PSF-fitting photometry.
 """
 
-from astropy.table import Table
+from astropy.table import QTable
 from astropy.modeling import models
 from astropy.nddata.utils import add_array, extract_array
 import numpy as np
@@ -238,7 +238,7 @@ def subtract_psf(data, psf, posflux, subshape=None):
         if 'flux_fit' not in posflux.colnames:
             raise ValueError('Input table does not have flux_fit')
     else:
-        posflux = Table(names=['x_fit', 'y_fit', 'flux_fit'], data=posflux)
+        posflux = QTable(names=['x_fit', 'y_fit', 'flux_fit'], data=posflux)
 
     # Set up constants across the loop
     psf = psf.copy()

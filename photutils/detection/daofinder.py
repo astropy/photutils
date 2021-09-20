@@ -6,7 +6,7 @@ import inspect
 import warnings
 
 from astropy.nddata import extract_array
-from astropy.table import Table
+from astropy.table import QTable
 from astropy.utils import lazyproperty
 import numpy as np
 
@@ -14,6 +14,7 @@ from .base import StarFinderBase
 from ._utils import _StarFinderKernel, _find_stars
 from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
+from ..utils._misc import _get_version_info
 
 __all__ = ['DAOStarFinder']
 
@@ -205,7 +206,7 @@ class DAOStarFinder(StarFinderBase):
 
         Returns
         -------
-        table : `~astropy.table.Table` or `None`
+        table : `~astropy.table.QTable` or `None`
             A table of found stars with the following parameters:
 
             * ``id``: unique object identification number.
@@ -625,7 +626,8 @@ class _DAOStarFinderCatalog:
         return np.full(len(self), fill_value=self.kernel.data.size)
 
     def to_table(self, columns=None):
-        table = Table()
+        meta = {'version': _get_version_info()}
+        table = QTable(meta=meta)
         if columns is None:
             columns = self.default_columns
         for column in columns:

@@ -20,6 +20,7 @@ from ..aperture import (BoundingBox, CircularAperture, EllipticalAperture,
                         RectangularAnnulus)
 from ..background import SExtractorBackground
 from ..utils._convolution import _filter_data
+from ..utils._misc import _get_version_info
 from ..utils._moments import _moments, _moments_central
 
 __all__ = ['SourceCatalog']
@@ -580,7 +581,8 @@ class SourceCatalog:
         else:
             table_columns = np.atleast_1d(columns)
 
-        tbl = QTable()
+        meta = {'version': _get_version_info()}
+        tbl = QTable(meta=meta)
         for column in table_columns:
             values = getattr(self, column)
 

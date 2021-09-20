@@ -9,6 +9,7 @@ import numpy as np
 
 from .harmonics import (first_and_second_harmonic_function,
                         fit_first_and_second_harmonics, fit_upper_harmonic)
+from ..utils._misc import _get_version_info
 
 __all__ = ['Isophote', 'IsophoteList']
 
@@ -782,9 +783,9 @@ def _isophote_list_to_table(isophote_list, columns='main'):
     result : `~astropy.table.QTable`
         An astropy QTable with the selected or all isophote parameters.
     """
-
-    properties = dict()
-    isotable = QTable()
+    properties = {}
+    meta = {'version': _get_version_info()}
+    isotable = QTable(meta=meta)
 
     # main_properties: `List`
     # A list of main parameters matching the original names of

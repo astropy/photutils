@@ -8,7 +8,7 @@ import warnings
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices, NoOverlapError
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
-from astropy.table import Column, Table, hstack, vstack
+from astropy.table import Column, QTable, hstack, vstack
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -19,6 +19,7 @@ from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
 from ..detection import DAOStarFinder
 from ..utils.exceptions import NoDetectionsWarning
+from ..utils._misc import _get_version_info
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']
@@ -325,13 +326,13 @@ class BasicPSFPhotometry:
                 # init_guesses should be the initial 3 required
                 # parameters (x, y, flux) and then concatenated with any
                 # additional sources, if there are any
-                init_guesses = Table(names=['x_0', 'y_0', 'flux_0'],
-                                     data=[sources['xcentroid'],
-                                           sources['ycentroid'],
-                                           sources['aperture_flux']])
+                init_guesses = QTable(names=['x_0', 'y_0', 'flux_0'],
+                                      data=[sources['xcentroid'],
+                                            sources['ycentroid'],
+                                            sources['aperture_flux']])
 
                 # Currently only needed for the finder, as group_maker and
-                # nstar return the original Table with new columns, unlike
+                # nstar return the original table with new columns, unlike
                 # finder
                 self._get_additional_columns(sources, init_guesses)
 
@@ -347,7 +348,9 @@ class BasicPSFPhotometry:
         star_groups = star_groups.group_by('group_id')
         output_tab = hstack([star_groups, output_tab])
 
-        return output_tab
+        output_tab.meta = {'version': _get_version_info()}
+
+        return QTable(output_tab)
 
     def nstar(self, image, star_groups):
         """
@@ -372,18 +375,18 @@ class BasicPSFPhotometry:
 
         Returns
         -------
-        result_tab : `~astropy.table.Table`
+        result_tab : `~astropy.table.QTable`
             Astropy table that contains photometry results.
 
         image : numpy.ndarray
             Residual image.
         """
 
-        result_tab = Table()
+        result_tab = QTable()
         for param_tab_name in self._pars_to_output.keys():
             result_tab.add_column(Column(name=param_tab_name))
 
-        unc_tab = Table()
+        unc_tab = QTable()
         for param, isfixed in self.psf_model.fixed.items():
             if not isfixed:
                 unc_tab.add_column(Column(name=param + "_unc"))
@@ -477,12 +480,12 @@ class BasicPSFPhotometry:
 
         Returns
         -------
-        unc_tab : `~astropy.table.Table`
-            Table which contains uncertainties on the fitted parameters.
+        unc_tab : `~astropy.table.QTable`
+            A table which contains uncertainties on the fitted parameters.
             The uncertainties are reported as one standard deviation.
         """
 
-        unc_tab = Table()
+        unc_tab = QTable()
         for param_name in self.psf_model.param_names:
             if not self.psf_model.fixed[param_name]:
                 unc_tab.add_column(Column(name=param_name + "_unc",
@@ -514,11 +517,11 @@ class BasicPSFPhotometry:
 
         Returns
         -------
-        param_tab : `~astropy.table.Table`
-            Table that contains the fitted parameters.
+        param_tab : `~astropy.table.QTable`
+            A table that contains the fitted parameters.
         """
 
-        param_tab = Table()
+        param_tab = QTable()
 
         for param_tab_name in self._pars_to_output.keys():
             param_tab.add_column(Column(name=param_tab_name,
@@ -716,7 +719,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         Returns
         -------
         output_table : `~astropy.table.Table` or None
-            Table with the photometry results, i.e., centroids and
+            A table with the photometry results, i.e., centroids and
             fluxes estimations and the initial estimates used to start
             the fitting process. Uncertainties on the fitted parameters
             are reported as columns called ``<paramname>_unc`` provided
@@ -743,7 +746,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                 self.set_aperture_radius()
 
             output_table = self._do_photometry()
-        return output_table
+
+        output_table.meta = {'version': _get_version_info()}
+
+        return QTable(output_table)
 
     def _do_photometry(self, n_start=1):
         """
@@ -764,7 +770,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             the fitting process.
         """
 
-        output_table = Table()
+        output_table = QTable()
         self._define_fit_param_names()
 
         for (init_parname, fit_parname) in zip(self._pars_to_set.keys(),
@@ -784,10 +790,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             sources['aperture_flux'] = aperture_photometry(
                 self._residual_image, apertures)['aperture_sum']
 
-            init_guess_tab = Table(names=['id', 'x_0', 'y_0', 'flux_0'],
-                                   data=[sources['id'], sources['xcentroid'],
-                                         sources['ycentroid'],
-                                         sources['aperture_flux']])
+            init_guess_tab = QTable(names=['id', 'x_0', 'y_0', 'flux_0'],
+                                    data=[sources['id'], sources['xcentroid'],
+                                          sources['ycentroid'],
+                                          sources['aperture_flux']])
             self._get_additional_columns(sources, init_guess_tab)
 
             for param_tab_name, param_name in self._pars_to_set.items():
