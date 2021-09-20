@@ -121,6 +121,25 @@ API changes
     ``make_random_models_table``, and ``make_random_gaussians_table``
     functions. [#1244]
 
+  - ``make_random_models_table`` and ``make_random_gaussians_table`` now
+    return an astropy ``QTable`` with version metadata. [#1247]
+
+- ``photutils.detection``
+
+  - ``DAOStarFinder``, ``IRAFStarFinder``, and ``find_peaks`` now return
+    an astropy ``QTable`` with version metadata. [#1247]
+
+- ``photutils.isophote``
+
+  - The ``Isophote`` ``to_table`` method nows return an astropy
+    ``QTable`` with version metadata. [#1247]
+
+- ``photutils.psf``
+
+  - ``BasicPSFPhotometry``, ``IterativelySubtractedPSFPhotometry``, and
+    ``DAOPhotPSFPhotometry`` now return an astropy ``QTable`` with
+    version metadata. [#1247]
+
 - ``photutils.segmentation``
 
   - Deprecated the ``filter_kernel`` keyword in the ``detect_sources``,
@@ -130,6 +149,9 @@ API changes
 
   - Removed the deprecated ``random_state`` keyword in the ``make_cmap``
     method. [#1244]
+
+  - The ``SourceCatalog`` ``to_table`` method nows return an astropy
+    ``QTable`` with version metadata. [#1247]
 
 - ``photutils.utils``
 
