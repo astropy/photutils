@@ -118,6 +118,11 @@ class DAOStarFinder(StarFinderBase):
             pixel values are negative. Therefore, setting ``peakmax`` to a
             non-positive value would result in exclusion of all objects.
 
+    xycoords : `None` or Nx2 `~numpy.ndarray`
+        The (x, y) pixel coordinates of the approximate centroid
+        positions of identified sources. If ``xycoords`` are input, the
+        algorithm will skip the source-finding step.
+
     See Also
     --------
     IRAFStarFinder
@@ -151,7 +156,7 @@ class DAOStarFinder(StarFinderBase):
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
                  sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
                  roundhi=1.0, sky=0.0, exclude_border=False,
-                 brightest=None, peakmax=None):
+                 brightest=None, peakmax=None, xycoords=None):
 
         if not np.isscalar(threshold):
             raise TypeError('threshold must be a scalar value.')
@@ -172,6 +177,12 @@ class DAOStarFinder(StarFinderBase):
         self.exclude_border = exclude_border
         self.brightest = self._validate_brightest(brightest)
         self.peakmax = peakmax
+
+        if xycoords is not None:
+            xycoords = np.asarray(xycoords)
+            if xycoords.ndim != 2 or xycoords.shape[1] != 2:
+                raise ValueError('xycoords must be shaped as a Nx2 array')
+        self.xycoords = xycoords
 
         self.kernel = _StarFinderKernel(self.fwhm, self.ratio, self.theta,
                                         self.sigma_radius)
@@ -231,8 +242,13 @@ class DAOStarFinder(StarFinderBase):
                                       fill_value=0.0,
                                       check_normalization=False)
 
-        xypos = _find_stars(convolved_data, self.kernel, self.threshold_eff,
-                            mask=mask, exclude_border=self.exclude_border)
+        if self.xycoords is None:
+            xypos = _find_stars(convolved_data, self.kernel,
+                                self.threshold_eff, mask=mask,
+                                exclude_border=self.exclude_border)
+        else:
+            xypos = self.xycoords
+
         if xypos is None:
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
