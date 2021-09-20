@@ -369,39 +369,31 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
     .. plot::
         :include-source:
 
-        # make a table of Gaussian sources
-        from astropy.table import Table
-        table = Table()
-        table['amplitude'] = [50, 70, 150, 210]
-        table['x_mean'] = [160, 25, 150, 90]
-        table['y_mean'] = [70, 40, 25, 60]
-        table['x_stddev'] = [15.2, 5.1, 3., 8.1]
-        table['y_stddev'] = [2.6, 2.5, 3., 4.7]
-        table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
+        from astropy.convolution import Gaussian2DKernel
+        from astropy.stats import gaussian_fwhm_to_sigma
+        from astropy.visualization import simple_norm
+        import matplotlib.pyplot as plt
+        from photutils.datasets import make_100gaussians_image
+        from photutils.segmentation import detect_threshold, detect_sources
 
-        # make an image of the sources with Gaussian noise
-        from photutils.datasets import make_gaussian_sources_image
-        from photutils.datasets import make_noise_image
-        shape = (100, 200)
-        sources = make_gaussian_sources_image(shape, table)
-        noise = make_noise_image(shape, distribution='gaussian', mean=0.,
-                                 stddev=5., seed=0)
-        image = sources + noise
+        # make a simulated image
+        data = make_100gaussians_image()
 
         # detect the sources
-        from photutils.segmentation import detect_threshold, detect_sources
-        threshold = detect_threshold(image, nsigma=3)
-        from astropy.convolution import Gaussian2DKernel
-        kernel_sigma = 3.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))  # FWHM = 3
-        kernel = Gaussian2DKernel(kernel_sigma, x_size=3, y_size=3)
+        threshold = detect_threshold(data, nsigma=3)
+        sigma = 3.0 * gaussian_fwhm_to_sigma   # FWHM = 3.
+        kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
         kernel.normalize()
-        segm = detect_sources(image, threshold, npixels=5, kernel=kernel)
+        segm = detect_sources(data, threshold, npixels=5, kernel=kernel)
 
         # plot the image and the segmentation image
-        import matplotlib.pyplot as plt
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
-        ax1.imshow(image, origin='lower', interpolation='nearest')
-        ax2.imshow(segm.data, origin='lower', interpolation='nearest')
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
+        norm = simple_norm(data, 'sqrt', percent=99.)
+        ax1.imshow(data, origin='lower', interpolation='nearest',
+                   norm=norm)
+        ax2.imshow(segm.data, origin='lower', interpolation='nearest',
+                   cmap=segm.make_cmap(seed=1234))
+        plt.tight_layout()
     """
     return _detect_sources(data, (threshold,), npixels, kernel=kernel,
                            connectivity=connectivity, mask=mask)[0]
