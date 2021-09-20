@@ -158,3 +158,19 @@ class TestDAOStarFinder:
             DAOStarFinder(threshold=10, fwhm=1.5, brightest=-1)
         with pytest.raises(ValueError):
             DAOStarFinder(threshold=10, fwhm=1.5, brightest=3.1)
+
+    def test_xycoords(self):
+        starfinder1 = DAOStarFinder(threshold=30, fwhm=2, sigma_radius=1.5,
+                                    exclude_border=True)
+        tbl1 = starfinder1(DATA)
+
+        xycoords = np.array([[145, 169], [395, 187], [427, 211], [11, 224]])
+        starfinder2 = DAOStarFinder(threshold=30, fwhm=2, sigma_radius=1.5,
+                                    exclude_border=True, xycoords=xycoords)
+        tbl2 = starfinder2(DATA)
+        assert np.all(tbl1 == tbl2)
+
+    def test_invalid_xycoords(self):
+        xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
+        with pytest.raises(ValueError):
+            DAOStarFinder(threshold=10, fwhm=1.5, xycoords=xycoords)
