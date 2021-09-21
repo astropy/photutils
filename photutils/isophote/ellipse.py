@@ -20,7 +20,7 @@ __all__ = ['Ellipse']
 
 
 class Ellipse:
-    """
+    r"""
     Class to fit elliptical isophotes to a galaxy image.
 
     The isophotes in the image are measured using an iterative method
@@ -66,8 +66,8 @@ class Ellipse:
     fitting to the function:
 
     .. math::
-        y  =  y0 + (A1 * \\sin(E)) + (B1 * \\cos(E)) + (A2 * \\sin(2 * E))
-        + (B2 * \\cos(2 * E))
+        y  =  y0 + (A1 * \sin(E)) + (B1 * \cos(E)) + (A2 * \sin(2 * E))
+        + (B2 * \cos(2 * E))
 
     Each one of the harmonic amplitudes (A1, B1, A2, and B2) is related
     to a specific ellipse geometric parameter in the sense that it
@@ -196,7 +196,6 @@ class Ellipse:
         threshold : float
             The new threshold value to use.
         """
-
         self._geometry.centerer_threshold = threshold
 
     def fit_image(self, sma0=None, minsma=0., maxsma=None, step=0.1,
@@ -374,7 +373,6 @@ class Ellipse:
             A list-like object of `~photutils.isophote.Isophote`
             instances, sorted by increasing semimajor axis length.
         """
-
         # multiple fitted isophotes will be stored here
         isophote_list = []
 
@@ -625,7 +623,6 @@ class Ellipse:
             The fitted isophote. The fitted isophote is also appended to
             the input list input to the ``isophote_list`` parameter.
         """
-
         geometry = self._geometry
 
         # if available, geometry from last fitted isophote will be

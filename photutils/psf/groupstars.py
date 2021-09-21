@@ -35,7 +35,6 @@ class GroupStarsBase(metaclass=abc.ABCMeta):
             whose unique values represent groups of mutually overlapping
             stars.
         """
-
         return self.group_stars(starlist)
 
     @abc.abstractmethod
@@ -57,7 +56,6 @@ class GroupStarsBase(metaclass=abc.ABCMeta):
             whose unique values represent groups of mutually overlapping
             stars.
         """
-
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
 

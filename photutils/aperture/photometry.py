@@ -138,7 +138,6 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     it must be defined in the ``uncertainty`` attribute with a
     `~astropy.nddata.StdDevUncertainty` instance.
     """
-
     if isinstance(data, NDData):
         nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
         for key, value in nddata_attr.items():

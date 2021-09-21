@@ -96,7 +96,6 @@ class DiscretePRF(Fittable2DModel):
     @property
     def prf_shape(self):
         """Shape of the PRF image."""
-
         return self._prf_array.shape[-2:]
 
     def evaluate(self, x, y, flux, x_0, y_0):
@@ -124,7 +123,6 @@ class DiscretePRF(Fittable2DModel):
         y_0 : float
             y position of the center of the PRF.
         """
-
         # Convert x and y to index arrays
         x = (x - x_0 + 0.5 + self.prf_shape[1] // 2).astype('int')
         y = (y - y_0 + 0.5 + self.prf_shape[0] // 2).astype('int')
@@ -205,7 +203,6 @@ class DiscretePRF(Fittable2DModel):
         prf : `photutils.psf.sandbox.DiscretePRF`
             Discrete PRF model estimated from data.
         """
-
         # Check input array type and dimension.
         if np.iscomplexobj(imdata):
             raise TypeError('Complex type not supported')
@@ -343,7 +340,6 @@ class Reproject:
         x, y:  float or array-like of float
             The reprojected pixel coordinates.
         """
-
         try:
             skycoord = wcs1.pixel_to_world(x, y)
             return wcs2.world_to_pixel(skycoord)
@@ -367,7 +363,6 @@ class Reproject:
         x, y:  float or array-like
             The zero-index pixel coordinates in the rectified image.
         """
-
         return self._reproject(self.wcs_original, self.wcs_rectified, x, y)
 
     def to_original(self, x, y):
@@ -386,5 +381,4 @@ class Reproject:
             The zero-index pixel coordinates in the original
             (unrectified) image.
         """
-
         return self._reproject(self.wcs_rectified, self.wcs_original, x, y)

@@ -26,7 +26,6 @@ def _radial_distance(shape):
         An array containing the Euclidean radial distances from the
         array center.
     """
-
     if len(shape) != 2:
         raise ValueError('shape must have only 2 elements')
     position = (np.asarray(shape) - 1) / 2.
@@ -91,7 +90,6 @@ class SplitCosineBellWindow:
         result : `~numpy.ndarray`
             A 2D array containing the cosine bell values.
         """
-
         radial_dist = _radial_distance(shape)
         npts = (np.array(shape).min() - 1.) / 2.
         r_inner = self.beta * npts

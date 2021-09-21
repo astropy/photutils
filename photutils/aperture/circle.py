@@ -69,7 +69,6 @@ class CircularMaskMixin:
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-
         use_exact, subpixels = self._translate_mask_mode(method, subpixels)
 
         if hasattr(self, 'r'):
@@ -177,7 +176,6 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
-
         import matplotlib.patches as mpatches
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
@@ -211,7 +209,6 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         aperture : `SkyCircularAperture` object
             A `SkyCircularAperture` object.
         """
-
         return SkyCircularAperture(**self._to_sky_params(wcs))
 
 
@@ -302,7 +299,6 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
-
         import matplotlib.patches as mpatches
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
@@ -338,7 +334,6 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         aperture : `SkyCircularAnnulus` object
             A `SkyCircularAnnulus` object.
         """
-
         return SkyCircularAnnulus(**self._to_sky_params(wcs))
 
 
@@ -393,7 +388,6 @@ class SkyCircularAperture(SkyAperture):
         aperture : `CircularAperture` object
             A `CircularAperture` object.
         """
-
         return CircularAperture(**self._to_pixel_params(wcs))
 
 
@@ -459,5 +453,4 @@ class SkyCircularAnnulus(SkyAperture):
         aperture : `CircularAnnulus` object
             A `CircularAnnulus` object.
         """
-
         return CircularAnnulus(**self._to_pixel_params(wcs))

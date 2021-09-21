@@ -12,7 +12,6 @@ def _py2intround(a):
 
     If two integers are equally close, rounding is done away from 0.
     """
-
     data = np.asanyarray(a)
     value = np.where(data >= 0, np.floor(data + 0.5),
                      np.ceil(data - 0.5)).astype(int)

@@ -83,8 +83,8 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         calculate the centroid of a 2D array. The ``centroid_func``
         must accept a 2D `~numpy.ndarray`, have a ``mask`` keyword, and
         optionally an ``error`` keyword. The callable object must return
-        a tuple of two 1D `~numpy.ndarray`\\s, representing the x and y
-        centroids, respectively.
+        a tuple of two 1D `~numpy.ndarray` objects, representing the x
+        and y centroids, respectively.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -107,7 +107,6 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         will also contain the centroid position.  If no peaks are found
         then `None` is returned.
     """
-
     from scipy.ndimage import maximum_filter
 
     data = np.asanyarray(data)

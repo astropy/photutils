@@ -182,7 +182,7 @@ class BasicPSFPhotometry:
 
     def get_residual_image(self):
         """
-        Returns an image that is the result of the subtraction between
+        Return an image that is the result of the subtraction between
         the original image and the fitted sources.
 
         Returns
@@ -190,15 +190,13 @@ class BasicPSFPhotometry:
         residual_image : 2D array-like, `~astropy.io.fits.ImageHDU`, \
             `~astropy.io.fits.HDUList`
         """
-
         return self._residual_image
 
     def set_aperture_radius(self):
         """
-        Sets the fallback aperture radius for initial flux calculations
+        Set the fallback aperture radius for initial flux calculations
         in cases where no flux is supplied for a given star.
         """
-
         if hasattr(self.psf_model, 'fwhm'):
             self.aperture_radius = self.psf_model.fwhm.value
         elif hasattr(self.psf_model, 'sigma'):
@@ -224,10 +222,9 @@ class BasicPSFPhotometry:
 
     def __call__(self, image, init_guesses=None):
         """
-        Performs PSF photometry. See `do_photometry` for more details
+        Perform PSF photometry. See `do_photometry` for more details
         including the `__call__` signature.
         """
-
         return self.do_photometry(image, init_guesses)
 
     def do_photometry(self, image, init_guesses=None):
@@ -276,7 +273,6 @@ class BasicPSFPhotometry:
             covariance matrix. If ``param_cov`` is not present,
             uncertanties are not reported.
         """
-
         if self.bkg_estimator is not None:
             image = image - self.bkg_estimator(image)
 
@@ -381,7 +377,6 @@ class BasicPSFPhotometry:
         image : numpy.ndarray
             Residual image.
         """
-
         result_tab = QTable()
         for param_tab_name in self._pars_to_output.keys():
             result_tab.add_column(Column(name=param_tab_name))
@@ -434,9 +429,7 @@ class BasicPSFPhotometry:
         """
         Function to parse additional columns from ``in_table`` and add them to
         ``out_table``.
-
         """
-
         if self._extra_output_cols is not None:
             for col_name in self._extra_output_cols:
                 if col_name in in_table.colnames:
@@ -455,7 +448,6 @@ class BasicPSFPhotometry:
         * ``pars_to_output`` : Dict which maps the names of the fitted
           parameters to the actual name of the parameter in the model.
         """
-
         xname, yname, fluxname = _extract_psf_fitting_names(self.psf_model)
         self._pars_to_set = {'x_0': xname, 'y_0': yname, 'flux_0': fluxname}
         self._pars_to_output = {'x_fit': xname, 'y_fit': yname,
@@ -484,7 +476,6 @@ class BasicPSFPhotometry:
             A table which contains uncertainties on the fitted parameters.
             The uncertainties are reported as one standard deviation.
         """
-
         unc_tab = QTable()
         for param_name in self.psf_model.param_names:
             if not self.psf_model.fixed[param_name]:
@@ -520,7 +511,6 @@ class BasicPSFPhotometry:
         param_tab : `~astropy.table.QTable`
             A table that contains the fitted parameters.
         """
-
         param_tab = QTable()
 
         for param_tab_name in self._pars_to_output.keys():
@@ -727,7 +717,6 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             ``fit_info`` with the key ``param_cov``, which contains the
             covariance matrix.
         """
-
         if init_guesses is not None:
             table = super().do_photometry(image, init_guesses)
             table['iter_detected'] = np.ones(table['x_fit'].shape, dtype=int)
@@ -769,7 +758,6 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             fluxes estimations and the initial estimates used to start
             the fitting process.
         """
-
         output_table = QTable()
         self._define_fit_param_names()
 

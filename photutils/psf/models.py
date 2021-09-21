@@ -26,7 +26,7 @@ class NonNormalizable(AstropyWarning):
 
 
 class FittableImageModel(Fittable2DModel):
-    """
+    r"""
     A fittable 2D model of an image allowing for image intensity scaling
     and image translations.
 
@@ -72,7 +72,7 @@ class FittableImageModel(Fittable2DModel):
         is computed so that
 
         .. math::
-            N \\cdot C \\cdot \\sum\\limits_{i,j} D_{i,j} = 1,
+            N \cdot C \cdot \sum\limits_{i,j} D_{i,j} = 1,
 
         where *N* is the normalization constant, *C* is correction
         factor given by the parameter ``normalization_correction``, and
@@ -186,20 +186,20 @@ class FittableImageModel(Fittable2DModel):
         return np.sum(self._data, dtype=float)
 
     def _compute_normalization(self, normalize):
-        """
+        r"""
         Helper function that computes (corrected) normalization factor
         of the original image data. This quantity is computed as the
         inverse "raw image norm" (or total "flux" of model's image)
         corrected by the ``normalization_correction``:
 
         .. math::
-            N = 1/(\\Phi * C),
+            N = 1/(\Phi * C),
 
-        where :math:`\\Phi` is the "total flux" of model's image as
+        where :math:`\Phi` is the "total flux" of model's image as
         computed by `_compute_raw_image_norm` and *C* is the
-        normalization correction factor. :math:`\\Phi` is computed only
+        normalization correction factor. :math:`\Phi` is computed only
         once if it has not been previously computed. Otherwise, the
-        existing (stored) value of :math:`\\Phi` is not modified as
+        existing (stored) value of :math:`\Phi` is not modified as
         :py:class:`FittableImageModel` does not allow image data to be
         modified after the object is created.
 
@@ -209,7 +209,6 @@ class FittableImageModel(Fittable2DModel):
             one desires to change the way the normalization factor is
             computed.
         """
-
         self._normalization_constant = 1.0 / self._normalization_correction
 
         if normalize:
@@ -240,7 +239,6 @@ class FittableImageModel(Fittable2DModel):
         An input to this model is multiplied by this factor to yield the
         index into the stored image.
         """
-
         return self._oversampling
 
     def _set_oversampling(self, value):
@@ -268,7 +266,7 @@ class FittableImageModel(Fittable2DModel):
 
     @property
     def data(self):
-        """ Get original image data. """
+        """Get original image data."""
         return self._data
 
     @property
@@ -278,7 +276,7 @@ class FittableImageModel(Fittable2DModel):
 
     @property
     def normalization_constant(self):
-        """ Get normalization constant. """
+        """Get normalization constant."""
         return self._normalization_constant
 
     @property
@@ -439,7 +437,6 @@ class FittableImageModel(Fittable2DModel):
           decrease code performance due to the need to recompute
           interpolator.
         """
-
         from scipy.interpolate import RectBivariateSpline
 
         if 'degree' in kwargs:
@@ -912,7 +909,7 @@ class GriddedPSFModel(Fittable2DModel):
 
     def _compute_local_model(self, x_0, y_0):
         """
-        Returns `FittableImageModel` for interpolated PSF at some (x_0, y_0)
+        Return `FittableImageModel` for interpolated PSF at some (x_0, y_0).
         """
         # NOTE: this is needed because the PSF photometry routines input
         # length-1 values instead of scalars.  TODO: fix the photometry

@@ -98,7 +98,6 @@ class EPSFFitter:
             are stored in the ``center`` (and ``cutout_center``) and
             ``flux`` attributes.
         """
-
         if len(stars) == 0:
             return stars
 
@@ -146,7 +145,6 @@ class EPSFFitter:
         routine in this function.  Make a copy before calling this
         function if the original is needed.
         """
-
         if fit_boxsize is not None:
             try:
                 xcenter, ycenter = star.cutout_center
@@ -377,7 +375,6 @@ class EPSFBuilder:
         Initialize 2D image-type parameters that can accept either a
         single or two values.
         """
-
         if param is not None:
             param = np.atleast_1d(param)
             if len(param) == 1:
@@ -407,7 +404,6 @@ class EPSFBuilder:
         epsf : `EPSFModel`
             The initial ePSF model.
         """
-
         norm_radius = self._norm_radius
         shift_val = self._shift_val
         oversampling = self.oversampling
@@ -473,7 +469,6 @@ class EPSFBuilder:
             A 2D image containing the resampled residual image.  The
             image contains NaNs where there is no data.
         """
-
         # Compute the normalized residual by subtracting the ePSF model
         # from the normalized star at the location of the star in the
         # undersampled grid.
@@ -524,7 +519,6 @@ class EPSFBuilder:
         epsf_resid : 3D `~numpy.ndarray`
             A 3D cube containing the resampled residual images.
         """
-
         shape = (stars.n_good_stars, epsf.shape[0], epsf.shape[1])
         epsf_resid = np.zeros(shape)
         for i, star in enumerate(stars.all_good_stars):
@@ -546,7 +540,6 @@ class EPSFBuilder:
         result : 2D `~numpy.ndarray`
             The smoothed (convolved) ePSF data.
         """
-
         from scipy.ndimage import convolve
 
         if self.smoothing_kernel is None:
@@ -634,7 +627,6 @@ class EPSFBuilder:
         result : 2D `~numpy.ndarray`
             The recentered ePSF data.
         """
-
         epsf_data = epsf._data
 
         epsf = EPSFModel(data=epsf._data, origin=epsf.origin,
@@ -731,7 +723,6 @@ class EPSFBuilder:
         epsf : `EPSFModel` object
             The updated ePSF.
         """
-
         if len(stars) < 1:
             raise ValueError('stars must contain at least one EPSFStar or '
                              'LinkedEPSFStar object.')
@@ -796,7 +787,7 @@ class EPSFBuilder:
 
     def build_epsf(self, stars, init_epsf=None):
         """
-        Iteratively build an ePSF from star cutouts.
+        Build iteratively an ePSF from star cutouts.
 
         Parameters
         ----------
@@ -816,7 +807,6 @@ class EPSFBuilder:
             The input stars with updated centers and fluxes derived
             from fitting the output ``epsf``.
         """
-
         iter_num = 0
         n_stars = stars.n_stars
         fit_failed = np.zeros(n_stars, dtype=bool)
@@ -907,7 +897,6 @@ def _interpolate_missing_data(data, mask, method='cubic'):
     data_interp : 2D `~numpy.ndarray`
         The interpolated 2D image.
     """
-
     from scipy import interpolate
 
     data_interp = np.array(data, copy=True)

@@ -98,13 +98,11 @@ class EPSFStar:
         Array representation of the mask data array (e.g., for
         matplotlib).
         """
-
         return self._data
 
     @property
     def data(self):
         """The 2D cutout image."""
-
         return self._data
 
     @property
@@ -113,7 +111,6 @@ class EPSFStar:
         A `~numpy.ndarray` of the ``(x, y)`` position of the star's
         center with respect to the input cutout ``data`` array.
         """
-
         return self._cutout_center
 
     @cutout_center.setter
@@ -133,7 +130,6 @@ class EPSFStar:
         A `~numpy.ndarray` of the ``(x, y)`` position of the star's
         center in the original (large) image (not the cutout image).
         """
-
         return self.cutout_center + self.origin
 
     @lazyproperty
@@ -142,7 +138,6 @@ class EPSFStar:
         A tuple of two slices representing the cutout region with
         respect to the original (large) image.
         """
-
         return (slice(self.origin[1], self.origin[1] + self.shape[1]),
                 slice(self.origin[0], self.origin[0] + self.shape[0]))
 
@@ -152,7 +147,6 @@ class EPSFStar:
         The minimal `~photutils.aperture.BoundingBox` for the cutout
         region with respect to the original (large) image.
         """
-
         return BoundingBox(self.slices[1].start, self.slices[1].stop,
                            self.slices[0].start, self.slices[0].stop)
 
@@ -164,7 +158,6 @@ class EPSFStar:
         Missing data is filled in by interpolation to better estimate
         the total flux.
         """
-
         from .epsf import _interpolate_missing_data
 
         if np.any(self.mask):
@@ -194,7 +187,6 @@ class EPSFStar:
         data : `~numpy.ndarray`
             A 2D array of the registered/scaled ePSF.
         """
-
         yy, xx = np.indices(self.shape, dtype=float)
         xx = xx - self.cutout_center[0]
         yy = yy - self.cutout_center[1]
@@ -216,7 +208,6 @@ class EPSFStar:
         data : `~numpy.ndarray`
             A 2D array of the residual image.
         """
-
         return self.data - self.register_epsf(epsf)
 
     @lazyproperty
@@ -225,7 +216,6 @@ class EPSFStar:
         1D arrays of x and y indices of unmasked pixels in the cutout
         reference frame.
         """
-
         yidx, xidx = np.indices(self._data.shape)
         return xidx[~self.mask].ravel(), yidx[~self.mask].ravel()
 
@@ -235,7 +225,6 @@ class EPSFStar:
         1D arrays of x indices of unmasked pixels in the cutout
         reference frame.
         """
-
         return self._xy_idx[0]
 
     @lazyproperty
@@ -244,7 +233,6 @@ class EPSFStar:
         1D arrays of y indices of unmasked pixels in the cutout
         reference frame.
         """
-
         return self._xy_idx[1]
 
     @property
@@ -253,7 +241,6 @@ class EPSFStar:
         1D array of x indices of unmasked pixels, with respect to the
         star center, in the cutout reference frame.
         """
-
         return self._xy_idx[0] - self.cutout_center[0]
 
     @property
@@ -262,13 +249,11 @@ class EPSFStar:
         1D array of y indices of unmasked pixels, with respect to the
         star center, in the cutout reference frame.
         """
-
         return self._xy_idx[1] - self.cutout_center[1]
 
     @lazyproperty
     def _data_values(self):
         """1D array of unmasked cutout data values."""
-
         return self.data[~self.mask].ravel()
 
     @lazyproperty
@@ -277,7 +262,6 @@ class EPSFStar:
         1D array of unmasked cutout data values, normalized by the
         star's total flux.
         """
-
         return self._data_values / self.flux
 
     @lazyproperty
@@ -285,7 +269,6 @@ class EPSFStar:
         """
         1D array of unmasked weight values.
         """
-
         return self.weights[~self.mask].ravel()
 
 
@@ -360,7 +343,6 @@ class EPSFStars:
         Note that when `EPSFStars` contains any `LinkedEPSFStar`, the
         ``cutout_center`` attribute will be a nested 3D array.
         """
-
         return self._getattr_flat('cutout_center')
 
     @property
@@ -374,7 +356,6 @@ class EPSFStars:
         Note that when `EPSFStars` contains any `LinkedEPSFStar`, the
         ``center`` attribute will be a nested 3D array.
         """
-
         return self._getattr_flat('center')
 
     @lazyproperty
@@ -384,7 +365,6 @@ class EPSFStars:
         including those that comprise linked stars (i.e.,
         `LinkedEPSFStar`), as a flat list.
         """
-
         stars = []
         for item in self._data:
             if isinstance(item, LinkedEPSFStar):
@@ -401,7 +381,6 @@ class EPSFStars:
         not been excluded from fitting, including those that comprise
         linked stars (i.e., `LinkedEPSFStar`), as a flat list.
         """
-
         stars = []
         for star in self.all_stars:
             if star._excluded_from_fit:
@@ -418,7 +397,6 @@ class EPSFStars:
 
         A linked star is counted only once.
         """
-
         return len(self._data)
 
     @lazyproperty
@@ -428,7 +406,6 @@ class EPSFStars:
         stars within `LinkedEPSFStar`.  Each linked star is included in
         the count.
         """
-
         return len(self.all_stars)
 
     @property
@@ -439,16 +416,14 @@ class EPSFStars:
         fitting.  Each non-excluded linked star is included in the
         count.
         """
-
         return len(self.all_good_stars)
 
     @lazyproperty
     def _max_shape(self):
         """
-        The maximum x and y shapes of all the `EPSFStar`\\s (including
-        linked stars).
+        The maximum x and y shapes of all the `EPSFStar` objects
+        (including linked stars).
         """
-
         return np.max([star.shape for star in self.all_stars],
                       axis=0)
 
@@ -491,7 +466,6 @@ class LinkedEPSFStar(EPSFStars):
         The single sky coordinate is calculated as the mean of sky
         coordinates of the linked stars.
         """
-
         if len(self._data) < 2:  # no linked stars
             return
 
@@ -609,7 +583,6 @@ def extract_stars(data, catalogs, size=(11, 11)):
     stars : `EPSFStars` instance
         A `EPSFStars` instance containing the extracted stars.
     """
-
     if isinstance(data, NDData):
         data = [data]
 
@@ -757,7 +730,6 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
     stars : list of `EPSFStar` objects
         A list of `EPSFStar` instances containing the extracted stars.
     """
-
     # Force size to odd numbers such that there is always a central pixel with
     # even spacing either side of the pixel.
     if np.isscalar(size):

@@ -143,7 +143,6 @@ class EllipseSample:
             The rows of the array contain the angles, radii, and
             extracted intensity values, respectively.
         """
-
         # the sample values themselves are kept cached to prevent
         # multiple calls to the integrator code.
         if self.values is not None:
@@ -288,7 +287,6 @@ class EllipseSample:
         then computes the the mean intensity, local gradient, and other
         associated quantities.
         """
-
         if fixed_parameters is None:
             fixed_parameters = np.array([False, False, False, False])
         self.geometry.fix = fixed_parameters
@@ -371,7 +369,6 @@ class EllipseSample:
         x, y : 1D `~numpy.ndarray`
             The x and y coordinate arrays.
         """
-
         angles = self.values[0]
         radii = self.values[1]
         x = np.zeros(len(angles))
@@ -401,7 +398,6 @@ class CentralEllipseSample(EllipseSample):
 
         'fixed_parameters' is ignored in this subclass.
         """
-
         s = self.extract()
         self.mean = s[2][0]
 

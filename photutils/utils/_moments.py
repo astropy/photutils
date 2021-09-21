@@ -29,7 +29,6 @@ def _moments_central(data, center=None, order=1):
     moments : 2D `~numpy.ndarray`
         The central image moments.
     """
-
     data = np.asarray(data).astype(float)
 
     if data.ndim != 2:
@@ -63,5 +62,4 @@ def _moments(data, order=1):
     moments : 2D `~numpy.ndarray`
         The raw image moments.
     """
-
     return _moments_central(data, center=(0, 0), order=order)

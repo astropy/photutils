@@ -215,7 +215,6 @@ class ShepardIDWInterpolator:
             ``values`` parameter used during the initialization of the
             interpolator.
         """
-
         n_neighbors = int(n_neighbors)
         if n_neighbors < 1:
             raise ValueError('n_neighbors must be a positive integer')

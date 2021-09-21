@@ -10,7 +10,7 @@ __all__ = ['gini']
 
 
 def gini(data):
-    """
+    r"""
     Calculate the `Gini coefficient
     <https://en.wikipedia.org/wiki/Gini_coefficient>`_ of a 2D array.
 
@@ -20,10 +20,10 @@ def gini(data):
     as:
 
     .. math::
-        G = \\frac{1}{\\left | \\bar{x} \\right | n (n - 1)}
-        \\sum^{n}_{i} (2i - n - 1) \\left | x_i \\right |
+        G = \frac{1}{\left | \bar{x} \right | n (n - 1)}
+        \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
-    where :math:`\\bar{x}` is the mean over all pixel values
+    where :math:`\bar{x}` is the mean over all pixel values
     :math:`x_i`.
 
     The Gini coefficient is a way of measuring the inequality in a given
@@ -49,7 +49,6 @@ def gini(data):
     gini : `float`
         The Gini coefficient of the input 2D array.
     """
-
     flattened = np.sort(np.ravel(data))
     npix = np.size(flattened)
     normalization = np.abs(np.mean(flattened)) * npix * (npix - 1)

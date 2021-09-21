@@ -491,8 +491,8 @@ class Background2D:
 
     def _selective_filter(self, data):
         """
-        Selectively filter only pixels above ``filter_threshold`` in the
-        background mesh.
+        Filter only pixels above ``filter_threshold`` in the background
+        mesh.
 
         The same pixels are filtered in both the background and
         background RMS meshes.

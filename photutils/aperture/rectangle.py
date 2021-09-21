@@ -72,7 +72,6 @@ class RectangularMaskMixin:
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-
         _, subpixels = self._translate_mask_mode(method, subpixels,
                                                  rectangle=True)
 
@@ -112,7 +111,6 @@ class RectangularMaskMixin:
         """
         Calculate half of the bounding box extents of an ellipse.
         """
-
         half_width = width / 2.
         half_height = height / 2.
         sin_theta = math.sin(theta)
@@ -134,7 +132,6 @@ class RectangularMaskMixin:
         Used for creating `~matplotlib.patches.Rectangle` patch for the
         aperture.
         """
-
         half_width = width / 2.
         half_height = height / 2.
         sin_theta = math.sin(theta)
@@ -235,7 +232,6 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
-
         import matplotlib.patches as mpatches
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
@@ -272,12 +268,11 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         aperture : `SkyRectangularAperture` object
             A `SkyRectangularAperture` object.
         """
-
         return SkyRectangularAperture(**self._to_sky_params(wcs))
 
 
 class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
-    """
+    r"""
     A rectangular annulus aperture defined in pixel coordinates.
 
     The aperture has a single fixed size/shape, but it can have multiple
@@ -310,7 +305,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         If `None`, then the inner full height is calculated as:
 
             .. math:: h_{in} = h_{out}
-                \\left(\\frac{w_{in}}{w_{out}}\\right)
+                \left(\frac{w_{in}}{w_{out}}\right)
 
         For ``theta=0`` the height side is along the ``y`` axis.
 
@@ -397,7 +392,6 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
-
         import matplotlib.patches as mpatches
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
@@ -443,7 +437,6 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         aperture : `SkyRectangularAnnulus` object
             A `SkyRectangularAnnulus` object.
         """
-
         return SkyRectangularAnnulus(**self._to_sky_params(wcs))
 
 
@@ -519,12 +512,11 @@ class SkyRectangularAperture(SkyAperture):
         aperture : `RectangularAperture` object
             A `RectangularAperture` object.
         """
-
         return RectangularAperture(**self._to_pixel_params(wcs))
 
 
 class SkyRectangularAnnulus(SkyAperture):
-    """
+    r"""
     A rectangular annulus aperture defined in sky coordinates.
 
     The aperture has a single fixed size/shape, but it can have multiple
@@ -556,7 +548,7 @@ class SkyRectangularAnnulus(SkyAperture):
         is calculated as:
 
             .. math:: h_{in} = h_{out}
-                \\left(\\frac{w_{in}}{w_{out}}\\right)
+                \left(\frac{w_{in}}{w_{out}}\right)
 
         For ``theta=0`` the height side is along the East-West axis.
 
@@ -630,5 +622,4 @@ class SkyRectangularAnnulus(SkyAperture):
         aperture : `RectangularAnnulus` object
             A `RectangularAnnulus` object.
         """
-
         return RectangularAnnulus(**self._to_pixel_params(wcs))

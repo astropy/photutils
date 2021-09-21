@@ -808,7 +808,6 @@ class SegmentationImage:
                [3, 3, 0, 0, 0, 0],
                [3, 3, 0, 0, 0, 0]])
         """
-
         self.check_labels(labels)
         self.reassign_labels(labels, new_label=0, relabel=relabel)
 

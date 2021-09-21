@@ -71,7 +71,6 @@ class EllipticalMaskMixin:
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-
         use_exact, subpixels = self._translate_mask_mode(method, subpixels)
 
         if hasattr(self, 'a'):
@@ -110,7 +109,6 @@ class EllipticalMaskMixin:
         """
         Calculate half of the bounding box extents of an ellipse.
         """
-
         cos_theta = np.cos(theta)
         sin_theta = np.sin(theta)
         semimajor_x = semimajor_axis * cos_theta
@@ -211,7 +209,6 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
-
         import matplotlib.patches as mpatches
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
@@ -246,12 +243,11 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         aperture : `SkyEllipticalAperture` object
             A `SkyEllipticalAperture` object.
         """
-
         return SkyEllipticalAperture(**self._to_sky_params(wcs))
 
 
 class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
-    """
+    r"""
     An elliptical annulus aperture defined in pixel coordinates.
 
     The aperture has a single fixed size/shape, but it can have multiple
@@ -282,7 +278,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         If `None`, then the the inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
-                \\left(\\frac{a_{in}}{a_{out}}\\right)
+                \left(\frac{a_{in}}{a_{out}}\right)
 
     theta : float, optional
         The rotation angle in radians of the ellipse semimajor axis from
@@ -367,7 +363,6 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
-
         import matplotlib.patches as mpatches
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
@@ -406,7 +401,6 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         aperture : `SkyEllipticalAnnulus` object
             A `SkyEllipticalAnnulus` object.
         """
-
         return SkyEllipticalAnnulus(**self._to_sky_params(wcs))
 
 
@@ -480,12 +474,11 @@ class SkyEllipticalAperture(SkyAperture):
         aperture : `EllipticalAperture` object
             An `EllipticalAperture` object.
         """
-
         return EllipticalAperture(**self._to_pixel_params(wcs))
 
 
 class SkyEllipticalAnnulus(SkyAperture):
-    """
+    r"""
     An elliptical annulus aperture defined in sky coordinates.
 
     The aperture has a single fixed size/shape, but it can have multiple
@@ -511,7 +504,7 @@ class SkyEllipticalAnnulus(SkyAperture):
         If `None`, then the inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
-                \\left(\\frac{a_{in}}{a_{out}}\\right)
+                \left(\frac{a_{in}}{a_{out}}\right)
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the ellipse semimajor
@@ -583,5 +576,4 @@ class SkyEllipticalAnnulus(SkyAperture):
         aperture : `EllipticalAnnulus` object
             An `EllipticalAnnulus` object.
         """
-
         return EllipticalAnnulus(**self._to_pixel_params(wcs))

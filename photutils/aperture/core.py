@@ -84,7 +84,6 @@ class Aperture(metaclass=abc.ABCMeta):
         """
         The shape of the instance.
         """
-
         if isinstance(self.positions, SkyCoord):
             return self.positions.shape
         else:
@@ -95,7 +94,6 @@ class Aperture(metaclass=abc.ABCMeta):
         """
         Whether the instance is scalar (i.e., a single position).
         """
-
         return self.shape == ()
 
 
@@ -109,7 +107,6 @@ class PixelAperture(Aperture):
         """
         A dictionary of default matplotlib.patches.Patch properties.
         """
-
         mpl_params = dict()
 
         # matplotlib.patches.Patch default is ``fill=True``
@@ -152,7 +149,6 @@ class PixelAperture(Aperture):
         In other words, the (x, y) extents are half of the aperture
         minimal bounding box size in each dimension.
         """
-
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @property
@@ -164,7 +160,6 @@ class PixelAperture(Aperture):
         `~photutils.aperture.BoundingBox` is returned, otherwise a list
         of `~photutils.aperture.BoundingBox` is returned.
         """
-
         positions = np.atleast_2d(self.positions)
         x_delta, y_delta = self._xy_extents
         xmin = positions[:, 0] - x_delta
@@ -190,7 +185,6 @@ class PixelAperture(Aperture):
         These pixel edges are used by the low-level `photutils.geometry`
         functions.
         """
-
         edges = []
         for position, bbox in zip(np.atleast_2d(self.positions),
                                   np.atleast_1d(self.bbox)):
@@ -212,7 +206,6 @@ class PixelAperture(Aperture):
         area : float
             The aperture area.
         """
-
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @abc.abstractmethod
@@ -261,7 +254,6 @@ class PixelAperture(Aperture):
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
     def area_overlap(self, data, *, mask=None, method='exact', subpixels=5):
@@ -441,7 +433,6 @@ class PixelAperture(Aperture):
         it is recommend to set ``method='subpixel'`` with a larger
         ``subpixels`` size.
         """
-
         # validate inputs
         data, error = _validate_inputs(data, error)
 
@@ -463,7 +454,6 @@ class PixelAperture(Aperture):
         This preserves the cubic Bezier curves (CURVE4) of the aperture
         paths.
         """
-
         import matplotlib.path as mpath
 
         path_inner = patch_inner.get_path()
@@ -506,7 +496,6 @@ class PixelAperture(Aperture):
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
         """
-
         xy_positions = copy.deepcopy(np.atleast_2d(self.positions))
         xy_positions[:, 0] -= origin[0]
         xy_positions[:, 1] -= origin[1]
@@ -538,7 +527,6 @@ class PixelAperture(Aperture):
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
-
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
     def plot(self, axes=None, origin=(0, 0), **kwargs):
@@ -566,7 +554,6 @@ class PixelAperture(Aperture):
             A list of matplotlib patches for the plotted aperture. The
             patches can be used, for example, when adding a plot legend.
         """
-
         import matplotlib.pyplot as plt
 
         if axes is None:
@@ -599,7 +586,6 @@ class PixelAperture(Aperture):
         sky_params : `dict`
             A dictionary of parameters for an equivalent sky aperture.
         """
-
         sky_params = {}
         xpos, ypos = np.transpose(self.positions)
         sky_params['positions'] = wcs.pixel_to_world(xpos, ypos)
@@ -651,7 +637,6 @@ class PixelAperture(Aperture):
         aperture : `SkyAperture` object
             A `SkyAperture` object.
         """
-
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
@@ -735,5 +720,4 @@ class SkyAperture(Aperture):
         aperture : `PixelAperture` object
             A `PixelAperture` object.
         """
-
         raise NotImplementedError('Needs to be implemented in a subclass.')
