@@ -52,7 +52,7 @@ def as_scalar(method):
 
 
 class SourceCatalog:
-    """
+    r"""
     Class to create a catalog of photometry and morphological properties
     for sources defined by a segmentation image.
 
@@ -181,13 +181,13 @@ class SourceCatalog:
     the quadrature sum of the pixel-wise total errors over the
     unmasked pixels within the source segment:
 
-    .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
-              \\sigma_{\\mathrm{tot}, i}^2}
+    .. math:: \Delta F = \sqrt{\sum_{i \in S}
+              \sigma_{\mathrm{tot}, i}^2}
 
-    where :math:`\\Delta F` is
+    where :math:`\Delta F` is
     `~photutils.segmentation.SourceCatalog.segment_fluxerr`,
     :math:`S` are the unmasked pixels in the source segment, and
-    :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
+    :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
 
     Custom errors for source segments can be calculated using
     the `~photutils.segmentation.SourceCatalog.error_ma` and
@@ -1258,10 +1258,10 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def segment_flux(self):
-        """
+        r"""
         The sum of the unmasked ``data`` values within the source segment.
 
-        .. math:: F = \\sum_{i \\in S} I_i
+        .. math:: F = \sum_{i \in S} I_i
 
         where :math:`F` is ``segment_flux``, :math:`I_i` is the
         background-subtracted ``data``, and :math:`S` are the unmasked
@@ -1282,18 +1282,18 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def segment_fluxerr(self):
-        """
+        r"""
         The uncertainty of `segment_flux` , propagated from the input
         ``error`` array.
 
         ``segment_fluxerr`` is the quadrature sum of the total errors
         over the unmasked pixels within the source segment:
 
-        .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
-                  \\sigma_{\\mathrm{tot}, i}^2}
+        .. math:: \Delta F = \sqrt{\sum_{i \in S}
+                  \sigma_{\mathrm{tot}, i}^2}
 
-        where :math:`\\Delta F` is the `segment_flux`,
-        :math:`\\sigma_{\\mathrm{tot, i}}` are the pixel-wise total
+        where :math:`\Delta F` is the `segment_flux`,
+        :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total
         errors (``error``), and :math:`S` are the unmasked pixels in the
         source segment.
 
@@ -1563,15 +1563,15 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def fwhm(self):
-        """
+        r"""
         Circularized FWHM of the 2D Gaussian function that has the same
         second-order central moments as the source.
 
         .. math::
 
-           \\mathrm{FWHM} & = 2 \\sqrt{2 \\ln(2)} \\sqrt{0.5 (a^2 + b^2)}
-           \\\\
-                          & = 2 \\sqrt{\\ln(2) \\ (a^2 + b^2)}
+           \mathrm{FWHM} & = 2 \sqrt{2 \ln(2)} \sqrt{0.5 (a^2 + b^2)}
+           \\
+                          & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
 
         where :math:`a` and :math:`b` are the 1-sigma lengths of the
         semimajor and semiminor axes, respectively.
@@ -1595,14 +1595,14 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def eccentricity(self):
-        """
+        r"""
         The eccentricity of the 2D Gaussian function that has the same
         second-order moments as the source.
 
         The eccentricity is the fraction of the distance along the
         semimajor axis at which the focus lies.
 
-        .. math:: e = \\sqrt{1 - \\frac{b^2}{a^2}}
+        .. math:: e = \sqrt{1 - \frac{b^2}{a^2}}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -1613,10 +1613,10 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def elongation(self):
-        """
+        r"""
         The ratio of the lengths of the semimajor and semiminor axes:
 
-        .. math:: \\mathrm{elongation} = \\frac{a}{b}
+        .. math:: \mathrm{elongation} = \frac{a}{b}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -1626,11 +1626,11 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def ellipticity(self):
-        """
+        r"""
         1.0 minus the ratio of the lengths of the semimajor and
         semiminor axes (or 1.0 minus the `elongation`):
 
-        .. math:: \\mathrm{ellipticity} = 1 - \\frac{b}{a}
+        .. math:: \mathrm{ellipticity} = 1 - \frac{b}{a}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -1640,27 +1640,27 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def covar_sigx2(self):
-        """
+        r"""
         The ``(0, 0)`` element of the `covariance` matrix, representing
-        :math:`\\sigma_x^2`, in units of pixel**2.
+        :math:`\sigma_x^2`, in units of pixel**2.
         """
         return self._covariance[:, 0, 0] * u.pix**2
 
     @lazyproperty
     @as_scalar
     def covar_sigy2(self):
-        """
+        r"""
         The ``(1, 1)`` element of the `covariance` matrix, representing
-        :math:`\\sigma_y^2`, in units of pixel**2.
+        :math:`\sigma_y^2`, in units of pixel**2.
         """
         return self._covariance[:, 1, 1] * u.pix**2
 
     @lazyproperty
     @as_scalar
     def covar_sigxy(self):
-        """
+        r"""
         The ``(0, 1)`` and ``(1, 0)`` elements of the `covariance`
-        matrix, representing :math:`\\sigma_x \\sigma_y`, in units of
+        matrix, representing :math:`\sigma_x \sigma_y`, in units of
         pixel**2.
         """
         return self._covariance[:, 0, 1] * u.pix**2
@@ -1668,20 +1668,20 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def cxx(self):
-        """
+        r"""
         `SourceExtractor`_'s CXX ellipse parameter in units of
         pixel**(-2).
 
         The ellipse is defined as
 
             .. math::
-                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
-                cyy (y - \\bar{y})^2 = R^2
+                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+                cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths). `SourceExtractor`_ reports that the
         isophotal limit of a source is well represented by :math:`R
-        \\approx 3`.
+        \approx 3`.
         """
         return ((np.cos(self.orientation) / self.semimajor_sigma)**2
                 + (np.sin(self.orientation) / self.semiminor_sigma)**2)
@@ -1689,20 +1689,20 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def cyy(self):
-        """
+        r"""
         `SourceExtractor`_'s CYY ellipse parameter in units of
         pixel**(-2).
 
         The ellipse is defined as
 
             .. math::
-                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
-                cyy (y - \\bar{y})^2 = R^2
+                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+                cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths). `SourceExtractor`_ reports that the
         isophotal limit of a source is well represented by :math:`R
-        \\approx 3`.
+        \approx 3`.
         """
         return ((np.sin(self.orientation) / self.semimajor_sigma)**2
                 + (np.cos(self.orientation) / self.semiminor_sigma)**2)
@@ -1710,20 +1710,20 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def cxy(self):
-        """
+        r"""
         `SourceExtractor`_'s CXY ellipse parameter in units of
         pixel**(-2).
 
         The ellipse is defined as
 
             .. math::
-                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
-                cyy (y - \\bar{y})^2 = R^2
+                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+                cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths). `SourceExtractor`_ reports that the
         isophotal limit of a source is well represented by :math:`R
-        \\approx 3`.
+        \approx 3`.
         """
         return (2. * np.cos(self.orientation) * np.sin(self.orientation)
                 * ((1. / self.semimajor_sigma**2)
@@ -1732,7 +1732,7 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def gini(self):
-        """
+        r"""
         The `Gini coefficient
         <https://en.wikipedia.org/wiki/Gini_coefficient>`_ of the
         source.
@@ -1743,10 +1743,10 @@ class SourceCatalog:
         as:
 
         .. math::
-            G = \\frac{1}{\\left | \\bar{x} \\right | n (n - 1)}
-            \\sum^{n}_{i} (2i - n - 1) \\left | x_i \\right |
+            G = \frac{1}{\left | \bar{x} \right | n (n - 1)}
+            \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
-        where :math:`\\bar{x}` is the mean over pixel values :math:`x_i`
+        where :math:`\bar{x}` is the mean over pixel values :math:`x_i`
         within the source segment.
 
         The Gini coefficient is a way of measuring the inequality in a
@@ -2001,13 +2001,13 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def kron_radius(self):
-        """
+        r"""
         The unscaled first-moment Kron radius.
 
         The unscaled first-moment Kron radius is given by:
 
         .. math::
-            k_r = \\frac{\\sum_{i \\in A} \\ r_i I_i}{\\sum_{i \\in A} I_i}
+            k_r = \frac{\sum_{i \in A} \ r_i I_i}{\sum_{i \in A} I_i}
 
         where the sum is over pixels in an elliptical aperture
         whose axes are defined by six times the `semimajor_sigma`
@@ -2017,11 +2017,11 @@ class SourceCatalog:
         given by:
 
         .. math::
-            r_i^2 = cxx (x_i - \\bar{x})^2 +
-                cxy (x_i - \\bar{x})(y_i - \\bar{y}) +
-                cyy (y_i - \\bar{y})^2
+            r_i^2 = cxx (x_i - \bar{x})^2 +
+                cxy (x_i - \bar{x})(y_i - \bar{y}) +
+                cyy (y_i - \bar{y})^2
 
-        where :math:`\\bar{x}` and :math:`\\bar{y}` represent
+        where :math:`\bar{x}` and :math:`\bar{y}` represent
         the source centroid. The scaling parameter of
         :attr:`~photutils.segmentation.SourceCatalog.kron_radius`
         is defined using the ``kron_params`` keyword. See the

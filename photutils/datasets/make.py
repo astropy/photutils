@@ -83,7 +83,7 @@ def apply_poisson_noise(data, seed=None):
 
 def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
                      seed=None):
-    """
+    r"""
     Make a noise image containing Gaussian or Poisson noise.
 
     Parameters
@@ -136,9 +136,9 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
         import matplotlib.pyplot as plt
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
         ax1.imshow(image1, origin='lower', interpolation='nearest')
-        ax1.set_title('Gaussian noise ($\\mu=0$, $\\sigma=5.$)')
+        ax1.set_title('Gaussian noise ($\mu=0$, $\sigma=5.$)')
         ax2.imshow(image2, origin='lower', interpolation='nearest')
-        ax2.set_title('Poisson noise ($\\mu=5$)')
+        ax2.set_title('Poisson noise ($\mu=5$)')
     """
     if mean is None:
         raise ValueError('"mean" must be input')
@@ -455,7 +455,7 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
 
 
 def make_gaussian_sources_image(shape, source_table, oversample=1):
-    """
+    r"""
     Make an image containing 2D Gaussian sources.
 
     Parameters
@@ -524,9 +524,9 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         ax1.set_title('Original image')
         ax2.imshow(image2, origin='lower', interpolation='nearest')
         ax2.set_title('Original image with added Gaussian noise'
-                      ' ($\\mu = 5, \\sigma = 5$)')
+                      ' ($\mu = 5, \sigma = 5$)')
         ax3.imshow(image3, origin='lower', interpolation='nearest')
-        ax3.set_title('Original image with added Poisson noise ($\\mu = 5$)')
+        ax3.set_title('Original image with added Poisson noise ($\mu = 5$)')
     """
     model = models.Gaussian2D(x_stddev=1, y_stddev=1)
 
@@ -550,7 +550,7 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
 
 
 def make_gaussian_prf_sources_image(shape, source_table):
-    """
+    r"""
     Make an image containing 2D Gaussian sources.
 
     Parameters
@@ -608,9 +608,9 @@ def make_gaussian_prf_sources_image(shape, source_table):
         ax1.set_title('Original image')
         ax2.imshow(image2, origin='lower', interpolation='nearest')
         ax2.set_title('Original image with added Gaussian noise'
-                      ' ($\\mu = 5, \\sigma = 5$)')
+                      ' ($\mu = 5, \sigma = 5$)')
         ax3.imshow(image3, origin='lower', interpolation='nearest')
-        ax3.set_title('Original image with added Poisson noise ($\\mu = 5$)')
+        ax3.set_title('Original image with added Poisson noise ($\mu = 5$)')
     """
     model = IntegratedGaussianPRF(sigma=1)
 

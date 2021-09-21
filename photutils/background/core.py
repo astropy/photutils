@@ -554,7 +554,7 @@ class StdBackgroundRMS(BackgroundRMSBase):
 
 
 class MADStdBackgroundRMS(BackgroundRMSBase):
-    """
+    r"""
     Class to calculate the background RMS in an array as using the
     `median absolute deviation (MAD)
     <https://en.wikipedia.org/wiki/Median_absolute_deviation>`_.
@@ -563,10 +563,10 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
 
     .. math::
 
-        \\sigma \\approx \\frac{{\\textrm{{MAD}}}}{{\\Phi^{{-1}}(3/4)}}
-            \\approx 1.4826 \\ \\textrm{{MAD}}
+        \sigma \approx \frac{{\textrm{{MAD}}}}{{\Phi^{{-1}}(3/4)}}
+            \approx 1.4826 \ \textrm{{MAD}}
 
-    where :math:`\\Phi^{{-1}}(P)` is the normal inverse cumulative
+    where :math:`\Phi^{{-1}}(P)` is the normal inverse cumulative
     distribution function evaluated at probability :math:`P = 3/4`.
 
     Parameters

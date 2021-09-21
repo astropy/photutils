@@ -47,7 +47,7 @@ DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
 
 @deprecated('1.1', alternative='`~photutils.segmentation.SourceCatalog`')
 class SourceProperties:
-    """
+    r"""
     Class to calculate photometry and morphological properties of a
     single labeled source (deprecated).
 
@@ -193,13 +193,13 @@ class SourceProperties:
     the quadrature sum of the pixel-wise total errors over the
     non-masked pixels within the source segment:
 
-    .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
-              \\sigma_{\\mathrm{tot}, i}^2}
+    .. math:: \Delta F = \sqrt{\sum_{i \in S}
+              \sigma_{\mathrm{tot}, i}^2}
 
-    where :math:`\\Delta F` is
+    where :math:`\Delta F` is
     `~photutils.segmentation.SourceProperties.source_sum_err`, :math:`S`
     are the non-masked pixels in the source segment, and
-    :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
+    :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
 
     Custom errors for source segments can be calculated using the
     `~photutils.segmentation.SourceProperties.error_cutout_ma` and
@@ -927,10 +927,10 @@ class SourceProperties:
 
     @lazyproperty
     def source_sum(self):
-        """
+        r"""
         The sum of the unmasked ``data`` values within the source segment.
 
-        .. math:: F = \\sum_{i \\in S} (I_i - B_i)
+        .. math:: F = \sum_{i \in S} (I_i - B_i)
 
         where :math:`F` is ``source_sum``, :math:`(I_i - B_i)` is the
         ``data``, and :math:`S` are the unmasked pixels in the source
@@ -947,7 +947,7 @@ class SourceProperties:
 
     @lazyproperty
     def source_sum_err(self):
-        """
+        r"""
         The uncertainty of
         `~photutils.segmentation.SourceProperties.source_sum`,
         propagated from the input ``error`` array.
@@ -955,11 +955,11 @@ class SourceProperties:
         ``source_sum_err`` is the quadrature sum of the total errors
         over the non-masked pixels within the source segment:
 
-        .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
-                  \\sigma_{\\mathrm{tot}, i}^2}
+        .. math:: \Delta F = \sqrt{\sum_{i \in S}
+                  \sigma_{\mathrm{tot}, i}^2}
 
-        where :math:`\\Delta F` is ``source_sum_err``,
-        :math:`\\sigma_{\\mathrm{tot, i}}` are the pixel-wise total
+        where :math:`\Delta F` is ``source_sum_err``,
+        :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total
         errors, and :math:`S` are the non-masked pixels in the source
         segment.
 
@@ -1186,14 +1186,14 @@ class SourceProperties:
 
     @lazyproperty
     def eccentricity(self):
-        """
+        r"""
         The eccentricity of the 2D Gaussian function that has the same
         second-order moments as the source.
 
         The eccentricity is the fraction of the distance along the
         semimajor axis at which the focus lies.
 
-        .. math:: e = \\sqrt{1 - \\frac{b^2}{a^2}}
+        .. math:: e = \sqrt{1 - \frac{b^2}{a^2}}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -1221,10 +1221,10 @@ class SourceProperties:
 
     @lazyproperty
     def elongation(self):
-        """
+        r"""
         The ratio of the lengths of the semimajor and semiminor axes:
 
-        .. math:: \\mathrm{elongation} = \\frac{a}{b}
+        .. math:: \mathrm{elongation} = \frac{a}{b}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -1236,11 +1236,11 @@ class SourceProperties:
 
     @lazyproperty
     def ellipticity(self):
-        """
+        r"""
         ``1`` minus the ratio of the lengths of the semimajor and
         semiminor axes (or ``1`` minus the `elongation`):
 
-        .. math:: \\mathrm{ellipticity} = 1 - \\frac{b}{a}
+        .. math:: \mathrm{ellipticity} = 1 - \frac{b}{a}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -1252,9 +1252,9 @@ class SourceProperties:
 
     @lazyproperty
     def covar_sigx2(self):
-        """
+        r"""
         The ``(0, 0)`` element of the `covariance` matrix, representing
-        :math:`\\sigma_x^2`, in units of pixel**2.
+        :math:`\sigma_x^2`, in units of pixel**2.
 
         Note that this is the same as `SourceExtractor`_'s X2 parameter.
         """
@@ -1262,9 +1262,9 @@ class SourceProperties:
 
     @lazyproperty
     def covar_sigy2(self):
-        """
+        r"""
         The ``(1, 1)`` element of the `covariance` matrix, representing
-        :math:`\\sigma_y^2`, in units of pixel**2.
+        :math:`\sigma_y^2`, in units of pixel**2.
 
         Note that this is the same as `SourceExtractor`_'s Y2 parameter.
         """
@@ -1272,9 +1272,9 @@ class SourceProperties:
 
     @lazyproperty
     def covar_sigxy(self):
-        """
+        r"""
         The ``(0, 1)`` and ``(1, 0)`` elements of the `covariance`
-        matrix, representing :math:`\\sigma_x \\sigma_y`, in units of
+        matrix, representing :math:`\sigma_x \sigma_y`, in units of
         pixel**2.
 
         Note that this is the same as `SourceExtractor`_'s XY parameter.
@@ -1283,60 +1283,60 @@ class SourceProperties:
 
     @lazyproperty
     def cxx(self):
-        """
+        r"""
         `SourceExtractor`_'s CXX ellipse parameter in units of
         pixel**(-2).
 
         The ellipse is defined as
 
             .. math::
-                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
-                cyy (y - \\bar{y})^2 = R^2
+                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+                cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths). `SourceExtractor`_ reports that the
         isophotal limit of a source is well represented by :math:`R
-        \\approx 3`.
+        \approx 3`.
         """
         return ((np.cos(self.orientation) / self.semimajor_axis_sigma)**2 +
                 (np.sin(self.orientation) / self.semiminor_axis_sigma)**2)
 
     @lazyproperty
     def cyy(self):
-        """
+        r"""
         `SourceExtractor`_'s CYY ellipse parameter in units of
         pixel**(-2).
 
         The ellipse is defined as
 
             .. math::
-                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
-                cyy (y - \\bar{y})^2 = R^2
+                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+                cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths). `SourceExtractor`_ reports that the
         isophotal limit of a source is well represented by :math:`R
-        \\approx 3`.
+        \approx 3`.
         """
         return ((np.sin(self.orientation) / self.semimajor_axis_sigma)**2 +
                 (np.cos(self.orientation) / self.semiminor_axis_sigma)**2)
 
     @lazyproperty
     def cxy(self):
-        """
+        r"""
         `SourceExtractor`_'s CXY ellipse parameter in units of
         pixel**(-2).
 
         The ellipse is defined as
 
             .. math::
-                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
-                cyy (y - \\bar{y})^2 = R^2
+                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+                cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths). `SourceExtractor`_ reports that the
         isophotal limit of a source is well represented by :math:`R
-        \\approx 3`.
+        \approx 3`.
         """
         return (2. * np.cos(self.orientation) * np.sin(self.orientation) *
                 ((1. / self.semimajor_axis_sigma**2) -
@@ -1471,13 +1471,13 @@ class SourceProperties:
 
     @lazyproperty
     def kron_radius(self):
-        """
+        r"""
         The unscaled first-moment Kron radius.
 
         The unscaled first-moment Kron radius is given by:
 
         .. math::
-            k_r = \\frac{\\sum_{i \\in A} \\ r_i I_i}{\\sum_{i \\in A} I_i}
+            k_r = \frac{\sum_{i \in A} \ r_i I_i}{\sum_{i \in A} I_i}
 
         where the sum is over all pixels in an elliptical aperture whose
         axes are defined by six times the ``semimajor_axis_sigma`` and
@@ -1487,11 +1487,11 @@ class SourceProperties:
         given by:
 
         .. math::
-            r_i^2 = cxx(x_i - \\bar{x})^2 +
-                cxx \\ cyy (x_i - \\bar{x})(y_i - \\bar{y}) +
-                cyy(y_i - \\bar{y})^2
+            r_i^2 = cxx(x_i - \bar{x})^2 +
+                cxx \ cyy (x_i - \bar{x})(y_i - \bar{y}) +
+                cyy(y_i - \bar{y})^2
 
-        where :math:`\\bar{x}` and :math:`\\bar{y}` represent the source
+        where :math:`\bar{x}` and :math:`\bar{y}` represent the source
         centroid.
 
         If either the numerator or denominator <= 0, then ``np.nan``
@@ -1609,7 +1609,7 @@ class SourceProperties:
 
     @lazyproperty
     def gini(self):
-        """
+        r"""
         The `Gini coefficient
         <https://en.wikipedia.org/wiki/Gini_coefficient>`_ of the
         source.
@@ -1620,10 +1620,10 @@ class SourceProperties:
         as:
 
         .. math::
-            G = \\frac{1}{\\left | \\bar{x} \\right | n (n - 1)}
-            \\sum^{n}_{i} (2i - n - 1) \\left | x_i \\right |
+            G = \frac{1}{\left | \bar{x} \right | n (n - 1)}
+            \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
-        where :math:`\\bar{x}` is the mean over all pixel values
+        where :math:`\bar{x}` is the mean over all pixel values
         :math:`x_i`.
 
         The Gini coefficient is a way of measuring the inequality in a
@@ -1648,7 +1648,7 @@ def source_properties(data, segment_img, error=None, mask=None,
                       background=None, filter_kernel=None, wcs=None,
                       labels=None, localbkg_width=None,
                       kron_params=('mask', 2.5, 0.0, 'exact', 5)):
-    """
+    r"""
     Calculate photometry and morphological properties of sources defined
     by a labeled segmentation image (deprecated).
 
@@ -1784,13 +1784,13 @@ def source_properties(data, segment_img, error=None, mask=None,
     the quadrature sum of the pixel-wise total errors over the
     non-masked pixels within the source segment:
 
-    .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
-              \\sigma_{\\mathrm{tot}, i}^2}
+    .. math:: \Delta F = \sqrt{\sum_{i \in S}
+              \sigma_{\mathrm{tot}, i}^2}
 
-    where :math:`\\Delta F` is
+    where :math:`\Delta F` is
     `~photutils.segmentation.SourceProperties.source_sum_err`, :math:`S`
     are the non-masked pixels in the source segment, and
-    :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
+    :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
 
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
 

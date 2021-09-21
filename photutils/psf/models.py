@@ -26,7 +26,7 @@ class NonNormalizable(AstropyWarning):
 
 
 class FittableImageModel(Fittable2DModel):
-    """
+    r"""
     A fittable 2D model of an image allowing for image intensity scaling
     and image translations.
 
@@ -72,7 +72,7 @@ class FittableImageModel(Fittable2DModel):
         is computed so that
 
         .. math::
-            N \\cdot C \\cdot \\sum\\limits_{i,j} D_{i,j} = 1,
+            N \cdot C \cdot \sum\limits_{i,j} D_{i,j} = 1,
 
         where *N* is the normalization constant, *C* is correction
         factor given by the parameter ``normalization_correction``, and
@@ -186,20 +186,20 @@ class FittableImageModel(Fittable2DModel):
         return np.sum(self._data, dtype=float)
 
     def _compute_normalization(self, normalize):
-        """
+        r"""
         Helper function that computes (corrected) normalization factor
         of the original image data. This quantity is computed as the
         inverse "raw image norm" (or total "flux" of model's image)
         corrected by the ``normalization_correction``:
 
         .. math::
-            N = 1/(\\Phi * C),
+            N = 1/(\Phi * C),
 
-        where :math:`\\Phi` is the "total flux" of model's image as
+        where :math:`\Phi` is the "total flux" of model's image as
         computed by `_compute_raw_image_norm` and *C* is the
-        normalization correction factor. :math:`\\Phi` is computed only
+        normalization correction factor. :math:`\Phi` is computed only
         once if it has not been previously computed. Otherwise, the
-        existing (stored) value of :math:`\\Phi` is not modified as
+        existing (stored) value of :math:`\Phi` is not modified as
         :py:class:`FittableImageModel` does not allow image data to be
         modified after the object is created.
 

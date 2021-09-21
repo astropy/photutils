@@ -272,7 +272,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
 
 class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
-    """
+    r"""
     A rectangular annulus aperture defined in pixel coordinates.
 
     The aperture has a single fixed size/shape, but it can have multiple
@@ -305,7 +305,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         If `None`, then the inner full height is calculated as:
 
             .. math:: h_{in} = h_{out}
-                \\left(\\frac{w_{in}}{w_{out}}\\right)
+                \left(\frac{w_{in}}{w_{out}}\right)
 
         For ``theta=0`` the height side is along the ``y`` axis.
 
@@ -516,7 +516,7 @@ class SkyRectangularAperture(SkyAperture):
 
 
 class SkyRectangularAnnulus(SkyAperture):
-    """
+    r"""
     A rectangular annulus aperture defined in sky coordinates.
 
     The aperture has a single fixed size/shape, but it can have multiple
@@ -548,7 +548,7 @@ class SkyRectangularAnnulus(SkyAperture):
         is calculated as:
 
             .. math:: h_{in} = h_{out}
-                \\left(\\frac{w_{in}}{w_{out}}\\right)
+                \left(\frac{w_{in}}{w_{out}}\right)
 
         For ``theta=0`` the height side is along the East-West axis.
 

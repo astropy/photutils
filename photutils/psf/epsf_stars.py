@@ -421,8 +421,8 @@ class EPSFStars:
     @lazyproperty
     def _max_shape(self):
         """
-        The maximum x and y shapes of all the `EPSFStar`\\s (including
-        linked stars).
+        The maximum x and y shapes of all the `EPSFStar` objects
+        (including linked stars).
         """
         return np.max([star.shape for star in self.all_stars],
                       axis=0)

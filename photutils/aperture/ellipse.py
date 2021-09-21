@@ -247,7 +247,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
 
 class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
-    """
+    r"""
     An elliptical annulus aperture defined in pixel coordinates.
 
     The aperture has a single fixed size/shape, but it can have multiple
@@ -278,7 +278,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         If `None`, then the the inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
-                \\left(\\frac{a_{in}}{a_{out}}\\right)
+                \left(\frac{a_{in}}{a_{out}}\right)
 
     theta : float, optional
         The rotation angle in radians of the ellipse semimajor axis from
@@ -478,7 +478,7 @@ class SkyEllipticalAperture(SkyAperture):
 
 
 class SkyEllipticalAnnulus(SkyAperture):
-    """
+    r"""
     An elliptical annulus aperture defined in sky coordinates.
 
     The aperture has a single fixed size/shape, but it can have multiple
@@ -504,7 +504,7 @@ class SkyEllipticalAnnulus(SkyAperture):
         If `None`, then the inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
-                \\left(\\frac{a_{in}}{a_{out}}\\right)
+                \left(\frac{a_{in}}{a_{out}}\right)
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the ellipse semimajor

@@ -23,7 +23,7 @@ def _least_squares_fit(optimize_func, parameters):
 
 
 def first_and_second_harmonic_function(phi, c):
-    """
+    r"""
     Compute the harmonic function value used to calculate the
     corrections for ellipse fitting.
 
@@ -32,8 +32,8 @@ def first_and_second_harmonic_function(phi, c):
 
     .. math::
 
-        f(phi) = c[0] + c[1]*\\sin(phi) + c[2]*\\cos(phi) +
-                 c[3]*\\sin(2*phi) + c[4]*\\cos(2*phi)
+        f(phi) = c[0] + c[1]*\sin(phi) + c[2]*\cos(phi) +
+                 c[3]*\sin(2*phi) + c[4]*\cos(2*phi)
 
     Parameters
     ----------
@@ -55,7 +55,7 @@ def first_and_second_harmonic_function(phi, c):
 
 
 def fit_first_and_second_harmonics(phi, intensities):
-    """
+    r"""
     Fit the first and second harmonic function values to a set of
     (angle, intensity) pairs.
 
@@ -63,8 +63,8 @@ def fit_first_and_second_harmonics(phi, intensities):
 
     .. math::
 
-        f(phi) = y0 + a1*\\sin(phi) + b1*\\cos(phi) + a2*\\sin(2*phi) +
-                 b2*\\cos(2*phi)
+        f(phi) = y0 + a1*\sin(phi) + b1*\cos(phi) + a2*\sin(2*phi) +
+                 b2*\cos(2*phi)
 
     Parameters
     ----------
@@ -93,7 +93,7 @@ def fit_first_and_second_harmonics(phi, intensities):
 
 
 def fit_upper_harmonic(phi, intensities, order):
-    """
+    r"""
     Fit upper harmonic function to a set of (angle, intensity) pairs.
 
     With ``order`` set to 3 or 4, the resulting amplitudes, divided by
@@ -103,7 +103,7 @@ def fit_upper_harmonic(phi, intensities, order):
     The harmonic function that is fit is:
 
     .. math::
-        y(phi, order) = y0 + An*\\sin(order*phi) + Bn*\\cos(order*phi)
+        y(phi, order) = y0 + An*\sin(order*phi) + Bn*\cos(order*phi)
 
     Parameters
     ----------

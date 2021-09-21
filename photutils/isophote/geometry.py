@@ -63,7 +63,7 @@ def _area(sma, eps, phi, r):
 
 
 class EllipseGeometry:
-    """
+    r"""
     Container class to store parameters for the geometry of an ellipse.
 
     Parameters that describe the relationship of a given ellipse with
@@ -91,7 +91,7 @@ class EllipseGeometry:
         The position angle (in radians) of the semimajor axis in
         relation to the positive x axis of the image array (rotating
         towards the positive y axis). Position angles are defined in the
-        range :math:`0 < PA <= \\pi`. Avoid using as starting position
+        range :math:`0 < PA <= \pi`. Avoid using as starting position
         angle of 0., since the fit algorithm may not work properly.
         When the ellipses are such that position angles are near either
         extreme of the range, noise can make the solution jump back and
@@ -396,7 +396,7 @@ class EllipseGeometry:
         return self._phi1, self._phi2
 
     def to_polar(self, x, y):
-        """
+        r"""
         Return the radius and polar angle in the ellipse coordinate
         system given (x, y) pixel image coordinates.
 
@@ -404,9 +404,9 @@ class EllipseGeometry:
         position angle (PA) and polar angle (phi):
 
         .. math::
-            -\\pi < PA < \\pi
+            -\pi < PA < \pi
 
-            0 < phi < 2 \\pi
+            0 < phi < 2 \pi
 
         Note that radius can be anything.  The solution is not tied to
         the semimajor axis length, but to the center position and tilt

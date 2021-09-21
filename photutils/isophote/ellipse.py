@@ -20,7 +20,7 @@ __all__ = ['Ellipse']
 
 
 class Ellipse:
-    """
+    r"""
     Class to fit elliptical isophotes to a galaxy image.
 
     The isophotes in the image are measured using an iterative method
@@ -66,8 +66,8 @@ class Ellipse:
     fitting to the function:
 
     .. math::
-        y  =  y0 + (A1 * \\sin(E)) + (B1 * \\cos(E)) + (A2 * \\sin(2 * E))
-        + (B2 * \\cos(2 * E))
+        y  =  y0 + (A1 * \sin(E)) + (B1 * \cos(E)) + (A2 * \sin(2 * E))
+        + (B2 * \cos(2 * E))
 
     Each one of the harmonic amplitudes (A1, B1, A2, and B2) is related
     to a specific ellipse geometric parameter in the sense that it
