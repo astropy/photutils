@@ -17,7 +17,6 @@ def _validate_inputs(data, error):
     Used to parse inputs to `~photutils.aperture.aperture_photometry`
     and `~photutils.aperture.PixelAperture.do_photometry`.
     """
-
     data = np.asanyarray(data)
     if data.ndim != 2:
         raise ValueError('data must be a 2D array.')
@@ -41,7 +40,6 @@ def _handle_units(data, error):
     Used to parse inputs to `~photutils.aperture.aperture_photometry`
     and `~photutils.aperture.PixelAperture.do_photometry`.
     """
-
     # check Quantity inputs
     inputs = (data, error)
     has_unit = [hasattr(x, 'unit') for x in inputs if x is not None]
@@ -95,7 +93,6 @@ def _prepare_photometry_data(data, error, mask):
         The pixel-wise Gaussian 1-sigma variance of the input ``data``,
         where masked values have been set to zero.
     """
-
     if error is not None:
         variance = error ** 2
     else:

@@ -129,7 +129,6 @@ class EllipseFitter:
         >>> fitter = EllipseFitter(sample)
         >>> isophote = fitter.fit()
         """
-
         sample = self._sample
 
         # this flag signals that limiting gradient error (`maxgerr`)

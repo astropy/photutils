@@ -185,7 +185,6 @@ class Isophote:
         ellipse radius vector, and integrals are updated if the pixel
         distance is smaller.
         """
-
         # Compute limits of square array that encloses circle.
         sma = self.sample.geometry.sma
         x0 = self.sample.geometry.x0
@@ -266,7 +265,6 @@ class Isophote:
         matrix of the four harmonic coefficients for harmonics n=1 and
         n=2.
         """
-
         try:
             coeffs, covariance = fit_first_and_second_harmonics(
                 self.sample.values[0], self.sample.values[2])
@@ -314,7 +312,6 @@ class Isophote:
         isophote : `~photutils.isophote.Isophote` instance
             The isophote from which to take the geometry information.
         """
-
         self.sample.geometry.eps = isophote.sample.geometry.eps
         self.sample.geometry.pa = isophote.sample.geometry.pa
         self.sample.geometry.x0 = isophote.sample.geometry.x0
@@ -330,7 +327,6 @@ class Isophote:
         x, y : 1D `~numpy.ndarray`
             The x and y coordinates as 1D arrays.
         """
-
         return self.sample.coordinates()
 
     def to_table(self):
@@ -344,7 +340,6 @@ class Isophote:
             An astropy `~astropy.table.QTable` containing the main
             isophote parameters.
         """
-
         return _isophote_list_to_table([self])
 
 
@@ -483,7 +478,6 @@ class IsophoteList:
         isophote : `~photutils.isophote.Isophote` instance
             The isophote with the closest semimajor axis value.
         """
-
         index = (np.abs(self.sma - sma)).argmin()
         return self._list[index]
 
@@ -614,7 +608,6 @@ class IsophoteList:
     @property
     def niter(self):
         """The number of iterations used to fit the isophote."""
-
         return self._collect_as_array('niter')
 
     @property

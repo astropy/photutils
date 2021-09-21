@@ -40,7 +40,6 @@ class ApertureAttribute:
 
         An exception is raised if the value is invalid.
         """
-
         raise NotImplementedError
 
 

@@ -72,7 +72,6 @@ def apply_poisson_noise(data, seed=None):
         ax2.imshow(data2, origin='lower', interpolation='nearest')
         ax2.set_title('Original image with Poisson noise applied')
     """
-
     data = np.asanyarray(data)
     if np.any(data < 0):
         raise ValueError('data must not contain any negative values')
@@ -141,7 +140,6 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
         ax2.imshow(image2, origin='lower', interpolation='nearest')
         ax2.set_title('Poisson noise ($\\mu=5$)')
     """
-
     if mean is None:
         raise ValueError('"mean" must be input')
 
@@ -227,7 +225,6 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937
     906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781
     """
-
     rng = np.random.default_rng(seed)
 
     meta = {'version': _get_version_info()}
@@ -341,7 +338,6 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
     amplitude column.  The flux column will be ignored when generating
     an image of the models using :func:`make_gaussian_sources_image`.
     """
-
     sources = make_random_models_table(n_sources, param_ranges,
                                        seed=seed)
 
@@ -426,7 +422,6 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
         data = make_model_sources_image(shape, model, sources)
         plt.imshow(data)
     """
-
     image = np.zeros(shape, dtype=float)
     yidx, xidx = np.indices(shape)
 
@@ -533,7 +528,6 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         ax3.imshow(image3, origin='lower', interpolation='nearest')
         ax3.set_title('Original image with added Poisson noise ($\\mu = 5$)')
     """
-
     model = models.Gaussian2D(x_stddev=1, y_stddev=1)
 
     if 'x_stddev' in source_table.colnames:
@@ -618,7 +612,6 @@ def make_gaussian_prf_sources_image(shape, source_table):
         ax3.imshow(image3, origin='lower', interpolation='nearest')
         ax3.set_title('Original image with added Poisson noise ($\\mu = 5$)')
     """
-
     model = IntegratedGaussianPRF(sigma=1)
 
     if 'sigma' in source_table.colnames:
@@ -670,7 +663,6 @@ def make_4gaussians_image(noise=True):
         image = make_4gaussians_image()
         plt.imshow(image, origin='lower', interpolation='nearest')
     """
-
     table = QTable()
     table['amplitude'] = [50, 70, 150, 210]
     table['x_mean'] = [160, 25, 150, 90]
@@ -723,7 +715,6 @@ def make_100gaussians_image(noise=True):
         image = make_100gaussians_image()
         plt.imshow(image, origin='lower', interpolation='nearest')
     """
-
     n_sources = 100
     flux_range = [500, 1000]
     xmean_range = [0, 500]
@@ -798,7 +789,6 @@ def make_wcs(shape, galactic=False):
     >>> print(wcs.wcs.crval)  # doctest: +FLOAT_CMP
     [197.8925      -1.36555556]
     """
-
     wcs = WCS(naxis=2)
     rho = np.pi / 3.
     scale = 0.1 / 3600.  # 0.1 arcsec/pixel in deg/pix
@@ -861,7 +851,6 @@ def make_gwcs(shape, galactic=False):
     detector linear_transform
         icrs             None
     """
-
     from gwcs import wcs as gwcs_wcs
     from gwcs import coordinate_frames as cf
 
@@ -933,7 +922,6 @@ def make_imagehdu(data, wcs=None):
     >>> print(hdu.data.shape)
     (100, 100)
     """
-
     data = np.asanyarray(data)
     if data.ndim != 2:
         raise ValueError('data must be a 2D array')

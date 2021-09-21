@@ -196,7 +196,6 @@ class Ellipse:
         threshold : float
             The new threshold value to use.
         """
-
         self._geometry.centerer_threshold = threshold
 
     def fit_image(self, sma0=None, minsma=0., maxsma=None, step=0.1,
@@ -374,7 +373,6 @@ class Ellipse:
             A list-like object of `~photutils.isophote.Isophote`
             instances, sorted by increasing semimajor axis length.
         """
-
         # multiple fitted isophotes will be stored here
         isophote_list = []
 
@@ -625,7 +623,6 @@ class Ellipse:
             The fitted isophote. The fitted isophote is also appended to
             the input list input to the ``isophote_list`` parameter.
         """
-
         geometry = self._geometry
 
         # if available, geometry from last fitted isophote will be

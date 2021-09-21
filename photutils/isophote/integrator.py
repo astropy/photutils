@@ -71,7 +71,6 @@ class _Integrator:
         phi : float
             The polar angle of radius vector.
         """
-
         raise NotImplementedError
 
     def _reset(self):
@@ -81,7 +80,6 @@ class _Integrator:
         This method is for internal use and shouldn't
         be used by external callers.
         """
-
         self._angles = []
         self._radii = []
         self._intensities = []
@@ -104,7 +102,6 @@ class _Integrator:
         result : float
             The polar angle step.
         """
-
         raise NotImplementedError
 
     def get_sector_area(self):
@@ -122,7 +119,6 @@ class _Integrator:
         result : float
             The sector area.
         """
-
         raise NotImplementedError
 
     def is_area(self):
@@ -143,7 +139,6 @@ class _Integrator:
         result : boolean
             True if this is an area integrator, False otherwise.
         """
-
         raise NotImplementedError
 
 

@@ -50,7 +50,6 @@ def get_path(filename, location='local', cache=True, show_progress=False):
     >>> from photutils.datasets import get_path
     >>> hdulist = fits.open(get_path('fermi_counts.fits.gz'))
     """
-
     datasets_url = ('https://github.com/astropy/photutils-datasets/raw/'
                     f'main/data/{filename}')
 
@@ -104,7 +103,6 @@ def load_spitzer_image(show_progress=False):  # pragma: no cover
         hdu = load_spitzer_image()
         plt.imshow(hdu.data, origin='lower', vmax=50)
     """
-
     path = get_path('spitzer_example_image.fits', location='remote',
                     show_progress=show_progress)
     hdu = fits.open(path)[0]
@@ -147,7 +145,6 @@ def load_spitzer_catalog(show_progress=False):  # pragma: no cover
         plt.xlim(18.39, 18.05)
         plt.ylim(0.13, 0.30)
     """
-
     path = get_path('spitzer_example_catalog.xml', location='remote',
                     show_progress=show_progress)
     table = Table.read(path)
@@ -208,7 +205,6 @@ def load_irac_psf(channel, show_progress=False):  # pragma: no cover
         plt.tight_layout()
         plt.show()
     """
-
     channel = int(channel)
     if channel < 1 or channel > 4:
         raise ValueError('channel must be 1, 2, 3, or 4')
@@ -244,7 +240,6 @@ def load_fermi_image(show_progress=False):
         hdu = load_fermi_image()
         plt.imshow(hdu.data, vmax=10, origin='lower', interpolation='nearest')
     """
-
     path = get_path('fermi_counts.fits.gz', location='local',
                     show_progress=show_progress)
     hdu = fits.open(path)[1]
@@ -282,7 +277,6 @@ def load_star_image(show_progress=False):  # pragma: no cover
         hdu = load_star_image()
         plt.imshow(hdu.data, origin='lower', interpolation='nearest')
     """
-
     path = get_path('M6707HH.fits', location='remote',
                     show_progress=show_progress)
     hdu = fits.open(path)[0]
@@ -316,7 +310,6 @@ def load_simulated_hst_star_image(show_progress=False):  # pragma: no cover
         hdu = load_simulated_hst_star_image()
         plt.imshow(hdu.data, origin='lower', interpolation='nearest')
     """
-
     path = get_path('hst_wfc3ir_f160w_simulated_starfield.fits',
                     location='photutils-datasets',
                     show_progress=show_progress)

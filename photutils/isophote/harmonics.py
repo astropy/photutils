@@ -50,7 +50,6 @@ def first_and_second_harmonic_function(phi, c):
     result : float or `~numpy.ndarray`
         The function value(s) at the given input angle(s).
     """
-
     return (c[0] + c[1]*np.sin(phi) + c[2]*np.cos(phi) + c[3]*np.sin(2*phi) +
             c[4]*np.cos(2*phi))
 
@@ -83,7 +82,6 @@ def fit_first_and_second_harmonics(phi, intensities):
     y0, a1, b1, a2, b2 : float
         The fitted harmonic coefficient values.
     """
-
     a1 = b1 = a2 = b2 = 1.
 
     def optimize_func(x):
@@ -125,7 +123,6 @@ def fit_upper_harmonic(phi, intensities, order):
     y0, An, Bn : float
         The fitted harmonic values.
     """
-
     an = bn = 1.
 
     def optimize_func(x):

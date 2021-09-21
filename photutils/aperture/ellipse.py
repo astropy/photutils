@@ -71,7 +71,6 @@ class EllipticalMaskMixin:
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-
         use_exact, subpixels = self._translate_mask_mode(method, subpixels)
 
         if hasattr(self, 'a'):
@@ -110,7 +109,6 @@ class EllipticalMaskMixin:
         """
         Calculate half of the bounding box extents of an ellipse.
         """
-
         cos_theta = np.cos(theta)
         sin_theta = np.sin(theta)
         semimajor_x = semimajor_axis * cos_theta
@@ -211,7 +209,6 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
-
         import matplotlib.patches as mpatches
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
@@ -246,7 +243,6 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         aperture : `SkyEllipticalAperture` object
             A `SkyEllipticalAperture` object.
         """
-
         return SkyEllipticalAperture(**self._to_sky_params(wcs))
 
 
@@ -367,7 +363,6 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
-
         import matplotlib.patches as mpatches
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
@@ -406,7 +401,6 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         aperture : `SkyEllipticalAnnulus` object
             A `SkyEllipticalAnnulus` object.
         """
-
         return SkyEllipticalAnnulus(**self._to_sky_params(wcs))
 
 
@@ -480,7 +474,6 @@ class SkyEllipticalAperture(SkyAperture):
         aperture : `EllipticalAperture` object
             An `EllipticalAperture` object.
         """
-
         return EllipticalAperture(**self._to_pixel_params(wcs))
 
 
@@ -583,5 +576,4 @@ class SkyEllipticalAnnulus(SkyAperture):
         aperture : `EllipticalAnnulus` object
             An `EllipticalAnnulus` object.
         """
-
         return EllipticalAnnulus(**self._to_pixel_params(wcs))

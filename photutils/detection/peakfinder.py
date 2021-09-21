@@ -107,7 +107,6 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         will also contain the centroid position.  If no peaks are found
         then `None` is returned.
     """
-
     from scipy.ndimage import maximum_filter
 
     data = np.asanyarray(data)

@@ -55,7 +55,6 @@ def _area(sma, eps, phi, r):
     """
     Compute elliptical sector area.
     """
-
     aux = r * math.cos(phi) / sma
     signal = aux / abs(aux)
     if abs(aux) >= 1.:
@@ -199,7 +198,6 @@ class EllipseGeometry:
         >> 1; meaning no location inside the search window will achieve
         that signal-to-noise ratio).
         """
-
         self._centerer_mask_half_size = len(IN_MASK) / 2
         self.centerer_threshold = threshold
 
@@ -286,7 +284,6 @@ class EllipseGeometry:
         radius : float
             The polar radius (pixels).
         """
-
         return (self.sma * (1. - self.eps) /
                 np.sqrt(((1. - self.eps) * np.cos(angle))**2 +
                         (np.sin(angle))**2))
@@ -314,7 +311,6 @@ class EllipseGeometry:
         x, y : 1D `~numpy.ndarray`
             The x and y coordinates of each vertex as 1D arrays.
         """
-
         # These polar radii bound the region between the inner
         # and outer ellipses that define the sector.
         sma1, sma2 = self.bounding_ellipses()
@@ -373,7 +369,6 @@ class EllipseGeometry:
             The smaller and larger values of semimajor axis length that
             define the annulus bounding ellipses.
         """
-
         if self.linear_growth:
             a1 = self.sma - self.astep / 2.
             a2 = self.sma + self.astep / 2.
@@ -398,7 +393,6 @@ class EllipseGeometry:
             The smaller and larger values of polar angle that bound the
             current sector.
         """
-
         return self._phi1, self._phi2
 
     def to_polar(self, x, y):
@@ -443,7 +437,6 @@ class EllipseGeometry:
             return self._to_polar_vectorized(x, y)
 
     def _to_polar_scalar(self, x, y):
-
         x1 = x - self.x0
         y1 = y - self.y0
 
@@ -472,7 +465,6 @@ class EllipseGeometry:
         return radius, angle
 
     def _to_polar_vectorized(self, x, y):
-
         x1 = np.atleast_2d(x) - self.x0
         y1 = np.atleast_2d(y) - self.y0
 
@@ -518,7 +510,6 @@ class EllipseGeometry:
         sma : float
             The new semimajor axis length.
         """
-
         if self.linear_growth:
             sma = self.sma + step
         else:
@@ -544,7 +535,6 @@ class EllipseGeometry:
             :meth:`~photutils.isophote.EllipseGeometry.update_sma`
             method.
         """
-
         if self.linear_growth:
             sma = self.sma - step
             step = -step

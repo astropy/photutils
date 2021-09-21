@@ -51,7 +51,6 @@ def make_test_image(nx=512, ny=512, x0=None, y0=None,
     data : 2D `~numpy.ndarray`
         The resulting simulated image.
     """
-
     if x0 is None or y0 is None:
         xcen = nx / 2
         ycen = ny / 2
@@ -98,7 +97,6 @@ def make_fits_test_image(name, nx=512, ny=512, x0=None, y0=None,
                          seed=0)
     make_fits_test_image('synth.fits', pa=pa, seed=0)
     """
-
     if not name.endswith('.fits'):
         name += '.fits'
 
