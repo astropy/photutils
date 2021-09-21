@@ -15,10 +15,20 @@ __all__ = ['ApertureAttribute', 'PixelPositions', 'SkyCoordPositions',
 class ApertureAttribute:
     """
     Base descriptor class for aperture attribute validation.
+
+    Parameters
+    ----------
+    name : str
+        The name of the attribute.
+
+    description : str, optional
+        The description of the attribute, which will be used as the
+        attribute documentation.
     """
 
-    def __init__(self, name):
+    def __init__(self, name, description=''):
         self.name = name
+        self.__doc__ = description
 
     def __get__(self, instance, owner):
         if instance is None:

@@ -199,7 +199,7 @@ class PixelAperture(Aperture):
     @property
     def area(self):
         """
-        Return the exact area of the aperture shape.
+        The exact area of the aperture shape.
 
         Returns
         -------
