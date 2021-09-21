@@ -11,7 +11,7 @@ New Features
 
 - ``photutils.aperture``
 
-  - Add ``mask`` keyword to the ``area_overlap`` method. [#1241]
+  - Added a ``mask`` keyword to the ``area_overlap`` method. [#1241]
 
 - ``photutils.background``
 
@@ -37,8 +37,8 @@ New Features
 
 - ``photutils.detection``
 
-    - Added a ``xycoords`` keyword to ``DAOStarFinder`` and
-      ``IRAFStarFinder``. [#1248]
+  - Added a ``xycoords`` keyword to ``DAOStarFinder`` and
+    ``IRAFStarFinder``. [#1248]
 
 Bug Fixes
 ^^^^^^^^^
