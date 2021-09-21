@@ -787,7 +787,7 @@ class EPSFBuilder:
 
     def build_epsf(self, stars, init_epsf=None):
         """
-        Iteratively build an ePSF from star cutouts.
+        Build iteratively an ePSF from star cutouts.
 
         Parameters
         ----------

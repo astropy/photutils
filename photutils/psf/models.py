@@ -266,7 +266,7 @@ class FittableImageModel(Fittable2DModel):
 
     @property
     def data(self):
-        """ Get original image data. """
+        """Get original image data."""
         return self._data
 
     @property
@@ -276,7 +276,7 @@ class FittableImageModel(Fittable2DModel):
 
     @property
     def normalization_constant(self):
-        """ Get normalization constant. """
+        """Get normalization constant."""
         return self._normalization_constant
 
     @property
@@ -909,7 +909,7 @@ class GriddedPSFModel(Fittable2DModel):
 
     def _compute_local_model(self, x_0, y_0):
         """
-        Returns `FittableImageModel` for interpolated PSF at some (x_0, y_0)
+        Return `FittableImageModel` for interpolated PSF at some (x_0, y_0).
         """
         # NOTE: this is needed because the PSF photometry routines input
         # length-1 values instead of scalars.  TODO: fix the photometry

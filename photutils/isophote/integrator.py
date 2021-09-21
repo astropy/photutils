@@ -75,7 +75,7 @@ class _Integrator:
 
     def _reset(self):
         """
-        Starts the results lists anew.
+        Reset the lists containing results.
 
         This method is for internal use and shouldn't
         be used by external callers.
@@ -91,8 +91,8 @@ class _Integrator:
 
     def get_polar_angle_step(self):
         """
-        Returns the polar angle step used to walk over the
-        elliptical path.
+        Return the polar angle step used to walk over the elliptical
+        path.
 
         The polar angle step is defined by the actual integrator
         subclass.
@@ -106,7 +106,7 @@ class _Integrator:
 
     def get_sector_area(self):
         """
-        Returns the area of elliptical sectors where the integration
+        Return the area of elliptical sectors where the integration
         takes place.
 
         This area is defined and managed by the actual integrator
@@ -123,7 +123,7 @@ class _Integrator:
 
     def is_area(self):
         """
-        Returns the type of the integrator.
+        Return the type of the integrator.
 
         An area integrator gets it's value from operating over a (generally
         variable) number of pixels that define a finite area that  lays

@@ -14,6 +14,7 @@ class StarFinderBase(metaclass=abc.ABCMeta):
     """
     Abstract base class for star finders.
     """
+
     def __call__(self, data, mask=None):
         return self.find_stars(data, mask=mask)
 

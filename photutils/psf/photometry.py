@@ -182,7 +182,7 @@ class BasicPSFPhotometry:
 
     def get_residual_image(self):
         """
-        Returns an image that is the result of the subtraction between
+        Return an image that is the result of the subtraction between
         the original image and the fitted sources.
 
         Returns
@@ -194,7 +194,7 @@ class BasicPSFPhotometry:
 
     def set_aperture_radius(self):
         """
-        Sets the fallback aperture radius for initial flux calculations
+        Set the fallback aperture radius for initial flux calculations
         in cases where no flux is supplied for a given star.
         """
         if hasattr(self.psf_model, 'fwhm'):
@@ -222,7 +222,7 @@ class BasicPSFPhotometry:
 
     def __call__(self, image, init_guesses=None):
         """
-        Performs PSF photometry. See `do_photometry` for more details
+        Perform PSF photometry. See `do_photometry` for more details
         including the `__call__` signature.
         """
         return self.do_photometry(image, init_guesses)

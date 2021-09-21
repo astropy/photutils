@@ -38,8 +38,7 @@ DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',
 
 def as_scalar(method):
     """
-    Decorator to return a scalar value from a method if the class is
-    scalar.
+    Return a scalar value from a method if the class is scalar.
     """
     @functools.wraps(method)
     def _decorator(*args, **kwargs):
@@ -200,6 +199,7 @@ class SourceCatalog:
 
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
+
     def __init__(self, data, segment_img, *, error=None, mask=None,
                  kernel=None, background=None, wcs=None, localbkg_width=0,
                  apermask_method='correct', kron_params=(2.5, 0.0),
