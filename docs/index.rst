@@ -46,7 +46,7 @@ Getting Started
     :maxdepth: 1
 
     install.rst
-    whats_new/1.1.rst
+    whats_new/index.rst
     overview.rst
     pixel_conventions.rst
     getting_started.rst
