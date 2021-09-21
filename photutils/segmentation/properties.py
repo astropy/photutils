@@ -326,7 +326,6 @@ class SourceProperties:
         segment for this label.  Pixels from other source segments
         within the rectangular cutout are `True`.
         """
-
         return self._segment_img.data[self.slices] != self.label
 
     @lazyproperty
@@ -334,7 +333,6 @@ class SourceProperties:
         """
         Boolean mask for the user-input mask.
         """
-
         if self._mask is not None:
             return self._mask[self.slices]
         else:
@@ -345,7 +343,6 @@ class SourceProperties:
         """
         Boolean mask for non-finite (NaN and +/- inf) ``data`` values.
         """
-
         return ~np.isfinite(self.data_cutout)
 
     @lazyproperty
@@ -357,7 +354,6 @@ class SourceProperties:
         This mask is applied to ``data``, ``error``, and ``background``
         inputs when calculating properties.
         """
-
         mask = self._segment_mask | self._data_mask
 
         if self._input_mask is not None:
@@ -371,7 +367,6 @@ class SourceProperties:
         `True` if all pixels within the source segment are masked,
         otherwise `False`.
         """
-
         return np.all(self._total_mask)
 
     @lazyproperty
@@ -389,7 +384,6 @@ class SourceProperties:
         ``min_value``, ``max_value``, ``minval_pos``, ``maxval_pos``,
         etc.
         """
-
         if isinstance(self.data_cutout, u.Quantity):
             cutout = self.data_cutout.value
         else:
@@ -416,7 +410,6 @@ class SourceProperties:
 
         This array is used for moment-based properties.
         """
-
         filt_data = self._filtered_data[self.slices]
         if isinstance(filt_data, u.Quantity):
             filt_data = filt_data.value
@@ -462,7 +455,6 @@ class SourceProperties:
         result : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
             The 2D cutout array.
         """
-
         data = np.asanyarray(data)
         if data.shape != self._segment_img.shape:
             raise ValueError('data must have the same shape as the '
@@ -501,7 +493,6 @@ class SourceProperties:
         table : `~astropy.table.QTable`
             A single-row table of properties of the source.
         """
-
         return _properties_table(self, columns=columns,
                                  exclude_columns=exclude_columns)
 
@@ -511,7 +502,6 @@ class SourceProperties:
         A 2D `~numpy.ndarray` cutout from the data using the minimal
         bounding box of the source segment.
         """
-
         return self._data[self.slices]
 
     @lazyproperty
@@ -523,7 +513,6 @@ class SourceProperties:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and +/- inf).
         """
-
         return np.ma.masked_array(self._data[self.slices],
                                   mask=self._total_mask)
 
@@ -539,7 +528,6 @@ class SourceProperties:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and +/- inf).
         """
-
         return np.ma.masked_array(self._filtered_data[self.slices],
                                   mask=self._total_mask)
 
@@ -555,7 +543,6 @@ class SourceProperties:
 
         If ``error`` is `None`, then ``error_cutout_ma`` is also `None`.
         """
-
         if self._error is None:
             return None
         else:
@@ -575,7 +562,6 @@ class SourceProperties:
         If ``background`` is `None`, then ``background_cutout_ma`` is
         also `None`.
         """
-
         if self._background is None:
             return None
         else:
@@ -596,7 +582,6 @@ class SourceProperties:
         This array is used for ``source_sum``, ``area``, ``min_value``,
         ``max_value``, ``minval_pos``, ``maxval_pos``, etc.
         """
-
         return self.data_cutout_ma.compressed()
 
     @lazyproperty
@@ -623,7 +608,6 @@ class SourceProperties:
         If all ``data`` pixels are masked, a tuple of two empty arrays
         will be returned.
         """
-
         yindices, xindices = np.nonzero(self.data_cutout_ma)
         return (yindices + self.slices[0].start,
                 xindices + self.slices[1].start)
@@ -631,7 +615,6 @@ class SourceProperties:
     @lazyproperty
     def moments(self):
         """Spatial moments up to 3rd order of the source."""
-
         return _moments(self._filtered_data_zeroed, order=3)
 
     @lazyproperty
@@ -640,7 +623,6 @@ class SourceProperties:
         Central moments (translation invariant) of the source up to 3rd
         order.
         """
-
         ycentroid, xcentroid = self.cutout_centroid.value
         return _moments_central(self._filtered_data_zeroed,
                                 center=(xcentroid, ycentroid), order=3)
@@ -651,7 +633,6 @@ class SourceProperties:
         The source identification number corresponding to the object
         label in the segmentation image.
         """
-
         return self.label
 
     @lazyproperty
@@ -660,7 +641,6 @@ class SourceProperties:
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of
         the centroid within the source segment.
         """
-
         moments = self.moments
         if moments[0, 0] != 0:
             ycentroid = moments[1, 0] / moments[0, 0]
@@ -675,7 +655,6 @@ class SourceProperties:
         The ``(y, x)`` coordinate of the centroid within the source
         segment.
         """
-
         ycen, xcen = self.cutout_centroid.value
         return (ycen + self.slices[0].start,
                 xcen + self.slices[1].start) * u.pix
@@ -685,7 +664,6 @@ class SourceProperties:
         """
         The ``x`` coordinate of the centroid within the source segment.
         """
-
         return self.centroid[1]
 
     @lazyproperty
@@ -693,7 +671,6 @@ class SourceProperties:
         """
         The ``y`` coordinate of the centroid within the source segment.
         """
-
         return self.centroid[0]
 
     @lazyproperty
@@ -704,7 +681,6 @@ class SourceProperties:
 
         The output coordinate frame is the same as the input WCS.
         """
-
         if self._wcs is None:
             return None
         return self._wcs.pixel_to_world(self.xcentroid.value,
@@ -717,7 +693,6 @@ class SourceProperties:
         System (ICRS) frame, of the centroid within the source segment,
         returned as a `~astropy.coordinates.SkyCoord` object.
         """
-
         if self._wcs is None:
             return None
         else:
@@ -729,7 +704,6 @@ class SourceProperties:
         The `~photutils.aperture.BoundingBox` of the minimal rectangular
         region containing the source segment.
         """
-
         return BoundingBox(self.slices[1].start, self.slices[1].stop,
                            self.slices[0].start, self.slices[0].stop)
 
@@ -739,7 +713,6 @@ class SourceProperties:
         The minimum ``x`` pixel location within the minimal bounding box
         containing the source segment.
         """
-
         return self.bbox.ixmin * u.pix
 
     @lazyproperty
@@ -750,7 +723,6 @@ class SourceProperties:
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
-
         return (self.bbox.ixmax - 1) * u.pix
 
     @lazyproperty
@@ -759,7 +731,6 @@ class SourceProperties:
         The minimum ``y`` pixel location within the minimal bounding box
         containing the source segment.
         """
-
         return self.bbox.iymin * u.pix
 
     @lazyproperty
@@ -770,7 +741,6 @@ class SourceProperties:
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
-
         return (self.bbox.iymax - 1) * u.pix
 
     @lazyproperty
@@ -783,7 +753,6 @@ class SourceProperties:
         The bounding box encloses all of the source segment pixels in
         their entirety, thus the vertices are at the pixel *corners*.
         """
-
         return _calc_sky_bbox_corner(self.bbox, 'll', self._wcs)
 
     @lazyproperty
@@ -796,7 +765,6 @@ class SourceProperties:
         The bounding box encloses all of the source segment pixels in
         their entirety, thus the vertices are at the pixel *corners*.
         """
-
         return _calc_sky_bbox_corner(self.bbox, 'ul', self._wcs)
 
     @lazyproperty
@@ -809,7 +777,6 @@ class SourceProperties:
         The bounding box encloses all of the source segment pixels in
         their entirety, thus the vertices are at the pixel *corners*.
         """
-
         return _calc_sky_bbox_corner(self.bbox, 'lr', self._wcs)
 
     @lazyproperty
@@ -822,7 +789,6 @@ class SourceProperties:
         The bounding box encloses all of the source segment pixels in
         their entirety, thus the vertices are at the pixel *corners*.
         """
-
         return _calc_sky_bbox_corner(self.bbox, 'ur', self._wcs)
 
     @lazyproperty
@@ -831,7 +797,6 @@ class SourceProperties:
         The minimum pixel value of the ``data`` within the source
         segment.
         """
-
         if self._is_completely_masked:
             return np.nan * self._data_unit
         else:
@@ -843,7 +808,6 @@ class SourceProperties:
         The maximum pixel value of the ``data`` within the source
         segment.
         """
-
         if self._is_completely_masked:
             return np.nan * self._data_unit
         else:
@@ -858,7 +822,6 @@ class SourceProperties:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-
         if self._is_completely_masked:
             return (np.nan, np.nan) * u.pix
         else:
@@ -877,7 +840,6 @@ class SourceProperties:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-
         if self._is_completely_masked:
             return (np.nan, np.nan) * u.pix
         else:
@@ -896,7 +858,6 @@ class SourceProperties:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-
         if self._is_completely_masked:
             return (np.nan, np.nan) * u.pix
         else:
@@ -913,7 +874,6 @@ class SourceProperties:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-
         if self._is_completely_masked:
             return (np.nan, np.nan) * u.pix
         else:
@@ -930,7 +890,6 @@ class SourceProperties:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-
         return self.minval_pos[1]
 
     @lazyproperty
@@ -942,7 +901,6 @@ class SourceProperties:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-
         return self.minval_pos[0]
 
     @lazyproperty
@@ -954,7 +912,6 @@ class SourceProperties:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-
         return self.maxval_pos[1]
 
     @lazyproperty
@@ -966,7 +923,6 @@ class SourceProperties:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-
         return self.maxval_pos[0]
 
     @lazyproperty
@@ -983,7 +939,6 @@ class SourceProperties:
         Non-finite pixel values (NaN and +/- inf) are excluded
         (automatically masked).
         """
-
         if self._is_completely_masked:
             return np.nan * self._data_unit  # table output needs unit
         else:
@@ -1012,7 +967,6 @@ class SourceProperties:
         any non-finite pixel values (NaN and +/- inf) that are
         automatically masked, are also masked in the error array.
         """
-
         if self._error is not None:
             if self._is_completely_masked:
                 return np.nan * self._data_unit  # table output needs unit
@@ -1030,7 +984,6 @@ class SourceProperties:
         any non-finite pixel values (NaN and +/- inf) that are
         automatically masked, are also masked in the background array.
         """
-
         if self._background is not None:
             if self._is_completely_masked:
                 return np.nan * self._data_unit  # unit for table
@@ -1048,7 +1001,6 @@ class SourceProperties:
         any non-finite pixel values (NaN and +/- inf) that are
         automatically masked, are also masked in the background array.
         """
-
         if self._background is not None:
             if self._is_completely_masked:
                 return np.nan * self._data_unit  # unit for table
@@ -1066,7 +1018,6 @@ class SourceProperties:
         The background value at fractional position values are
         determined using bilinear interpolation.
         """
-
         if self._background is not None:
             from scipy.ndimage import map_coordinates
 
@@ -1094,7 +1045,6 @@ class SourceProperties:
         or if the ``data`` within the segment contains invalid values
         (NaN and +/- inf).
         """
-
         if self._is_completely_masked:
             return np.nan * u.pix**2
         else:
@@ -1106,7 +1056,6 @@ class SourceProperties:
         The radius of a circle with the same `area` as the source
         segment.
         """
-
         return np.sqrt(self.area / np.pi)
 
     @lazyproperty
@@ -1128,7 +1077,6 @@ class SourceProperties:
                pp. 51-57 (2000).
                http://www.cs.qub.ac.uk/~d.crookes/webpubs/papers/perimeter.doc
         """
-
         if self._is_completely_masked:
             return np.nan * u.pix  # unit for table
         else:
@@ -1159,7 +1107,6 @@ class SourceProperties:
         The inertia tensor of the source for the rotation around its
         center of mass.
         """
-
         moments = self.moments_central
         mu_02 = moments[0, 2]
         mu_11 = -moments[1, 1]
@@ -1172,7 +1119,6 @@ class SourceProperties:
         The covariance matrix of the 2D Gaussian function that has the
         same second-order moments as the source.
         """
-
         moments = self.moments_central
         if moments[0, 0] != 0:
             mu_norm = moments / moments[0, 0]
@@ -1191,7 +1137,6 @@ class SourceProperties:
         prescription of incrementally increasing the diagonal elements
         by 1/12.
         """
-
         increment = 1. / 12  # arbitrary SourceExtractor value
         value = (covariance[0, 0] * covariance[1, 1]) - covariance[0, 1]**2
         if value >= increment**2:
@@ -1210,7 +1155,6 @@ class SourceProperties:
         The two eigenvalues of the `covariance` matrix in decreasing
         order.
         """
-
         unit = u.pix**2  # eigvals unit
         if np.any(~np.isfinite(self.covariance.value)):
             return (np.nan, np.nan) * unit
@@ -1227,7 +1171,6 @@ class SourceProperties:
         2D Gaussian function that has the same second-order central
         moments as the source.
         """
-
         # this matches SourceExtractor's A parameter
         return np.sqrt(self.covariance_eigvals[0])
 
@@ -1238,7 +1181,6 @@ class SourceProperties:
         2D Gaussian function that has the same second-order central
         moments as the source.
         """
-
         # this matches SourceExtractor's B parameter
         return np.sqrt(self.covariance_eigvals[1])
 
@@ -1256,7 +1198,6 @@ class SourceProperties:
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
         """
-
         semimajor_var, semiminor_var = self.covariance_eigvals
         if semimajor_var == 0:
             return 0.  # pragma: no cover
@@ -1269,7 +1210,6 @@ class SourceProperties:
         Gaussian function that has the same second-order moments as the
         source.  The angle increases in the counter-clockwise direction.
         """
-
         covar_00, covar_01, _, covar_11 = self.covariance.flat
         if covar_00 < 0 or covar_11 < 0:  # negative variance
             return np.nan * u.deg  # pragma: no cover
@@ -1292,7 +1232,6 @@ class SourceProperties:
         Note that this is the same as `SourceExtractor`_'s elongation
         parameter.
         """
-
         return self.semimajor_axis_sigma / self.semiminor_axis_sigma
 
     @lazyproperty
@@ -1309,7 +1248,6 @@ class SourceProperties:
         Note that this is the same as `SourceExtractor`_'s ellipticity
         parameter.
         """
-
         return 1.0 - (self.semiminor_axis_sigma / self.semimajor_axis_sigma)
 
     @lazyproperty
@@ -1320,7 +1258,6 @@ class SourceProperties:
 
         Note that this is the same as `SourceExtractor`_'s X2 parameter.
         """
-
         return self.covariance[0, 0]
 
     @lazyproperty
@@ -1331,7 +1268,6 @@ class SourceProperties:
 
         Note that this is the same as `SourceExtractor`_'s Y2 parameter.
         """
-
         return self.covariance[1, 1]
 
     @lazyproperty
@@ -1343,7 +1279,6 @@ class SourceProperties:
 
         Note that this is the same as `SourceExtractor`_'s XY parameter.
         """
-
         return self.covariance[0, 1]
 
     @lazyproperty
@@ -1363,7 +1298,6 @@ class SourceProperties:
         isophotal limit of a source is well represented by :math:`R
         \\approx 3`.
         """
-
         return ((np.cos(self.orientation) / self.semimajor_axis_sigma)**2 +
                 (np.sin(self.orientation) / self.semiminor_axis_sigma)**2)
 
@@ -1384,7 +1318,6 @@ class SourceProperties:
         isophotal limit of a source is well represented by :math:`R
         \\approx 3`.
         """
-
         return ((np.sin(self.orientation) / self.semimajor_axis_sigma)**2 +
                 (np.cos(self.orientation) / self.semiminor_axis_sigma)**2)
 
@@ -1405,7 +1338,6 @@ class SourceProperties:
         isophotal limit of a source is well represented by :math:`R
         \\approx 3`.
         """
-
         return (2. * np.cos(self.orientation) * np.sin(self.orientation) *
                 ((1. / self.semimajor_axis_sigma**2) -
                  (1. / self.semiminor_axis_sigma**2)))
@@ -1702,7 +1634,6 @@ class SourceProperties:
         while a Gini coefficient value of 1 represents a galaxy image
         with all its light concentrated in just one pixel.
         """
-
         npix = np.size(self._data_values)
         normalization = (np.abs(np.mean(self._data_values)) * npix *
                          (npix - 1))
@@ -1867,7 +1798,6 @@ def source_properties(data, segment_img, error=None, mask=None,
     --------
     SegmentationImage, SourceProperties, detect_sources
     """
-
     if not isinstance(segment_img, SegmentationImage):
         segment_img = SegmentationImage(segment_img)
 
@@ -1965,7 +1895,6 @@ class LegacySourceCatalog:
         Return a list of `None` values, used by SkyCoord properties if
         ``wcs`` is `None`.
         """
-
         return [None] * len(self._data)
 
     @lazyproperty
@@ -2074,7 +2003,6 @@ class LegacySourceCatalog:
         --------
         SegmentationImage, SourceProperties, source_properties, detect_sources
         """
-
         return _properties_table(self, columns=columns,
                                  exclude_columns=exclude_columns)
 
@@ -2105,7 +2033,6 @@ def _properties_table(obj, columns=None, exclude_columns=None):
     table : `~astropy.table.QTable`
         A table of source properties with one row per source.
     """
-
     # start with the default columns
     columns_all = DEFAULT_COLUMNS
 

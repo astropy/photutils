@@ -49,7 +49,6 @@ def gini(data):
     gini : `float`
         The Gini coefficient of the input 2D array.
     """
-
     flattened = np.sort(np.ravel(data))
     npix = np.size(flattened)
     normalization = np.abs(np.mean(flattened)) * npix * (npix - 1)

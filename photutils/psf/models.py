@@ -209,7 +209,6 @@ class FittableImageModel(Fittable2DModel):
             one desires to change the way the normalization factor is
             computed.
         """
-
         self._normalization_constant = 1.0 / self._normalization_correction
 
         if normalize:
@@ -240,7 +239,6 @@ class FittableImageModel(Fittable2DModel):
         An input to this model is multiplied by this factor to yield the
         index into the stored image.
         """
-
         return self._oversampling
 
     def _set_oversampling(self, value):
@@ -439,7 +437,6 @@ class FittableImageModel(Fittable2DModel):
           decrease code performance due to the need to recompute
           interpolator.
         """
-
         from scipy.interpolate import RectBivariateSpline
 
         if 'degree' in kwargs:

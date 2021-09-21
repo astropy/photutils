@@ -132,7 +132,6 @@ def calc_total_error(data, bkg_error, effective_gain):
 
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
-
     data = np.asanyarray(data)
     bkg_error = np.asanyarray(bkg_error)
 

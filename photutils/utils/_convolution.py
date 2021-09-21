@@ -42,7 +42,6 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
         If `True` then a warning will be issued if the kernel is not
         normalized to 1.
     """
-
     from scipy import ndimage
 
     if kernel is not None:

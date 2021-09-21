@@ -54,7 +54,6 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
         A new model ready to be passed into `BasicPSFPhotometry` or its
         subclasses.
     """
-
     if xname is None:
         xinmod = models.Shift(0, name='x_offset')
         xname = 'offset_0'
@@ -133,7 +132,6 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
         An `astropy.modeling` ``CompoundModel`` instance which is a sum of the
         given PSF models.
     """
-
     group_psf = None
 
     for index, star in enumerate(star_group):
@@ -159,7 +157,6 @@ def _extract_psf_fitting_names(psf):
     Determine the names of the x coordinate, y coordinate, and flux from
     a model.  Returns (xname, yname, fluxname)
     """
-
     if hasattr(psf, 'xname'):
         xname = psf.xname
     elif 'x_0' in psf.param_names:
@@ -191,7 +188,6 @@ def _call_fitter(fitter, psf, x, y, data, weights):
     Not all fitters have to support a weight array. This function
     includes the weight in the fitter call only if really needed.
     """
-
     if np.all(weights == 1.):
         return fitter(psf, x, y, data)
     else:
@@ -224,7 +220,6 @@ def subtract_psf(data, psf, posflux, subshape=None):
     subdata : same shape and type as ``data``
         The image with the PSF subtracted
     """
-
     if data.ndim != 2:
         raise ValueError(f'{data.ndim}-d array not supported. Only 2-d '
                          'arrays can be passed to subtract_psf.')

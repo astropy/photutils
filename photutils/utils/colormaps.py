@@ -30,7 +30,6 @@ def make_random_cmap(ncolors=256, seed=None):
     cmap : `matplotlib.colors.ListedColormap`
         The matplotlib colormap with random colors.
     """
-
     from matplotlib import colors
 
     rng = np.random.default_rng(seed)

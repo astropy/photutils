@@ -34,7 +34,6 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, order=3):
     result : 2D `~numpy.ndarray`
         The resampled/interpolated 2D data array.
     """
-
     from scipy.ndimage import zoom
 
     ratio = input_pixel_scale / output_pixel_scale
@@ -78,7 +77,6 @@ def create_matching_kernel(source_psf, target_psf, window=None):
         The matching kernel to go from ``source_psf`` to ``target_psf``.
         The output matching kernel is normalized such that it sums to 1.
     """
-
     # inputs are copied so that they are not changed when normalizing
     source_psf = np.copy(np.asanyarray(source_psf))
     target_psf = np.copy(np.asanyarray(target_psf))
