@@ -192,10 +192,14 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     """
 
     _shape_params = ('w', 'h', 'theta')
-    positions = PixelPositions('positions')
-    w = PositiveScalar('w')
-    h = PositiveScalar('h')
-    theta = Scalar('theta')
+    positions = PixelPositions('positions',
+                               description='The center pixel position(s).')
+    w = PositiveScalar('w', description='The full width in pixels.')
+    h = PositiveScalar('h', description='The full height in pixels.')
+    theta = Scalar('theta',
+                   description=('The counterclockwise rotation angle in '
+                                'radians of the rectangle "width" side from '
+                                'the positive x axis.'))
 
     def __init__(self, positions, w, h, theta=0.):
         self.positions = positions
@@ -338,12 +342,20 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     """
 
     _shape_params = ('w_in', 'w_out', 'h_in', 'h_out', 'theta')
-    positions = PixelPositions('positions')
-    w_in = PositiveScalar('w_in')
-    w_out = PositiveScalar('w_out')
-    h_in = PositiveScalar('h_in')
-    h_out = PositiveScalar('h_out')
-    theta = Scalar('theta')
+    positions = PixelPositions('positions',
+                               description='The center pixel position(s).')
+    w_in = PositiveScalar('w_in',
+                          description='The inner full width in pixels.')
+    w_out = PositiveScalar('w_out',
+                           description='The outer full width in pixels.')
+    h_in = PositiveScalar('h_in',
+                          description='The inner full height in pixels.')
+    h_out = PositiveScalar('h_out',
+                           description='The outer full height in pixels.')
+    theta = Scalar('theta',
+                   description=('The counterclockwise rotation angle in '
+                                'radians of the rectangle "width" side from '
+                                'the positive x axis.'))
 
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.):
         if not w_out > w_in:
@@ -479,10 +491,19 @@ class SkyRectangularAperture(SkyAperture):
     """
 
     _shape_params = ('w', 'h', 'theta')
-    positions = SkyCoordPositions('positions')
-    w = AngleOrPixelScalarQuantity('w')
-    h = AngleOrPixelScalarQuantity('h')
-    theta = AngleScalarQuantity('theta')
+    positions = SkyCoordPositions(
+        'positions',
+        description='The center position(s) in sky coordinates.')
+    w = AngleOrPixelScalarQuantity(
+        'w',
+        description='The full width, in angular or pixel units.')
+    h = AngleOrPixelScalarQuantity(
+        'h',
+        description='The full height, in angular or pixel units.')
+    theta = AngleScalarQuantity(
+        'theta',
+        description=('The position angle (in angular units) of the '
+                     'rectangle "width" side.'))
 
     def __init__(self, positions, w, h, theta=0.*u.deg):
         if w.unit.physical_type != h.unit.physical_type:
@@ -569,12 +590,25 @@ class SkyRectangularAnnulus(SkyAperture):
     """
 
     _shape_params = ('w_in', 'w_out', 'h_in', 'h_out', 'theta')
-    positions = SkyCoordPositions('positions')
-    w_in = AngleOrPixelScalarQuantity('w_in')
-    w_out = AngleOrPixelScalarQuantity('w_out')
-    h_in = AngleOrPixelScalarQuantity('h_in')
-    h_out = AngleOrPixelScalarQuantity('h_out')
-    theta = AngleScalarQuantity('theta')
+    positions = SkyCoordPositions(
+        'positions',
+        description='The center position(s) in sky coordinates.')
+    w_in = AngleOrPixelScalarQuantity(
+        'w_in',
+        description='The inner full width, in angular or pixel units.')
+    w_out = AngleOrPixelScalarQuantity(
+        'w_out',
+        description='The outer full width, in angular or pixel units.')
+    h_in = AngleOrPixelScalarQuantity(
+        'h_in',
+        description='The inner full height, in angular or pixel units.')
+    h_out = AngleOrPixelScalarQuantity(
+        'h_out',
+        description='The outer full height, in angular or pixel units.')
+    theta = AngleScalarQuantity(
+        'theta',
+        description=('The position angle (in angular units) of the '
+                     'rectangle "width" side.'))
 
     def __init__(self, positions, w_in, w_out, h_out, h_in=None,
                  theta=0.*u.deg):
