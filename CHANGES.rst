@@ -40,6 +40,14 @@ New Features
   - Added a ``xycoords`` keyword to ``DAOStarFinder`` and
     ``IRAFStarFinder``. [#1248]
 
+- ``photutils.psf``
+
+  - Enabled the reuse of an output table from ``BasicPSFPhotometry`` and
+    its subclasses as an initial guess for another photometry run. [#1251]
+
+  - Added the ability to skip the ``group_maker`` step by inputing an
+    initial guess table with a ``group_id`` column. [#1251]
+
 Bug Fixes
 ^^^^^^^^^
 
