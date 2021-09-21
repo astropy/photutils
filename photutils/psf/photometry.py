@@ -279,6 +279,7 @@ class BasicPSFPhotometry:
         if self.aperture_radius is None:
             self.set_aperture_radius()
 
+        skip_group_maker = False
         if init_guesses is not None:
             # make sure the code does not modify user's input
             init_guesses = init_guesses.copy()
@@ -288,7 +289,14 @@ class BasicPSFPhotometry:
                               'than None, which is ambiguous. finder is '
                               'going to be ignored.', AstropyUserWarning)
 
-            if 'flux_0' not in init_guesses.colnames:
+            colnames = init_guesses.colnames
+            if 'group_id' in colnames:
+                warnings.warn('init_guesses contains a "group_id" column. '
+                              'The group_maker step will be skipped.',
+                              AstropyUserWarning)
+                skip_group_maker = True
+
+            if 'flux_0' not in colnames:
                 positions = np.transpose((init_guesses['x_0'],
                                           init_guesses['y_0']))
                 apertures = CircularAperture(positions,
@@ -338,15 +346,28 @@ class BasicPSFPhotometry:
                 init_guesses[p0] = (len(init_guesses) *
                                     [getattr(self.psf_model, param).value])
 
-        star_groups = self.group_maker(init_guesses)
+        if skip_group_maker:
+            star_groups = init_guesses
+        else:
+            star_groups = self.group_maker(init_guesses)
+
         output_tab, self._residual_image = self.nstar(image, star_groups)
-
         star_groups = star_groups.group_by('group_id')
-        output_tab = hstack([star_groups, output_tab])
 
-        output_tab.meta = {'version': _get_version_info()}
+        if hasattr(output_tab, 'update'):  # requires Astropy >= 5.0
+            star_groups.update(output_tab)
+        else:
+            common_cols = set(star_groups.colnames).intersection(
+                output_tab.colnames)
+            for name, col in output_tab.items():
+                if name in common_cols:
+                    star_groups.replace_column(name, col, copy=True)
+                else:
+                    star_groups.add_column(col, name=name, copy=True)
 
-        return QTable(output_tab)
+        star_groups.meta = {'version': _get_version_info()}
+
+        return star_groups
 
     def nstar(self, image, star_groups):
         """
