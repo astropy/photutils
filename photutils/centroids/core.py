@@ -94,6 +94,12 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     the fitting box by searching for the position of the maximum pixel
     within a box of size ``search_boxsize``.
 
+    `Vakili & Hogg (2016) <https://arxiv.org/abs/1610.05873>`_
+    demonstrate that 2D quadratic centroiding comes very
+    close to saturating the `Cramér-Rao lower bound
+    <https://en.wikipedia.org/wiki/Cram%C3%A9r%E2%80%93Rao_bound>`_ in a
+    wide range of conditions.
+
     Parameters
     ----------
     data : numpy.ndarray
@@ -129,6 +135,17 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     -------
     centroid : `~numpy.ndarray`
         The ``x, y`` coordinates of the centroid.
+
+    Notes
+    -----
+    Use ``fit_boxsize = (3, 3)`` to match the work of `Vakili & Hogg
+    (2016) <https://arxiv.org/abs/1610.05873>`_ for ther 2D second-order
+    polynomial centroiding method.
+
+    References
+    ----------
+    .. [1] Vakili and Hogg 2016; arXiv:1610.05873
+        (https://arxiv.org/abs/1610.05873)
     """
     if ((xpeak is None and ypeak is not None)
             or (xpeak is not None and ypeak is None)):
