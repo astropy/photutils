@@ -255,36 +255,21 @@ class DAOStarFinder(StarFinderBase):
             return None
 
         cat = _DAOStarFinderCatalog(data, convolved_data, xypos, self.kernel,
-                                    self.threshold, self.sky)
+                                    self.threshold, sky=self.sky,
+                                    sharplo=self.sharplo, sharphi=self.sharphi,
+                                    roundlo=self.roundlo, roundhi=self.roundhi,
+                                    brightest=self.brightest,
+                                    peakmax=self.peakmax)
 
         # filter the catalog
-        mask = (~np.isnan(cat.dx) & ~np.isnan(cat.dy)
-                & ~np.isnan(cat.hx) & ~np.isnan(cat.hy))
-        mask &= ((cat.sharpness > self.sharplo)
-                 & (cat.sharpness < self.sharphi)
-                 & (cat.roundness1 > self.roundlo)
-                 & (cat.roundness1 < self.roundhi)
-                 & (cat.roundness2 > self.roundlo)
-                 & (cat.roundness2 < self.roundhi))
-        if self.peakmax is not None:
-            mask &= (cat.peak < self.peakmax)
-        cat = cat[mask]
-
-        if len(cat) == 0:
-            warnings.warn('Sources were found, but none pass the sharpness, '
-                          'roundness, or peakmax criteria',
-                          NoDetectionsWarning)
+        cat = cat.apply_filters()
+        if cat is None:
             return None
-
-        # sort the catalog by the brightest fluxes
-        if self.brightest is not None:
-            idx = np.argsort(cat.flux)[::-1][:self.brightest]
-            cat = cat[idx]
+        cat = cat.select_brightest()
+        cat.reset_ids()
 
         # create the output table
-        table = cat.to_table()
-        table['id'] = np.arange(len(cat)) + 1  # reset the id column
-        return table
+        return cat.to_table()
 
 
 class _DAOStarFinderCatalog:
@@ -320,13 +305,21 @@ class _DAOStarFinderCatalog:
     """
 
     def __init__(self, data, convolved_data, xypos, kernel, threshold,
-                 sky=0.):
+                 sky=0., sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
+                 brightest=None, peakmax=None):
+
         self.data = data
         self.convolved_data = convolved_data
         self.xypos = np.atleast_2d(xypos)
         self.kernel = kernel
         self.threshold = threshold
         self._sky = sky  # DAOFIND has no sky input -> same as sky=0.
+        self.sharplo = sharplo
+        self.sharphi = sharphi
+        self.roundlo = roundlo
+        self.roundhi = roundhi
+        self.brightest = brightest
+        self.peakmax = peakmax
 
         self.id = np.arange(len(self)) + 1
         self.threshold_eff = threshold * kernel.relerr
@@ -342,8 +335,9 @@ class _DAOStarFinderCatalog:
     def __getitem__(self, index):
         newcls = object.__new__(self.__class__)
         init_attr = ('data', 'convolved_data', 'kernel', 'threshold', '_sky',
-                     'threshold_eff', 'cutout_shape', 'cutout_center',
-                     'default_columns')
+                     'sharplo', 'sharphi', 'roundlo', 'roundhi', 'brightest',
+                     'peakmax', 'threshold_eff', 'cutout_shape',
+                     'cutout_center', 'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -385,6 +379,10 @@ class _DAOStarFinderCatalog:
             return isinstance(obj, lazyproperty)
         return [i[0] for i in inspect.getmembers(self.__class__,
                                                  predicate=islazyproperty)]
+
+    def reset_ids(self):
+        """Reset the ID column to be consecutive integers."""
+        self.id = np.arange(len(self)) + 1
 
     def make_cutouts(self, data):
         cutouts = []
@@ -640,6 +638,39 @@ class _DAOStarFinderCatalog:
     @lazyproperty
     def npix(self):
         return np.full(len(self), fill_value=self.kernel.data.size)
+
+    def apply_filters(self):
+        """Filter the catalog."""
+        mask = (~np.isnan(self.dx) & ~np.isnan(self.dy)
+                & ~np.isnan(self.hx) & ~np.isnan(self.hy))
+        mask &= ((self.sharpness > self.sharplo)
+                 & (self.sharpness < self.sharphi)
+                 & (self.roundness1 > self.roundlo)
+                 & (self.roundness1 < self.roundhi)
+                 & (self.roundness2 > self.roundlo)
+                 & (self.roundness2 < self.roundhi))
+        if self.peakmax is not None:
+            mask &= (self.peak < self.peakmax)
+        newcat = self[mask]
+
+        if len(newcat) == 0:
+            warnings.warn('Sources were found, but none pass the sharpness, '
+                          'roundness, or peakmax criteria',
+                          NoDetectionsWarning)
+            return None
+
+        return newcat
+
+    def select_brightest(self):
+        """
+        Sort the catalog by the brightest fluxes and select the
+        top brightest sources.
+        """
+        newcat = self
+        if self.brightest is not None:
+            idx = np.argsort(self.flux)[::-1][:self.brightest]
+            newcat = self[idx]
+        return newcat
 
     def to_table(self, columns=None):
         meta = {'version': _get_version_info()}
