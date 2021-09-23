@@ -62,6 +62,13 @@ Bug Fixes
   - Fixed an issue in ``data_properties`` where a scalar background
     input would raise an error. [#1198]
 
+- ``photutils.psf``
+
+  - Fixed an issue in ``prepare_psf_model`` when ``xname`` or ``yname``
+    was ``None`` where the model offsets were applied in the wrong
+    direction, resulting in the initial photometry guesses not being
+    improved by the fit. [#1199]
+
 - ``photutils.segmentation``
 
   - Fixed an issue in ``SourceCatalog`` where the user-input ``mask``
