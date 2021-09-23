@@ -10,7 +10,9 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
+from ..groupstars import DAOGroup
 from ..models import IntegratedGaussianPRF
+from ..photometry import BasicPSFPhotometry
 from ..sandbox import DiscretePRF
 from ..utils import get_grouped_psf_model, prepare_psf_model, subtract_psf
 from ...utils._optional_deps import HAS_SCIPY  # noqa
@@ -139,6 +141,67 @@ def test_prepare_psf_model(moffimg, prepkwargs, tols):
     assert fit_psfmod.psfmodel.alpha == guess_moffat.alpha
     if prepkwargs['fluxname'] is None:
         assert fit_psfmod.psfmodel.amplitude == guess_moffat.amplitude
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_prepare_psf_model_offset():
+    """
+    Regression test to ensure the offset is in the correct direction.
+    """
+    norm = False
+    sigma = 3.0
+    amplitude = 1. / (2 * np.pi * sigma ** 2)
+    xcen = ycen = 0.
+    psf0 = Gaussian2D(amplitude, xcen, ycen, sigma, sigma)
+    psf1 = prepare_psf_model(psf0, xname='x_mean', yname='y_mean',
+                             renormalize_psf=norm)
+    psf2 = prepare_psf_model(psf0, renormalize_psf=norm)
+    psf3 = prepare_psf_model(psf0, xname='x_mean', renormalize_psf=norm)
+    psf4 = prepare_psf_model(psf0, yname='y_mean', renormalize_psf=norm)
+
+    yy, xx = np.mgrid[0:101, 0:101]
+    psf = psf1.copy()
+    xval = 48
+    yval = 52
+    flux = 14.51
+    psf.x_mean_2 = xval
+    psf.y_mean_2 = yval
+    data = psf(xx, yy) * flux
+
+    group_maker = DAOGroup(2)
+    bkg_estimator = None
+    fitshape = 7
+    init_guesses = Table([[46.1], [57.3], [7.1]],
+                         names=['x_0', 'y_0', 'flux_0'])
+
+    phot1 = BasicPSFPhotometry(group_maker=group_maker,
+                               bkg_estimator=bkg_estimator, fitshape=fitshape,
+                               psf_model=psf1)
+    tbl1 = phot1(image=data, init_guesses=init_guesses)
+
+    phot2 = BasicPSFPhotometry(group_maker=group_maker,
+                               bkg_estimator=bkg_estimator, fitshape=fitshape,
+                               psf_model=psf2)
+    tbl2 = phot2(image=data, init_guesses=init_guesses)
+
+    phot3 = BasicPSFPhotometry(group_maker=group_maker,
+                               bkg_estimator=bkg_estimator, fitshape=fitshape,
+                               psf_model=psf3)
+    tbl3 = phot3(image=data, init_guesses=init_guesses)
+
+    phot4 = BasicPSFPhotometry(group_maker=group_maker,
+                               bkg_estimator=bkg_estimator, fitshape=fitshape,
+                               psf_model=psf4)
+    tbl4 = phot4(image=data, init_guesses=init_guesses)
+
+    assert_allclose((tbl1['x_fit'][0], tbl1['y_fit'][0], tbl1['flux_fit'][0]),
+                    (xval, yval, flux))
+    assert_allclose((tbl2['x_fit'][0], tbl2['y_fit'][0], tbl2['flux_fit'][0]),
+                    (xval, yval, flux))
+    assert_allclose((tbl3['x_fit'][0], tbl3['y_fit'][0], tbl3['flux_fit'][0]),
+                    (xval, yval, flux))
+    assert_allclose((tbl4['x_fit'][0], tbl4['y_fit'][0], tbl4['flux_fit'][0]),
+                    (xval, yval, flux))
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
