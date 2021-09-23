@@ -84,7 +84,7 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
         yname = yname + '_2'
     yinmod.fittable = True
 
-    outmod = (xinmod & yinmod) | psfmodel
+    outmod = (xinmod & yinmod) | psfmodel.copy()
 
     if fluxname is None:
         outmod = outmod * Const2D(1, name='flux_scaling')
