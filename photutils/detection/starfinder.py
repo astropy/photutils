@@ -110,7 +110,7 @@ class StarFinder(StarFinderBase):
         table : `~astropy.table.QTable` or `None`
             A table of found objects with the following parameters:
 
-            * ``label``: unique object label number.
+            * ``id``: unique object identification number.
             * ``xcentroid, ycentroid``: object centroid.
             * ``fwhm``: object FWHM.
             * ``roundness``: object roundness.
@@ -160,7 +160,7 @@ class StarFinder(StarFinderBase):
 
         # create the output table
         table = cat.to_table()
-        table['label'] = np.arange(len(cat)) + 1  # reset the label column
+        table['id'] = np.arange(len(cat)) + 1  # reset the id column
         return table
 
 
@@ -187,8 +187,8 @@ class _StarFinderCatalog:
         self.xypos = np.atleast_2d(xypos)
         self.shape = shape
 
-        self.label = np.arange(len(self)) + 1
-        self.default_columns = ('label', 'xcentroid', 'ycentroid', 'fwhm',
+        self.id = np.arange(len(self)) + 1
+        self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'roundness', 'pa', 'max_value', 'flux', 'mag')
 
     def __len__(self):
@@ -208,7 +208,7 @@ class _StarFinderCatalog:
         setattr(newcls, attr, np.atleast_2d(value))
 
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
-        keys.add('label')
+        keys.add('id')
         for key in keys:
             value = self.__dict__[key]
             if key in ('slices', 'cutout_data'):
