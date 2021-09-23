@@ -141,27 +141,20 @@ class StarFinder(StarFinderBase):
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        cat = _StarFinderCatalog(data, xypos, self.kernel.shape)
+        cat = _StarFinderCatalog(data, xypos, self.kernel.shape,
+                                 brightest=self.brightest,
+                                 peakmax=self.peakmax)
 
         # filter the catalog
-        if self.peakmax is not None:
-            mask = (cat.max_value < self.peakmax)
-            cat = cat[mask]
-
-        if len(cat) == 0:
-            warnings.warn('Sources were found, but none pass the peakmax '
-                          'criterion.', NoDetectionsWarning)
+        cat = cat.apply_filters()
+        if cat is None:
             return None
 
-        # sort the catalog by the brightest fluxes
-        if self.brightest is not None:
-            idx = np.argsort(cat.flux)[::-1][:self.brightest]
-            cat = cat[idx]
+        cat = cat.select_brightest()
+        cat.reset_ids()
 
         # create the output table
-        table = cat.to_table()
-        table['id'] = np.arange(len(cat)) + 1  # reset the id column
-        return table
+        return cat.to_table()
 
 
 class _StarFinderCatalog:
@@ -182,10 +175,12 @@ class _StarFinderCatalog:
         must be odd and match the shape of the smoothing kernel.
     """
 
-    def __init__(self, data, xypos, shape):
+    def __init__(self, data, xypos, shape, brightest=None, peakmax=None):
         self.data = data
         self.xypos = np.atleast_2d(xypos)
         self.shape = shape
+        self.brightest = brightest
+        self.peakmax = peakmax
 
         self.id = np.arange(len(self)) + 1
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
@@ -196,7 +191,8 @@ class _StarFinderCatalog:
 
     def __getitem__(self, index):
         newcls = object.__new__(self.__class__)
-        init_attr = ('data', 'shape', 'default_columns')
+        init_attr = ('data', 'shape', 'brightest', 'peakmax',
+                     'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -242,6 +238,10 @@ class _StarFinderCatalog:
             return isinstance(obj, lazyproperty)
         return [i[0] for i in inspect.getmembers(self.__class__,
                                                  predicate=islazyproperty)]
+
+    def reset_ids(self):
+        """Reset the ID column to be consecutive integers."""
+        self.id = np.arange(len(self)) + 1
 
     @lazyproperty
     def slices(self):
@@ -344,6 +344,31 @@ class _StarFinderCatalog:
                                          self.mu_diff))
         pa = np.where(pa < 0, pa + 180, pa)
         return pa
+
+    def apply_filters(self):
+        """Filter the catalog."""
+        newcat = self
+        if self.peakmax is not None:
+            mask = (self.max_value < self.peakmax)
+            newcat = self[mask]
+
+        if len(newcat) == 0:
+            warnings.warn('Sources were found, but none pass the peakmax '
+                          'criterion.', NoDetectionsWarning)
+            return None
+
+        return newcat
+
+    def select_brightest(self):
+        """
+        Sort the catalog by the brightest fluxes and select the
+        top brightest sources.
+        """
+        newcat = self
+        if self.brightest is not None:
+            idx = np.argsort(self.flux)[::-1][:self.brightest]
+            newcat = self[idx]
+        return newcat
 
     def to_table(self, columns=None):
         meta = {'version': _get_version_info()}
