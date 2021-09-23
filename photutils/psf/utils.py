@@ -31,40 +31,47 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
     Convert a 2D PSF model to one suitable for use with
     `BasicPSFPhotometry` or its subclasses.
 
-    The resulting model may be a composite model, but should have only
-    the x, y, and flux related parameters un-fixed.
+    .. note::
+
+        This function is needed only in special cases where the PSF
+        model does not have ``x_0``, ``y_0``, and ``flux`` model
+        parameters. In particular, it is not needed for any of the PSF
+        models provided by photutils (e.g., `~photutils.psf.EPSFModel`,
+        `~photutils.psf.IntegratedGaussianPRF`,
+        `~photutils.psf.FittableImageModel`,
+        `~photutils.psf.GriddedPSFModel`, etc).
 
     Parameters
     ----------
-    psfmodel : a 2D model
+    psfmodel : `~astropy.modeling.Fittable2DModel`
         The model to assume as representative of the PSF.
 
-    xname : str or None
+    xname : `str` or `None`, optional
         The name of the ``psfmodel`` parameter that corresponds to the
-        x-axis center of the PSF.  If None, the model will be assumed to
-        be centered at x=0, and a new parameter will be added for the
+        x-axis center of the PSF. If `None`, the model will be assumed
+        to be centered at x=0, and a new parameter will be added for the
         offset.
 
-    yname : str or None
+    yname : `str` or `None`, optional
         The name of the ``psfmodel`` parameter that corresponds to the
-        y-axis center of the PSF.  If None, the model will be assumed to
-        be centered at y=0, and a new parameter will be added for the
+        y-axis center of the PSF. If `None`, the model will be assumed
+        to be centered at y=0, and a new parameter will be added for the
         offset.
 
-    fluxname : str or None
+    fluxname : `str` or `None`, optional
         The name of the ``psfmodel`` parameter that corresponds to the
-        total flux of the star.  If None, a scaling factor will be added
-        to the model.
+        total flux of the star. If `None`, a scaling factor will be
+        added to the model.
 
-    renormalize_psf : bool
-        If True, the model will be integrated from -inf to inf and
-        re-scaled so that the total integrates to 1.  Note that this
+    renormalize_psf : bool, optional
+        If `True`, the model will be integrated from -inf to inf and
+        rescaled so that the total integrates to 1. Note that this
         renormalization only occurs *once*, so if the total flux of
         ``psfmodel`` depends on position, this will *not* be correct.
 
     Returns
     -------
-    outmod : a model
+    result : `~astropy.modeling.Fittable2DModel`
         A new model ready to be passed into `BasicPSFPhotometry` or its
         subclasses.
     """
