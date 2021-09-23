@@ -816,3 +816,25 @@ def test_psf_photometry_uncertainties():
     columns = ('flux_unc', 'x_0_unc', 'y_0_unc')
     for column in columns:
         assert column not in phot_tbl.colnames
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_re_use_result_as_initial_guess():
+
+    img_shape = (32, 32)
+    # generate image with read-out noise (Gaussian) and
+    # background noise (Poisson)
+    image = (make_gaussian_prf_sources_image(img_shape, sources1) +
+             make_noise_image(img_shape, distribution='poisson', mean=6.,
+                              seed=0) +
+             make_noise_image(img_shape, distribution='gaussian', mean=0.,
+                              stddev=2., seed=0))
+
+    _, _, dao_phot_obj = make_psf_photometry_objs()
+
+    result_table = dao_phot_obj(image)
+    result_table['x'] = result_table['x_fit']
+    result_table['y'] = result_table['y_fit']
+    result_table['flux'] = result_table['flux_fit']
+    second_result = dao_phot_obj(image, result_table)
+    assert second_result
