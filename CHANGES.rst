@@ -149,6 +149,9 @@ API changes
   - ``DAOStarFinder``, ``IRAFStarFinder``, and ``find_peaks`` now return
     an astropy ``QTable`` with version metadata. [#1247]
 
+  - The ``StarFinder`` ``label`` column was renamed to ``id`` for
+    consistency with the other star finder classes. [#1254]
+
 - ``photutils.isophote``
 
   - The ``Isophote`` ``to_table`` method nows return an astropy
