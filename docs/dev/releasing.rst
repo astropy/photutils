@@ -45,12 +45,6 @@ called ``upstream``.
 
         git clean -dfx
 
-#. Make sure the source distribution doesn't inherit limited permissions
-   from your default umask::
-
-        umask 0022
-        chmod -R a+Xr .
-
 #. Update the package version number to the version you’re about to
    release by creating an annotated git tag (optionally signing with the
    ``-s`` option)::
@@ -104,6 +98,12 @@ called ``upstream``.
    with::
 
         git clean -dfx
+
+#. Make sure the source distribution doesn't inherit limited permissions
+   from your default umask::
+
+        umask 0022
+        chmod -R a+Xr .
 
 #. Generate the source distribution and upload it to PyPI::
 
@@ -189,4 +189,5 @@ called ``upstream``.
    to PyPI::
 
         python get_wheels.py
+        twine check wheelhouse/*.whl
         twine upload wheelhouse/*.whl
