@@ -200,6 +200,30 @@ class DAOStarFinder(StarFinderBase):
             brightest = bright_int
         return brightest
 
+    def _get_raw_catalog(self, data, mask=None):
+        convolved_data = _filter_data(data, self.kernel.data, mode='constant',
+                                      fill_value=0.0,
+                                      check_normalization=False)
+
+        if self.xycoords is None:
+            xypos = _find_stars(convolved_data, self.kernel,
+                                self.threshold_eff, mask=mask,
+                                exclude_border=self.exclude_border)
+        else:
+            xypos = self.xycoords
+
+        if xypos is None:
+            warnings.warn('No sources were found.', NoDetectionsWarning)
+            return None
+
+        cat = _DAOStarFinderCatalog(data, convolved_data, xypos, self.kernel,
+                                    self.threshold, sky=self.sky,
+                                    sharplo=self.sharplo, sharphi=self.sharphi,
+                                    roundlo=self.roundlo, roundhi=self.roundhi,
+                                    brightest=self.brightest,
+                                    peakmax=self.peakmax)
+        return cat
+
     def find_stars(self, data, mask=None):
         """
         Find stars in an astronomical image.
@@ -239,27 +263,9 @@ class DAOStarFinder(StarFinderBase):
 
             `None` is returned if no stars are found.
         """
-        convolved_data = _filter_data(data, self.kernel.data, mode='constant',
-                                      fill_value=0.0,
-                                      check_normalization=False)
-
-        if self.xycoords is None:
-            xypos = _find_stars(convolved_data, self.kernel,
-                                self.threshold_eff, mask=mask,
-                                exclude_border=self.exclude_border)
-        else:
-            xypos = self.xycoords
-
-        if xypos is None:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
+        cat = self._get_raw_catalog(data, mask=mask)
+        if cat is None:
             return None
-
-        cat = _DAOStarFinderCatalog(data, convolved_data, xypos, self.kernel,
-                                    self.threshold, sky=self.sky,
-                                    sharplo=self.sharplo, sharphi=self.sharphi,
-                                    roundlo=self.roundlo, roundhi=self.roundhi,
-                                    brightest=self.brightest,
-                                    peakmax=self.peakmax)
 
         # filter the catalog
         cat = cat.apply_filters()
