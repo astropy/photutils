@@ -90,6 +90,29 @@ class StarFinder(StarFinderBase):
             brightest = bright_int
         return brightest
 
+    def _get_raw_catalog(self, data, mask=None):
+        kernel = self.kernel
+        kernel /= np.max(kernel)  # normalize max value to 1.0
+        denom = np.sum(kernel**2) - (np.sum(kernel)**2 / kernel.size)
+        kernel = (kernel - np.sum(kernel) / kernel.size) / denom
+
+        convolved_data = _filter_data(data, kernel, mode='constant',
+                                      fill_value=0.0,
+                                      check_normalization=False)
+
+        xypos = _find_stars(convolved_data, kernel, self.threshold,
+                            min_separation=self.min_separation,
+                            mask=mask, exclude_border=self.exclude_border)
+
+        if xypos is None:
+            warnings.warn('No sources were found.', NoDetectionsWarning)
+            return None
+
+        cat = _StarFinderCatalog(data, xypos, self.kernel.shape,
+                                 brightest=self.brightest,
+                                 peakmax=self.peakmax)
+        return cat
+
     def find_stars(self, data, mask=None):
         """
         Find stars in an astronomical image.
@@ -124,26 +147,9 @@ class StarFinder(StarFinderBase):
             `None` is returned if no stars are found or no stars meet
             the roundness and peakmax criteria.
         """
-        kernel = self.kernel
-        kernel /= np.max(kernel)  # normalize max value to 1.0
-        denom = np.sum(kernel**2) - (np.sum(kernel)**2 / kernel.size)
-        kernel = (kernel - np.sum(kernel) / kernel.size) / denom
-
-        convolved_data = _filter_data(data, kernel, mode='constant',
-                                      fill_value=0.0,
-                                      check_normalization=False)
-
-        xypos = _find_stars(convolved_data, kernel, self.threshold,
-                            min_separation=self.min_separation,
-                            mask=mask, exclude_border=self.exclude_border)
-
-        if xypos is None:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
+        cat = self._get_raw_catalog(data, mask=mask)
+        if cat is None:
             return None
-
-        cat = _StarFinderCatalog(data, xypos, self.kernel.shape,
-                                 brightest=self.brightest,
-                                 peakmax=self.peakmax)
 
         # filter the catalog
         cat = cat.apply_filters()
