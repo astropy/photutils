@@ -12,7 +12,6 @@ from astropy.utils import lazyproperty
 import numpy as np
 
 from .base import StarFinderBase
-from ._utils import _find_stars
 from ..utils._convolution import _filter_data
 from ..utils._misc import _get_version_info
 from ..utils._moments import _moments, _moments_central
@@ -100,9 +99,9 @@ class StarFinder(StarFinderBase):
                                       fill_value=0.0,
                                       check_normalization=False)
 
-        xypos = _find_stars(convolved_data, kernel, self.threshold,
-                            min_separation=self.min_separation,
-                            mask=mask, exclude_border=self.exclude_border)
+        xypos = self._find_stars(convolved_data, kernel, self.threshold,
+                                 min_separation=self.min_separation,
+                                 mask=mask, exclude_border=self.exclude_border)
 
         if xypos is None:
             warnings.warn('No sources were found.', NoDetectionsWarning)

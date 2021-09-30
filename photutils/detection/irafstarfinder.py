@@ -11,7 +11,7 @@ from astropy.utils import lazyproperty
 import numpy as np
 
 from .base import StarFinderBase
-from ._utils import _StarFinderKernel, _find_stars
+from ._utils import _StarFinderKernel
 from ..utils._convolution import _filter_data
 from ..utils._misc import _get_version_info
 from ..utils._moments import _moments, _moments_central
@@ -179,9 +179,11 @@ class IRAFStarFinder(StarFinderBase):
                                       check_normalization=False)
 
         if self.xycoords is None:
-            xypos = _find_stars(convolved_data, self.kernel, self.threshold,
-                                min_separation=self.min_separation, mask=mask,
-                                exclude_border=self.exclude_border)
+            xypos = self._find_stars(convolved_data, self.kernel,
+                                     self.threshold,
+                                     min_separation=self.min_separation,
+                                     mask=mask,
+                                     exclude_border=self.exclude_border)
         else:
             xypos = self.xycoords
 
