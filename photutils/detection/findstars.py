@@ -10,14 +10,12 @@ from .daofinder import DAOStarFinder as _DAOStarFinder  # noqa
 from .irafstarfinder import IRAFStarFinder as _IRAFStarFinder  # noqa
 
 from ._utils import _StarFinderKernel as __StarFinderKernel  # noqa
-from ._utils import _find_stars as __find_stars  # noqa
 
 
 deprecated = {'StarFinderBase': 'photutils.detection.base',
               'DAOStarFinder': 'photutils.detection.daofinder',
               'IRAFStarFinder': 'photutils.detection.irafstarfinder',
               '_StarFinderKernel': 'photutils.detection._utils',
-              '_find_stars': 'photutils.detection._utils',
               }
 
 
