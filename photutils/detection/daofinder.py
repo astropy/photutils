@@ -10,8 +10,7 @@ from astropy.table import QTable
 from astropy.utils import lazyproperty
 import numpy as np
 
-from .base import StarFinderBase
-from ._utils import _StarFinderKernel
+from .base import StarFinderBase, _StarFinderKernel
 from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 from ..utils._misc import _get_version_info
