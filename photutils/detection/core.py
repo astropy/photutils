@@ -1,13 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module implements the base classes for detecting stars in an
-astronomical image. Each star-finding class should define a method
-called ``find_stars`` that finds stars in an image.
+This module implements the base class and star finder kernel for
+detecting stars in an astronomical image. Each star-finding class should
+define a method called ``find_stars`` that finds stars in an image.
 """
 
 import abc
-
-
 import math
 import warnings
 
@@ -152,7 +150,7 @@ class StarFinderBase(metaclass=abc.ABCMeta):
 
 class _StarFinderKernel:
     """
-    Class to calculate a 2D Gaussian density enhancement kernel.
+    Container class for a 2D Gaussian density enhancement kernel.
 
     The kernel has negative wings and sums to zero.  It is used by both
     `DAOStarFinder` and `IRAFStarFinder`.

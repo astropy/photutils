@@ -11,7 +11,7 @@ from astropy.table import QTable
 from astropy.utils import lazyproperty
 import numpy as np
 
-from .base import StarFinderBase
+from .core import StarFinderBase
 from ..utils._convolution import _filter_data
 from ..utils._misc import _get_version_info
 from ..utils._moments import _moments, _moments_central
