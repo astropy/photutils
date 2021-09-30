@@ -150,13 +150,10 @@ class StarFinder(StarFinderBase):
         if cat is None:
             return None
 
-        # filter the catalog
-        cat = cat.apply_filters()
+        # apply all selection filters
+        cat = cat.apply_all_filters()
         if cat is None:
             return None
-
-        cat = cat.select_brightest()
-        cat.reset_ids()
 
         # create the output table
         return cat.to_table()
@@ -374,6 +371,18 @@ class _StarFinderCatalog:
             idx = np.argsort(self.flux)[::-1][:self.brightest]
             newcat = self[idx]
         return newcat
+
+    def apply_all_filters(self):
+        """
+        Apply all filters, select the brightest, and reset the source
+        ids.
+        """
+        cat = self.apply_filters()
+        if cat is None:
+            return None
+        cat = cat.select_brightest()
+        cat.reset_ids()
+        return cat
 
     def to_table(self, columns=None):
         meta = {'version': _get_version_info()}
