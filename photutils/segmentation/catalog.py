@@ -621,7 +621,8 @@ class SourceCatalog:
     @property
     def labels(self):
         """
-        The source label number(s).
+        The source label number(s), always as an iterable
+        `~numpy.ndarray`.
 
         This label number corresponds to the assigned pixel value in the
         `~photutils.segmentation.SegmentationImage`.
@@ -1569,8 +1570,9 @@ class SourceCatalog:
     @as_scalar
     def fwhm(self):
         r"""
-        Circularized FWHM of the 2D Gaussian function that has the same
-        second-order central moments as the source.
+        The circularized full width at half maximum (FWHM) of the 2D
+        Gaussian function that has the same second-order central moments
+        as the source.
 
         .. math::
 
@@ -1579,7 +1581,8 @@ class SourceCatalog:
                           & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
 
         where :math:`a` and :math:`b` are the 1-sigma lengths of the
-        semimajor and semiminor axes, respectively.
+        semimajor (`semimajor_sigma`) and semiminor (`semiminor_sigma`)
+        axes, respectively.
         """
         return 2.0 * np.sqrt(np.log(2.0) * (self.semimajor_sigma**2
                                             + self.semiminor_sigma**2))
@@ -1927,7 +1930,7 @@ class SourceCatalog:
 
     def circular_photometry(self, radius):
         """
-        Perform aperture photometry for each source with a circular
+        Perform aperture photometry for each source using a circular
         aperture of the specified radius centered at the source centroid
         position.
 
@@ -2031,16 +2034,17 @@ class SourceCatalog:
     @as_scalar
     def kron_radius(self):
         r"""
-        The unscaled first-moment Kron radius.
+        The *unscaled* first-moment Kron radius.
 
-        The unscaled first-moment Kron radius is given by:
+        The *unscaled* first-moment Kron radius is given by:
 
         .. math::
             k_r = \frac{\sum_{i \in A} \ r_i I_i}{\sum_{i \in A} I_i}
 
-        where the sum is over pixels in an elliptical aperture
-        whose axes are defined by six times the `semimajor_sigma`
-        and `semiminor_sigma` at the calculated `orientation` (all
+        where :math:`I_i` are the data values and the sum is over
+        pixels in an elliptical aperture whose axes are defined by
+        six times the semimajor (`semimajor_sigma`) and semiminor
+        axes (`semiminor_sigma`) at the calculated `orientation` (all
         properties derived from the central image moments of the
         source). :math:`r_i` is the elliptical "radius" to the pixel
         given by:
@@ -2050,17 +2054,20 @@ class SourceCatalog:
                 cxy (x_i - \bar{x})(y_i - \bar{y}) +
                 cyy (y_i - \bar{y})^2
 
-        where :math:`\bar{x}` and :math:`\bar{y}` represent
-        the source centroid. The scaling parameter of
-        :attr:`~photutils.segmentation.SourceCatalog.kron_radius` is
-        defined using the `SourceCatalog` ``kron_params`` keyword. See
-        the `SourceCatalog` ``apermask_method`` keyword for options to
-        mask neighboring sources.
+        where :math:`\bar{x}` and :math:`\bar{y}` represent the source
+        centroid and the coefficients are based on image moments (`cxx`,
+        `cxy`, and `cyy`).
 
-        If either the numerator or denominator is less than or equal
-        to 0, then ``np.nan`` will be returned. In this case, the Kron
-        aperture will be defined as a circular aperture with a radius
-        equal to ``kron_params[1]``.
+        The scaling parameter of the `kron_radius` is defined using the
+        `SourceCatalog` ``kron_params`` keyword.
+
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
+
+        If either the numerator or denominator above is less than or
+        equal to 0, then ``np.nan`` will be returned. In this case, the
+        Kron aperture will be defined as a circular aperture with a
+        radius equal to ``kron_params[1]``.
 
         If the source is completely masked, then ``np.nan`` will be
         returned for both the Kron radius and Kron flux.
@@ -2122,19 +2129,6 @@ class SourceCatalog:
     def _make_kron_aperture(self, kron_params):
         """
         Define the Kron aperture.
-
-        If ``kron_radius * np.sqrt(semimajor_sigma * semiminor__sigma) <
-        kron_params[1]`` (see `SourceCatalog`) then a circular aperture
-        with a radius equal to ``kron_params[1]`` will be returned. If
-        ``kron_params[1] <= 0``, then the Kron aperture will be `None`.
-
-        If ``kron_radius = np.nan`` then a circular aperture with a
-        radius equal to ``kron_params[1]`` will be returned if the
-        source is not completely masked, otherwise `None` will be
-        returned.
-
-        Note that if the Kron aperture is `None`, the Kron flux will be
-        ``np.nan``.
         """
         if self._detection_cat is not None:
             detcat = self._detection_cat
@@ -2163,13 +2157,21 @@ class SourceCatalog:
     @lazyproperty
     @as_scalar
     def kron_aperture(self):
-        """
-        The Kron aperture.
+        r"""
+        The elliptical Kron aperture.
 
-        If ``kron_radius * np.sqrt(semimajor_sigma * semiminor__sigma) <
-        kron_params[1]`` (see `SourceCatalog`) then a circular aperture
-        with a radius equal to ``kron_params[1]`` will be returned. If
-        ``kron_params[1] <= 0``, then the Kron aperture will be `None`.
+        For sources where
+
+        .. math::
+            k_r \ \sqrt{a \cdot b} < rc_{min}
+
+        where :math:`k_r` is the `kron_radius`, :math:`a` and
+        :math:`b` are the semimajor (`semimajor_sigma`) and semiminor
+        (`semiminor_sigma`) axes, respectively, and :math:`rc_{min}` is
+        the minimum circular radius defined by ``kron_params[1]`` (see
+        `SourceCatalog`), then a circular aperture with a radius equal
+        to ``kron_params[1]`` will be returned. If ``kron_params[1] <=
+        0``, then the Kron aperture will be `None`.
 
         If ``kron_radius = np.nan`` then a circular aperture with a
         radius equal to ``kron_params[1]`` will be returned if the
@@ -2241,17 +2243,26 @@ class SourceCatalog:
 
     def kron_photometry(self, kron_params):
         """
-        Perform aperture photometry for each source with a circular
-        aperture of the specified radius centered at the source centroid
-        position.
+        Perform photometry for each source using an elliptical Kron
+        aperture.
+
+        This method can be used to calculate the Kron photometry using
+        different scalings of the Kron radius (`kron_radius`).
 
         See the `SourceCatalog` ``apermask_method`` keyword for options
         to mask neighboring sources.
 
         Parameters
         ----------
-        radius : float
-            The radius of the circle in pixels.
+        kron_params : list of 2 floats, optional
+            A list of two parameters used to determine how the Kron
+            radius and flux are calculated. The first item is the
+            scaling parameter of the Kron radius (`kron_radius`)
+            and the second item represents the minimum circular
+            radius. If the Kron radius times sqrt( `semimajor_sigma` *
+            `semiminor_sigma`) is less than than this radius, then the
+            Kron flux will be measured in a circle with this minimum
+            radius.
 
         Returns
         -------
