@@ -611,7 +611,7 @@ class SourceCatalog:
     @as_scalar
     def label(self):
         """
-        The source label number.
+        The source label number(s).
 
         This label number corresponds to the assigned pixel value in the
         `~photutils.segmentation.SegmentationImage`.
@@ -1893,8 +1893,8 @@ class SourceCatalog:
 
     def circular_aperture(self, radius):
         """
-        A list of circular apertures with the specified radius centered
-        at the source centroid position.
+        Return a list of circular apertures with the specified radius
+        centered at the source centroid position.
 
         Parameters
         ----------
@@ -1931,8 +1931,8 @@ class SourceCatalog:
         aperture of the specified radius centered at the source centroid
         position.
 
-        See the ``apermask_method`` keyword for options to mask
-        neighboring sources.
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
 
         Parameters
         ----------
@@ -2052,10 +2052,10 @@ class SourceCatalog:
 
         where :math:`\bar{x}` and :math:`\bar{y}` represent
         the source centroid. The scaling parameter of
-        :attr:`~photutils.segmentation.SourceCatalog.kron_radius`
-        is defined using the ``kron_params`` keyword. See the
-        ``apermask_method`` keyword for options to mask neighboring
-        sources.
+        :attr:`~photutils.segmentation.SourceCatalog.kron_radius` is
+        defined using the `SourceCatalog` ``kron_params`` keyword. See
+        the `SourceCatalog` ``apermask_method`` keyword for options to
+        mask neighboring sources.
 
         If either the numerator or denominator is less than or equal
         to 0, then ``np.nan`` will be returned. In this case, the Kron
@@ -2124,9 +2124,9 @@ class SourceCatalog:
         Define the Kron aperture.
 
         If ``kron_radius * np.sqrt(semimajor_sigma * semiminor__sigma) <
-        kron_params[1]`` then a circular aperture with a radius equal to
-        ``kron_params[1]`` will be returned. If ``kron_params[1] <= 0``,
-        then the Kron aperture will be `None`.
+        kron_params[1]`` (see `SourceCatalog`) then a circular aperture
+        with a radius equal to ``kron_params[1]`` will be returned. If
+        ``kron_params[1] <= 0``, then the Kron aperture will be `None`.
 
         If ``kron_radius = np.nan`` then a circular aperture with a
         radius equal to ``kron_params[1]`` will be returned if the
@@ -2167,9 +2167,9 @@ class SourceCatalog:
         The Kron aperture.
 
         If ``kron_radius * np.sqrt(semimajor_sigma * semiminor__sigma) <
-        kron_params[1]`` then a circular aperture with a radius equal to
-        ``kron_params[1]`` will be returned. If ``kron_params[1] <= 0``,
-        then the Kron aperture will be `None`.
+        kron_params[1]`` (see `SourceCatalog`) then a circular aperture
+        with a radius equal to ``kron_params[1]`` will be returned. If
+        ``kron_params[1] <= 0``, then the Kron aperture will be `None`.
 
         If ``kron_radius = np.nan`` then a circular aperture with a
         radius equal to ``kron_params[1]`` will be returned if the
@@ -2189,8 +2189,8 @@ class SourceCatalog:
         Calculate the flux and flux error in the Kron aperture (without
         units).
 
-        See the ``apermask_method`` keyword for options to mask
-        neighboring sources.
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
         returned.
@@ -2245,8 +2245,8 @@ class SourceCatalog:
         aperture of the specified radius centered at the source centroid
         position.
 
-        See the ``apermask_method`` keyword for options to mask
-        neighboring sources.
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
 
         Parameters
         ----------
@@ -2283,8 +2283,8 @@ class SourceCatalog:
         """
         The flux and flux error in the Kron aperture (without units).
 
-        See the ``apermask_method`` keyword for options to mask
-        neighboring sources.
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
         returned.
@@ -2297,8 +2297,8 @@ class SourceCatalog:
         """
         The flux in the Kron aperture.
 
-        See the ``apermask_method`` keyword for options to mask
-        neighboring sources.
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
@@ -2313,8 +2313,8 @@ class SourceCatalog:
         """
         The flux error in the Kron aperture.
 
-        See the ``apermask_method`` keyword for options to mask
-        neighboring sources.
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
