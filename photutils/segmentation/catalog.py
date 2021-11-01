@@ -1999,11 +1999,17 @@ class SourceCatalog:
             isophotal extent of the source. A `~numpy.ndarray` input
             must be a 1D array of length ``nlabels``.
         """
-        xcen = self._xcentroid
-        ycen = self._ycentroid
-        major_size = self.semimajor_sigma.value * scale
-        minor_size = self.semiminor_sigma.value * scale
-        theta = self.orientation.to(u.radian).value
+        if self._detection_cat is not None:
+            # use detection catalog for elliptical shape parameters
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
+        xcen = detcat._xcentroid
+        ycen = detcat._ycentroid
+        major_size = detcat.semimajor_sigma.value * scale
+        minor_size = detcat.semiminor_sigma.value * scale
+        theta = detcat.orientation.to(u.radian).value
         if self.isscalar:
             major_size = (major_size,)
             minor_size = (minor_size,)
@@ -2114,6 +2120,47 @@ class SourceCatalog:
         kron_radius = np.array(kron_radius) * u.pix
         return kron_radius
 
+    def _make_kron_aperture(self, kron_params):
+        """
+        Define the Kron aperture.
+
+        If ``kron_radius * np.sqrt(semimajor_sigma * semiminor__sigma) <
+        kron_params[1]`` then a circular aperture with a radius equal to
+        ``kron_params[1]`` will be returned. If ``kron_params[1] <= 0``,
+        then the Kron aperture will be `None`.
+
+        If ``kron_radius = np.nan`` then a circular aperture with a
+        radius equal to ``kron_params[1]`` will be returned if the
+        source is not completely masked, otherwise `None` will be
+        returned.
+
+        Note that if the Kron aperture is `None`, the Kron flux will be
+        ``np.nan``.
+        """
+        if self._detection_cat is not None:
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
+        kron_radius = detcat.kron_radius.value
+        scale = kron_radius * kron_params[0]
+        kron_aperture = self._make_elliptical_apertures(scale=scale)
+
+        # check for minimum Kron radius
+        major_sigma = detcat.semimajor_sigma.value
+        minor_sigma = detcat.semiminor_sigma.value
+        circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
+        min_radius = kron_params[1]
+        mask = np.isnan(kron_radius) | (circ_radius < min_radius)
+        idx = np.atleast_1d(mask).nonzero()[0]
+        if idx.size > 0:
+            circ_aperture = self.circular_aperture(kron_params[1])
+            for i in idx:
+                if circ_aperture is not None:
+                    kron_aperture[i] = circ_aperture[i]
+
+        return kron_aperture
+
     @lazyproperty
     @as_scalar
     def kron_aperture(self):
@@ -2136,24 +2183,7 @@ class SourceCatalog:
         if self._detection_cat is not None:
             return self._detection_cat.kron_aperture
 
-        scale = self.kron_radius.value * self._kron_params[0]
-        kron_aperture = self._make_elliptical_apertures(scale=scale)
-        kron_radius = self.kron_radius.value
-
-        # check for minimum Kron radius
-        major_sigma = self.semimajor_sigma.value
-        minor_sigma = self.semiminor_sigma.value
-        circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
-        min_radius = self._kron_params[1]
-        mask = np.isnan(kron_radius) | (circ_radius < min_radius)
-        idx = np.atleast_1d(mask).nonzero()[0]
-        if idx.size > 0:
-            circ_aperture = self.circular_aperture(self._kron_params[1])
-            for i in idx:
-                if circ_aperture is not None:
-                    kron_aperture[i] = circ_aperture[i]
-
-        return kron_aperture
+        return self._make_kron_aperture(self._kron_params)
 
     @lazyproperty
     def _kron_flux_fluxerr(self):
