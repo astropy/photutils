@@ -1776,6 +1776,11 @@ class SourceCatalog:
         The `~photutils.aperture.RectangularAnnulus` aperture used to
         estimate the local background.
         """
+        if self._detection_cat is not None:
+            # local background aperture defined using the source
+            # centroid and bbox defined by detection image
+            return self._detection_cat.local_background_aperture
+
         if self._localbkg_width == 0:
             return self._null_object
 
