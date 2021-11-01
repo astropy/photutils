@@ -231,9 +231,9 @@ class SourceCatalog:
             if not isinstance(detection_cat, SourceCatalog):
                 raise TypeError('detection_cat must be a SourceCatalog '
                                 'instance')
-            if len(detection_cat) != len(self):
-                raise ValueError('detection_cat must have the same number '
-                                 'of sources as the input segment_img')
+            if not np.array_equal(detection_cat.labels, self.labels):
+                raise ValueError('detection_cat must have same source labels '
+                                 'as the input segment_img')
         self._detection_cat = detection_cat
 
     def _process_quantities(self, data, error, background):
