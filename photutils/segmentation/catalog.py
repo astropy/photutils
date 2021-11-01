@@ -1903,10 +1903,17 @@ class SourceCatalog:
             The aperture will be `None` where the source centroid
             position is not finite.
         """
+        if self._detection_cat is not None:
+            # use source centroid defined by detection image
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
         if radius <= 0:
             return self._null_object
+
         apertures = []
-        for (xcen, ycen) in zip(self._xcentroid, self._ycentroid):
+        for (xcen, ycen) in zip(detcat._xcentroid, detcat._ycentroid):
             if np.any(~np.isfinite((xcen, ycen))):
                 apertures.append(None)
                 continue
@@ -1934,12 +1941,18 @@ class SourceCatalog:
             where the circular aperture is `None` (e.g., where the
             source centroid position is not finite).
         """
+        if self._detection_cat is not None:
+            # use source centroid defined by detection image
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
         apertures = self.circular_aperture(radius)
 
         flux = []
         fluxerr = []
         for (label, aperture, xcen, ycen, bkg) in zip(
-                self.labels, apertures, self._xcentroid, self._ycentroid,
+                self.labels, apertures, detcat._xcentroid, detcat._ycentroid,
                 self._local_background):
 
             if aperture is None:
