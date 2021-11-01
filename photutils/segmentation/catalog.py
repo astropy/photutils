@@ -147,9 +147,15 @@ class SourceCatalog:
         circle with this minimum radius.
 
     detection_cat : `SourceCatalog`, optional
-        A `SourceCatalog` object for the detection image. If input, this
-        detection catalog will be used to define the Kron radius and
-        apertures of the sources.
+        A `SourceCatalog` object for the detection image. The source
+        labels in ``detection_cat`` must correspond to the labels in the
+        input ``segment_img``. If input, this detection catalog will
+        be used to define the source centroids for all aperture-based
+        photometry (e.g., local background aperture, circular aperture,
+        Kron aperture). It will also be used to define the object
+        elliptical shape parameters when calculating the Kron radius.
+        This keyword affects the local-background value, circular
+        aperture photometry, Kron radius, and Kron photometry.
 
     Notes
     -----
