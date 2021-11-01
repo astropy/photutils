@@ -4,7 +4,6 @@ This module provides tools for calculating the properties of sources
 defined by a segmentation image.
 """
 
-from copy import deepcopy
 import functools
 import inspect
 import warnings
@@ -2185,27 +2184,30 @@ class SourceCatalog:
 
         return self._make_kron_aperture(self._kron_params)
 
-    @lazyproperty
-    def _kron_flux_fluxerr(self):
+    def _calc_kron_photometry(self, kron_params):
         """
-        The flux and flux error in the Kron aperture.
+        Calculate the flux and flux error in the Kron aperture (without
+        units).
 
         See the ``apermask_method`` keyword for options to mask
         neighboring sources.
 
-        If the Kron aperture is `None`, then ``np.nan`` will be returned.
+        If the Kron aperture is `None`, then ``np.nan`` will be
+        returned.
+
+        Returns
+        -------
+        kron_flux, kron_fluxerr : tuple of `~numpy.ndarray`
+            The Kron flux and flux error.
         """
         if self._detection_cat is not None:
             detcat = self._detection_cat
         else:
             detcat = self
 
-        kron_aperture = deepcopy(detcat.kron_aperture)
-        if self.isscalar:
-            kron_aperture = (kron_aperture,)
-
         kron_flux = []
         kron_fluxerr = []
+        kron_aperture = self._make_kron_aperture(kron_params)
         for label, xcen, ycen, aperture, bkg in zip(detcat._label_iter,
                                                     detcat._xcentroid,
                                                     detcat._ycentroid,
@@ -2235,7 +2237,59 @@ class SourceCatalog:
                         np.sqrt(np.sum((aperture_weights
                                         * error**2)[pixel_mask])))
 
-        return np.transpose((kron_flux, kron_fluxerr))
+        return kron_flux, kron_fluxerr
+
+    def kron_photometry(self, kron_params):
+        """
+        Perform aperture photometry for each source with a circular
+        aperture of the specified radius centered at the source centroid
+        position.
+
+        See the ``apermask_method`` keyword for options to mask
+        neighboring sources.
+
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
+
+        Returns
+        -------
+        flux, fluxerr : `~numpy.ndarray` of floats or floats or `~astropy.units.Quantity`
+            The aperture fluxes and flux errors. NaN will be returned
+            where the circular aperture is `None` (e.g., where the
+            source centroid position is not finite).
+        """
+        kron_flux, kron_fluxerr = self._calc_kron_photometry(kron_params)
+        if self._data_unit is not None:
+            kron_flux <<= self._data_unit
+            kron_fluxerr <<= self._data_unit
+
+        if self.isscalar:
+            kron_flux = kron_flux[0]
+            kron_fluxerr = kron_fluxerr[0]
+
+        if name is not None:
+            flux_name = f'{name}_flux'
+            fluxerr_name = f'{name}_fluxerr'
+            self.add_extra_property(flux_name, kron_flux, overwrite=overwrite)
+            self.add_extra_property(fluxerr_name, kron_fluxerr,
+                                    overwrite=overwrite)
+
+        return kron_flux, kron_fluxerr
+
+    @lazyproperty
+    def _kron_flux_fluxerr(self):
+        """
+        The flux and flux error in the Kron aperture (without units).
+
+        See the ``apermask_method`` keyword for options to mask
+        neighboring sources.
+
+        If the Kron aperture is `None`, then ``np.nan`` will be
+        returned.
+        """
+        return np.transpose(self._calc_kron_photometry(self._kron_params))
 
     @lazyproperty
     @as_scalar
