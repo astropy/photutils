@@ -2313,7 +2313,7 @@ class SourceCatalog:
 
         return kron_flux, kron_fluxerr
 
-    def kron_photometry(self, kron_params):
+    def kron_photometry(self, kron_params, name=None, overwrite=False):
         """
         Perform photometry for each source using an elliptical Kron
         aperture.
@@ -2335,6 +2335,17 @@ class SourceCatalog:
             `semiminor_sigma`) is less than than this radius, then the
             Kron flux will be measured in a circle with this minimum
             radius.
+
+        name : str or `None`, optional
+            The prefix name which will be used to define attribute
+            names for the Kron flux and flux error. The attribute
+            names ``[name]_flux`` and ``[name]_fluxerr`` will store
+            the photometry results. For example, these names can then
+            be included in the `to_table` ``columns`` keyword list to
+            output the results in the table.
+
+        overwrite : bool, optional
+            If True, overwrite the attribute ``name`` if it exists.
 
         Returns
         -------
