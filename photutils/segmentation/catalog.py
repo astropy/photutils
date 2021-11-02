@@ -92,6 +92,14 @@ class SourceCatalog:
         values (NaN and inf) in the input ``data`` are automatically
         masked.
 
+    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
+        The 2D array of the kernel used to filter the data prior to
+        calculating the source centroid and morphological parameters.
+        The kernel should be the same one used in defining the
+        source segments, i.e., the detection image (e.g., see
+        :func:`~photutils.segmentation.detect_sources`). If `None`, then
+        the unfiltered ``data`` will be used instead.
+
     background : float, 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The background level that was *previously* present in the input
         ``data``. ``background`` may either be a scalar value or a 2D
