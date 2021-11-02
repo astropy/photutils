@@ -232,6 +232,8 @@ class SourceCatalog:
         self._slices = self._segment_img.slices
         self.default_columns = DEFAULT_COLUMNS
 
+        self._extra_properties = []
+
         if detection_cat is not None:
             if not isinstance(detection_cat, SourceCatalog):
                 raise TypeError('detection_cat must be a SourceCatalog '
@@ -315,6 +317,17 @@ class SourceCatalog:
         return kron_params
 
     @property
+    def _properties(self):
+        """
+        Return all properties (even in superclasses).
+        """
+        def isproperty(obj):
+            return isinstance(obj, property)
+
+        return [i[0] for i in inspect.getmembers(self.__class__,
+                                                 predicate=isproperty)]
+
+    @property
     def _lazyproperties(self):
         """
         Return all lazyproperties (even in superclasses).
@@ -332,11 +345,13 @@ class SourceCatalog:
 
         newcls = object.__new__(self.__class__)
 
-        # attributes defined in __init__ (_segment_img was set above)
+        # attributes defined in __init__ that are copied directly to the
+        # new class
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
                      '_background', '_wcs', '_data_unit', '_convolved_data',
                      '_data_mask', '_detection_cat', '_localbkg_width',
-                     '_apermask_method', '_kron_params', 'default_columns')
+                     '_apermask_method', '_kron_params', 'default_columns',
+                     '_extra_properties')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -355,8 +370,9 @@ class SourceCatalog:
             value = value.tolist()
         setattr(newcls, attr, value)
 
-        # evaluated lazyproperty objects
-        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        # evaluated lazyproperty objects and extra properties
+        keys = (set(self.__dict__.keys())
+                & (set(self._lazyproperties) | set(self._extra_properties)))
         for key in keys:
             value = self.__dict__[key]
 
@@ -400,6 +416,10 @@ class SourceCatalog:
                             'no len()')
         return self.nlabels
 
+    def __iter__(self):
+        for item in range(len(self)):
+            yield self.__getitem__(item)
+
     @lazyproperty
     def isscalar(self):
         """
@@ -407,9 +427,60 @@ class SourceCatalog:
         """
         return self._labels.shape == ()
 
-    def __iter__(self):
-        for item in range(len(self)):
-            yield self.__getitem__(item)
+    @property
+    def extra_properties(self):
+        return self._extra_properties
+
+    def add_extra_property(self, name, value, overwrite=False):
+        internal_attributes = ((set(self.__dict__.keys())
+                               | set(self._lazyproperties)
+                               | set(self._properties))
+                               - set(self.extra_properties))
+        if name in internal_attributes:
+            raise ValueError(f'{name} cannot be set because it is a '
+                             'built-in property')
+
+        if not overwrite:
+            if hasattr(self, name):
+                raise ValueError(f'{name} already exists as an attribute. '
+                                 'Set overwrite=True to overwrite an existing '
+                                 'attribute.')
+            if name in self._extra_properties:
+                raise ValueError(f'{name} already exists in the '
+                                 '"extra_properties" attribute list.')
+
+        property_error = False
+        if self.isscalar:
+            if hasattr(value, 'isscalar'):
+                # e.g., Quantity, SkyCoord, Time
+                if not value.isscalar:
+                    property_error = True
+            else:
+                if not np.isscalar(value):
+                    property_error = True
+        else:
+            if not hasattr(value, '__len__') or len(value) != self.nlabels:
+                property_error = True
+        if property_error:
+            raise ValueError('value must have the same number of elements as '
+                             'the catalog in order to add it as an extra '
+                             'property.')
+
+        setattr(self, name, value)
+        if not overwrite:
+            self._extra_properties.append(name)
+
+    def remove_extra_property(self, name):
+        self.remove_extra_properties(name)
+
+    def remove_extra_properties(self, names):
+        names = np.atleast_1d(names)
+        for name in names:
+            if name in self._extra_properties:
+                delattr(self, name)
+                self._extra_properties.remove(name)
+            else:
+                raise ValueError(f'{name} is not a defined extra property.')
 
     def _convolve_data(self):
         """
@@ -572,9 +643,10 @@ class SourceCatalog:
         columns : str, list of str, `None`, optional
             Names of columns, in order, to include in the output
             `~astropy.table.QTable`. The allowed column names are any of
-            the attributes of `SourceCatalog`. If ``columns`` is `None`,
-            then a default list of scalar-valued properties (as defined
-            by the ``default_columns`` attribute) will be used.
+            the `SourceCatalog` properties or custom properties added
+            using `add_extra_property`. If ``columns`` is `None`, then a
+            default list of scalar-valued properties (as defined by the
+            ``default_columns`` attribute) will be used.
 
         Returns
         -------
