@@ -2035,7 +2035,7 @@ class SourceCatalog:
 
         Returns
         -------
-        flux, fluxerr : `~numpy.ndarray` of floats
+        flux, fluxerr : `~numpy.ndarray` of floats, floats, or `~astropy.units.Quantity`
             The aperture fluxes and flux errors. NaN will be returned
             where the circular aperture is `None` (e.g., where the
             source centroid position is not finite).
@@ -2077,6 +2077,14 @@ class SourceCatalog:
 
         flux = np.array(flux)
         fluxerr = np.array(fluxerr)
+
+        if self.isscalar:
+            flux = flux[0]
+            fluxerr = fluxerr[0]
+
+        if self._data_unit is not None:
+            flux <<= self._data_unit
+            fluxerr <<= self._data_unit
 
         if name is not None:
             flux_name = f'{name}_flux'
@@ -2376,7 +2384,7 @@ class SourceCatalog:
 
         Returns
         -------
-        flux, fluxerr : `~numpy.ndarray` of floats or floats or `~astropy.units.Quantity`
+        flux, fluxerr : `~numpy.ndarray` of floats, floats, or `~astropy.units.Quantity`
             The aperture fluxes and flux errors. NaN will be returned
             where the circular aperture is `None` (e.g., where the
             source centroid position is not finite).
