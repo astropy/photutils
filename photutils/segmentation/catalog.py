@@ -2000,7 +2000,7 @@ class SourceCatalog:
             apertures.append(CircularAperture((xcen, ycen), r=radius))
         return apertures
 
-    def circular_photometry(self, radius):
+    def circular_photometry(self, radius, name=None, overwrite=False):
         """
         Perform aperture photometry for each source using a circular
         aperture of the specified radius centered at the source centroid
@@ -2013,6 +2013,17 @@ class SourceCatalog:
         ----------
         radius : float
             The radius of the circle in pixels.
+
+        name : str or `None`, optional
+            The prefix name which will be used to define attribute
+            names for the flux and flux error. The attribute names
+            ``[name]_flux`` and ``[name]_fluxerr`` will store the
+            photometry results. For example, these names can then be
+            included in the `to_table` ``columns`` keyword list to
+            output the results in the table.
+
+        overwrite : bool, optional
+            If True, overwrite the attribute ``name`` if it exists.
 
         Returns
         -------
@@ -2058,6 +2069,14 @@ class SourceCatalog:
 
         flux = np.array(flux)
         fluxerr = np.array(fluxerr)
+
+        if name is not None:
+            flux_name = f'{name}_flux'
+            fluxerr_name = f'{name}_fluxerr'
+            self.add_extra_property(flux_name, flux, overwrite=overwrite)
+            self.add_extra_property(fluxerr_name, fluxerr,
+                                    overwrite=overwrite)
+
         return flux, fluxerr
 
     def _make_elliptical_apertures(self, scale=6.):
