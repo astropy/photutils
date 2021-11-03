@@ -2474,6 +2474,33 @@ class SourceCatalog:
         flux, _ = aperture.do_photometry(data, mask=mask)
         return 1.0 - (flux[0] / normflux)
 
+    @lazyproperty
+    def _fluxfrac_optimizer_args(self):
+        kron_flux = self._kron_flux_fluxerr[:, 0]  # unitless
+        max_radius = self._max_circular_kron_radius
+
+        args = []
+        for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
+                self.labels, self._xcentroid, self._ycentroid,
+                kron_flux, self._local_background, max_radius):
+
+            if np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_))):
+                args.append(None)
+                continue
+
+            aperture = CircularAperture((xcen, ycen), r=max_radius_)
+            aperture_mask = aperture.to_mask(method='exact')
+
+            # prepare cutouts of the data based on the maximum aperture size
+            data, _, mask, xycen, _ = self._make_aperture_data(
+                label, xcen, ycen, aperture_mask.bbox, bkg,
+                make_error=False)
+
+            aperture.positions = xycen
+            args.append([data, mask, aperture, kronflux, max_radius_])
+
+        return args
+
     @as_scalar
     def fluxfrac_radius(self, fluxfrac, name=None, overwrite=False):
         """
@@ -2499,9 +2526,9 @@ class SourceCatalog:
 
         Returns
         -------
-        radius : float
+        radius : 1D `~numpy.ndarray`
             The circular radius that encloses the specified fraction of
-            the Kron flux.
+            the Kron flux. NaN is returned where no solution was found.
         """
         if fluxfrac <= 0 or fluxfrac > 1:
             raise ValueError('fluxfrac must be > 0 and <= 1')
@@ -2509,38 +2536,53 @@ class SourceCatalog:
         from scipy.optimize import root_scalar
 
         radius = []
-        max_radius = self._max_circular_kron_radius
-        kron_flux = self._kron_flux_fluxerr[:, 0]
-
-        for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
-                self.labels, self._xcentroid, self._ycentroid,
-                kron_flux, self._local_background, max_radius):
-
-            if np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_))):
+        for fluxfrac_args in self._fluxfrac_optimizer_args:
+            if fluxfrac_args is None:
                 radius.append(np.nan)
                 continue
 
-            aperture = CircularAperture((xcen, ycen), r=max_radius_)
-            aperture_mask = aperture.to_mask(method='exact')
+            max_radius = fluxfrac_args[-1]
+            args = fluxfrac_args[:-1]
+            args[-1] *= fluxfrac
+            args = tuple(args)
 
-            # prepare cutouts of the data based on the maximum aperture size
-            data, _, mask, xycen, _ = self._make_aperture_data(
-                label, xcen, ycen, aperture_mask.bbox, bkg,
-                make_error=False)
+            # Try to find the root of self._fluxfrac_radius_fnc, which
+            # is bracketed by a min and max radius. A ValueError is
+            # raised if the bracket points do not have different signs,
+            # indicating no solution or multiple solutions (e.g., a
+            # multi-valued function). This can happen when at some
+            # radius, flux starts decreasing with increasing radius (due
+            # to negative data values), resulting in multiple possible
+            # solutions. If no solution is found, we iteratively
+            # decrease the max radius to narrow the bracket range until
+            # the root is found. If max radius drops below the min
+            # radius (0.1), then no solution is possible and NaN will be
+            # returned as the result.
+            found = False
+            min_radius = 0.1
+            max_radius_delta = 1.0
+            while max_radius > min_radius and found is False:
+                try:
+                    bracket = [min_radius, max_radius]
+                    result = root_scalar(self._fluxfrac_radius_fcn, args=args,
+                                         bracket=bracket, method='brentq')
+                    result = result.root
+                    found = True
+                except ValueError:  # pragma: no cover
+                    # ValueError is raised if the bracket points do not
+                    # have different signs
+                    max_radius -= max_radius_delta
 
-            aperture.positions = xycen
-            args = (data, mask, aperture, kronflux * fluxfrac)
-            bracket = [0.1, max_radius_]
-            try:
-                result = root_scalar(self._fluxfrac_radius_fcn, args=args,
-                                     bracket=bracket, method='brentq')
-                result = result.root
-            # bracket points must have different signs
-            except ValueError:  # pragma: no cover
+            # no solution found between min_radius and max_radius
+            if found is False:
                 result = np.nan
+
             radius.append(result)
 
         result = np.array(radius) << u.pix
+
+        if self.isscalar:
+            result = result[0]
 
         if name is not None:
             self.add_extra_property(name, result, overwrite=overwrite)
