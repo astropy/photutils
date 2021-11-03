@@ -2540,7 +2540,7 @@ class SourceCatalog:
                 result = np.nan
             radius.append(result)
 
-        result = np.array(radius)
+        result = np.array(radius) << u.pix
 
         if name is not None:
             self.add_extra_property(name, result, overwrite=overwrite)

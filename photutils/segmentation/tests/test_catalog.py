@@ -396,7 +396,7 @@ class TestSourceCatalog:
         cat = SourceCatalog(self.data, self.segm)
         obj = cat[1]
         radius = obj.fluxfrac_radius(0.5)
-        assert_allclose(radius, 7.899648)
+        assert_allclose(radius.value, 7.899648)
 
         with pytest.raises(ValueError):
             radius = self.cat.fluxfrac_radius(0)
