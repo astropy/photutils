@@ -75,7 +75,7 @@ jobs:
 
 
   allowed_failures:
-    name: ${{ matrix.os }}, ${{ matrix.tox_env }}
+    name: (Allowed Failure) ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
