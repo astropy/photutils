@@ -2,9 +2,6 @@
 """
 Tests for the catalog module.
 """
-
-from copy import deepcopy
-
 from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
@@ -84,11 +81,11 @@ class TestSourceCatalog:
         props = tuple(self.cat.default_columns) + props1 + props2
 
         if with_units:
-            cat1 = deepcopy(self.cat_units)
-            cat2 = deepcopy(self.cat_units)
+            cat1 = self.cat_units.copy()
+            cat2 = self.cat_units.copy()
         else:
-            cat1 = deepcopy(self.cat)
-            cat2 = deepcopy(self.cat)
+            cat1 = self.cat.copy()
+            cat2 = self.cat.copy()
 
         # test extra properties
         cat1.circular_photometry(5.0, name='circ5')
@@ -125,7 +122,7 @@ class TestSourceCatalog:
         data2 = self.data + error
 
         if with_units:
-            cat1 = deepcopy(self.cat_units)
+            cat1 = self.cat_units.copy()
             cat2 = SourceCatalog(data2 << self.unit, self.segm,
                                  error=error << self.unit,
                                  background=self.background << self.unit,
@@ -137,7 +134,7 @@ class TestSourceCatalog:
                                  mask=self.mask, wcs=self.wcs,
                                  localbkg_width=24, detection_cat=cat1)
         else:
-            cat1 = deepcopy(self.cat)
+            cat1 = self.cat.copy()
             cat2 = SourceCatalog(data2, self.segm, error=error,
                                  background=self.background, mask=self.mask,
                                  wcs=self.wcs, localbkg_width=24,
@@ -438,7 +435,7 @@ class TestSourceCatalog:
             SourceCatalog(data2, self.segm, detection_cat=np.arange(4))
 
         with pytest.raises(ValueError):
-            segm = deepcopy(self.segm)
+            segm = self.segm.copy()
             segm.remove_labels((6, 7))
             cat = SourceCatalog(self.data, segm)
             SourceCatalog(self.data, self.segm, detection_cat=cat)
@@ -632,3 +629,11 @@ class TestSourceCatalog:
         with pytest.raises(ValueError):
             coord = SkyCoord([42, 43], [44, 45], unit='deg')
             obj.add_extra_property('invalid', coord)
+
+    def test_copy(self):
+        cat = SourceCatalog(self.data, self.segm)
+        cat2 = cat.copy()
+        cat.kron_flux
+        assert 'kron_flux' not in cat2.__dict__
+        tbl = cat2.to_table()
+        assert len(tbl) == 7

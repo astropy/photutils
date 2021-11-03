@@ -4,6 +4,7 @@ This module provides tools for calculating the properties of sources
 defined by a segmentation image.
 """
 
+from copy import deepcopy
 import functools
 import inspect
 import warnings
@@ -447,6 +448,12 @@ class SourceCatalog:
         except TypeError:
             return False
         return True
+
+    def copy(self):
+        """
+        Return a deep copy of this SourceCatalog.
+        """
+        return deepcopy(self)
 
     @property
     def extra_properties(self):
