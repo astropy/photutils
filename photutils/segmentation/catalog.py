@@ -460,6 +460,28 @@ class SourceCatalog:
         return self._extra_properties
 
     def add_extra_property(self, name, value, overwrite=False):
+        """
+        Add extra properties as attributes.
+
+        For example, this property ``name`` can then be included in the
+        `to_table` ``columns`` keyword list to output the results in the
+        table.
+
+        The complete list of user-defined extra properties is stored in
+        the ``extra_properties`` attribute.
+
+        Parameters
+        ----------
+        name : str
+            The name of property. The name must not conflict with any of
+            the built-in property names or attributes.
+
+        value : array-like or float
+            The value to assign.
+
+        overwrite : bool, option
+            If `True`, will overwrite the existing property ``name``.
+        """
         internal_attributes = ((set(self.__dict__.keys())
                                | set(self._lazyproperties)
                                | set(self._properties))
@@ -504,9 +526,33 @@ class SourceCatalog:
             self._extra_properties.append(name)
 
     def remove_extra_property(self, name):
+        """
+        Remove a user-defined extra property.
+
+        The property must have been defined using `add_extra_property`.
+        The complete list of user-defined extra properties is stored in
+        the ``extra_properties`` attribute.
+
+        Parameters
+        ----------
+        name : str
+            The name of the property to remove.
+        """
         self.remove_extra_properties(name)
 
     def remove_extra_properties(self, names):
+        """
+        Remove user-defined extra properties.
+
+        The properties must have been defined using
+        `add_extra_property`. The complete list of user-defined extra
+        properties is stored in the ``extra_properties`` attribute.
+
+        Parameters
+        ----------
+        name : list of str
+            The names of the properties to remove.
+        """
         names = np.atleast_1d(names)
         for name in names:
             if name in self._extra_properties:
