@@ -22,25 +22,25 @@ jobs:
             tox_env: 'py37-test-alldeps'
           - os: ubuntu-latest
             python: '3.8'
-            tox_env: 'py38-test-alldeps-cov'
+            tox_env: 'py38-test-alldeps'
             toxposargs: --remote-data=any
           - os: ubuntu-latest
             python: '3.9'
-            tox_env: 'py39-test-alldeps'
+            tox_env: 'py39-test-alldeps-cov'
           - os: macos-latest
-            python: '3.8'
-            tox_env: 'py38-test-alldeps'
+            python: '3.9'
+            tox_env: 'py39-test-alldeps'
           - os: windows-latest
-            python: '3.8'
-            tox_env: 'py38-test-alldeps'
+            python: '3.9'
+            tox_env: 'py39-test-alldeps'
           - os: ubuntu-latest
-            python: '3.8'
-            tox_env: 'py38-test'
+            python: '3.9'
+            tox_env: 'py39-test'
           - os: ubuntu-latest
-            python: '3.8'
+            python: '3.9'
             tox_env: 'codestyle'
           - os: ubuntu-latest
-            python: '3.8'
+            python: '3.9'
             tox_env: 'bandit'
           - os: ubuntu-latest
             python: '3.7'
@@ -82,8 +82,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: '3.8'
-            tox_env: 'py38-test-alldeps-devdeps'
+            python: '3.9'
+            tox_env: 'py39-test-alldeps-devdeps'
 
     steps:
     - name: Check out repository
