@@ -2475,7 +2475,7 @@ class SourceCatalog:
         return 1.0 - (flux[0] / normflux)
 
     @as_scalar
-    def fluxfrac_radius(self, fluxfrac):
+    def fluxfrac_radius(self, fluxfrac, name=None, overwrite=False):
         """
         Calculate the circular radius that encloses the specified
         fraction of the Kron flux.
@@ -2487,6 +2487,15 @@ class SourceCatalog:
         fluxfrac : float
             The fraction of the Kron flux at which to find the circular
             radius.
+
+        name : str or `None`, optional
+            The attribute name which will be assigned to the value
+            of the output array. For example, this name can then be
+            included in the `to_table` ``columns`` keyword list to
+            output the results in the table.
+
+        overwrite : bool, optional
+            If True, overwrite the attribute ``name`` if it exists.
 
         Returns
         -------
@@ -2531,4 +2540,9 @@ class SourceCatalog:
                 result = np.nan
             radius.append(result)
 
-        return np.array(radius)
+        result = np.array(radius)
+
+        if name is not None:
+            self.add_extra_property(name, result, overwrite=overwrite)
+
+        return result
