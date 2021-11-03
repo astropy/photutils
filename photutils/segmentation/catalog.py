@@ -436,6 +436,18 @@ class SourceCatalog:
         """
         return self._labels.shape == ()
 
+    @staticmethod
+    def _has_len(value):
+        if isinstance(value, str):
+            return False
+        try:
+            # NOTE: cannot just check for __len__ attribute, because
+            # it could exist, but raise an Exception for scalar objects
+            len(value)
+        except TypeError:
+            return False
+        return True
+
     @property
     def extra_properties(self):
         return self._extra_properties
@@ -460,6 +472,11 @@ class SourceCatalog:
 
         property_error = False
         if self.isscalar:
+            # this allows fluxfrac_radius to add len-1 array values for
+            # scalar self
+            if self._has_len(value) and len(value) == 1:
+                value = value[0]
+
             if hasattr(value, 'isscalar'):
                 # e.g., Quantity, SkyCoord, Time
                 if not value.isscalar:
@@ -468,7 +485,7 @@ class SourceCatalog:
                 if not np.isscalar(value):
                     property_error = True
         else:
-            if not hasattr(value, '__len__') or len(value) != self.nlabels:
+            if not self._has_len(value) or len(value) != self.nlabels:
                 property_error = True
         if property_error:
             raise ValueError('value must have the same number of elements as '
@@ -2082,13 +2099,13 @@ class SourceCatalog:
         flux = np.array(flux)
         fluxerr = np.array(fluxerr)
 
-        if self.isscalar:
-            flux = flux[0]
-            fluxerr = fluxerr[0]
-
         if self._data_unit is not None:
             flux <<= self._data_unit
             fluxerr <<= self._data_unit
+
+        if self.isscalar:
+            flux = flux[0]
+            fluxerr = fluxerr[0]
 
         if name is not None:
             flux_name = f'{name}_flux'
@@ -2597,9 +2614,6 @@ class SourceCatalog:
             radius.append(result)
 
         result = np.array(radius) << u.pix
-
-        if self.isscalar:
-            result = result[0]
 
         if name is not None:
             self.add_extra_property(name, result, overwrite=overwrite)

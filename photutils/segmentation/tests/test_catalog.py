@@ -489,6 +489,8 @@ class TestSourceCatalog:
 
         obj = self.cat[1]
         flux1, fluxerr1 = obj.kron_photometry((1.0, 0.0), name='kron0')
+        assert np.isscalar(flux1)
+        assert np.isscalar(fluxerr1)
         assert_allclose(flux1, obj.kron0_flux)
         assert_allclose(fluxerr1, obj.kron0_fluxerr)
 
@@ -516,6 +518,8 @@ class TestSourceCatalog:
         obj = self.cat[1]
         assert obj.isscalar
         flux1, fluxerr1 = obj.circular_photometry(1.0, name='circ0')
+        assert np.isscalar(flux1)
+        assert np.isscalar(fluxerr1)
         assert_allclose(flux1, obj.circ0_flux)
         assert_allclose(fluxerr1, obj.circ0_fluxerr)
 
@@ -539,6 +543,7 @@ class TestSourceCatalog:
         cat = SourceCatalog(self.data, self.segm)
         obj = cat[1]
         radius = obj.fluxfrac_radius(0.5)
+        assert radius.isscalar  # Quantity radius - can't use np.isscalar
         assert_allclose(radius.value, 7.899648)
 
         with pytest.raises(ValueError):
