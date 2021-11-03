@@ -8,7 +8,7 @@ from copy import deepcopy
 import astropy.units as u
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
-from numpy.testing import assert_allclose, assert_equal
+from numpy.testing import assert_allclose, assert_equal, assert_raises
 import numpy as np
 import pytest
 
@@ -54,6 +54,7 @@ class TestSourceCatalog:
                                  background=self.background, mask=self.mask,
                                  wcs=self.wcs, localbkg_width=24)
         unit = u.nJy
+        self.unit = unit
         self.cat_units = SourceCatalog(self.data << unit, self.segm,
                                        error=self.error << unit,
                                        background=self.background << unit,
@@ -117,6 +118,83 @@ class TestSourceCatalog:
         obj.add_extra_property('segment_snr', segment_snr)
         for prop in props:
             assert_equal(getattr(obj, prop), getattr(cat1, prop)[idx])
+
+    @pytest.mark.parametrize('with_units', (True, False))
+    def test_catalog_detection_cat(self, with_units):
+        """
+        Test aperture-based properties with an input detection catalog.
+        """
+        error = 2.0 * self.error
+        data2 = self.data + error
+
+        if with_units:
+            cat1 = deepcopy(self.cat_units)
+            cat2 = SourceCatalog(data2 << self.unit, self.segm,
+                                 error=error << self.unit,
+                                 background=self.background << self.unit,
+                                 mask=self.mask, wcs=self.wcs,
+                                 localbkg_width=24, detection_cat=None)
+            cat3 = SourceCatalog(data2 << self.unit, self.segm,
+                                 error=error << self.unit,
+                                 background=self.background << self.unit,
+                                 mask=self.mask, wcs=self.wcs,
+                                 localbkg_width=24, detection_cat=cat1)
+        else:
+            cat1 = deepcopy(self.cat)
+            cat2 = SourceCatalog(data2, self.segm, error=error,
+                                 background=self.background, mask=self.mask,
+                                 wcs=self.wcs, localbkg_width=24,
+                                 detection_cat=None)
+            cat3 = SourceCatalog(data2, self.segm, error=error,
+                                 background=self.background, mask=self.mask,
+                                 wcs=self.wcs, localbkg_width=24,
+                                 detection_cat=cat1)
+
+        assert_equal(cat1.kron_radius, cat3.kron_radius)
+        # assert not equal
+        with assert_raises(AssertionError):
+            assert_equal(cat1.kron_radius, cat2.kron_radius)
+
+        with assert_raises(AssertionError):
+            assert_equal(cat2.kron_flux, cat3.kron_flux)
+        with assert_raises(AssertionError):
+            assert_equal(cat2.kron_fluxerr, cat3.kron_fluxerr)
+        with assert_raises(AssertionError):
+            assert_equal(cat1.kron_flux, cat3.kron_flux)
+        with assert_raises(AssertionError):
+            assert_equal(cat1.kron_fluxerr, cat3.kron_fluxerr)
+
+        flux1, fluxerr1 = cat1.circular_photometry(1.0)
+        flux2, fluxerr2 = cat2.circular_photometry(1.0)
+        flux3, fluxerr3 = cat3.circular_photometry(1.0)
+        with assert_raises(AssertionError):
+            assert_equal(flux2, flux3)
+        with assert_raises(AssertionError):
+            assert_equal(fluxerr2, fluxerr3)
+        with assert_raises(AssertionError):
+            assert_equal(flux1, flux2)
+        with assert_raises(AssertionError):
+            assert_equal(fluxerr1, fluxerr2)
+
+        flux1, fluxerr1 = cat1.kron_photometry((2.0, 0.0))
+        flux2, fluxerr2 = cat2.kron_photometry((2.0, 0.0))
+        flux3, fluxerr3 = cat3.kron_photometry((2.0, 0.0))
+        with assert_raises(AssertionError):
+            assert_equal(flux2, flux3)
+        with assert_raises(AssertionError):
+            assert_equal(fluxerr2, fluxerr3)
+        with assert_raises(AssertionError):
+            assert_equal(flux1, flux2)
+        with assert_raises(AssertionError):
+            assert_equal(fluxerr1, fluxerr2)
+
+        radius1 = cat1.fluxfrac_radius(0.5)
+        radius2 = cat2.fluxfrac_radius(0.5)
+        radius3 = cat3.fluxfrac_radius(0.5)
+        with assert_raises(AssertionError):
+            assert_equal(radius2, radius3)
+        with assert_raises(AssertionError):
+            assert_equal(radius1, radius2)
 
     def test_minimal_catalog(self):
         cat = SourceCatalog(self.data, self.segm)
