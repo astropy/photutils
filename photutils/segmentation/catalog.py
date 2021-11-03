@@ -316,6 +316,7 @@ class SourceCatalog:
 
     @staticmethod
     def _validate_kron_params(kron_params):
+        kron_params = np.atleast_1d(kron_params)
         if len(kron_params) != 2:
             raise ValueError('kron_params must have 2 elements')
         if kron_params[0] <= 0:
@@ -2309,6 +2310,9 @@ class SourceCatalog:
         kron_flux, kron_fluxerr : tuple of `~numpy.ndarray`
             The Kron flux and flux error.
         """
+        # check kron_params
+        kron_params = self._validate_kron_params(kron_params)
+
         if self._detection_cat is not None:
             detcat = self._detection_cat
         else:
