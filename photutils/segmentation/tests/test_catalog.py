@@ -5,9 +5,10 @@ Tests for the catalog module.
 
 from copy import deepcopy
 
-import astropy.units as u
+from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
+import astropy.units as u
 from numpy.testing import assert_allclose, assert_equal, assert_raises
 import numpy as np
 import pytest
@@ -91,14 +92,10 @@ class TestSourceCatalog:
 
         # test extra properties
         cat1.circular_photometry(5.0, name='circ5')
-        # cat2.circular_photometry(5.0, name='circ5')
         cat1.kron_photometry((2.0, 0.0), name='kron2')
-        # cat2.kron_photometry((2.0, 0.0), name='kron2')
         cat1.fluxfrac_radius(0.5, name='r_hl')
-        # cat2.fluxfrac_radius(0.5, name='r_hl')
         segment_snr = cat1.segment_flux / cat1.segment_fluxerr
         cat1.add_extra_property('segment_snr', segment_snr)
-        # cat2.add_extra_property('segment_snr', segment_snr)
         props = list(props)
         props.extend(cat1.extra_properties)
 
@@ -564,3 +561,69 @@ class TestSourceCatalog:
             assert isinstance(arr, u.Quantity)
         for arr in ndarray:
             assert not isinstance(arr, u.Quantity)
+
+    @pytest.mark.parametrize('scalar', (True, False))
+    def test_extra_properties(self, scalar):
+        cat = SourceCatalog(self.data, self.segm)
+        if scalar:
+            cat = cat[1]
+
+        segment_snr = cat.segment_flux / cat.segment_fluxerr
+
+        with pytest.raises(ValueError):
+            # built-in attribute
+            cat.add_extra_property('_data', segment_snr)
+        with pytest.raises(ValueError):
+            # built-in property
+            cat.add_extra_property('label', segment_snr)
+        with pytest.raises(ValueError):
+            # built-in lazyproperty
+            cat.add_extra_property('area', segment_snr)
+
+        cat.add_extra_property('segment_snr', segment_snr)
+
+        with pytest.raises(ValueError):
+            # already exists
+            cat.add_extra_property('segment_snr', segment_snr)
+
+        cat.add_extra_property('segment_snr', 2.0 * segment_snr,
+                               overwrite=True)
+        assert len(cat.extra_properties) == 1
+        assert_equal(cat.segment_snr, 2.0 * segment_snr)
+
+        with pytest.raises(ValueError):
+            cat.remove_extra_property('invalid')
+
+        cat.remove_extra_property(cat.extra_properties)
+        assert len(cat.extra_properties) == 0
+
+        cat.add_extra_property('segment_snr', segment_snr)
+        cat.add_extra_property('segment_snr2', segment_snr)
+        cat.add_extra_property('segment_snr3', segment_snr)
+        assert len(cat.extra_properties) == 3
+
+        cat.remove_extra_properties(cat.extra_properties)
+        assert len(cat.extra_properties) == 0
+
+        # key in extra_properties, but not a defined attribute
+        cat._extra_properties.append('invalid')
+        with pytest.raises(ValueError):
+            cat.add_extra_property('invalid', segment_snr)
+        cat._extra_properties.remove('invalid')
+
+    def test_extra_properties_invalid(self):
+        cat = SourceCatalog(self.data, self.segm)
+        with pytest.raises(ValueError):
+            cat.add_extra_property('invalid', 1.0)
+        with pytest.raises(ValueError):
+            cat.add_extra_property('invalid', (1.0, 2.0))
+
+        obj = cat[1]
+        with pytest.raises(ValueError):
+            obj.add_extra_property('invalid', (1.0, 2.0))
+        with pytest.raises(ValueError):
+            val = np.arange(2) << u.km
+            obj.add_extra_property('invalid', val)
+        with pytest.raises(ValueError):
+            coord = SkyCoord([42, 43], [44, 45], unit='deg')
+            obj.add_extra_property('invalid', coord)
