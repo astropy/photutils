@@ -1,7 +1,49 @@
 2.0.0 (unreleased)
 ------------------
 
-- No changes yet
+General
+^^^^^^^
+
+New Features
+^^^^^^^^^^^^
+
+- ``photutils.segmentation``
+
+  - Added ``copy`` method to ``SourceCatalog``. [#1264]
+
+  - Added ``kron_photometry`` method to ``SourceCatalog``. [#1264]
+
+  - Added ``add_extra_property``, ``remove_extra_property``, and
+    ``remove_extra_properties`` methods and ``extra_properties``
+    attribute to ``SourceCatalog``. [#1264]
+
+  - Added ``name`` and ``overwrite`` keywords to ``SourceCatalog``
+    ``circular_photometry`` and ``fluxfrac_radius`` methods. [#1264]
+
+  - ``SourceCatalog`` ``fluxfrac_radius`` was improved for cases where
+    the source flux doesn't monotonically increase with increasing radius.
+    [#1264]
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.segmentation``
+
+  - If ``detection_catalog`` is input to ``SourceCatalog`` then the
+    detection centroids are used to calculate the ``circular_aperture``,
+    ``circular_photometry``, and ``fluxfrac_radius``. [#1264]
+
+  - Units are applied to ``SourceCatalog`` ``circular_photometry``
+    output if the input data has units. [#1264]
+
+  - ``SourceCatalog`` ``circular_photometry`` returns scalar values if
+    catalog is scalar. [#1264]
+
+  - ``SourceCatalog`` ``fluxfrac_radius`` returns a ``Quantity`` with
+    pixel units. [#1264]
+
+API Changes
+^^^^^^^^^^^
 
 
 1.2.0 (2021-09-23)
@@ -98,7 +140,7 @@ Bug Fixes
     initialization with scalar data values and coordinate arrays having
     more than one dimension. [#1226]
 
-API changes
+API Changes
 ^^^^^^^^^^^
 
 - ``photutils.aperture``
@@ -303,7 +345,7 @@ Bug Fixes
 
   - Fixed ``SourceProperties`` Kron mask correction. [#1167]
 
-API changes
+API Changes
 ^^^^^^^^^^^
 
 - ``photutils.aperture``
@@ -486,7 +528,7 @@ Bug Fixes
   - The ``effective_gain`` parameter in ``calc_total_error`` can now
     be zero (or contain zero values). [#1019]
 
-API changes
+API Changes
 ^^^^^^^^^^^
 
 - ``photutils.aperture``
@@ -793,7 +835,7 @@ Bug Fixes
   - Fixed a bug in ``filter_data`` where units were dropped for data
     ``Quantity`` objects. [#872]
 
-API changes
+API Changes
 ^^^^^^^^^^^
 
 - ``photutils.aperture``
@@ -989,7 +1031,7 @@ New Features
     ``EPSFModel`` is now deprecated.  Use the ``oversampling`` keyword
     instead. [#780]
 
-API changes
+API Changes
 ^^^^^^^^^^^
 
 - ``photutils.detection``
@@ -1252,7 +1294,7 @@ New Features
 
   - Fitted results of any free parameter are added to the final table. [#471]
 
-API changes
+API Changes
 ^^^^^^^^^^^
 
 - ``photutils.aperture``
@@ -1480,7 +1522,7 @@ New Features
   - Added ``copy`` and ``area`` methods and an ``areas`` property to
     ``SegmentationImage``. [#331]
 
-API changes
+API Changes
 ^^^^^^^^^^^
 
 - ``photutils.aperture``
@@ -1687,7 +1729,7 @@ New Features
   - The ``interpolate_masked_data`` function can now interpolate
     higher-dimensional data. [#310]
 
-API changes
+API Changes
 ^^^^^^^^^^^
 
 - ``photutils.segmentation``
