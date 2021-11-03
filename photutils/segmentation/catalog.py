@@ -2458,8 +2458,13 @@ class SourceCatalog:
         The maximum circular Kron radius used as the upper limit of
         fluxfrac_radius.
         """
-        semimajor_sig = self.semimajor_sigma.value
-        kron_radius = self.kron_radius.value
+        if self._detection_cat is not None:
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
+        semimajor_sig = detcat.semimajor_sigma.value
+        kron_radius = detcat.kron_radius.value
         radius = semimajor_sig * kron_radius * self._kron_params[0]
         if self.isscalar:
             radius = np.array([radius])
@@ -2476,12 +2481,17 @@ class SourceCatalog:
 
     @lazyproperty
     def _fluxfrac_optimizer_args(self):
+        if self._detection_cat is not None:
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
         kron_flux = self._kron_flux_fluxerr[:, 0]  # unitless
         max_radius = self._max_circular_kron_radius
 
         args = []
         for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
-                self.labels, self._xcentroid, self._ycentroid,
+                self.labels, detcat._xcentroid, detcat._ycentroid,
                 kron_flux, self._local_background, max_radius):
 
             if np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_))):
