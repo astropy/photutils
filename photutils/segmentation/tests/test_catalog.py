@@ -2,13 +2,11 @@
 """
 Tests for the catalog module.
 """
-
-from copy import deepcopy
-
-import astropy.units as u
+from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
-from numpy.testing import assert_allclose, assert_equal
+import astropy.units as u
+from numpy.testing import assert_allclose, assert_equal, assert_raises
 import numpy as np
 import pytest
 
@@ -54,6 +52,7 @@ class TestSourceCatalog:
                                  background=self.background, mask=self.mask,
                                  wcs=self.wcs, localbkg_width=24)
         unit = u.nJy
+        self.unit = unit
         self.cat_units = SourceCatalog(self.data << unit, self.segm,
                                        error=self.error << unit,
                                        background=self.background << unit,
@@ -68,7 +67,9 @@ class TestSourceCatalog:
                   'equivalent_radius', 'gini', 'kron_radius', 'maxval_xindex',
                   'maxval_yindex', 'minval_xindex', 'minval_yindex',
                   'perimeter', 'sky_bbox_ll', 'sky_bbox_lr', 'sky_bbox_ul',
-                  'sky_bbox_ur', 'sky_centroid_icrs')
+                  'sky_bbox_ur', 'sky_centroid_icrs', 'local_background',
+                  'segment_flux', 'segment_fluxerr', 'kron_flux',
+                  'kron_fluxerr')
 
         props2 = ('centroid', 'covariance', 'covariance_eigvals',
                   'cutout_centroid', 'cutout_maxval_index',
@@ -80,11 +81,20 @@ class TestSourceCatalog:
         props = tuple(self.cat.default_columns) + props1 + props2
 
         if with_units:
-            cat1 = deepcopy(self.cat_units)
-            cat2 = deepcopy(self.cat_units)
+            cat1 = self.cat_units.copy()
+            cat2 = self.cat_units.copy()
         else:
-            cat1 = deepcopy(self.cat)
-            cat2 = deepcopy(self.cat)
+            cat1 = self.cat.copy()
+            cat2 = self.cat.copy()
+
+        # test extra properties
+        cat1.circular_photometry(5.0, name='circ5')
+        cat1.kron_photometry((2.0, 0.0), name='kron2')
+        cat1.fluxfrac_radius(0.5, name='r_hl')
+        segment_snr = cat1.segment_flux / cat1.segment_fluxerr
+        cat1.add_extra_property('segment_snr', segment_snr)
+        props = list(props)
+        props.extend(cat1.extra_properties)
 
         idx = 1
 
@@ -95,8 +105,90 @@ class TestSourceCatalog:
 
         # slice catalog before evaluating catalog properties
         obj = cat2[idx]
+        obj.circular_photometry(5.0, name='circ5')
+        obj.kron_photometry((2.0, 0.0), name='kron2')
+        obj.fluxfrac_radius(0.5, name='r_hl')
+        segment_snr = obj.segment_flux / obj.segment_fluxerr
+        obj.add_extra_property('segment_snr', segment_snr)
         for prop in props:
-            assert_equal(getattr(obj, prop), getattr(cat2, prop)[idx])
+            assert_equal(getattr(obj, prop), getattr(cat1, prop)[idx])
+
+    @pytest.mark.parametrize('with_units', (True, False))
+    def test_catalog_detection_cat(self, with_units):
+        """
+        Test aperture-based properties with an input detection catalog.
+        """
+        error = 2.0 * self.error
+        data2 = self.data + error
+
+        if with_units:
+            cat1 = self.cat_units.copy()
+            cat2 = SourceCatalog(data2 << self.unit, self.segm,
+                                 error=error << self.unit,
+                                 background=self.background << self.unit,
+                                 mask=self.mask, wcs=self.wcs,
+                                 localbkg_width=24, detection_cat=None)
+            cat3 = SourceCatalog(data2 << self.unit, self.segm,
+                                 error=error << self.unit,
+                                 background=self.background << self.unit,
+                                 mask=self.mask, wcs=self.wcs,
+                                 localbkg_width=24, detection_cat=cat1)
+        else:
+            cat1 = self.cat.copy()
+            cat2 = SourceCatalog(data2, self.segm, error=error,
+                                 background=self.background, mask=self.mask,
+                                 wcs=self.wcs, localbkg_width=24,
+                                 detection_cat=None)
+            cat3 = SourceCatalog(data2, self.segm, error=error,
+                                 background=self.background, mask=self.mask,
+                                 wcs=self.wcs, localbkg_width=24,
+                                 detection_cat=cat1)
+
+        assert_equal(cat1.kron_radius, cat3.kron_radius)
+        # assert not equal
+        with assert_raises(AssertionError):
+            assert_equal(cat1.kron_radius, cat2.kron_radius)
+
+        with assert_raises(AssertionError):
+            assert_equal(cat2.kron_flux, cat3.kron_flux)
+        with assert_raises(AssertionError):
+            assert_equal(cat2.kron_fluxerr, cat3.kron_fluxerr)
+        with assert_raises(AssertionError):
+            assert_equal(cat1.kron_flux, cat3.kron_flux)
+        with assert_raises(AssertionError):
+            assert_equal(cat1.kron_fluxerr, cat3.kron_fluxerr)
+
+        flux1, fluxerr1 = cat1.circular_photometry(1.0)
+        flux2, fluxerr2 = cat2.circular_photometry(1.0)
+        flux3, fluxerr3 = cat3.circular_photometry(1.0)
+        with assert_raises(AssertionError):
+            assert_equal(flux2, flux3)
+        with assert_raises(AssertionError):
+            assert_equal(fluxerr2, fluxerr3)
+        with assert_raises(AssertionError):
+            assert_equal(flux1, flux2)
+        with assert_raises(AssertionError):
+            assert_equal(fluxerr1, fluxerr2)
+
+        flux1, fluxerr1 = cat1.kron_photometry((2.0, 0.0))
+        flux2, fluxerr2 = cat2.kron_photometry((2.0, 0.0))
+        flux3, fluxerr3 = cat3.kron_photometry((2.0, 0.0))
+        with assert_raises(AssertionError):
+            assert_equal(flux2, flux3)
+        with assert_raises(AssertionError):
+            assert_equal(fluxerr2, fluxerr3)
+        with assert_raises(AssertionError):
+            assert_equal(flux1, flux2)
+        with assert_raises(AssertionError):
+            assert_equal(fluxerr1, fluxerr2)
+
+        radius1 = cat1.fluxfrac_radius(0.5)
+        radius2 = cat2.fluxfrac_radius(0.5)
+        radius3 = cat3.fluxfrac_radius(0.5)
+        with assert_raises(AssertionError):
+            assert_equal(radius2, radius3)
+        with assert_raises(AssertionError):
+            assert_equal(radius1, radius2)
 
     def test_minimal_catalog(self):
         cat = SourceCatalog(self.data, self.segm)
@@ -343,7 +435,7 @@ class TestSourceCatalog:
             SourceCatalog(data2, self.segm, detection_cat=np.arange(4))
 
         with pytest.raises(ValueError):
-            segm = deepcopy(self.segm)
+            segm = self.segm.copy()
             segm.remove_labels((6, 7))
             cat = SourceCatalog(self.data, segm)
             SourceCatalog(self.data, self.segm, detection_cat=cat)
@@ -376,27 +468,80 @@ class TestSourceCatalog:
         assert np.all(np.isnan(cat.kron_radius.value))
         assert np.all(np.isnan(cat.kron_flux))
 
-    def test_circular_photometry(self):
-        flux1, fluxerr1 = self.cat.circular_photometry(1.0)
-        flux2, fluxerr2 = self.cat.circular_photometry(5.0)
+    def test_kron_photometry(self):
+        flux1, fluxerr1 = self.cat.kron_photometry((2.5, 0.0))
+        assert_allclose(flux1, self.cat.kron_flux)
+        assert_allclose(fluxerr1, self.cat.kron_fluxerr)
+
+        flux1, fluxerr1 = self.cat.kron_photometry((1.0, 0.0), name='kron1')
+        flux2, fluxerr2 = self.cat.kron_photometry((2.0, 0.0), name='kron2')
+        assert_allclose(flux1, self.cat.kron1_flux)
+        assert_allclose(fluxerr1, self.cat.kron1_fluxerr)
+        assert_allclose(flux2, self.cat.kron2_flux)
+        assert_allclose(fluxerr2, self.cat.kron2_fluxerr)
+
         assert np.all((flux2 > flux1) | (np.isnan(flux2) & np.isnan(flux1)))
         assert np.all((fluxerr2 > fluxerr1)
                       | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
+
+        obj = self.cat[1]
+        flux1, fluxerr1 = obj.kron_photometry((1.0, 0.0), name='kron0')
+        assert np.isscalar(flux1)
+        assert np.isscalar(fluxerr1)
+        assert_allclose(flux1, obj.kron0_flux)
+        assert_allclose(fluxerr1, obj.kron0_fluxerr)
+
+        cat = SourceCatalog(self.data, self.segm)
+        _, fluxerr = cat.kron_photometry((2.0, 0.0))
+        assert np.all(np.isnan(fluxerr))
+
+        with pytest.raises(ValueError):
+            self.cat.kron_photometry(2.0)
+        with pytest.raises(ValueError):
+            self.cat.kron_photometry((2.0, 0.0, 1.5))
+
+    def test_circular_photometry(self):
+        flux1, fluxerr1 = self.cat.circular_photometry(1.0, name='circ1')
+        flux2, fluxerr2 = self.cat.circular_photometry(5.0, name='circ5')
+        assert_allclose(flux1, self.cat.circ1_flux)
+        assert_allclose(fluxerr1, self.cat.circ1_fluxerr)
+        assert_allclose(flux2, self.cat.circ5_flux)
+        assert_allclose(fluxerr2, self.cat.circ5_fluxerr)
+
+        assert np.all((flux2 > flux1) | (np.isnan(flux2) & np.isnan(flux1)))
+        assert np.all((fluxerr2 > fluxerr1)
+                      | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
+
+        obj = self.cat[1]
+        assert obj.isscalar
+        flux1, fluxerr1 = obj.circular_photometry(1.0, name='circ0')
+        assert np.isscalar(flux1)
+        assert np.isscalar(fluxerr1)
+        assert_allclose(flux1, obj.circ0_flux)
+        assert_allclose(fluxerr1, obj.circ0_fluxerr)
 
         cat = SourceCatalog(self.data, self.segm)
         _, fluxerr = cat.circular_photometry(1.0)
         assert np.all(np.isnan(fluxerr))
 
+        with pytest.raises(ValueError):
+            self.cat.circular_photometry(0.0)
+        with pytest.raises(ValueError):
+            self.cat.circular_photometry(-1.0)
+
     def test_fluxfrac_radius(self):
-        radius1 = self.cat.fluxfrac_radius(0.1)
-        radius2 = self.cat.fluxfrac_radius(0.5)
+        radius1 = self.cat.fluxfrac_radius(0.1, name='fluxfrac_r1')
+        radius2 = self.cat.fluxfrac_radius(0.5, name='fluxfrac_r5')
+        assert_allclose(radius1, self.cat.fluxfrac_r1)
+        assert_allclose(radius2, self.cat.fluxfrac_r5)
         assert np.all((radius2 > radius1)
                       | (np.isnan(radius2) & np.isnan(radius1)))
 
         cat = SourceCatalog(self.data, self.segm)
         obj = cat[1]
         radius = obj.fluxfrac_radius(0.5)
-        assert_allclose(radius, 7.899648)
+        assert radius.isscalar  # Quantity radius - can't use np.isscalar
+        assert_allclose(radius.value, 7.899648)
 
         with pytest.raises(ValueError):
             radius = self.cat.fluxfrac_radius(0)
@@ -418,3 +563,77 @@ class TestSourceCatalog:
             assert isinstance(arr, u.Quantity)
         for arr in ndarray:
             assert not isinstance(arr, u.Quantity)
+
+    @pytest.mark.parametrize('scalar', (True, False))
+    def test_extra_properties(self, scalar):
+        cat = SourceCatalog(self.data, self.segm)
+        if scalar:
+            cat = cat[1]
+
+        segment_snr = cat.segment_flux / cat.segment_fluxerr
+
+        with pytest.raises(ValueError):
+            # built-in attribute
+            cat.add_extra_property('_data', segment_snr)
+        with pytest.raises(ValueError):
+            # built-in property
+            cat.add_extra_property('label', segment_snr)
+        with pytest.raises(ValueError):
+            # built-in lazyproperty
+            cat.add_extra_property('area', segment_snr)
+
+        cat.add_extra_property('segment_snr', segment_snr)
+
+        with pytest.raises(ValueError):
+            # already exists
+            cat.add_extra_property('segment_snr', segment_snr)
+
+        cat.add_extra_property('segment_snr', 2.0 * segment_snr,
+                               overwrite=True)
+        assert len(cat.extra_properties) == 1
+        assert_equal(cat.segment_snr, 2.0 * segment_snr)
+
+        with pytest.raises(ValueError):
+            cat.remove_extra_property('invalid')
+
+        cat.remove_extra_property(cat.extra_properties)
+        assert len(cat.extra_properties) == 0
+
+        cat.add_extra_property('segment_snr', segment_snr)
+        cat.add_extra_property('segment_snr2', segment_snr)
+        cat.add_extra_property('segment_snr3', segment_snr)
+        assert len(cat.extra_properties) == 3
+
+        cat.remove_extra_properties(cat.extra_properties)
+        assert len(cat.extra_properties) == 0
+
+        # key in extra_properties, but not a defined attribute
+        cat._extra_properties.append('invalid')
+        with pytest.raises(ValueError):
+            cat.add_extra_property('invalid', segment_snr)
+        cat._extra_properties.remove('invalid')
+
+    def test_extra_properties_invalid(self):
+        cat = SourceCatalog(self.data, self.segm)
+        with pytest.raises(ValueError):
+            cat.add_extra_property('invalid', 1.0)
+        with pytest.raises(ValueError):
+            cat.add_extra_property('invalid', (1.0, 2.0))
+
+        obj = cat[1]
+        with pytest.raises(ValueError):
+            obj.add_extra_property('invalid', (1.0, 2.0))
+        with pytest.raises(ValueError):
+            val = np.arange(2) << u.km
+            obj.add_extra_property('invalid', val)
+        with pytest.raises(ValueError):
+            coord = SkyCoord([42, 43], [44, 45], unit='deg')
+            obj.add_extra_property('invalid', coord)
+
+    def test_copy(self):
+        cat = SourceCatalog(self.data, self.segm)
+        cat2 = cat.copy()
+        cat.kron_flux
+        assert 'kron_flux' not in cat2.__dict__
+        tbl = cat2.to_table()
+        assert len(tbl) == 7

@@ -93,6 +93,14 @@ class SourceCatalog:
         values (NaN and inf) in the input ``data`` are automatically
         masked.
 
+    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
+        The 2D array of the kernel used to filter the data prior to
+        calculating the source centroid and morphological parameters.
+        The kernel should be the same one used in defining the
+        source segments, i.e., the detection image (e.g., see
+        :func:`~photutils.segmentation.detect_sources`). If `None`, then
+        the unfiltered ``data`` will be used instead.
+
     background : float, 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The background level that was *previously* present in the input
         ``data``. ``background`` may either be a scalar value or a 2D
@@ -147,9 +155,15 @@ class SourceCatalog:
         circle with this minimum radius.
 
     detection_cat : `SourceCatalog`, optional
-        A `SourceCatalog` object for the detection image. If input, this
-        detection catalog will be used to define the Kron radius and
-        apertures of the sources.
+        A `SourceCatalog` object for the detection image. The source
+        labels in ``detection_cat`` must correspond to the labels in the
+        input ``segment_img``. If input, this detection catalog will
+        be used to define the source centroids for all aperture-based
+        photometry (e.g., local background aperture, circular aperture,
+        Kron aperture). It will also be used to define the object
+        elliptical shape parameters when calculating the Kron radius.
+        This keyword affects the local-background value, circular
+        aperture photometry, Kron radius, and Kron photometry.
 
     Notes
     -----
@@ -227,13 +241,15 @@ class SourceCatalog:
         self._slices = self._segment_img.slices
         self.default_columns = DEFAULT_COLUMNS
 
+        self._extra_properties = []
+
         if detection_cat is not None:
             if not isinstance(detection_cat, SourceCatalog):
                 raise TypeError('detection_cat must be a SourceCatalog '
                                 'instance')
-            if len(detection_cat) != len(self):
-                raise ValueError('detection_cat must have the same number '
-                                 'of sources as the input segment_img')
+            if not np.array_equal(detection_cat.labels, self.labels):
+                raise ValueError('detection_cat must have same source labels '
+                                 'as the input segment_img')
         self._detection_cat = detection_cat
 
     def _process_quantities(self, data, error, background):
@@ -301,6 +317,7 @@ class SourceCatalog:
 
     @staticmethod
     def _validate_kron_params(kron_params):
+        kron_params = np.atleast_1d(kron_params)
         if len(kron_params) != 2:
             raise ValueError('kron_params must have 2 elements')
         if kron_params[0] <= 0:
@@ -308,6 +325,17 @@ class SourceCatalog:
         if kron_params[1] < 0:
             raise ValueError('kron_params[1] must be >= 0')
         return kron_params
+
+    @property
+    def _properties(self):
+        """
+        Return all properties (even in superclasses).
+        """
+        def isproperty(obj):
+            return isinstance(obj, property)
+
+        return [i[0] for i in inspect.getmembers(self.__class__,
+                                                 predicate=isproperty)]
 
     @property
     def _lazyproperties(self):
@@ -327,11 +355,13 @@ class SourceCatalog:
 
         newcls = object.__new__(self.__class__)
 
-        # attributes defined in __init__ (_segment_img was set above)
+        # attributes defined in __init__ that are copied directly to the
+        # new class
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
                      '_background', '_wcs', '_data_unit', '_convolved_data',
                      '_data_mask', '_detection_cat', '_localbkg_width',
-                     '_apermask_method', '_kron_params', 'default_columns')
+                     '_apermask_method', '_kron_params', 'default_columns',
+                     '_extra_properties')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -350,8 +380,9 @@ class SourceCatalog:
             value = value.tolist()
         setattr(newcls, attr, value)
 
-        # evaluated lazyproperty objects
-        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        # evaluated lazyproperty objects and extra properties
+        keys = (set(self.__dict__.keys())
+                & (set(self._lazyproperties) | set(self._extra_properties)))
         for key in keys:
             value = self.__dict__[key]
 
@@ -395,6 +426,10 @@ class SourceCatalog:
                             'no len()')
         return self.nlabels
 
+    def __iter__(self):
+        for item in range(len(self)):
+            yield self.__getitem__(item)
+
     @lazyproperty
     def isscalar(self):
         """
@@ -402,9 +437,83 @@ class SourceCatalog:
         """
         return self._labels.shape == ()
 
-    def __iter__(self):
-        for item in range(len(self)):
-            yield self.__getitem__(item)
+    @staticmethod
+    def _has_len(value):
+        if isinstance(value, str):
+            return False
+        try:
+            # NOTE: cannot just check for __len__ attribute, because
+            # it could exist, but raise an Exception for scalar objects
+            len(value)
+        except TypeError:
+            return False
+        return True
+
+    def copy(self):
+        """
+        Return a deep copy of this SourceCatalog.
+        """
+        return deepcopy(self)
+
+    @property
+    def extra_properties(self):
+        return self._extra_properties
+
+    def add_extra_property(self, name, value, overwrite=False):
+        internal_attributes = ((set(self.__dict__.keys())
+                               | set(self._lazyproperties)
+                               | set(self._properties))
+                               - set(self.extra_properties))
+        if name in internal_attributes:
+            raise ValueError(f'{name} cannot be set because it is a '
+                             'built-in property')
+
+        if not overwrite:
+            if hasattr(self, name):
+                raise ValueError(f'{name} already exists as an attribute. '
+                                 'Set overwrite=True to overwrite an existing '
+                                 'attribute.')
+            if name in self._extra_properties:
+                raise ValueError(f'{name} already exists in the '
+                                 '"extra_properties" attribute list.')
+
+        property_error = False
+        if self.isscalar:
+            # this allows fluxfrac_radius to add len-1 array values for
+            # scalar self
+            if self._has_len(value) and len(value) == 1:
+                value = value[0]
+
+            if hasattr(value, 'isscalar'):
+                # e.g., Quantity, SkyCoord, Time
+                if not value.isscalar:
+                    property_error = True
+            else:
+                if not np.isscalar(value):
+                    property_error = True
+        else:
+            if not self._has_len(value) or len(value) != self.nlabels:
+                property_error = True
+        if property_error:
+            raise ValueError('value must have the same number of elements as '
+                             'the catalog in order to add it as an extra '
+                             'property.')
+
+        setattr(self, name, value)
+        if not overwrite:
+            self._extra_properties.append(name)
+
+    def remove_extra_property(self, name):
+        self.remove_extra_properties(name)
+
+    def remove_extra_properties(self, names):
+        names = np.atleast_1d(names)
+        for name in names:
+            if name in self._extra_properties:
+                delattr(self, name)
+                self._extra_properties.remove(name)
+            else:
+                raise ValueError(f'{name} is not a defined extra property.')
 
     def _convolve_data(self):
         """
@@ -567,9 +676,10 @@ class SourceCatalog:
         columns : str, list of str, `None`, optional
             Names of columns, in order, to include in the output
             `~astropy.table.QTable`. The allowed column names are any of
-            the attributes of `SourceCatalog`. If ``columns`` is `None`,
-            then a default list of scalar-valued properties (as defined
-            by the ``default_columns`` attribute) will be used.
+            the `SourceCatalog` properties or custom properties added
+            using `add_extra_property`. If ``columns`` is `None`, then a
+            default list of scalar-valued properties (as defined by the
+            ``default_columns`` attribute) will be used.
 
         Returns
         -------
@@ -606,7 +716,7 @@ class SourceCatalog:
     @as_scalar
     def label(self):
         """
-        The source label number.
+        The source label number(s).
 
         This label number corresponds to the assigned pixel value in the
         `~photutils.segmentation.SegmentationImage`.
@@ -616,7 +726,8 @@ class SourceCatalog:
     @property
     def labels(self):
         """
-        The source label number(s).
+        The source label number(s), always as an iterable
+        `~numpy.ndarray`.
 
         This label number corresponds to the assigned pixel value in the
         `~photutils.segmentation.SegmentationImage`.
@@ -1564,8 +1675,9 @@ class SourceCatalog:
     @as_scalar
     def fwhm(self):
         r"""
-        Circularized FWHM of the 2D Gaussian function that has the same
-        second-order central moments as the source.
+        The circularized full width at half maximum (FWHM) of the 2D
+        Gaussian function that has the same second-order central moments
+        as the source.
 
         .. math::
 
@@ -1574,7 +1686,8 @@ class SourceCatalog:
                           & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
 
         where :math:`a` and :math:`b` are the 1-sigma lengths of the
-        semimajor and semiminor axes, respectively.
+        semimajor (`semimajor_sigma`) and semiminor (`semiminor_sigma`)
+        axes, respectively.
         """
         return 2.0 * np.sqrt(np.log(2.0) * (self.semimajor_sigma**2
                                             + self.semiminor_sigma**2))
@@ -1776,6 +1889,11 @@ class SourceCatalog:
         The `~photutils.aperture.RectangularAnnulus` aperture used to
         estimate the local background.
         """
+        if self._detection_cat is not None:
+            # local background aperture defined using the source
+            # centroid and bbox defined by detection image
+            return self._detection_cat.local_background_aperture
+
         if self._localbkg_width == 0:
             return self._null_object
 
@@ -1883,8 +2001,8 @@ class SourceCatalog:
 
     def circular_aperture(self, radius):
         """
-        A list of circular apertures with the specified radius centered
-        at the source centroid position.
+        Return a list of circular apertures with the specified radius
+        centered at the source centroid position.
 
         Parameters
         ----------
@@ -1898,43 +2016,70 @@ class SourceCatalog:
             The aperture will be `None` where the source centroid
             position is not finite.
         """
+        if self._detection_cat is not None:
+            # use source centroid defined by detection image
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
         if radius <= 0:
             return self._null_object
+
         apertures = []
-        for (xcen, ycen) in zip(self._xcentroid, self._ycentroid):
+        for (xcen, ycen) in zip(detcat._xcentroid, detcat._ycentroid):
             if np.any(~np.isfinite((xcen, ycen))):
                 apertures.append(None)
                 continue
             apertures.append(CircularAperture((xcen, ycen), r=radius))
         return apertures
 
-    def circular_photometry(self, radius):
+    def circular_photometry(self, radius, name=None, overwrite=False):
         """
-        Perform aperture photometry for each source with a circular
+        Perform aperture photometry for each source using a circular
         aperture of the specified radius centered at the source centroid
         position.
 
-        See the ``apermask_method`` keyword for options to mask
-        neighboring sources.
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
 
         Parameters
         ----------
         radius : float
             The radius of the circle in pixels.
 
+        name : str or `None`, optional
+            The prefix name which will be used to define attribute
+            names for the flux and flux error. The attribute names
+            ``[name]_flux`` and ``[name]_fluxerr`` will store the
+            photometry results. For example, these names can then be
+            included in the `to_table` ``columns`` keyword list to
+            output the results in the table.
+
+        overwrite : bool, optional
+            If True, overwrite the attribute ``name`` if it exists.
+
         Returns
         -------
-        flux, fluxerr : `~numpy.ndarray` of floats
+        flux, fluxerr : `~numpy.ndarray` of floats, floats, or `~astropy.units.Quantity`
             The aperture fluxes and flux errors. NaN will be returned
             where the circular aperture is `None` (e.g., where the
             source centroid position is not finite).
         """
+        if radius <= 0:
+            raise ValueError('radius must be > 0')
+
+        if self._detection_cat is not None:
+            # use source centroid defined by detection image
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
         apertures = self.circular_aperture(radius)
 
         flux = []
         fluxerr = []
         for (label, aperture, xcen, ycen, bkg) in zip(
-                self.labels, apertures, self._xcentroid, self._ycentroid,
+                self.labels, apertures, detcat._xcentroid, detcat._ycentroid,
                 self._local_background):
 
             if aperture is None:
@@ -1960,6 +2105,22 @@ class SourceCatalog:
 
         flux = np.array(flux)
         fluxerr = np.array(fluxerr)
+
+        if self._data_unit is not None:
+            flux <<= self._data_unit
+            fluxerr <<= self._data_unit
+
+        if self.isscalar:
+            flux = flux[0]
+            fluxerr = fluxerr[0]
+
+        if name is not None:
+            flux_name = f'{name}_flux'
+            fluxerr_name = f'{name}_fluxerr'
+            self.add_extra_property(flux_name, flux, overwrite=overwrite)
+            self.add_extra_property(fluxerr_name, fluxerr,
+                                    overwrite=overwrite)
+
         return flux, fluxerr
 
     def _make_elliptical_apertures(self, scale=6.):
@@ -1975,11 +2136,17 @@ class SourceCatalog:
             isophotal extent of the source. A `~numpy.ndarray` input
             must be a 1D array of length ``nlabels``.
         """
-        xcen = self._xcentroid
-        ycen = self._ycentroid
-        major_size = self.semimajor_sigma.value * scale
-        minor_size = self.semiminor_sigma.value * scale
-        theta = self.orientation.to(u.radian).value
+        if self._detection_cat is not None:
+            # use detection catalog for elliptical shape parameters
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
+        xcen = detcat._xcentroid
+        ycen = detcat._ycentroid
+        major_size = detcat.semimajor_sigma.value * scale
+        minor_size = detcat.semiminor_sigma.value * scale
+        theta = detcat.orientation.to(u.radian).value
         if self.isscalar:
             major_size = (major_size,)
             minor_size = (minor_size,)
@@ -2002,16 +2169,17 @@ class SourceCatalog:
     @as_scalar
     def kron_radius(self):
         r"""
-        The unscaled first-moment Kron radius.
+        The *unscaled* first-moment Kron radius.
 
-        The unscaled first-moment Kron radius is given by:
+        The *unscaled* first-moment Kron radius is given by:
 
         .. math::
             k_r = \frac{\sum_{i \in A} \ r_i I_i}{\sum_{i \in A} I_i}
 
-        where the sum is over pixels in an elliptical aperture
-        whose axes are defined by six times the `semimajor_sigma`
-        and `semiminor_sigma` at the calculated `orientation` (all
+        where :math:`I_i` are the data values and the sum is over
+        pixels in an elliptical aperture whose axes are defined by
+        six times the semimajor (`semimajor_sigma`) and semiminor
+        axes (`semiminor_sigma`) at the calculated `orientation` (all
         properties derived from the central image moments of the
         source). :math:`r_i` is the elliptical "radius" to the pixel
         given by:
@@ -2021,17 +2189,20 @@ class SourceCatalog:
                 cxy (x_i - \bar{x})(y_i - \bar{y}) +
                 cyy (y_i - \bar{y})^2
 
-        where :math:`\bar{x}` and :math:`\bar{y}` represent
-        the source centroid. The scaling parameter of
-        :attr:`~photutils.segmentation.SourceCatalog.kron_radius`
-        is defined using the ``kron_params`` keyword. See the
-        ``apermask_method`` keyword for options to mask neighboring
-        sources.
+        where :math:`\bar{x}` and :math:`\bar{y}` represent the source
+        centroid and the coefficients are based on image moments (`cxx`,
+        `cxy`, and `cyy`).
 
-        If either the numerator or denominator is less than or equal
-        to 0, then ``np.nan`` will be returned. In this case, the Kron
-        aperture will be defined as a circular aperture with a radius
-        equal to ``kron_params[1]``.
+        The scaling parameter of the `kron_radius` is defined using the
+        `SourceCatalog` ``kron_params`` keyword.
+
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
+
+        If either the numerator or denominator above is less than or
+        equal to 0, then ``np.nan`` will be returned. In this case, the
+        Kron aperture will be defined as a circular aperture with a
+        radius equal to ``kron_params[1]``.
 
         If the source is completely masked, then ``np.nan`` will be
         returned for both the Kron radius and Kron flux.
@@ -2090,16 +2261,52 @@ class SourceCatalog:
         kron_radius = np.array(kron_radius) * u.pix
         return kron_radius
 
+    def _make_kron_aperture(self, kron_params):
+        """
+        Define the Kron aperture.
+        """
+        if self._detection_cat is not None:
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
+        kron_radius = detcat.kron_radius.value
+        scale = kron_radius * kron_params[0]
+        kron_aperture = self._make_elliptical_apertures(scale=scale)
+
+        # check for minimum Kron radius
+        major_sigma = detcat.semimajor_sigma.value
+        minor_sigma = detcat.semiminor_sigma.value
+        circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
+        min_radius = kron_params[1]
+        mask = np.isnan(kron_radius) | (circ_radius < min_radius)
+        idx = np.atleast_1d(mask).nonzero()[0]
+        if idx.size > 0:
+            circ_aperture = self.circular_aperture(kron_params[1])
+            for i in idx:
+                if circ_aperture is not None:
+                    kron_aperture[i] = circ_aperture[i]
+
+        return kron_aperture
+
     @lazyproperty
     @as_scalar
     def kron_aperture(self):
-        """
-        The Kron aperture.
+        r"""
+        The elliptical Kron aperture.
 
-        If ``kron_radius * np.sqrt(semimajor_sigma * semiminor__sigma) <
-        kron_params[1]`` then a circular aperture with a radius equal to
-        ``kron_params[1]`` will be returned. If ``kron_params[1] <= 0``,
-        then the Kron aperture will be `None`.
+        For sources where
+
+        .. math::
+            k_r \ \sqrt{a \cdot b} < rc_{min}
+
+        where :math:`k_r` is the `kron_radius`, :math:`a` and
+        :math:`b` are the semimajor (`semimajor_sigma`) and semiminor
+        (`semiminor_sigma`) axes, respectively, and :math:`rc_{min}` is
+        the minimum circular radius defined by ``kron_params[1]`` (see
+        `SourceCatalog`), then a circular aperture with a radius equal
+        to ``kron_params[1]`` will be returned. If ``kron_params[1] <=
+        0``, then the Kron aperture will be `None`.
 
         If ``kron_radius = np.nan`` then a circular aperture with a
         radius equal to ``kron_params[1]`` will be returned if the
@@ -2112,46 +2319,35 @@ class SourceCatalog:
         if self._detection_cat is not None:
             return self._detection_cat.kron_aperture
 
-        scale = self.kron_radius.value * self._kron_params[0]
-        kron_aperture = self._make_elliptical_apertures(scale=scale)
-        kron_radius = self.kron_radius.value
+        return self._make_kron_aperture(self._kron_params)
 
-        # check for minimum Kron radius
-        major_sigma = self.semimajor_sigma.value
-        minor_sigma = self.semiminor_sigma.value
-        circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
-        min_radius = self._kron_params[1]
-        mask = np.isnan(kron_radius) | (circ_radius < min_radius)
-        idx = np.atleast_1d(mask).nonzero()[0]
-        if idx.size > 0:
-            circ_aperture = self.circular_aperture(self._kron_params[1])
-            for i in idx:
-                if circ_aperture is not None:
-                    kron_aperture[i] = circ_aperture[i]
-
-        return kron_aperture
-
-    @lazyproperty
-    def _kron_flux_fluxerr(self):
+    def _calc_kron_photometry(self, kron_params):
         """
-        The flux and flux error in the Kron aperture.
+        Calculate the flux and flux error in the Kron aperture (without
+        units).
 
-        See the ``apermask_method`` keyword for options to mask
-        neighboring sources.
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
 
-        If the Kron aperture is `None`, then ``np.nan`` will be returned.
+        If the Kron aperture is `None`, then ``np.nan`` will be
+        returned.
+
+        Returns
+        -------
+        kron_flux, kron_fluxerr : tuple of `~numpy.ndarray`
+            The Kron flux and flux error.
         """
+        # check kron_params
+        kron_params = self._validate_kron_params(kron_params)
+
         if self._detection_cat is not None:
             detcat = self._detection_cat
         else:
             detcat = self
 
-        kron_aperture = deepcopy(detcat.kron_aperture)
-        if self.isscalar:
-            kron_aperture = (kron_aperture,)
-
         kron_flux = []
         kron_fluxerr = []
+        kron_aperture = self._make_kron_aperture(kron_params)
         for label, xcen, ycen, aperture, bkg in zip(detcat._label_iter,
                                                     detcat._xcentroid,
                                                     detcat._ycentroid,
@@ -2181,7 +2377,79 @@ class SourceCatalog:
                         np.sqrt(np.sum((aperture_weights
                                         * error**2)[pixel_mask])))
 
-        return np.transpose((kron_flux, kron_fluxerr))
+        return kron_flux, kron_fluxerr
+
+    def kron_photometry(self, kron_params, name=None, overwrite=False):
+        """
+        Perform photometry for each source using an elliptical Kron
+        aperture.
+
+        This method can be used to calculate the Kron photometry using
+        different scalings of the Kron radius (`kron_radius`).
+
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
+
+        Parameters
+        ----------
+        kron_params : list of 2 floats, optional
+            A list of two parameters used to determine how the Kron
+            radius and flux are calculated. The first item is the
+            scaling parameter of the Kron radius (`kron_radius`)
+            and the second item represents the minimum circular
+            radius. If the Kron radius times sqrt( `semimajor_sigma` *
+            `semiminor_sigma`) is less than than this radius, then the
+            Kron flux will be measured in a circle with this minimum
+            radius.
+
+        name : str or `None`, optional
+            The prefix name which will be used to define attribute
+            names for the Kron flux and flux error. The attribute
+            names ``[name]_flux`` and ``[name]_fluxerr`` will store
+            the photometry results. For example, these names can then
+            be included in the `to_table` ``columns`` keyword list to
+            output the results in the table.
+
+        overwrite : bool, optional
+            If True, overwrite the attribute ``name`` if it exists.
+
+        Returns
+        -------
+        flux, fluxerr : `~numpy.ndarray` of floats, floats, or `~astropy.units.Quantity`
+            The aperture fluxes and flux errors. NaN will be returned
+            where the circular aperture is `None` (e.g., where the
+            source centroid position is not finite).
+        """
+        kron_flux, kron_fluxerr = self._calc_kron_photometry(kron_params)
+        if self._data_unit is not None:
+            kron_flux <<= self._data_unit
+            kron_fluxerr <<= self._data_unit
+
+        if self.isscalar:
+            kron_flux = kron_flux[0]
+            kron_fluxerr = kron_fluxerr[0]
+
+        if name is not None:
+            flux_name = f'{name}_flux'
+            fluxerr_name = f'{name}_fluxerr'
+            self.add_extra_property(flux_name, kron_flux, overwrite=overwrite)
+            self.add_extra_property(fluxerr_name, kron_fluxerr,
+                                    overwrite=overwrite)
+
+        return kron_flux, kron_fluxerr
+
+    @lazyproperty
+    def _kron_flux_fluxerr(self):
+        """
+        The flux and flux error in the Kron aperture (without units).
+
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
+
+        If the Kron aperture is `None`, then ``np.nan`` will be
+        returned.
+        """
+        return np.transpose(self._calc_kron_photometry(self._kron_params))
 
     @lazyproperty
     @as_scalar
@@ -2189,8 +2457,8 @@ class SourceCatalog:
         """
         The flux in the Kron aperture.
 
-        See the ``apermask_method`` keyword for options to mask
-        neighboring sources.
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
@@ -2205,8 +2473,8 @@ class SourceCatalog:
         """
         The flux error in the Kron aperture.
 
-        See the ``apermask_method`` keyword for options to mask
-        neighboring sources.
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
@@ -2221,8 +2489,13 @@ class SourceCatalog:
         The maximum circular Kron radius used as the upper limit of
         fluxfrac_radius.
         """
-        semimajor_sig = self.semimajor_sigma.value
-        kron_radius = self.kron_radius.value
+        if self._detection_cat is not None:
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
+        semimajor_sig = detcat.semimajor_sigma.value
+        kron_radius = detcat.kron_radius.value
         radius = semimajor_sig * kron_radius * self._kron_params[0]
         if self.isscalar:
             radius = np.array([radius])
@@ -2237,8 +2510,40 @@ class SourceCatalog:
         flux, _ = aperture.do_photometry(data, mask=mask)
         return 1.0 - (flux[0] / normflux)
 
+    @lazyproperty
+    def _fluxfrac_optimizer_args(self):
+        if self._detection_cat is not None:
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
+        kron_flux = self._kron_flux_fluxerr[:, 0]  # unitless
+        max_radius = self._max_circular_kron_radius
+
+        args = []
+        for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
+                self.labels, detcat._xcentroid, detcat._ycentroid,
+                kron_flux, self._local_background, max_radius):
+
+            if np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_))):
+                args.append(None)
+                continue
+
+            aperture = CircularAperture((xcen, ycen), r=max_radius_)
+            aperture_mask = aperture.to_mask(method='exact')
+
+            # prepare cutouts of the data based on the maximum aperture size
+            data, _, mask, xycen, _ = self._make_aperture_data(
+                label, xcen, ycen, aperture_mask.bbox, bkg,
+                make_error=False)
+
+            aperture.positions = xycen
+            args.append([data, mask, aperture, kronflux, max_radius_])
+
+        return args
+
     @as_scalar
-    def fluxfrac_radius(self, fluxfrac):
+    def fluxfrac_radius(self, fluxfrac, name=None, overwrite=False):
         """
         Calculate the circular radius that encloses the specified
         fraction of the Kron flux.
@@ -2251,11 +2556,20 @@ class SourceCatalog:
             The fraction of the Kron flux at which to find the circular
             radius.
 
+        name : str or `None`, optional
+            The attribute name which will be assigned to the value
+            of the output array. For example, this name can then be
+            included in the `to_table` ``columns`` keyword list to
+            output the results in the table.
+
+        overwrite : bool, optional
+            If True, overwrite the attribute ``name`` if it exists.
+
         Returns
         -------
-        radius : float
+        radius : 1D `~numpy.ndarray`
             The circular radius that encloses the specified fraction of
-            the Kron flux.
+            the Kron flux. NaN is returned where no solution was found.
         """
         if fluxfrac <= 0 or fluxfrac > 1:
             raise ValueError('fluxfrac must be > 0 and <= 1')
@@ -2263,35 +2577,52 @@ class SourceCatalog:
         from scipy.optimize import root_scalar
 
         radius = []
-        max_radius = self._max_circular_kron_radius
-        kron_flux = self._kron_flux_fluxerr[:, 0]
-
-        for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
-                self.labels, self._xcentroid, self._ycentroid,
-                kron_flux, self._local_background, max_radius):
-
-            if np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_))):
+        for fluxfrac_args in self._fluxfrac_optimizer_args:
+            if fluxfrac_args is None:
                 radius.append(np.nan)
                 continue
 
-            aperture = CircularAperture((xcen, ycen), r=max_radius_)
-            aperture_mask = aperture.to_mask(method='exact')
+            max_radius = fluxfrac_args[-1]
+            args = fluxfrac_args[:-1]
+            args[-1] *= fluxfrac
+            args = tuple(args)
 
-            # prepare cutouts of the data based on the maximum aperture size
-            data, _, mask, xycen, _ = self._make_aperture_data(
-                label, xcen, ycen, aperture_mask.bbox, bkg,
-                make_error=False)
+            # Try to find the root of self._fluxfrac_radius_fnc, which
+            # is bracketed by a min and max radius. A ValueError is
+            # raised if the bracket points do not have different signs,
+            # indicating no solution or multiple solutions (e.g., a
+            # multi-valued function). This can happen when at some
+            # radius, flux starts decreasing with increasing radius (due
+            # to negative data values), resulting in multiple possible
+            # solutions. If no solution is found, we iteratively
+            # decrease the max radius to narrow the bracket range until
+            # the root is found. If max radius drops below the min
+            # radius (0.1), then no solution is possible and NaN will be
+            # returned as the result.
+            found = False
+            min_radius = 0.1
+            max_radius_delta = 1.0
+            while max_radius > min_radius and found is False:
+                try:
+                    bracket = [min_radius, max_radius]
+                    result = root_scalar(self._fluxfrac_radius_fcn, args=args,
+                                         bracket=bracket, method='brentq')
+                    result = result.root
+                    found = True
+                except ValueError:  # pragma: no cover
+                    # ValueError is raised if the bracket points do not
+                    # have different signs
+                    max_radius -= max_radius_delta
 
-            aperture.positions = xycen
-            args = (data, mask, aperture, kronflux * fluxfrac)
-            bracket = [0.1, max_radius_]
-            try:
-                result = root_scalar(self._fluxfrac_radius_fcn, args=args,
-                                     bracket=bracket, method='brentq')
-                result = result.root
-            # bracket points must have different signs
-            except ValueError:  # pragma: no cover
+            # no solution found between min_radius and max_radius
+            if found is False:
                 result = np.nan
+
             radius.append(result)
 
-        return np.array(radius)
+        result = np.array(radius) << u.pix
+
+        if name is not None:
+            self.add_extra_property(name, result, overwrite=overwrite)
+
+        return result
