@@ -2041,6 +2041,9 @@ class SourceCatalog:
             where the circular aperture is `None` (e.g., where the
             source centroid position is not finite).
         """
+        if radius <= 0:
+            raise ValueError('radius must be > 0')
+
         if self._detection_cat is not None:
             # use source centroid defined by detection image
             detcat = self._detection_cat

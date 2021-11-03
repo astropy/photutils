@@ -68,7 +68,9 @@ class TestSourceCatalog:
                   'equivalent_radius', 'gini', 'kron_radius', 'maxval_xindex',
                   'maxval_yindex', 'minval_xindex', 'minval_yindex',
                   'perimeter', 'sky_bbox_ll', 'sky_bbox_lr', 'sky_bbox_ul',
-                  'sky_bbox_ur', 'sky_centroid_icrs')
+                  'sky_bbox_ur', 'sky_centroid_icrs', 'local_background',
+                  'segment_flux', 'segment_fluxerr', 'kron_flux',
+                  'kron_fluxerr')
 
         props2 = ('centroid', 'covariance', 'covariance_eigvals',
                   'cutout_centroid', 'cutout_maxval_index',
@@ -86,6 +88,19 @@ class TestSourceCatalog:
             cat1 = deepcopy(self.cat)
             cat2 = deepcopy(self.cat)
 
+        # test extra properties
+        cat1.circular_photometry(5.0, name='circ5')
+        # cat2.circular_photometry(5.0, name='circ5')
+        cat1.kron_photometry((2.0, 0.0), name='kron2')
+        # cat2.kron_photometry((2.0, 0.0), name='kron2')
+        cat1.fluxfrac_radius(0.5, name='r_hl')
+        # cat2.fluxfrac_radius(0.5, name='r_hl')
+        segment_snr = cat1.segment_flux / cat1.segment_fluxerr
+        cat1.add_extra_property('segment_snr', segment_snr)
+        # cat2.add_extra_property('segment_snr', segment_snr)
+        props = list(props)
+        props.extend(cat1.extra_properties)
+
         idx = 1
 
         # evaluate (cache) catalog properties before slice
@@ -95,8 +110,13 @@ class TestSourceCatalog:
 
         # slice catalog before evaluating catalog properties
         obj = cat2[idx]
+        obj.circular_photometry(5.0, name='circ5')
+        obj.kron_photometry((2.0, 0.0), name='kron2')
+        obj.fluxfrac_radius(0.5, name='r_hl')
+        segment_snr = obj.segment_flux / obj.segment_fluxerr
+        obj.add_extra_property('segment_snr', segment_snr)
         for prop in props:
-            assert_equal(getattr(obj, prop), getattr(cat2, prop)[idx])
+            assert_equal(getattr(obj, prop), getattr(cat1, prop)[idx])
 
     def test_minimal_catalog(self):
         cat = SourceCatalog(self.data, self.segm)
@@ -376,20 +396,68 @@ class TestSourceCatalog:
         assert np.all(np.isnan(cat.kron_radius.value))
         assert np.all(np.isnan(cat.kron_flux))
 
-    def test_circular_photometry(self):
-        flux1, fluxerr1 = self.cat.circular_photometry(1.0)
-        flux2, fluxerr2 = self.cat.circular_photometry(5.0)
+    def test_kron_photometry(self):
+        flux1, fluxerr1 = self.cat.kron_photometry((2.5, 0.0))
+        assert_allclose(flux1, self.cat.kron_flux)
+        assert_allclose(fluxerr1, self.cat.kron_fluxerr)
+
+        flux1, fluxerr1 = self.cat.kron_photometry((1.0, 0.0), name='kron1')
+        flux2, fluxerr2 = self.cat.kron_photometry((2.0, 0.0), name='kron2')
+        assert_allclose(flux1, self.cat.kron1_flux)
+        assert_allclose(fluxerr1, self.cat.kron1_fluxerr)
+        assert_allclose(flux2, self.cat.kron2_flux)
+        assert_allclose(fluxerr2, self.cat.kron2_fluxerr)
+
         assert np.all((flux2 > flux1) | (np.isnan(flux2) & np.isnan(flux1)))
         assert np.all((fluxerr2 > fluxerr1)
                       | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
+
+        obj = self.cat[1]
+        flux1, fluxerr1 = obj.kron_photometry((1.0, 0.0), name='kron0')
+        assert_allclose(flux1, obj.kron0_flux)
+        assert_allclose(fluxerr1, obj.kron0_fluxerr)
+
+        cat = SourceCatalog(self.data, self.segm)
+        _, fluxerr = cat.kron_photometry((2.0, 0.0))
+        assert np.all(np.isnan(fluxerr))
+
+        with pytest.raises(ValueError):
+            self.cat.kron_photometry(2.0)
+        with pytest.raises(ValueError):
+            self.cat.kron_photometry((2.0, 0.0, 1.5))
+
+    def test_circular_photometry(self):
+        flux1, fluxerr1 = self.cat.circular_photometry(1.0, name='circ1')
+        flux2, fluxerr2 = self.cat.circular_photometry(5.0, name='circ5')
+        assert_allclose(flux1, self.cat.circ1_flux)
+        assert_allclose(fluxerr1, self.cat.circ1_fluxerr)
+        assert_allclose(flux2, self.cat.circ5_flux)
+        assert_allclose(fluxerr2, self.cat.circ5_fluxerr)
+
+        assert np.all((flux2 > flux1) | (np.isnan(flux2) & np.isnan(flux1)))
+        assert np.all((fluxerr2 > fluxerr1)
+                      | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
+
+        obj = self.cat[1]
+        assert obj.isscalar
+        flux1, fluxerr1 = obj.circular_photometry(1.0, name='circ0')
+        assert_allclose(flux1, obj.circ0_flux)
+        assert_allclose(fluxerr1, obj.circ0_fluxerr)
 
         cat = SourceCatalog(self.data, self.segm)
         _, fluxerr = cat.circular_photometry(1.0)
         assert np.all(np.isnan(fluxerr))
 
+        with pytest.raises(ValueError):
+            self.cat.circular_photometry(0.0)
+        with pytest.raises(ValueError):
+            self.cat.circular_photometry(-1.0)
+
     def test_fluxfrac_radius(self):
-        radius1 = self.cat.fluxfrac_radius(0.1)
-        radius2 = self.cat.fluxfrac_radius(0.5)
+        radius1 = self.cat.fluxfrac_radius(0.1, name='fluxfrac_r1')
+        radius2 = self.cat.fluxfrac_radius(0.5, name='fluxfrac_r5')
+        assert_allclose(radius1, self.cat.fluxfrac_r1)
+        assert_allclose(radius2, self.cat.fluxfrac_r5)
         assert np.all((radius2 > radius1)
                       | (np.isnan(radius2) & np.isnan(radius1)))
 
