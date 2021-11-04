@@ -20,7 +20,7 @@ from ..aperture import (BoundingBox, CircularAperture, EllipticalAperture,
                         RectangularAnnulus)
 from ..background import SExtractorBackground
 from ..utils._convolution import _filter_data
-from ..utils._misc import _get_version_info
+from ..utils._misc import _get_meta
 from ..utils._moments import _moments, _moments_central
 
 __all__ = ['SourceCatalog']
@@ -252,6 +252,8 @@ class SourceCatalog:
                                  'as the input segment_img')
         self._detection_cat = detection_cat
 
+        self.meta = _get_meta()
+
     def _process_quantities(self, data, error, background):
         """
         Check units of input arrays.
@@ -361,7 +363,7 @@ class SourceCatalog:
                      '_background', '_wcs', '_data_unit', '_convolved_data',
                      '_data_mask', '_detection_cat', '_localbkg_width',
                      '_apermask_method', '_kron_params', 'default_columns',
-                     '_extra_properties')
+                     '_extra_properties', 'meta')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -737,8 +739,7 @@ class SourceCatalog:
         else:
             table_columns = np.atleast_1d(columns)
 
-        meta = {'version': _get_version_info()}
-        tbl = QTable(meta=meta)
+        tbl = QTable(meta=_get_meta())
         for column in table_columns:
             values = getattr(self, column)
 
