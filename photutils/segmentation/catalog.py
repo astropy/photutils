@@ -563,6 +563,28 @@ class SourceCatalog:
             else:
                 raise ValueError(f'{name} is not a defined extra property.')
 
+    def rename_extra_property(self, name, new_name):
+        """
+        Rename an extra property.
+
+        The renamed property will remain at the same index in the
+        ``extra_properties`` list.
+
+        Parameters
+        ----------
+        name : str
+            The old attribute name.
+
+        new_name : str
+            The new attribute name.
+        """
+        self.add_extra_property(new_name, getattr(self, name))
+        idx = self.extra_properties.index(name)
+        self.remove_extra_property(name)
+        # preserve the order of self.extra_properties
+        self.extra_properties.remove(new_name)
+        self.extra_properties.insert(idx, new_name)
+
     def _convolve_data(self):
         """
         Convolve the input data with the input kernel.
