@@ -739,7 +739,7 @@ class SourceCatalog:
         else:
             table_columns = np.atleast_1d(columns)
 
-        tbl = QTable(meta=_get_meta())
+        tbl = QTable(meta=self.meta)
         for column in table_columns:
             values = getattr(self, column)
 
