@@ -331,7 +331,8 @@ class SourceCatalog:
     @property
     def _properties(self):
         """
-        Return all properties (even in superclasses).
+        A list of all class properties, include lazyproperties (even in
+        superclasses).
         """
         def isproperty(obj):
             return isinstance(obj, property)
@@ -340,9 +341,22 @@ class SourceCatalog:
                                                  predicate=isproperty)]
 
     @property
+    def properties(self):
+        """
+        A list of built-in source properties.
+        """
+        lazyproperties = [name for name in self._lazyproperties if not
+                          name.startswith('_')]
+        lazyproperties.remove('isscalar')
+        lazyproperties.remove('nlabels')
+        lazyproperties.extend(['label', 'labels', 'slices'])
+        lazyproperties.sort()
+        return lazyproperties
+
+    @property
     def _lazyproperties(self):
         """
-        Return all lazyproperties (even in superclasses).
+        A list of all class lazyproperties (even in superclasses).
         """
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
@@ -485,12 +499,11 @@ class SourceCatalog:
             If `True`, will overwrite the existing property ``name``.
         """
         internal_attributes = ((set(self.__dict__.keys())
-                               | set(self._lazyproperties)
                                | set(self._properties))
                                - set(self.extra_properties))
         if name in internal_attributes:
             raise ValueError(f'{name} cannot be set because it is a '
-                             'built-in property')
+                             'built-in attribute')
 
         if not overwrite:
             if hasattr(self, name):
