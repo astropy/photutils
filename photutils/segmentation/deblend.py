@@ -47,7 +47,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         that an object must have to be detected.  ``npixels`` must be a
         positive integer.
 
-    filter : array-like or `~astropy.convolution.Kernel2D`, optional
+    kernel : array-like or `~astropy.convolution.Kernel2D`, optional
         The array of the kernel used to filter the image before
         thresholding.  Filtering the image will smooth the noise and
         maximize detectability of objects with a shape similar to the
