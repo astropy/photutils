@@ -13,6 +13,7 @@ from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated
 import numpy as np
 
 from .core import SegmentationImage
@@ -2100,10 +2101,13 @@ class SourceCatalog:
 
         return data, error, mask, cutout_xycen, slc_sm
 
-    def circular_aperture(self, radius):
+    def make_circular_apertures(self, radius):
         """
         Return a list of circular apertures with the specified radius
         centered at the source centroid position.
+
+        If provided, the `SourceCatalog` ``detection_cat`` will be used
+        for the source centroids.
 
         Parameters
         ----------
@@ -2115,7 +2119,8 @@ class SourceCatalog:
         result : list of `~photutils.aperture.CircularAperture`
             A list of `~photutils.aperture.CircularAperture` instances.
             The aperture will be `None` where the source centroid
-            position is not finite.
+            position is not finite or where the source is completely
+            masked.
         """
         if self._detection_cat is not None:
             # use source centroid defined by detection image
@@ -2138,6 +2143,27 @@ class SourceCatalog:
             apertures.append(CircularAperture((xcen, ycen), r=radius))
 
         return apertures
+
+    @deprecated('1.1', alternative='make_circular_apertures')
+    def circular_aperture(self, radius):
+        """
+        Return a list of circular apertures with the specified radius
+        centered at the source centroid position.
+
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
+
+        Returns
+        -------
+        result : list of `~photutils.aperture.CircularAperture`
+            A list of `~photutils.aperture.CircularAperture` instances.
+            The aperture will be `None` where the source centroid
+            position is not finite or where the source is completely
+            masked.
+        """
+        return self.make_circular_apertures(radius)
 
     def circular_photometry(self, radius, name=None, overwrite=False):
         """
@@ -2180,7 +2206,7 @@ class SourceCatalog:
         else:
             detcat = self
 
-        apertures = self.circular_aperture(radius)
+        apertures = self.make_circular_apertures(radius)
 
         flux = []
         fluxerr = []
@@ -2388,7 +2414,7 @@ class SourceCatalog:
         mask = np.isnan(kron_radius) | (circ_radius < min_radius)
         idx = np.atleast_1d(mask).nonzero()[0]
         if idx.size > 0:
-            circ_aperture = self.circular_aperture(kron_params[1])
+            circ_aperture = self.make_circular_apertures(kron_params[1])
             for i in idx:
                 if circ_aperture is not None:
                     kron_aperture[i] = circ_aperture[i]
