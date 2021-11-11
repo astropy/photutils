@@ -986,16 +986,22 @@ class SourceCatalog:
         """
         Get a 1D array of unmasked values from the input array within
         the source segment.
+
+        An array with a single NaN is returned for completely-masked
+        sources.
         """
         if self.isscalar:
             array = (array,)
-        return [arr.compressed() if len(arr.compressed()) > 0 else np.nan
-                for arr in array]
+        return [arr.compressed() if len(arr.compressed()) > 0
+                else np.array([np.nan]) for arr in array]
 
     @lazyproperty
     def _data_values(self):
         """
         A 1D array of unmasked data values.
+
+        An array with a single NaN is returned for completely-masked
+        sources.
         """
         return self._get_values(self.data_ma)
 
@@ -1003,6 +1009,9 @@ class SourceCatalog:
     def _error_values(self):
         """
         A 1D array of unmasked error values.
+
+        An array with a single NaN is returned for completely-masked
+        sources.
         """
         return self._get_values(self.error_ma)
 
@@ -1010,6 +1019,9 @@ class SourceCatalog:
     def _background_values(self):
         """
         A 1D array of unmasked background values.
+
+        An array with a single NaN is returned for completely-masked
+        sources.
         """
         return self._get_values(self.background_ma)
 
@@ -1589,9 +1601,9 @@ class SourceCatalog:
         if a mask is input to `SourceCatalog` or if the ``data``
         within the segment contains invalid values (NaN and inf).
         """
-        return np.array([arr.shape[0]
-                         if isinstance(arr, np.ndarray) else np.nan
-                         for arr in self._data_values]) << u.pix**2
+        areas = np.array([arr.size for arr in self._data_values]).astype(float)
+        areas[self._all_masked] = np.nan
+        return areas << (u.pix ** 2)
 
     @lazyproperty
     @as_scalar
