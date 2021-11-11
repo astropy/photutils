@@ -2123,7 +2123,7 @@ class SourceCatalog:
             masked.
         """
         if self._detection_cat is not None:
-            # use source centroid defined by detection image
+            # use detection catalog for centroids
             detcat = self._detection_cat
         else:
             detcat = self
@@ -2260,6 +2260,9 @@ class SourceCatalog:
         Return a list of elliptical apertures based on the scaled
         isophotal shape of the sources.
 
+        If provided, the `SourceCatalog` ``detection_cat`` will be used
+        for the source centroids.
+
         Parameters
         ----------
         scale : float or `~numpy.ndarray`, optional
@@ -2267,9 +2270,18 @@ class SourceCatalog:
             axes. The default value of 6.0 is roughly two times the
             isophotal extent of the source. A `~numpy.ndarray` input
             must be a 1D array of length ``nlabels``.
+
+        Returns
+        -------
+        result : list of `~photutils.aperture.EllipticalAperture`
+            A list of `~photutils.aperture.EllipticalAperture`
+            instances. The aperture will be `None` where the source
+            centroid position or elliptical shape parameters are not
+            finite or where the source is completely masked.
         """
         if self._detection_cat is not None:
-            # use detection catalog for elliptical shape parameters
+            # use detection catalog for centroids and elliptical shape
+            # parameters
             detcat = self._detection_cat
         else:
             detcat = self
@@ -2285,14 +2297,13 @@ class SourceCatalog:
             theta = (theta,)
 
         aperture = []
-        for xcen_, ycen_, major_, minor_, theta_ in zip(xcen, ycen,
-                                                        major_size,
-                                                        minor_size,
-                                                        theta):
-            values = (xcen_, ycen_, major_, minor_, theta_)
-            if np.any(~np.isfinite(values)):
+        for values in zip(xcen, ycen, major_size, minor_size, theta,
+                          self._all_masked):
+            if values[-1] or np.any(~np.isfinite(values[:-1])):
                 aperture.append(None)
                 continue
+
+            (xcen_, ycen_, major_, minor_, theta_) = values[:-1]
             aperture.append(EllipticalAperture((xcen_, ycen_), major_, minor_,
                                                theta=theta_))
         return aperture
@@ -2338,9 +2349,15 @@ class SourceCatalog:
 
         If the source is completely masked, then ``np.nan`` will be
         returned for both the Kron radius and Kron flux.
+
+        If the `SourceCatalog` ``detection_cat`` was provided, then
+        its ``kron_radius`` will be returned if the source is not
+        completely masked.
         """
         if self._detection_cat is not None:
-            return self._detection_cat.kron_radius
+            kron_radius = self._detection_cat.kron_radius
+            kron_radius[self._all_masked] = np.nan
+            return kron_radius
 
         labels = self._label_iter
         apertures = self._make_elliptical_apertures(scale=6.0)
@@ -2393,33 +2410,60 @@ class SourceCatalog:
         kron_radius = np.array(kron_radius) * u.pix
         return kron_radius
 
-    def _make_kron_aperture(self, kron_params):
+    def make_kron_apertures(self, kron_params):
         """
-        Define the Kron aperture.
+        Return a list of Kron elliptical apertures with the specified
+        scaling and centered at the source centroid position.
+
+        If provided, the `SourceCatalog` ``detection_cat`` will be used
+        for the source centroids.
+
+        Parameters
+        ----------
+        kron_params : list of 2 floats, optional
+            A list of two parameters used to determine how the Kron
+            radius and flux are calculated. The first item is the
+            scaling parameter of the Kron radius (`kron_radius`)
+            and the second item represents the minimum circular
+            radius. If the Kron radius times sqrt( `semimajor_sigma` *
+            `semiminor_sigma`) is less than than this radius, then the
+            Kron flux will be measured in a circle with this minimum
+            radius.
+
+        Returns
+        -------
+        result : list of `~photutils.aperture.PixelAperture`
+            A list of `~photutils.aperture.EllipticalAperture` or
+            `~photutils.aperture.CircularAperture` instances. The
+            aperture will be `None` where the source centroid position
+            is not finite or where the source is completely masked.
         """
         if self._detection_cat is not None:
+            # use detection catalog for centroids and elliptical shape
+            # parameters
             detcat = self._detection_cat
         else:
             detcat = self
 
         kron_radius = detcat.kron_radius.value
         scale = kron_radius * kron_params[0]
-        kron_aperture = self._make_elliptical_apertures(scale=scale)
+        # NOTE: if kron_radius = NaN, scale = NaN and kron_aperture = None
+        kron_apertures = self._make_elliptical_apertures(scale=scale)
 
         # check for minimum Kron radius
         major_sigma = detcat.semimajor_sigma.value
         minor_sigma = detcat.semiminor_sigma.value
         circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
+
         min_radius = kron_params[1]
         mask = np.isnan(kron_radius) | (circ_radius < min_radius)
         idx = np.atleast_1d(mask).nonzero()[0]
         if idx.size > 0:
-            circ_aperture = self.make_circular_apertures(kron_params[1])
+            circ_aperture = self.make_circular_apertures(min_radius)
             for i in idx:
-                if circ_aperture is not None:
-                    kron_aperture[i] = circ_aperture[i]
+                kron_apertures[i] = circ_aperture[i]
 
-        return kron_aperture
+        return kron_apertures
 
     @lazyproperty
     @as_scalar
@@ -2450,8 +2494,7 @@ class SourceCatalog:
         """
         if self._detection_cat is not None:
             return self._detection_cat.kron_aperture
-
-        return self._make_kron_aperture(self._kron_params)
+        return self.make_kron_apertures(self._kron_params)
 
     def _calc_kron_photometry(self, kron_params):
         """
@@ -2479,7 +2522,7 @@ class SourceCatalog:
 
         kron_flux = []
         kron_fluxerr = []
-        kron_aperture = self._make_kron_aperture(kron_params)
+        kron_aperture = self.make_kron_apertures(kron_params)
         for label, xcen, ycen, aperture, bkg in zip(detcat._label_iter,
                                                     detcat._xcentroid,
                                                     detcat._ycentroid,
