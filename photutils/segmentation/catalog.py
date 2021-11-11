@@ -217,7 +217,7 @@ class SourceCatalog:
 
     def __init__(self, data, segment_img, *, error=None, mask=None,
                  kernel=None, background=None, wcs=None, localbkg_width=0,
-                 apermask_method='correct', kron_params=(2.5, 0.0),
+                 apermask_method='correct', kron_params=(2.5, 1.0),
                  detection_cat=None):
 
         self._data_unit = None
@@ -325,8 +325,8 @@ class SourceCatalog:
             raise ValueError('kron_params must have 2 elements')
         if kron_params[0] <= 0:
             raise ValueError('kron_params[0] must be > 0')
-        if kron_params[1] < 0:
-            raise ValueError('kron_params[1] must be >= 0')
+        if kron_params[1] <= 0:
+            raise ValueError('kron_params[1] must be > 0')
         return kron_params
 
     @property
@@ -2129,7 +2129,7 @@ class SourceCatalog:
             detcat = self
 
         if radius <= 0:
-            return self._null_object
+            raise ValueError('radius must be > 0')
 
         apertures = []
         for (xcen, ycen, all_masked) in zip(detcat._xcentroid,
