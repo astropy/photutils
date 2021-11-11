@@ -2127,11 +2127,16 @@ class SourceCatalog:
             return self._null_object
 
         apertures = []
-        for (xcen, ycen) in zip(detcat._xcentroid, detcat._ycentroid):
-            if np.any(~np.isfinite((xcen, ycen))):
+        for (xcen, ycen, all_masked) in zip(detcat._xcentroid,
+                                            detcat._ycentroid,
+                                            self._all_masked):
+
+            if all_masked or np.any(~np.isfinite((xcen, ycen))):
                 apertures.append(None)
                 continue
+
             apertures.append(CircularAperture((xcen, ycen), r=radius))
+
         return apertures
 
     def circular_photometry(self, radius, name=None, overwrite=False):
