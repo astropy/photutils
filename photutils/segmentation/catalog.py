@@ -375,15 +375,22 @@ class SourceCatalog:
         # new class
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
                      '_background', '_wcs', '_data_unit', '_convolved_data',
-                     '_data_mask', '_detection_cat', '_localbkg_width',
-                     '_apermask_method', '_kron_params', 'default_columns',
-                     '_extra_properties', 'meta')
+                     '_data_mask', '_localbkg_width', '_apermask_method',
+                     '_kron_params', 'default_columns', '_extra_properties',
+                     'meta')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
         # _labels determines ordering and isscalar
         attr = '_labels'
         setattr(newcls, attr, getattr(self, attr)[index])
+
+        # need to slice detection_cat, if input
+        attr = '_detection_cat'
+        if getattr(self, attr) is None:
+            setattr(newcls, attr, None)
+        else:
+            setattr(newcls, attr, getattr(self, attr)[index])
 
         attr = '_slices'
         # Use a numpy object array to allow for fancy and bool indices.
