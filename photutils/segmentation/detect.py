@@ -5,13 +5,13 @@ This module provides tools for detecting sources in an image.
 
 import warnings
 
-from astropy.convolution import Gaussian2DKernel
+from astropy.convolution import Gaussian2DKernel, convolve
 from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
 from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
-from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
 __all__ = ['detect_threshold', 'detect_sources', 'make_source_mask']
@@ -242,8 +242,9 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
                              'image.')
 
     if kernel is not None:
-        data = _filter_data(data, kernel, mode='constant', fill_value=0.0,
-                            check_normalization=True)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyUserWarning)
+            data = convolve(data, kernel, mask=mask, normalize_kernel=True)
 
     selem = _make_binary_structure(data.ndim, connectivity)
 
@@ -260,11 +261,9 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
         # return if threshold was too high to detect any sources
         if np.count_nonzero(data2) == 0:
             warnings.warn('No sources were found.', NoDetectionsWarning)
-            if deblend_skip:
-                continue
-            else:
+            if not deblend_skip:
                 segms.append(None)
-                continue
+            continue
 
         segm_img, _ = ndimage.label(data2, structure=selem)
 
@@ -280,20 +279,18 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
 
         if np.count_nonzero(segm_img) == 0:
             warnings.warn('No sources were found.', NoDetectionsWarning)
-            if deblend_skip:
-                continue
-            else:
+            if not deblend_skip:
                 segms.append(None)
-                continue
+            continue
 
         segm = object.__new__(SegmentationImage)
         segm._data = segm_img
 
         if deblend_skip and segm.nlabels == 1:
             continue
-        else:
-            segm.relabel_consecutive()
-            segms.append(segm)
+
+        segm.relabel_consecutive()
+        segms.append(segm)
 
     return segms
 
