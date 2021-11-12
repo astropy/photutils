@@ -372,9 +372,8 @@ shapes of each source) on the data:
     >>> ax2.imshow(segm_deblend, origin='lower', cmap=cmap,
     ...            interpolation='nearest')
     >>> ax2.set_title('Segmentation Image')
-    >>> for aperture in cat.kron_aperture:
-    ...     aperture.plot(axes=ax1, color='white', lw=1.5)
-    ...     aperture.plot(axes=ax2, color='white', lw=1.5)
+    >>> cat.plot_kron_apertures((2.5, 1.0), axes=ax1, color='white', lw=1.5)
+    >>> cat.plot_kron_apertures((2.5, 1.0), axes=ax2, color='white', lw=1.5)
 
 .. plot::
 
@@ -409,9 +408,8 @@ shapes of each source) on the data:
     ax2.imshow(segm_deblend, origin='lower', cmap=cmap,
                interpolation='nearest')
     ax2.set_title('Segmentation Image with Kron apertures')
-    for aperture in cat.kron_aperture:
-        aperture.plot(axes=ax1, color='white', lw=1.5)
-        aperture.plot(axes=ax2, color='white', lw=1.5)
+    cat.plot_kron_apertures((2.5, 1.0), axes=ax1, color='white', lw=1.5)
+    cat.plot_kron_apertures((2.5, 1.0), axes=ax2, color='white', lw=1.5)
     plt.tight_layout()
 
 
