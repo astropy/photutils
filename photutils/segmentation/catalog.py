@@ -2701,7 +2701,8 @@ class SourceCatalog:
                 self.labels, detcat._xcentroid, detcat._ycentroid,
                 kron_flux, self._local_background, max_radius):
 
-            if np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_))):
+            if (np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_)))
+                    or kronflux == 0):
                 args.append(None)
                 continue
 
@@ -2745,7 +2746,8 @@ class SourceCatalog:
         -------
         radius : 1D `~numpy.ndarray`
             The circular radius that encloses the specified fraction of
-            the Kron flux. NaN is returned where no solution was found.
+            the Kron flux. NaN is returned where no solution was found
+            or if the Kron flux is zero.
         """
         if fluxfrac <= 0 or fluxfrac > 1:
             raise ValueError('fluxfrac must be > 0 and <= 1')
