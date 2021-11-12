@@ -2461,7 +2461,7 @@ class SourceCatalog:
         scaling and centered at the source centroid position.
 
         If provided, the `SourceCatalog` ``detection_cat`` will be used
-        for the source centroids.
+        for the source centroids and elliptical shape parameters.
 
         Parameters
         ----------
@@ -2509,6 +2509,57 @@ class SourceCatalog:
                 kron_apertures[i] = circ_aperture[i]
 
         return kron_apertures
+
+    @as_scalar
+    def plot_kron_apertures(self, kron_params, axes=None, origin=(0, 0),
+                            **kwargs):
+        """
+        Plot Kron elliptical apertures on a matplotlib
+        `~matplotlib.axes.Axes` instance.
+
+        The apertures are defined by the specified radius and are
+        centered at the source centroid position.
+
+        If provided, the `SourceCatalog` ``detection_cat`` will be used
+        for the source centroids and elliptical shape parameters.
+
+        Parameters
+        ----------
+        kron_params : list of 2 floats, optional
+            A list of two parameters used to determine how the Kron
+            radius and flux are calculated. The first item is the
+            scaling parameter of the Kron radius (`kron_radius`)
+            and the second item represents the minimum circular
+            radius. If the Kron radius times sqrt( `semimajor_sigma` *
+            `semiminor_sigma`) is less than than this radius, then the
+            Kron flux will be measured in a circle with this minimum
+            radius.
+
+        axes : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        **kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : list of `~matplotlib.patches.Patch`
+            A list of matplotlib patches for the plotted aperture. The
+            patches can be used, for example, when adding a plot legend.
+        """
+        apertures = self.make_kron_apertures(kron_params)
+        patches = []
+        for aperture in apertures:
+            if aperture is not None:
+                aperture.plot(axes=axes, origin=origin, **kwargs)
+                patches.append(aperture._to_patch(origin=origin, **kwargs))
+        return patches
 
     @lazyproperty
     @as_scalar
