@@ -2144,6 +2144,50 @@ class SourceCatalog:
 
         return apertures
 
+    @as_scalar
+    def plot_circular_apertures(self, radius, axes=None, origin=(0, 0),
+                                **kwargs):
+        """
+        Plot circular apertures on a matplotlib `~matplotlib.axes.Axes`
+        instance.
+
+        The apertures are defined by the specified radius and are
+        centered at the source centroid position.
+
+        If provided, the `SourceCatalog` ``detection_cat`` will be used
+        for the source centroids.
+
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
+
+        axes : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        **kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : list of `~matplotlib.patches.Patch`
+            A list of matplotlib patches for the plotted aperture. The
+            patches can be used, for example, when adding a plot legend.
+        """
+        apertures = self.make_circular_apertures(radius)
+        patches = []
+        for aperture in apertures:
+            if aperture is not None:
+                aperture.plot(axes=axes, origin=origin, **kwargs)
+                patches.append(aperture._to_patch(origin=origin, **kwargs))
+        return patches
+
     @deprecated('1.1', alternative='make_circular_apertures')
     def circular_aperture(self, radius):
         """
