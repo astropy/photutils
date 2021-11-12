@@ -15,7 +15,7 @@ from ..core import SegmentationImage
 from ..detect import detect_sources
 from ...aperture import CircularAperture, EllipticalAperture
 from ...datasets import make_gwcs, make_wcs, make_noise_image
-from ...utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
+from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -189,6 +189,9 @@ class TestSourceCatalog:
             assert_equal(radius2, radius3)
         with assert_raises(AssertionError):
             assert_equal(radius1, radius2)
+
+        cat4 = cat3[0:1]
+        assert len(cat4.kron_radius) == 1
 
     def test_minimal_catalog(self):
         cat = SourceCatalog(self.data, self.segm)
@@ -532,6 +535,24 @@ class TestSourceCatalog:
             self.cat.circular_photometry(0.0)
         with pytest.raises(ValueError):
             self.cat.circular_photometry(-1.0)
+        with pytest.raises(ValueError):
+            self.cat.make_circular_apertures(0.0)
+        with pytest.raises(ValueError):
+            self.cat.make_circular_apertures(-1.0)
+
+    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    def test_plots(self):
+        from matplotlib.patches import Patch
+
+        patches = self.cat.plot_circular_apertures(5.0)
+        assert isinstance(patches, list)
+        for patch in patches:
+            assert isinstance(patch, Patch)
+
+        patches = self.cat.plot_kron_apertures((2.5, 1.0))
+        assert isinstance(patches, list)
+        for patch in patches:
+            assert isinstance(patch, Patch)
 
     def test_fluxfrac_radius(self):
         radius1 = self.cat.fluxfrac_radius(0.1, name='fluxfrac_r1')
@@ -611,6 +632,11 @@ class TestSourceCatalog:
         cat.remove_extra_properties(cat.extra_properties)
         assert len(cat.extra_properties) == 0
 
+        cat.add_extra_property('segment_snr', segment_snr)
+        new_name = 'segment_snr0'
+        cat.rename_extra_property('segment_snr', new_name)
+        assert new_name in cat.extra_properties
+
         # key in extra_properties, but not a defined attribute
         cat._extra_properties.append('invalid')
         with pytest.raises(ValueError):
@@ -633,6 +659,12 @@ class TestSourceCatalog:
         with pytest.raises(ValueError):
             coord = SkyCoord([42, 43], [44, 45], unit='deg')
             obj.add_extra_property('invalid', coord)
+
+    def test_properties(self):
+        attrs = ('label', 'labels', 'slices', 'xcentroid',
+                 'segment_flux', 'kron_flux')
+        for attr in attrs:
+            assert attr in self.cat.properties
 
     def test_copy(self):
         cat = SourceCatalog(self.data, self.segm)
