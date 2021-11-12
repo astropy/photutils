@@ -15,7 +15,7 @@ from ..core import SegmentationImage
 from ..detect import detect_sources
 from ...aperture import CircularAperture, EllipticalAperture
 from ...datasets import make_gwcs, make_wcs, make_noise_image
-from ...utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
+from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -89,7 +89,7 @@ class TestSourceCatalog:
 
         # test extra properties
         cat1.circular_photometry(5.0, name='circ5')
-        cat1.kron_photometry((2.0, 0.0), name='kron2')
+        cat1.kron_photometry((2.0, 1.0), name='kron2')
         cat1.fluxfrac_radius(0.5, name='r_hl')
         segment_snr = cat1.segment_flux / cat1.segment_fluxerr
         cat1.add_extra_property('segment_snr', segment_snr)
@@ -106,7 +106,7 @@ class TestSourceCatalog:
         # slice catalog before evaluating catalog properties
         obj = cat2[idx]
         obj.circular_photometry(5.0, name='circ5')
-        obj.kron_photometry((2.0, 0.0), name='kron2')
+        obj.kron_photometry((2.0, 1.0), name='kron2')
         obj.fluxfrac_radius(0.5, name='r_hl')
         segment_snr = obj.segment_flux / obj.segment_fluxerr
         obj.add_extra_property('segment_snr', segment_snr)
@@ -170,9 +170,9 @@ class TestSourceCatalog:
         with assert_raises(AssertionError):
             assert_equal(fluxerr1, fluxerr2)
 
-        flux1, fluxerr1 = cat1.kron_photometry((2.0, 0.0))
-        flux2, fluxerr2 = cat2.kron_photometry((2.0, 0.0))
-        flux3, fluxerr3 = cat3.kron_photometry((2.0, 0.0))
+        flux1, fluxerr1 = cat1.kron_photometry((2.0, 1.0))
+        flux2, fluxerr2 = cat2.kron_photometry((2.0, 1.0))
+        flux3, fluxerr3 = cat3.kron_photometry((2.0, 1.0))
         with assert_raises(AssertionError):
             assert_equal(flux2, flux3)
         with assert_raises(AssertionError):
@@ -189,6 +189,9 @@ class TestSourceCatalog:
             assert_equal(radius2, radius3)
         with assert_raises(AssertionError):
             assert_equal(radius1, radius2)
+
+        cat4 = cat3[0:1]
+        assert len(cat4.kron_radius) == 1
 
     def test_minimal_catalog(self):
         cat = SourceCatalog(self.data, self.segm)
@@ -469,12 +472,12 @@ class TestSourceCatalog:
         assert np.all(np.isnan(cat.kron_flux))
 
     def test_kron_photometry(self):
-        flux1, fluxerr1 = self.cat.kron_photometry((2.5, 0.0))
+        flux1, fluxerr1 = self.cat.kron_photometry((2.5, 1.0))
         assert_allclose(flux1, self.cat.kron_flux)
         assert_allclose(fluxerr1, self.cat.kron_fluxerr)
 
-        flux1, fluxerr1 = self.cat.kron_photometry((1.0, 0.0), name='kron1')
-        flux2, fluxerr2 = self.cat.kron_photometry((2.0, 0.0), name='kron2')
+        flux1, fluxerr1 = self.cat.kron_photometry((1.0, 1.0), name='kron1')
+        flux2, fluxerr2 = self.cat.kron_photometry((2.0, 1.0), name='kron2')
         assert_allclose(flux1, self.cat.kron1_flux)
         assert_allclose(fluxerr1, self.cat.kron1_fluxerr)
         assert_allclose(flux2, self.cat.kron2_flux)
@@ -485,18 +488,22 @@ class TestSourceCatalog:
                       | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
 
         obj = self.cat[1]
-        flux1, fluxerr1 = obj.kron_photometry((1.0, 0.0), name='kron0')
+        flux1, fluxerr1 = obj.kron_photometry((1.0, 1.0), name='kron0')
         assert np.isscalar(flux1)
         assert np.isscalar(fluxerr1)
         assert_allclose(flux1, obj.kron0_flux)
         assert_allclose(fluxerr1, obj.kron0_fluxerr)
 
         cat = SourceCatalog(self.data, self.segm)
-        _, fluxerr = cat.kron_photometry((2.0, 0.0))
+        _, fluxerr = cat.kron_photometry((2.0, 1.0))
         assert np.all(np.isnan(fluxerr))
 
         with pytest.raises(ValueError):
             self.cat.kron_photometry(2.0)
+        with pytest.raises(ValueError):
+            self.cat.kron_photometry((2.0, 0.0))
+        with pytest.raises(ValueError):
+            self.cat.kron_photometry((0.0, 2.0))
         with pytest.raises(ValueError):
             self.cat.kron_photometry((2.0, 0.0, 1.5))
 
@@ -528,6 +535,24 @@ class TestSourceCatalog:
             self.cat.circular_photometry(0.0)
         with pytest.raises(ValueError):
             self.cat.circular_photometry(-1.0)
+        with pytest.raises(ValueError):
+            self.cat.make_circular_apertures(0.0)
+        with pytest.raises(ValueError):
+            self.cat.make_circular_apertures(-1.0)
+
+    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    def test_plots(self):
+        from matplotlib.patches import Patch
+
+        patches = self.cat.plot_circular_apertures(5.0)
+        assert isinstance(patches, list)
+        for patch in patches:
+            assert isinstance(patch, Patch)
+
+        patches = self.cat.plot_kron_apertures((2.5, 1.0))
+        assert isinstance(patches, list)
+        for patch in patches:
+            assert isinstance(patch, Patch)
 
     def test_fluxfrac_radius(self):
         radius1 = self.cat.fluxfrac_radius(0.1, name='fluxfrac_r1')
@@ -607,6 +632,11 @@ class TestSourceCatalog:
         cat.remove_extra_properties(cat.extra_properties)
         assert len(cat.extra_properties) == 0
 
+        cat.add_extra_property('segment_snr', segment_snr)
+        new_name = 'segment_snr0'
+        cat.rename_extra_property('segment_snr', new_name)
+        assert new_name in cat.extra_properties
+
         # key in extra_properties, but not a defined attribute
         cat._extra_properties.append('invalid')
         with pytest.raises(ValueError):
@@ -629,6 +659,12 @@ class TestSourceCatalog:
         with pytest.raises(ValueError):
             coord = SkyCoord([42, 43], [44, 45], unit='deg')
             obj.add_extra_property('invalid', coord)
+
+    def test_properties(self):
+        attrs = ('label', 'labels', 'slices', 'xcentroid',
+                 'segment_flux', 'kron_flux')
+        for attr in attrs:
+            assert attr in self.cat.properties
 
     def test_copy(self):
         cat = SourceCatalog(self.data, self.segm)

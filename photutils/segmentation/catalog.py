@@ -13,6 +13,7 @@ from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated
 import numpy as np
 
 from .core import SegmentationImage
@@ -20,7 +21,7 @@ from ..aperture import (BoundingBox, CircularAperture, EllipticalAperture,
                         RectangularAnnulus)
 from ..background import SExtractorBackground
 from ..utils._convolution import _filter_data
-from ..utils._misc import _get_version_info
+from ..utils._misc import _get_meta
 from ..utils._moments import _moments, _moments_central
 
 __all__ = ['SourceCatalog']
@@ -216,7 +217,7 @@ class SourceCatalog:
 
     def __init__(self, data, segment_img, *, error=None, mask=None,
                  kernel=None, background=None, wcs=None, localbkg_width=0,
-                 apermask_method='correct', kron_params=(2.5, 0.0),
+                 apermask_method='correct', kron_params=(2.5, 1.0),
                  detection_cat=None):
 
         self._data_unit = None
@@ -251,6 +252,8 @@ class SourceCatalog:
                 raise ValueError('detection_cat must have same source labels '
                                  'as the input segment_img')
         self._detection_cat = detection_cat
+
+        self.meta = _get_meta()
 
     def _process_quantities(self, data, error, background):
         """
@@ -322,14 +325,15 @@ class SourceCatalog:
             raise ValueError('kron_params must have 2 elements')
         if kron_params[0] <= 0:
             raise ValueError('kron_params[0] must be > 0')
-        if kron_params[1] < 0:
-            raise ValueError('kron_params[1] must be >= 0')
+        if kron_params[1] <= 0:
+            raise ValueError('kron_params[1] must be > 0')
         return kron_params
 
     @property
     def _properties(self):
         """
-        Return all properties (even in superclasses).
+        A list of all class properties, include lazyproperties (even in
+        superclasses).
         """
         def isproperty(obj):
             return isinstance(obj, property)
@@ -338,9 +342,22 @@ class SourceCatalog:
                                                  predicate=isproperty)]
 
     @property
+    def properties(self):
+        """
+        A list of built-in source properties.
+        """
+        lazyproperties = [name for name in self._lazyproperties if not
+                          name.startswith('_')]
+        lazyproperties.remove('isscalar')
+        lazyproperties.remove('nlabels')
+        lazyproperties.extend(['label', 'labels', 'slices'])
+        lazyproperties.sort()
+        return lazyproperties
+
+    @property
     def _lazyproperties(self):
         """
-        Return all lazyproperties (even in superclasses).
+        A list of all class lazyproperties (even in superclasses).
         """
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
@@ -359,15 +376,22 @@ class SourceCatalog:
         # new class
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
                      '_background', '_wcs', '_data_unit', '_convolved_data',
-                     '_data_mask', '_detection_cat', '_localbkg_width',
-                     '_apermask_method', '_kron_params', 'default_columns',
-                     '_extra_properties')
+                     '_data_mask', '_localbkg_width', '_apermask_method',
+                     '_kron_params', 'default_columns', '_extra_properties',
+                     'meta')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
         # _labels determines ordering and isscalar
         attr = '_labels'
         setattr(newcls, attr, getattr(self, attr)[index])
+
+        # need to slice detection_cat, if input
+        attr = '_detection_cat'
+        if getattr(self, attr) is None:
+            setattr(newcls, attr, None)
+        else:
+            setattr(newcls, attr, getattr(self, attr)[index])
 
         attr = '_slices'
         # Use a numpy object array to allow for fancy and bool indices.
@@ -483,12 +507,11 @@ class SourceCatalog:
             If `True`, will overwrite the existing property ``name``.
         """
         internal_attributes = ((set(self.__dict__.keys())
-                               | set(self._lazyproperties)
                                | set(self._properties))
                                - set(self.extra_properties))
         if name in internal_attributes:
             raise ValueError(f'{name} cannot be set because it is a '
-                             'built-in property')
+                             'built-in attribute')
 
         if not overwrite:
             if hasattr(self, name):
@@ -560,6 +583,28 @@ class SourceCatalog:
                 self._extra_properties.remove(name)
             else:
                 raise ValueError(f'{name} is not a defined extra property.')
+
+    def rename_extra_property(self, name, new_name):
+        """
+        Rename an extra property.
+
+        The renamed property will remain at the same index in the
+        ``extra_properties`` list.
+
+        Parameters
+        ----------
+        name : str
+            The old attribute name.
+
+        new_name : str
+            The new attribute name.
+        """
+        self.add_extra_property(new_name, getattr(self, name))
+        idx = self.extra_properties.index(name)
+        self.remove_extra_property(name)
+        # preserve the order of self.extra_properties
+        self.extra_properties.remove(new_name)
+        self.extra_properties.insert(idx, new_name)
 
     def _convolve_data(self):
         """
@@ -737,8 +782,7 @@ class SourceCatalog:
         else:
             table_columns = np.atleast_1d(columns)
 
-        meta = {'version': _get_version_info()}
-        tbl = QTable(meta=meta)
+        tbl = QTable(meta=self.meta)
         for column in table_columns:
             values = getattr(self, column)
 
@@ -943,16 +987,22 @@ class SourceCatalog:
         """
         Get a 1D array of unmasked values from the input array within
         the source segment.
+
+        An array with a single NaN is returned for completely-masked
+        sources.
         """
         if self.isscalar:
             array = (array,)
-        return [arr.compressed() if len(arr.compressed()) > 0 else np.nan
-                for arr in array]
+        return [arr.compressed() if len(arr.compressed()) > 0
+                else np.array([np.nan]) for arr in array]
 
     @lazyproperty
     def _data_values(self):
         """
         A 1D array of unmasked data values.
+
+        An array with a single NaN is returned for completely-masked
+        sources.
         """
         return self._get_values(self.data_ma)
 
@@ -960,6 +1010,9 @@ class SourceCatalog:
     def _error_values(self):
         """
         A 1D array of unmasked error values.
+
+        An array with a single NaN is returned for completely-masked
+        sources.
         """
         return self._get_values(self.error_ma)
 
@@ -967,6 +1020,9 @@ class SourceCatalog:
     def _background_values(self):
         """
         A 1D array of unmasked background values.
+
+        An array with a single NaN is returned for completely-masked
+        sources.
         """
         return self._get_values(self.background_ma)
 
@@ -1546,9 +1602,9 @@ class SourceCatalog:
         if a mask is input to `SourceCatalog` or if the ``data``
         within the segment contains invalid values (NaN and inf).
         """
-        return np.array([arr.shape[0]
-                         if isinstance(arr, np.ndarray) else np.nan
-                         for arr in self._data_values]) << u.pix**2
+        areas = np.array([arr.size for arr in self._data_values]).astype(float)
+        areas[self._all_masked] = np.nan
+        return areas << (u.pix ** 2)
 
     @lazyproperty
     @as_scalar
@@ -2045,6 +2101,94 @@ class SourceCatalog:
 
         return data, error, mask, cutout_xycen, slc_sm
 
+    def make_circular_apertures(self, radius):
+        """
+        Return a list of circular apertures with the specified radius
+        centered at the source centroid position.
+
+        If provided, the `SourceCatalog` ``detection_cat`` will be used
+        for the source centroids.
+
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
+
+        Returns
+        -------
+        result : list of `~photutils.aperture.CircularAperture`
+            A list of `~photutils.aperture.CircularAperture` instances.
+            The aperture will be `None` where the source centroid
+            position is not finite or where the source is completely
+            masked.
+        """
+        if self._detection_cat is not None:
+            # use detection catalog for centroids
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
+        if radius <= 0:
+            raise ValueError('radius must be > 0')
+
+        apertures = []
+        for (xcen, ycen, all_masked) in zip(detcat._xcentroid,
+                                            detcat._ycentroid,
+                                            self._all_masked):
+
+            if all_masked or np.any(~np.isfinite((xcen, ycen))):
+                apertures.append(None)
+                continue
+
+            apertures.append(CircularAperture((xcen, ycen), r=radius))
+
+        return apertures
+
+    @as_scalar
+    def plot_circular_apertures(self, radius, axes=None, origin=(0, 0),
+                                **kwargs):
+        """
+        Plot circular apertures on a matplotlib `~matplotlib.axes.Axes`
+        instance.
+
+        The apertures are defined by the specified radius and are
+        centered at the source centroid position.
+
+        If provided, the `SourceCatalog` ``detection_cat`` will be used
+        for the source centroids.
+
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
+
+        axes : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        **kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : list of `~matplotlib.patches.Patch`
+            A list of matplotlib patches for the plotted aperture. The
+            patches can be used, for example, when adding a plot legend.
+        """
+        apertures = self.make_circular_apertures(radius)
+        patches = []
+        for aperture in apertures:
+            if aperture is not None:
+                aperture.plot(axes=axes, origin=origin, **kwargs)
+                patches.append(aperture._to_patch(origin=origin, **kwargs))
+        return patches
+
+    @deprecated('1.1', alternative='make_circular_apertures')
     def circular_aperture(self, radius):
         """
         Return a list of circular apertures with the specified radius
@@ -2060,24 +2204,10 @@ class SourceCatalog:
         result : list of `~photutils.aperture.CircularAperture`
             A list of `~photutils.aperture.CircularAperture` instances.
             The aperture will be `None` where the source centroid
-            position is not finite.
+            position is not finite or where the source is completely
+            masked.
         """
-        if self._detection_cat is not None:
-            # use source centroid defined by detection image
-            detcat = self._detection_cat
-        else:
-            detcat = self
-
-        if radius <= 0:
-            return self._null_object
-
-        apertures = []
-        for (xcen, ycen) in zip(detcat._xcentroid, detcat._ycentroid):
-            if np.any(~np.isfinite((xcen, ycen))):
-                apertures.append(None)
-                continue
-            apertures.append(CircularAperture((xcen, ycen), r=radius))
-        return apertures
+        return self.make_circular_apertures(radius)
 
     def circular_photometry(self, radius, name=None, overwrite=False):
         """
@@ -2120,7 +2250,7 @@ class SourceCatalog:
         else:
             detcat = self
 
-        apertures = self.circular_aperture(radius)
+        apertures = self.make_circular_apertures(radius)
 
         flux = []
         fluxerr = []
@@ -2174,6 +2304,9 @@ class SourceCatalog:
         Return a list of elliptical apertures based on the scaled
         isophotal shape of the sources.
 
+        If provided, the `SourceCatalog` ``detection_cat`` will be used
+        for the source centroids.
+
         Parameters
         ----------
         scale : float or `~numpy.ndarray`, optional
@@ -2181,9 +2314,18 @@ class SourceCatalog:
             axes. The default value of 6.0 is roughly two times the
             isophotal extent of the source. A `~numpy.ndarray` input
             must be a 1D array of length ``nlabels``.
+
+        Returns
+        -------
+        result : list of `~photutils.aperture.EllipticalAperture`
+            A list of `~photutils.aperture.EllipticalAperture`
+            instances. The aperture will be `None` where the source
+            centroid position or elliptical shape parameters are not
+            finite or where the source is completely masked.
         """
         if self._detection_cat is not None:
-            # use detection catalog for elliptical shape parameters
+            # use detection catalog for centroids and elliptical shape
+            # parameters
             detcat = self._detection_cat
         else:
             detcat = self
@@ -2199,14 +2341,13 @@ class SourceCatalog:
             theta = (theta,)
 
         aperture = []
-        for xcen_, ycen_, major_, minor_, theta_ in zip(xcen, ycen,
-                                                        major_size,
-                                                        minor_size,
-                                                        theta):
-            values = (xcen_, ycen_, major_, minor_, theta_)
-            if np.any(~np.isfinite(values)):
+        for values in zip(xcen, ycen, major_size, minor_size, theta,
+                          self._all_masked):
+            if values[-1] or np.any(~np.isfinite(values[:-1])):
                 aperture.append(None)
                 continue
+
+            (xcen_, ycen_, major_, minor_, theta_) = values[:-1]
             aperture.append(EllipticalAperture((xcen_, ycen_), major_, minor_,
                                                theta=theta_))
         return aperture
@@ -2246,15 +2387,22 @@ class SourceCatalog:
         to mask neighboring sources.
 
         If either the numerator or denominator above is less than or
-        equal to 0, then ``np.nan`` will be returned. In this case, the
-        Kron aperture will be defined as a circular aperture with a
-        radius equal to ``kron_params[1]``.
+        equal to 0, then ``np.nan`` will be returned for both the Kron
+        radius and Kron flux.
 
         If the source is completely masked, then ``np.nan`` will be
         returned for both the Kron radius and Kron flux.
+
+        If the `SourceCatalog` ``detection_cat`` was provided, then
+        its ``kron_radius`` will be returned if the source is not
+        completely masked.
         """
         if self._detection_cat is not None:
-            return self._detection_cat.kron_radius
+            kron_radius = self._detection_cat.kron_radius
+            if self.isscalar:
+                kron_radius = np.atleast_1d(kron_radius)
+            kron_radius[self._all_masked] = np.nan
+            return kron_radius
 
         labels = self._label_iter
         apertures = self._make_elliptical_apertures(scale=6.0)
@@ -2307,33 +2455,111 @@ class SourceCatalog:
         kron_radius = np.array(kron_radius) * u.pix
         return kron_radius
 
-    def _make_kron_aperture(self, kron_params):
+    def make_kron_apertures(self, kron_params):
         """
-        Define the Kron aperture.
+        Return a list of Kron elliptical apertures with the specified
+        scaling and centered at the source centroid position.
+
+        If provided, the `SourceCatalog` ``detection_cat`` will be used
+        for the source centroids and elliptical shape parameters.
+
+        Parameters
+        ----------
+        kron_params : list of 2 floats, optional
+            A list of two parameters used to determine how the Kron
+            radius and flux are calculated. The first item is the
+            scaling parameter of the Kron radius (`kron_radius`)
+            and the second item represents the minimum circular
+            radius. If the Kron radius times sqrt( `semimajor_sigma` *
+            `semiminor_sigma`) is less than than this radius, then the
+            Kron flux will be measured in a circle with this minimum
+            radius.
+
+        Returns
+        -------
+        result : list of `~photutils.aperture.PixelAperture`
+            A list of `~photutils.aperture.EllipticalAperture` or
+            `~photutils.aperture.CircularAperture` instances. The
+            aperture will be `None` where the source centroid position
+            is not finite or where the source is completely masked.
         """
         if self._detection_cat is not None:
+            # use detection catalog for centroids and elliptical shape
+            # parameters
             detcat = self._detection_cat
         else:
             detcat = self
 
         kron_radius = detcat.kron_radius.value
         scale = kron_radius * kron_params[0]
-        kron_aperture = self._make_elliptical_apertures(scale=scale)
+        # NOTE: if kron_radius = NaN, scale = NaN and kron_aperture = None
+        kron_apertures = self._make_elliptical_apertures(scale=scale)
 
         # check for minimum Kron radius
         major_sigma = detcat.semimajor_sigma.value
         minor_sigma = detcat.semiminor_sigma.value
         circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
         min_radius = kron_params[1]
-        mask = np.isnan(kron_radius) | (circ_radius < min_radius)
+
+        mask = (circ_radius < min_radius)
         idx = np.atleast_1d(mask).nonzero()[0]
         if idx.size > 0:
-            circ_aperture = self.circular_aperture(kron_params[1])
+            circ_aperture = self.make_circular_apertures(min_radius)
             for i in idx:
-                if circ_aperture is not None:
-                    kron_aperture[i] = circ_aperture[i]
+                kron_apertures[i] = circ_aperture[i]
 
-        return kron_aperture
+        return kron_apertures
+
+    @as_scalar
+    def plot_kron_apertures(self, kron_params, axes=None, origin=(0, 0),
+                            **kwargs):
+        """
+        Plot Kron elliptical apertures on a matplotlib
+        `~matplotlib.axes.Axes` instance.
+
+        The apertures are defined by the specified radius and are
+        centered at the source centroid position.
+
+        If provided, the `SourceCatalog` ``detection_cat`` will be used
+        for the source centroids and elliptical shape parameters.
+
+        Parameters
+        ----------
+        kron_params : list of 2 floats, optional
+            A list of two parameters used to determine how the Kron
+            radius and flux are calculated. The first item is the
+            scaling parameter of the Kron radius (`kron_radius`)
+            and the second item represents the minimum circular
+            radius. If the Kron radius times sqrt( `semimajor_sigma` *
+            `semiminor_sigma`) is less than than this radius, then the
+            Kron flux will be measured in a circle with this minimum
+            radius.
+
+        axes : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        **kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : list of `~matplotlib.patches.Patch`
+            A list of matplotlib patches for the plotted aperture. The
+            patches can be used, for example, when adding a plot legend.
+        """
+        apertures = self.make_kron_apertures(kron_params)
+        patches = []
+        for aperture in apertures:
+            if aperture is not None:
+                aperture.plot(axes=axes, origin=origin, **kwargs)
+                patches.append(aperture._to_patch(origin=origin, **kwargs))
+        return patches
 
     @lazyproperty
     @as_scalar
@@ -2364,8 +2590,7 @@ class SourceCatalog:
         """
         if self._detection_cat is not None:
             return self._detection_cat.kron_aperture
-
-        return self._make_kron_aperture(self._kron_params)
+        return self.make_kron_apertures(self._kron_params)
 
     def _calc_kron_photometry(self, kron_params):
         """
@@ -2393,7 +2618,7 @@ class SourceCatalog:
 
         kron_flux = []
         kron_fluxerr = []
-        kron_aperture = self._make_kron_aperture(kron_params)
+        kron_aperture = self.make_kron_apertures(kron_params)
         for label, xcen, ycen, aperture, bkg in zip(detcat._label_iter,
                                                     detcat._xcentroid,
                                                     detcat._ycentroid,
@@ -2571,7 +2796,8 @@ class SourceCatalog:
                 self.labels, detcat._xcentroid, detcat._ycentroid,
                 kron_flux, self._local_background, max_radius):
 
-            if np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_))):
+            if (np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_)))
+                    or kronflux == 0):
                 args.append(None)
                 continue
 
@@ -2615,7 +2841,8 @@ class SourceCatalog:
         -------
         radius : 1D `~numpy.ndarray`
             The circular radius that encloses the specified fraction of
-            the Kron flux. NaN is returned where no solution was found.
+            the Kron flux. NaN is returned where no solution was found
+            or if the Kron flux is zero.
         """
         if fluxfrac <= 0 or fluxfrac > 1:
             raise ValueError('fluxfrac must be > 0 and <= 1')

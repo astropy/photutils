@@ -13,9 +13,10 @@ New Features
 
   - Added ``kron_photometry`` method to ``SourceCatalog``. [#1264]
 
-  - Added ``add_extra_property``, ``remove_extra_property``, and
-    ``remove_extra_properties`` methods and ``extra_properties``
-    attribute to ``SourceCatalog``. [#1264]
+  - Added ``add_extra_property``, ``remove_extra_property``,
+    ``remove_extra_properties``, and ``rename_extra_property`` methods
+    and ``extra_properties`` attribute to ``SourceCatalog``. [#1264,
+    #1268]
 
   - Added ``name`` and ``overwrite`` keywords to ``SourceCatalog``
     ``circular_photometry`` and ``fluxfrac_radius`` methods. [#1264]
@@ -23,6 +24,17 @@ New Features
   - ``SourceCatalog`` ``fluxfrac_radius`` was improved for cases where
     the source flux doesn't monotonically increase with increasing radius.
     [#1264]
+
+  - Added ``meta`` and ``properties`` attributes to ``SourceCatalog``.
+    [#1268]
+
+  - The ``SourceCatalog`` output table (using ``to_table``) ``meta``
+    dictionary now includes a field for the date/time. [#1268]
+
+  - Added ``SourceCatalog`` ``make_kron_apertures`` method. [#1268]
+
+  - Added ``SourceCatalog`` ``plot_circular_apertures`` and
+    ``plot_kron_apertures`` methods. [#1268]
 
 Bug Fixes
 ^^^^^^^^^
@@ -42,8 +54,29 @@ Bug Fixes
   - ``SourceCatalog`` ``fluxfrac_radius`` returns a ``Quantity`` with
     pixel units. [#1264]
 
+  - Fixed a bug where the ``SourceCatalog`` ``detection_catalog`` was
+    not indexed/sliced when ``SourceCatalog`` was indexed/sliced. [#1268]
+
+  - ``SourceCatalog`` ``circular_photometry`` now returns NaN for
+    completely-masked sources. [#1268]
+
+  - ``SourceCatalog`` ``kron_flux`` is always NaN for sources where
+    ``kron_radius`` is NaN. [#1268]
+
+  - ``SourceCatalog`` ``fluxfrac_radius`` now returns NaN if
+    ``kron_flux`` is zero. [#1268]
+
 API Changes
 ^^^^^^^^^^^
+
+- ``photutils.segmentation``
+
+  - Renamed the ``SourceCatalog`` ``circular_aperture`` method to
+    ``make_circular_apertures``. The old name is deprecated. [#1268]
+
+  - The ``SourceCatalog`` ``kron_params`` keyword must have a minimum
+    circular radius that is greater than zero. The default value is now
+    1.0. [#1268]
 
 
 1.2.0 (2021-09-23)

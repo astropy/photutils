@@ -3,6 +3,7 @@
 This module provides tools to return the installed astropy and photutils
 versions.
 """
+from datetime import datetime, timezone
 
 
 def _get_version_info():
@@ -28,3 +29,34 @@ def _get_version_info():
         versions[package] = version
 
     return versions
+
+
+def _get_date(utc=False):
+    """
+    Return a string of the current date/time.
+
+    Parameters
+    ----------
+    utz : bool, optional
+        Whether to use the UTZ timezone instead of the local timezone.
+
+    Returns
+    -------
+    result : str
+        The current date/time.
+    """
+    if not utc:
+        now = datetime.now().astimezone()
+    else:
+        now = datetime.now(timezone.utc)
+
+    return now.strftime('%Y-%m-%d %H:%M:%S %Z')
+
+
+def _get_meta(utc=False):
+    """
+    Return a metadata dictionary with the package versions and current
+    date/time.
+    """
+    return {'date': _get_date(utc=utc),
+            'version': _get_version_info()}
