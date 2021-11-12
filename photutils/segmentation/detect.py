@@ -260,11 +260,9 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
         # return if threshold was too high to detect any sources
         if np.count_nonzero(data2) == 0:
             warnings.warn('No sources were found.', NoDetectionsWarning)
-            if deblend_skip:
-                continue
-            else:
+            if not deblend_skip:
                 segms.append(None)
-                continue
+            continue
 
         segm_img, _ = ndimage.label(data2, structure=selem)
 
@@ -280,20 +278,18 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
 
         if np.count_nonzero(segm_img) == 0:
             warnings.warn('No sources were found.', NoDetectionsWarning)
-            if deblend_skip:
-                continue
-            else:
+            if not deblend_skip:
                 segms.append(None)
-                continue
+            continue
 
         segm = object.__new__(SegmentationImage)
         segm._data = segm_img
 
         if deblend_skip and segm.nlabels == 1:
             continue
-        else:
-            segm.relabel_consecutive()
-            segms.append(segm)
+
+        segm.relabel_consecutive()
+        segms.append(segm)
 
     return segms
 
