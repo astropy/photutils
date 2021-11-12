@@ -2355,6 +2355,8 @@ class SourceCatalog:
         """
         if self._detection_cat is not None:
             kron_radius = self._detection_cat.kron_radius
+            if self.isscalar:
+                kron_radius = np.atleast_1d(kron_radius)
             kron_radius[self._all_masked] = np.nan
             return kron_radius
 
