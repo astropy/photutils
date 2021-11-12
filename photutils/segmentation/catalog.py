@@ -2343,9 +2343,8 @@ class SourceCatalog:
         to mask neighboring sources.
 
         If either the numerator or denominator above is less than or
-        equal to 0, then ``np.nan`` will be returned. In this case, the
-        Kron aperture will be defined as a circular aperture with a
-        radius equal to ``kron_params[1]``.
+        equal to 0, then ``np.nan`` will be returned for both the Kron
+        radius and Kron flux.
 
         If the source is completely masked, then ``np.nan`` will be
         returned for both the Kron radius and Kron flux.
@@ -2454,9 +2453,9 @@ class SourceCatalog:
         major_sigma = detcat.semimajor_sigma.value
         minor_sigma = detcat.semiminor_sigma.value
         circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
-
         min_radius = kron_params[1]
-        mask = np.isnan(kron_radius) | (circ_radius < min_radius)
+
+        mask = (circ_radius < min_radius)
         idx = np.atleast_1d(mask).nonzero()[0]
         if idx.size > 0:
             circ_aperture = self.make_circular_apertures(min_radius)
