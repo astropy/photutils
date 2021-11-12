@@ -5,13 +5,13 @@ This module provides tools for detecting sources in an image.
 
 import warnings
 
-from astropy.convolution import Gaussian2DKernel
+from astropy.convolution import Gaussian2DKernel, convolve
 from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
 from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
-from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
 __all__ = ['detect_threshold', 'detect_sources', 'make_source_mask']
@@ -242,8 +242,9 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
                              'image.')
 
     if kernel is not None:
-        data = _filter_data(data, kernel, mode='constant', fill_value=0.0,
-                            check_normalization=True)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyUserWarning)
+            data = convolve(data, kernel, mask=mask, normalize_kernel=True)
 
     selem = _make_binary_structure(data.ndim, connectivity)
 

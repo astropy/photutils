@@ -6,7 +6,6 @@ Tests for the detect module.
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.tests.helper import catch_warnings
-from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
 import pytest
@@ -240,14 +239,6 @@ class TestDetectSources:
     def test_kernel(self):
         segm = detect_sources(self.data, 0.1, npixels=1, kernel=self.kernel)
         assert_array_equal(segm.data, np.ones((3, 3)))
-
-    def test_unnormalized_kernel(self):
-        with catch_warnings(AstropyUserWarning) as warning_lines:
-            detect_sources(self.data, 0.1, npixels=1,
-                           kernel=self.kernel * 10.)
-            assert warning_lines[0].category == AstropyUserWarning
-            assert ('The kernel is not normalized.'
-                    in str(warning_lines[0].message))
 
     def test_mask(self):
         data = np.zeros((11, 11))
