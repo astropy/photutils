@@ -1,4 +1,4 @@
-2.0.0 (unreleased)
+1.3.0 (unreleased)
 ------------------
 
 General
@@ -77,6 +77,9 @@ API Changes
   - The ``SourceCatalog`` ``kron_params`` keyword must have a minimum
     circular radius that is greater than zero. The default value is now
     1.0. [#1268]
+
+  - ``detect_sources`` now uses ``astropy.convolution.convolve``, which
+    allows for masking pixels. [#1269]
 
 
 1.2.0 (2021-09-23)
