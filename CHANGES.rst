@@ -4,6 +4,9 @@
 General
 ^^^^^^^
 
+- The metadata in output tables now contains version information for all
+  dependencies. [#1274]
+
 New Features
 ^^^^^^^^^^^^
 
