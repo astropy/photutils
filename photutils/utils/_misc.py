@@ -4,6 +4,7 @@ This module provides tools to return the installed astropy and photutils
 versions.
 """
 from datetime import datetime, timezone
+import sys
 
 
 def _get_version_info():
@@ -17,8 +18,10 @@ def _get_version_info():
         A dictionary containing the version numbers for photutils and
         its dependencies.
     """
-    versions = {}
-    packages = ('photutils', 'astropy', 'numpy', 'scipy', 'skimage')
+    versions = {'Python': sys.version.split()[0]}
+
+    packages = ('photutils', 'astropy', 'numpy', 'scipy', 'skimage',
+                'sklearn', 'matplotlib', 'gwcs', 'bottleneck')
     for package in packages:
         try:
             pkg = __import__(package)
