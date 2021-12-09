@@ -89,7 +89,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     are `None`, then the box will be centered at the position of the
     maximum value in the input ``data``.
 
-    If ``xmax`` and ``ymax`` are specified, the ``search_boxsize``
+    If ``xpeak`` and ``ypeak`` are specified, the ``search_boxsize``
     optional keyword can be used to further refine the initial center of
     the fitting box by searching for the position of the maximum pixel
     within a box of size ``search_boxsize``.
@@ -106,8 +106,8 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         Image data.
 
     xpeak, ypeak : float or `None`, optional
-        The initial guess of the position of the centroid. When both
-        ``xpeak`` and ``ypeak`` are `None` then the position of the
+        The initial guess of the position of the centroid. If either
+        ``xpeak`` or ``ypeak`` is `None` then the position of the
         maximum value in the input ``data`` will be used as the initial
         guess.
 
@@ -119,12 +119,12 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     search_boxsize : int or tuple of int, optional
         The size (in pixels) of the box used to search for the maximum
-        pixel value if ``xpeak`` and ``ypeak`` are both `None`. If
-        ``fit_boxsize`` has two elements, they should be in ``(ny, nx)``
-        order. If ``fit_boxsize`` is a scalar then a square box of size
-        ``fit_boxsize`` will be used.  This parameter is ignored when
-        ``xmax`` and ``ymax`` are both `None`.  In that case, the entire
-        array is search for the maximum value.
+        pixel value if ``xpeak`` and ``ypeak`` are both specified. If
+        ``fit_boxsize`` has two elements, they should be in ``(ny,
+        nx)`` order. If ``fit_boxsize`` is a scalar then a square box
+        of size ``fit_boxsize`` will be used. This parameter is ignored
+        if either ``xpeak`` or ``ypeak`` is `None`. In that case, the
+        entire array is search for the maximum value.
 
     mask : bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
