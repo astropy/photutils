@@ -138,9 +138,9 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     Notes
     -----
-    Use ``fit_boxsize = (3, 3)`` to match the work of `Vakili & Hogg
-    (2016) <https://arxiv.org/abs/1610.05873>`_ for ther 2D second-order
-    polynomial centroiding method.
+    Use ``fit_boxsize = (3, 3)`` to match the work of `Vakili &
+    Hogg (2016) <https://arxiv.org/abs/1610.05873>`_ for their 2D
+    second-order polynomial centroiding method.
 
     References
     ----------
