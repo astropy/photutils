@@ -10,6 +10,11 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.centroid``
+
+  - Extra keyword arguments can be input to ``centroid_sources`` that
+    are then passed on to the ``centroid_func`` if supported. [#1276]
+
 - ``photutils.segmentation``
 
   - Added ``copy`` method to ``SourceCatalog``. [#1264]
@@ -71,6 +76,18 @@ Bug Fixes
 
 API Changes
 ^^^^^^^^^^^
+
+- ``photutils.centroids``
+
+  - A ``ValueError`` is now raised in ``centroid_sources`` if the input
+    ``xpos`` or ``ypos`` is outside of the input ``data``. [#1276]
+
+  - A ``ValueError`` is now raised in ``centroid_quadratic`` if the input
+    ``xpeak`` or ``ypeak`` is outside of the input ``data``. [#1276]
+
+  - NaNs are now returned from ``centroid_sources`` where the centroid
+    failed. This is usually due to a ``box_size`` that is too small when
+    using a fitting-based centroid function. [#1276]
 
 - ``photutils.segmentation``
 
