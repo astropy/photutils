@@ -17,6 +17,6 @@ def _py2intround(a):
                      np.ceil(data - 0.5)).astype(int)
 
     if not hasattr(a, '__iter__'):
-        value = np.asscalar(value)
+        value = value.item()
 
     return value
