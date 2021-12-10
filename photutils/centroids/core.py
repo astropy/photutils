@@ -336,6 +336,12 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     if ypos.ndim != 1:
         raise ValueError('ypos must be a 1D array.')
 
+    if (np.any(np.min(xpos) < 0) or np.any(np.min(ypos) < 0)
+            or np.any(np.max(xpos) > data.shape[1] - 1)
+            or np.any(np.max(ypos) > data.shape[0] - 1)):
+        raise ValueError('xpos, ypos values contains point(s) outside of '
+                         'input data')
+
     if footprint is None:
         if box_size is None:
             raise ValueError('box_size or footprint must be defined.')
