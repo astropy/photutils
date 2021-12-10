@@ -33,7 +33,6 @@ DATA[1, 1] = 2.
 
 CENTROID_FUNCS = (centroid_com, centroid_quadratic, centroid_1dg,
                   centroid_2dg)
-CENTROID_GFITS = (centroid_1dg, centroid_2dg)
 
 
 # NOTE: the fitting routines in astropy use scipy.optimize
@@ -119,13 +118,19 @@ def test_centroid_com_invalid_inputs():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_centroid_quadratic_xypeak():
     data = np.zeros((11, 11))
-    data[4:7, 4:7] = 10
     data[5, 5] = 100
-    xycen1 = centroid_quadratic(data)
-    xycen2 = centroid_quadratic(data, xpeak=5, ypeak=5)
-    xycen3 = centroid_quadratic(data, xpeak=5, ypeak=5, search_boxsize=3)
-    assert_allclose(xycen1, xycen2)
-    assert_allclose(xycen1, xycen3)
+    data[7, 7] = 110
+    data[9, 9] = 120
+
+    xycen1 = centroid_quadratic(data, fit_boxsize=3)
+    assert_allclose(xycen1, (9, 9))
+
+    xycen2 = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=3)
+    assert_allclose(xycen2, (5, 5))
+
+    xycen3 = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=3,
+                                search_boxsize=5)
+    assert_allclose(xycen3, (7, 7))
 
     with pytest.raises(ValueError):
         centroid_quadratic(data, xpeak=15, ypeak=5)
