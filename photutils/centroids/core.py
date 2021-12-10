@@ -151,6 +151,11 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
             or (xpeak is not None and ypeak is None)):
         raise ValueError('xpeak and ypeak must both be input or "None"')
 
+    if xpeak is not None and ((xpeak < 0) or (xpeak > data.shape[1] - 1)):
+        raise ValueError('xpeak is outside of the input data')
+    if ypeak is not None and ((ypeak < 0) or (ypeak > data.shape[0] - 1)):
+        raise ValueError('ypeak is outside of the input data')
+
     data = np.asanyarray(data, dtype=float)
     ny, nx = data.shape
 
@@ -172,7 +177,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         raise ValueError('fit_boxsize is too small.  6 values are required '
                          'to fit a 2D quadratic polynomial.')
 
-    if xpeak is None:  # and ypeak too
+    if xpeak is None or ypeak is None:
         yidx, xidx = np.unravel_index(np.nanargmax(data), data.shape)
     else:
         xidx = _py2intround(xpeak)
