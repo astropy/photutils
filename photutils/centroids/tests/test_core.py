@@ -276,6 +276,38 @@ class TestCentroidSources:
         assert_allclose(xcen, xres)
         assert_allclose(ycen, yres)
 
+    @staticmethod
+    def test_centroid_quadratic_kwargs():
+        data = np.zeros((11, 11))
+        data[5, 5] = 100
+        data[7, 7] = 110
+        data[9, 9] = 120
+
+        xycen1 = centroid_sources(data, xpos=5, ypos=5, box_size=9,
+                                  centroid_func=centroid_quadratic,
+                                  fit_boxsize=3)
+        assert_allclose(xycen1, ([9], [9]))
+
+        xycen2 = centroid_sources(data, xpos=7, ypos=7, box_size=5,
+                                  centroid_func=centroid_quadratic,
+                                  fit_boxsize=3)
+        assert_allclose(xycen2, ([9], [9]))
+
+        xycen3 = centroid_sources(data, xpos=7, ypos=7, box_size=5,
+                                  centroid_func=centroid_quadratic,
+                                  xpeak=7, ypeak=7, fit_boxsize=3)
+        assert_allclose(xycen3, ([7], [7]))
+
+        xycen4 = centroid_sources(data, xpos=5, ypos=5, box_size=5,
+                                  centroid_func=centroid_quadratic,
+                                  xpeak=5, ypeak=5, fit_boxsize=3)
+        assert_allclose(xycen4, ([5], [5]))
+
+        xycen5 = centroid_sources(data, xpos=5, ypos=5, box_size=5,
+                                  centroid_func=centroid_quadratic,
+                                  fit_boxsize=5)
+        assert_allclose(xycen5, ([7], [7]))
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize('oversampling', (4, (4, 6)))
