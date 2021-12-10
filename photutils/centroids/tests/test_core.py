@@ -15,7 +15,7 @@ import pytest
 
 from ..core import (centroid_com, centroid_quadratic, centroid_sources,
                     centroid_epsf)
-from ..gaussian import centroid_1dg
+from ..gaussian import centroid_1dg, centroid_2dg
 from ...psf import IntegratedGaussianPRF
 from ...utils._optional_deps import HAS_SCIPY  # noqa
 
@@ -30,6 +30,9 @@ DATA = np.zeros((3, 3))
 DATA[0:2, 1] = 1.
 DATA[1, 0:2] = 1.
 DATA[1, 1] = 2.
+
+CENTROID_FUNCS = (centroid_com, centroid_quadratic, centroid_1dg,
+                  centroid_2dg)
 
 
 # NOTE: the fitting routines in astropy use scipy.optimize
@@ -115,13 +118,26 @@ def test_centroid_com_invalid_inputs():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_centroid_quadratic_xypeak():
     data = np.zeros((11, 11))
-    data[4:7, 4:7] = 10
     data[5, 5] = 100
-    xycen1 = centroid_quadratic(data)
-    xycen2 = centroid_quadratic(data, xpeak=5, ypeak=5)
-    xycen3 = centroid_quadratic(data, xpeak=5, ypeak=5, search_boxsize=3)
-    assert_allclose(xycen1, xycen2)
-    assert_allclose(xycen1, xycen3)
+    data[7, 7] = 110
+    data[9, 9] = 120
+
+    xycen1 = centroid_quadratic(data, fit_boxsize=3)
+    assert_allclose(xycen1, (9, 9))
+
+    xycen2 = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=3)
+    assert_allclose(xycen2, (5, 5))
+
+    xycen3 = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=3,
+                                search_boxsize=5)
+    assert_allclose(xycen3, (7, 7))
+
+    with pytest.raises(ValueError):
+        centroid_quadratic(data, xpeak=15, ypeak=5)
+    with pytest.raises(ValueError):
+        centroid_quadratic(data, xpeak=5, ypeak=15)
+    with pytest.raises(ValueError):
+        centroid_quadratic(data, xpeak=15, ypeak=15)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -175,41 +191,122 @@ def test_centroid_quadratic_edge():
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_centroid_sources():
-    theta = np.pi / 6.
-    model = Gaussian2D(2.4, XCEN, YCEN, x_stddev=3.2, y_stddev=5.7,
-                       theta=theta)
-    y, x = np.mgrid[0:50, 0:47]
-    data = model(x, y)
-    error = np.ones(data.shape, dtype=float)
-    mask = np.zeros(data.shape, dtype=bool)
-    mask[10, 10] = True
-    xpos = [25.]
-    ypos = [26.]
-    xc, yc = centroid_sources(data, xpos, ypos, box_size=21, mask=mask)
-    assert_allclose(xc, (25.67,), atol=1e-1)
-    assert_allclose(yc, (26.18,), atol=1e-1)
+class TestCentroidSources:
+    def setup_class(self):
+        ysize = 50
+        xsize = 47
+        yy, xx = np.mgrid[0:ysize, 0:xsize]
+        data = np.zeros((ysize, xsize))
+        xcen = (1, 25, 25, 35, 46)
+        ycen = (1, 25, 12, 35, 49)
+        for xc, yc in zip(xcen, ycen):
+            model = Gaussian2D(10.0, xc, yc, x_stddev=2, y_stddev=2,
+                               theta=0)
+            data += model(xx, yy)
+        self.xpos = xcen
+        self.ypos = ycen
+        self.data = data
 
-    xc, yc = centroid_sources(data, xpos, ypos, error=error, box_size=11,
-                              centroid_func=centroid_1dg)
-    assert_allclose(xc, (25.67,), atol=1e-1)
-    assert_allclose(yc, (26.41,), atol=1e-1)
+    @staticmethod
+    def test_centroid_sources():
+        theta = np.pi / 6.
+        model = Gaussian2D(2.4, XCEN, YCEN, x_stddev=3.2, y_stddev=5.7,
+                           theta=theta)
+        y, x = np.mgrid[0:50, 0:47]
+        data = model(x, y)
+        error = np.ones(data.shape, dtype=float)
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[10, 10] = True
+        xpos = [25.]
+        ypos = [26.]
+        xc, yc = centroid_sources(data, xpos, ypos, box_size=21, mask=mask)
+        assert_allclose(xc, (25.67,), atol=1e-1)
+        assert_allclose(yc, (26.18,), atol=1e-1)
 
-    with pytest.raises(ValueError):
-        centroid_sources(data, 25, [[26]], box_size=11)
-    with pytest.raises(ValueError):
-        centroid_sources(data, [[25]], 26, box_size=11)
-    with pytest.raises(ValueError):
-        centroid_sources(data, 25, 26, box_size=(1, 2, 3))
-    with pytest.raises(ValueError):
-        centroid_sources(data, 25, 26, box_size=None, footprint=None)
-    with pytest.raises(ValueError):
-        centroid_sources(data, 25, 26, footprint=np.ones((3, 3, 3)))
+        xc, yc = centroid_sources(data, xpos, ypos, error=error, box_size=11,
+                                  centroid_func=centroid_1dg)
+        assert_allclose(xc, (25.67,), atol=1e-1)
+        assert_allclose(yc, (26.41,), atol=1e-1)
 
-    def test_func(data):
-        return 1
-    with pytest.raises(ValueError):
-        centroid_sources(data, [25], 26, centroid_func=test_func)
+        with pytest.raises(ValueError):
+            centroid_sources(data, 25, [[26]], box_size=11)
+        with pytest.raises(ValueError):
+            centroid_sources(data, [[25]], 26, box_size=11)
+        with pytest.raises(ValueError):
+            centroid_sources(data, 25, 26, box_size=(1, 2, 3))
+        with pytest.raises(ValueError):
+            centroid_sources(data, 25, 26, box_size=None, footprint=None)
+        with pytest.raises(ValueError):
+            centroid_sources(data, 25, 26, footprint=np.ones((3, 3, 3)))
+
+        def test_func(data):
+            return 1
+        with pytest.raises(ValueError):
+            centroid_sources(data, [25], 26, centroid_func=test_func)
+
+    @pytest.mark.parametrize('centroid_func', CENTROID_FUNCS)
+    def test_xypos(self, centroid_func):
+        with pytest.raises(ValueError):
+            centroid_sources(self.data, 47, 50, box_size=5,
+                             centroid_func=centroid_func)
+
+    def test_gaussian_fits_npts(self):
+        xcen, ycen = centroid_sources(self.data, self.xpos, self.ypos,
+                                      box_size=3, centroid_func=centroid_1dg)
+        assert_allclose(xcen, np.full(5, np.nan))
+        assert_allclose(ycen, np.full(5, np.nan))
+
+        xcen, ycen = centroid_sources(self.data, self.xpos, self.ypos,
+                                      box_size=3, centroid_func=centroid_2dg)
+        xres = np.copy(self.xpos).astype(float)
+        yres = np.copy(self.ypos).astype(float)
+        xres[-1] = np.nan
+        yres[-1] = np.nan
+        assert_allclose(xcen, xres)
+        assert_allclose(ycen, yres)
+
+        xcen, ycen = centroid_sources(self.data, self.xpos, self.ypos,
+                                      box_size=5, centroid_func=centroid_1dg)
+        assert_allclose(xcen, xres)
+        assert_allclose(ycen, yres)
+
+        xcen, ycen = centroid_sources(self.data, self.xpos, self.ypos,
+                                      box_size=3,
+                                      centroid_func=centroid_quadratic)
+        assert_allclose(xcen, xres)
+        assert_allclose(ycen, yres)
+
+    @staticmethod
+    def test_centroid_quadratic_kwargs():
+        data = np.zeros((11, 11))
+        data[5, 5] = 100
+        data[7, 7] = 110
+        data[9, 9] = 120
+
+        xycen1 = centroid_sources(data, xpos=5, ypos=5, box_size=9,
+                                  centroid_func=centroid_quadratic,
+                                  fit_boxsize=3)
+        assert_allclose(xycen1, ([9], [9]))
+
+        xycen2 = centroid_sources(data, xpos=7, ypos=7, box_size=5,
+                                  centroid_func=centroid_quadratic,
+                                  fit_boxsize=3)
+        assert_allclose(xycen2, ([9], [9]))
+
+        xycen3 = centroid_sources(data, xpos=7, ypos=7, box_size=5,
+                                  centroid_func=centroid_quadratic,
+                                  xpeak=7, ypeak=7, fit_boxsize=3)
+        assert_allclose(xycen3, ([7], [7]))
+
+        xycen4 = centroid_sources(data, xpos=5, ypos=5, box_size=5,
+                                  centroid_func=centroid_quadratic,
+                                  xpeak=5, ypeak=5, fit_boxsize=3)
+        assert_allclose(xycen4, ([5], [5]))
+
+        xycen5 = centroid_sources(data, xpos=5, ypos=5, box_size=5,
+                                  centroid_func=centroid_quadratic,
+                                  fit_boxsize=5)
+        assert_allclose(xycen5, ([7], [7]))
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

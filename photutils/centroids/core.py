@@ -89,7 +89,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     are `None`, then the box will be centered at the position of the
     maximum value in the input ``data``.
 
-    If ``xmax`` and ``ymax`` are specified, the ``search_boxsize``
+    If ``xpeak`` and ``ypeak`` are specified, the ``search_boxsize``
     optional keyword can be used to further refine the initial center of
     the fitting box by searching for the position of the maximum pixel
     within a box of size ``search_boxsize``.
@@ -106,8 +106,8 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         Image data.
 
     xpeak, ypeak : float or `None`, optional
-        The initial guess of the position of the centroid. When both
-        ``xpeak`` and ``ypeak`` are `None` then the position of the
+        The initial guess of the position of the centroid. If either
+        ``xpeak`` or ``ypeak`` is `None` then the position of the
         maximum value in the input ``data`` will be used as the initial
         guess.
 
@@ -119,12 +119,12 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     search_boxsize : int or tuple of int, optional
         The size (in pixels) of the box used to search for the maximum
-        pixel value if ``xpeak`` and ``ypeak`` are both `None`. If
-        ``fit_boxsize`` has two elements, they should be in ``(ny, nx)``
-        order. If ``fit_boxsize`` is a scalar then a square box of size
-        ``fit_boxsize`` will be used.  This parameter is ignored when
-        ``xmax`` and ``ymax`` are both `None`.  In that case, the entire
-        array is search for the maximum value.
+        pixel value if ``xpeak`` and ``ypeak`` are both specified. If
+        ``fit_boxsize`` has two elements, they should be in ``(ny,
+        nx)`` order. If ``fit_boxsize`` is a scalar then a square box
+        of size ``fit_boxsize`` will be used. This parameter is ignored
+        if either ``xpeak`` or ``ypeak`` is `None`. In that case, the
+        entire array is search for the maximum value.
 
     mask : bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -138,9 +138,9 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     Notes
     -----
-    Use ``fit_boxsize = (3, 3)`` to match the work of `Vakili & Hogg
-    (2016) <https://arxiv.org/abs/1610.05873>`_ for ther 2D second-order
-    polynomial centroiding method.
+    Use ``fit_boxsize = (3, 3)`` to match the work of `Vakili &
+    Hogg (2016) <https://arxiv.org/abs/1610.05873>`_ for their 2D
+    second-order polynomial centroiding method.
 
     References
     ----------
@@ -150,6 +150,11 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     if ((xpeak is None and ypeak is not None)
             or (xpeak is not None and ypeak is None)):
         raise ValueError('xpeak and ypeak must both be input or "None"')
+
+    if xpeak is not None and ((xpeak < 0) or (xpeak > data.shape[1] - 1)):
+        raise ValueError('xpeak is outside of the input data')
+    if ypeak is not None and ((ypeak < 0) or (ypeak > data.shape[0] - 1)):
+        raise ValueError('ypeak is outside of the input data')
 
     data = np.asanyarray(data, dtype=float)
     ny, nx = data.shape
@@ -172,7 +177,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         raise ValueError('fit_boxsize is too small.  6 values are required '
                          'to fit a 2D quadratic polynomial.')
 
-    if xpeak is None:  # and ypeak too
+    if xpeak is None or ypeak is None:
         yidx, xidx = np.unravel_index(np.nanargmax(data), data.shape)
     else:
         xidx = _py2intround(xpeak)
@@ -268,8 +273,8 @@ def _process_boxsize(box_size, data_shape):
     return box_size
 
 
-def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
-                     error=None, mask=None, centroid_func=centroid_com):
+def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
+                     centroid_func=centroid_com, **kwargs):
     """
     Calculate the centroid of sources at the defined positions.
 
@@ -324,10 +329,18 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         a tuple of two 1D `~numpy.ndarray`, representing the x and y
         centroids. The default is `~photutils.centroids.centroid_com`.
 
+    **kwargs : `dict`
+        Any additional keyword arguments accepted by the
+        ``centroid_func``.
+
     Returns
     -------
     xcentroid, ycentroid : `~numpy.ndarray`
-        The ``x`` and ``y`` pixel position(s) of the centroids.
+        The ``x`` and ``y`` pixel position(s) of the centroids. NaNs
+        will be returned where the centroid failed. This is usually due
+        a ``box_size`` that is too small when using a fitting-based
+        centroid function (e.g., `centroid_1dg`, `centroid_2dg`, or
+        `centroid_quadratic`.
     """
     xpos = np.atleast_1d(xpos)
     ypos = np.atleast_1d(ypos)
@@ -335,6 +348,12 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         raise ValueError('xpos must be a 1D array.')
     if ypos.ndim != 1:
         raise ValueError('ypos must be a 1D array.')
+
+    if (np.any(np.min(xpos) < 0) or np.any(np.min(ypos) < 0)
+            or np.any(np.max(xpos) > data.shape[1] - 1)
+            or np.any(np.max(ypos) > data.shape[0] - 1)):
+        raise ValueError('xpos, ypos values contains point(s) outside of '
+                         'input data')
 
     if footprint is None:
         if box_size is None:
@@ -352,13 +371,16 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         if footprint.ndim != 2:
             raise ValueError('footprint must be a 2D array.')
 
-    use_error = False
     spec = inspect.getfullargspec(centroid_func)
     if 'mask' not in spec.args:
         raise ValueError('The input "centroid_func" must have a "mask" '
                          'keyword.')
-    if 'error' in spec.args:
-        use_error = True
+
+    # drop any **kwargs not supported by the centroid_func
+    centroid_kwargs = {}
+    for key, val in kwargs.items():
+        if key in spec.args:
+            centroid_kwargs[key] = val
 
     xcentroids = []
     ycentroids = []
@@ -371,7 +393,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         if mask is not None:
             mask_cutout = mask[slices_large]
 
-        footprint_mask = ~footprint
+        footprint_mask = np.logical_not(footprint)
         # trim footprint mask if it has only partial overlap on the data
         footprint_mask = footprint_mask[slices_small]
 
@@ -381,10 +403,18 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
             # combine the input mask and footprint mask
             mask_cutout = np.logical_or(mask_cutout, footprint_mask)
 
-        kwargs = {'mask': mask_cutout}
-        if error is not None and use_error:
-            kwargs['error'] = error[slices_large]
-        xcen, ycen = centroid_func(data_cutout, **kwargs)
+        if 'error' in centroid_kwargs:
+            error_cutout = centroid_kwargs['error'][slices_large]
+            centroid_kwargs['error'] = error_cutout
+
+        if 'xpeak' in centroid_kwargs and 'ypeak' in centroid_kwargs:
+            centroid_kwargs['xpeak'] -= slices_large[1].start
+            centroid_kwargs['ypeak'] -= slices_large[0].start
+
+        try:
+            xcen, ycen = centroid_func(data_cutout, **centroid_kwargs)
+        except (ValueError, TypeError):
+            xcen, ycen = np.nan, np.nan
 
         xcentroids.append(xcen + slices_large[1].start)
         ycentroids.append(ycen + slices_large[0].start)
