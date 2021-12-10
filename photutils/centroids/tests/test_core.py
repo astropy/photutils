@@ -33,6 +33,7 @@ DATA[1, 1] = 2.
 
 CENTROID_FUNCS = (centroid_com, centroid_quadratic, centroid_1dg,
                   centroid_2dg)
+CENTROID_GFITS = (centroid_1dg, centroid_2dg)
 
 
 # NOTE: the fitting routines in astropy use scipy.optimize
@@ -236,6 +237,32 @@ class TestCentroidSources:
         with pytest.raises(ValueError):
             centroid_sources(self.data, 47, 50, box_size=5,
                              centroid_func=centroid_func)
+
+    def test_gaussian_fits_npts(self):
+        xcen, ycen = centroid_sources(self.data, self.xpos, self.ypos,
+                                      box_size=3, centroid_func=centroid_1dg)
+        assert_allclose(xcen, np.full(5, np.nan))
+        assert_allclose(ycen, np.full(5, np.nan))
+
+        xcen, ycen = centroid_sources(self.data, self.xpos, self.ypos,
+                                      box_size=3, centroid_func=centroid_2dg)
+        xres = np.copy(self.xpos).astype(float)
+        yres = np.copy(self.ypos).astype(float)
+        xres[-1] = np.nan
+        yres[-1] = np.nan
+        assert_allclose(xcen, xres)
+        assert_allclose(ycen, yres)
+
+        xcen, ycen = centroid_sources(self.data, self.xpos, self.ypos,
+                                      box_size=5, centroid_func=centroid_1dg)
+        assert_allclose(xcen, xres)
+        assert_allclose(ycen, yres)
+
+        xcen, ycen = centroid_sources(self.data, self.xpos, self.ypos,
+                                      box_size=3,
+                                      centroid_func=centroid_quadratic)
+        assert_allclose(xcen, xres)
+        assert_allclose(ycen, yres)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
