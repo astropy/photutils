@@ -327,7 +327,11 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     Returns
     -------
     xcentroid, ycentroid : `~numpy.ndarray`
-        The ``x`` and ``y`` pixel position(s) of the centroids.
+        The ``x`` and ``y`` pixel position(s) of the centroids. NaNs
+        will be returned where the centroid failed. This is usually due
+        a ``box_size`` that is too small when using a fitting-based
+        centroid function (e.g., `centroid_1dg`, `centroid_2dg`, or
+        `centroid_quadratic`.
     """
     xpos = np.atleast_1d(xpos)
     ypos = np.atleast_1d(ypos)
@@ -390,7 +394,11 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         kwargs = {'mask': mask_cutout}
         if error is not None and use_error:
             kwargs['error'] = error[slices_large]
-        xcen, ycen = centroid_func(data_cutout, **kwargs)
+
+        try:
+            xcen, ycen = centroid_func(data_cutout, **kwargs)
+        except (ValueError, TypeError):
+            xcen, ycen = np.nan, np.nan
 
         xcentroids.append(xcen + slices_large[1].start)
         ycentroids.append(ycen + slices_large[0].start)
