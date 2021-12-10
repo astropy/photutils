@@ -127,6 +127,13 @@ def test_centroid_quadratic_xypeak():
     assert_allclose(xycen1, xycen2)
     assert_allclose(xycen1, xycen3)
 
+    with pytest.raises(ValueError):
+        centroid_quadratic(data, xpeak=15, ypeak=5)
+    with pytest.raises(ValueError):
+        centroid_quadratic(data, xpeak=5, ypeak=15)
+    with pytest.raises(ValueError):
+        centroid_quadratic(data, xpeak=15, ypeak=15)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_centroid_quadratic_npts():
