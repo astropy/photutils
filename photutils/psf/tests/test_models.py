@@ -23,7 +23,7 @@ class TestFittableImageModel:
         self.gm = Gaussian2D(x_stddev=3, y_stddev=3)
 
     def test_fittable_image_model(self):
-        xx, yy = np.mgrid[-2:3, -2:3]
+        yy, xx = np.mgrid[-2:3, -2:3]
         model_nonorm = FittableImageModel(self.gm(xx, yy))
 
         assert_allclose(model_nonorm(0, 0), self.gm(0, 0))
@@ -48,7 +48,7 @@ class TestFittableImageModel:
 
     def test_fittable_image_model_oversampling(self):
         oversamp = 3  # oversampling factor
-        xx, yy = np.mgrid[-3:3.00001:(1/oversamp), -3:3.00001:(1/oversamp)]
+        yy, xx = np.mgrid[-3:3.00001:(1/oversamp), -3:3.00001:(1/oversamp)]
 
         im = self.gm(xx, yy)
         assert im.shape[0] > 7
@@ -77,7 +77,7 @@ class TestFittableImageModel:
         gm = Gaussian2D(x_stddev=2, y_stddev=3)
 
         oversamp = 3
-        xx, yy = np.mgrid[-3:3.00001:(1/oversamp), -3:3.00001:(1/oversamp)]
+        yy, xx = np.mgrid[-3:3.00001:(1 / oversamp), -3:3.00001:(1 / oversamp)]
 
         model_oversampled = FittableImageModel(gm(xx, yy),
                                                oversampling=oversamp)
