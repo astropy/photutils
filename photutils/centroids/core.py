@@ -389,19 +389,16 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
                                                     footprint.shape, (yp, xp))
         data_cutout = data[slices_large]
 
-        mask_cutout = None
-        if mask is not None:
-            mask_cutout = mask[slices_large]
-
         footprint_mask = np.logical_not(footprint)
         # trim footprint mask if it has only partial overlap on the data
         footprint_mask = footprint_mask[slices_small]
 
-        if mask_cutout is None:
-            mask_cutout = footprint_mask
+        if mask is not None:
+            # combine the input mask cutout and footprint mask
+            mask_cutout = np.logical_or(mask[slices_large], footprint_mask)
         else:
-            # combine the input mask and footprint mask
-            mask_cutout = np.logical_or(mask_cutout, footprint_mask)
+            mask_cutout = footprint_mask
+
 
         if 'error' in centroid_kwargs:
             error_cutout = centroid_kwargs['error'][slices_large]
