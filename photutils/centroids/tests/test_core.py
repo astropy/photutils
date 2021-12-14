@@ -308,6 +308,14 @@ class TestCentroidSources:
                                   fit_boxsize=5)
         assert_allclose(xycen5, ([7], [7]))
 
+    def test_mask(self):
+        mask = np.ones(self.data.shape, dtype=bool)
+        xcen1, ycen1 = centroid_sources(self.data, 25, 23, box_size=(55, 55))
+        xcen2, ycen2 = centroid_sources(self.data, 25, 23, box_size=(55, 55),
+                                        mask=mask)
+        assert not np.allclose(xcen1, xcen2)
+        assert not np.allclose(ycen1, ycen2)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize('oversampling', (4, (4, 6)))
