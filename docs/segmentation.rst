@@ -275,12 +275,15 @@ see :class:`~photutils.segmentation.SourceCatalog` for the the many
 properties that can be calculated for each source. More properties are
 likely to be added in the future.
 
-Let's detect sources and measure their properties in
-a synthetic image. For this example, we will use the
-:class:`~photutils.background.Background2D` class to produce a
-background and background noise image. We define a 2D detection
-threshold image using the background and background RMS images. We set
-the threshold at 2 sigma (per pixel) above the background:
+Let's detect sources and measure their properties in a synthetic
+image. `~photutils.segmentation.SourceCatalog` requires that the
+input data be background-subtracted, so for this example we will use
+the :class:`~photutils.background.Background2D` class to produce a
+background and background noise image. After subtracting the background,
+we define a 2D detection threshold image using only the background RMS
+image. We set the threshold at the 2-sigma (per pixel) noise level.
+In this example, the threshold does not include the background level
+because it was already subtracted from the data:
 
 .. doctest-requires:: scipy>=1.6.0
 
@@ -295,11 +298,10 @@ the threshold at 2 sigma (per pixel) above the background:
     >>> data -= bkg.background  # subtract the background
     >>> threshold = 2. * bkg.background_rms  # above the background
 
-Now we find sources that have 5 connected pixels that are each greater
-than the corresponding threshold image defined above. Because the
-threshold includes the background, we do not subtract the background
-from the data here. We also input a 2D circular Gaussian kernel with a
-FWHM of 3 pixels to filter the image prior to thresholding:
+Now we find sources that have 5 connected pixels (``npixels`` keyword)
+that are each greater than the corresponding threshold image defined
+above. We also input a 2D circular Gaussian kernel with a FWHM of 3
+pixels to filter the image prior to thresholding:
 
 .. doctest-requires:: scipy>=1.6.0, skimage
 
