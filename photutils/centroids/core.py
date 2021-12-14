@@ -399,6 +399,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         else:
             mask_cutout = footprint_mask
 
+        centroid_kwargs.update({'mask': mask_cutout})
 
         if 'error' in centroid_kwargs:
             error_cutout = centroid_kwargs['error'][slices_large]
