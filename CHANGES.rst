@@ -13,7 +13,8 @@ New Features
 - ``photutils.centroid``
 
   - Extra keyword arguments can be input to ``centroid_sources`` that
-    are then passed on to the ``centroid_func`` if supported. [#1276]
+    are then passed on to the ``centroid_func`` if supported.
+    [#1276,#1278]
 
 - ``photutils.segmentation``
 
