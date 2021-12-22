@@ -7,8 +7,8 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install dependencies for Python 3.7
-          command: /opt/python/cp37-cp37m/bin/pip install tox
+          name: Install dependencies for Python 3.8
+          command: /opt/python/cp38-cp38/bin/pip install tox
       - run:
-          name: Run tests for Python 3.7
-          command: /opt/python/cp37-cp37m/bin/python -m tox -e py37-test
+          name: Run tests for Python 3.8
+          command: /opt/python/cp38-cp38/bin/python -m tox -e py38-numpy120-test
