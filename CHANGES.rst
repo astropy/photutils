@@ -4,6 +4,18 @@
 General
 ^^^^^^^
 
+- The minimum required Python is now 3.8. [#1279]
+
+- The minimum required Numpy is now 1.18. [#1279]
+
+- The minimum required Astropy is now 5.0. [#1279]
+
+- The minimum required Matplotlib is now 3.1. [#1279]
+
+- The minimum required scikit-image is now 0.15.0 [#1279]
+
+- The minimum required gwcs is now 0.16.0 [#1279]
+
 New Features
 ^^^^^^^^^^^^
 
