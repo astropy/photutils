@@ -18,7 +18,7 @@ import numpy as np
 
 from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from .models import EPSFModel
-from ..centroids import centroid_com, centroid_epsf
+from ..centroids import centroid_com
 from ..utils._optional_deps import HAS_BOTTLENECK  # noqa
 from ..utils._round import _py2intround
 
@@ -651,15 +651,12 @@ class EPSFBuilder:
 
             # Anderson & King (2000) recentering function depends
             # on specific pixels, and thus does not need a cutout
-            if self.recentering_func == centroid_epsf:
-                epsf_cutout = epsf_data
-            else:
-                slices_large, _ = overlap_slices(epsf_data.shape, box_size,
-                                                 (ycenter *
-                                                  self.oversampling[1],
-                                                  xcenter *
-                                                  self.oversampling[0]))
-                epsf_cutout = epsf_data[slices_large]
+            slices_large, _ = overlap_slices(epsf_data.shape, box_size,
+                                             (ycenter *
+                                              self.oversampling[1],
+                                              xcenter *
+                                              self.oversampling[0]))
+            epsf_cutout = epsf_data[slices_large]
             mask = ~np.isfinite(epsf_cutout)
 
             try:
@@ -679,9 +676,8 @@ class EPSFBuilder:
                     xcenter_new, ycenter_new = centroid_func(epsf_cutout,
                                                              mask=mask)
 
-            if self.recentering_func != centroid_epsf:
-                xcenter_new += slices_large[1].start/self.oversampling[0]
-                ycenter_new += slices_large[0].start/self.oversampling[1]
+            xcenter_new += slices_large[1].start/self.oversampling[0]
+            ycenter_new += slices_large[0].start/self.oversampling[1]
 
             # Calculate the shift; dx = i - x_star so if dx was positively
             # incremented then x_star was negatively incremented for a given i.
