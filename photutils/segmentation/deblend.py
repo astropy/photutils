@@ -6,7 +6,6 @@ a segmentation image.
 
 import warnings
 
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -18,7 +17,6 @@ from ..utils.exceptions import NoDetectionsWarning
 __all__ = ['deblend_sources']
 
 
-@deprecated_renamed_argument('filter_kernel', 'kernel', '1.2')
 def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                     nlevels=32, contrast=0.001, mode='exponential',
                     connectivity=8, relabel=True):

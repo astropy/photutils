@@ -7,7 +7,6 @@ import warnings
 
 from astropy.convolution import Gaussian2DKernel, convolve
 from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -295,7 +294,6 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
     return segms
 
 
-@deprecated_renamed_argument('filter_kernel', 'kernel', '1.2')
 def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
                    mask=None):
     """
@@ -396,7 +394,6 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
                            connectivity=connectivity, mask=mask)[0]
 
 
-@deprecated_renamed_argument('filter_kernel', 'kernel', '1.2')
 def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
                      filter_size=3, kernel=None, sigclip_sigma=3.0,
                      sigclip_iters=5, dilate_size=11):
