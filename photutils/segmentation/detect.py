@@ -356,7 +356,6 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
     --------
     :func:`photutils.segmentation.detect_threshold`
     :class:`photutils.segmentation.SegmentationImage`
-    :func:`photutils.segmentation.source_properties`
     :func:`photutils.segmentation.deblend_sources`
 
     Examples

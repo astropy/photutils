@@ -16,16 +16,13 @@ Photutils 1.1 is a major release that adds new functionality since the
 New SourceCatalog class
 =======================
 A new, significantly faster, `~photutils.segmentation.SourceCatalog`
-class was implemented. This new class simplifies the API and takes
-the place of the :func:`~photutils.segmentation.source_properties`
-function and the :class:`~photutils.segmentation.SourceProperties`
-and `~photutils.segmentation.LegacySourceCatalog` classes. The
-:func:`~photutils.segmentation.source_properties` function
-and :class:`~photutils.segmentation.SourceProperties`
-are now deprecated and will eventually be removed. The
-:func:`~photutils.segmentation.source_properties` function now returns
-a `~photutils.segmentation.LegacySourceCatalog` class (deprecated) to
-distinguish it from the new `~photutils.segmentation.SourceCatalog`.
+class was implemented. This new class simplifies the API and takes the
+place of the ``source_properties`` function and the ``SourceProperties``
+``LegacySourceCatalog`` classes. The ``source_properties`` function
+and ``SourceProperties`` class are now deprecated and will eventually
+be removed. The ``source_properties`` function now returns
+``LegacySourceCatalog`` class (deprecated) to distinguish it from the
+new `~photutils.segmentation.SourceCatalog`.
 
 Optional keyword arguments in `~photutils.segmentation.SourceCatalog`
 can not be input as positional arguments. Please see the
