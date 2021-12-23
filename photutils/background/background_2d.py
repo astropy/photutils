@@ -10,7 +10,6 @@ from astropy.nddata import NDData
 from astropy.stats import SigmaClip
 import astropy.units as u
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.lib.index_tricks import index_exp
@@ -595,16 +594,6 @@ class Background2D:
         data = np.full(self.background_rms_mesh.shape, np.nan)
         data[self._mesh_idx] = self.background_rms_mesh[self._mesh_idx]
         return data
-
-    @lazyproperty
-    @deprecated('1.2', alternative='background_mesh_masked')
-    def background_mesh_ma(self):
-        return self.background_mesh_masked  # pragma: no cover
-
-    @lazyproperty
-    @deprecated('1.2', alternative='background_rms_mesh_masked')
-    def background_rms_mesh_ma(self):
-        return self.background_rms_mesh_masked  # pragma: no cover
 
     @lazyproperty
     def _mesh_yxpos(self):

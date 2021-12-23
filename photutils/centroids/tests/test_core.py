@@ -7,16 +7,13 @@ import itertools
 import warnings
 
 from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import (AstropyUserWarning,
-                                      AstropyDeprecationWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..core import (centroid_com, centroid_quadratic, centroid_sources,
-                    centroid_epsf)
+from ..core import centroid_com, centroid_quadratic, centroid_sources
 from ..gaussian import centroid_1dg, centroid_2dg
-from ...psf import IntegratedGaussianPRF
 from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
@@ -240,7 +237,7 @@ class TestCentroidSources:
             centroid_sources(data, 25, 26, footprint=np.ones((3, 3, 3)))
 
         def test_func(data):
-            return 1
+            return data
         with pytest.raises(ValueError):
             centroid_sources(data, [25], 26, centroid_func=test_func)
 
@@ -315,54 +312,3 @@ class TestCentroidSources:
                                         mask=mask)
         assert not np.allclose(xcen1, xcen2)
         assert not np.allclose(ycen1, ycen2)
-
-
-@pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.parametrize('oversampling', (4, (4, 6)))
-def test_centroid_epsf(oversampling):
-    sigma = 0.5
-    psf = IntegratedGaussianPRF(sigma=sigma)
-    offsets = np.array((0.1, 0.03))
-
-    if not hasattr(oversampling, '__len__'):
-        _oversampling = (oversampling, oversampling)
-    else:
-        _oversampling = oversampling
-
-    x = np.arange(1 + 25 * _oversampling[0]) / _oversampling[0]
-    y = np.arange(1 + 25 * _oversampling[1]) / _oversampling[1]
-    x0 = x[-1] / 2
-    y0 = y[-1] / 2
-    x -= x0
-    y -= y0
-
-    data = psf.evaluate(x=x.reshape(1, -1), y=y.reshape(-1, 1), flux=1.,
-                        x_0=offsets[0], y_0=offsets[1], sigma=sigma)
-
-    mask = np.zeros(data.shape, dtype=bool)
-    data[25, 25] = 1000.
-    mask[25, 25] = True
-    with pytest.warns(AstropyDeprecationWarning):
-        xc, yc = centroid_epsf(data, mask=mask, oversampling=oversampling)
-    desired = np.array((x0, y0)) + offsets
-    assert_allclose((xc, yc), desired, rtol=1e-3, atol=1e-2)
-
-
-def test_centroid_epsf_exceptions():
-    data = np.ones((5, 5), dtype=float)
-    mask = np.zeros((4, 5), dtype=int)
-    mask[2, 2] = 1
-
-    with pytest.warns(AstropyDeprecationWarning):
-        with pytest.raises(ValueError):
-            centroid_epsf(data, mask)
-        with pytest.raises(ValueError):
-            centroid_epsf(data, shift_val=-1)
-        with pytest.raises(ValueError):
-            centroid_epsf(data, oversampling=-1)
-
-    data = np.ones((21, 21), dtype=float)
-    data[10, 10] = np.inf
-    with pytest.warns(AstropyDeprecationWarning):
-        with pytest.raises(ValueError):
-            centroid_epsf(data)

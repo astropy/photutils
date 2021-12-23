@@ -25,6 +25,33 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.background``
+
+  - Removed the deprecated ``background_mesh_ma`` and
+    ``background_rms_mesh_ma`` ``Background2D`` properties. [#1280]
+
+- ``photutils.centroid``
+
+  - Removed the deprecated ``centroid_epsf`` and ``gaussian1d_moments``
+    functions. [#1280]
+
+  - Importing tools from the centroids subpackage now requires including
+    the subpackage name. [#1280]
+
+- ``photutils.morphology``
+
+  - Importing tools from the morphology subpackage now requires
+    including the subpackage name. [#1280]
+
+- ``photutils.segmentation``
+
+  - Removed the deprecated ``source_properties`` function and the
+    ``SourceProperties`` and ``LegacySourceCatalog`` classes. [#1280]
+
+  - Removed the deprecated the ``filter_kernel`` keyword in the
+    ``detect_sources``, ``deblend_sources``, and ``make_source_mask``
+    functions. [#1280]
+
 
 1.3.0 (2021-12-21)
 ------------------

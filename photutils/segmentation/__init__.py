@@ -9,4 +9,3 @@ from .catalog import *  # noqa
 from .core import *  # noqa
 from .deblend import *  # noqa
 from .detect import *  # noqa
-from .properties import *  # noqa

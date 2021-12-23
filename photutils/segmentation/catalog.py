@@ -2188,7 +2188,7 @@ class SourceCatalog:
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return patches
 
-    @deprecated('1.1', alternative='make_circular_apertures')
+    @deprecated('1.3', alternative='make_circular_apertures')
     def circular_aperture(self, radius):
         """
         Return a list of circular apertures with the specified radius
