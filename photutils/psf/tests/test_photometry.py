@@ -325,6 +325,7 @@ def test_finder_positions_warning():
         result_tab = basic_phot_obj(image=image)
 
 
+@pytest.mark.filterwarnings('ignore:The fit may be unsuccessful')
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_aperture_radius():
     img_shape = (32, 32)
