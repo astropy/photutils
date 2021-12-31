@@ -9,7 +9,6 @@ from astropy.modeling.fitting import LevMarLSQFitter, SimplexLSQFitter
 from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Table
-from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
@@ -311,15 +310,15 @@ def test_finder_positions_warning():
              make_noise_image((32, 32), distribution='poisson', mean=6.,
                               seed=0))
 
-    with catch_warnings(AstropyUserWarning):
+    with pytest.warns(AstropyUserWarning):
         result_tab = basic_phot_obj(image=image, init_guesses=positions)
-        assert_array_equal(result_tab['x_0'], positions['x_0'])
-        assert_array_equal(result_tab['y_0'], positions['y_0'])
-        assert_allclose(result_tab['x_fit'], positions['x_0'], rtol=1e-1)
-        assert_allclose(result_tab['y_fit'], positions['y_0'], rtol=1e-1)
+    assert_array_equal(result_tab['x_0'], positions['x_0'])
+    assert_array_equal(result_tab['y_0'], positions['y_0'])
+    assert_allclose(result_tab['x_fit'], positions['x_0'], rtol=1e-1)
+    assert_allclose(result_tab['y_fit'], positions['y_0'], rtol=1e-1)
 
+    basic_phot_obj.finder = None
     with pytest.raises(ValueError):
-        basic_phot_obj.finder = None
         result_tab = basic_phot_obj(image=image)
 
 

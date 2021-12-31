@@ -3,9 +3,7 @@
 Tests for the peakfinder module.
 """
 
-import warnings
-
-from astropy.tests.helper import assert_quantity_allclose, catch_warnings
+from astropy.tests.helper import assert_quantity_allclose
 import numpy as np
 from numpy.testing import assert_array_equal
 import pytest
@@ -15,7 +13,6 @@ from ...centroids import centroid_com
 from ...datasets import make_4gaussians_image, make_gwcs, make_wcs
 from ...utils.exceptions import NoDetectionsWarning
 from ...utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
-
 
 PEAKDATA = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]).astype(float)
 PEAKREF1 = np.array([[0, 0], [2, 2]])
@@ -68,12 +65,10 @@ class TestFindPeaks:
 
     def test_border_width(self):
         """Test border exclusion."""
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning,
+                          match='No local peaks were found'):
             tbl = find_peaks(PEAKDATA, 0.1, box_size=3, border_width=3)
             assert tbl is None
-            assert len(warning_lines) > 0
-            assert ('No local peaks were found.' in
-                    str(warning_lines[0].message))
 
     def test_box_size_int(self):
         """Test non-integer box_size."""
@@ -118,28 +113,25 @@ class TestFindPeaks:
     def test_constant_array(self):
         """Test for empty output table when data is constant."""
         data = np.ones((10, 10))
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning, match='Input data is constant'):
             tbl = find_peaks(data, 0.)
             assert tbl is None
-            assert len(warning_lines) > 0
-            assert ('Input data is constant.' in
-                    str(warning_lines[0].message))
 
     def test_no_peaks(self):
         """
         Test for an empty output table with the expected column names
         when no peaks are found.
         """
-        with catch_warnings(NoDetectionsWarning):
+        with pytest.warns(NoDetectionsWarning):
             tbl = find_peaks(IMAGE, 10000)
             assert tbl is None
-
+        with pytest.warns(NoDetectionsWarning):
             tbl = find_peaks(IMAGE, 100000, centroid_func=centroid_com)
             assert tbl is None
-
+        with pytest.warns(NoDetectionsWarning):
             tbl = find_peaks(IMAGE, 100000, wcs=FITSWCS)
             assert tbl is None
-
+        with pytest.warns(NoDetectionsWarning):
             tbl = find_peaks(IMAGE, 100000, wcs=FITSWCS,
                              centroid_func=centroid_com)
             assert tbl is None
@@ -148,7 +140,4 @@ class TestFindPeaks:
         """Test that data with NaNs does not issue Runtime warning."""
         data = np.copy(PEAKDATA)
         data[1, 1] = np.nan
-
-        with warnings.catch_warnings():
-            warnings.filterwarnings('error')
-            find_peaks(data, 0.)
+        find_peaks(data, 0.)

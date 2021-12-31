@@ -137,8 +137,7 @@ def test_gaussian1d_moments():
     data[0] = np.nan
     mask = np.zeros(data.shape).astype(bool)
     mask[0] = True
-    with warnings.catch_warnings(record=True) as warnlist:
+    with pytest.warns(AstropyUserWarning) as warnlist:
         result = _gaussian1d_moments(data, mask=mask)
-        assert_allclose(result, desired, rtol=0, atol=1.e-6)
+    assert_allclose(result, desired, rtol=0, atol=1.e-6)
     assert len(warnlist) == 1
-    assert issubclass(warnlist[0].category, AstropyUserWarning)

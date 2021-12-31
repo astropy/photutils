@@ -6,7 +6,6 @@ Tests for the background_2d module.
 import itertools
 
 from astropy.nddata import NDData, CCDData
-from astropy.tests.helper import catch_warnings
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
@@ -163,7 +162,7 @@ class TestBackground2D:
         data[:50, :50] = np.nan
         mask = np.isnan(data)
 
-        with catch_warnings(AstropyUserWarning):
+        with pytest.warns(AstropyUserWarning):
             bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
                                 coverage_mask=mask, fill_value=fill_value,
                                 bkg_estimator=MeanBackground())

@@ -5,7 +5,6 @@ Tests for the detect module.
 
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
-from astropy.tests.helper import catch_warnings
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
 import pytest
@@ -134,10 +133,8 @@ class TestDetectSources:
     def test_small_sources(self):
         """Test detection where sources are smaller than npixels size."""
 
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
             detect_sources(self.data, threshold=0.9, npixels=5)
-            assert warning_lines[0].category == NoDetectionsWarning
-            assert 'No sources were found.' in str(warning_lines[0].message)
 
     def test_npixels(self):
         """
@@ -169,10 +166,8 @@ class TestDetectSources:
             assert segm.nlabels == 1
             assert segm.areas[0] == 13
 
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
             detect_sources(data, 0, npixels=14)
-            assert warning_lines[0].category == NoDetectionsWarning
-            assert 'No sources were found.' in str(warning_lines[0].message)
 
     def test_zerothresh(self):
         """Test detection with zero threshold."""
@@ -183,10 +178,8 @@ class TestDetectSources:
     def test_zerodet(self):
         """Test detection with large threshold giving no detections."""
 
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
             detect_sources(self.data, threshold=7, npixels=2)
-            assert warning_lines[0].category == NoDetectionsWarning
-            assert 'No sources were found.' in str(warning_lines[0].message)
 
     def test_8connectivity(self):
         """Test detection with connectivity=8."""
@@ -273,7 +266,6 @@ class TestMakeSourceMask:
         assert_allclose(mask1, mask2)
 
     def test_no_detections(self):
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning):
             mask = make_source_mask(self.data, 100, 100)
             assert np.count_nonzero(mask) == 0
-            assert warning_lines[0].category == NoDetectionsWarning

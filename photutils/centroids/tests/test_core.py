@@ -144,9 +144,8 @@ def test_centroid_quadratic_npts():
     mask = np.zeros(data.shape, dtype=bool)
     mask[0, :] = True
     mask[2, :] = True
-    with warnings.catch_warnings(record=True) as warnlist:
+    with pytest.warns(AstropyUserWarning):
         centroid_quadratic(data, mask=mask)
-    assert issubclass(warnlist[0].category, AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -181,10 +180,9 @@ def test_centroid_quadratic_edge():
 
     data = np.zeros((5, 5))
     data[0, 0] = 100
-    with warnings.catch_warnings(record=True) as warnlist:
+    with pytest.warns(AstropyUserWarning):
         xycen = centroid_quadratic(data)
     assert_allclose(xycen, (0, 0))
-    assert issubclass(warnlist[0].category, AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
