@@ -355,9 +355,7 @@ def test_aperture_radius():
 
     psf_model = PSFModelWithFWHM()
     basic_phot_obj.psf_model = psf_model
-    with pytest.warns(RuntimeWarning, match='invalid value encountered in '
-                      'sqrt'):
-        basic_phot_obj(image)
+    basic_phot_obj(image)
     assert_equal(basic_phot_obj.aperture_radius, psf_model.fwhm.value)
 
 
