@@ -151,6 +151,9 @@ def test_psf_photometry_niters(sigma_psf, sources):
         assert_array_equal(cp_image, image)
 
 
+@pytest.mark.filterwarnings('ignore:Both init_guesses and finder are '
+                            'different than None')
+@pytest.mark.filterwarnings('ignore:No sources were found')
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
@@ -352,7 +355,9 @@ def test_aperture_radius():
 
     psf_model = PSFModelWithFWHM()
     basic_phot_obj.psf_model = psf_model
-    basic_phot_obj(image)
+    with pytest.warns(RuntimeWarning, match='invalid value encountered in '
+                      'sqrt'):
+        basic_phot_obj(image)
     assert_equal(basic_phot_obj.aperture_radius, psf_model.fwhm.value)
 
 
@@ -432,7 +437,9 @@ def test_psf_photometry_discrete():
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
                                     bkg_estimator=None, psf_model=prf,
                                     fitshape=7)
-    f = basic_phot(image=image, init_guesses=INTAB)
+    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
+                      'could not be determined by psf_model'):
+        f = basic_phot(image=image, init_guesses=INTAB)
 
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-6)
@@ -456,7 +463,9 @@ def test_tune_coordinates():
                                     bkg_estimator=None, psf_model=prf,
                                     fitshape=7)
 
-    f = basic_phot(image=image, init_guesses=intab)
+    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
+                      'could not be determined by psf_model'):
+        f = basic_phot(image=image, init_guesses=intab)
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
 
@@ -605,7 +614,9 @@ def test_psf_photometry_gaussian2(renormalize_psf):
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
                                     bkg_estimator=None, psf_model=psf,
                                     fitshape=7)
-    f = basic_phot(image=image, init_guesses=INTAB)
+    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
+                      'could not be determined by psf_model'):
+        f = basic_phot(image=image, init_guesses=INTAB)
 
     for n in ['x', 'y']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-1)
@@ -626,7 +637,9 @@ def test_psf_photometry_moffat():
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
                                     bkg_estimator=None, psf_model=psf,
                                     fitshape=7)
-    f = basic_phot(image=image, init_guesses=INTAB)
+    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
+                      'could not be determined by psf_model'):
+        f = basic_phot(image=image, init_guesses=INTAB)
     f.pprint(max_width=-1)
 
     for n in ['x', 'y']:
@@ -655,6 +668,8 @@ def test_psf_fitting_data_on_edge():
                         rtol=0.05, atol=0.1)
 
 
+@pytest.mark.filterwarnings('ignore:Both init_guesses and finder '
+                            'are different than None')
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
 def test_psf_extra_output_cols(sigma_psf, sources):
@@ -794,7 +809,9 @@ def test_finder_return_none():
                                                    fitshape=7, niters=2,
                                                    aperture_radius=3)
 
-    results = iter_phot(image=img, init_guesses=intab)
+    with pytest.warns(AstropyUserWarning, match='Both init_guesses and finder '
+                      'are different than None'):
+        results = iter_phot(image=img, init_guesses=intab)
     assert_allclose(results['flux_fit'], f0, rtol=0.05)
 
 
@@ -811,7 +828,8 @@ def test_psf_photometry_uncertainties():
                                     bkg_estimator=None, psf_model=psf,
                                     fitter=SimplexLSQFitter(),
                                     fitshape=7)
-    phot_tbl = basic_phot(image=image, init_guesses=INTAB)
+    with pytest.warns(AstropyUserWarning, match='The fit may be unsuccessful'):
+        phot_tbl = basic_phot(image=image, init_guesses=INTAB)
     columns = ('flux_unc', 'x_0_unc', 'y_0_unc')
     for column in columns:
         assert column not in phot_tbl.colnames
@@ -831,9 +849,12 @@ def test_re_use_result_as_initial_guess():
 
     _, _, dao_phot_obj = make_psf_photometry_objs()
 
-    result_table = dao_phot_obj(image)
+    with pytest.warns(AstropyUserWarning, match='The fit may be unsuccessful'):
+        result_table = dao_phot_obj(image)
     result_table['x'] = result_table['x_fit']
     result_table['y'] = result_table['y_fit']
     result_table['flux'] = result_table['flux_fit']
-    second_result = dao_phot_obj(image, result_table)
+    with pytest.warns(AstropyUserWarning, match='Both init_guesses and finder '
+                      'are different than None'):
+        second_result = dao_phot_obj(image, result_table)
     assert second_result

@@ -82,8 +82,8 @@ class TestIRAFStarFinder:
         assert len(tbl) == 4
 
     def test_irafstarfind_largesky(self):
-        with pytest.warnss(NoDetectionsWarning,
-                           match='Sources were found, but none pass'):
+        with pytest.warns(NoDetectionsWarning,
+                          match='Sources were found, but none pass'):
             starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.)
             tbl = starfinder(DATA)
             assert tbl is None

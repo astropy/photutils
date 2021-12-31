@@ -174,16 +174,20 @@ class TestBackground2D:
         coverage_mask = np.zeros(DATA.shape, dtype=bool)
         mask[:50, :25] = True
         coverage_mask[:50, 25:50] = True
-        bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
-                            coverage_mask=mask, fill_value=0.0,
-                            bkg_estimator=MeanBackground())
+        with pytest.warns(AstropyUserWarning,
+                          match='Input data contains invalid values'):
+            bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
+                                coverage_mask=mask, fill_value=0.0,
+                                bkg_estimator=MeanBackground())
         assert_equal(bkg1.background_mesh, bkg2.background_mesh)
         assert_equal(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
 
     def test_mask_nonfinite(self):
         data = DATA.copy()
         data[0, 0:50] = np.nan
-        bkg = Background2D(data, (25, 25), filter_size=(1, 1))
+        with pytest.warns(AstropyUserWarning,
+                          match='Input data contains invalid values'):
+            bkg = Background2D(data, (25, 25), filter_size=(1, 1))
         assert_allclose(bkg.background, DATA, rtol=1e-5)
 
     def test_masked_array(self):
@@ -217,8 +221,10 @@ class TestBackground2D:
         """Only meshes greater than filter_threshold are filtered."""
         data = np.copy(DATA)
         data[0:50, 0:50] = np.nan
-        bkg = Background2D(data, (25, 25), filter_size=(1, 1),
-                           exclude_percentile=100.)
+        with pytest.warns(AstropyUserWarning,
+                          match='Input data contains invalid values'):
+            bkg = Background2D(data, (25, 25), filter_size=(1, 1),
+                               exclude_percentile=100.)
         assert len(bkg._box_idx) == 12
 
     def test_filter_threshold(self):

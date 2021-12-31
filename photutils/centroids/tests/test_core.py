@@ -4,7 +4,7 @@ Tests for the core module.
 """
 
 import itertools
-import warnings
+from contextlib import nullcontext
 
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
@@ -82,24 +82,26 @@ def test_centroid_com_nan_withmask(use_mask):
         mask = np.zeros(data.shape, dtype=bool)
         mask[20, :] = True
         nwarn = 0
+        ctx = nullcontext()
     else:
         mask = None
         nwarn = 1
+        ctx = pytest.warns(AstropyUserWarning,
+                           match='Input data contains non-finite values')
 
-    with warnings.catch_warnings(record=True) as warnlist:
+    with ctx as warnlist:
         xc, yc = centroid_com(data, mask=mask)
-        assert_allclose(xc, xc_ref, rtol=0, atol=1.e-3)
-        assert yc > yc_ref
-    assert len(warnlist) == nwarn
+    assert_allclose(xc, xc_ref, rtol=0, atol=1.e-3)
+    assert yc > yc_ref
     if nwarn == 1:
-        assert issubclass(warnlist[0].category, AstropyUserWarning)
+        assert len(warnlist) == nwarn
 
-    with warnings.catch_warnings(record=True) as warnlist:
+    with pytest.warns(AstropyUserWarning,
+                      match='Input data contains non-finite '
+                      'values') as warnlist:
         xc, yc = centroid_quadratic(data, mask=mask)
-        assert_allclose(xc, xc_ref, rtol=0, atol=0.15)
-    assert len(warnlist) == 1  # always warns because of NaN
-    if nwarn == 1:
-        assert issubclass(warnlist[0].category, AstropyUserWarning)
+    assert_allclose(xc, xc_ref, rtol=0, atol=0.15)
+    assert len(warnlist) == 1
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -271,8 +273,8 @@ class TestCentroidSources:
         assert_allclose(xcen, xres)
         assert_allclose(ycen, yres)
 
-    @staticmethod
-    def test_centroid_quadratic_kwargs():
+    @pytest.mark.filterwarnings(r'ignore:.*no quadratic fit was performed')
+    def test_centroid_quadratic_kwargs(self):
         data = np.zeros((11, 11))
         data[5, 5] = 100
         data[7, 7] = 110
@@ -306,7 +308,9 @@ class TestCentroidSources:
     def test_mask(self):
         mask = np.ones(self.data.shape, dtype=bool)
         xcen1, ycen1 = centroid_sources(self.data, 25, 23, box_size=(55, 55))
-        xcen2, ycen2 = centroid_sources(self.data, 25, 23, box_size=(55, 55),
-                                        mask=mask)
+        with pytest.warns(RuntimeWarning,
+                          match='invalid value encountered in double_scalars'):
+            xcen2, ycen2 = centroid_sources(self.data, 25, 23,
+                                            box_size=(55, 55), mask=mask)
         assert not np.allclose(xcen1, xcen2)
         assert not np.allclose(ycen1, ycen2)

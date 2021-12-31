@@ -47,14 +47,16 @@ def test_gain_array():
 
 
 def test_gain_zero():
-    error_tot = calc_total_error(DATA, BKG_ERROR, 0.)
+    with pytest.warns(RuntimeWarning, match='divide by zero'):
+        error_tot = calc_total_error(DATA, BKG_ERROR, 0.)
     assert_allclose(error_tot, BKG_ERROR)
 
     effgain = np.copy(EFFGAIN)
     effgain[0, 0] = 0
     effgain[1, 1] = 0
     mask = (effgain == 0)
-    error_tot = calc_total_error(DATA, BKG_ERROR, effgain)
+    with pytest.warns(RuntimeWarning, match='divide by zero'):
+        error_tot = calc_total_error(DATA, BKG_ERROR, effgain)
     assert_allclose(error_tot[mask], BKG_ERROR[mask])
     assert_allclose(error_tot[~mask], np.sqrt(2))
 

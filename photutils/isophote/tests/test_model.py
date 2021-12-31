@@ -4,8 +4,8 @@ Tests for the model module.
 """
 
 from astropy.io import fits
+from astropy.utils.data import get_pkg_data_filename
 import numpy as np
-import os.path as op
 import pytest
 
 from .make_test_data import make_test_image
@@ -62,20 +62,20 @@ def test_model_minimum_radius():
     # model building algorithm into a corner, where it fails.
     # With the algorithm fixed, it bypasses the failure and
     # succeeds in building the model image.
-    filepath = op.join(op.dirname(op.abspath(__file__)), 'data',
-                       'minimum_radius_test.fits')
-    hdu = fits.open(filepath)
-    data = hdu[0].data
+    filepath = get_pkg_data_filename('data/minimum_radius_test.fits')
+    with fits.open(filepath) as hdu:
+        data = hdu[0].data
 
-    g = EllipseGeometry(50., 45, 530., 0.1, 10. / 180. * np.pi)
-    g.find_center(data)
-    ellipse = Ellipse(data, geometry=g)
-    isophote_list = ellipse.fit_image(sma0=40, minsma=0, maxsma=350.,
-                                      step=0.4, nclip=3)
+        g = EllipseGeometry(50., 45, 530., 0.1, 10. / 180. * np.pi)
+        g.find_center(data)
+        ellipse = Ellipse(data, geometry=g)
+        with pytest.warns(RuntimeWarning, match='Degrees of freedom'):
+            isophote_list = ellipse.fit_image(sma0=40, minsma=0, maxsma=350.,
+                                              step=0.4, nclip=3)
 
-    model = build_ellipse_model(data.shape, isophote_list,
-                                fill=np.mean(data[0:50, 0:50]))
+        model = build_ellipse_model(data.shape, isophote_list,
+                                    fill=np.mean(data[0:50, 0:50]))
 
-    # It's enough that the algorithm reached this point. The
-    # actual accuracy of the modelling is being tested elsewhere.
-    assert data.shape == model.shape
+        # It's enough that the algorithm reached this point. The
+        # actual accuracy of the modelling is being tested elsewhere.
+        assert data.shape == model.shape

@@ -91,7 +91,8 @@ class TestEllipse:
         # This should result in failure since the real galaxy
         # image is off-center by a large offset.
         ellipse = Ellipse(OFFSET_GALAXY)
-        isophote_list = ellipse.fit_image()
+        with pytest.warns(RuntimeWarning, match='Degrees of freedom'):
+            isophote_list = ellipse.fit_image()
 
         assert len(isophote_list) == 0
 
