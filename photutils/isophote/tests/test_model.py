@@ -27,7 +27,8 @@ def test_model():
 
     g = EllipseGeometry(530., 511, 10., 0.1, 10./180.*np.pi)
     ellipse = Ellipse(data, geometry=g, threshold=1.e5)
-    isophote_list = ellipse.fit_image()
+    with pytest.warns(RuntimeWarning, match='Degrees of freedom'):
+        isophote_list = ellipse.fit_image()
     model = build_ellipse_model(data.shape, isophote_list,
                                 fill=np.mean(data[10:100, 10:100]))
 
