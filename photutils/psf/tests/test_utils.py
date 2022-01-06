@@ -143,6 +143,8 @@ def test_prepare_psf_model(moffimg, prepkwargs, tols):
         assert fit_psfmod.psfmodel.amplitude == guess_moffat.amplitude
 
 
+@pytest.mark.filterwarnings('ignore:aperture_radius is None and could not '
+                            'be determined by psf_model')
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_prepare_psf_model_offset():
     """

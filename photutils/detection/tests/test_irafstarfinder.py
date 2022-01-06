@@ -7,7 +7,6 @@ import itertools
 import os.path as op
 
 from astropy.table import Table
-from astropy.tests.helper import catch_warnings
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -48,38 +47,34 @@ class TestIRAFStarFinder:
 
     def test_irafstarfind_nosources(self):
         data = np.ones((3, 3))
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
             starfinder = IRAFStarFinder(threshold=10, fwhm=1)
             tbl = starfinder(data)
             assert tbl is None
-            assert 'No sources were found.' in str(warning_lines[0].message)
 
     def test_irafstarfind_sharpness(self):
         """Sources found, but none pass the sharpness criteria."""
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning,
+                          match='Sources were found, but none pass'):
             starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, sharplo=2.)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass' in
-                    str(warning_lines[0].message))
 
     def test_irafstarfind_roundness(self):
         """Sources found, but none pass the roundness criteria."""
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning,
+                          match='Sources were found, but none pass'):
             starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass' in
-                    str(warning_lines[0].message))
 
     def test_irafstarfind_peakmax(self):
         """Sources found, but none pass the peakmax criteria."""
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning,
+                          match='Sources were found, but none pass'):
             starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, peakmax=1.)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass' in
-                    str(warning_lines[0].message))
 
     def test_irafstarfind_sky(self):
         starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=10.)
@@ -87,12 +82,11 @@ class TestIRAFStarFinder:
         assert len(tbl) == 4
 
     def test_irafstarfind_largesky(self):
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning,
+                          match='Sources were found, but none pass'):
             starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass' in
-                    str(warning_lines[0].message))
 
     def test_irafstarfind_peakmax_filtering(self):
         """

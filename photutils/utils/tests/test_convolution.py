@@ -4,7 +4,6 @@ Tests for the convolution module.
 """
 
 from astropy.convolution import Gaussian2DKernel
-from astropy.tests.helper import catch_warnings
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
@@ -67,6 +66,6 @@ class TestFilterData:
         Test kernel normalization check.
         """
 
-        with catch_warnings(AstropyUserWarning) as w:
+        with pytest.warns(AstropyUserWarning) as w:
             _filter_data(self.data, self.kernel, check_normalization=True)
-            assert len(w) == 1
+        assert len(w) == 1

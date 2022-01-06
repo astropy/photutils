@@ -7,7 +7,6 @@ import itertools
 import os.path as op
 
 from astropy.table import Table
-from astropy.tests.helper import catch_warnings
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -59,38 +58,34 @@ class TestDAOStarFinder:
 
     def test_daofind_nosources(self):
         data = np.ones((3, 3))
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
             starfinder = DAOStarFinder(threshold=10, fwhm=1)
             tbl = starfinder(data)
             assert tbl is None
-            assert 'No sources were found.' in str(warning_lines[0].message)
 
     def test_daofind_sharpness(self):
         """Sources found, but none pass the sharpness criteria."""
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning,
+                          match='Sources were found, but none pass'):
             starfinder = DAOStarFinder(threshold=50, fwhm=1.0, sharplo=1.)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass' in
-                    str(warning_lines[0].message))
 
     def test_daofind_roundness(self):
         """Sources found, but none pass the roundness criteria."""
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning,
+                          match='Sources were found, but none pass'):
             starfinder = DAOStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass' in
-                    str(warning_lines[0].message))
 
     def test_daofind_peakmax(self):
         """Sources found, but none pass the peakmax criteria."""
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning,
+                          match='Sources were found, but none pass'):
             starfinder = DAOStarFinder(threshold=50, fwhm=1.0, peakmax=1.0)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass' in
-                    str(warning_lines[0].message))
 
     def test_daofind_flux_negative(self):
         """Test handling of negative flux (here created by large sky)."""

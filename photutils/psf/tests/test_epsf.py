@@ -9,6 +9,7 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import NDData
 from astropy.table import Table
 from astropy.stats import SigmaClip
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose, assert_almost_equal
 import pytest
@@ -68,7 +69,8 @@ class TestEPSFBuild:
 
     def test_extract_stars(self):
         size = 25
-        stars = extract_stars(self.nddata, self.init_stars, size=size)
+        with pytest.warns(AstropyUserWarning, match='were not extracted'):
+            stars = extract_stars(self.nddata, self.init_stars, size=size)
 
         assert len(stars) == 81
         assert isinstance(stars, EPSFStars)
@@ -82,7 +84,8 @@ class TestEPSFBuild:
 
         size = 25
         oversampling = 4.
-        stars = extract_stars(self.nddata, self.init_stars, size=size)
+        with pytest.warns(AstropyUserWarning, match='were not extracted'):
+            stars = extract_stars(self.nddata, self.init_stars, size=size)
         epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=15,
                                    progress_bar=False, norm_radius=25,
                                    recentering_maxiters=15)
@@ -105,7 +108,8 @@ class TestEPSFBuild:
     def test_epsf_fitting_bounds(self):
         size = 25
         oversampling = 4.
-        stars = extract_stars(self.nddata, self.init_stars, size=size)
+        with pytest.warns(AstropyUserWarning, match='were not extracted'):
+            stars = extract_stars(self.nddata, self.init_stars, size=size)
         epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=8,
                                    progress_bar=True, norm_radius=25,
                                    recentering_maxiters=5,
@@ -113,7 +117,7 @@ class TestEPSFBuild:
                                    smoothing_kernel='quadratic')
         # With a boxsize larger than the cutout we expect the fitting to
         # fail for all stars, due to star._fit_error_status
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError), pytest.warns(AstropyUserWarning):
             epsf_builder(stars)
 
     def test_epsf_build_invalid_fitter(self):
@@ -166,7 +170,9 @@ def test_epsfmodel_inputs():
     with pytest.raises(ValueError):
         EPSFModel(data)
 
-    data[2, 2] = np.finfo(float).max * 2
+    with pytest.warns(RuntimeWarning,
+                      match='overflow encountered in double_scalars'):
+        data[2, 2] = np.finfo(float).max * 2
     with pytest.raises(ValueError):
         EPSFModel(data, flux=None)
 

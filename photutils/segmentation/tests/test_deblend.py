@@ -4,7 +4,6 @@ Tests for the deblend module.
 """
 
 from astropy.modeling.models import Gaussian2D
-from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose
@@ -13,7 +12,6 @@ import pytest
 from ..core import SegmentationImage
 from ..deblend import deblend_sources
 from ..detect import detect_sources
-from ...utils.exceptions import NoDetectionsWarning
 from ...utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
 
 
@@ -198,10 +196,9 @@ class TestDeblendSources:
     def test_source_with_negval(self):
         data = self.data.copy()
         data -= 20
-        with catch_warnings(AstropyUserWarning) as warning_lines:
+        with pytest.warns(AstropyUserWarning,
+                          match='contains negative values'):
             deblend_sources(data, self.segm, self.npixels)
-            assert ('contains negative values' in
-                    str(warning_lines[0].message))
 
     def test_source_zero_min(self):
         data = self.data.copy()
@@ -263,10 +260,7 @@ class TestDeblendSources:
         data[50, 50] = 1000.
         data[50, 70] = 500.
         self.segm = detect_sources(data, self.threshold, self.npixels)
-
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
-            deblend_sources(data, self.segm, self.npixels)
-            assert len(warning_lines) == 0
+        deblend_sources(data, self.segm, self.npixels)
 
     def test_nonconsecutive_labels(self):
         segm = self.segm.copy()

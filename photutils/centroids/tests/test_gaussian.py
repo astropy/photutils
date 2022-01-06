@@ -4,7 +4,7 @@ Tests for the core module.
 """
 
 import itertools
-import warnings
+from contextlib import nullcontext
 
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
@@ -72,23 +72,24 @@ def test_centroids_nan_withmask(use_mask):
         mask = np.zeros(data.shape, dtype=bool)
         mask[20, :] = True
         nwarn = 0
+        ctx = nullcontext()
     else:
         mask = None
         nwarn = 1
+        ctx = pytest.warns(AstropyUserWarning,
+                           match='Input data contains non-finite values')
 
-    with warnings.catch_warnings(record=True) as warnlist:
+    with ctx as warnlist:
         xc, yc = centroid_1dg(data, mask=mask)
-        assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-    assert len(warnlist) == nwarn
+    assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
     if nwarn == 1:
-        assert issubclass(warnlist[0].category, AstropyUserWarning)
+        assert len(warnlist) == nwarn
 
-    with warnings.catch_warnings(record=True) as warnlist:
+    with ctx as warnlist:
         xc, yc = centroid_2dg(data, mask=mask)
-        assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-    assert len(warnlist) == nwarn
+    assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
     if nwarn == 1:
-        assert issubclass(warnlist[0].category, AstropyUserWarning)
+        assert len(warnlist) == nwarn
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -137,8 +138,7 @@ def test_gaussian1d_moments():
     data[0] = np.nan
     mask = np.zeros(data.shape).astype(bool)
     mask[0] = True
-    with warnings.catch_warnings(record=True) as warnlist:
+    with pytest.warns(AstropyUserWarning) as warnlist:
         result = _gaussian1d_moments(data, mask=mask)
-        assert_allclose(result, desired, rtol=0, atol=1.e-6)
+    assert_allclose(result, desired, rtol=0, atol=1.e-6)
     assert len(warnlist) == 1
-    assert issubclass(warnlist[0].category, AstropyUserWarning)

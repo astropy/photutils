@@ -4,7 +4,6 @@ Tests for StarFinder.
 """
 
 from astropy.modeling.models import Gaussian2D
-from astropy.tests.helper import catch_warnings
 import numpy as np
 import pytest
 
@@ -38,11 +37,10 @@ class TestStarFinder:
             StarFinder(10, PSF, brightest=3.1)
 
     def test_nosources(self):
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
             finder = StarFinder(100, PSF)
             tbl = finder(DATA)
             assert tbl is None
-            assert 'No sources were found.' in str(warning_lines[0].message)
 
     def test_min_separation(self):
         finder1 = StarFinder(10, PSF, min_separation=0)
@@ -58,12 +56,11 @@ class TestStarFinder:
         tbl2 = finder2(DATA)
         assert len(tbl1) > len(tbl2)
 
-        with catch_warnings(NoDetectionsWarning) as warning_lines:
+        with pytest.warns(NoDetectionsWarning,
+                          match='Sources were found, but none pass'):
             starfinder = StarFinder(10, PSF, peakmax=5)
             tbl = starfinder(DATA)
             assert tbl is None
-            assert ('Sources were found, but none pass'
-                    in str(warning_lines[0].message))
 
     def test_brightest(self):
         finder = StarFinder(10, PSF, brightest=10)
