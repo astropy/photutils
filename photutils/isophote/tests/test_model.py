@@ -2,6 +2,7 @@
 """
 Tests for the model module.
 """
+import warnings
 
 from astropy.io import fits
 from astropy.utils.data import get_pkg_data_filename
@@ -27,7 +28,12 @@ def test_model():
 
     g = EllipseGeometry(530., 511, 10., 0.1, 10./180.*np.pi)
     ellipse = Ellipse(data, geometry=g, threshold=1.e5)
-    with pytest.warns(RuntimeWarning, match='Degrees of freedom'):
+
+    # NOTE: this sometimes emits warnings (e.g., py38, ubuntu), but
+    # sometimes not. Here we simply ignore any RuntimeWarning, whether
+    # there is one or not.
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
         isophote_list = ellipse.fit_image()
     model = build_ellipse_model(data.shape, isophote_list,
                                 fill=np.mean(data[10:100, 10:100]))
