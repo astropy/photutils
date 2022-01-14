@@ -438,20 +438,29 @@ def test_wcs_based_photometry():
 
 
 def test_basic_circular_aperture_photometry_unit():
-    data1 = np.ones((40, 40), dtype=float)
-    data2 = u.Quantity(data1*u.adu)
-
     radius = 3
-    position = (20, 20)
     true_flux = np.pi * radius * radius
-    unit = u.adu
+    aper = CircularAperture((12, 12), radius)
 
-    table1 = aperture_photometry(data1, CircularAperture(position, radius))
-    table2 = aperture_photometry(data2, CircularAperture(position, radius))
-
+    data1 = np.ones((25, 25), dtype=float)
+    table1 = aperture_photometry(data1, aper)
     assert_allclose(table1['aperture_sum'], true_flux)
+
+    unit = u.adu
+    data2 = u.Quantity(data1 * unit)
+    table2 = aperture_photometry(data2, aper)
     assert_allclose(table2['aperture_sum'].value, true_flux)
     assert table2['aperture_sum'].unit == data2.unit == unit
+
+    error1 = np.ones((25, 25))
+    with pytest.raises(ValueError):
+        # data has unit, but error does not
+        aperture_photometry(data2, aper, error=error1)
+
+    error2 = u.Quantity(error1 * u.Jy)
+    with pytest.raises(ValueError):
+        # data and error have different units
+        aperture_photometry(data2, aper, error=error2)
 
 
 def test_aperture_photometry_with_error_units():
