@@ -266,23 +266,22 @@ class SourceCatalog:
         self._data_unit.
         """
         inputs = (data, error, background)
-        has_unit = [hasattr(x, 'unit') for x in inputs if x is not None]
-        use_units = all(has_unit)
-        if any(has_unit) and not use_units:
-            raise ValueError('If any of data, error, or background has '
-                             'units, then they all must all have units.')
-        if use_units:
+        unit = set(getattr(arr, 'unit', None)
+                   for arr in inputs if arr is not None)
+        if len(unit) > 1:
+            raise ValueError('If data, error, or background has units, then '
+                             'they must all have the same units.')
+
+        unit = unit.pop()
+        if unit is not None:
             self._data_unit = data.unit
             data = data.value
+
             if error is not None:
-                if error.unit != self._data_unit:
-                    raise ValueError('error must have the same units as data')
                 error = error.value
             if background is not None:
-                if background.unit != self._data_unit:
-                    raise ValueError('background must have the same units as '
-                                     'data')
                 background = background.value
+
         return data, error, background
 
     def _validate_segment_img(self, segment_img):
