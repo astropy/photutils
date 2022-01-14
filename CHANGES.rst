@@ -1,4 +1,4 @@
-1.4.0 (unreleased)
+2.0.0 (unreleased)
 ------------------
 
 General
@@ -21,6 +21,11 @@ New Features
 
 Bug Fixes
 ^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - Fixed a bug in ``aperture_photometry`` where an error was not raised
+    if the data and error arrays have different units. [#1285].
 
 API Changes
 ^^^^^^^^^^^
