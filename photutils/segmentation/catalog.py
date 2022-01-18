@@ -1769,7 +1769,7 @@ class SourceCatalog:
         eigvals = self.covariance_eigvals
         if self.isscalar:
             eigvals = eigvals[np.newaxis, :]
-        # this matches SourceExtractor's A parameter
+        # this matches SourceExtractor's B parameter
         return np.sqrt(eigvals[:, 1])
 
     @lazyproperty
