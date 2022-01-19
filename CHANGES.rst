@@ -19,6 +19,11 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.background``
+
+  - Added an ``alpha`` keyword to the ``Background2D.plot_meshes``
+    method. [#1286]
+
 Bug Fixes
 ^^^^^^^^^
 
