@@ -73,6 +73,7 @@ Let's plot the image:
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, norm=norm, origin='lower', cmap='Greys_r',
                interpolation='nearest')
+    plt.title('Data')
 
 The image median and biweight location are both larger than the true
 background level of 5::
@@ -249,6 +250,7 @@ background gradient to the image defined above::
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r',
                interpolation='nearest')
+    plt.title('Data with added background gradient')
 
 We start by creating a `~photutils.background.Background2D` object
 using a box size of 50x50 and a 3x3 median filter.  We will estimate
@@ -307,6 +309,7 @@ Let's plot the background image:
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
     plt.imshow(bkg.background, origin='lower', cmap='Greys_r',
                interpolation='nearest')
+    plt.title('Estimated Background')
 
 and the background-subtracted image:
 
@@ -337,6 +340,7 @@ and the background-subtracted image:
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data2 - bkg.background, norm=norm, origin='lower',
                cmap='Greys_r', interpolation='nearest')
+    plt.title('Background-subtracted Data')
 
 
 Masking
@@ -384,19 +388,23 @@ this example requires `scipy`_):
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
                interpolation='nearest')
+    plt.title('Data with added background gradient')
 
 Now we create a coverage mask and input it into
 `~photutils.background.Background2D` to exclude the regions where we
 have no data. For this example, we set the ``fill_value`` to 0.0. For
 real data, one can usually create a coverage mask from a weight or noise
 image. In this example we also use a smaller box size to help capture
-the strong gradient in the background:
+the strong gradient in the background. We also increase the value of the
+``exclude_percentile`` keyword to include more boxes around the edge of
+the rotated image:
 
 .. doctest-requires:: scipy
 
     >>> coverage_mask = (data3 == 0)
-    >>> bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3),
-    ...                     coverage_mask=coverage_mask, fill_value=0.0)
+    >>> bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
+    ...                     coverage_mask=coverage_mask, fill_value=0.0,
+    ...                     exclude_percentile=50.)
 
 Note that the ``coverage_mask`` is applied to the output background
 image (values assigned to ``fill_value``):
@@ -424,11 +432,14 @@ image (values assigned to ``fill_value``):
     data2 = data + gradient
     data3 = rotate(data2, -45.)
     coverage_mask = (data3 == 0)
-    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3),
-                        coverage_mask=coverage_mask, fill_value=0.0)
+    bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
+                        coverage_mask=coverage_mask, fill_value=0.0,
+                        exclude_percentile=50.)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(bkg3.background, origin='lower', cmap='Greys_r', norm=norm,
                interpolation='nearest')
+    plt.title('Estimated Background')
+
 
 Finally, let's subtract the background from the image and plot it:
 
@@ -455,11 +466,13 @@ Finally, let's subtract the background from the image and plot it:
     data2 = data + gradient
     data3 = rotate(data2, -45.)
     coverage_mask = (data3 == 0)
-    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3),
-                        coverage_mask=coverage_mask, fill_value=0.0)
+    bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
+                        coverage_mask=coverage_mask, fill_value=0.0,
+                        exclude_percentile=50.)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data3 - bkg3.background, origin='lower', cmap='Greys_r',
                norm=norm, interpolation='nearest')
+    plt.title('Background-subtracted Data')
 
 If there is any small residual background still present in the image,
 the background subtraction can be improved by masking the sources
@@ -469,15 +482,18 @@ and/or through further iterations.
 Plotting Meshes
 ^^^^^^^^^^^^^^^
 
-Finally, the meshes that were used in generating the 2D background can
-be plotted on the original image using the
-:meth:`~photutils.background.Background2D.plot_meshes` method:
+Finally, the meshes that were used in generating the 2D
+background can be plotted on the original image using the
+:meth:`~photutils.background.Background2D.plot_meshes` method. Here we
+zoom in on a small portion of the image to show the background meshes:
 
 .. doctest-skip::
 
     >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
     ...            interpolation='nearest')
-    >>> bkg3.plot_meshes(outlines=True, color='#1f77b4')
+    >>> bkg3.plot_meshes(outlines=True, marker='.', color='cyan', alpha=0.3)
+    >>> plt.xlim(0, 250)
+    >>> plt.ylim(0, 250)
 
 .. plot::
 
@@ -496,16 +512,15 @@ be plotted on the original image using the
     data2 = data + gradient
     data3 = rotate(data2, -45.)
     coverage_mask = (data3 == 0)
-    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3),
-                        coverage_mask=coverage_mask, fill_value=0.0)
+    bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
+                        coverage_mask=coverage_mask, fill_value=0.0,
+                        exclude_percentile=50.)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
                interpolation='nearest')
-    bkg3.plot_meshes(outlines=True, color='#17becf')
-
-The meshes extended beyond the original image on the top and right
-because :class:`~photutils.background.Background2D`'s default
-``edge_method`` is ``'pad'``.
+    bkg3.plot_meshes(outlines=True, marker='.', color='cyan', alpha=0.3)
+    plt.xlim(0, 250)
+    plt.ylim(0, 250)
 
 
 Reference/API
