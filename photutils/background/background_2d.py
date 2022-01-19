@@ -108,9 +108,10 @@ class Background2D:
 
     edge_method : {'pad', 'crop'}, optional
         The method used to determine how to handle the case where the
-        image size is not an integer multiple of the ``box_size`` in
-        either dimension.  Both options will resize the image to give an
-        exact multiple of ``box_size`` in both dimensions.
+        image size is not an integer multiple of the ``box_size``
+        in either dimension. Both options will resize the image for
+        internal calculations to give an exact multiple of ``box_size``
+        in both dimensions.
 
         * ``'pad'``: pad the image along the top and/or right edges.
           This is the default and recommended method. Ideally, the
@@ -660,7 +661,7 @@ class Background2D:
         return bkg_rms
 
     def plot_meshes(self, *, axes=None, marker='+', markersize=None,
-                    color='blue', outlines=False, **kwargs):
+                    color='blue', alpha=None, outlines=False, **kwargs):
         """
         Plot the low-resolution mesh boxes on a matplotlib Axes
         instance.
@@ -684,6 +685,11 @@ class Background2D:
             The color for the markers and the box outlines.  Default is
             'blue'.
 
+        alpha : float, optional
+            The alpha blending value, between 0 (transparent) and 1
+            (opaque). The blending applies to both the box center
+            markers and the outlines.
+
         outlines : bool, optional
             Whether or not to plot the box outlines in addition to the
             box centers.
@@ -698,11 +704,13 @@ class Background2D:
         kwargs['color'] = color
         if axes is None:
             axes = plt.gca()
+
         axes.scatter(*self._mesh_xypos, s=markersize, marker=marker,
-                     color=color)
+                     color=color, alpha=alpha)
+
         if outlines:
             from ..aperture import RectangularAperture
             xypos = np.column_stack(self._mesh_xypos)
             apers = RectangularAperture(xypos, self.box_size[1],
                                         self.box_size[0], 0.)
-            apers.plot(axes=axes, **kwargs)
+            apers.plot(axes=axes, alpha=alpha, **kwargs)
