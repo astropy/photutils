@@ -73,6 +73,7 @@ Let's plot the image:
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, norm=norm, origin='lower', cmap='Greys_r',
                interpolation='nearest')
+    plt.title('Data')
 
 The image median and biweight location are both larger than the true
 background level of 5::
@@ -249,6 +250,7 @@ background gradient to the image defined above::
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r',
                interpolation='nearest')
+    plt.title('Data with added background gradient')
 
 We start by creating a `~photutils.background.Background2D` object
 using a box size of 50x50 and a 3x3 median filter.  We will estimate
@@ -307,6 +309,7 @@ Let's plot the background image:
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
     plt.imshow(bkg.background, origin='lower', cmap='Greys_r',
                interpolation='nearest')
+    plt.title('Estimated Background')
 
 and the background-subtracted image:
 
@@ -337,6 +340,7 @@ and the background-subtracted image:
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data2 - bkg.background, norm=norm, origin='lower',
                cmap='Greys_r', interpolation='nearest')
+    plt.title('Background-subtracted Data')
 
 
 Masking
@@ -468,7 +472,7 @@ Finally, let's subtract the background from the image and plot it:
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data3 - bkg3.background, origin='lower', cmap='Greys_r',
                norm=norm, interpolation='nearest')
-    plt.title('Background-subtracted data')
+    plt.title('Background-subtracted Data')
 
 If there is any small residual background still present in the image,
 the background subtraction can be improved by masking the sources
@@ -515,7 +519,6 @@ zoom in on a small portion of the image to show the background meshes:
     plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
                interpolation='nearest')
     bkg3.plot_meshes(outlines=True, marker='.', color='cyan', alpha=0.3)
-    plt.title('Background-subtracted data')
     plt.xlim(0, 250)
     plt.ylim(0, 250)
 
