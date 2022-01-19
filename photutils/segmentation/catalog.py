@@ -480,18 +480,21 @@ class SourceCatalog:
 
     @property
     def extra_properties(self):
+        """
+        A list of the user-defined source properties.
+        """
         return self._extra_properties
 
     def add_extra_property(self, name, value, overwrite=False):
         """
-        Add extra properties as attributes.
+        Add a user-defined extra property as a new attribute.
 
-        For example, this property ``name`` can then be included in the
+        For example, the property ``name`` can then be included in the
         `to_table` ``columns`` keyword list to output the results in the
         table.
 
         The complete list of user-defined extra properties is stored in
-        the ``extra_properties`` attribute.
+        the `extra_properties` attribute.
 
         Parameters
         ----------
@@ -553,7 +556,7 @@ class SourceCatalog:
 
         The property must have been defined using `add_extra_property`.
         The complete list of user-defined extra properties is stored in
-        the ``extra_properties`` attribute.
+        the `extra_properties` attribute.
 
         Parameters
         ----------
@@ -568,7 +571,7 @@ class SourceCatalog:
 
         The properties must have been defined using
         `add_extra_property`. The complete list of user-defined extra
-        properties is stored in the ``extra_properties`` attribute.
+        properties is stored in the `extra_properties` attribute.
 
         Parameters
         ----------
@@ -585,10 +588,10 @@ class SourceCatalog:
 
     def rename_extra_property(self, name, new_name):
         """
-        Rename an extra property.
+        Rename a user-defined extra property.
 
         The renamed property will remain at the same index in the
-        ``extra_properties`` list.
+        `extra_properties` list.
 
         Parameters
         ----------
