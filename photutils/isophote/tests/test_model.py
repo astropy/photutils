@@ -8,6 +8,7 @@ from astropy.io import fits
 from astropy.utils.data import get_pkg_data_filename
 import numpy as np
 import pytest
+import multiprocessing as mp
 
 from .make_test_data import make_test_image
 from ..ellipse import Ellipse
