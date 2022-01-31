@@ -56,7 +56,13 @@ def test_model_parallel():
 
     g = EllipseGeometry(530., 511, 10., 0.1, 10./180.*np.pi)
     ellipse = Ellipse(data, geometry=g, threshold=1.e5)
-    isophote_list = ellipse.fit_image()
+    # NOTE: this sometimes emits warnings (e.g., py38, ubuntu), but
+    # sometimes not. Here we simply ignore any RuntimeWarning, whether
+    # there is one or not.
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        isophote_list = ellipse.fit_image()
+        
     # test parallel on a thread pool, w/ size equal to CPU thread count
     model = build_ellipse_model(data.shape, isophote_list, nthreads=mp.cpu_count(),
                                 fill=np.mean(data[10:100, 10:100]))
