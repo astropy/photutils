@@ -6,16 +6,15 @@ from a list of isophotes.
 
 
 import numpy as np
-
-from .geometry import EllipseGeometry
+import ctypes as ct
+import os
 
 __all__ = ['build_ellipse_model']
 
 
-def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
+def build_ellipse_model(shape, isolist, nthreads=1, fill=0., high_harmonics=False):
     """
     Build a model elliptical galaxy image from a list of isophotes.
-
     For each ellipse in the input isophote list the algorithm fills the
     output image array with the corresponding isophotal intensity.
     Pixels in the output array are in general only partially covered by
@@ -24,27 +23,24 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
     each pixel by storing the partial area information in an auxiliary
     array.  The information in this array is then used to normalize the
     pixel intensities.
-
     Parameters
     ----------
     shape : 2-tuple
         The (ny, nx) shape of the array used to generate the input
         ``isolist``.
-
     isolist : `~photutils.isophote.IsophoteList` instance
         The isophote list created by the `~photutils.isophote.Ellipse`
         class.
-
+    nthreads: float, optiomal
+    	Number of threads to perform work. Default is 1 (serial code).
     fill : float, optional
         The constant value to fill empty pixels. If an output pixel has
         no contribution from any isophote, it will be assigned this
         value.  The default is 0.
-
     high_harmonics : bool, optional
         Whether to add the higher-order harmonics (i.e., ``a3``, ``b3``,
         ``a4``, and ``b4``; see `~photutils.isophote.Isophote` for
         details) to the result.
-
     Returns
     -------
     result : 2D `~numpy.ndarray`
@@ -91,71 +87,42 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
 
     # correct deviations cased by fluctuations in spline solution
     eps_array[np.where(eps_array < 0.)] = 0.
-
-    result = np.zeros(shape=shape)
-    weight = np.zeros(shape=shape)
-
     eps_array[np.where(eps_array < 0.)] = 0.05
+    
+    # convert everything to C-type array (pointers)
+    c_fss_array = ct.c_void_p(finely_spaced_sma.ctypes.data)
+    c_intens_array = ct.c_void_p(intens_array.ctypes.data)
+    c_eps_array = ct.c_void_p(eps_array.ctypes.data)
+    c_pa_array = ct.c_void_p(pa_array.ctypes.data)
+    c_x0_array = ct.c_void_p(x0_array.ctypes.data)
+    c_y0_array = ct.c_void_p(y0_array.ctypes.data)
+    c_a3_array = ct.c_void_p(a3_array.ctypes.data)
+    c_b3_array = ct.c_void_p(b3_array.ctypes.data)
+    c_a4_array = ct.c_void_p(a4_array.ctypes.data)
+    c_b4_array = ct.c_void_p(b4_array.ctypes.data)
 
-    # for each interpolated isophote, generate intensity values on the
-    # output image array
-    # for index in range(len(finely_spaced_sma)):
-    for index in range(1, len(finely_spaced_sma)):
-        sma0 = finely_spaced_sma[index]
-        eps = eps_array[index]
-        pa = pa_array[index]
-        x0 = x0_array[index]
-        y0 = y0_array[index]
-        geometry = EllipseGeometry(x0, y0, sma0, eps, pa)
+    # initialize result and weight arrays, also as 1D ctype array
+    result = np.zeros(shape=(shape[1]*shape[0],))
+    weight = np.zeros(shape=(shape[1]*shape[0],))
+    c_result = ct.c_void_p(result.ctypes.data)
+    c_weight = ct.c_void_p(weight.ctypes.data)
+    
+    # convert high_harmnics bool flag to int,
+    # convert all other ints to ctype
+    c_high_harm = ct.c_int(int(high_harmonics))
+    c_N = ct.c_int(len(finely_spaced_sma))
+    c_nrows = ct.c_int(shape[0])
+    c_ncols = ct.c_int(shape[1])
 
-        intens = intens_array[index]
-
-        # scan angles. Need to go a bit beyond full circle to ensure
-        # full coverage.
-        r = sma0
-        phi = 0.
-        while phi <= 2*np.pi + geometry._phi_min:
-            # we might want to add the third and fourth harmonics
-            # to the basic isophotal intensity.
-            harm = 0.
-            if high_harmonics:
-                harm = (a3_array[index] * np.sin(3.*phi) +
-                        b3_array[index] * np.cos(3.*phi) +
-                        a4_array[index] * np.sin(4.*phi) +
-                        b4_array[index] * np.cos(4.*phi)) / 4.
-
-            # get image coordinates of (r, phi) pixel
-            x = r * np.cos(phi + pa) + x0
-            y = r * np.sin(phi + pa) + y0
-            i = int(x)
-            j = int(y)
-
-            if (i > 0 and i < shape[1] - 1 and j > 0 and j < shape[0] - 1):
-                # get fractional deviations relative to target array
-                fx = x - float(i)
-                fy = y - float(j)
-
-                # add up the isophote contribution to the overlapping pixels
-                result[j, i] += (intens + harm) * (1. - fy) * (1. - fx)
-                result[j, i + 1] += (intens + harm) * (1. - fy) * fx
-                result[j + 1, i] += (intens + harm) * fy * (1. - fx)
-                result[j + 1, i + 1] += (intens + harm) * fy * fx
-
-                # add up the fractional area contribution to the
-                # overlapping pixels
-                weight[j, i] += (1. - fy) * (1. - fx)
-                weight[j, i + 1] += (1. - fy) * fx
-                weight[j + 1, i] += fy * (1. - fx)
-                weight[j + 1, i + 1] += fy * fx
-
-                # step towards next pixel on ellipse
-                phi = max((phi + 0.75 / r), geometry._phi_min)
-                r = max(geometry.radius(phi), 0.5)
-            # if outside image boundaries, ignore.
-            else:
-                break
-
-    # zero weight values must be set to 1.
+    # load into C worker function (worker.so should be in same directory)
+    lib = ct.cdll.LoadLibrary(os.path.dirname(os.path.abspath(__file__)) + '/worker.so')
+    lib.worker.restype = None
+    lib.worker(c_result, c_weight, c_nrows, c_ncols, c_N, c_high_harm,
+               c_fss_array, c_intens_array, c_eps_array, c_pa_array,
+               c_x0_array, c_y0_array, c_a3_array, c_b3_array,
+               c_a4_array, c_b4_array, ct.c_int(nthreads))
+               
+     # zero weight values must be set to 1.
     weight[np.where(weight <= 0.)] = 1.
 
     # normalize
@@ -164,4 +131,7 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
     # fill value
     result[np.where(result == 0.)] = fill
 
-    return result
+    # reshape
+    result = result.reshape(shape[0], shape[1])
+    
+    return result    
