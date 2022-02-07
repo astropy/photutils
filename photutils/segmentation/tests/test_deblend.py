@@ -2,6 +2,7 @@
 """
 Tests for the deblend module.
 """
+import warnings
 
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
@@ -34,8 +35,13 @@ class TestDeblendSources:
 
     @pytest.mark.parametrize('mode', ['exponential', 'linear'])
     def test_deblend_sources(self, mode):
-        result = deblend_sources(self.data, self.segm, self.npixels,
-                                 mode=mode)
+        # scipy DeprecationWarning is currently raised from skimage
+        # (https://github.com/scikit-image/scikit-image/pull/6231)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', DeprecationWarning)
+            result = deblend_sources(self.data, self.segm, self.npixels,
+                                     mode=mode)
+
         assert result.nlabels == 2
         assert result.nlabels == len(result.slices)
         mask1 = (result.data == 1)
