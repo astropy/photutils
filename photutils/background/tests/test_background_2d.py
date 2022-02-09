@@ -115,6 +115,18 @@ class TestBackground2D:
         assert_allclose(bkg1.background, bkg2.background, rtol=2e-6)
         assert_allclose(bkg1.background_rms, bkg2.background_rms)
 
+        shape1 = (128, 256)
+        shape2 = (129, 256)
+        box_size = (16, 16)
+        data1 = np.ones(shape1)
+        data2 = np.ones(shape2)
+        bkg1 = Background2D(data1, box_size)
+        bkg2 = Background2D(data2, box_size)
+        assert bkg1.background_mesh.shape == (8, 16)
+        assert bkg2.background_mesh.shape == (9, 16)
+        assert bkg1.background.shape == shape1
+        assert bkg2.background.shape == shape2
+
     @pytest.mark.parametrize('box_size', ([(25, 25), (23, 22)]))
     def test_background_mask(self, box_size):
         """
