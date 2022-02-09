@@ -32,6 +32,12 @@ Bug Fixes
   - Fixed a bug in ``aperture_photometry`` where an error was not raised
     if the data and error arrays have different units. [#1285].
 
+- ``photutils.background``
+
+  - Fixed a bug in ``Background2D`` where using the ``pad`` edge method
+    would result in incorrect image padding if only one of the axes needed
+    padding. [#1292]
+
 API Changes
 ^^^^^^^^^^^
 
