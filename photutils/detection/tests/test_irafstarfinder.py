@@ -18,7 +18,7 @@ from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 DATA = make_100gaussians_image()
-THRESHOLDS = [8.0, 10.0]
+THRESHOLDS = [8.0, 10.0, 8.*np.ones_like(DATA)]
 FWHMS = [1.0, 1.5, 2.0]
 
 
@@ -29,6 +29,8 @@ class TestIRAFStarFinder:
     def test_irafstarfind(self, threshold, fwhm):
         starfinder = IRAFStarFinder(threshold, fwhm, sigma_radius=1.5)
         tbl = starfinder(DATA)
+        if not np.isscalar(threshold):
+            threshold = threshold.flatten()[0]
         datafn = (f'irafstarfind_test_thresh{threshold:04.1f}_'
                   f'fwhm{fwhm:04.1f}.txt')
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
@@ -38,10 +40,7 @@ class TestIRAFStarFinder:
         for col in tbl.colnames:
             assert_allclose(tbl[col], tbl_ref[col])
 
-    def test_irafstarfind_threshold_fwhm_inputs(self):
-        with pytest.raises(TypeError):
-            IRAFStarFinder(threshold=np.ones((2, 2)), fwhm=3.)
-
+    def test_irafstarfind_fwhm_input(self):
         with pytest.raises(TypeError):
             IRAFStarFinder(threshold=3., fwhm=np.ones((2, 2)))
 

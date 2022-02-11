@@ -57,8 +57,12 @@ class DAOStarFinder(StarFinderBase):
 
     Parameters
     ----------
-    threshold : float
+
+    threshold : float or array-like
         The absolute image value above which to select sources.
+        A non-scalar ``threshold`` must have the same shape
+        as ``data``. See `~photutils.segmentation.detect_threshold` for
+        one way to create a ``threshold`` image.
 
     fwhm : float
         The full-width half-maximum (FWHM) of the major axis of the
@@ -157,9 +161,6 @@ class DAOStarFinder(StarFinderBase):
                  sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
                  roundhi=1.0, sky=0.0, exclude_border=False,
                  brightest=None, peakmax=None, xycoords=None):
-
-        if not np.isscalar(threshold):
-            raise TypeError('threshold must be a scalar value.')
 
         if not np.isscalar(fwhm):
             raise TypeError('fwhm must be a scalar value.')
@@ -411,6 +412,13 @@ class _DAOStarFinderCatalog:
     def convdata_peak(self):
         return self.cutout_convdata[:, self.cutout_center[0],
                                     self.cutout_center[1]]
+    @lazyproperty
+    def threshold_peak(self):
+        if np.isscalar(self.threshold_eff):
+            return np.repeat(self.threshold_eff, len(self.xypos))
+        else:
+            return self.make_cutouts(
+                self.threshold_eff)[:, self.cutout_center[0], self.cutout_center[1]]
 
     @lazyproperty
     def roundness1(self):
@@ -622,7 +630,7 @@ class _DAOStarFinderCatalog:
 
     @lazyproperty
     def flux(self):
-        return ((self.convdata_peak / self.threshold_eff)
+        return ((self.convdata_peak / self.threshold_peak)
                 - (self.sky * self.npix))
 
     @lazyproperty

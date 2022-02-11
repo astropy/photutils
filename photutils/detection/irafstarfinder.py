@@ -31,8 +31,12 @@ class IRAFStarFinder(StarFinderBase):
 
     Parameters
     ----------
-    threshold : float
+
+    threshold : float or 2D array-like
         The absolute image value above which to select sources.
+        A non-scalar ``threshold`` must have the same shape
+        as ``data``. See `~photutils.segmentation.detect_threshold` for
+        one way to create a ``threshold`` image.
 
     fwhm : float
         The full-width half-maximum (FWHM) of the 2D circular Gaussian
@@ -131,9 +135,6 @@ class IRAFStarFinder(StarFinderBase):
                  sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
                  exclude_border=False, brightest=None, peakmax=None,
                  xycoords=None):
-
-        if not np.isscalar(threshold):
-            raise TypeError('threshold must be a scalar value.')
 
         if not np.isscalar(fwhm):
             raise TypeError('fwhm must be a scalar value.')
