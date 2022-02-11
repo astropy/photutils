@@ -26,7 +26,7 @@ class StarFinder(StarFinderBase):
 
     Parameters
     ----------
-    threshold : float
+    threshold : float or 2D array-like
         The absolute image value above which to select sources.
 
     kernel : `numpy.ndarray`
