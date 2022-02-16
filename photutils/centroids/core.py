@@ -399,9 +399,9 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
         centroid_kwargs.update({'mask': mask_cutout})
 
-        if 'error' in centroid_kwargs:
-            error_cutout = centroid_kwargs['error'][slices_large]
-            centroid_kwargs['error'] = error_cutout
+        error = centroid_kwargs.get('error', None)
+        if error is not None:
+            centroid_kwargs['error'] = error[slices_large]
 
         if 'xpeak' in centroid_kwargs and 'ypeak' in centroid_kwargs:
             centroid_kwargs['xpeak'] -= slices_large[1].start
