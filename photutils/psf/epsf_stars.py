@@ -681,9 +681,9 @@ def extract_stars(data, catalogs, size=(11, 11)):
 
     n_excluded = n_input - n_extracted
     if n_excluded > 0:
-        warnings.warn('{} star(s) were not extracted because their cutout '
-                      'region extended beyond the input image.'
-                      .format(n_excluded), AstropyUserWarning)
+        warnings.warn(f'{n_excluded} star(s) were not extracted because '
+                      'their cutout region extended beyond the input image.',
+                      AstropyUserWarning)
 
     return EPSFStars(stars_out)
 
