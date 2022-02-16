@@ -9,9 +9,8 @@ import math
 import astropy.units as u
 import numpy as np
 
-from .attributes import (AngleOrPixelScalarQuantity, AngleScalarQuantity,
-                         PixelPositions, PositiveScalar, Scalar,
-                         SkyCoordPositions)
+from .attributes import (ScalarAngle, PixelPositions, PositiveScalar, Scalar,
+                         SkyCoordPositions, ScalarAngleOrPixel)
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
@@ -456,13 +455,13 @@ class SkyEllipticalAperture(SkyAperture):
     positions = SkyCoordPositions(
         'positions',
         description='The center position(s) in sky coordinates.')
-    a = AngleOrPixelScalarQuantity(
+    a = ScalarAngleOrPixel(
         'a',
         description='The semimajor axis, in angular or pixel units.')
-    b = AngleOrPixelScalarQuantity(
+    b = ScalarAngleOrPixel(
         'b',
         description='The semiminor axis, in angular or pixel units.')
-    theta = AngleScalarQuantity(
+    theta = ScalarAngle(
         'theta',
         description=('The position angle in angular units of the ellipse '
                      'semimajor axis.'))
@@ -547,19 +546,19 @@ class SkyEllipticalAnnulus(SkyAperture):
     positions = SkyCoordPositions(
         'positions',
         description='The center position(s) in sky coordinates.')
-    a_in = AngleOrPixelScalarQuantity(
+    a_in = ScalarAngleOrPixel(
         'a_in',
         description='The inner semimajor axis, in angular or pixel units.')
-    a_out = AngleOrPixelScalarQuantity(
+    a_out = ScalarAngleOrPixel(
         'a_out',
         description='The outer semimajor axis, in angular or pixel units.')
-    b_in = AngleOrPixelScalarQuantity(
+    b_in = ScalarAngleOrPixel(
         'b_in',
         description='The inner semiminor axis, in angular or pixel units.')
-    b_out = AngleOrPixelScalarQuantity(
+    b_out = ScalarAngleOrPixel(
         'b_out',
         description='The outer semiminor axis, in angular or pixel units.')
-    theta = AngleScalarQuantity(
+    theta = ScalarAngle(
         'theta',
         description=('The position angle in angular units of the ellipse '
                      'semimajor axis.'))

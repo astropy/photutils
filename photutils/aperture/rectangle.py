@@ -9,9 +9,8 @@ import math
 import astropy.units as u
 import numpy as np
 
-from .attributes import (AngleOrPixelScalarQuantity, AngleScalarQuantity,
-                         PixelPositions, PositiveScalar, Scalar,
-                         SkyCoordPositions)
+from .attributes import (ScalarAngle, PixelPositions, PositiveScalar, Scalar,
+                         SkyCoordPositions, ScalarAngleOrPixel)
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
@@ -494,13 +493,13 @@ class SkyRectangularAperture(SkyAperture):
     positions = SkyCoordPositions(
         'positions',
         description='The center position(s) in sky coordinates.')
-    w = AngleOrPixelScalarQuantity(
+    w = ScalarAngleOrPixel(
         'w',
         description='The full width, in angular or pixel units.')
-    h = AngleOrPixelScalarQuantity(
+    h = ScalarAngleOrPixel(
         'h',
         description='The full height, in angular or pixel units.')
-    theta = AngleScalarQuantity(
+    theta = ScalarAngle(
         'theta',
         description=('The position angle (in angular units) of the '
                      'rectangle "width" side.'))
@@ -593,19 +592,19 @@ class SkyRectangularAnnulus(SkyAperture):
     positions = SkyCoordPositions(
         'positions',
         description='The center position(s) in sky coordinates.')
-    w_in = AngleOrPixelScalarQuantity(
+    w_in = ScalarAngleOrPixel(
         'w_in',
         description='The inner full width, in angular or pixel units.')
-    w_out = AngleOrPixelScalarQuantity(
+    w_out = ScalarAngleOrPixel(
         'w_out',
         description='The outer full width, in angular or pixel units.')
-    h_in = AngleOrPixelScalarQuantity(
+    h_in = ScalarAngleOrPixel(
         'h_in',
         description='The inner full height, in angular or pixel units.')
-    h_out = AngleOrPixelScalarQuantity(
+    h_out = ScalarAngleOrPixel(
         'h_out',
         description='The outer full height, in angular or pixel units.')
-    theta = AngleScalarQuantity(
+    theta = ScalarAngle(
         'theta',
         description=('The position angle (in angular units) of the '
                      'rectangle "width" side.'))

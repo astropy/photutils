@@ -9,7 +9,7 @@ import astropy.units as u
 import numpy as np
 
 __all__ = ['ApertureAttribute', 'PixelPositions', 'SkyCoordPositions',
-           'Scalar', 'PositiveScalar', 'AngleOrPixelScalarQuantity']
+           'Scalar', 'PositiveScalar', 'ScalarAngle', 'ScalarAngleOrPixel']
 
 
 class ApertureAttribute:
@@ -32,7 +32,7 @@ class ApertureAttribute:
 
     def __get__(self, instance, owner):
         if instance is None:
-            return self
+            return self  # pragma: no cover
         return instance.__dict__[self.name]
 
     def __set__(self, instance, value):
@@ -42,7 +42,7 @@ class ApertureAttribute:
         instance.__dict__[self.name] = value
 
     def __delete__(self, instance):
-        del instance.__dict__[self.name]
+        del instance.__dict__[self.name]  # pragma: no cover
 
     def _validate(self, value):
         """
@@ -50,7 +50,7 @@ class ApertureAttribute:
 
         An exception is raised if the value is invalid.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
 
 class PixelPositions(ApertureAttribute):
@@ -91,7 +91,7 @@ class PixelPositions(ApertureAttribute):
 
         value = np.atleast_2d(value)
         if (value.shape[1] != 2 and value.shape[0] != 2) or value.ndim > 2:
-            raise TypeError(f'{self.name} must be a (x, y) pixel position '
+            raise TypeError(f'{self.name!r} must be a (x, y) pixel position '
                             'or a list or array of (x, y) pixel positions.')
 
 
@@ -102,7 +102,7 @@ class SkyCoordPositions(ApertureAttribute):
 
     def _validate(self, value):
         if not isinstance(value, SkyCoord):
-            raise ValueError(f'{self.name} must be a SkyCoord instance')
+            raise ValueError(f'{self.name!r} must be a SkyCoord instance')
 
 
 class Scalar(ApertureAttribute):
@@ -112,7 +112,7 @@ class Scalar(ApertureAttribute):
 
     def _validate(self, value):
         if not np.isscalar(value):
-            raise ValueError(f'{self.name} must be a scalar')
+            raise ValueError(f'{self.name!r} must be a scalar')
 
 
 class PositiveScalar(ApertureAttribute):
@@ -122,42 +122,47 @@ class PositiveScalar(ApertureAttribute):
 
     def _validate(self, value):
         if not np.isscalar(value) or value <= 0:
-            raise ValueError(f'{self.name} must be a positive scalar')
+            raise ValueError(f'{self.name!r} must be a positive scalar')
 
 
-class AngleScalarQuantity(ApertureAttribute):
+class ScalarAngle(ApertureAttribute):
     """
-    Check that value is either an angular scalar
-    `~astropy.units.Quantity`.
+    Check that value is a scalar angle, either as an astropy Angle or
+    Quantity with angular units.
     """
 
     def _validate(self, value):
         if isinstance(value, u.Quantity):
             if not value.isscalar:
-                raise ValueError(f'{self.name} must be a scalar')
+                raise ValueError(f'{self.name!r} must be a scalar')
 
             if not value.unit.physical_type == 'angle':
-                raise ValueError(f'{self.name} must have angular units')
+                raise ValueError(f'{self.name!r} must have angular units')
         else:
-            raise TypeError(f'{self.name} must be an astropy Quantity '
-                            'instance')
+            raise TypeError(f'{self.name!r} must be a scalar angle')
 
 
-class AngleOrPixelScalarQuantity(ApertureAttribute):
+class ScalarAngleOrPixel(ApertureAttribute):
     """
-    Check that value is either an angular or a pixel scalar
-    `~astropy.units.Quantity`.
+    Check that value is a scalar angle, either as a
+    `~astropy.coordinates.Angle` or `~astropy.units.Quantity` with
+    angular units, or a scalar `~astropy.units.Quantity` in pixel units.
+
+    The value must be strictly positive (> 0).
     """
 
     def _validate(self, value):
         if isinstance(value, u.Quantity):
             if not value.isscalar:
-                raise ValueError(f'{self.name} must be a scalar')
+                raise ValueError(f'{self.name!r} must be a scalar')
 
             if not (value.unit.physical_type == 'angle' or
                     value.unit == u.pixel):
-                raise ValueError(f'{self.name} must have angular or pixel '
+                raise ValueError(f'{self.name!r} must have angular or pixel '
                                  'units')
+
+            if not value > 0:
+                raise ValueError(f'{self.name!r} must be strictly positive')
         else:
-            raise TypeError(f'{self.name} must be an astropy Quantity '
-                            'instance')
+            raise TypeError(f'{self.name!r} must be a scalar angle or pixel '
+                            'Quantity')

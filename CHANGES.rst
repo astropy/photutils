@@ -41,6 +41,11 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - A ``ValueError`` is now raised if non-positive sizes are input to
+    sky-based apertures. [#1295]
+
 - ``photutils.background``
 
   - Removed the deprecated ``background_mesh_ma`` and

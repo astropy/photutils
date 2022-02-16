@@ -19,6 +19,7 @@ POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)
 SKYCOORD = SkyCoord(ra=RA, dec=DEC, unit='deg')
 UNIT = u.arcsec
+RADII = (0.0, -1.0, -np.inf)
 
 
 class TestCircularAperture(BaseTestAperture):
@@ -40,6 +41,12 @@ class TestCircularAperture(BaseTestAperture):
 
         # test creating a legend with these patches
         plt.legend(my_patches, list(range(len(my_patches))))
+
+    @staticmethod
+    @pytest.mark.parametrize('radius', RADII)
+    def test_invalid_params(radius):
+        with pytest.raises(ValueError):
+            CircularAperture(POSITIONS, radius)
 
 
 class TestCircularAnnulus(BaseTestAperture):
@@ -64,13 +71,35 @@ class TestCircularAnnulus(BaseTestAperture):
         labels = list(range(len(my_patches)))
         plt.legend(my_patches, labels)
 
+    @staticmethod
+    @pytest.mark.parametrize('radius', RADII)
+    def test_invalid_params(radius):
+        with pytest.raises(ValueError):
+            CircularAnnulus(POSITIONS, r_in=radius, r_out=7.)
+        with pytest.raises(ValueError):
+            CircularAnnulus(POSITIONS, r_in=3., r_out=radius)
+
 
 class TestSkyCircularAperture(BaseTestAperture):
     aperture = SkyCircularAperture(SKYCOORD, r=3.*UNIT)
 
+    @staticmethod
+    @pytest.mark.parametrize('radius', RADII)
+    def test_invalid_params(radius):
+        with pytest.raises(ValueError):
+            SkyCircularAperture(SKYCOORD, r=radius*UNIT)
+
 
 class TestSkyCircularAnnulus(BaseTestAperture):
     aperture = SkyCircularAnnulus(SKYCOORD, r_in=3.*UNIT, r_out=7.*UNIT)
+
+    @staticmethod
+    @pytest.mark.parametrize('radius', RADII)
+    def test_invalid_params(radius):
+        with pytest.raises(ValueError):
+            SkyCircularAnnulus(SKYCOORD, r_in=radius*UNIT, r_out=7.*UNIT)
+        with pytest.raises(ValueError):
+            SkyCircularAnnulus(SKYCOORD, r_in=3.*UNIT, r_out=radius*UNIT)
 
 
 def test_slicing():
