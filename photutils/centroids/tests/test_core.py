@@ -314,3 +314,11 @@ class TestCentroidSources:
                                             box_size=(55, 55), mask=mask)
         assert not np.allclose(xcen1, xcen2)
         assert not np.allclose(ycen1, ycen2)
+
+    def test_error_none(self):
+        xycen1 = centroid_sources(self.data, xpos=25, ypos=25, error=None,
+                                  centroid_func=centroid_1dg)
+        xycen2 = centroid_sources(self.data, xpos=25, ypos=25, error=None,
+                                  centroid_func=centroid_2dg)
+        assert_allclose(xycen1, ([25], [25]), atol=1.e-3)
+        assert_allclose(xycen2, ([25], [25]), atol=1.e-3)
