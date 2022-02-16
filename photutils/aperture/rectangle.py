@@ -9,9 +9,8 @@ import math
 import astropy.units as u
 import numpy as np
 
-from .attributes import (AngleOrPixelScalarQuantity, AngleScalarQuantity,
-                         PixelPositions, PositiveScalar, Scalar,
-                         SkyCoordPositions)
+from .attributes import (AngleOrPixelScalarQuantity, ScalarAngle, PixelPositions,
+                         PositiveScalar, Scalar, SkyCoordPositions)
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
@@ -500,7 +499,7 @@ class SkyRectangularAperture(SkyAperture):
     h = AngleOrPixelScalarQuantity(
         'h',
         description='The full height, in angular or pixel units.')
-    theta = AngleScalarQuantity(
+    theta = ScalarAngle(
         'theta',
         description=('The position angle (in angular units) of the '
                      'rectangle "width" side.'))
@@ -605,7 +604,7 @@ class SkyRectangularAnnulus(SkyAperture):
     h_out = AngleOrPixelScalarQuantity(
         'h_out',
         description='The outer full height, in angular or pixel units.')
-    theta = AngleScalarQuantity(
+    theta = ScalarAngle(
         'theta',
         description=('The position angle (in angular units) of the '
                      'rectangle "width" side.'))

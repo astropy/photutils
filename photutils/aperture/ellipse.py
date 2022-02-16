@@ -9,9 +9,8 @@ import math
 import astropy.units as u
 import numpy as np
 
-from .attributes import (AngleOrPixelScalarQuantity, AngleScalarQuantity,
-                         PixelPositions, PositiveScalar, Scalar,
-                         SkyCoordPositions)
+from .attributes import (AngleOrPixelScalarQuantity, ScalarAngle, PixelPositions,
+                         PositiveScalar, Scalar, SkyCoordPositions)
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
@@ -462,7 +461,7 @@ class SkyEllipticalAperture(SkyAperture):
     b = AngleOrPixelScalarQuantity(
         'b',
         description='The semiminor axis, in angular or pixel units.')
-    theta = AngleScalarQuantity(
+    theta = ScalarAngle(
         'theta',
         description=('The position angle in angular units of the ellipse '
                      'semimajor axis.'))
@@ -559,7 +558,7 @@ class SkyEllipticalAnnulus(SkyAperture):
     b_out = AngleOrPixelScalarQuantity(
         'b_out',
         description='The outer semiminor axis, in angular or pixel units.')
-    theta = AngleScalarQuantity(
+    theta = ScalarAngle(
         'theta',
         description=('The position angle in angular units of the ellipse '
                      'semimajor axis.'))
