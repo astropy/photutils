@@ -12,8 +12,6 @@ from astropy.nddata.utils import (overlap_slices, NoOverlapError,
 from astropy.table import Table
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.wcs import WCS
-from astropy.wcs.utils import skycoord_to_pixel
 import numpy as np
 
 from ..aperture import BoundingBox
@@ -483,15 +481,7 @@ class LinkedEPSFStar(EPSFStars):
             wcs = star.wcs_large
             xposition = star.center[0]
             yposition = star.center[1]
-            try:
-                coords.append(wcs.pixel_to_world_values(xposition, yposition))
-            except AttributeError:
-                if isinstance(wcs, WCS):
-                    # for Astropy < 3.1 WCS support
-                    coords.append(wcs.all_pix2world(xposition, yposition, 0))
-                else:
-                    raise ValueError('Input wcs does not support the shared '
-                                     'WCS interface.')
+            coords.append(wcs.pixel_to_world_values(xposition, yposition))
 
         # compute mean cartesian coordinates
         lon, lat = np.transpose(coords)
@@ -511,13 +501,7 @@ class LinkedEPSFStar(EPSFStars):
         # convert mean sky coordinates back to center pixel coordinates
         # for each star
         for star in good_stars:
-            try:
-                center = star.wcs_large.world_to_pixel_values(mean_lon,
-                                                              mean_lat)
-            except AttributeError:
-                # for Astropy < 3.1 WCS support
-                center = star.wcs_large.all_world2pix(mean_lon, mean_lat, 0)
-
+            center = star.wcs_large.world_to_pixel_values(mean_lon, mean_lat)
             star.cutout_center = np.array(center) - star.origin
 
 
@@ -739,13 +723,7 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
 
     colnames = catalog.colnames
     if ('x' not in colnames or 'y' not in colnames) or not use_xy:
-        try:
-            xcenters, ycenters = data.wcs.world_to_pixel(catalog['skycoord'])
-        except AttributeError:
-            # for Astropy < 3.1 WCS support
-            xcenters, ycenters = skycoord_to_pixel(catalog['skycoord'],
-                                                   data.wcs, origin=0,
-                                                   mode='all')
+        xcenters, ycenters = data.wcs.world_to_pixel(catalog['skycoord'])
     else:
         xcenters = catalog['x'].data.astype(float)
         ycenters = catalog['y'].data.astype(float)
