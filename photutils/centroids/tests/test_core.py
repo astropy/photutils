@@ -322,3 +322,17 @@ class TestCentroidSources:
                                   centroid_func=centroid_2dg)
         assert_allclose(xycen1, ([25], [25]), atol=1.e-3)
         assert_allclose(xycen2, ([25], [25]), atol=1.e-3)
+
+    def test_xypeaks_none(self):
+        xycen1 = centroid_sources(self.data, xpos=25, ypos=25, error=None,
+                                  xpeak=None, ypeak=25,
+                                  centroid_func=centroid_quadratic)
+        xycen2 = centroid_sources(self.data, xpos=25, ypos=25, error=None,
+                                  xpeak=25, ypeak=None,
+                                  centroid_func=centroid_quadratic)
+        xycen3 = centroid_sources(self.data, xpos=25, ypos=25, error=None,
+                                  xpeak=None, ypeak=None,
+                                  centroid_func=centroid_quadratic)
+        assert_allclose(xycen1, ([25], [25]), atol=1.e-3)
+        assert_allclose(xycen2, ([25], [25]), atol=1.e-3)
+        assert_allclose(xycen3, ([25], [25]), atol=1.e-3)
