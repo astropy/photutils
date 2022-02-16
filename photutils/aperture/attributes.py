@@ -9,7 +9,7 @@ import astropy.units as u
 import numpy as np
 
 __all__ = ['ApertureAttribute', 'PixelPositions', 'SkyCoordPositions',
-           'Scalar', 'PositiveScalar', 'AngleOrPixelScalarQuantity']
+           'Scalar', 'PositiveScalar', 'ScalarAngle', 'ScalarAngleOrPixel']
 
 
 class ApertureAttribute:
@@ -142,10 +142,13 @@ class ScalarAngle(ApertureAttribute):
             raise TypeError(f'{self.name} must be a scalar angle')
 
 
-class AngleOrPixelScalarQuantity(ApertureAttribute):
+class ScalarAngleOrPixel(ApertureAttribute):
     """
-    Check that value is either an angular or a pixel scalar
-    `~astropy.units.Quantity`.
+    Check that value is a scalar angle, either as a
+    `~astropy.coordinates.Angle` or `~astropy.units.Quantity` with
+    angular units, or a scalar `~astropy.units.Quantity` in pixel units.
+
+    The value must be strictly positive (> 0).
     """
 
     def _validate(self, value):
@@ -157,6 +160,9 @@ class AngleOrPixelScalarQuantity(ApertureAttribute):
                     value.unit == u.pixel):
                 raise ValueError(f'{self.name} must have angular or pixel '
                                  'units')
+
+            if not value > 0:
+                raise ValueError(f'{self.name} must be strictly positive')
         else:
-            raise TypeError(f'{self.name} must be an astropy Quantity '
-                            'instance')
+            raise TypeError(f'{self.name} must be a scalar angle or pixel '
+                            'Quantity')

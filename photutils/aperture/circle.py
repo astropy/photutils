@@ -8,8 +8,8 @@ import math
 
 import numpy as np
 
-from .attributes import (AngleOrPixelScalarQuantity, PixelPositions,
-                         PositiveScalar, SkyCoordPositions)
+from .attributes import (PixelPositions, PositiveScalar, SkyCoordPositions,
+                         ScalarAngleOrPixel)
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import circular_overlap_grid
@@ -370,7 +370,7 @@ class SkyCircularAperture(SkyAperture):
     positions = SkyCoordPositions(
         'positions',
         description='The center position(s) in sky coordinates.')
-    r = AngleOrPixelScalarQuantity(
+    r = ScalarAngleOrPixel(
         'r',
         description='The radius, in angular or pixel units.')
 
@@ -433,10 +433,10 @@ class SkyCircularAnnulus(SkyAperture):
     positions = SkyCoordPositions(
         'positions',
         description='The center position(s) in sky coordinates.')
-    r_in = AngleOrPixelScalarQuantity(
+    r_in = ScalarAngleOrPixel(
         'r_in',
         description='The inner radius, in angular or pixel units.')
-    r_out = AngleOrPixelScalarQuantity(
+    r_out = ScalarAngleOrPixel(
         'r_out',
         description='The outer radius, in angular or pixel units.')
 
