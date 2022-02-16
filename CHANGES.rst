@@ -38,6 +38,12 @@ Bug Fixes
     would result in incorrect image padding if only one of the axes needed
     padding. [#1292]
 
+- ``photutils.centroid``
+
+    - Fixed a bug in ``centroid_sources`` where setting ``error``,
+      ``xpeak``, or ``ypeak`` to ``None`` would result in an error.
+      [#1297]
+
 API Changes
 ^^^^^^^^^^^
 

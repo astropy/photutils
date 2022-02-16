@@ -399,13 +399,17 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
         centroid_kwargs.update({'mask': mask_cutout})
 
-        if 'error' in centroid_kwargs:
-            error_cutout = centroid_kwargs['error'][slices_large]
-            centroid_kwargs['error'] = error_cutout
+        error = centroid_kwargs.get('error', None)
+        if error is not None:
+            centroid_kwargs['error'] = error[slices_large]
 
-        if 'xpeak' in centroid_kwargs and 'ypeak' in centroid_kwargs:
-            centroid_kwargs['xpeak'] -= slices_large[1].start
-            centroid_kwargs['ypeak'] -= slices_large[0].start
+        # remove xpeak and ypeak from the dict and add back only if both
+        # are specified and not None
+        xpeak = centroid_kwargs.pop('xpeak', None)
+        ypeak = centroid_kwargs.pop('ypeak', None)
+        if xpeak is not None and ypeak is not None:
+            centroid_kwargs['xpeak'] = xpeak - slices_large[1].start
+            centroid_kwargs['ypeak'] = ypeak - slices_large[0].start
 
         try:
             xcen, ycen = centroid_func(data_cutout, **centroid_kwargs)
