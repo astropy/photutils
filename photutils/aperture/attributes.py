@@ -91,7 +91,7 @@ class PixelPositions(ApertureAttribute):
 
         value = np.atleast_2d(value)
         if (value.shape[1] != 2 and value.shape[0] != 2) or value.ndim > 2:
-            raise TypeError(f'{self.name} must be a (x, y) pixel position '
+            raise TypeError(f'{self.name!r} must be a (x, y) pixel position '
                             'or a list or array of (x, y) pixel positions.')
 
 
@@ -102,7 +102,7 @@ class SkyCoordPositions(ApertureAttribute):
 
     def _validate(self, value):
         if not isinstance(value, SkyCoord):
-            raise ValueError(f'{self.name} must be a SkyCoord instance')
+            raise ValueError(f'{self.name!r} must be a SkyCoord instance')
 
 
 class Scalar(ApertureAttribute):
@@ -112,7 +112,7 @@ class Scalar(ApertureAttribute):
 
     def _validate(self, value):
         if not np.isscalar(value):
-            raise ValueError(f'{self.name} must be a scalar')
+            raise ValueError(f'{self.name!r} must be a scalar')
 
 
 class PositiveScalar(ApertureAttribute):
@@ -122,7 +122,7 @@ class PositiveScalar(ApertureAttribute):
 
     def _validate(self, value):
         if not np.isscalar(value) or value <= 0:
-            raise ValueError(f'{self.name} must be a positive scalar')
+            raise ValueError(f'{self.name!r} must be a positive scalar')
 
 
 class ScalarAngle(ApertureAttribute):
@@ -134,12 +134,12 @@ class ScalarAngle(ApertureAttribute):
     def _validate(self, value):
         if isinstance(value, u.Quantity):
             if not value.isscalar:
-                raise ValueError(f'{self.name} must be a scalar')
+                raise ValueError(f'{self.name!r} must be a scalar')
 
             if not value.unit.physical_type == 'angle':
-                raise ValueError(f'{self.name} must have angular units')
+                raise ValueError(f'{self.name!r} must have angular units')
         else:
-            raise TypeError(f'{self.name} must be a scalar angle')
+            raise TypeError(f'{self.name!r} must be a scalar angle')
 
 
 class ScalarAngleOrPixel(ApertureAttribute):
@@ -154,15 +154,15 @@ class ScalarAngleOrPixel(ApertureAttribute):
     def _validate(self, value):
         if isinstance(value, u.Quantity):
             if not value.isscalar:
-                raise ValueError(f'{self.name} must be a scalar')
+                raise ValueError(f'{self.name!r} must be a scalar')
 
             if not (value.unit.physical_type == 'angle' or
                     value.unit == u.pixel):
-                raise ValueError(f'{self.name} must have angular or pixel '
+                raise ValueError(f'{self.name!r} must have angular or pixel '
                                  'units')
 
             if not value > 0:
-                raise ValueError(f'{self.name} must be strictly positive')
+                raise ValueError(f'{self.name!r} must be strictly positive')
         else:
-            raise TypeError(f'{self.name} must be a scalar angle or pixel '
+            raise TypeError(f'{self.name!r} must be a scalar angle or pixel '
                             'Quantity')
