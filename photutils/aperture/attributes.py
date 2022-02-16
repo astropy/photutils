@@ -32,7 +32,7 @@ class ApertureAttribute:
 
     def __get__(self, instance, owner):
         if instance is None:
-            return self
+            return self  # pragma: no cover
         return instance.__dict__[self.name]
 
     def __set__(self, instance, value):
@@ -42,7 +42,7 @@ class ApertureAttribute:
         instance.__dict__[self.name] = value
 
     def __delete__(self, instance):
-        del instance.__dict__[self.name]
+        del instance.__dict__[self.name]  # pragma: no cover
 
     def _validate(self, value):
         """
@@ -50,7 +50,7 @@ class ApertureAttribute:
 
         An exception is raised if the value is invalid.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
 
 class PixelPositions(ApertureAttribute):
