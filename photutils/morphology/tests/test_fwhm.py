@@ -35,4 +35,4 @@ def test_fwhm_cog():
         assert_allclose(len(cog), npix, rtol=1e-2)
 
         predicted_fwhm = SIGMA_TO_FWHM * (srctab['x_stddev']*srctab['y_stddev'])**0.5
-        assert_allclose(fwhm, predicted_fwhm)
+        assert_allclose(fwhm, predicted_fwhm, rtol=.02)  # 2% is a resonable guess
