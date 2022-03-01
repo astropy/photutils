@@ -1,3 +1,5 @@
+.. _photutils-aperture:
+
 Aperture Photometry (`photutils.aperture`)
 ==========================================
 
