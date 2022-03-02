@@ -11,4 +11,4 @@ jobs:
           command: /opt/python/cp38-cp38/bin/pip install tox
       - run:
           name: Run tests for Python 3.8
-          command: /opt/python/cp38-cp38/bin/python -m tox -e py38-numpy120-test
+          command: /opt/python/cp38-cp38/bin/python -m tox -e circleci_32bit
