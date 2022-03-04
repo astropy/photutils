@@ -20,28 +20,37 @@ class BaseTestAperture(BaseTestApertureParams):
         assert isinstance(aper, self.aperture.__class__)
         assert aper.isscalar
         expected_positions = self.aperture.positions[self.index]
-        if isinstance(expected_positions, SkyCoord):
-            assert_quantity_allclose(aper.positions.ra, expected_positions.ra)
-            assert_quantity_allclose(aper.positions.dec,
-                                     expected_positions.dec)
-        else:
-            assert_array_equal(aper.positions, expected_positions)
-            for shape_param in aper._shape_params:
-                assert (getattr(aper, shape_param) ==
-                        getattr(self.aperture, shape_param))
+
+        for param in aper._params:
+            if param == 'positions':
+                if isinstance(expected_positions, SkyCoord):
+                    assert_quantity_allclose(aper.positions.ra,
+                                             expected_positions.ra)
+                    assert_quantity_allclose(aper.positions.dec,
+                                             expected_positions.dec)
+                else:
+                    assert_array_equal(getattr(aper, param),
+                                       expected_positions)
+            else:
+                assert (getattr(aper, param)
+                        == getattr(self.aperture, param))
 
     def test_slice(self):
         aper = self.aperture[self.slc]
         assert isinstance(aper, self.aperture.__class__)
         assert len(aper) == self.expected_slc_len
-
         expected_positions = self.aperture.positions[self.slc]
-        if isinstance(self.aperture.positions, SkyCoord):
-            assert_quantity_allclose(aper.positions.ra, expected_positions.ra)
-            assert_quantity_allclose(aper.positions.dec,
-                                     expected_positions.dec)
-        else:
-            assert_array_equal(aper.positions, expected_positions)
-            for shape_param in aper._shape_params:
-                assert (getattr(aper, shape_param) ==
-                        getattr(self.aperture, shape_param))
+
+        for param in aper._params:
+            if param == 'positions':
+                if isinstance(expected_positions, SkyCoord):
+                    assert_quantity_allclose(aper.positions.ra,
+                                             expected_positions.ra)
+                    assert_quantity_allclose(aper.positions.dec,
+                                             expected_positions.dec)
+                else:
+                    assert_array_equal(getattr(aper, param),
+                                       expected_positions)
+            else:
+                assert (getattr(aper, param)
+                        == getattr(self.aperture, param))

@@ -167,7 +167,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     >>> aper = EllipticalAperture((pos1, pos2, pos3), 5., 3., theta=np.pi)
     """
 
-    _shape_params = ('a', 'b', 'theta')
+    _params = ('positions', 'a', 'b', 'theta')
     positions = PixelPositions('The center pixel position(s).')
     a = PositiveScalar('The semimajor axis in pixels.')
     b = PositiveScalar('The semiminor axis in pixels.')
@@ -308,7 +308,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     >>> aper = EllipticalAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=np.pi)
     """
 
-    _shape_params = ('a_in', 'a_out', 'b_in', 'b_out', 'theta')
+    _params = ('positions', 'a_in', 'a_out', 'b_in', 'b_out', 'theta')
     positions = PixelPositions('The center pixel position(s).')
     a_in = PositiveScalar('The inner semimajor axis in pixels.')
     a_out = PositiveScalar('The outer semimajor axis in pixels.')
@@ -441,7 +441,7 @@ class SkyEllipticalAperture(SkyAperture):
     >>> aper = SkyEllipticalAperture(positions, 1.0*u.arcsec, 0.5*u.arcsec)
     """
 
-    _shape_params = ('a', 'b', 'theta')
+    _params = ('positions', 'a', 'b', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     a = ScalarAngleOrPixel('The semimajor axis, in angular or pixel units.')
     b = ScalarAngleOrPixel('The semiminor axis, in angular or pixel units.')
@@ -524,7 +524,7 @@ class SkyEllipticalAnnulus(SkyAperture):
     ...                             1.0*u.arcsec)
     """
 
-    _shape_params = ('a_in', 'a_out', 'b_in', 'b_out', 'theta')
+    _params = ('positions', 'a_in', 'a_out', 'b_in', 'b_out', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     a_in = ScalarAngleOrPixel('The inner semimajor axis, in angular or pixel '
                               'units.')

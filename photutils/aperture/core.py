@@ -23,7 +23,7 @@ class Aperture(metaclass=abc.ABCMeta):
     Abstract base class for all apertures.
     """
 
-    _shape_params = ()
+    _params = ()
     positions = np.array(())
     theta = None
 
@@ -39,9 +39,13 @@ class Aperture(metaclass=abc.ABCMeta):
                             'cannot be indexed')
 
         kwargs = dict()
-        for param in self._shape_params:
-            kwargs[param] = getattr(self, param)
-        return self.__class__(self.positions[index], **kwargs)
+        for param in self._params:
+            if param == 'positions':
+                # slice the positions array
+                kwargs[param] = getattr(self, param)[index]
+            else:
+                kwargs[param] = getattr(self, param)
+        return self.__class__(**kwargs)
 
     def __iter__(self):
         for i in range(len(self)):
@@ -59,24 +63,24 @@ class Aperture(metaclass=abc.ABCMeta):
 
     def __repr__(self):
         prefix = f'{self.__class__.__name__}'
-        cls_info = [self._positions_str(prefix)]
-        if self._shape_params is not None:
-            for param in self._shape_params:
+        cls_info = []
+        for param in self._params:
+            if param == 'positions':
+                cls_info.append(self._positions_str(prefix))
+            else:
                 cls_info.append(f'{param}={getattr(self, param)}')
         cls_info = ', '.join(cls_info)
-
         return f'<{prefix}({cls_info})>'
 
     def __str__(self):
-        prefix = 'positions'
-        cls_info = [
-            ('Aperture', self.__class__.__name__),
-            (prefix, self._positions_str(prefix + ': '))]
-        if self._shape_params is not None:
-            for param in self._shape_params:
+        cls_info = [('Aperture', self.__class__.__name__)]
+        for param in self._params:
+            if param == 'positions':
+                prefix = 'positions'
+                cls_info.append((prefix, self._positions_str(prefix + ': ')))
+            else:
                 cls_info.append((param, getattr(self, param)))
         fmt = [f'{key}: {val}' for key, val in cls_info]
-
         return '\n'.join(fmt)
 
     @property
