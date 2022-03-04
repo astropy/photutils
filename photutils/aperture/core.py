@@ -592,7 +592,7 @@ class PixelAperture(Aperture):
         """
         sky_params = {}
         xpos, ypos = np.transpose(self.positions)
-        sky_params['positions'] = wcs.pixel_to_world(xpos, ypos)
+        sky_params['positions'] = skypos = wcs.pixel_to_world(xpos, ypos)
 
         # Aperture objects require scalar shape parameters (e.g.,
         # radius, a, b, theta, etc.), therefore we must calculate the
@@ -603,22 +603,19 @@ class PixelAperture(Aperture):
         # unexpected results (e.g., results that are dependent of the
         # order of the positions). There is no good way to fix this with
         # the current Aperture API allowing multiple positions.
-        skypos = sky_params['positions']
         if not self.isscalar:
             skypos = skypos[0]
-
         _, pixscale, angle = _pixel_scale_angle_at_skycoord(skypos, wcs)
 
-        shape_params = list(self._shape_params)
-
-        theta_key = 'theta'
-        if theta_key in shape_params:
-            sky_params[theta_key] = (self.theta * u.rad) - angle.to(u.rad)
-            shape_params.remove(theta_key)
-
-        for shape_param in shape_params:
-            value = getattr(self, shape_param)
-            sky_params[shape_param] = (value * u.pix * pixscale).to(u.arcsec)
+        for param in self._params:
+            value = getattr(self, param)
+            if param == 'positions':
+                continue
+            elif param == 'theta':
+                value = (value * u.rad) - angle.to(u.rad)
+            else:
+                value = (value * u.pix * pixscale).to(u.arcsec)
+            sky_params[param] = value
 
         return sky_params
 
@@ -688,20 +685,18 @@ class SkyAperture(Aperture):
             skypos = self.positions[0]
         _, pixscale, angle = _pixel_scale_angle_at_skycoord(skypos, wcs)
 
-        shape_params = list(self._shape_params)
-
-        theta_key = 'theta'
-        if theta_key in shape_params:
-            pixel_params[theta_key] = (self.theta + angle).to(u.radian).value
-            shape_params.remove(theta_key)
-
-        for shape_param in shape_params:
-            value = getattr(self, shape_param)
-            if value.unit.physical_type == 'angle':
-                pixel_params[shape_param] = ((value / pixscale)
-                                             .to(u.pixel).value)
+        for param in self._params:
+            value = getattr(self, param)
+            if param == 'positions':
+                continue
+            elif param == 'theta':
+                value = (value + angle).to(u.radian).value
             else:
-                pixel_params[shape_param] = value.value
+                if value.unit.physical_type == 'angle':
+                    value = (value / pixscale).to(u.pixel).value
+                else:
+                    value = value.value
+            pixel_params[param] = value
 
         return pixel_params
 
