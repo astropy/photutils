@@ -110,6 +110,14 @@ def test_bounding_box_as_artist():
 
 
 @pytest.mark.skipif('not HAS_MATPLOTLIB')
+def test_bounding_box_plot():
+    from matplotlib.patches import Rectangle
+    bbox = BoundingBox(1, 10, 2, 20)
+    patch = bbox.plot()
+    assert isinstance(patch, Rectangle)
+
+
+@pytest.mark.skipif('not HAS_MATPLOTLIB')
 def test_bounding_box_to_aperture():
     bbox = BoundingBox(1, 10, 2, 20)
     aper = RectangularAperture((5.0, 10.5), w=9., h=18., theta=0.)
@@ -119,13 +127,6 @@ def test_bounding_box_to_aperture():
     assert bbox_aper.w == aper.w
     assert bbox_aper.h == aper.h
     assert bbox_aper.theta == aper.theta
-
-
-@pytest.mark.skipif('not HAS_MATPLOTLIB')
-def test_bounding_box_plot():
-    # TODO: check the content of the plot
-    bbox = BoundingBox(1, 10, 2, 20)
-    bbox.plot()
 
 
 def test_bounding_box_union():

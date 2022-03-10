@@ -303,9 +303,16 @@ class BoundingBox:
 
         **kwargs : dict
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : `matplotlib.patches.Patch`
+            The matplotlib patch object for the plotted bounding box.
+            The patch can be used, for example, when adding a plot
+            legend.
         """
         aper = self.to_aperture()
-        aper.plot(axes=axes, origin=origin, **kwargs)
+        return aper.plot(axes=axes, origin=origin, **kwargs)[0]
 
     def union(self, other):
         """
