@@ -140,9 +140,8 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
     """
 
     _shape_params = ('r',)
-    positions = PixelPositions('positions',
-                               description='The center pixel position(s).')
-    r = PositiveScalar('r', description='The radius in pixels.')
+    positions = PixelPositions(description='The center pixel position(s).')
+    r = PositiveScalar(description='The radius in pixels.')
 
     def __init__(self, positions, r):
         self.positions = positions
@@ -259,12 +258,9 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     """
 
     _shape_params = ('r_in', 'r_out')
-    positions = PixelPositions('positions',
-                               description='The center pixel position(s).')
-    r_in = PositiveScalar('r_in',
-                          description='The inner radius in pixels.')
-    r_out = PositiveScalar('r_out',
-                           description='The outer radius in pixels.')
+    positions = PixelPositions(description='The center pixel position(s).')
+    r_in = PositiveScalar(description='The inner radius in pixels.')
+    r_out = PositiveScalar(description='The outer radius in pixels.')
 
     def __init__(self, positions, r_in, r_out):
         if not r_out > r_in:
@@ -367,11 +363,9 @@ class SkyCircularAperture(SkyAperture):
     """
 
     _shape_params = ('r',)
-    positions = SkyCoordPositions(
-        'positions',
-        description='The center position(s) in sky coordinates.')
+    positions = SkyCoordPositions(description='The center position(s) in sky '
+                                  'coordinates.')
     r = ScalarAngleOrPixel(
-        'r',
         description='The radius, in angular or pixel units.')
 
     def __init__(self, positions, r):
@@ -431,13 +425,10 @@ class SkyCircularAnnulus(SkyAperture):
 
     _shape_params = ('r_in', 'r_out')
     positions = SkyCoordPositions(
-        'positions',
         description='The center position(s) in sky coordinates.')
     r_in = ScalarAngleOrPixel(
-        'r_in',
         description='The inner radius, in angular or pixel units.')
     r_out = ScalarAngleOrPixel(
-        'r_out',
         description='The outer radius, in angular or pixel units.')
 
     def __init__(self, positions, r_in, r_out):
