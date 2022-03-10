@@ -76,13 +76,15 @@ aperture object::
     >>> aperture = SkyCircularAperture(positions, r=4. * u.arcsec)
 
 .. note::
-    Sky apertures are not defined completely in sky coordinates.  They
+    Sky apertures are not defined completely in sky coordinates. They
     simply use sky coordinates to define the central position, and the
     remaining parameters are converted to pixels using the pixel scale
-    of the image at the central position.  Projection distortions are
-    not taken into account.  If the apertures were defined completely
-    in sky coordinates, their shapes would not be preserved when
-    converting to pixel coordinates.
+    of the image at the central position. Projection distortions are
+    not taken into account. They are **not** defined as apertures on
+    the celestial sphere, but rather are meant to represent aperture
+    shapes on an image. If the apertures were defined completely in sky
+    coordinates, their shapes would not be preserved when converting to
+    or from pixel coordinates.
 
 
 Converting Between Pixel and Sky Apertures
