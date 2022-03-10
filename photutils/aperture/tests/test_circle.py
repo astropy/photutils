@@ -48,6 +48,12 @@ class TestCircularAperture(BaseTestAperture):
         with pytest.raises(ValueError):
             CircularAperture(POSITIONS, radius)
 
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.r = 2.
+        assert aper != self.aperture
+
 
 class TestCircularAnnulus(BaseTestAperture):
     aperture = CircularAnnulus(POSITIONS, r_in=3., r_out=7.)
@@ -79,6 +85,12 @@ class TestCircularAnnulus(BaseTestAperture):
         with pytest.raises(ValueError):
             CircularAnnulus(POSITIONS, r_in=3., r_out=radius)
 
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.r_in = 2.
+        assert aper != self.aperture
+
 
 class TestSkyCircularAperture(BaseTestAperture):
     aperture = SkyCircularAperture(SKYCOORD, r=3.*UNIT)
@@ -88,6 +100,12 @@ class TestSkyCircularAperture(BaseTestAperture):
     def test_invalid_params(radius):
         with pytest.raises(ValueError):
             SkyCircularAperture(SKYCOORD, r=radius*UNIT)
+
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.r = 2.*UNIT
+        assert aper != self.aperture
 
 
 class TestSkyCircularAnnulus(BaseTestAperture):
@@ -100,6 +118,12 @@ class TestSkyCircularAnnulus(BaseTestAperture):
             SkyCircularAnnulus(SKYCOORD, r_in=radius*UNIT, r_out=7.*UNIT)
         with pytest.raises(ValueError):
             SkyCircularAnnulus(SKYCOORD, r_in=3.*UNIT, r_out=radius*UNIT)
+
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.r_in = 2. * UNIT
+        assert aper != self.aperture
 
 
 def test_slicing():

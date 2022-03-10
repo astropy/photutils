@@ -19,6 +19,13 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Added a ``copy`` method to ``Aperture`` objects. [#1304]
+
+  - Added the ability to compare ``Aperture`` objects for equality.
+    [#1304]
+
 - ``photutils.background``
 
   - Added an ``alpha`` keyword to the ``Background2D.plot_meshes``

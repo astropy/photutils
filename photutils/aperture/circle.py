@@ -139,7 +139,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
     >>> aper = CircularAperture((pos1, pos2, pos3), 3.)
     """
 
-    _shape_params = ('r',)
+    _params = ('positions', 'r')
     positions = PixelPositions('The center pixel position(s).')
     r = PositiveScalar('The radius in pixels.')
 
@@ -257,7 +257,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     >>> aper = CircularAnnulus((pos1, pos2, pos3), 3., 5.)
     """
 
-    _shape_params = ('r_in', 'r_out')
+    _params = ('positions', 'r_in', 'r_out')
     positions = PixelPositions('The center pixel position(s).')
     r_in = PositiveScalar('The inner radius in pixels.')
     r_out = PositiveScalar('The outer radius in pixels.')
@@ -362,7 +362,7 @@ class SkyCircularAperture(SkyAperture):
     >>> aper = SkyCircularAperture(positions, 0.5*u.arcsec)
     """
 
-    _shape_params = ('r',)
+    _params = ('positions', 'r',)
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     r = ScalarAngleOrPixel('The radius, in angular or pixel units.')
 
@@ -421,7 +421,7 @@ class SkyCircularAnnulus(SkyAperture):
     >>> aper = SkyCircularAnnulus(positions, 0.5*u.arcsec, 1.0*u.arcsec)
     """
 
-    _shape_params = ('r_in', 'r_out')
+    _params = ('positions', 'r_in', 'r_out')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     r_in = ScalarAngleOrPixel('The inner radius, in angular or pixel units.')
     r_out = ScalarAngleOrPixel('The outer radius, in angular or pixel units.')

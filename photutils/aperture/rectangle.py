@@ -190,7 +190,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     >>> aper = RectangularAperture((pos1, pos2, pos3), 5., 3., theta=np.pi)
     """
 
-    _shape_params = ('w', 'h', 'theta')
+    _params = ('positions', 'w', 'h', 'theta')
     positions = PixelPositions('The center pixel position(s).')
     w = PositiveScalar('The full width in pixels.')
     h = PositiveScalar('The full height in pixels.')
@@ -337,7 +337,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     >>> aper = RectangularAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=np.pi)
     """
 
-    _shape_params = ('w_in', 'w_out', 'h_in', 'h_out', 'theta')
+    _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')
     positions = PixelPositions('The center pixel position(s).')
     w_in = PositiveScalar('The inner full width in pixels.')
     w_out = PositiveScalar('The outer full width in pixels.')
@@ -479,7 +479,7 @@ class SkyRectangularAperture(SkyAperture):
     >>> aper = SkyRectangularAperture(positions, 1.0*u.arcsec, 0.5*u.arcsec)
     """
 
-    _shape_params = ('w', 'h', 'theta')
+    _params = ('positions', 'w', 'h', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     w = ScalarAngleOrPixel('The full width, in angular or pixel units.')
     h = ScalarAngleOrPixel('The full height, in angular or pixel units.')
@@ -570,15 +570,18 @@ class SkyRectangularAnnulus(SkyAperture):
     ...                              5.0*u.arcsec)
     """
 
-    _shape_params = ('w_in', 'w_out', 'h_in', 'h_out', 'theta')
+    _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    w_in = ScalarAngleOrPixel('The inner full width, in angular or pixel units.')
-    w_out = ScalarAngleOrPixel('The outer full width, in angular or pixel units.')
-    h_in = ScalarAngleOrPixel('The inner full height, in angular or pixel units.')
+    w_in = ScalarAngleOrPixel('The inner full width, in angular or pixel '
+                              'units.')
+    w_out = ScalarAngleOrPixel('The outer full width, in angular or pixel '
+                               'units.')
+    h_in = ScalarAngleOrPixel('The inner full height, in angular or pixel '
+                              'units.')
     h_out = ScalarAngleOrPixel('The outer full height, in angular or pixel '
                                'units.')
-    theta = ScalarAngle('The position angle (in angular units) of the rectangle '
-                        '"width" side.')
+    theta = ScalarAngle('The position angle (in angular units) of the '
+                        'rectangle "width" side.')
 
     def __init__(self, positions, w_in, w_out, h_out, h_in=None,
                  theta=0.*u.deg):

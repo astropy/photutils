@@ -4,7 +4,7 @@ This module defines the base aperture classes.
 """
 
 import abc
-import copy
+from copy import deepcopy
 
 import numpy as np
 from astropy.coordinates import SkyCoord
@@ -23,7 +23,7 @@ class Aperture(metaclass=abc.ABCMeta):
     Abstract base class for all apertures.
     """
 
-    _shape_params = ()
+    _params = ()
     positions = np.array(())
     theta = None
 
@@ -39,9 +39,13 @@ class Aperture(metaclass=abc.ABCMeta):
                             'cannot be indexed')
 
         kwargs = dict()
-        for param in self._shape_params:
-            kwargs[param] = getattr(self, param)
-        return self.__class__(self.positions[index], **kwargs)
+        for param in self._params:
+            if param == 'positions':
+                # slice the positions array
+                kwargs[param] = getattr(self, param)[index]
+            else:
+                kwargs[param] = getattr(self, param)
+        return self.__class__(**kwargs)
 
     def __iter__(self):
         for i in range(len(self)):
@@ -59,25 +63,74 @@ class Aperture(metaclass=abc.ABCMeta):
 
     def __repr__(self):
         prefix = f'{self.__class__.__name__}'
-        cls_info = [self._positions_str(prefix)]
-        if self._shape_params is not None:
-            for param in self._shape_params:
+        cls_info = []
+        for param in self._params:
+            if param == 'positions':
+                cls_info.append(self._positions_str(prefix))
+            else:
                 cls_info.append(f'{param}={getattr(self, param)}')
         cls_info = ', '.join(cls_info)
-
         return f'<{prefix}({cls_info})>'
 
     def __str__(self):
-        prefix = 'positions'
-        cls_info = [
-            ('Aperture', self.__class__.__name__),
-            (prefix, self._positions_str(prefix + ': '))]
-        if self._shape_params is not None:
-            for param in self._shape_params:
+        cls_info = [('Aperture', self.__class__.__name__)]
+        for param in self._params:
+            if param == 'positions':
+                prefix = 'positions'
+                cls_info.append((prefix, self._positions_str(prefix + ': ')))
+            else:
                 cls_info.append((param, getattr(self, param)))
         fmt = [f'{key}: {val}' for key, val in cls_info]
-
         return '\n'.join(fmt)
+
+    def __eq__(self, other):
+        """
+        Equality operator for `Aperture`.
+
+        All Aperture properties are compared for strict equality except
+        for Quantity parameters, which allow for different units if they
+        are directly convertible.
+        """
+        if not isinstance(other, self.__class__):
+            return False
+
+        self_params = list(self._params)
+        other_params = list(other._params)
+
+        # check that both have identical parameters
+        if self_params != other_params:
+            return False
+
+        # now check the parameter values
+        # Note that Quantity comparisons allow for different units
+        # if they directly convertible (e.g., 1. * u.deg == 60. * u.arcmin)
+        try:
+            for param in self_params:
+                # np.any is used for SkyCoord array comparisons
+                if np.any(getattr(self, param) != getattr(other, param)):
+                    return False
+        except TypeError:
+            # TypeError is raised from SkyCoord comparison when they do
+            # not have equivalent frames. Here return False instead of
+            # the TypeError.
+            return False
+
+        return True
+
+    def __ne__(self, other):
+        """
+        Inequality operator for `Aperture`.
+        """
+        return not (self == other)
+
+    def copy(self):
+        """
+        Make an independent (deep) copy.
+        """
+        params_copy = {}
+        for param in list(self._params):
+            params_copy[param] = deepcopy(getattr(self, param))
+        return self.__class__(**params_copy)
 
     @property
     def shape(self):
@@ -496,7 +549,7 @@ class PixelAperture(Aperture):
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
         """
-        xy_positions = copy.deepcopy(np.atleast_2d(self.positions))
+        xy_positions = deepcopy(np.atleast_2d(self.positions))
         xy_positions[:, 0] -= origin[0]
         xy_positions[:, 1] -= origin[1]
 
@@ -588,7 +641,7 @@ class PixelAperture(Aperture):
         """
         sky_params = {}
         xpos, ypos = np.transpose(self.positions)
-        sky_params['positions'] = wcs.pixel_to_world(xpos, ypos)
+        sky_params['positions'] = skypos = wcs.pixel_to_world(xpos, ypos)
 
         # Aperture objects require scalar shape parameters (e.g.,
         # radius, a, b, theta, etc.), therefore we must calculate the
@@ -599,22 +652,23 @@ class PixelAperture(Aperture):
         # unexpected results (e.g., results that are dependent of the
         # order of the positions). There is no good way to fix this with
         # the current Aperture API allowing multiple positions.
-        skypos = sky_params['positions']
         if not self.isscalar:
             skypos = skypos[0]
-
         _, pixscale, angle = _pixel_scale_angle_at_skycoord(skypos, wcs)
 
-        shape_params = list(self._shape_params)
-
-        theta_key = 'theta'
-        if theta_key in shape_params:
-            sky_params[theta_key] = (self.theta * u.rad) - angle.to(u.rad)
-            shape_params.remove(theta_key)
-
-        for shape_param in shape_params:
-            value = getattr(self, shape_param)
-            sky_params[shape_param] = (value * u.pix * pixscale).to(u.arcsec)
+        for param in self._params:
+            value = getattr(self, param)
+            if param == 'positions':
+                continue
+            elif param == 'theta':
+                # photutils aperture sky angles are defined as the PA of
+                # the semimajor axis (i.e., relative to the WCS latitude
+                # axis). region sky angles are defined relative to the WCS
+                # longitude axis.
+                value = (value * u.rad) - angle.to(u.rad)
+            else:
+                value = (value * u.pix * pixscale).to(u.arcsec)
+            sky_params[param] = value
 
         return sky_params
 
@@ -684,20 +738,22 @@ class SkyAperture(Aperture):
             skypos = self.positions[0]
         _, pixscale, angle = _pixel_scale_angle_at_skycoord(skypos, wcs)
 
-        shape_params = list(self._shape_params)
-
-        theta_key = 'theta'
-        if theta_key in shape_params:
-            pixel_params[theta_key] = (self.theta + angle).to(u.radian).value
-            shape_params.remove(theta_key)
-
-        for shape_param in shape_params:
-            value = getattr(self, shape_param)
-            if value.unit.physical_type == 'angle':
-                pixel_params[shape_param] = ((value / pixscale)
-                                             .to(u.pixel).value)
+        for param in self._params:
+            value = getattr(self, param)
+            if param == 'positions':
+                continue
+            elif param == 'theta':
+                # photutils aperture sky angles are defined as the PA of
+                # the semimajor axis (i.e., relative to the WCS latitude
+                # axis). region sky angles are defined relative to the WCS
+                # longitude axis.
+                value = (value + angle).to(u.radian).value
             else:
-                pixel_params[shape_param] = value.value
+                if value.unit.physical_type == 'angle':
+                    value = (value / pixscale).to(u.pixel).value
+                else:
+                    value = value.value
+            pixel_params[param] = value
 
         return pixel_params
 
