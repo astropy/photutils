@@ -32,6 +32,12 @@ class TestRectangularAperture(BaseTestAperture):
         with pytest.raises(ValueError):
             RectangularAperture(POSITIONS, w=10., h=radius, theta=np.pi/2.)
 
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.w = 20.
+        assert aper != self.aperture
+
 
 class TestRectangularAnnulus(BaseTestAperture):
     aperture = RectangularAnnulus(POSITIONS, w_in=10., w_out=20., h_out=17,
@@ -53,6 +59,12 @@ class TestRectangularAnnulus(BaseTestAperture):
             RectangularAnnulus(POSITIONS, w_in=10., w_out=20., h_out=17,
                                h_in=radius, theta=np.pi/3)
 
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.w_in = 2.
+        assert aper != self.aperture
+
 
 class TestSkyRectangularAperture(BaseTestAperture):
     aperture = SkyRectangularAperture(SKYCOORD, w=10.*UNIT, h=5.*UNIT,
@@ -67,6 +79,12 @@ class TestSkyRectangularAperture(BaseTestAperture):
         with pytest.raises(ValueError):
             SkyRectangularAperture(SKYCOORD, w=10.*UNIT, h=radius*UNIT,
                                    theta=30*u.deg)
+
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.w = 20. * UNIT
+        assert aper != self.aperture
 
 
 class TestSkyRectangularAnnulus(BaseTestAperture):
@@ -89,3 +107,9 @@ class TestSkyRectangularAnnulus(BaseTestAperture):
             SkyRectangularAnnulus(SKYCOORD, w_in=10.*UNIT, w_out=20.*UNIT,
                                   h_out=17.*UNIT, h_in=radius*UNIT,
                                   theta=60*u.deg)
+
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.w_in = 2. * UNIT
+        assert aper != self.aperture

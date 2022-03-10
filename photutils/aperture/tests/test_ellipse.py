@@ -31,6 +31,12 @@ class TestEllipticalAperture(BaseTestAperture):
         with pytest.raises(ValueError):
             EllipticalAperture(POSITIONS, a=10., b=radius, theta=np.pi/2.)
 
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.a = 20.
+        assert aper != self.aperture
+
 
 class TestEllipticalAnnulus(BaseTestAperture):
     aperture = EllipticalAnnulus(POSITIONS, a_in=10., a_out=20., b_out=17,
@@ -52,6 +58,12 @@ class TestEllipticalAnnulus(BaseTestAperture):
             EllipticalAnnulus(POSITIONS, a_in=10., a_out=20., b_out=17,
                               b_in=radius, theta=np.pi/3)
 
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.a_in = 2.
+        assert aper != self.aperture
+
 
 class TestSkyEllipticalAperture(BaseTestAperture):
     aperture = SkyEllipticalAperture(SKYCOORD, a=10.*UNIT, b=5.*UNIT,
@@ -66,6 +78,12 @@ class TestSkyEllipticalAperture(BaseTestAperture):
         with pytest.raises(ValueError):
             SkyEllipticalAperture(SKYCOORD, a=10.*UNIT, b=radius*UNIT,
                                   theta=30*u.deg)
+
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.a = 2. * UNIT
+        assert aper != self.aperture
 
 
 class TestSkyEllipticalAnnulus(BaseTestAperture):
@@ -88,3 +106,9 @@ class TestSkyEllipticalAnnulus(BaseTestAperture):
             SkyEllipticalAnnulus(SKYCOORD, a_in=10.*UNIT, a_out=20.*UNIT,
                                  b_out=17.*UNIT, b_in=radius*UNIT,
                                  theta=60*u.deg)
+
+    def test_copy_eq(self):
+        aper = self.aperture.copy()
+        assert aper == self.aperture
+        aper.a_in = 2. * UNIT
+        assert aper != self.aperture
