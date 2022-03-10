@@ -661,6 +661,10 @@ class PixelAperture(Aperture):
             if param == 'positions':
                 continue
             elif param == 'theta':
+                # photutils aperture sky angles are defined as the PA of
+                # the semimajor axis (i.e., relative to the WCS latitude
+                # axis). region sky angles are defined relative to the WCS
+                # longitude axis.
                 value = (value * u.rad) - angle.to(u.rad)
             else:
                 value = (value * u.pix * pixscale).to(u.arcsec)
@@ -739,6 +743,10 @@ class SkyAperture(Aperture):
             if param == 'positions':
                 continue
             elif param == 'theta':
+                # photutils aperture sky angles are defined as the PA of
+                # the semimajor axis (i.e., relative to the WCS latitude
+                # axis). region sky angles are defined relative to the WCS
+                # longitude axis.
                 value = (value + angle).to(u.radian).value
             else:
                 if value.unit.physical_type == 'angle':
