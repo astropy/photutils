@@ -572,13 +572,16 @@ class SkyRectangularAnnulus(SkyAperture):
 
     _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    w_in = ScalarAngleOrPixel('The inner full width, in angular or pixel units.')
-    w_out = ScalarAngleOrPixel('The outer full width, in angular or pixel units.')
-    h_in = ScalarAngleOrPixel('The inner full height, in angular or pixel units.')
+    w_in = ScalarAngleOrPixel('The inner full width, in angular or pixel '
+                              'units.')
+    w_out = ScalarAngleOrPixel('The outer full width, in angular or pixel '
+                               'units.')
+    h_in = ScalarAngleOrPixel('The inner full height, in angular or pixel '
+                              'units.')
     h_out = ScalarAngleOrPixel('The outer full height, in angular or pixel '
                                'units.')
-    theta = ScalarAngle('The position angle (in angular units) of the rectangle '
-                        '"width" side.')
+    theta = ScalarAngle('The position angle (in angular units) of the '
+                        'rectangle "width" side.')
 
     def __init__(self, positions, w_in, w_out, h_out, h_in=None,
                  theta=0.*u.deg):
