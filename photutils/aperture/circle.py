@@ -140,8 +140,8 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
     """
 
     _shape_params = ('r',)
-    positions = PixelPositions(description='The center pixel position(s).')
-    r = PositiveScalar(description='The radius in pixels.')
+    positions = PixelPositions('The center pixel position(s).')
+    r = PositiveScalar('The radius in pixels.')
 
     def __init__(self, positions, r):
         self.positions = positions
@@ -258,9 +258,9 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     """
 
     _shape_params = ('r_in', 'r_out')
-    positions = PixelPositions(description='The center pixel position(s).')
-    r_in = PositiveScalar(description='The inner radius in pixels.')
-    r_out = PositiveScalar(description='The outer radius in pixels.')
+    positions = PixelPositions('The center pixel position(s).')
+    r_in = PositiveScalar('The inner radius in pixels.')
+    r_out = PositiveScalar('The outer radius in pixels.')
 
     def __init__(self, positions, r_in, r_out):
         if not r_out > r_in:
@@ -363,10 +363,8 @@ class SkyCircularAperture(SkyAperture):
     """
 
     _shape_params = ('r',)
-    positions = SkyCoordPositions(description='The center position(s) in sky '
-                                  'coordinates.')
-    r = ScalarAngleOrPixel(
-        description='The radius, in angular or pixel units.')
+    positions = SkyCoordPositions('The center position(s) in sky coordinates.')
+    r = ScalarAngleOrPixel('The radius, in angular or pixel units.')
 
     def __init__(self, positions, r):
         self.positions = positions
@@ -424,12 +422,9 @@ class SkyCircularAnnulus(SkyAperture):
     """
 
     _shape_params = ('r_in', 'r_out')
-    positions = SkyCoordPositions(
-        description='The center position(s) in sky coordinates.')
-    r_in = ScalarAngleOrPixel(
-        description='The inner radius, in angular or pixel units.')
-    r_out = ScalarAngleOrPixel(
-        description='The outer radius, in angular or pixel units.')
+    positions = SkyCoordPositions('The center position(s) in sky coordinates.')
+    r_in = ScalarAngleOrPixel('The inner radius, in angular or pixel units.')
+    r_out = ScalarAngleOrPixel('The outer radius, in angular or pixel units.')
 
     def __init__(self, positions, r_in, r_out):
         if r_in.unit.physical_type != r_out.unit.physical_type:

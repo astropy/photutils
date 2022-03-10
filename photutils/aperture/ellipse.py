@@ -168,12 +168,11 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     """
 
     _shape_params = ('a', 'b', 'theta')
-    positions = PixelPositions(description='The center pixel position(s).')
-    a = PositiveScalar(description='The semimajor axis in pixels.')
-    b = PositiveScalar(description='The semiminor axis in pixels.')
-    theta = Scalar(description=('The counterclockwise rotation angle in '
-                                'radians of the ellipse semimajor axis from '
-                                'the positive x axis.'))
+    positions = PixelPositions('The center pixel position(s).')
+    a = PositiveScalar('The semimajor axis in pixels.')
+    b = PositiveScalar('The semiminor axis in pixels.')
+    theta = Scalar('The counterclockwise rotation angle in radians of the '
+                   'ellipse semimajor axis from the positive x axis.')
 
     def __init__(self, positions, a, b, theta=0.):
         self.positions = positions
@@ -310,14 +309,13 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     """
 
     _shape_params = ('a_in', 'a_out', 'b_in', 'b_out', 'theta')
-    positions = PixelPositions(description='The center pixel position(s).')
-    a_in = PositiveScalar(description='The inner semimajor axis in pixels.')
-    a_out = PositiveScalar(description='The outer semimajor axis in pixels.')
-    b_in = PositiveScalar(description='The inner semiminor axis in pixels.')
-    b_out = PositiveScalar(description='The outer semiminor axis in pixels.')
-    theta = Scalar(description=('The counterclockwise rotation angle in '
-                                'radians of the ellipse semimajor axis from '
-                                'the positive x axis.'))
+    positions = PixelPositions('The center pixel position(s).')
+    a_in = PositiveScalar('The inner semimajor axis in pixels.')
+    a_out = PositiveScalar('The outer semimajor axis in pixels.')
+    b_in = PositiveScalar('The inner semiminor axis in pixels.')
+    b_out = PositiveScalar('The outer semiminor axis in pixels.')
+    theta = Scalar('The counterclockwise rotation angle in radians of the '
+                   'ellipse semimajor axis from the positive x axis.')
 
     def __init__(self, positions, a_in, a_out, b_out, b_in=None, theta=0.):
         if not a_out > a_in:
@@ -444,15 +442,11 @@ class SkyEllipticalAperture(SkyAperture):
     """
 
     _shape_params = ('a', 'b', 'theta')
-    positions = SkyCoordPositions(
-        description='The center position(s) in sky coordinates.')
-    a = ScalarAngleOrPixel(
-        description='The semimajor axis, in angular or pixel units.')
-    b = ScalarAngleOrPixel(
-        description='The semiminor axis, in angular or pixel units.')
-    theta = ScalarAngle(
-        description=('The position angle in angular units of the ellipse '
-                     'semimajor axis.'))
+    positions = SkyCoordPositions('The center position(s) in sky coordinates.')
+    a = ScalarAngleOrPixel('The semimajor axis, in angular or pixel units.')
+    b = ScalarAngleOrPixel('The semiminor axis, in angular or pixel units.')
+    theta = ScalarAngle('The position angle in angular units of the ellipse '
+                        'semimajor axis.')
 
     def __init__(self, positions, a, b, theta=0.*u.deg):
         if a.unit.physical_type != b.unit.physical_type:
@@ -531,19 +525,17 @@ class SkyEllipticalAnnulus(SkyAperture):
     """
 
     _shape_params = ('a_in', 'a_out', 'b_in', 'b_out', 'theta')
-    positions = SkyCoordPositions(
-        description='The center position(s) in sky coordinates.')
-    a_in = ScalarAngleOrPixel(
-        description='The inner semimajor axis, in angular or pixel units.')
-    a_out = ScalarAngleOrPixel(
-        description='The outer semimajor axis, in angular or pixel units.')
-    b_in = ScalarAngleOrPixel(
-        description='The inner semiminor axis, in angular or pixel units.')
-    b_out = ScalarAngleOrPixel(
-        description='The outer semiminor axis, in angular or pixel units.')
-    theta = ScalarAngle(
-        description=('The position angle in angular units of the ellipse '
-                     'semimajor axis.'))
+    positions = SkyCoordPositions('The center position(s) in sky coordinates.')
+    a_in = ScalarAngleOrPixel('The inner semimajor axis, in angular or pixel '
+                              'units.')
+    a_out = ScalarAngleOrPixel('The outer semimajor axis, in angular or pixel '
+                               'units.')
+    b_in = ScalarAngleOrPixel('The inner semiminor axis, in angular or pixel '
+                              'units.')
+    b_out = ScalarAngleOrPixel('The outer semiminor axis, in angular or pixel '
+                               'units.')
+    theta = ScalarAngle('The position angle in angular units of the ellipse '
+                        'semimajor axis.')
 
     def __init__(self, positions, a_in, a_out, b_out, b_in=None,
                  theta=0.*u.deg):
