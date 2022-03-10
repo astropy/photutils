@@ -4,7 +4,7 @@ This module defines the base aperture classes.
 """
 
 import abc
-import copy
+from copy import deepcopy
 
 import numpy as np
 from astropy.coordinates import SkyCoord
@@ -82,6 +82,15 @@ class Aperture(metaclass=abc.ABCMeta):
                 cls_info.append((param, getattr(self, param)))
         fmt = [f'{key}: {val}' for key, val in cls_info]
         return '\n'.join(fmt)
+
+    def copy(self):
+        """
+        Make an independent (deep) copy.
+        """
+        params_copy = {}
+        for param in list(self._params):
+            params_copy[param] = deepcopy(getattr(self, param))
+        return self.__class__(**params_copy)
 
     @property
     def shape(self):
@@ -500,7 +509,7 @@ class PixelAperture(Aperture):
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
         """
-        xy_positions = copy.deepcopy(np.atleast_2d(self.positions))
+        xy_positions = deepcopy(np.atleast_2d(self.positions))
         xy_positions[:, 0] -= origin[0]
         xy_positions[:, 1] -= origin[1]
 
