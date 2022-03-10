@@ -59,6 +59,9 @@ API Changes
   - A ``ValueError`` is now raised if non-positive sizes are input to
     sky-based apertures. [#1295]
 
+  - The ``BoundingBox.plot()`` method now returns a
+    ``matplotlib.patches.Patch`` object. [#1305]
+
 - ``photutils.background``
 
   - Removed the deprecated ``background_mesh_ma`` and
