@@ -83,6 +83,46 @@ class Aperture(metaclass=abc.ABCMeta):
         fmt = [f'{key}: {val}' for key, val in cls_info]
         return '\n'.join(fmt)
 
+    def __eq__(self, other):
+        """
+        Equality operator for `Aperture`.
+
+        All Aperture properties are compared for strict equality except
+        for Quantity parameters, which allow for different units if they
+        are directly convertible.
+        """
+        if not isinstance(other, self.__class__):
+            return False
+
+        self_params = list(self._params)
+        other_params = list(other._params)
+
+        # check that both have identical parameters
+        if self_params != other_params:
+            return False
+
+        # now check the parameter values
+        # Note that Quantity comparisons allow for different units
+        # if they directly convertible (e.g., 1. * u.deg == 60. * u.arcmin)
+        try:
+            for param in self_params:
+                # np.any is used for SkyCoord array comparisons
+                if np.any(getattr(self, param) != getattr(other, param)):
+                    return False
+        except TypeError:
+            # TypeError is raised from SkyCoord comparison when they do
+            # not have equivalent frames. Here return False instead of
+            # the TypeError.
+            return False
+
+        return True
+
+    def __ne__(self, other):
+        """
+        Inequality operator for `Aperture`.
+        """
+        return not (self == other)
+
     def copy(self):
         """
         Make an independent (deep) copy.
