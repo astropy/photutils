@@ -1803,7 +1803,7 @@ class SourceCatalog:
     @as_scalar
     def elongation(self):
         r"""
-        The ratio of the lengths of the semimajor and semiminor axes:
+        The ratio of the lengths of the semimajor and semiminor axes.
 
         .. math:: \mathrm{elongation} = \frac{a}{b}
 
@@ -1817,7 +1817,7 @@ class SourceCatalog:
     def ellipticity(self):
         r"""
         1.0 minus the ratio of the lengths of the semimajor and
-        semiminor axes (or 1.0 minus the `elongation`):
+        semiminor axes (or 1.0 minus the `elongation`).
 
         .. math:: \mathrm{ellipticity} = 1 - \frac{b}{a}
 

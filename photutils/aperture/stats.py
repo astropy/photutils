@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module provides tools for calculating the properties of sources
-defined by a segmentation image.
+defined by an Aperture.
 """
 
 from copy import deepcopy
@@ -22,7 +22,6 @@ from ..utils._moments import _moments, _moments_central
 from ..utils._quantity_helpers import process_quantities
 
 __all__ = ['ApertureStats']
-__doctest_requires__ = {('ApertureStats', 'ApertureStats.*'): ['scipy']}
 
 
 # default table columns for `to_table()` output
@@ -53,6 +52,8 @@ class ApertureStats:
     """
     Class to create a catalog of statistics for sources defined by an
     aperture.
+
+    .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None):
@@ -198,7 +199,7 @@ class ApertureStats:
 
     def copy(self):
         """
-        Return a deep copy of this SourceCatalog.
+        Return a deep copy of this object.
         """
         return deepcopy(self)
 
@@ -443,12 +444,12 @@ class ApertureStats:
     def data(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the data using the
-        minimal bounding box of the source.
+        aperture bounding box.
 
         The cutout does not have units due to current limitations of
         masked quantity arrays.
 
-        The mask is `True` for pixels outside of the aperture masked
+        The mask is `True` for pixels outside of the aperture mask,
         pixels from the input ``mask``, or any non-finite ``data``
         values (NaN and inf).
         """
@@ -459,21 +460,21 @@ class ApertureStats:
     def error(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the error array using
-        the minimal bounding box of the source.
+        the aperture bounding box.
 
         The cutout does not have units due to current limitations of
         masked quantity arrays.
 
-        The mask is `True` for pixels outside of the source segment
-        (labeled region of interest), masked pixels from the ``mask``
-        input, or any non-finite ``data`` values (NaN and inf).
+        The mask is `True` for pixels outside of the aperture mask,
+        pixels from the input ``mask``, or any non-finite ``data``
+        values (NaN and inf).
         """
         return self._make_masked_array(list(zip(*self._aperture_cutouts))[1])
 
     @lazyproperty
     def _all_masked(self):
         """
-        True if all pixels over the source segment are masked.
+        True if all pixels within the aperture are masked.
         """
         return np.array([np.all(mask) for mask in self._cutout_total_mask])
 
@@ -539,7 +540,7 @@ class ApertureStats:
     def cutout_centroid(self):
         """
         The ``(x, y)`` coordinate, relative to the cutout data, of
-        the centroid within the source segment.
+        the centroid within the aperture.
         """
         moments = self.moments
         if self.isscalar:
@@ -556,8 +557,8 @@ class ApertureStats:
     @as_scalar
     def centroid(self):
         """
-        The ``(x, y)`` coordinate of the centroid within the source
-        segment.
+        The ``(x, y)`` coordinate of the centroid of the unmasked pixels
+        within the aperture.
         """
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.cutout_centroid + origin
@@ -565,8 +566,8 @@ class ApertureStats:
     @lazyproperty
     def _xcentroid(self):
         """
-        The ``x`` coordinate of the centroid within the source segment,
-        always as an iterable.
+        The ``x`` coordinate of the centroid of the unmasked pixels
+        within the aperture, always as an iterable.
         """
         xcentroid = np.transpose(self.centroid)[0]
         if self.isscalar:
@@ -577,15 +578,16 @@ class ApertureStats:
     @as_scalar
     def xcentroid(self):
         """
-        The ``x`` coordinate of the centroid within the source segment.
+        The ``x`` coordinate of the centroid of the unmasked pixels
+        within the aperture.
         """
         return self._xcentroid
 
     @lazyproperty
     def _ycentroid(self):
         """
-        The ``y`` coordinate of the centroid within the source segment,
-        always as an iterable.
+        The ``y`` coordinate of the centroid of the unmasked pixels
+        within the aperture, always as an iterable.
         """
         ycentroid = np.transpose(self.centroid)[1]
         if self.isscalar:
@@ -596,7 +598,8 @@ class ApertureStats:
     @as_scalar
     def ycentroid(self):
         """
-        The ``y`` coordinate of the centroid within the source segment.
+        The ``y`` coordinate of the centroid of the unmasked pixels
+        within the aperture.
         """
         return self._ycentroid
 
@@ -604,8 +607,9 @@ class ApertureStats:
     @as_scalar
     def sky_centroid(self):
         """
-        The sky coordinate of the centroid within the source segment,
-        returned as a `~astropy.coordinates.SkyCoord` object.
+        The sky coordinate of the centroid of the unmasked pixels within
+        the aperture, returned as a `~astropy.coordinates.SkyCoord`
+        object.
 
         The output coordinate frame is the same as the input ``wcs``.
 
@@ -619,9 +623,10 @@ class ApertureStats:
     @as_scalar
     def sky_centroid_icrs(self):
         """
-        The sky coordinate in the International Celestial Reference
-        System (ICRS) frame of the centroid within the source segment,
-        returned as a `~astropy.coordinates.SkyCoord` object.
+        The sky coordinate in the International Celestial
+        Reference System (ICRS) frame of the centroid of the
+        unmasked pixels within the aperture, returned as a
+        `~astropy.coordinates.SkyCoord` object.
 
         `None` if ``wcs`` is not input.
         """
@@ -632,8 +637,8 @@ class ApertureStats:
     @lazyproperty
     def _bbox(self):
         """
-        The `~photutils.aperture.BoundingBox` of the minimal rectangular
-        region containing the source segment, always as an iterable.
+        The `~photutils.aperture.BoundingBox` of the aperture, always as
+        an iterable.
         """
         return [aperture.bbox for aperture in self._apertures]
 
@@ -641,8 +646,11 @@ class ApertureStats:
     @as_scalar
     def bbox(self):
         """
-        The `~photutils.aperture.BoundingBox` of the minimal rectangular
-        region containing the source segment.
+        The `~photutils.aperture.BoundingBox` of the aperture.
+
+        The bounding box is calculated using the "exact" size of the
+        aperture, which may be slightly larger than the aperture mask
+        calculated using the "center" mode.
         """
         return self._bbox
 
@@ -650,7 +658,7 @@ class ApertureStats:
     @as_scalar
     def _bbox_minmax(self):
         """
-        The minimal bounding box x/y minimum and maximum.
+        The bounding box x/y minimum and maximum.
         """
         bbox = self.bbox
         if self.isscalar:
@@ -663,8 +671,7 @@ class ApertureStats:
     @as_scalar
     def bbox_xmin(self):
         """
-        The minimum ``x`` pixel index within the minimal bounding box
-        containing the source segment.
+        The minimum ``x`` pixel index of the bounding box.
         """
         return np.transpose(self._bbox_minmax)[0]
 
@@ -672,8 +679,7 @@ class ApertureStats:
     @as_scalar
     def bbox_xmax(self):
         """
-        The maximum ``x`` pixel index within the minimal bounding box
-        containing the source segment.
+        The maximum ``x`` pixel index of the bounding box.
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
@@ -683,8 +689,7 @@ class ApertureStats:
     @as_scalar
     def bbox_ymin(self):
         """
-        The minimum ``y`` pixel index within the minimal bounding box
-        containing the source segment.
+        The minimum ``y`` pixel index of the bounding box.
         """
         return np.transpose(self._bbox_minmax)[2]
 
@@ -692,162 +697,36 @@ class ApertureStats:
     @as_scalar
     def bbox_ymax(self):
         """
-        The maximum ``y`` pixel index within the minimal bounding box
-        containing the source segment.
+        The maximum ``y`` pixel index of the bounding box.
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
         return np.transpose(self._bbox_minmax)[3]
 
-    @lazyproperty
-    @as_scalar
-    def min_value(self):
+    def _calculate_stats(self, stat_func, unit=None):
         """
-        The minimum pixel value of the ``data`` within the source
-        segment.
+        Apply the input ``stat_func`` to the 1D array of unmasked data
+        values in the aperture.
+
+        Units are applied if the input ``data`` has units.
+
+        Parameters
+        ----------
+        stat_func : callable
+            The callable to apply to the 1D `~numpy.ndarray` of unmasked
+            data values.
+
+        unit : `None` or `astropy.unit.Unit`, optional
+            The unit to apply to the output data. This is used only
+            if the input ``data`` has units. If `None` then the input
+            ``data`` unit will be used.
         """
-        values = np.array([np.min(array) for array in self._data_values])
+        if unit is None:
+            unit = self._data_unit
+        result = np.array([stat_func(arr) for arr in self._data_values])
         if self._data_unit is not None:
-            values <<= self._data_unit
-        return values
-
-    @lazyproperty
-    @as_scalar
-    def max_value(self):
-        """
-        The maximum pixel value of the ``data`` within the source
-        segment.
-        """
-        values = np.array([np.max(array) for array in self._data_values])
-        if self._data_unit is not None:
-            values <<= self._data_unit
-        return values
-
-    @lazyproperty
-    @as_scalar
-    def cutout_minval_index(self):
-        """
-        The ``(y, x)`` coordinate, relative to the cutout data, of the
-        minimum pixel value of the ``data`` within the source segment.
-
-        If there are multiple occurrences of the minimum value, only the
-        first occurrence is returned.
-        """
-        data = self.data
-        if self.isscalar:
-            data = (data,)
-        idx = []
-        for arr in data:
-            if np.all(arr.mask):
-                idx.append((np.nan, np.nan))
-            else:
-                idx.append(np.unravel_index(np.argmin(arr), arr.shape))
-        return np.array(idx)
-
-    @lazyproperty
-    @as_scalar
-    def cutout_maxval_index(self):
-        """
-        The ``(y, x)`` coordinate, relative to the cutout data, of the
-        maximum pixel value of the ``data`` within the source segment.
-
-        If there are multiple occurrences of the maximum value, only the
-        first occurrence is returned.
-        """
-        data = self.data
-        if self.isscalar:
-            data = (data,)
-        idx = []
-        for arr in data:
-            if np.all(arr.mask):
-                idx.append((np.nan, np.nan))
-            else:
-                idx.append(np.unravel_index(np.argmax(arr), arr.shape))
-        return np.array(idx)
-
-    @lazyproperty
-    @as_scalar
-    def minval_index(self):
-        """
-        The ``(y, x)`` coordinate of the minimum pixel value of the
-        ``data`` within the source segment.
-
-        If there are multiple occurrences of the minimum value, only the
-        first occurrence is returned.
-        """
-        index = self.cutout_minval_index
-        if self.isscalar:
-            index = (index,)
-        out = []
-        for idx, bbox_minmax in zip(index, self._bbox_minmax):
-            out.append((idx[0] + bbox_minmax[2], idx[1] + bbox_minmax[0]))
-        return np.array(out)
-
-    @lazyproperty
-    @as_scalar
-    def maxval_index(self):
-        """
-        The ``(y, x)`` coordinate of the maximum pixel value of the
-        ``data`` within the source segment.
-
-        If there are multiple occurrences of the maximum value, only the
-        first occurrence is returned.
-        """
-        index = self.cutout_maxval_index
-        if self.isscalar:
-            index = (index,)
-        out = []
-        for idx, bbox_minmax in zip(index, self._bbox_minmax):
-            out.append((idx[0] + bbox_minmax[2], idx[0] + bbox_minmax[0]))
-        return np.array(out)
-
-    @lazyproperty
-    @as_scalar
-    def minval_xindex(self):
-        """
-        The ``x`` coordinate of the minimum pixel value of the ``data``
-        within the source segment.
-
-        If there are multiple occurrences of the minimum value, only the
-        first occurrence is returned.
-        """
-        return np.transpose(self.minval_index)[1]
-
-    @lazyproperty
-    @as_scalar
-    def minval_yindex(self):
-        """
-        The ``y`` coordinate of the minimum pixel value of the ``data``
-        within the source segment.
-
-        If there are multiple occurrences of the minimum value, only the
-        first occurrence is returned.
-        """
-        return np.transpose(self.minval_index)[0]
-
-    @lazyproperty
-    @as_scalar
-    def maxval_xindex(self):
-        """
-        The ``x`` coordinate of the maximum pixel value of the ``data``
-        within the source segment.
-
-        If there are multiple occurrences of the maximum value, only the
-        first occurrence is returned.
-        """
-        return np.transpose(self.maxval_index)[1]
-
-    @lazyproperty
-    @as_scalar
-    def maxval_yindex(self):
-        """
-        The ``y`` coordinate of the maximum pixel value of the ``data``
-        within the source segment.
-
-        If there are multiple occurrences of the maximum value, only the
-        first occurrence is returned.
-        """
-        return np.transpose(self.maxval_index)[0]
+            result <<= unit
+        return result
 
     @lazyproperty
     @as_scalar
@@ -864,10 +743,7 @@ class ApertureStats:
         Non-finite pixel values (NaN and inf) are excluded
         (automatically masked).
         """
-        source_sum = np.array([np.sum(arr) for arr in self._data_values])
-        if self._data_unit is not None:
-            source_sum <<= self._data_unit
-        return source_sum
+        return self._calculate_stats(np.sum)
 
     @lazyproperty
     @as_scalar
@@ -877,7 +753,7 @@ class ApertureStats:
         array.
 
         ``sum_err`` is the quadrature sum of the total errors over the
-        unmasked pixels within the aperture::
+        unmasked pixels within the aperture:
 
         .. math:: \Delta F = \sqrt{\sum_{i \in A}
                   \sigma_{\mathrm{tot}, i}^2}
@@ -900,62 +776,105 @@ class ApertureStats:
             err <<= self._data_unit
         return err
 
-    def _calculate_stats(self, stat_func, unit=None):
-        if unit is None:
-            unit = self._data_unit
-        result = np.array([stat_func(arr) for arr in self._data_values])
-        if self._data_unit is not None:
-            result <<= unit
-        return result
-
     @lazyproperty
     @as_scalar
     def min(self):
+        """
+        The minimum of the unmasked pixel values within the aperture.
+        """
         return self._calculate_stats(np.min)
 
     @lazyproperty
     @as_scalar
     def max(self):
+        """
+        The maximum of the unmasked pixel values within the aperture.
+        """
         return self._calculate_stats(np.max)
 
     @lazyproperty
     @as_scalar
     def mean(self):
+        """
+        The mean of the unmasked pixel values within the aperture.
+        """
         return self._calculate_stats(np.mean)
 
     @lazyproperty
     @as_scalar
     def median(self):
+        """
+        The median of the unmasked pixel values within the aperture.
+        """
         return self._calculate_stats(np.median)
 
     @lazyproperty
     @as_scalar
     def mode(self):
+        """
+        The mode of the unmasked pixel values within the aperture.
+
+        The mode is estimated as ``(3 * median) - (2 * mean)``.
+        """
         return 3. * self.median - 2. * self.mean
 
     @lazyproperty
     @as_scalar
     def std(self):
+        """
+        The standard deviation of the unmasked pixel values within the
+        aperture.
+        """
         return self._calculate_stats(np.std)
 
     @lazyproperty
     @as_scalar
     def mad_std(self):
+        r"""
+        The standard deviation calculated using
+        the `median absolute deviation (MAD)
+        <https://en.wikipedia.org/wiki/Median_absolute_deviation>`_.
+
+        The standard deviation estimator is given by:
+
+        .. math::
+
+            \sigma \approx \frac{\textrm{MAD}}{\Phi^{-1}(3/4)}
+                \approx 1.4826 \ \textrm{MAD}
+
+        where :math:`\Phi^{-1}(P)` is the normal inverse cumulative
+        distribution function evaluated at probability :math:`P = 3/4`.
+        """
         return self._calculate_stats(mad_std)
 
     @lazyproperty
     @as_scalar
     def var(self):
+        """
+        The variance of the unmasked pixel values within the aperture.
+        """
         return self._calculate_stats(np.var, unit=self._data_unit**2)
 
     @lazyproperty
     @as_scalar
     def biweight_location(self):
+        """
+        The biweight location of the unmasked pixel values within the
+        aperture.
+
+        See `astropy.stats.biweight_location`.
+        """
         return self._calculate_stats(biweight_location)
 
     @lazyproperty
     @as_scalar
     def biweight_midvariance(self):
+        """
+        The biweight midvariance of the unmasked pixel values within the
+        aperture.
+
+        See `astropy.stats.biweight_midvariance`
+        """
         return self._calculate_stats(biweight_midvariance,
                                      unit=self._data_unit**2)
 
@@ -963,62 +882,15 @@ class ApertureStats:
     @as_scalar
     def area(self):
         """
-        The total unmasked area of the source segment in units of
-        pixels**2.
+        The total area of the unmasked pixel values within the aperture.
 
-        Note that the source area may be smaller than its segment area
-        if a mask is input to `SourceCatalog` or if the ``data``
-        within the segment contains invalid values (NaN and inf).
+        Note that the source area may be smaller than the aperture area
+        if a mask is input to `ApertureStats` or if the ``data`` within
+        the aperture contains invalid values (NaN and inf).
         """
         areas = np.array([arr.size for arr in self._data_values]).astype(float)
         areas[self._all_masked] = np.nan
         return areas << (u.pix ** 2)
-
-    @lazyproperty
-    @as_scalar
-    def perimeter(self):
-        """
-        The perimeter of the source segment, approximated as the total
-        length of lines connecting the centers of the border pixels
-        defined by a 4-pixel connectivity.
-
-        If any masked pixels make holes within the source segment, then
-        the perimeter around the inner hole (e.g., an annulus) will also
-        contribute to the total perimeter.
-
-        References
-        ----------
-        .. [1] K. Benkrid, D. Crookes, and A. Benkrid.  "Design and FPGA
-               Implementation of a Perimeter Estimator".  Proceedings of
-               the Irish Machine Vision and Image Processing Conference,
-               pp. 51-57 (2000).
-               http://www.cs.qub.ac.uk/~d.crookes/webpubs/papers/perimeter.doc
-        """
-        from scipy.ndimage import binary_erosion, convolve
-
-        selem = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
-        kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
-        size = 34
-        weights = np.zeros(size, dtype=float)
-        weights[[5, 7, 15, 17, 25, 27]] = 1.
-        weights[[21, 33]] = np.sqrt(2.)
-        weights[[13, 23]] = (1 + np.sqrt(2.)) / 2.
-
-        perimeter = []
-        for mask in self._cutout_total_mask:
-            if np.all(mask):
-                perimeter.append(np.nan)
-                continue
-
-            data = ~mask
-            data_eroded = binary_erosion(data, selem, border_value=0)
-            border = np.logical_xor(data, data_eroded).astype(int)
-            perimeter_data = convolve(border, kernel, mode='constant', cval=0)
-            perimeter_hist = np.bincount(perimeter_data.ravel(),
-                                         minlength=size)
-            perimeter.append(perimeter_hist[0:size] @ weights)
-
-        return np.array(perimeter) * u.pix
 
     @lazyproperty
     @as_scalar
@@ -1159,7 +1031,9 @@ class ApertureStats:
         """
         The angle between the ``x`` axis and the major axis of the 2D
         Gaussian function that has the same second-order moments as the
-        source.  The angle increases in the counter-clockwise direction.
+        source.
+
+        The angle increases in the counter-clockwise direction.
         """
         covar = self._covariance
         orient_radians = 0.5 * np.arctan2(2. * covar[:, 0, 1],
@@ -1188,7 +1062,7 @@ class ApertureStats:
     @as_scalar
     def elongation(self):
         r"""
-        The ratio of the lengths of the semimajor and semiminor axes:
+        The ratio of the lengths of the semimajor and semiminor axes.
 
         .. math:: \mathrm{elongation} = \frac{a}{b}
 
@@ -1202,7 +1076,7 @@ class ApertureStats:
     def ellipticity(self):
         r"""
         1.0 minus the ratio of the lengths of the semimajor and
-        semiminor axes (or 1.0 minus the `elongation`):
+        semiminor axes (or 1.0 minus the `elongation`).
 
         .. math:: \mathrm{ellipticity} = 1 - \frac{b}{a}
 
@@ -1309,7 +1183,7 @@ class ApertureStats:
         r"""
         The `Gini coefficient
         <https://en.wikipedia.org/wiki/Gini_coefficient>`_ of the
-        source.
+        unmasked pixel values within the aperture.
 
         The Gini coefficient is calculated using the prescription from
         `Lotz et al. 2004
@@ -1321,7 +1195,7 @@ class ApertureStats:
             \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
         where :math:`\bar{x}` is the mean over pixel values :math:`x_i`
-        within the source segment.
+        within the aperture.
 
         The Gini coefficient is a way of measuring the inequality in a
         given set of values. In the context of galaxy morphology, it
