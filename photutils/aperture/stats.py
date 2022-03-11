@@ -9,7 +9,8 @@ import functools
 import inspect
 import warnings
 
-from astropy.stats import SigmaClip
+from astropy.stats import (SigmaClip, mad_std, biweight_location,
+                           biweight_midvariance)
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
@@ -26,9 +27,11 @@ __doctest_requires__ = {('ApertureStats', 'ApertureStats.*'): ['scipy']}
 
 # default table columns for `to_table()` output
 DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
-                   'area', 'min_value', 'max_value', 'sum', 'sum_err',
-                   'semimajor_sigma', 'semiminor_sigma', 'orientation',
-                   'eccentricity']
+                   'area', 'min', 'max', 'sum', 'sum_err', 'mean',
+                   'median', 'mode', 'std', 'mad_std', 'var',
+                   'biweight_location', 'biweight_midvariance',
+                   'fwhm', 'semimajor_sigma', 'semiminor_sigma',
+                   'orientation', 'eccentricity']
 
 
 def as_scalar(method):
@@ -896,6 +899,65 @@ class ApertureStats:
         if self._data_unit is not None:
             err <<= self._data_unit
         return err
+
+    def _calculate_stats(self, stat_func, unit=None):
+        if unit is None:
+            unit = self._data_unit
+        result = np.array([stat_func(arr) for arr in self._data_values])
+        if self._data_unit is not None:
+            result <<= unit
+        return result
+
+    @lazyproperty
+    @as_scalar
+    def min(self):
+        return self._calculate_stats(np.min)
+
+    @lazyproperty
+    @as_scalar
+    def max(self):
+        return self._calculate_stats(np.max)
+
+    @lazyproperty
+    @as_scalar
+    def mean(self):
+        return self._calculate_stats(np.mean)
+
+    @lazyproperty
+    @as_scalar
+    def median(self):
+        return self._calculate_stats(np.median)
+
+    @lazyproperty
+    @as_scalar
+    def mode(self):
+        return 3. * self.median - 2. * self.mean
+
+    @lazyproperty
+    @as_scalar
+    def std(self):
+        return self._calculate_stats(np.std)
+
+    @lazyproperty
+    @as_scalar
+    def mad_std(self):
+        return self._calculate_stats(mad_std)
+
+    @lazyproperty
+    @as_scalar
+    def var(self):
+        return self._calculate_stats(np.var, unit=self._data_unit**2)
+
+    @lazyproperty
+    @as_scalar
+    def biweight_location(self):
+        return self._calculate_stats(biweight_location)
+
+    @lazyproperty
+    @as_scalar
+    def biweight_midvariance(self):
+        return self._calculate_stats(biweight_midvariance,
+                                     unit=self._data_unit**2)
 
     @lazyproperty
     @as_scalar
