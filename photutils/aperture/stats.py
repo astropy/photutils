@@ -305,37 +305,39 @@ class ApertureStats:
 
     def get_id(self, id_num):
         """
-        Return a new `ApertureStats` object for the input ``id`` only.
+        Return a new `ApertureStats` object for the input ID number
+        only.
 
         Parameters
         ----------
         id_num : int
-            The aperture ID.
+            The aperture ID number.
 
         Returns
         -------
         result : `ApertureStats`
             A new `ApertureStats` object containing only the source with
-            the input ``id``.
+            the input ID number.
         """
         return self.get_ids(id_num)
 
-    def get_ids(self, ids):
+    def get_ids(self, id_nums):
         """
-        Return a new `ApertureStats` object for the input ``ids`` only.
+        Return a new `ApertureStats` object for the input ID numbers
+        only.
 
         Parameters
         ----------
-        ids : list, tuple, or `~numpy.ndarray` of int
-            The aperture ID(s).
+        id_nums : list, tuple, or `~numpy.ndarray` of int
+            The aperture ID number(s).
 
         Returns
         -------
         result : `ApertureStats`
             A new `ApertureStats` object containing only the sources with
-            the input ``ids``.
+            the input ID numbers.
         """
-        idx = np.searchsorted(self.id, ids)
+        idx = np.searchsorted(self.id, id_nums)
         return self[idx]
 
     @property
@@ -648,9 +650,9 @@ class ApertureStats:
         """
         The `~photutils.aperture.BoundingBox` of the aperture.
 
-        The bounding box is calculated using the "exact" size of the
-        aperture, which may be slightly larger than the aperture mask
-        calculated using the "center" mode.
+        Note that the aperture bounding box is calculated using the
+        exact size of the aperture, which may be slightly larger than
+        the aperture mask calculated using the "center" mode.
         """
         return self._bbox
 
