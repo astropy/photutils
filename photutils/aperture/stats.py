@@ -283,9 +283,6 @@ class ApertureStats:
 
             * any masked pixels
             * invalid values (NaN and inf)
-            * negative data values - negative pixels (especially at
-              large radii) can give image moments that have negative
-              variances.
 
         These arrays are used to derive moment-based properties.
         """
@@ -296,10 +293,9 @@ class ApertureStats:
 
         cutouts = []
         for arr in data:
-            # include negative data values in the mask
-            mask = arr.mask | (arr.data < 0)
-            arr[mask] = 0.
-            cutouts.append(arr)
+            arr_ = arr.data
+            arr_[arr.mask] = 0.
+            cutouts.append(arr_)
 
         return cutouts
 
