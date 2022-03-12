@@ -855,7 +855,10 @@ class ApertureStats:
         """
         The variance of the unmasked pixel values within the aperture.
         """
-        return self._calculate_stats(np.var, unit=self._data_unit**2)
+        unit = self._data_unit
+        if unit is not None:
+            unit **= 2
+        return self._calculate_stats(np.var, unit=unit)
 
     @lazyproperty
     @as_scalar
@@ -877,8 +880,10 @@ class ApertureStats:
 
         See `astropy.stats.biweight_midvariance`
         """
-        return self._calculate_stats(biweight_midvariance,
-                                     unit=self._data_unit**2)
+        unit = self._data_unit
+        if unit is not None:
+            unit **= 2
+        return self._calculate_stats(biweight_midvariance, unit=unit)
 
     @lazyproperty
     @as_scalar
