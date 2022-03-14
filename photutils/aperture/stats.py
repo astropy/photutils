@@ -57,7 +57,7 @@ class ApertureStats:
     """
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
-                 sigma_clip=None):
+                 sigma_clip=None, sum_method='exact', subpixels=5):
 
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
@@ -70,6 +70,8 @@ class ApertureStats:
         if sigma_clip is not None and not isinstance(sigma_clip, SigmaClip):
             raise TypeError('sigma_clip must be a SigmaClip instance')
         self.sigma_clip = sigma_clip
+        self.sum_method = sum_method
+        self.subpixels = subpixels
 
         self._ids = np.arange(self.n_apertures) + 1
         self._data_mask = self._make_data_mask()
@@ -233,88 +235,6 @@ class ApertureStats:
         values.fill(np.nan)
         return values
 
-    @lazyproperty
-    def _aperture_cutouts(self):
-        """
-        Cutouts for the data, error, and total mask.
-        """
-        data_cutouts = []
-        error_cutouts = []
-        mask_cutouts = []
-        for mask in self._aperture_masks:
-            (slc_large, slc_small) = mask.get_overlap_slices(self._data.shape)
-            if slc_large is None:
-                mask_cutout = False
-                data_cutout = None
-                error_cutout = None
-            else:
-                apermask_cutout = mask.data[slc_small]
-                # combine aperture mask and data mask, which includes
-                # non-finite values and the input mask
-                goodmask = (apermask_cutout > 0) & ~self._data_mask[slc_large]
-                mask_cutout = ~goodmask  # bad values
-
-                # data_cutout will have zeros where goodmask is False
-                data_cutout = self._data[slc_large] * goodmask
-
-                if self.sigma_clip is not None:
-                    # to input a mask, SigmaClip needs a MaskedArray
-                    data_cutout_ma = np.ma.masked_array(data_cutout,
-                                                        mask=mask_cutout)
-                    data_sigclip = self.sigma_clip(data_cutout_ma)
-
-                    # modify the mask_cutout and reapply to the data_cutout
-                    mask_cutout |= data_sigclip.mask
-                    data_cutout = data_cutout_ma.filled(0.)
-
-                if self._error is None:
-                    error_cutout = None
-                else:
-                    # ~mask_cutout is True for good values
-                    error_cutout = self._error[slc_large] * ~mask_cutout
-
-            data_cutouts.append(data_cutout)
-            error_cutouts.append(error_cutout)
-            mask_cutouts.append(mask_cutout)
-
-        # use zip (instead of np.transpose) because these may contain
-        # arrays that have different shapes
-        return list(zip(data_cutouts, error_cutouts, mask_cutouts))
-
-    @lazyproperty
-    def _cutout_total_mask(self):
-        """
-        Boolean mask representing the combination of ``_data_mask`` and
-        the cutout aperture mask.
-
-        This mask is applied to ``data`` and ``error`` inputs when
-        calculating properties.
-        """
-        return list(zip(*self._aperture_cutouts))[2]
-
-    @lazyproperty
-    def _cutout_moment_data(self):
-        """
-        A list of 2D `~numpy.ndarray` cutouts from the data. The
-        following pixels are set to zero in these arrays:
-
-            * any masked pixels
-            * invalid values (NaN and inf)
-
-        These arrays are used to derive moment-based properties.
-        """
-        data = deepcopy(self.data)  # self.data is a list
-        if self.isscalar:
-            data = (data,)
-
-        cutouts = []
-        for arr in data:
-            arr_ = arr.data
-            arr_[arr.mask] = 0.
-            cutouts.append(arr_)
-
-        return cutouts
-
     def get_id(self, id_num):
         """
         Return a new `ApertureStats` object for the input ID number
@@ -413,6 +333,15 @@ class ApertureStats:
             tbl[column] = values
         return tbl
 
+    @lazyproperty
+    def n_apertures(self):
+        """
+        The number of positions in the input aperture.
+        """
+        if self.isscalar:
+            return 1
+        return len(self.aperture)
+
     @property
     def _apertures(self):
         """
@@ -429,19 +358,131 @@ class ApertureStats:
         The aperture masks (`ApertureMask`) generated with the 'center'
         method, always as an iterable.
         """
-        aperture_mask = self.aperture.to_mask(method='center')
+        aperture_masks = self.aperture.to_mask(method='center')
         if self.isscalar:
-            aperture_mask = (aperture_mask,)
-        return aperture_mask
+            aperture_masks = (aperture_masks,)
+        return aperture_masks
 
     @lazyproperty
-    def n_apertures(self):
+    def _overlap_slices(self):
         """
-        The number of positions in the input aperture.
+        The aperture mask overlap slices with the data, always as an
+        iterable.
+
+        The overlap slices are the same for all aperture mask methods.
         """
+        overlap_slices = []
+        for apermask in self._aperture_masks:
+            (slc_large, slc_small) = apermask.get_overlap_slices(
+                self._data.shape)
+            overlap_slices.append((slc_large, slc_small))
+        return overlap_slices
+
+    @lazyproperty
+    def _data_cutouts(self):
+        """
+        The data cutouts from the aperture bounding box, always as a
+        iterable.
+        """
+        cutouts = []
+        for slc_large, _ in self._overlap_slices:
+            cutouts.append(self._data[slc_large])
+        return cutouts
+
+    @lazyproperty
+    def _data_mask_cutouts(self):
+        """
+        The data mask cutouts from the aperture bounding box, with
+        masked values set to zero, always as a iterable.
+
+        The masked values here include the input mask and the non-finite
+        data values.
+        """
+        mask_cutouts = []
+        for slc_large, _ in self._overlap_slices:
+            mask_cutouts.append(self._data_mask[slc_large])
+        return mask_cutouts
+
+    def _make_aperture_cutouts(self, aperture_masks):
+        """
+        Make cutouts for the data, error, and total mask.
+        """
+        data_cutouts = []
+        error_cutouts = []
+        mask_cutouts = []
+
+        for (apermask, slices, data_cutout, data_mask) in zip(
+                aperture_masks, self._overlap_slices, self._data_cutouts,
+                self._data_mask_cutouts):
+
+            slc_large, slc_small = slices
+            if slc_large is None:  # aperture does not overlap the data
+                mask_cutout = False
+                data_cutout = None
+                error_cutout = None
+            else:
+                apermask_cutout = apermask.data[slc_small]
+
+                # apply the aperture mask; for "exact" and "subpixel"
+                # this is an expanded boolean mask using the aperture
+                # mask zero values
+                mask_cutout = (apermask_cutout == 0) | data_mask
+
+                if self.sigma_clip is None:
+                    # data_cutout will have zeros where mask_cutout is True
+                    data_cutout *= ~mask_cutout
+                else:
+                    # to input a mask, SigmaClip needs a MaskedArray
+                    data_cutout_ma = np.ma.masked_array(data_cutout,
+                                                        mask=mask_cutout)
+                    data_sigclip = self.sigma_clip(data_cutout_ma)
+
+                    mask_cutout = data_sigclip.mask
+                    data_cutout = data_sigclip.filled(0.)
+
+                if self._error is None:
+                    error_cutout = None
+                else:
+                    # error_cutout will have zeros where mask_cutout is True
+                    error_cutout = self._error[slc_large] * ~mask_cutout
+
+            data_cutouts.append(data_cutout)
+            error_cutouts.append(error_cutout)
+            mask_cutouts.append(mask_cutout)
+
+        # use zip (instead of np.transpose) because these may contain
+        # arrays that have different shapes
+        return list(zip(data_cutouts, error_cutouts, mask_cutouts))
+
+    @lazyproperty
+    def _aperture_cutouts(self):
+        """
+        Cutouts for the data, error, and total mask using the "center"
+        aperture mask method.
+        """
+        return self._make_aperture_cutouts(self._aperture_masks)
+
+    @lazyproperty
+    def _aperture_cutouts_sum(self):
+        """
+        Cutouts for the data, error, and total mask using the input
+        ``sum_method`` aperture mask method.
+        """
+        aperture_masks = self.aperture.to_mask(method=self.sum_method)
         if self.isscalar:
-            return 1
-        return len(self.aperture)
+            aperture_masks = (aperture_masks,)
+        return self._make_aperture_cutouts(aperture_masks)
+
+    @lazyproperty
+    def _cutout_total_mask(self):
+        """
+        Boolean mask representing the combination of ``_data_mask``,
+        the cutout aperture mask, and the sigma-clip mask.
+
+        This mask is applied to ``data`` and ``error`` inputs when
+        calculating properties.
+        """
+        return list(zip(*self._aperture_cutouts))[2]
 
     @as_scalar
     def _make_masked_array(self, array):
@@ -466,8 +507,8 @@ class ApertureStats:
         masked quantity arrays.
 
         The mask is `True` for pixels outside of the aperture mask,
-        pixels from the input ``mask``, or any non-finite ``data``
-        values (NaN and inf).
+        pixels from the input ``mask``, non-finite ``data`` values (NaN
+        and inf), and sigma-clipped pixels.
         """
         return self._make_masked_array(list(zip(*self._aperture_cutouts))[0])
 
@@ -482,10 +523,33 @@ class ApertureStats:
         masked quantity arrays.
 
         The mask is `True` for pixels outside of the aperture mask,
-        pixels from the input ``mask``, or any non-finite ``data``
-        values (NaN and inf).
+        pixels from the input ``mask``, non-finite ``data`` values (NaN
+        and inf), and sigma-clipped pixels.
         """
         return self._make_masked_array(list(zip(*self._aperture_cutouts))[1])
+
+    @lazyproperty
+    def _cutout_moment_data(self):
+        """
+        A list of 2D `~numpy.ndarray` cutouts from the data. The
+        following pixels are set to zero in these arrays:
+
+            * any masked pixels
+            * invalid values (NaN and inf)
+
+        These arrays are used to derive moment-based properties.
+        """
+        data = deepcopy(self.data)  # self.data is a list
+        if self.isscalar:
+            data = (data,)
+
+        cutouts = []
+        for arr in data:
+            arr_ = arr.data
+            arr_[arr.mask] = 0.
+            cutouts.append(arr_)
+
+        return cutouts
 
     @lazyproperty
     def _all_masked(self):
