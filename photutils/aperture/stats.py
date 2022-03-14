@@ -62,7 +62,7 @@ class ApertureStats:
                                                  ('data', 'error'))
         self._data = self._validate_array(data, 'data', shape=False)
         self._data_unit = unit
-        self._aperture = self._validate_aperture(aperture)
+        self.aperture = self._validate_aperture(aperture)
         self._error = self._validate_array(error, 'error')
         self._mask = self._validate_array(mask, 'mask')
         self._wcs = wcs
@@ -137,8 +137,8 @@ class ApertureStats:
             setattr(newcls, attr, getattr(self, attr))
 
         # need to slice _aperture and _ids;
-        # _aperture determines isscalar (needed below)
-        attrs = ('_aperture', '_ids')
+        # aperture determines isscalar (needed below)
+        attrs = ('aperture', '_ids')
         for attr in attrs:
             setattr(newcls, attr, getattr(self, attr)[index])
 
@@ -195,7 +195,7 @@ class ApertureStats:
         """
         Whether the instance is scalar (e.g., a single aperture position).
         """
-        return self._aperture.isscalar
+        return self.aperture.isscalar
 
     def copy(self):
         """
@@ -402,7 +402,7 @@ class ApertureStats:
         """
         The input apertures, always as an iterable.
         """
-        apertures = self._aperture
+        apertures = self.aperture
         if self.isscalar:
             apertures = (apertures,)
         return apertures
@@ -413,7 +413,7 @@ class ApertureStats:
         The aperture masks (`ApertureMask`) generated with the 'center'
         method, always as an iterable.
         """
-        aperture_mask = self._aperture.to_mask(method='center')
+        aperture_mask = self.aperture.to_mask(method='center')
         if self.isscalar:
             aperture_mask = (aperture_mask,)
         return aperture_mask
@@ -425,7 +425,7 @@ class ApertureStats:
         """
         if self.isscalar:
             return 1
-        return len(self._aperture)
+        return len(self.aperture)
 
     @as_scalar
     def _make_masked_array(self, array):
