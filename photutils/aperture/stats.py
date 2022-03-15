@@ -98,18 +98,6 @@ class ApertureStats:
         return array
 
     @property
-    def _properties(self):
-        """
-        A list of all class properties, including lazyproperties (even in
-        superclasses).
-        """
-        def isproperty(obj):
-            return isinstance(obj, property)
-
-        return [i[0] for i in inspect.getmembers(self.__class__,
-                                                 predicate=isproperty)]
-
-    @property
     def _lazyproperties(self):
         """
         A list of all class lazyproperties (even in superclasses).
@@ -140,7 +128,8 @@ class ApertureStats:
         # attributes defined in __init__ that are copied directly to the
         # new class
         init_attr = ('_data', '_data_unit', '_error', '_mask', '_wcs',
-                     '_data_mask', 'default_columns', 'meta')
+                     'sigma_clip', 'sum_method', 'subpixels', '_data_mask',
+                     'default_columns', 'meta')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -363,7 +352,8 @@ class ApertureStats:
         The aperture masks (`ApertureMask`) generated with the
         ``sum_method`` method, always as an iterable.
         """
-        aperture_masks = self.aperture.to_mask(method=self.sum_method)
+        aperture_masks = self.aperture.to_mask(method=self.sum_method,
+                                               subpixels=self.subpixels)
         if self.isscalar:
             aperture_masks = (aperture_masks,)
         return aperture_masks
@@ -386,7 +376,7 @@ class ApertureStats:
     @lazyproperty
     def _data_cutouts(self):
         """
-        The data cutouts from the aperture bounding box, always as a
+        The data cutouts using the aperture bounding box, always as a
         iterable.
         """
         cutouts = []
@@ -397,8 +387,8 @@ class ApertureStats:
     @lazyproperty
     def _data_mask_cutouts(self):
         """
-        The data mask cutouts from the aperture bounding box, with
-        masked values set to zero, always as a iterable.
+        The data mask cutouts using the aperture bounding box, always as
+        a iterable.
 
         The masked values here include the input mask and the non-finite
         data values.
@@ -410,8 +400,19 @@ class ApertureStats:
 
     def _make_aperture_cutouts(self, aperture_masks):
         """
-        Make cutouts for the data, error, total mask, and aperture mask
-        weights.
+        Make aperture-weighted cutouts for the data and error, and
+        cutouts for the total mask and aperture mask weights.
+
+        Parameters
+        ----------
+        aperture_masks : list of `ApertureMask`
+            A list of `ApertureMask` objects.
+
+        Returns
+        -------
+        data, error, mask, weights : list of `~numpy.ndarray`
+            A list of cutout arrays for the data, error, mask and weight
+            arrays for each source (aperture position).
         """
         data_cutouts = []
         error_cutouts = []
@@ -446,7 +447,7 @@ class ApertureStats:
                                                         mask=mask_cutout)
                     data_sigclip = self.sigma_clip(data_cutout_ma)
 
-                    # define a mask only of sigma-clipped pixels
+                    # define a mask of only the sigma-clipped pixels
                     sigclip_mask = data_sigclip.mask & ~mask_cutout
                     weight_cutout *= ~sigclip_mask
 
@@ -461,6 +462,8 @@ class ApertureStats:
                 else:
                     # apply the exact weights and total mask;
                     # error_cutout will have zeros where mask_cutout is True
+
+                    # FIXME for exact weights
                     error_cutout = np.sqrt(self._error[slc_large]**2
                                            * apermask_cutout * ~mask_cutout)
 
@@ -477,80 +480,141 @@ class ApertureStats:
     @lazyproperty
     def _aperture_cutouts_center(self):
         """
-        Cutouts for the data, error, total mask, and aperture weights
-        using the "center" aperture mask method.
+        Aperture-weighted cutouts for the data, error, total mask, and
+        aperture weights using the "center" aperture mask method.
         """
         return self._make_aperture_cutouts(self._aperture_masks_center)
 
     @lazyproperty
     def _aperture_cutouts(self):
         """
-        Cutouts for the data, error, total mask, and aperture weights
-        using the input ``sum_method`` aperture mask method.
+        Aperture-weighted cutouts for the data, error, total mask, and
+        aperture weights using the input ``sum_method`` aperture mask
+        method.
         """
         return self._make_aperture_cutouts(self._aperture_masks)
 
     @lazyproperty
-    def _cutout_total_mask(self):
+    def _mask_cutout_center(self):
         """
-        Boolean mask representing the combination of ``_data_mask``,
-        the cutout aperture mask, and the sigma-clip mask.
+        Boolean mask cutouts representing the total mask.
 
-        This mask is applied to ``data`` and ``error`` inputs when
-        calculating properties.
+        The total mask is combination of the input ``mask``, non-finite
+        ``data`` values, the cutout aperture mask using the "center"
+        method, and the sigma-clip mask.
+        """
+        return list(zip(*self._aperture_cutouts_center))[2]
+
+    @lazyproperty
+    def _mask_cutout(self):
+        """
+        Boolean mask cutouts representing the total mask.
+
+        The total mask is combination of the input ``mask``,
+        non-finite ``data`` values, the cutout aperture mask using the
+        ``sum_method`` method, and the sigma-clip mask.
         """
         return list(zip(*self._aperture_cutouts))[2]
 
     @as_scalar
-    def _make_masked_array(self, array):
+    def _make_masked_array_center(self, array):
         """
-        Make masked arrays from cutouts.
+        Retun a list of cutout masked arrays using the
+        ``_mask_cutout_center`` mask.
 
         Units are not applied.
         """
-        total_mask = self._cutout_total_mask
-
         return [np.ma.masked_array(arr, mask=mask)
-                for arr, mask in zip(array, total_mask)]
+                for arr, mask in zip(array, self._mask_cutout_center)]
+
+    @as_scalar
+    def _make_masked_array(self, array):
+        """
+        Retun a list of cutout masked arrays using the ``_mask_cutout``
+        mask.
+
+        Units are not applied.
+        """
+        return [np.ma.masked_array(arr, mask=mask)
+                for arr, mask in zip(array, self._mask_cutout)]
 
     @lazyproperty
     @as_scalar
-    def data(self):
+    def data_cutout(self):
         """
-        A 2D `~numpy.ma.MaskedArray` cutout from the data using the
-        aperture bounding box.
+        A 2D aperture-weighted cutout from the data using the aperture
+        mask with the "center" method as a `~numpy.ma.MaskedArray`.
 
         The cutout does not have units due to current limitations of
         masked quantity arrays.
 
-        The mask is `True` for pixels outside of the aperture mask,
-        pixels from the input ``mask``, non-finite ``data`` values (NaN
-        and inf), and sigma-clipped pixels.
+        The mask is `True` for pixels from the input ``mask``,
+        non-finite ``data`` values (NaN and inf), sigma-clipped pixels
+        within the aperture, and pixels where the aperture mask has zero
+        weight.
+        """
+        return self._make_masked_array_center(
+            list(zip(*self._aperture_cutouts_center))[0])
+
+    @lazyproperty
+    @as_scalar
+    def data_sumcutout(self):
+        """
+        A 2D aperture-weighted cutout from the data using the
+        aperture mask with the input ``sum_method`` method as a
+        `~numpy.ma.MaskedArray`.
+
+        The cutout does not have units due to current limitations of
+        masked quantity arrays.
+
+        The mask is `True` for pixels from the input ``mask``,
+        non-finite ``data`` values (NaN and inf), sigma-clipped pixels
+        within the aperture, and pixels where the aperture mask has zero
+        weight.
         """
         return self._make_masked_array(list(zip(*self._aperture_cutouts))[0])
 
     @lazyproperty
     @as_scalar
-    def error(self):
+    def error_sumcutout(self):
         """
-        A 2D `~numpy.ma.MaskedArray` cutout from the error array using
-        the aperture bounding box.
+        A 2D aperture-weighted error cutout using the aperture mask with
+        the input ``sum_method`` method as a `~numpy.ma.MaskedArray`.
 
         The cutout does not have units due to current limitations of
         masked quantity arrays.
 
-        The mask is `True` for pixels outside of the aperture mask,
-        pixels from the input ``mask``, non-finite ``data`` values (NaN
-        and inf), and sigma-clipped pixels.
+        The mask is `True` for pixels from the input ``mask``,
+        non-finite ``data`` values (NaN and inf), sigma-clipped pixels
+        within the aperture, and pixels where the aperture mask has zero
+        weight.
         """
         return self._make_masked_array(list(zip(*self._aperture_cutouts))[1])
 
     @lazyproperty
     @as_scalar
-    def _weight_center(self):
+    def _weight_cutout(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the aperture mask
         weights array using the aperture bounding box.
+
+        The aperture mask weights are for the "center" method.
+
+        The mask is `True` for pixels outside of the aperture mask,
+        pixels from the input ``mask``, non-finite ``data`` values (NaN
+        and inf), and sigma-clipped pixels.
+        """
+        return self._make_masked_array_center(
+            list(zip(*self._aperture_cutouts_center))[3])
+
+    @lazyproperty
+    @as_scalar
+    def _weight_sumcutout(self):
+        """
+        A 2D `~numpy.ma.MaskedArray` cutout from the aperture mask
+        weights array using the aperture bounding box.
+
+        The aperture mask weights are for the ``sum_method`` method.
 
         The mask is `True` for pixels outside of the aperture mask,
         pixels from the input ``mask``, non-finite ``data`` values (NaN
@@ -559,31 +623,17 @@ class ApertureStats:
         return self._make_masked_array(list(zip(*self._aperture_cutouts))[3])
 
     @lazyproperty
-    @as_scalar
-    def _weight(self):
+    def _moment_data_cutout(self):
         """
-        A 2D `~numpy.ma.MaskedArray` cutout from the aperture mask
-        weights array using the aperture bounding box.
+        A list of 2D `~numpy.ndarray` cutouts from the data.
 
-        The mask is `True` for pixels outside of the aperture mask,
-        pixels from the input ``mask``, non-finite ``data`` values (NaN
-        and inf), and sigma-clipped pixels.
-        """
-        return self._make_masked_array(
-            list(zip(*self._aperture_cutouts_sum))[3])
-
-    @lazyproperty
-    def _cutout_moment_data(self):
-        """
-        A list of 2D `~numpy.ndarray` cutouts from the data. The
-        following pixels are set to zero in these arrays:
-
-            * any masked pixels
-            * invalid values (NaN and inf)
+        Masked pixels are set to zero in these arrays (zeros do not
+        contribute to the image moments). The aperture mask weights are
+        for the "center" method.
 
         These arrays are used to derive moment-based properties.
         """
-        data = deepcopy(self.data)  # self.data is a list
+        data = deepcopy(self.data_cutout)  # self.data_cutout is a list
         if self.isscalar:
             data = (data,)
 
@@ -600,12 +650,12 @@ class ApertureStats:
         """
         True if all pixels within the aperture are masked.
         """
-        return np.array([np.all(mask) for mask in self._cutout_total_mask])
+        return np.array([np.all(mask) for mask in self._mask_cutout_center])
 
     def _get_values(self, array):
         """
-        Get a 1D array of unmasked values from the input array within
-        the aperture.
+        Get a 1D array of unmasked aperture-weighted values from the
+        input array.
 
         An array with a single NaN is returned for completely-masked
         sources.
@@ -616,19 +666,22 @@ class ApertureStats:
                 else np.array([np.nan]) for arr in array]
 
     @lazyproperty
-    def _data_values(self):
+    def _data_values_center(self):
         """
-        A 1D array of unmasked data values.
+        A 1D array of unmasked aperture-weighted data values using the
+        "center" method.
 
         An array with a single NaN is returned for completely-masked
         sources.
         """
-        return self._get_values(self.data)
+        return self._get_values(self.data_cutout)
 
+    # TODO
     @lazyproperty
     def _error_values(self):
         """
-        A 1D array of unmasked error values.
+        A 1D array of unmasked aperture-weighted error values using the
+        ``sum_method`` method.
 
         An array with a single NaN is returned for completely-masked
         sources.
@@ -642,7 +695,7 @@ class ApertureStats:
         Spatial moments up to 3rd order of the source.
         """
         return np.array([_moments(arr, order=3) for arr in
-                         self._cutout_moment_data])
+                         self._moment_data_cutout])
 
     @lazyproperty
     @as_scalar
@@ -656,7 +709,7 @@ class ApertureStats:
             cutout_centroid = cutout_centroid[np.newaxis, :]
         return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
-                         zip(self._cutout_moment_data, cutout_centroid[:, 0],
+                         zip(self._moment_data_cutout, cutout_centroid[:, 0],
                              cutout_centroid[:, 1])])
 
     @lazyproperty
@@ -845,13 +898,36 @@ class ApertureStats:
             if the input ``data`` has units. If `None` then the input
             ``data`` unit will be used.
         """
+        result = np.array([stat_func(arr) for arr in self._data_values_center])
         if unit is None:
             unit = self._data_unit
-        result = np.array([stat_func(arr) for arr in self._data_values])
-        if self._data_unit is not None:
+        if unit is not None:
             result <<= unit
         return result
 
+    @lazyproperty
+    @as_scalar
+    def center_method_area(self):
+        """
+        The total area of the unmasked pixels within the aperture using
+        the "center" aperture mask method.
+        """
+        areas = np.array([np.sum(weight) for weight in self._weight_cutout])
+        areas[self._all_masked] = np.nan
+        return areas << (u.pix ** 2)
+
+    @lazyproperty
+    @as_scalar
+    def sum_method_area(self):
+        """
+        The total area of the unmasked pixels within the aperture using
+        the input ``sum_method`` aperture mask method.
+        """
+        areas = np.array([np.sum(weight) for weight in self._weight_sumcutout])
+        areas[self._all_masked] = np.nan
+        return areas << (u.pix ** 2)
+
+    # TODO
     @lazyproperty
     @as_scalar
     def sum(self):
@@ -871,6 +947,7 @@ class ApertureStats:
             return self._calculate_stats(np.sum)
         return self._calculate_stats(np.sum)
 
+    # TODO
     @lazyproperty
     @as_scalar
     def sum_err(self):
@@ -1008,20 +1085,6 @@ class ApertureStats:
         if unit is not None:
             unit **= 2
         return self._calculate_stats(biweight_midvariance, unit=unit)
-
-    @lazyproperty
-    @as_scalar
-    def area(self):
-        """
-        The total area of the unmasked pixel values within the aperture.
-
-        Note that the source area may be smaller than the aperture area
-        if a mask is input to `ApertureStats` or if the ``data`` within
-        the aperture contains invalid values (NaN and inf).
-        """
-        areas = np.array([arr.size for arr in self._data_values]).astype(float)
-        areas[self._all_masked] = np.nan
-        return areas << (u.pix ** 2)
 
     @lazyproperty
     @as_scalar
@@ -1337,7 +1400,7 @@ class ApertureStats:
         with all its light concentrated in just one pixel.
         """
         gini = []
-        for arr in self._data_values:
+        for arr in self._data_values_center:
             if np.all(np.isnan(arr)):
                 gini.append(np.nan)
                 continue
