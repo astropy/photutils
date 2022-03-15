@@ -146,6 +146,7 @@ area of a circle with a radius of 3::
     >>> print(np.pi * 3. ** 2)  # doctest: +FLOAT_CMP
     28.2743338823
 
+.. _photutils-aperture-overlap:
 
 Aperture and Pixel Overlap
 --------------------------
@@ -185,8 +186,8 @@ The precision can be increased by increasing ``subpixels``, but note
 that computation time will be increased.
 
 
-Multiple Apertures at Each Position
------------------------------------
+Aperture Photometry with Multiple Apertures at Each Position
+------------------------------------------------------------
 
 While the `~photutils.aperture.Aperture` objects support multiple
 positions, they must have a fixed size and shape (e.g., radius and
@@ -253,6 +254,88 @@ objects, each with identical positions::
       1      30      30       47.12389      75.398224      109.95574
       2      40      40       47.12389      75.398224      109.95574
 
+Aperture Statistics
+-------------------
+
+The :class:`~photutils.aperture.ApertureStats` class can be used to
+create a catalog of statistic for pixels within an aperture.
+There is a long list of available properties, including statistics like
+:attr:`~photutils.aperture.ApertureStats.min`,
+:attr:`~photutils.aperture.ApertureStats.max`,
+:attr:`~photutils.aperture.ApertureStats.mean`,
+:attr:`~photutils.aperture.ApertureStats.median`,
+:attr:`~photutils.aperture.ApertureStats.std`,
+:attr:`~photutils.aperture.ApertureStats.sum_aper_area`,
+and :attr:`~photutils.aperture.ApertureStats.sum`.
+It also can be used to calculate morphological properties like
+:attr:`~photutils.aperture.ApertureStats.centroid`,
+:attr:`~photutils.aperture.ApertureStats.fwhm`,
+:attr:`~photutils.aperture.ApertureStats.semimajor_sigma`,
+:attr:`~photutils.aperture.ApertureStats.semiminor_sigma`,
+:attr:`~photutils.aperture.ApertureStats.orientation`,
+and :attr:`~photutils.aperture.ApertureStats.eccentricity`.
+Please see :class:`~photutils.aperture.ApertureStats` for the
+the many properties that can be calculated. The properties can
+be accessed using `~photutils.aperture.ApertureStats` attributes
+or output to an Astropy `~astropy.table.QTable` using the
+:meth:`~photutils.aperture.ApertureStats.to_table` method.
+
+Most of the source properties are calculated using the "center"
+:ref:`aperture-mask method <photutils-aperture-overlap>`, which gives
+aperture weights of 0 or 1. This avoids the need to compute weighted
+statistics --- the ``data`` pixel values are directly used.
+
+The optional ``sigma_clip`` keyword can be used to sigma clip the pixel
+values before computing the source properties. This keyword could be
+used, for example, to compute a sigma-clipped median of pixels in an
+annulus aperture to estimate the local background level.
+
+The ``sum_method`` and ``subpixels`` keywords are used to determine
+the aperture-mask method when calculating the sum-related properties:
+``sum``, ``sum_error``, ``sum_aper_area``, ``data_sumcutout``, and
+``error_sumcutout``. The default is ``sum_method='exact'``, which
+produces exact aperture-weighted photometry.
+
+Here is a simple example using a circular aperture at one position::
+
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> from photutils.aperture import CircularAperture, ApertureStats
+
+    >>> data = make_4gaussians_image()
+    >>> aper = CircularAperture((150, 25), 8)
+    >>> aperstats = ApertureStats(data, aper)
+    >>> print(aperstats.xcentroid)
+    149.98737072209013
+    >>> print(aperstats.ycentroid)
+    24.99729176183652
+    >>> print(aperstats.centroid)
+    [149.98737072  24.99729176]
+
+    >>> print(aperstats.mean, aperstats.median, aperstats.std)
+    46.861845146453526 33.743501730319 38.25291812758177
+
+    >>> print(aperstats.sum)
+    9118.129697119366
+
+Similar to `~photutils.aperture.aperture_photometry`, the input aperture
+can have multiple positions::
+
+    >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
+    >>> aperstats2 = ApertureStats(data, aper2)
+    >>> print(aperstats2.xcentroid)
+    [149.97230436  90.00833613]
+    >>> print(aperstats2.sum)
+    [ 9863.56195844 36629.52906175]
+    >>> columns = ('id', 'mean', 'median', 'std')
+    >>> print(aperstats2.to_table(columns))
+     id        mean              median              std
+    --- ------------------ ------------------ ------------------
+      1 32.200935384215164 16.543219862508728 36.189317624748654
+      2 118.50681220242285 117.17878745843481  50.10054012959997
+
+Each row of the table corresponds to a single aperture position (i.e., a
+single source).
+
 
 Background Subtraction
 ----------------------
@@ -264,7 +347,7 @@ Global Background Subtraction
 have been background-subtracted.  If ``bkg`` is a float value or an
 array representing the background of the data (determined by
 `~photutils.background.Background2D` or an external function), simply
-subtract the background::
+subtract the background from the data::
 
     >>> phot_table = aperture_photometry(data - bkg, aperture)  # doctest: +SKIP
 
