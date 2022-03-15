@@ -26,11 +26,12 @@ __all__ = ['ApertureStats']
 
 # default table columns for `to_table()` output
 DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
-                   'area', 'min', 'max', 'sum', 'sum_err', 'mean',
-                   'median', 'mode', 'std', 'mad_std', 'var',
-                   'biweight_location', 'biweight_midvariance',
-                   'fwhm', 'semimajor_sigma', 'semiminor_sigma',
-                   'orientation', 'eccentricity']
+                   #'sum', 'sum_err', 'sum_aper_area', 'center_aper_area',
+                   'sum', 'sum_aper_area', 'center_aper_area',
+                   'min', 'max', 'mean', 'median', 'mode', 'std',
+                   'mad_std', 'var', 'biweight_location',
+                   'biweight_midvariance', 'fwhm', 'semimajor_sigma',
+                   'semiminor_sigma', 'orientation', 'eccentricity']
 
 
 def as_scalar(method):
@@ -381,7 +382,9 @@ class ApertureStats:
         """
         cutouts = []
         for slc_large, _ in self._overlap_slices:
-            cutouts.append(self._data[slc_large])
+            # copy is needed to preserve input data because masks are
+            # applied to these cutouts later
+            cutouts.append(self._data[slc_large].copy())
         return cutouts
 
     @lazyproperty
@@ -516,22 +519,20 @@ class ApertureStats:
         """
         return list(zip(*self._aperture_cutouts))[2]
 
-    @as_scalar
     def _make_masked_array_center(self, array):
         """
-        Retun a list of cutout masked arrays using the
-        ``_mask_cutout_center`` mask.
+        Retun a list of cutout masked arrays using the ``_mask_cutout``
+        mask.
 
         Units are not applied.
         """
         return [np.ma.masked_array(arr, mask=mask)
                 for arr, mask in zip(array, self._mask_cutout_center)]
 
-    @as_scalar
     def _make_masked_array(self, array):
         """
-        Retun a list of cutout masked arrays using the ``_mask_cutout``
-        mask.
+        Retun a list of cutout masked arrays using the
+        ``_mask_sumcutout`` mask.
 
         Units are not applied.
         """
@@ -592,8 +593,7 @@ class ApertureStats:
         return self._make_masked_array(list(zip(*self._aperture_cutouts))[1])
 
     @lazyproperty
-    @as_scalar
-    def _weight_cutout(self):
+    def _weight_cutout_center(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the aperture mask
         weights array using the aperture bounding box.
@@ -608,8 +608,7 @@ class ApertureStats:
             list(zip(*self._aperture_cutouts_center))[3])
 
     @lazyproperty
-    @as_scalar
-    def _weight_sumcutout(self):
+    def _weight_cutout(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the aperture mask
         weights array using the aperture bounding box.
@@ -907,23 +906,25 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def center_method_area(self):
+    def center_aper_area(self):
         """
         The total area of the unmasked pixels within the aperture using
         the "center" aperture mask method.
         """
-        areas = np.array([np.sum(weight) for weight in self._weight_cutout])
+        areas = np.array([np.sum(weight.filled(0.))
+                          for weight in self._weight_cutout_center])
         areas[self._all_masked] = np.nan
         return areas << (u.pix ** 2)
 
     @lazyproperty
     @as_scalar
-    def sum_method_area(self):
+    def sum_aper_area(self):
         """
         The total area of the unmasked pixels within the aperture using
         the input ``sum_method`` aperture mask method.
         """
-        areas = np.array([np.sum(weight) for weight in self._weight_sumcutout])
+        areas = np.array([np.sum(weight.filled(0.))
+                          for weight in self._weight_cutout])
         areas[self._all_masked] = np.nan
         return areas << (u.pix ** 2)
 
