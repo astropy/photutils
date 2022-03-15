@@ -50,10 +50,136 @@ def as_scalar(method):
 
 class ApertureStats:
     """
-    Class to create a catalog of statistics for sources defined by an
+    Class to create a catalog of statistics for pixels within an
     aperture.
 
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+        The 2D array from which to calculate the source properties.
+        For accurate source properties, ``data`` should be
+        background-subtracted. Non-finite ``data`` values (NaN and inf)
+        are automatically masked.
+
+    aperture : `~photutils.aperture.Aperture`
+        The aperture to apply to the data. The aperture object may
+        contain more than one position.
+
+    error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+        The total error array corresponding to the input ``data``
+        array. ``error`` is assumed to include *all* sources of
+        error, including the Poisson error of the sources (see
+        `~photutils.utils.calc_total_error`) . ``error`` must have
+        the same shape as the input ``data``. If ``data`` is a
+        `~astropy.units.Quantity` array then ``error`` must be a
+        `~astropy.units.Quantity` array (and vice versa) with identical
+        units. Non-finite ``error`` values (NaN and +/- inf) are not
+        automatically masked, unless they are at the same position of
+        non-finite values in the input ``data`` array. Such pixels can
+        be masked using the ``mask`` keyword.
+
+    mask : 2D `~numpy.ndarray` (bool), optional
+        A boolean mask with the same shape as ``data`` where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from all calculations. Non-finite
+        values (NaN and inf) in the input ``data`` are automatically
+        masked.
+
+    wcs : WCS object or `None`, optional
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). If `None`, then all
+        sky-based properties will be set to `None`.
+
+    sigma_clip : `None` or `astropy.stats.SigmaClip` instance, optional
+        A `~astropy.stats.SigmaClip` object that defines the sigma
+        clipping parameters. If `None` then no sigma clipping will
+        be performed.
+
+    sum_method : {'exact', 'center', 'subpixel'}, optional
+        The method used to determine the overlap of the aperture on
+        the pixel grid. This method is used only for calculating the
+        ``sum``, ``sum_error``, ``sum_aper_area``, ``data_sumcutout``,
+        and ``error_sumcutout`` properties. All other properties use the
+        "center" aperture mask method. Not all options are available for
+        all aperture types. The following methods are available:
+
+          * ``'exact'`` (default):
+            The the exact fractional overlap of the aperture and each
+            pixel is calculated. The aperture weights will contain
+            values between 0 and 1.
+
+          * ``'center'``:
+            A pixel is considered to be entirely in or out of the
+            aperture depending on whether its center is in or out of the
+            aperture. The aperture weights will contain values only of 0
+            (out) and 1 (in).
+
+          * ``'subpixel'``:
+            A pixel is divided into subpixels (see the ``subpixels``
+            keyword), each of which are considered to be entirely in
+            or out of the aperture depending on whether its center is
+            in or out of the aperture. If ``subpixels=1``, this method
+            is equivalent to ``'center'``. The aperture weights will
+            contain values between 0 and 1.
+
+    subpixels : int, optional
+        For the ``'subpixel'`` method, resample pixels by this factor
+        in each dimension. That is, each pixel is divided into
+        ``subpixels ** 2`` subpixels. This keyword is ignored unless
+        ``sum_method='subpixel'``.
+
+    Notes
+    -----
+    ``data`` should be background-subtracted for accurate source
+    properties.
+
+    Most source properties are calculated using the "center"
+    aperture-mask method, which gives aperture weights of 0 or 1. This
+    avoids the need to compute weighted statistics --- the ``data``
+    pixel values are directly used.
+
+    The input ``sum_method`` and ``subpixels`` keywords are used
+    to determine the aperture-mask method when calculating the
+    sum-related properties: ``sum``, ``sum_error``, ``sum_aper_area``,
+    ``data_sumcutout``, and ``error_sumcutout``. The default is
+    ``sum_method='exact'``, which produces exact aperture-weighted
+    photometry.
+
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
+
+    Examples
+    --------
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> from photutils.aperture import CircularAperture, ApertureStats
+
+    >>> data = make_4gaussians_image()
+    >>> aper = CircularAperture((150, 25), 8)
+    >>> aperstats = ApertureStats(data, aper)
+    >>> print(aperstats.xcentroid)
+    149.98737072209013
+    >>> print(aperstats.ycentroid)
+    24.99729176183652
+    >>> print(aperstats.centroid)
+    [149.98737072  24.99729176]
+
+    >>> print(aperstats.mean, aperstats.median, aperstats.std)
+    46.861845146453526 33.743501730319 38.25291812758177
+
+    >>> print(aperstats.sum)
+    9118.129697119366
+
+    >>> print(aperstats.sum_aper_area)
+    201.0619298297468 pix2
+
+    >>> # more than one aperture position
+    >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
+    >>> aperstats2 = ApertureStats(data, aper2)
+    >>> print(aperstats2.xcentroid)
+    [149.97230436  90.00833613]
+    >>> print(aperstats2.sum)
+    [ 9863.56195844 36629.52906175]
     """
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
@@ -520,7 +646,7 @@ class ApertureStats:
 
     def _make_masked_array_center(self, array):
         """
-        Retun a list of cutout masked arrays using the ``_mask_cutout``
+        Return a list of cutout masked arrays using the ``_mask_cutout``
         mask.
 
         Units are not applied.
@@ -530,7 +656,7 @@ class ApertureStats:
 
     def _make_masked_array(self, array):
         """
-        Retun a list of cutout masked arrays using the
+        Return a list of cutout masked arrays using the
         ``_mask_sumcutout`` mask.
 
         Units are not applied.
