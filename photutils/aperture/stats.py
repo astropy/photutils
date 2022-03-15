@@ -26,8 +26,7 @@ __all__ = ['ApertureStats']
 
 # default table columns for `to_table()` output
 DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
-                   #'sum', 'sum_err', 'sum_aper_area', 'center_aper_area',
-                   'sum', 'sum_aper_area', 'center_aper_area',
+                   'sum', 'sum_err', 'sum_aper_area', 'center_aper_area',
                    'min', 'max', 'mean', 'median', 'mode', 'std',
                    'mad_std', 'var', 'biweight_location',
                    'biweight_midvariance', 'fwhm', 'semimajor_sigma',
@@ -403,7 +402,7 @@ class ApertureStats:
 
     def _make_aperture_cutouts(self, aperture_masks):
         """
-        Make aperture-weighted cutouts for the data and error, and
+        Make aperture-weighted cutouts for the data and variance, and
         cutouts for the total mask and aperture mask weights.
 
         Parameters
@@ -413,34 +412,35 @@ class ApertureStats:
 
         Returns
         -------
-        data, error, mask, weights : list of `~numpy.ndarray`
-            A list of cutout arrays for the data, error, mask and weight
+        data, variance, mask, weights : list of `~numpy.ndarray`
+            A list of cutout arrays for the data, variance, mask and weight
             arrays for each source (aperture position).
         """
         data_cutouts = []
-        error_cutouts = []
+        variance_cutouts = []
         mask_cutouts = []
         weight_cutouts = []
 
-        for (apermask, slices, data_cutout, data_mask) in zip(
-                aperture_masks, self._overlap_slices, self._data_cutouts,
-                self._data_mask_cutouts):
+        for (data_cutout, data_mask, apermask, slices) in zip(
+                self._data_cutouts, self._data_mask_cutouts,
+                aperture_masks, self._overlap_slices):
 
             slc_large, slc_small = slices
             if slc_large is None:  # aperture does not overlap the data
-                mask_cutout = False
                 data_cutout = None
-                error_cutout = None
+                variance_cutout = None
+                mask_cutout = False
                 weight_cutout = None
             else:
-                apermask_cutout = apermask.data[slc_small]
-                weight_cutout = apermask_cutout * ~data_mask
+                aperweight_cutout = apermask.data[slc_small]
+                weight_cutout = aperweight_cutout * ~data_mask
 
                 # apply the aperture mask; for "exact" and "subpixel"
                 # this is an expanded boolean mask using the aperture
                 # mask zero values
-                mask_cutout = (apermask_cutout == 0) | data_mask
+                mask_cutout = (aperweight_cutout == 0) | data_mask
 
+                data_cutout = data_cutout.copy()
                 if self.sigma_clip is None:
                     # data_cutout will have zeros where mask_cutout is True
                     data_cutout *= ~mask_cutout
@@ -457,33 +457,32 @@ class ApertureStats:
                     mask_cutout = data_sigclip.mask
                     data_cutout = data_sigclip.filled(0.)
 
-                # need to apply the exact weights
-                data_cutout *= apermask_cutout
+                # need to apply the aperture weights
+                data_cutout *= aperweight_cutout
 
                 if self._error is None:
-                    error_cutout = None
+                    variance_cutout = None
                 else:
                     # apply the exact weights and total mask;
                     # error_cutout will have zeros where mask_cutout is True
-
-                    # FIXME for exact weights
-                    error_cutout = np.sqrt(self._error[slc_large]**2
-                                           * apermask_cutout * ~mask_cutout)
+                    variance = self._error[slc_large] ** 2
+                    variance_cutout = (variance * aperweight_cutout
+                                       * ~mask_cutout)
 
             data_cutouts.append(data_cutout)
-            error_cutouts.append(error_cutout)
+            variance_cutouts.append(variance_cutout)
             mask_cutouts.append(mask_cutout)
             weight_cutouts.append(weight_cutout)
 
         # use zip (instead of np.transpose) because these may contain
         # arrays that have different shapes
-        return list(zip(data_cutouts, error_cutouts, mask_cutouts,
+        return list(zip(data_cutouts, variance_cutouts, mask_cutouts,
                         weight_cutouts))
 
     @lazyproperty
     def _aperture_cutouts_center(self):
         """
-        Aperture-weighted cutouts for the data, error, total mask, and
+        Aperture-weighted cutouts for the data, variance, total mask, and
         aperture weights using the "center" aperture mask method.
         """
         return self._make_aperture_cutouts(self._aperture_masks_center)
@@ -491,7 +490,7 @@ class ApertureStats:
     @lazyproperty
     def _aperture_cutouts(self):
         """
-        Aperture-weighted cutouts for the data, error, total mask, and
+        Aperture-weighted cutouts for the data, variance, total mask, and
         aperture weights using the input ``sum_method`` aperture mask
         method.
         """
@@ -576,6 +575,40 @@ class ApertureStats:
         return self._make_masked_array(list(zip(*self._aperture_cutouts))[0])
 
     @lazyproperty
+    def _variance_cutout_center(self):
+        """
+        A 2D aperture-weighted variance cutout using the aperture mask
+        with the input "center" method as a `~numpy.ma.MaskedArray`.
+
+        The cutout does not have units due to current limitations of
+        masked quantity arrays.
+
+        The mask is `True` for pixels from the input ``mask``,
+        non-finite ``data`` values (NaN and inf), sigma-clipped pixels
+        within the aperture, and pixels where the aperture mask has zero
+        weight.
+        """
+        return self._make_masked_array_center(
+            list(zip(*self._aperture_cutouts_center))[1])
+
+    @lazyproperty
+    def _variance_cutout(self):
+        """
+        A 2D aperture-weighted variance cutout using the
+        aperture mask with the input ``sum_method`` method as a
+        `~numpy.ma.MaskedArray`.
+
+        The cutout does not have units due to current limitations of
+        masked quantity arrays.
+
+        The mask is `True` for pixels from the input ``mask``,
+        non-finite ``data`` values (NaN and inf), sigma-clipped pixels
+        within the aperture, and pixels where the aperture mask has zero
+        weight.
+        """
+        return self._make_masked_array(list(zip(*self._aperture_cutouts))[1])
+
+    @lazyproperty
     @as_scalar
     def error_sumcutout(self):
         """
@@ -590,7 +623,7 @@ class ApertureStats:
         within the aperture, and pixels where the aperture mask has zero
         weight.
         """
-        return self._make_masked_array(list(zip(*self._aperture_cutouts))[1])
+        return [np.sqrt(var) for var in self._variance_cutout]
 
     @lazyproperty
     def _weight_cutout_center(self):
@@ -674,18 +707,6 @@ class ApertureStats:
         sources.
         """
         return self._get_values(self.data_cutout)
-
-    # TODO
-    @lazyproperty
-    def _error_values(self):
-        """
-        A 1D array of unmasked aperture-weighted error values using the
-        ``sum_method`` method.
-
-        An array with a single NaN is returned for completely-masked
-        sources.
-        """
-        return self._get_values(self.error)
 
     @lazyproperty
     @as_scalar
@@ -928,7 +949,6 @@ class ApertureStats:
         areas[self._all_masked] = np.nan
         return areas << (u.pix ** 2)
 
-    # TODO
     @lazyproperty
     @as_scalar
     def sum(self):
@@ -946,9 +966,15 @@ class ApertureStats:
         """
         if self.sum_method == 'center':
             return self._calculate_stats(np.sum)
-        return self._calculate_stats(np.sum)
 
-    # TODO
+        data_cutout = self.data_sumcutout
+        if self.isscalar:
+            data_cutout = (data_cutout,)
+        result = np.array([np.sum(arr) for arr in data_cutout])
+        if self._data_unit is not None:
+            result <<= self._data_unit
+        return result
+
     @lazyproperty
     @as_scalar
     def sum_err(self):
@@ -972,9 +998,13 @@ class ApertureStats:
         """
         if self._error is None:
             err = self._null_value
+
         else:
-            err = np.sqrt(np.array([np.sum(arr**2)
-                                    for arr in self._error_values]))
+            if self.sum_method == 'center':
+                variance = self._variance_cutout_center
+            else:
+                variance = self._variance_cutout
+            err = np.sqrt([np.sum(arr) for arr in variance])
 
         if self._data_unit is not None:
             err <<= self._data_unit
