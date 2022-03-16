@@ -254,6 +254,8 @@ objects, each with identical positions::
       1      30      30       47.12389      75.398224      109.95574
       2      40      40       47.12389      75.398224      109.95574
 
+.. _photutils-aperture-stats:
+
 Aperture Statistics
 -------------------
 
@@ -355,70 +357,131 @@ subtract the background from the data::
 Local Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-One often wants to estimate the local background around each source
-using a nearby aperture or annulus aperture surrounding each source.
-The simplest method for doing so would be to perform photometry in an
-annulus aperture to define the mean background level.  Alternatively,
-one can use aperture masks to directly access the pixel values in an
-aperture (e.g., an annulus), and thus apply more advanced statistics
-(e.g., a sigma-clipped median within the annulus).  We show examples of
-both below.
+One often wants to estimate the local background around each
+source using a nearby aperture or annulus aperture surrounding
+each source. The simplest method for doing this is to use
+the :class:`~photutils.aperture.ApertureStats` class (see
+:ref:`photutils-aperture-stats`) to compute the mean background level
+within the annulus aperture. This class can also be used to apply more
+advanced statistics (e.g., a sigma-clipped median within the annulus).
+We show examples of both below.
+
+Let's start by generating a more realistic example dataset::
+
+>>> from photutils.datasets import make_100gaussians_image
+>>> data = make_100gaussians_image()
+
+For this example we perform the photometry for three sources in a
+circular aperture with a radius of 3 pixels. The local background level
+around each source is estimated as the mean value within a circular
+annulus of inner radius 6 pixels and outer radius 8 pixels. Let's define
+the apertures::
+
+    >>> from photutils.aperture import CircularAperture, CircularAnnulus
+    >>> aperture = CircularAperture(positions, r=3)
+    >>> annulus_aperture = CircularAnnulus(positions, r_in=6., r_out=8.)
+
+Now let's plot the circular apertures (white) and circular annulus
+apertures (red) on a cutout from the image containing the three sources:
+
+.. plot::
+
+    from astropy.visualization import simple_norm
+    import matplotlib.pyplot as plt
+    from photutils.aperture import CircularAperture, CircularAnnulus
+    from photutils.datasets import make_100gaussians_image
+
+    data = make_100gaussians_image()
+    positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
+    aperture = CircularAperture(positions, r=5)
+    annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
+
+    norm = simple_norm(data, 'sqrt', percent=99)
+    plt.imshow(data, norm=norm, interpolation='nearest')
+    plt.xlim(0, 170)
+    plt.ylim(130, 250)
+
+    ap_patches = aperture.plot(color='white', lw=2,
+                               label='Photometry aperture')
+    ann_patches = annulus_aperture.plot(color='red', lw=2,
+                                        label='Background annulus')
+    handles = (ap_patches[0], ann_patches[0])
+    plt.legend(loc=(0.17, 0.05), facecolor='#458989', labelcolor='white',
+               handles=handles, prop={'weight': 'bold', 'size': 11})
+
 
 Simple mean within a circular annulus
 """""""""""""""""""""""""""""""""""""
 
-For this example we perform the photometry in a circular aperture with
-a radius of 3 pixels.  The local background level around each source
-is estimated as the mean value within a circular annulus of inner
-radius 6 pixels and outer radius 8 pixels.  We start by defining the
-apertures::
+We can use the :class:`~photutils.aperture.ApertureStats` class to
+compute the mean background level within the annulus aperture at each
+position::
 
-    >>> from photutils.aperture import CircularAnnulus
-    >>> aperture = CircularAperture(positions, r=3)
-    >>> annulus_aperture = CircularAnnulus(positions, r_in=6., r_out=8.)
+    >>> from photutils.aperture import ApertureStats
+    >>> aperstats = ApertureStats(data, annulus_aperture)
+    >>> bkg_mean = aperstats.mean
+    >>> print(bkg_mean)
+    [4.96369499 5.10467691 4.9497741 ]
 
-We then perform the photometry in both apertures::
+We then perform the photometry in the circular aperture::
 
-    >>> apers = [aperture, annulus_aperture]
-    >>> phot_table = aperture_photometry(data, apers)
+    >>> from photutils.aperture import aperture_photometry
+    >>> phot_table = aperture_photometry(data, circular_aperture
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id xcenter ycenter aperture_sum_0 aperture_sum_1
+     id xcenter ycenter aperture_sum
           pix     pix
-    --- ------- ------- -------------- --------------
-      1      30      30      28.274334      87.964594
-      2      40      40      28.274334      87.964594
+    --- ------- ------- ------------
+      1   145.1   168.3    1131.5794
+      2    84.5   224.1    746.16064
+      3    48.3   200.3    1250.2186
 
-The ``aperture_sum_0`` column refers to the first aperture in the list
-of input apertures (i.e., the circular aperture) and the
-``aperture_sum_1`` column refers to the second aperture (i.e., the
-circular annulus).  Note that we cannot simply subtract the aperture
-sums because the apertures have different areas.
+The total background within the circular aperture is the mean local
+background times the circular aperture area. If you are using
+the default "exact" aperture (see :ref:`aperture-mask methods
+<photutils-aperture-overlap>`) and there are no masked pixels, the exact
+analytical aperture area can be accessed via the aperture ``area``
+attribute::
 
-To calculate the mean local background within the circular annulus
-aperture, we need to divide its sum by its area.  The mean value can
-be calculated by using the
-:meth:`~photutils.aperture.CircularAnnulus.area` attribute::
+    >>> aperture.area
+    78.53981633974483
 
-    >>> bkg_mean = phot_table['aperture_sum_1'] / annulus_aperture.area
+However, in general you should use the
+:meth:`photutils.aperture.PixelAperture.area_overlap` method where
+a ``mask`` keyword can be input. This ensures you are using the
+same area over which the photometry was performed. If using a
+:class:`~photutils.aperture.SkyAperture`, you will first need to convert
+it to a :class:`~photutils.aperture.PixelAperture`. Since we are not
+using a mask, the results are identical::
 
-The total background within the circular aperture is then the mean local
-background times the circular aperture area::
+    >>> aperture_area = aperture.area_overlap(data)
+    >>> print(aperture_area)
+    [78.53981633974485, 78.53981633974482, 78.53981633974483]
 
-    >>> bkg_sum = bkg_mean * aperture.area
-    >>> final_sum = phot_table['aperture_sum_0'] - bkg_sum
-    >>> phot_table['residual_aperture_sum'] = final_sum
-    >>> phot_table['residual_aperture_sum'].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table['residual_aperture_sum'])  # doctest: +SKIP
-    residual_aperture_sum
-    ---------------------
-           -7.1054274e-15
-           -7.1054274e-15
+The total background within the circular aperture is then::
 
-The result here should be zero because all the data values are 1.0
-(the tiny difference from 0.0 is due to numerical precision).
+    >>> total_bkg = bkg_mean * aperture_area
+    >>> print(total_bkg)
+    [389.84769319 400.92038721 388.75434843]
 
+Thus, the background-subtracted photometry is::
+
+    >>> phot_bkgsub = phot_table['aperture_sum'] - total_bkg
+
+Finally, let's add these as columns to the photometry table::
+
+    >>> phot_table['total_bkg'] = total_bkg
+    >>> phot_table['aperture_sum_bkgsub'] = phot_bkgsub
+    >>> for col in phot_table.colnames:
+    ...     phot_table[col].info.format = '%.8g'  # for consistent table output
+    >>> print(phot_table)
+     id xcenter ycenter aperture_sum total_bkg aperture_sum_bkgsub
+          pix     pix
+    --- ------- ------- ------------ --------- -------------------
+      1   145.1   168.3    1131.5794 389.84769           741.73173
+      2    84.5   224.1    746.16064 400.92039           345.24026
+      3    48.3   200.3    1250.2186 388.75435           861.46422
 
 Sigma-clipped median within a circular annulus
 """"""""""""""""""""""""""""""""""""""""""""""
