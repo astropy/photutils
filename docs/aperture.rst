@@ -146,6 +146,7 @@ area of a circle with a radius of 3::
     >>> print(np.pi * 3. ** 2)  # doctest: +FLOAT_CMP
     28.2743338823
 
+
 .. _photutils-aperture-overlap:
 
 Aperture and Pixel Overlap
@@ -254,6 +255,7 @@ objects, each with identical positions::
       1      30      30       47.12389      75.398224      109.95574
       2      40      40       47.12389      75.398224      109.95574
 
+
 .. _photutils-aperture-stats:
 
 Aperture Statistics
@@ -346,8 +348,8 @@ Global Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 :func:`~photutils.aperture.aperture_photometry` assumes that the data
-have been background-subtracted.  If ``bkg`` is a float value or an
-array representing the background of the data (determined by
+have been background-subtracted. If ``bkg`` is a float value or an
+array representing the background of the data (e.g., determined by
 `~photutils.background.Background2D` or an external function), simply
 subtract the background from the data::
 
@@ -372,14 +374,15 @@ Let's start by generating a more realistic example dataset::
 >>> data = make_100gaussians_image()
 
 For this example we perform the photometry for three sources in a
-circular aperture with a radius of 3 pixels. The local background level
+circular aperture with a radius of 5 pixels. The local background level
 around each source is estimated as the mean value within a circular
-annulus of inner radius 6 pixels and outer radius 8 pixels. Let's define
-the apertures::
+annulus of inner radius 10 pixels and outer radius 15 pixels. Let's
+define the apertures::
 
     >>> from photutils.aperture import CircularAperture, CircularAnnulus
-    >>> aperture = CircularAperture(positions, r=3)
-    >>> annulus_aperture = CircularAnnulus(positions, r_in=6., r_out=8.)
+    >>> positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
+    >>> aperture = CircularAperture(positions, r=5)
+    >>> annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
 
 Now let's plot the circular apertures (white) and circular annulus
 apertures (red) on a cutout from the image containing the three sources:
@@ -486,176 +489,41 @@ Finally, let's add these as columns to the photometry table::
 Sigma-clipped median within a circular annulus
 """"""""""""""""""""""""""""""""""""""""""""""
 
-For this example we perform the photometry in a circular aperture with
-a radius of 5 pixels.  The local background level around each source
-is estimated as the sigma-clipped median value within a circular
-annulus of inner radius 10 pixels and outer radius 15 pixels.  We
-start by defining an example image and an aperture for three sources::
+For this example, the local background level around each source is
+estimated as the sigma-clipped median value within the circular annulus.
+We'll use the :class:`~photutils.aperture.ApertureStats` class to
+compute both the photometry (aperture sum) and the background level::
 
-    >>> from photutils.datasets import make_100gaussians_image
-    >>> from photutils.aperture import CircularAperture, CircularAnnulus
-    >>> data = make_100gaussians_image()
-    >>> positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
-    >>> aperture = CircularAperture(positions, r=5)
-    >>> annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
+    >>> from astropy.stats import SigmaClip
+    >>> sigclip = SigmaClip(sigma=3.0, maxiters=10)
+    >>> aper_stats = ApertureStats(data, aperture, sigma_clip=None)
+    >>> bkg_stats = ApertureStats(data, annulus_aperture, sigma_clip=sigclip)
 
-Let's plot the circular apertures (white) and circular annulus
-apertures (red) on the image:
+The sigma-clipped median values in the background annulus apertures
+are::
 
-.. plot::
+    >>> print(bkg_stats.median)
+    [4.848213   5.0884354  4.80605993]
 
-    from astropy.visualization import simple_norm
-    import matplotlib.pyplot as plt
-    from photutils.aperture import CircularAperture, CircularAnnulus
-    from photutils.datasets import make_100gaussians_image
+The total background within the circular apertures is then the
+background level multiplied by the circular-aperture areas::
 
-    data = make_100gaussians_image()
-    positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
-    aperture = CircularAperture(positions, r=5)
-    annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
+    >>> total_bkg = bkg_median * aper_stats.sum_aper_area.value
+    >>> print(total_bkg)
+    [380.77775843 399.64478152 377.46706442]
 
-    norm = simple_norm(data, 'sqrt', percent=99)
-    plt.imshow(data, norm=norm, interpolation='nearest')
-    plt.xlim(0, 170)
-    plt.ylim(130, 250)
+Finally, the local background-subtracted sum within the circular
+apertures is::
 
-    ap_patches = aperture.plot(color='white', lw=2,
-                               label='Photometry aperture')
-    ann_patches = annulus_aperture.plot(color='red', lw=2,
-                                        label='Background annulus')
-    handles = (ap_patches[0], ann_patches[0])
-    plt.legend(loc=(0.17, 0.05), facecolor='#458989', labelcolor='white',
-               handles=handles, prop={'weight': 'bold', 'size': 11})
-
-We can use aperture masks to directly access the pixel values in any
-aperture.  Let's do that for the annulus aperture::
-
-   >>> annulus_masks = annulus_aperture.to_mask(method='center')
-
-The result is a list of `~photutils.aperture.ApertureMask` objects,
-one for each aperture position.  The values in these aperture masks
-are either 0 or 1 because we specified ``method='center'``.
-Alternatively, one could use the "exact" (``method='exact'``) mask,
-but it produces partial-pixel masks (i.e., values between 0 and 1) and
-thus one would need to use statistical functions that can handle
-partial-pixel weights.  That introduces unnecessary complexity when
-the aperture is simply being used to estimate the local background.
-Whole pixels are fine, assuming you have a sufficient number of them
-on which to apply your statistical estimator.
-
-Let's focus on just the first annulus.  Let's plot its aperture mask:
-
-.. doctest-skip::
-
-    >>> import matplotlib.pyplot as plt
-    >>> plt.imshow(annulus_masks[0], interpolation='nearest')
-    >>> plt.colorbar()
-
-.. plot::
-
-    import matplotlib.pyplot as plt
-    from photutils.aperture import CircularAperture, CircularAnnulus
-
-    positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
-    aperture = CircularAperture(positions, r=5)
-    annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
-    annulus_masks = annulus_aperture.to_mask(method='center')
-    plt.imshow(annulus_masks[0], interpolation='nearest')
-    plt.colorbar()
-
-We can now use the :meth:`photutils.aperture.ApertureMask.multiply`
-method to get the values of the aperture mask multiplied to the data.
-Since the mask values are 0 or 1, the result is simply the data values
-within the annulus aperture::
-
-   >>> annulus_data = annulus_masks[0].multiply(data)
-
-Let's plot the annulus data:
-
-.. plot::
-
-    import matplotlib.pyplot as plt
-    from photutils.aperture import CircularAperture, CircularAnnulus
-    from photutils.datasets import make_100gaussians_image
-
-    positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
-    aperture = CircularAperture(positions, r=5)
-    annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
-    annulus_masks = annulus_aperture.to_mask(method='center')
-    data = make_100gaussians_image()
-    annulus_data = annulus_masks[0].multiply(data)
-    plt.imshow(annulus_data, interpolation='nearest')
-    plt.colorbar()
-
-From this 2D array, you can extract a 1D array of data values (e.g., if
-you don't care about their spatial positions, which is probably the most
-common case)::
-
-   >>> mask = annulus_masks[0].data
-   >>> annulus_data_1d = annulus_data[mask > 0]
-   >>> annulus_data_1d.shape
-   (394,)
-
-You can then use your favorite statistical estimator on this 1D array
-to estimate the background level.  Let's calculate the sigma-clipped
-median::
-
-   >>> from astropy.stats import sigma_clipped_stats
-   >>> _, median_sigclip, _ = sigma_clipped_stats(annulus_data_1d)
-   >>> print(median_sigclip)  # doctest: +FLOAT_CMP
-   4.848212997882959
-
-The total background within the circular aperture is then the local background
-level times the circular aperture area::
-
-   >>> background = median_sigclip * aperture.area
-   >>> print(background)  # doctest: +FLOAT_CMP
-   380.7777584296913
-
-Above was a very pedagogical description of the underlying methods for
-local background subtraction for a single source.  However, it's quite
-straightforward to do this for all the sources in just a few lines of
-code. For this example, we'll again use the sigma-clipped median of
-the pixels in the background annuli for the background estimates of
-each source::
-
-    >>> from astropy.stats import sigma_clipped_stats
-    >>> from photutils.aperture import aperture_photometry
-    >>> from photutils.aperture import CircularAperture, CircularAnnulus
-    >>> from photutils.datasets import make_100gaussians_image
-    >>>
-    >>> data = make_100gaussians_image()
-    >>> positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
-    >>> aperture = CircularAperture(positions, r=5)
-    >>> annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
-    >>> annulus_masks = annulus_aperture.to_mask(method='center')
-    >>>
-    >>> bkg_median = []
-    >>> for mask in annulus_masks:
-    ...     annulus_data = mask.multiply(data)
-    ...     annulus_data_1d = annulus_data[mask.data > 0]
-    ...     _, median_sigclip, _ = sigma_clipped_stats(annulus_data_1d)
-    ...     bkg_median.append(median_sigclip)
-    >>> bkg_median = np.array(bkg_median)
-    >>> phot = aperture_photometry(data, aperture)
-    >>> phot['annulus_median'] = bkg_median
-    >>> phot['aper_bkg'] = bkg_median * aperture.area
-    >>> phot['aper_sum_bkgsub'] = phot['aperture_sum'] - phot['aper_bkg']
-    >>> for col in phot.colnames:
-    ...     phot[col].info.format = '%.8g'  # for consistent table output
-    >>> print(phot)
-     id xcenter ycenter aperture_sum annulus_median  aper_bkg aper_sum_bkgsub
-          pix     pix
-    --- ------- ------- ------------ -------------- --------- ---------------
-      1   145.1   168.3    1131.5794       4.848213 380.77776       750.80166
-      2    84.5   224.1    746.16064      5.0884354 399.64478       346.51586
-      3    48.3   200.3    1250.2186      4.8060599 377.46706        872.7515
+    >>> apersum_bkgsub = aper_stats.sum - total_bkg
+    >>> print(apersum_bkgsub)
+    [750.80166351 346.51586233 872.75150158]
 
 
 .. _error_estimation:
 
-Error Estimation
-----------------
+Aperture Photometry Error Estimation
+------------------------------------
 
 If and only if the ``error`` keyword is input to
 :func:`~photutils.aperture.aperture_photometry`, the returned table
@@ -664,7 +532,7 @@ will include a ``'aperture_sum_err'`` column in addition to
 uncertainty associated with ``'aperture_sum'``.
 
 For example, suppose we have previously calculated the error on each
-pixel's value and saved it in the array ``error``::
+pixel value and saved it in the array ``error``::
 
     >>> positions = [(30., 30.), (40., 40.)]
     >>> aperture = CircularAperture(positions, r=3.)
@@ -690,11 +558,11 @@ where :math:`A` are the non-masked pixels in the aperture, and
 :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
 
 In the example above, it is assumed that the ``error`` keyword
-specifies the *total* error -- either it includes Poisson noise due to
-individual sources or such noise is irrelevant.  However, it is often
-the case that one has calculated a smooth "background-only error"
-array, which by design doesn't include increased noise on bright
-pixels.  To include Poisson noise from the sources, we can use the
+specifies the *total* error --- either it includes Poisson noise
+due to individual sources or such noise is irrelevant. However, it
+is often the case that one has calculated a smooth "background-only
+error" array, which by design doesn't include increased noise on bright
+pixels. To include Poisson noise from the sources, we can use the
 :func:`~photutils.utils.calc_total_error` function.
 
 Let's assume we have a background-only image called ``bkg_error``.
@@ -707,8 +575,8 @@ time as the effective gain::
     >>> phot_table = aperture_photometry(data - bkg, aperture, error=error)  # doctest: +SKIP
 
 
-Pixel Masking
--------------
+Aperture Photometry with Pixel Masking
+--------------------------------------
 
 Pixels can be ignored/excluded (e.g., bad pixels) from the aperture
 photometry by providing an image mask via the ``mask`` keyword::
