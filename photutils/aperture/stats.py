@@ -714,6 +714,8 @@ class ApertureStats:
         within the aperture, and pixels where the aperture mask has zero
         weight.
         """
+        if self._error is None:
+            return self._null_object
         return self._make_masked_array_center(
             list(zip(*self._aperture_cutouts_center))[1])
 
@@ -732,6 +734,8 @@ class ApertureStats:
         within the aperture, and pixels where the aperture mask has zero
         weight.
         """
+        if self._error is None:
+            return self._null_object
         return self._make_masked_array(list(zip(*self._aperture_cutouts))[1])
 
     @lazyproperty
@@ -749,6 +753,8 @@ class ApertureStats:
         within the aperture, and pixels where the aperture mask has zero
         weight.
         """
+        if self._error is None:
+            return self._null_object
         return [np.sqrt(var) for var in self._variance_cutout]
 
     @lazyproperty
