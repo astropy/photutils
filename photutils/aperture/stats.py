@@ -1099,10 +1099,8 @@ class ApertureStats:
         if self.sum_method == 'center':
             return self._calculate_stats(np.sum)
 
-        data_cutout = self.data_sumcutout
-        if self.isscalar:
-            data_cutout = (data_cutout,)
-        result = np.array([np.sum(arr) for arr in data_cutout])
+        data_values = self._get_values(self.data_sumcutout)
+        result = np.array([np.sum(arr) for arr in data_values])
         if self._data_unit is not None:
             result <<= self._data_unit
         return result
