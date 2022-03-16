@@ -46,5 +46,5 @@ def process_quantities(arrays, names):
                          'same units.')
     unit = unit.pop()
     if unit is not None:
-        arrays = [arr.value for arr in arrays if arr is not None]
+        arrays = [arr.value if arr is not None else arr for arr in arrays]
     return arrays, unit
