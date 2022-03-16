@@ -90,8 +90,8 @@ aperture object::
 Converting Between Pixel and Sky Apertures
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The pixel apertures can be converted to sky apertures, and vice versa.
-To accomplish this, use the
+The pixel apertures can be converted to sky apertures, and
+vice versa, given a WCS object. To accomplish this, use the
 :meth:`~photutils.aperture.PixelAperture.to_sky` method for pixel
 apertures, e.g.,:
 
@@ -429,7 +429,7 @@ position::
 We then perform the photometry in the circular aperture::
 
     >>> from photutils.aperture import aperture_photometry
-    >>> phot_table = aperture_photometry(data, circular_aperture
+    >>> phot_table = aperture_photometry(data, aperture)
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
@@ -508,7 +508,7 @@ are::
 The total background within the circular apertures is then the
 background level multiplied by the circular-aperture areas::
 
-    >>> total_bkg = bkg_median * aper_stats.sum_aper_area.value
+    >>> total_bkg = bkg_stats.median * aper_stats.sum_aper_area.value
     >>> print(total_bkg)
     [380.77775843 399.64478152 377.46706442]
 
@@ -707,45 +707,102 @@ Aperture Masks
 
 All `~photutils.aperture.PixelAperture` objects have a
 :meth:`~photutils.aperture.PixelAperture.to_mask` method that returns
-a list of `~photutils.aperture.ApertureMask` objects, one for each
-aperture position.  The `~photutils.aperture.ApertureMask` object
-contains a cutout of the aperture mask and a
-`~photutils.aperture.BoundingBox` object that provides the bounding
-box where the mask is to be applied.  It also provides a
-:meth:`~photutils.aperture.ApertureMask.to_image` method to obtain an
-image of the mask in a 2D array of the given shape, a
-:meth:`~photutils.aperture.ApertureMask.cutout` method to create a
-cutout from the input data over the mask bounding box, and an
-:meth:`~photutils.aperture.ApertureMask.multiply` method to multiply
-the aperture mask with the input data to create a mask-weighted data
-cutout.   All of these methods properly handle the cases of partial or
-no overlap of the aperture mask with the data.
+a `~photutils.aperture.ApertureMask` object (for a single aperture
+position) or a list of `~photutils.aperture.ApertureMask` objects, one
+for each aperture position. The `~photutils.aperture.ApertureMask`
+object contains a cutout of the aperture mask weights and a
+`~photutils.aperture.BoundingBox` object that provides the bounding box
+where the mask is to be applied.
 
-Let's start by creating an aperture object::
+Let's start by creating a circular-annulus aperture::
 
-    >>> from photutils.aperture import CircularAperture
-    >>> positions = [(30., 30.), (40., 40.)]
-    >>> aperture = CircularAperture(positions, r=3.)
+    >>> from photutils.datasets import make_100gaussians_image
+    >>> from photutils.aperture import CircularAnnulus
+    >>> data = make_100gaussians_image()
+    >>> positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
+    >>> aperture = CircularAnnulus(positions, r_in=10, r_out=15)
 
 Now let's create a list of `~photutils.aperture.ApertureMask` objects
-using the :meth:`~photutils.aperture.PixelAperture.to_mask` method::
+using the :meth:`~photutils.aperture.PixelAperture.to_mask` method using
+the aperture mask "exact" method::
 
-    >>> masks = aperture.to_mask(method='center')
+    >>> masks = aperture.to_mask(method='exact')
 
-We can now create an image with of the first aperture mask at its
-position::
+Let's plot the first aperture mask:
 
-    >>> mask = masks[0]
-    >>> image = mask.to_image(shape=((200, 200)))
+.. doctest-skip::
 
-We can also create a cutout from a data image over the mask domain::
+    >>> import matplotlib.pyplot as plt
+    >>> plt.imshow(masks[0])
 
-    >>> data_cutout = mask.cutout(data)
+.. plot::
 
-We can also create a mask-weighted cutout from the data.  Here the
-circular aperture mask has been multiplied with the data::
+    import matplotlib.pyplot as plt
+    from photutils.datasets import make_100gaussians_image
+    from photutils.aperture import CircularAperture, CircularAnnulus
+    data = make_100gaussians_image()
+    positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
+    aperture = CircularAperture(positions, r=5)
+    annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
+    masks = annulus_aperture.to_mask(method='exact')
+    plt.imshow(masks[0])
 
-    >>> data_cutout_aper = mask.multiply(data)
+Let's now use the "center" aperture mask method and plot the resulting
+aperture mask:
+
+.. doctest-skip::
+
+    >>> masks2 = aperture.to_mask(method='center')
+    >>> plt.imshow(masks2[0])
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    from photutils.datasets import make_100gaussians_image
+    from photutils.aperture import CircularAperture, CircularAnnulus
+    data = make_100gaussians_image()
+    positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
+    aperture = CircularAperture(positions, r=5)
+    annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
+    masks2 = annulus_aperture.to_mask(method='center')
+    plt.imshow(masks2[0])
+
+We can also create an aperture mask-weighted cutout from the data,
+properly handling the cases of partial or no overlap of the aperture
+mask with the data. Let's plot the aperture mask weights (using the mask
+generated above with the "exact" method) multiplied with the data:
+
+.. doctest-skip::
+
+    >>> data_weighted = masks[0].multiply(data)
+    >>> plt.imshow(data_weighted)
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    from photutils.datasets import make_100gaussians_image
+    from photutils.aperture import CircularAperture, CircularAnnulus
+    data = make_100gaussians_image()
+    positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
+    aperture = CircularAperture(positions, r=5)
+    annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
+    masks = annulus_aperture.to_mask(method='exact')
+    plt.imshow(masks[0].multiply(data))
+
+To get a 1D `~numpy.ndarray` of the non-zero weighted data values, use
+the :meth:`~photutils.aperture.ApertureMask.get_values` method:
+
+.. doctest-skip::
+
+    >>> data_weighted_1d = masks[0].get_values(data)
+
+The :class:`~photutils.aperture.ApertureMask` class also provides a
+:meth:`~photutils.aperture.ApertureMask.to_image` method to obtain
+an image of the aperture mask in a 2D array of the given shape and a
+:meth:`~photutils.aperture.ApertureMask.cutout` method to create a
+cutout from the input data over the aperture mask bounding box. Both of
+these methods properly handle the cases of partial or no overlap of the
+aperture mask with the data.
 
 
 .. _custom-apertures:
