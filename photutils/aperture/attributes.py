@@ -103,16 +103,6 @@ class SkyCoordPositions(ApertureAttribute):
             raise ValueError(f'{self.name!r} must be a SkyCoord instance')
 
 
-class Scalar(ApertureAttribute):
-    """
-    Check that value is a scalar.
-    """
-
-    def _validate(self, value):
-        if not np.isscalar(value):
-            raise ValueError(f'{self.name!r} must be a scalar')
-
-
 class PositiveScalar(ApertureAttribute):
     """
     Check that value is a strictly positive (> 0) scalar.
@@ -138,6 +128,38 @@ class ScalarAngle(ApertureAttribute):
                 raise ValueError(f'{self.name!r} must have angular units')
         else:
             raise TypeError(f'{self.name!r} must be a scalar angle')
+
+
+class ScalarAngleOrValue(ApertureAttribute):
+    """
+    Check that value is a scalar angle, either as a
+    `~astropy.coordinates.Angle` or `~astropy.units.Quantity` with
+    angular units, or a scalar float.
+    """
+
+    def __set__(self, instance, value):
+        self._validate(value)
+        instance.__dict__[self.name] = value
+
+        # also store the angle in radians as a float
+        if isinstance(value, u.Quantity):
+            value = value.to(u.radian).value
+        name = f'_{self.name}_radians'
+        instance.__dict__[name] = value
+
+    def _validate(self, value):
+        if isinstance(value, u.Quantity):
+            if not value.isscalar:
+                raise ValueError(f'{self.name!r} must be a scalar')
+
+            if not (value.unit.physical_type == 'angle' or
+                    value.unit == u.pixel):
+                raise ValueError(f'{self.name!r} must have angular or pixel '
+                                 'units')
+        else:
+            if not np.isscalar(value):
+                raise TypeError(f'{self.name!r} must be a scalar float in '
+                                'radians')
 
 
 class ScalarAngleOrPixel(ApertureAttribute):
