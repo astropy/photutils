@@ -3,7 +3,7 @@
 Tests for the ellipse module.
 """
 
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import Angle, SkyCoord
 import astropy.units as u
 import numpy as np
 import pytest
@@ -112,3 +112,28 @@ class TestSkyEllipticalAnnulus(BaseTestAperture):
         assert aper == self.aperture
         aper.a_in = 2. * UNIT
         assert aper != self.aperture
+
+
+def test_ellipse_theta_quantity():
+    aper1 = EllipticalAperture(POSITIONS, a=10., b=5., theta=np.pi/2.)
+    theta = u.Quantity(90 * u.deg)
+    aper2 = EllipticalAperture(POSITIONS, a=10., b=5., theta=theta)
+    theta = Angle(90 * u.deg)
+    aper3 = EllipticalAperture(POSITIONS, a=10., b=5., theta=theta)
+
+    assert aper1._theta_radians == aper2._theta_radians
+    assert aper1._theta_radians == aper3._theta_radians
+
+
+def test_ellipse_annulus_theta_quantity():
+    aper1 = EllipticalAnnulus(POSITIONS, a_in=10., a_out=20., b_out=17,
+                              theta=np.pi/3)
+    theta = u.Quantity(60 * u.deg)
+    aper2 = EllipticalAnnulus(POSITIONS, a_in=10., a_out=20., b_out=17,
+                              theta=theta)
+    theta = Angle(60 * u.deg)
+    aper3 = EllipticalAnnulus(POSITIONS, a_in=10., a_out=20., b_out=17,
+                              theta=theta)
+
+    assert aper1._theta_radians == aper2._theta_radians
+    assert aper1._theta_radians == aper3._theta_radians
