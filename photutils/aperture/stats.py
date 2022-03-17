@@ -288,8 +288,11 @@ class ApertureStats:
             except TypeError:
                 # apply fancy indices (e.g., array/list or bool
                 # mask) to lists
-                val = (np.array(value + [None],
-                                dtype=object)[:-1][index]).tolist()
+                # see https://numpy.org/doc/stable/release/1.20.0-notes.html
+                # #arraylike-objects-which-do-not-define-len-and-getitem
+                arr = np.empty(len(value), dtype=object)
+                arr[:] = list(value)
+                val = arr[index].tolist()
 
             newcls.__dict__[key] = val
         return newcls
@@ -358,7 +361,7 @@ class ApertureStats:
         """
         The aperture identification number(s).
         """
-        return np.arange(self.n_apertures) + 1
+        return self._ids
 
     @property
     def ids(self):
@@ -366,10 +369,10 @@ class ApertureStats:
         The aperture identification number(s), always as an iterable
         `~numpy.ndarray`.
         """
-        ids = self.id
+        _ids = self._ids
         if self.isscalar:
-            ids = np.array((ids,))
-        return ids
+            _ids = np.array((_ids,))
+        return _ids
 
     def get_id(self, id_num):
         """
@@ -405,6 +408,9 @@ class ApertureStats:
             A new `ApertureStats` object containing only the sources with
             the input ID numbers.
         """
+        for id_num in np.atleast_1d(id_nums):
+            if id_num not in self.ids:
+                raise ValueError(f'{id_num} is not a valid source ID number')
         idx = np.searchsorted(self.id, id_nums)
         return self[idx]
 

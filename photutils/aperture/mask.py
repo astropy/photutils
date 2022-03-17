@@ -35,12 +35,12 @@ class ApertureMask:
         self.bbox = bbox
         self._mask = (self.data == 0)
 
-    def __array__(self):
+    def __array__(self, dtype=None):
         """
         Array representation of the mask data array (e.g., for
         matplotlib).
         """
-        return self.data
+        return np.asarray(self.data, dtype=dtype)
 
     @property
     def shape(self):
