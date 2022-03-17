@@ -9,8 +9,9 @@ import math
 import astropy.units as u
 import numpy as np
 
-from .attributes import (ScalarAngle, PixelPositions, PositiveScalar, Scalar,
-                         SkyCoordPositions, ScalarAngleOrPixel)
+from .attributes import (ScalarAngle, PixelPositions, PositiveScalar,
+                         SkyCoordPositions, ScalarAngleOrPixel,
+                         ScalarAngleOrValue)
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
@@ -89,13 +90,14 @@ class RectangularMaskMixin:
             ny, nx = bbox.shape
             mask = rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                             edges[3], nx, ny, w, h,
-                                            self.theta, 0, subpixels)
+                                            self._theta_radians, 0, subpixels)
 
             # subtract the inner circle for an annulus
             if hasattr(self, 'w_in'):
                 mask -= rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                                  edges[3], nx, ny, self.w_in,
-                                                 self.h_in, self.theta, 0,
+                                                 self.h_in,
+                                                 self._theta_radians, 0,
                                                  subpixels)
 
             masks.append(ApertureMask(mask, bbox))
@@ -167,10 +169,11 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         The full height of the rectangle in pixels.  For ``theta=0`` the
         height side is along the ``y`` axis.
 
-    theta : float, optional
-        The rotation angle in radians of the rectangle "width" side from
-        the positive ``x`` axis.  The rotation angle increases
-        counterclockwise.  The default is 0.
+    theta : float or `~astropy.units.Quantity`, optional
+        The rotation angle as an angular quantity
+        (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
+        value in radians (as a float) from the positive ``x`` axis. The
+        rotation angle increases counterclockwise.
 
     Raises
     ------
@@ -194,8 +197,9 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     positions = PixelPositions('The center pixel position(s).')
     w = PositiveScalar('The full width in pixels.')
     h = PositiveScalar('The full height in pixels.')
-    theta = Scalar('The counterclockwise rotation angle in radians of the '
-                   'rectangle "width" side from the positive x axis.')
+    theta = ScalarAngleOrValue('The counterclockwise rotation angle in '
+                               'radians of the rectangle "width" side from '
+                               'the positive x axis.')
 
     def __init__(self, positions, w, h, theta=0.):
         self.positions = positions
@@ -205,7 +209,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
     @property
     def _xy_extents(self):
-        return self._calc_extents(self.w, self.h, self.theta)
+        return self._calc_extents(self.w, self.h, self._theta_radians)
 
     @property
     def area(self):
@@ -237,10 +241,10 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
                                                                **kwargs)
         xy_positions = self._lower_left_positions(xy_positions, self.w,
-                                                  self.h, self.theta)
+                                                  self.h, self._theta_radians)
 
         patches = []
-        theta_deg = self.theta * 180. / np.pi
+        theta_deg = self._theta_radians * 180. / np.pi
         for xy_position in xy_positions:
             patches.append(mpatches.Rectangle(xy_position, self.w, self.h,
                                               theta_deg, **patch_kwargs))
@@ -309,10 +313,11 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         For ``theta=0`` the height side is along the ``y`` axis.
 
-    theta : float, optional
-        The rotation angle in radians of the rectangle "width" side from
-        the positive ``x`` axis.  The rotation angle increases
-        counterclockwise.  The default is 0.
+    theta : float or `~astropy.units.Quantity`, optional
+        The rotation angle as an angular quantity
+        (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
+        value in radians (as a float) from the positive ``x`` axis. The
+        rotation angle increases counterclockwise.
 
     Raises
     ------
@@ -343,8 +348,9 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     w_out = PositiveScalar('The outer full width in pixels.')
     h_in = PositiveScalar('The inner full height in pixels.')
     h_out = PositiveScalar('The outer full height in pixels.')
-    theta = Scalar('The counterclockwise rotation angle in radians of the '
-                   'rectangle "width" side from the positive x axis.')
+    theta = ScalarAngleOrValue('The counterclockwise rotation angle in '
+                               'radians of the rectangle "width" side from '
+                               'the positive x axis.')
 
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.):
         if not w_out > w_in:
@@ -366,7 +372,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     @property
     def _xy_extents(self):
-        return self._calc_extents(self.w_out, self.h_out, self.theta)
+        return self._calc_extents(self.w_out, self.h_out, self._theta_radians)
 
     @property
     def area(self):
@@ -399,14 +405,14 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
                                                                **kwargs)
         inner_xy_positions = self._lower_left_positions(xy_positions,
                                                         self.w_in, self.h_in,
-                                                        self.theta)
+                                                        self._theta_radians)
         outer_xy_positions = self._lower_left_positions(xy_positions,
                                                         self.w_out,
                                                         self.h_out,
-                                                        self.theta)
+                                                        self._theta_radians)
 
         patches = []
-        theta_deg = self.theta * 180. / np.pi
+        theta_deg = self._theta_radians * 180. / np.pi
         for xy_in, xy_out in zip(inner_xy_positions, outer_xy_positions):
             patch_inner = mpatches.Rectangle(xy_in, self.w_in, self.h_in,
                                              theta_deg)
