@@ -307,18 +307,18 @@ Here is a simple example using a circular aperture at one position::
 
     >>> data = make_4gaussians_image()
     >>> aper = CircularAperture((150, 25), 8)
-    >>> aperstats = ApertureStats(data, aper)
-    >>> print(aperstats.xcentroid)
+    >>> aperstats = ApertureStats(data, aper)  # doctest: +FLOAT_CMP
+    >>> print(aperstats.xcentroid)  # doctest: +FLOAT_CMP
     149.98737072209013
-    >>> print(aperstats.ycentroid)
+    >>> print(aperstats.ycentroid)  # doctest: +FLOAT_CMP
     24.99729176183652
-    >>> print(aperstats.centroid)
+    >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
     [149.98737072  24.99729176]
 
-    >>> print(aperstats.mean, aperstats.median, aperstats.std)
+    >>> print(aperstats.mean, aperstats.median, aperstats.std)  # doctest: +FLOAT_CMP
     46.861845146453526 33.743501730319 38.25291812758177
 
-    >>> print(aperstats.sum)
+    >>> print(aperstats.sum)  # doctest: +FLOAT_CMP
     9118.129697119366
 
 Similar to `~photutils.aperture.aperture_photometry`, the input aperture
@@ -326,16 +326,20 @@ can have multiple positions::
 
     >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
     >>> aperstats2 = ApertureStats(data, aper2)
-    >>> print(aperstats2.xcentroid)
+    >>> print(aperstats2.xcentroid)  # doctest: +FLOAT_CMP
     [149.97230436  90.00833613]
-    >>> print(aperstats2.sum)
+    >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
     [ 9863.56195844 36629.52906175]
-    >>> columns = ('id', 'mean', 'median', 'std')
-    >>> print(aperstats2.to_table(columns))
-     id        mean              median              std
-    --- ------------------ ------------------ ------------------
-      1 32.200935384215164 16.543219862508728 36.189317624748654
-      2 118.50681220242285 117.17878745843481  50.10054012959997
+    >>> columns = ('id', 'mean', 'median', 'std', 'var', 'sum')
+    >>> stats_table = aperstats2.to_table(columns)
+    >>> for col in stats_table.colnames:
+    ...     stats_table[col].info.format = '%.8g'  # for consistent table output
+
+    >>> print(stats_table)  # doctest: +FLOAT_CMP
+     id    mean     median     std       var       sum
+    --- --------- --------- --------- --------- ---------
+      1 32.200935  16.54322 36.189318 1309.6667  9863.562
+      2 118.50681 117.17879  50.10054 2510.0641 36629.529
 
 Each row of the table corresponds to a single aperture position (i.e., a
 single source).

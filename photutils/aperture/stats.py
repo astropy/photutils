@@ -157,28 +157,28 @@ class ApertureStats:
     >>> data = make_4gaussians_image()
     >>> aper = CircularAperture((150, 25), 8)
     >>> aperstats = ApertureStats(data, aper)
-    >>> print(aperstats.xcentroid)
+    >>> print(aperstats.xcentroid)  # doctest: +FLOAT_CMP
     149.98737072209013
-    >>> print(aperstats.ycentroid)
+    >>> print(aperstats.ycentroid)  # doctest: +FLOAT_CMP
     24.99729176183652
-    >>> print(aperstats.centroid)
+    >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
     [149.98737072  24.99729176]
 
-    >>> print(aperstats.mean, aperstats.median, aperstats.std)
+    >>> print(aperstats.mean, aperstats.median, aperstats.std) #  doctest: +FLOAT_CMP
     46.861845146453526 33.743501730319 38.25291812758177
 
-    >>> print(aperstats.sum)
+    >>> print(aperstats.sum)  # doctest: +FLOAT_CMP
     9118.129697119366
 
-    >>> print(aperstats.sum_aper_area)
+    >>> print(aperstats.sum_aper_area) # doctest: +FLOAT_CMP
     201.0619298297468 pix2
 
     >>> # more than one aperture position
     >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
     >>> aperstats2 = ApertureStats(data, aper2)
-    >>> print(aperstats2.xcentroid)
+    >>> print(aperstats2.xcentroid)  # doctest: +FLOAT_CMP
     [149.97230436  90.00833613]
-    >>> print(aperstats2.sum)
+    >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
     [ 9863.56195844 36629.52906175]
     """
 
