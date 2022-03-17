@@ -552,6 +552,7 @@ class ApertureStats:
         variance_cutouts = []
         mask_cutouts = []
         weight_cutouts = []
+        overlaps = []
 
         for (data_cutout, data_mask, apermask, slices) in zip(
                 self._data_cutouts, self._data_mask_cutouts,
@@ -559,11 +560,13 @@ class ApertureStats:
 
             slc_large, slc_small = slices
             if slc_large is None:  # aperture does not overlap the data
-                data_cutout = None
-                variance_cutout = None
-                mask_cutout = False
-                weight_cutout = None
+                overlap = False
+                data_cutout = np.array([np.nan])
+                variance_cutout = np.array([np.nan])
+                mask_cutout = np.array([False])
+                weight_cutout = np.array([np.nan])
             else:
+                overlap = True
                 aperweight_cutout = apermask.data[slc_small]
                 weight_cutout = aperweight_cutout * ~data_mask
 
@@ -605,11 +608,12 @@ class ApertureStats:
             variance_cutouts.append(variance_cutout)
             mask_cutouts.append(mask_cutout)
             weight_cutouts.append(weight_cutout)
+            overlaps.append(overlap)
 
         # use zip (instead of np.transpose) because these may contain
         # arrays that have different shapes
         return list(zip(data_cutouts, variance_cutouts, mask_cutouts,
-                        weight_cutouts))
+                        weight_cutouts, overlaps))
 
     @lazyproperty
     def _aperture_cutouts_center(self):
@@ -809,8 +813,12 @@ class ApertureStats:
 
         cutouts = []
         for arr in data:
-            arr_ = arr.data
-            arr_[arr.mask] = 0.
+            if arr.size == 1 and np.isnan(arr[0]):  # no aperture overlap
+                arr_ = np.empty((2, 2))
+                arr_.fill(np.nan)
+            else:
+                arr_ = arr.data
+                arr_[arr.mask] = 0.
             cutouts.append(arr_)
 
         return cutouts
@@ -821,6 +829,13 @@ class ApertureStats:
         True if all pixels within the aperture are masked.
         """
         return np.array([np.all(mask) for mask in self._mask_cutout_center])
+
+    @lazyproperty
+    def _overlap(self):
+        """
+        True if there is no overlap of the aperture with the data.
+        """
+        return list(zip(*self._aperture_cutouts_center))[4]
 
     def _get_values(self, array):
         """
