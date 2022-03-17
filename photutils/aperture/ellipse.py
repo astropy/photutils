@@ -9,8 +9,9 @@ import math
 import astropy.units as u
 import numpy as np
 
-from .attributes import (ScalarAngle, PixelPositions, PositiveScalar, Scalar,
-                         SkyCoordPositions, ScalarAngleOrPixel)
+from .attributes import (ScalarAngle, PixelPositions, PositiveScalar,
+                         SkyCoordPositions, ScalarAngleOrPixel,
+                         ScalarAngleOrValue)
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
@@ -86,14 +87,15 @@ class EllipticalMaskMixin:
                                self._centered_edges):
             ny, nx = bbox.shape
             mask = elliptical_overlap_grid(edges[0], edges[1], edges[2],
-                                           edges[3], nx, ny, a, b, self.theta,
+                                           edges[3], nx, ny, a, b,
+                                           self._theta_radians,
                                            use_exact, subpixels)
 
             # subtract the inner ellipse for an annulus
             if hasattr(self, 'a_in'):
                 mask -= elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                                 edges[3], nx, ny, self.a_in,
-                                                self.b_in, self.theta,
+                                                self.b_in, self._theta_radians,
                                                 use_exact, subpixels)
 
             masks.append(ApertureMask(mask, bbox))
@@ -144,10 +146,11 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     b : float
         The semiminor axis of the ellipse in pixels.
 
-    theta : float, optional
-        The rotation angle in radians of the ellipse semimajor axis from
-        the positive ``x`` axis.  The rotation angle increases
-        counterclockwise.  The default is 0.
+    theta : float or `~astropy.units.Quantity`, optional
+        The rotation angle as an angular quantity
+        (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
+        value in radians (as a float) from the positive ``x`` axis. The
+        rotation angle increases counterclockwise.
 
     Raises
     ------
@@ -171,8 +174,9 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     positions = PixelPositions('The center pixel position(s).')
     a = PositiveScalar('The semimajor axis in pixels.')
     b = PositiveScalar('The semiminor axis in pixels.')
-    theta = Scalar('The counterclockwise rotation angle in radians of the '
-                   'ellipse semimajor axis from the positive x axis.')
+    theta = ScalarAngleOrValue('The counterclockwise rotation angle in '
+                               'radians of the ellipse semimajor axis from '
+                               'the positive x axis.')
 
     def __init__(self, positions, a, b, theta=0.):
         self.positions = positions
@@ -182,7 +186,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
     @property
     def _xy_extents(self):
-        return self._calc_extents(self.a, self.b, self.theta)
+        return self._calc_extents(self.a, self.b, self._theta_radians)
 
     @property
     def area(self):
@@ -215,7 +219,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
                                                                **kwargs)
 
         patches = []
-        theta_deg = self.theta * 180. / np.pi
+        theta_deg = self._theta_radians * 180. / np.pi
         for xy_position in xy_positions:
             patches.append(mpatches.Ellipse(xy_position, 2.*self.a, 2.*self.b,
                                             theta_deg, **patch_kwargs))
@@ -280,10 +284,11 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
             .. math:: b_{in} = b_{out}
                 \left(\frac{a_{in}}{a_{out}}\right)
 
-    theta : float, optional
-        The rotation angle in radians of the ellipse semimajor axis from
-        the positive ``x`` axis.  The rotation angle increases
-        counterclockwise.  The default is 0.
+    theta : float or `~astropy.units.Quantity`, optional
+        The rotation angle as an angular quantity
+        (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
+        value in radians (as a float) from the positive ``x`` axis. The
+        rotation angle increases counterclockwise.
 
     Raises
     ------
@@ -314,8 +319,9 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     a_out = PositiveScalar('The outer semimajor axis in pixels.')
     b_in = PositiveScalar('The inner semiminor axis in pixels.')
     b_out = PositiveScalar('The outer semiminor axis in pixels.')
-    theta = Scalar('The counterclockwise rotation angle in radians of the '
-                   'ellipse semimajor axis from the positive x axis.')
+    theta = ScalarAngleOrValue('The counterclockwise rotation angle in '
+                               'radians of the ellipse semimajor axis from '
+                               'the positive x axis.')
 
     def __init__(self, positions, a_in, a_out, b_out, b_in=None, theta=0.):
         if not a_out > a_in:
@@ -337,7 +343,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     @property
     def _xy_extents(self):
-        return self._calc_extents(self.a_out, self.b_out, self.theta)
+        return self._calc_extents(self.a_out, self.b_out, self._theta_radians)
 
     @property
     def area(self):
@@ -370,7 +376,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
                                                                **kwargs)
 
         patches = []
-        theta_deg = self.theta * 180. / np.pi
+        theta_deg = self._theta_radians * 180. / np.pi
         for xy_position in xy_positions:
             patch_inner = mpatches.Ellipse(xy_position, 2.*self.a_in,
                                            2.*self.b_in, theta_deg)
