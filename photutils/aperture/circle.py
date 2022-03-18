@@ -110,14 +110,15 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array_like or `~astropy.units.Quantity`
+    positions : array_like
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
             * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units
+              pixel units (this is Deprecated and will be removed in a
+              future version)
 
     r : float
         The radius of the circle in pixels.
@@ -222,14 +223,15 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array_like or `~astropy.units.Quantity`
+    positions : array_like
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
             * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units
+              pixel units (this is Deprecated and will be removed in a
+              future version)
 
     r_in : float
         The inner radius of the circular annulus in pixels.
@@ -352,7 +354,8 @@ class SkyCircularAperture(SkyAperture):
         either scalar coordinates or an array of coordinates.
 
     r : scalar `~astropy.units.Quantity`
-        The radius of the circle, either in angular or pixel units.
+        The radius of the circle in angular units. Pixel units are now
+        deprecated.
 
     Examples
     --------
@@ -365,7 +368,7 @@ class SkyCircularAperture(SkyAperture):
 
     _params = ('positions', 'r',)
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    r = ScalarAngleOrPixel('The radius, in angular or pixel units.')
+    r = ScalarAngleOrPixel('The radius in angular units.')
 
     def __init__(self, positions, r):
         self.positions = positions
@@ -406,12 +409,12 @@ class SkyCircularAnnulus(SkyAperture):
         either scalar coordinates or an array of coordinates.
 
     r_in : scalar `~astropy.units.Quantity`
-        The inner radius of the circular annulus, either in angular or
-        pixel units.
+        The inner radius of the circular annulus in angular units. Pixel
+        units are now deprecated.
 
     r_out : scalar `~astropy.units.Quantity`
-        The outer radius of the circular annulus, either in angular or
-        pixel units.
+        The outer radius of the circular annulus in angular units. Pixel
+        units are now deprecated.
 
     Examples
     --------
@@ -424,8 +427,8 @@ class SkyCircularAnnulus(SkyAperture):
 
     _params = ('positions', 'r_in', 'r_out')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    r_in = ScalarAngleOrPixel('The inner radius, in angular or pixel units.')
-    r_out = ScalarAngleOrPixel('The outer radius, in angular or pixel units.')
+    r_in = ScalarAngleOrPixel('The inner radius in angular units.')
+    r_out = ScalarAngleOrPixel('The outer radius in angular units.')
 
     def __init__(self, positions, r_in, r_out):
         if r_in.unit.physical_type != r_out.unit.physical_type:

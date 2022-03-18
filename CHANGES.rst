@@ -69,6 +69,12 @@ API Changes
   - The ``BoundingBox.plot()`` method now returns a
     ``matplotlib.patches.Patch`` object. [#1305]
 
+  - Inputting ``PixelAperture`` positions as an Astropy ``Quantity`` in
+    pixel units is deprecated. [#1310]
+
+  - Inputting ``SkyAperture`` shape parameters as an Astropy
+    ``Quantity`` in pixel units is deprecated. [#1310]
+
 - ``photutils.background``
 
   - Removed the deprecated ``background_mesh_ma`` and

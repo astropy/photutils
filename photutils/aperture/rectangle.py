@@ -153,14 +153,15 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array_like or `~astropy.units.Quantity`
+    positions : array_like
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
             * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units
+              pixel units (this is Deprecated and will be removed in a
+              future version)
 
     w : float
         The full width of the rectangle in pixels.  For ``theta=0`` the
@@ -288,14 +289,15 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array_like or `~astropy.units.Quantity`
+    positions : array_like
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
             * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units
+              pixel units (this is Deprecated and will be removed in a
+              future version)
 
     w_in : float
         The inner full width of the rectangular annulus in pixels.  For
@@ -468,14 +470,14 @@ class SkyRectangularAperture(SkyAperture):
         either scalar coordinates or an array of coordinates.
 
     w : scalar `~astropy.units.Quantity`
-        The full width of the rectangle, either in angular or pixel
-        units.  For ``theta=0`` the width side is along the North-South
-        axis.
+        The full width of the rectangle in angular units. Pixel units
+        are now deprecated. For ``theta=0`` the width side is along the
+        North-South axis.
 
     h :  scalar `~astropy.units.Quantity`
-        The full height of the rectangle, either in angular or pixel
-        units.  For ``theta=0`` the height side is along the East-West
-        axis.
+        The full height of the rectangle in angular units. Pixel units
+        are now deprecated. For ``theta=0`` the height side is along the
+        East-West axis.
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the rectangle "width"
@@ -493,8 +495,8 @@ class SkyRectangularAperture(SkyAperture):
 
     _params = ('positions', 'w', 'h', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    w = ScalarAngleOrPixel('The full width, in angular or pixel units.')
-    h = ScalarAngleOrPixel('The full height, in angular or pixel units.')
+    w = ScalarAngleOrPixel('The full width in angular units.')
+    h = ScalarAngleOrPixel('The full height in angular units.')
     theta = ScalarAngle('The position angle (in angular units) of the '
                         'rectangle "width" side.')
 
@@ -543,23 +545,23 @@ class SkyRectangularAnnulus(SkyAperture):
         either scalar coordinates or an array of coordinates.
 
     w_in : scalar `~astropy.units.Quantity`
-        The inner full width of the rectangular annulus, either in
-        angular or pixel units.  For ``theta=0`` the width side is along
-        the North-South axis.
+        The inner full width of the rectangular annulus in angular
+        units. Pixel units are now deprecated. For ``theta=0`` the width
+        side is along the North-South axis.
 
     w_out : scalar `~astropy.units.Quantity`
-        The outer full width of the rectangular annulus, either in
-        angular or pixel units.  For ``theta=0`` the width side is along
-        the North-South axis.
+        The outer full width of the rectangular annulus in angular
+        units. Pixel units are now deprecated. For ``theta=0`` the width
+        side is along the North-South axis.
 
     h_out : scalar `~astropy.units.Quantity`
-        The outer full height of the rectangular annulus, either in
-        angular or pixel units.
+        The outer full height of the rectangular annulus in angular
+        units. Pixel units are now deprecated.
 
     h_in : `None` or scalar `~astropy.units.Quantity`
-        The outer full height of the rectangular annulus, either in
-        angular or pixel units.  If `None`, then the inner full height
-        is calculated as:
+        The outer full height of the rectangular annulus in angular
+        units. Pixel units are now deprecated. If `None`, then the inner
+        full height is calculated as:
 
             .. math:: h_{in} = h_{out}
                 \left(\frac{w_{in}}{w_{out}}\right)
@@ -583,14 +585,10 @@ class SkyRectangularAnnulus(SkyAperture):
 
     _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    w_in = ScalarAngleOrPixel('The inner full width, in angular or pixel '
-                              'units.')
-    w_out = ScalarAngleOrPixel('The outer full width, in angular or pixel '
-                               'units.')
-    h_in = ScalarAngleOrPixel('The inner full height, in angular or pixel '
-                              'units.')
-    h_out = ScalarAngleOrPixel('The outer full height, in angular or pixel '
-                               'units.')
+    w_in = ScalarAngleOrPixel('The inner full width in angular units.')
+    w_out = ScalarAngleOrPixel('The outer full width in angular units.')
+    h_in = ScalarAngleOrPixel('The inner full height in angular units.')
+    h_out = ScalarAngleOrPixel('The outer full height in angular units.')
     theta = ScalarAngle('The position angle (in angular units) of the '
                         'rectangle "width" side.')
 
