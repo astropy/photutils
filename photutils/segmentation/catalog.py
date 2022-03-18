@@ -23,6 +23,7 @@ from ..background import SExtractorBackground
 from ..utils._convolution import _filter_data
 from ..utils._misc import _get_meta
 from ..utils._moments import _moments, _moments_central
+from ..utils._quantity_helpers import process_quantities
 
 __all__ = ['SourceCatalog']
 __doctest_requires__ = {('SourceCatalog', 'SourceCatalog.*'): ['scipy']}
@@ -220,10 +221,10 @@ class SourceCatalog:
                  apermask_method='correct', kron_params=(2.5, 1.0),
                  detection_cat=None):
 
-        self._data_unit = None
-        data, error, background = self._process_quantities(data, error,
-                                                           background)
+        (data, error, background), unit = process_quantities(
+            (data, error, background), ('data', 'error', 'background'))
         self._data = self._validate_array(data, 'data', shape=False)
+        self._data_unit = unit
         self._segment_img = self._validate_segment_img(segment_img)
         self._error = self._validate_array(error, 'error')
         self._mask = self._validate_array(mask, 'mask')
@@ -254,35 +255,6 @@ class SourceCatalog:
         self._detection_cat = detection_cat
 
         self.meta = _get_meta()
-
-    def _process_quantities(self, data, error, background):
-        """
-        Check units of input arrays.
-
-        If any of the input arrays have units then they all must have
-        units and the units must be the same.
-
-        Return unitless ndarrays with the array unit set in
-        self._data_unit.
-        """
-        inputs = (data, error, background)
-        unit = set(getattr(arr, 'unit', None)
-                   for arr in inputs if arr is not None)
-        if len(unit) > 1:
-            raise ValueError('If data, error, or background has units, then '
-                             'they must all have the same units.')
-
-        unit = unit.pop()
-        if unit is not None:
-            self._data_unit = data.unit
-            data = data.value
-
-            if error is not None:
-                error = error.value
-            if background is not None:
-                background = background.value
-
-        return data, error, background
 
     def _validate_segment_img(self, segment_img):
         if not isinstance(segment_img, SegmentationImage):
@@ -1831,7 +1803,7 @@ class SourceCatalog:
     @as_scalar
     def elongation(self):
         r"""
-        The ratio of the lengths of the semimajor and semiminor axes:
+        The ratio of the lengths of the semimajor and semiminor axes.
 
         .. math:: \mathrm{elongation} = \frac{a}{b}
 
@@ -1845,7 +1817,7 @@ class SourceCatalog:
     def ellipticity(self):
         r"""
         1.0 minus the ratio of the lengths of the semimajor and
-        semiminor axes (or 1.0 minus the `elongation`):
+        semiminor axes (or 1.0 minus the `elongation`).
 
         .. math:: \mathrm{ellipticity} = 1 - \frac{b}{a}
 

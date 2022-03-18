@@ -10,3 +10,4 @@ from .ellipse import *  # noqa
 from .mask import *  # noqa
 from .photometry import *  # noqa
 from .rectangle import *  # noqa
+from .stats import *  # noqa
