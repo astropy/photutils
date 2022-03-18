@@ -182,15 +182,18 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
     Examples
     --------
+    >>> from astropy.coordinates import Angle
     >>> from photutils.aperture import RectangularAperture
+
+    >>> theta = Angle(80, 'deg')
     >>> aper = RectangularAperture([10., 20.], 5., 3.)
-    >>> aper = RectangularAperture((10., 20.), 5., 3., theta=np.pi)
+    >>> aper = RectangularAperture((10., 20.), 5., 3., theta=theta)
 
     >>> pos1 = (10., 20.)  # (x, y)
     >>> pos2 = (30., 40.)
     >>> pos3 = (50., 60.)
     >>> aper = RectangularAperture([pos1, pos2, pos3], 5., 3.)
-    >>> aper = RectangularAperture((pos1, pos2, pos3), 5., 3., theta=np.pi)
+    >>> aper = RectangularAperture((pos1, pos2, pos3), 5., 3., theta=theta)
     """
 
     _params = ('positions', 'w', 'h', 'theta')
@@ -331,15 +334,18 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     Examples
     --------
+    >>> from astropy.coordinates import Angle
     >>> from photutils.aperture import RectangularAnnulus
+
+    >>> theta = Angle(80, 'deg')
     >>> aper = RectangularAnnulus([10., 20.], 3., 8., 5.)
-    >>> aper = RectangularAnnulus((10., 20.), 3., 8., 5., theta=np.pi)
+    >>> aper = RectangularAnnulus((10., 20.), 3., 8., 5., theta=theta)
 
     >>> pos1 = (10., 20.)  # (x, y)
     >>> pos2 = (30., 40.)
     >>> pos3 = (50., 60.)
     >>> aper = RectangularAnnulus([pos1, pos2, pos3], 3., 8., 5.)
-    >>> aper = RectangularAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=np.pi)
+    >>> aper = RectangularAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=theta)
     """
 
     _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')

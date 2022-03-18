@@ -159,15 +159,18 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
     Examples
     --------
+    >>> from astropy.coordinates import Angle
     >>> from photutils.aperture import EllipticalAperture
+
+    >>> theta = Angle(80, 'deg')
     >>> aper = EllipticalAperture([10., 20.], 5., 3.)
-    >>> aper = EllipticalAperture((10., 20.), 5., 3., theta=np.pi)
+    >>> aper = EllipticalAperture((10., 20.), 5., 3., theta=theta)
 
     >>> pos1 = (10., 20.)  # (x, y)
     >>> pos2 = (30., 40.)
     >>> pos3 = (50., 60.)
     >>> aper = EllipticalAperture([pos1, pos2, pos3], 5., 3.)
-    >>> aper = EllipticalAperture((pos1, pos2, pos3), 5., 3., theta=np.pi)
+    >>> aper = EllipticalAperture((pos1, pos2, pos3), 5., 3., theta=theta)
     """
 
     _params = ('positions', 'a', 'b', 'theta')
@@ -302,15 +305,18 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     Examples
     --------
+    >>> from astropy.coordinates import Angle
     >>> from photutils.aperture import EllipticalAnnulus
+
+    >>> theta = Angle(80, 'deg')
     >>> aper = EllipticalAnnulus([10., 20.], 3., 8., 5.)
-    >>> aper = EllipticalAnnulus((10., 20.), 3., 8., 5., theta=np.pi)
+    >>> aper = EllipticalAnnulus((10., 20.), 3., 8., 5., theta=theta)
 
     >>> pos1 = (10., 20.)  # (x, y)
     >>> pos2 = (30., 40.)
     >>> pos3 = (50., 60.)
     >>> aper = EllipticalAnnulus([pos1, pos2, pos3], 3., 8., 5.)
-    >>> aper = EllipticalAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=np.pi)
+    >>> aper = EllipticalAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=theta)
     """
 
     _params = ('positions', 'a_in', 'a_out', 'b_in', 'b_out', 'theta')
