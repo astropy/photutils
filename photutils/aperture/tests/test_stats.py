@@ -241,3 +241,10 @@ class TestApertureStats:
     def test_repr_str(self):
         assert repr(self.apstats1) == str(self.apstats1)
         assert 'Length: 3' in repr(self.apstats1)
+
+
+def test_centroid_for_zeros():
+    data = np.zeros((10, 10))
+    aperture = CircularAperture((3, 4), r=3.)
+    apstats = ApertureStats(data, aperture)
+    assert_allclose(apstats.centroid, aperture.positions)

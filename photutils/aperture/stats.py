@@ -893,6 +893,12 @@ class ApertureStats:
         the centroid within the aperture.
         """
         moments = self.moments
+
+        # Just return aperture center.
+        if np.allclose(moments, 0):
+            return (np.transpose(self.aperture.positions) -
+                    np.transpose((self.bbox_xmin, self.bbox_ymin)))
+
         if self.isscalar:
             moments = moments[np.newaxis, :]
 
