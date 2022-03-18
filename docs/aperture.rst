@@ -427,7 +427,7 @@ position::
     >>> from photutils.aperture import ApertureStats
     >>> aperstats = ApertureStats(data, annulus_aperture)
     >>> bkg_mean = aperstats.mean
-    >>> print(bkg_mean)
+    >>> print(bkg_mean)  # doctest: +FLOAT_CMP
     [4.96369499 5.10467691 4.9497741 ]
 
 We then perform the photometry in the circular aperture::
@@ -451,7 +451,7 @@ the default "exact" aperture (see :ref:`aperture-mask methods
 analytical aperture area can be accessed via the aperture ``area``
 attribute::
 
-    >>> aperture.area
+    >>> aperture.area  # doctest: +FLOAT_CMP
     78.53981633974483
 
 However, in general you should use the
@@ -463,13 +463,13 @@ it to a :class:`~photutils.aperture.PixelAperture`. Since we are not
 using a mask, the results are identical::
 
     >>> aperture_area = aperture.area_overlap(data)
-    >>> print(aperture_area)
+    >>> print(aperture_area)  # doctest: +FLOAT_CMP
     [78.53981633974485, 78.53981633974482, 78.53981633974483]
 
 The total background within the circular aperture is then::
 
     >>> total_bkg = bkg_mean * aperture_area
-    >>> print(total_bkg)
+    >>> print(total_bkg)  # doctest: +FLOAT_CMP
     [389.84769319 400.92038721 388.75434843]
 
 Thus, the background-subtracted photometry is::
@@ -506,21 +506,21 @@ compute both the photometry (aperture sum) and the background level::
 The sigma-clipped median values in the background annulus apertures
 are::
 
-    >>> print(bkg_stats.median)
+    >>> print(bkg_stats.median)  # doctest: +FLOAT_CMP
     [4.848213   5.0884354  4.80605993]
 
 The total background within the circular apertures is then the
 background level multiplied by the circular-aperture areas::
 
     >>> total_bkg = bkg_stats.median * aper_stats.sum_aper_area.value
-    >>> print(total_bkg)
+    >>> print(total_bkg)  # doctest: +FLOAT_CMP
     [380.77775843 399.64478152 377.46706442]
 
 Finally, the local background-subtracted sum within the circular
 apertures is::
 
     >>> apersum_bkgsub = aper_stats.sum - total_bkg
-    >>> print(apersum_bkgsub)
+    >>> print(apersum_bkgsub)  # doctest: +FLOAT_CMP
     [750.80166351 346.51586233 872.75150158]
 
 
