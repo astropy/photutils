@@ -1704,7 +1704,7 @@ class SourceCatalog:
         """
         eigvals = np.empty((self.nlabels, 2))
         eigvals.fill(np.nan)
-        # np.linalg.eivals requires finite input values
+        # np.linalg.eigvals requires finite input values
         idx = np.unique(np.where(np.isfinite(self._covariance))[0])
         eigvals[idx] = np.linalg.eigvals(self._covariance[idx])
 
