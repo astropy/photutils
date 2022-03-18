@@ -200,8 +200,8 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     positions = PixelPositions('The center pixel position(s).')
     w = PositiveScalar('The full width in pixels.')
     h = PositiveScalar('The full height in pixels.')
-    theta = ScalarAngleOrValue('The counterclockwise rotation angle in '
-                               'radians of the rectangle "width" side from '
+    theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
+                               'angular Quantity or value in radians from '
                                'the positive x axis.')
 
     def __init__(self, positions, w, h, theta=0.):
@@ -354,8 +354,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     w_out = PositiveScalar('The outer full width in pixels.')
     h_in = PositiveScalar('The inner full height in pixels.')
     h_out = PositiveScalar('The outer full height in pixels.')
-    theta = ScalarAngleOrValue('The counterclockwise rotation angle in '
-                               'radians of the rectangle "width" side from '
+    theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
+                               'angular Quantity or value in radians from '
                                'the positive x axis.')
 
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.):
@@ -479,8 +479,7 @@ class SkyRectangularAperture(SkyAperture):
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the rectangle "width"
         side.  For a right-handed world coordinate system, the position
-        angle increases counterclockwise from North (PA=0).  The default
-        is 0 degrees.
+        angle increases counterclockwise from North (PA=0).
 
     Examples
     --------
@@ -569,8 +568,7 @@ class SkyRectangularAnnulus(SkyAperture):
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the rectangle "width"
         side.  For a right-handed world coordinate system, the position
-        angle increases counterclockwise from North (PA=0).  The default
-        is 0 degrees.
+        angle increases counterclockwise from North (PA=0).
 
     Examples
     --------
