@@ -223,13 +223,15 @@ class SourceCatalog:
 
         (data, error, background), unit = process_quantities(
             (data, error, background), ('data', 'error', 'background'))
-        self._data = self._validate_array(data, 'data', shape=False)
+        self._data = self._validate_array(data, 'data', shape=False,
+                                          dtype=float)
         self._data_unit = unit
         self._segment_img = self._validate_segment_img(segment_img)
-        self._error = self._validate_array(error, 'error')
-        self._mask = self._validate_array(mask, 'mask')
+        self._error = self._validate_array(error, 'error', dtype=float)
+        self._mask = self._validate_array(mask, 'mask', dtype=None)
         self._kernel = kernel
-        self._background = self._validate_array(background, 'background')
+        self._background = self._validate_array(background, 'background',
+                                                dtype=float)
         self._wcs = wcs
 
         self._convolved_data = self._convolve_data()
@@ -263,11 +265,13 @@ class SourceCatalog:
             raise ValueError('segment_img and data must have the same shape.')
         return segment_img
 
-    def _validate_array(self, array, name, shape=True):
+    def _validate_array(self, array, name, shape=True, dtype=None):
         if name == 'mask' and array is np.ma.nomask:
             array = None
         if array is not None:
-            array = np.asanyarray(array)
+            # UFuncTypeError is raised when subtracting float
+            # local_background from int data; convert to float
+            array = np.asanyarray(array, dtype=dtype)
             if array.ndim != 2:
                 raise ValueError(f'{name} must be a 2D array.')
             if shape and array.shape != self._data.shape:
