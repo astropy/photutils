@@ -58,6 +58,11 @@ Bug Fixes
       ``xpeak``, or ``ypeak`` to ``None`` would result in an error.
       [#1297]
 
+- ``photutils.segmentation``
+
+    - Fixed a bug in ``SourceCatalog`` where a ``UFuncTypeError`` would
+      be raised if the input ``data`` had an integer ``dtype`` [#1312].
+
 API Changes
 ^^^^^^^^^^^
 
