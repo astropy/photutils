@@ -26,6 +26,10 @@ New Features
   - Added the ability to compare ``Aperture`` objects for equality.
     [#1304]
 
+  - The ``theta`` keyword for ``EllipticalAperture``, ``EllipticalAnnulus``,
+    ``RectangularAperture``, and ``RectangularEllipse`` can now be an
+    Astropy ``Angle`` or ``Quantity`` in angular units. [#1308]
+
 - ``photutils.background``
 
   - Added an ``alpha`` keyword to the ``Background2D.plot_meshes``
