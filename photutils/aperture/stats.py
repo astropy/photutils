@@ -187,11 +187,12 @@ class ApertureStats:
 
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
-        self._data = self._validate_array(data, 'data', shape=False)
+        self._data = self._validate_array(data, 'data', shape=False,
+                                          dtype=float)
         self._data_unit = unit
         self.aperture = self._validate_aperture(aperture)
-        self._error = self._validate_array(error, 'error')
-        self._mask = self._validate_array(mask, 'mask')
+        self._error = self._validate_array(error, 'error', dtype=float)
+        self._mask = self._validate_array(mask, 'mask', dtype=None)
         self._wcs = wcs
 
         if sigma_clip is not None and not isinstance(sigma_clip, SigmaClip):
@@ -212,11 +213,11 @@ class ApertureStats:
             raise TypeError('aperture must be an Aperture object')
         return aperture
 
-    def _validate_array(self, array, name, shape=True):
+    def _validate_array(self, array, name, shape=True, dtype=None):
         if name == 'mask' and array is np.ma.nomask:
             array = None
         if array is not None:
-            array = np.asanyarray(array)
+            array = np.asanyarray(array, dtype=dtype)
             if array.ndim != 2:
                 raise ValueError(f'{name} must be a 2D array.')
             if shape and array.shape != self._data.shape:

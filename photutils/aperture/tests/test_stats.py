@@ -241,3 +241,18 @@ class TestApertureStats:
     def test_repr_str(self):
         assert repr(self.apstats1) == str(self.apstats1)
         assert 'Length: 3' in repr(self.apstats1)
+
+    def test_data_dtype(self):
+        """
+        Regression test that input ``data`` with int dtype does not
+        raise UFuncTypeError due to subtraction of float array from int
+        array.
+        """
+        data = np.ones((25, 25), dtype=np.uint16)
+        aper = CircularAperture((12, 12), 5)
+        apstats = ApertureStats(data, aper)
+        assert apstats.min == 1.0
+        assert apstats.max == 1.0
+        assert apstats.mean == 1.0
+        assert apstats.xcentroid == 12.0
+        assert apstats.ycentroid == 12.0
