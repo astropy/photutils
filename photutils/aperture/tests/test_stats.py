@@ -128,14 +128,15 @@ class TestApertureStats:
         assert apstats[1].sum < self.apstats1[1].sum
         assert apstats[1].sum_err < self.apstats1[1].sum_err
 
-        exclude = ('isscalar', 'n_apertures', 'sky_centroid',
-                   'sky_centroid_icrs')
+        exclude = ('isscalar', 'n_apertures', 'centroid', 'xcentroid',
+                   'ycentroid', 'sky_centroid', 'sky_centroid_icrs',
+                   'inertia_tensor')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
             if (prop in exclude or 'bbox' in prop or 'cutout' in prop
                     or 'moments' in prop):
                 continue
-            assert np.all(np.isnan(getattr(apstats1, prop)))
+            assert np.all(np.isnan(getattr(apstats1, prop))), f'{prop}: {getattr(apstats1, prop)}'  # noqa
 
         # test that mask=None is the same as mask=np.ma.nomask
         apstats1 = ApertureStats(self.data, self.aperture, mask=None)
