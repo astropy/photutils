@@ -110,14 +110,15 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array_like or `~astropy.units.Quantity`
+    positions : array_like
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
             * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units
+              pixel units (this is Deprecated and will be removed in a
+              future version)
 
     r : float
         The radius of the circle in pixels.
@@ -222,14 +223,15 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array_like or `~astropy.units.Quantity`
+    positions : array_like
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
             * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units
+              pixel units (this is Deprecated and will be removed in a
+              future version)
 
     r_in : float
         The inner radius of the circular annulus in pixels.

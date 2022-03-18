@@ -132,14 +132,15 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array_like or `~astropy.units.Quantity`
+    positions : array_like
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
             * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units
+              pixel units (this is Deprecated and will be removed in a
+              future version)
 
     a : float
         The semimajor axis of the ellipse in pixels.
@@ -263,14 +264,15 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array_like or `~astropy.units.Quantity`
+    positions : array_like
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
             * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units
+              pixel units (this is Deprecated and will be removed in a
+              future version)
 
     a_in : float
         The inner semimajor axis of the elliptical annulus in pixels.
