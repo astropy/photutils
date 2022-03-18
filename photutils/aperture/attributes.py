@@ -192,6 +192,11 @@ class ScalarAngleOrPixel(ApertureAttribute):
                 raise ValueError(f'{self.name!r} must have angular or pixel '
                                  'units')
 
+            if value.unit == u.pixel:
+                warnings.warn('Inputing sky aperture quantities in pixel '
+                              'units is deprecated and will be removed in '
+                              'a future version.', AstropyDeprecationWarning)
+
             if not value > 0:
                 raise ValueError(f'{self.name!r} must be strictly positive')
         else:
