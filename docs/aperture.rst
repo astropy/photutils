@@ -351,7 +351,8 @@ Background Subtraction
 Global Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-:func:`~photutils.aperture.aperture_photometry` assumes that the data
+:func:`~photutils.aperture.aperture_photometry` and
+:class:`~photutils.aperture.ApertureStats` assume that the input data
 have been background-subtracted. If ``bkg`` is a float value or an
 array representing the background of the data (e.g., determined by
 `~photutils.background.Background2D` or an external function), simply
