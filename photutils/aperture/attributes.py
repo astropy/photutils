@@ -4,8 +4,11 @@ This module defines descriptor classes for aperture attribute
 validation.
 """
 
+import warnings
+
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 
 __all__ = ['ApertureAttribute', 'PixelPositions', 'SkyCoordPositions',
@@ -70,6 +73,13 @@ class PixelPositions(ApertureAttribute):
         self._validate(value)
 
         if isinstance(value, u.Quantity):
+            # deprecated in version 1.4.0
+            warnings.warn('Inputing positions as a Quantity is deprecated '
+                          'and will be removed in a future version.',
+                          AstropyDeprecationWarning)
+
+            if value.unit != u.pixel:
+                raise ValueError('Input positions must have pixel units')
             value = value.value
 
         if value.ndim == 2 and value.shape[1] != 2 and value.shape[0] == 2:
