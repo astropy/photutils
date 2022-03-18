@@ -9,7 +9,8 @@ import astropy.units as u
 import numpy as np
 
 __all__ = ['ApertureAttribute', 'PixelPositions', 'SkyCoordPositions',
-           'Scalar', 'PositiveScalar', 'ScalarAngle', 'ScalarAngleOrPixel']
+           'PositiveScalar', 'ScalarAngle', 'ScalarAngleOrValue',
+           'ScalarAngleOrPixel']
 
 
 class ApertureAttribute:
