@@ -673,3 +673,18 @@ class TestSourceCatalog:
         assert 'kron_flux' not in cat2.__dict__
         tbl = cat2.to_table()
         assert len(tbl) == 7
+
+    def test_data_dtype(self):
+        """
+        Regression test that input ``data`` with int dtype does not
+        raise UFuncTypeError due to subtraction of float array from int
+        array.
+        """
+        data = np.zeros((25, 25), dtype=np.uint16)
+        data[8:16, 8:16] = 10
+        segmdata = np.zeros((25, 25))
+        segmdata[8:16, 8:16] = 1
+        segm = SegmentationImage(segmdata)
+        cat = SourceCatalog(data, segm, localbkg_width=3)
+        assert cat.min_value == 10
+        assert cat.max_value == 10
