@@ -434,12 +434,12 @@ class SkyEllipticalAperture(SkyAperture):
         either scalar coordinates or an array of coordinates.
 
     a : scalar `~astropy.units.Quantity`
-        The semimajor axis of the ellipse, either in angular or pixel
-        units.
+        The semimajor axis of the ellipse in angular units. Pixel units
+        are now deprecated.
 
     b : scalar `~astropy.units.Quantity`
-        The semiminor axis of the ellipse, either in angular or pixel
-        units.
+        The semiminor axis of the ellipse in angular units. Pixel units
+        are now deprecated.
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the ellipse semimajor
@@ -457,8 +457,8 @@ class SkyEllipticalAperture(SkyAperture):
 
     _params = ('positions', 'a', 'b', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    a = ScalarAngleOrPixel('The semimajor axis, in angular or pixel units.')
-    b = ScalarAngleOrPixel('The semiminor axis, in angular or pixel units.')
+    a = ScalarAngleOrPixel('The semimajor axis in angular units.')
+    b = ScalarAngleOrPixel('The semiminor axis in angular units.')
     theta = ScalarAngle('The position angle in angular units of the ellipse '
                         'semimajor axis.')
 
@@ -507,17 +507,21 @@ class SkyEllipticalAnnulus(SkyAperture):
         either scalar coordinates or an array of coordinates.
 
     a_in : scalar `~astropy.units.Quantity`
-        The inner semimajor axis, either in angular or pixel units.
+        The inner semimajor axis in angular units. Pixel units are now
+        deprecated.
 
     a_out : scalar `~astropy.units.Quantity`
-        The outer semimajor axis, either in angular or pixel units.
+        The outer semimajor axis in angular units. Pixel units are now
+        deprecated.
 
     b_out : scalar `~astropy.units.Quantity`
-        The outer semiminor axis, either in angular or pixel units.
+        The outer semiminor axis in angular units. Pixel units are now
+        deprecated.
 
     b_in : `None` or scalar `~astropy.units.Quantity`
-        The inner semiminor axis, either in angular or pixel units.
-        If `None`, then the inner semiminor axis is calculated as:
+        The inner semiminor axis in angular units. Pixel units are
+        now deprecated. If `None`, then the inner semiminor axis is
+        calculated as:
 
             .. math:: b_{in} = b_{out}
                 \left(\frac{a_{in}}{a_{out}}\right)
@@ -539,14 +543,10 @@ class SkyEllipticalAnnulus(SkyAperture):
 
     _params = ('positions', 'a_in', 'a_out', 'b_in', 'b_out', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    a_in = ScalarAngleOrPixel('The inner semimajor axis, in angular or pixel '
-                              'units.')
-    a_out = ScalarAngleOrPixel('The outer semimajor axis, in angular or pixel '
-                               'units.')
-    b_in = ScalarAngleOrPixel('The inner semiminor axis, in angular or pixel '
-                              'units.')
-    b_out = ScalarAngleOrPixel('The outer semiminor axis, in angular or pixel '
-                               'units.')
+    a_in = ScalarAngleOrPixel('The inner semimajor axis in angular units.')
+    a_out = ScalarAngleOrPixel('The outer semimajor axis in angular units.')
+    b_in = ScalarAngleOrPixel('The inner semiminor axis in angular units.')
+    b_out = ScalarAngleOrPixel('The outer semiminor axis in angular units.')
     theta = ScalarAngle('The position angle in angular units of the ellipse '
                         'semimajor axis.')
 
