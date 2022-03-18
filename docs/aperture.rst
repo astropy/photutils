@@ -219,10 +219,11 @@ Other apertures have multiple parameters specifying the aperture size
 and orientation.  For example, for elliptical apertures, one must
 specify ``a``, ``b``, and ``theta``::
 
+    >>> from astropy.coordinates import Angle
     >>> from photutils.aperture import EllipticalAperture
     >>> a = 5.
     >>> b = 3.
-    >>> theta = np.pi / 4.
+    >>> theta = Angle(45, 'deg')
     >>> apertures = EllipticalAperture(positions, a, b, theta)
     >>> phot_table = aperture_photometry(data, apertures)
     >>> for col in phot_table.colnames:
@@ -239,7 +240,7 @@ objects, each with identical positions::
 
     >>> a = [5., 6., 7.]
     >>> b = [3., 4., 5.]
-    >>> theta = np.pi / 4.
+    >>> theta = Angle(45, 'deg')
     >>> apertures = [EllipticalAperture(positions, a=ai, b=bi, theta=theta)
     ...              for (ai, bi) in zip(a, b)]
     >>> phot_table = aperture_photometry(data, apertures)
