@@ -16,7 +16,7 @@ import astropy.units as u
 from astropy.utils import lazyproperty
 import numpy as np
 
-from . import Aperture
+from . import Aperture, SkyAperture
 from ..utils._misc import _get_meta
 from ..utils._moments import _moments, _moments_central
 from ..utils._quantity_helpers import process_quantities
@@ -62,8 +62,10 @@ class ApertureStats:
         are automatically masked.
 
     aperture : `~photutils.aperture.Aperture`
-        The aperture to apply to the data. The aperture object may
-        contain more than one position.
+        The aperture to apply to the data. The aperture object
+        may contain more than one position. If ``aperture`` is a
+        `~photutils.aperture.SkyAperture` object, then a WCS must be
+        input using the ``wcs`` keyword.
 
     error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The total error array corresponding to the input ``data``
@@ -89,8 +91,9 @@ class ApertureStats:
         A world coordinate system (WCS) transformation that
         supports the `astropy shared interface for WCS
         <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). If `None`, then all
-        sky-based properties will be set to `None`.
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). ``wcs`` is required if the
+        input ``aperture`` is a `~photutils.aperture.SkyAperture`. If
+        `None`, then all sky-based properties will be set to `None`.
 
     sigma_clip : `None` or `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
@@ -191,6 +194,11 @@ class ApertureStats:
                                           dtype=float)
         self._data_unit = unit
         self.aperture = self._validate_aperture(aperture)
+
+        if isinstance(aperture, SkyAperture):
+            if wcs is None:
+                raise ValueError('A wcs is required when using a SkyAperture')
+
         self._error = self._validate_array(error, 'error', dtype=float)
         self._mask = self._validate_array(mask, 'mask', dtype=None)
         self._wcs = wcs
@@ -278,8 +286,9 @@ class ApertureStats:
                 continue
 
             try:
-                # keep _<attrs> as length-1 iterables
-                if newcls.isscalar and key.startswith('_'):
+                # keep most _<attrs> as length-1 iterables
+                if (newcls.isscalar and key.startswith('_')
+                        and key != '_pixel_aperture'):
                     if isinstance(value, np.ndarray):
                         val = value[:, np.newaxis][index]
                     else:
@@ -322,7 +331,7 @@ class ApertureStats:
         """
         Whether the instance is scalar (e.g., a single aperture position).
         """
-        return self.aperture.isscalar
+        return self._pixel_aperture.isscalar
 
     def copy(self):
         """
@@ -456,17 +465,26 @@ class ApertureStats:
         """
         if self.isscalar:
             return 1
-        return len(self.aperture)
+        return len(self._pixel_aperture)
 
     @property
     def _apertures(self):
         """
-        The input apertures, always as an iterable.
+        The input apertures as a PixelAperture, always as an iterable.
         """
-        apertures = self.aperture
+        apertures = self._pixel_aperture
         if self.isscalar:
             apertures = (apertures,)
         return apertures
+
+    @lazyproperty
+    def _pixel_aperture(self):
+        """
+        The input aperture as a PixelAperture.
+        """
+        if isinstance(self.aperture, SkyAperture):
+            return self.aperture.to_pixel(self._wcs)
+        return self.aperture
 
     @lazyproperty
     def _aperture_masks_center(self):
@@ -474,7 +492,7 @@ class ApertureStats:
         The aperture masks (`ApertureMask`) generated with the 'center'
         method, always as an iterable.
         """
-        aperture_masks = self.aperture.to_mask(method='center')
+        aperture_masks = self._pixel_aperture.to_mask(method='center')
         if self.isscalar:
             aperture_masks = (aperture_masks,)
         return aperture_masks
@@ -485,8 +503,8 @@ class ApertureStats:
         The aperture masks (`ApertureMask`) generated with the
         ``sum_method`` method, always as an iterable.
         """
-        aperture_masks = self.aperture.to_mask(method=self.sum_method,
-                                               subpixels=self.subpixels)
+        aperture_masks = self._pixel_aperture.to_mask(method=self.sum_method,
+                                                      subpixels=self.subpixels)
         if self.isscalar:
             aperture_masks = (aperture_masks,)
         return aperture_masks
