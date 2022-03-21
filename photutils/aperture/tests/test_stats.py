@@ -158,6 +158,33 @@ class TestApertureStats:
         apstats2 = ApertureStats(self.data, self.aperture, mask=np.ma.nomask)
         assert_equal(apstats1.centroid, apstats2.centroid)
 
+    def test_local_bkg(self):
+        data = np.ones(self.data.shape) * 100.
+        local_bkg = (10, 20, 30)
+        apstats = ApertureStats(data, self.aperture, local_bkg=local_bkg)
+
+        for i, locbkg in enumerate(local_bkg):
+            apstats0 = ApertureStats(data - locbkg, self.aperture[i],
+                                     local_bkg=None)
+            for prop in apstats.properties:
+                assert_equal(getattr(apstats[i], prop),
+                             getattr(apstats0, prop))
+
+        with pytest.raises(ValueError):
+            _ = ApertureStats(data, self.aperture, local_bkg=10)
+        with pytest.raises(ValueError):
+            _ = ApertureStats(data, self.aperture, local_bkg=(10, 20))
+        with pytest.raises(ValueError):
+            _ = ApertureStats(data, self.aperture[0:2], local_bkg=(10, np.nan))
+        with pytest.raises(ValueError):
+            _ = ApertureStats(data, self.aperture[0:2], local_bkg=(10, None))
+        with pytest.raises(ValueError):
+            _ = ApertureStats(data, self.aperture[0:2],
+                              local_bkg=(-np.inf, 10))
+        with pytest.raises(ValueError):
+            _ = ApertureStats(data, self.aperture[0:2],
+                              local_bkg=np.ones((3, 3)))
+
     def test_no_aperture_overlap(self):
         aperture = CircularAperture(((0, 0), (100, 100), (-100, -100)), r=5)
         apstats = ApertureStats(self.data, aperture)
