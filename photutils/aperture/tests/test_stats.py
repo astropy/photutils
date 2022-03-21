@@ -18,7 +18,7 @@ class TestApertureStats:
     data = make_100gaussians_image()
     error = np.sqrt(data)
     wcs = make_wcs(data.shape)
-    positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
+    positions = [(145.1, 168.3), (84.7, 224.1), (48.3, 200.3)]
     aperture = CircularAperture(positions, r=5)
 
     sigclip = SigmaClip(sigma=3.0, maxiters=10)
@@ -70,6 +70,22 @@ class TestApertureStats:
             if prop in scalar_props:
                 continue
             assert_equal(getattr(apstats4, prop), getattr(apstats1, prop)[idx])
+
+    def test_skyaperture(self):
+        pix_apstats = ApertureStats(self.data, self.aperture, wcs=self.wcs)
+        skyaper = self.aperture.to_sky(self.wcs)
+        sky_apstats = ApertureStats(self.data, skyaper, wcs=self.wcs)
+
+        exclude_props = ('bbox', 'error_sumcutout', 'sum_error',
+                         'sky_centroid', 'sky_centroid_icrs')
+        for prop in pix_apstats.properties:
+            if prop in exclude_props:
+                continue
+            assert_allclose(getattr(pix_apstats, prop),
+                            getattr(sky_apstats, prop), atol=1e-7)
+
+        with pytest.raises(ValueError):
+            _ = ApertureStats(self.data, skyaper)
 
     def test_minimal_inputs(self):
         apstats = ApertureStats(self.data, self.aperture)

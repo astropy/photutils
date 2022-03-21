@@ -31,7 +31,7 @@ New Features
     Astropy ``Angle`` or ``Quantity`` in angular units. [#1308]
 
   - Added an ``ApertureStats`` class for computing statistics of
-    unmasked pixels within an aperture. [#1309]
+    unmasked pixels within an aperture. [#1309,#1314]
 
 - ``photutils.background``
 
