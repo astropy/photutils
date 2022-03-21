@@ -133,10 +133,21 @@ class ApertureStats:
         ``subpixels ** 2`` subpixels. This keyword is ignored unless
         ``sum_method='subpixel'``.
 
+    local_bkg : float, `~numpy.ndarray`, or `None`
+        The *per-pixel* local background values to subtract from the
+        data at each aperture position. The ``local_bkg`` values
+        correspond to the input ``aperture`` positions. ``local_bkg``
+        must have the same as the length of the input ``aperture``.
+        If `None`, then no local background subtraction is performed.
+        If the input ``data`` has units, then ``local_bkg`` must be a
+        `~astropy.units.Quantity` with the same units.
+
     Notes
     -----
     ``data`` should be background-subtracted for accurate source
-    properties.
+    properties. In addition to global background subtraction, local
+    background subtraction can be performed using the ``local_bkg``
+    keyword values.
 
     Most source properties are calculated using the "center"
     aperture-mask method, which gives aperture weights of 0 or 1. This
@@ -186,10 +197,11 @@ class ApertureStats:
     """
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
-                 sigma_clip=None, sum_method='exact', subpixels=5):
+                 sigma_clip=None, sum_method='exact', subpixels=5,
+                 local_bkg=None):
 
-        (data, error), unit = process_quantities((data, error),
-                                                 ('data', 'error'))
+        (data, error, local_bkg), unit = process_quantities(
+            (data, error, local_bkg), ('data', 'error', 'local_bkg'))
         self._data = self._validate_array(data, 'data', shape=False,
                                           dtype=float)
         self._data_unit = unit
@@ -210,6 +222,20 @@ class ApertureStats:
         self.sum_method = sum_method
         self.subpixels = subpixels
 
+        self._local_bkg = np.zeros(self.n_apertures)  # no local bkg
+        if local_bkg is not None:
+            local_bkg = np.atleast_1d(np.asanyarray(local_bkg, dtype=float))
+            if local_bkg.ndim != 1:
+                raise ValueError('local_bkg must be a 1D array')
+            if len(local_bkg) != self.n_apertures:
+                raise ValueError('local_bkg must have the same length as '
+                                 'the aperture')
+            if np.any(~np.isfinite(local_bkg)):
+                raise ValueError('local_bkg must not contain any non-finite '
+                                 '(e.g., inf or NaN) values')
+            # NOTE: _local_bkg is always an iterable
+            self._local_bkg = local_bkg
+
         self._ids = np.arange(self.n_apertures) + 1
         self._data_mask = self._make_data_mask()
         self.default_columns = DEFAULT_COLUMNS
@@ -221,13 +247,13 @@ class ApertureStats:
             raise TypeError('aperture must be an Aperture object')
         return aperture
 
-    def _validate_array(self, array, name, shape=True, dtype=None):
+    def _validate_array(self, array, name, ndim=2, shape=True, dtype=None):
         if name == 'mask' and array is np.ma.nomask:
             array = None
         if array is not None:
             array = np.asanyarray(array, dtype=dtype)
-            if array.ndim != 2:
-                raise ValueError(f'{name} must be a 2D array.')
+            if array.ndim != ndim:
+                raise ValueError(f'{name} must be a {ndim}D array.')
             if shape and array.shape != self._data.shape:
                 raise ValueError(f'data and {name} must have the same shape.')
         return array
@@ -275,7 +301,8 @@ class ApertureStats:
             setattr(newcls, attr, getattr(self, attr)[index])
 
         # slice evaluated lazyproperty objects
-        keys = (set(self.__dict__.keys()) & set(self._lazyproperties))
+        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        keys.add('_local_bkg')  # iterable defined in __init__
         for key in keys:
             value = self.__dict__[key]
 
@@ -527,14 +554,19 @@ class ApertureStats:
     @lazyproperty
     def _data_cutouts(self):
         """
-        The data cutouts using the aperture bounding box, always as a
-        iterable.
+        The local-background-subtracted unmasked data cutouts using the
+        aperture bounding box, always as a iterable.
         """
         cutouts = []
-        for slc_large, _ in self._overlap_slices:
-            # copy is needed to preserve input data because masks are
-            # applied to these cutouts later
-            cutouts.append(self._data[slc_large].copy())
+        for (slices, local_bkg) in zip(self._overlap_slices,
+                                       self._local_bkg):
+            if slices[0] is None:
+                cutout = None  # no aperture overlap with the data
+            else:
+                # copy is needed to preserve input data because masks are
+                # applied to these cutouts later
+                cutout = self._data[slices[0]].copy() - local_bkg
+            cutouts.append(cutout)
         return cutouts
 
     @lazyproperty

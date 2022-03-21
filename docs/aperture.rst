@@ -6,9 +6,10 @@ Aperture Photometry (`photutils.aperture`)
 Introduction
 ------------
 
-In Photutils, the :func:`~photutils.aperture.aperture_photometry`
-function is the main tool to perform aperture photometry on an
-astronomical image for a given set of apertures.
+The :func:`~photutils.aperture.aperture_photometry` function and the
+:class:`~photutils.aperture.ApertureStats` class are the main tools to
+perform aperture photometry on an astronomical image for a given set of
+apertures.
 
 Photutils provides several apertures defined in pixel or sky
 coordinates.  The aperture classes that are defined in pixel
@@ -113,16 +114,18 @@ sky apertures, e.g.,:
 Performing Aperture Photometry
 ------------------------------
 
-After the aperture object is created, we can then perform the
-photometry using the :func:`~photutils.aperture.aperture_photometry`
-function.  We start by defining the aperture (at two positions) as
-described above::
+After the aperture object is created, we can then perform the photometry
+using the :func:`~photutils.aperture.aperture_photometry` function. We
+start by defining the aperture (at two positions) as described above::
 
     >>> positions = [(30., 30.), (40., 40.)]
     >>> aperture = CircularAperture(positions, r=3.)
 
 We then call the :func:`~photutils.aperture.aperture_photometry`
-function with the data and the apertures::
+function with the data and the apertures. Note that
+:func:`~photutils.aperture.aperture_photometry` assumes that the input
+data have been background subtracted. For simplicity, we define the data
+here as an array of all ones::
 
     >>> import numpy as np
     >>> from photutils.aperture import aperture_photometry
@@ -175,7 +178,7 @@ by a factor of 5 (``subpixels=5``) in each dimension::
       1    30.0    30.0        27.96
       2    40.0    40.0        27.96
 
-Note that the results differ from the true value of 28.274333 (see
+Note that the results differ from the exact value of 28.274333 (see
 above).
 
 For the ``'subpixel'`` method, the default value is ``subpixels=5``,
@@ -261,26 +264,27 @@ objects, each with identical positions::
 Aperture Statistics
 -------------------
 
-The :class:`~photutils.aperture.ApertureStats` class can be used to
-create a catalog of statistic for pixels within an aperture.
-There is a long list of available properties, including statistics like
-:attr:`~photutils.aperture.ApertureStats.min`,
+The :class:`~photutils.aperture.ApertureStats` class can be
+used to create a catalog of statistics and properties for
+pixels within an aperture, including aperture photometry.
+It can calculate many properties, including statistics
+like :attr:`~photutils.aperture.ApertureStats.min`,
 :attr:`~photutils.aperture.ApertureStats.max`,
 :attr:`~photutils.aperture.ApertureStats.mean`,
 :attr:`~photutils.aperture.ApertureStats.median`,
 :attr:`~photutils.aperture.ApertureStats.std`,
 :attr:`~photutils.aperture.ApertureStats.sum_aper_area`,
-and :attr:`~photutils.aperture.ApertureStats.sum`.
-It also can be used to calculate morphological properties like
-:attr:`~photutils.aperture.ApertureStats.centroid`,
+and :attr:`~photutils.aperture.ApertureStats.sum`. It
+also can be used to calculate morphological properties
+like :attr:`~photutils.aperture.ApertureStats.centroid`,
 :attr:`~photutils.aperture.ApertureStats.fwhm`,
 :attr:`~photutils.aperture.ApertureStats.semimajor_sigma`,
 :attr:`~photutils.aperture.ApertureStats.semiminor_sigma`,
-:attr:`~photutils.aperture.ApertureStats.orientation`,
-and :attr:`~photutils.aperture.ApertureStats.eccentricity`.
-Please see :class:`~photutils.aperture.ApertureStats` for the
-the many properties that can be calculated. The properties can
-be accessed using `~photutils.aperture.ApertureStats` attributes
+:attr:`~photutils.aperture.ApertureStats.orientation`, and
+:attr:`~photutils.aperture.ApertureStats.eccentricity`. Please see
+:class:`~photutils.aperture.ApertureStats` for the the complete
+list of properties that can be calculated. The properties can be
+accessed using `~photutils.aperture.ApertureStats` attributes
 or output to an Astropy `~astropy.table.QTable` using the
 :meth:`~photutils.aperture.ApertureStats.to_table` method.
 
@@ -289,37 +293,44 @@ Most of the source properties are calculated using the "center"
 aperture weights of 0 or 1. This avoids the need to compute weighted
 statistics --- the ``data`` pixel values are directly used.
 
-The optional ``sigma_clip`` keyword can be used to sigma clip the pixel
-values before computing the source properties. This keyword could be
-used, for example, to compute a sigma-clipped median of pixels in an
-annulus aperture to estimate the local background level.
-
 The ``sum_method`` and ``subpixels`` keywords are used to determine
 the aperture-mask method when calculating the sum-related properties:
 ``sum``, ``sum_error``, ``sum_aper_area``, ``data_sumcutout``, and
 ``error_sumcutout``. The default is ``sum_method='exact'``, which
 produces exact aperture-weighted photometry.
 
-Here is a simple example using a circular aperture at one position::
+The optional ``sigma_clip`` keyword can be used to sigma clip the pixel
+values before computing the source properties. This keyword could be
+used, for example, to compute a sigma-clipped median of pixels in an
+annulus aperture to estimate the local background level.
+
+Here is a simple example using a circular aperture at one position.
+Note that like :func:`~photutils.aperture.aperture_photometry`,
+:class:`~photutils.aperture.ApertureStats` expects the input data to
+be background subtracted. For simplicity, here we roughly estimate the
+background as the sigma-clipped medan value::
 
     >>> from photutils.datasets import make_4gaussians_image
+    >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.aperture import CircularAperture, ApertureStats
 
     >>> data = make_4gaussians_image()
+    >>> _, median, _ = sigma_clipped_stats(data, sigma=3.0)
+    >>> data -= median  # subtract background from the data
     >>> aper = CircularAperture((150, 25), 8)
     >>> aperstats = ApertureStats(data, aper)  # doctest: +FLOAT_CMP
     >>> print(aperstats.xcentroid)  # doctest: +FLOAT_CMP
-    149.98737072209013
+    149.98572304129868
     >>> print(aperstats.ycentroid)  # doctest: +FLOAT_CMP
-    24.99729176183652
+    24.996938431105146
     >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
-    [149.98737072  24.99729176]
+    [149.98572304  24.99693843]
 
     >>> print(aperstats.mean, aperstats.median, aperstats.std)  # doctest: +FLOAT_CMP
-    46.861845146453526 33.743501730319 38.25291812758177
+    41.45359513219223 28.335251716057705 38.25291812758177
 
     >>> print(aperstats.sum)  # doctest: +FLOAT_CMP
-    9118.129697119366
+    8030.736512250234
 
 Similar to `~photutils.aperture.aperture_photometry`, the input aperture
 can have multiple positions::
@@ -327,9 +338,9 @@ can have multiple positions::
     >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
     >>> aperstats2 = ApertureStats(data, aper2)
     >>> print(aperstats2.xcentroid)  # doctest: +FLOAT_CMP
-    [149.97230436  90.00833613]
+    [149.96671384  90.00873475]
     >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
-    [ 9863.56195844 36629.52906175]
+    [ 8164.51010709 34930.47721039]
     >>> columns = ('id', 'mean', 'median', 'std', 'var', 'sum')
     >>> stats_table = aperstats2.to_table(columns)
     >>> for col in stats_table.colnames:
@@ -338,8 +349,8 @@ can have multiple positions::
     >>> print(stats_table)  # doctest: +FLOAT_CMP
      id    mean     median     std       var       sum
     --- --------- --------- --------- --------- ---------
-      1 32.200935  16.54322 36.189318 1309.6667  9863.562
-      2 118.50681 117.17879  50.10054 2510.0641 36629.529
+      1 26.792685  11.13497 36.189318 1309.6667 8164.5101
+      2 113.09856 111.77054  50.10054 2510.0641 34930.477
 
 Each row of the table corresponds to a single aperture position (i.e., a
 single source).
@@ -364,25 +375,29 @@ subtract the background from the data::
 Local Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-One often wants to estimate the local background around each
-source using a nearby aperture or annulus aperture surrounding
-each source. The simplest method for doing this is to use
-the :class:`~photutils.aperture.ApertureStats` class (see
+One often wants to also estimate the local background around
+each source using a nearby aperture or annulus aperture
+surrounding each source. A simple method for doing this is to
+use the :class:`~photutils.aperture.ApertureStats` class (see
 :ref:`photutils-aperture-stats`) to compute the mean background level
-within the annulus aperture. This class can also be used to apply more
-advanced statistics (e.g., a sigma-clipped median within the annulus).
-We show examples of both below.
+within the background aperture. This class can also be used to calculate
+more advanced statistics (e.g., a sigma-clipped median) within the
+background aperture (e.g., a circular annulus). We show examples of both
+below.
 
 Let's start by generating a more realistic example dataset::
 
 >>> from photutils.datasets import make_100gaussians_image
 >>> data = make_100gaussians_image()
 
+This artificial image has a known constant background level of 5. In the
+following examples, we'll leave this global background in the image to
+be estimated using local backgrounds.
+
 For this example we perform the photometry for three sources in a
 circular aperture with a radius of 5 pixels. The local background level
-around each source is estimated as the mean value within a circular
-annulus of inner radius 10 pixels and outer radius 15 pixels. Let's
-define the apertures::
+around each source is estimated using a circular annulus of inner radius
+10 pixels and outer radius 15 pixels. Let's define the apertures::
 
     >>> from photutils.aperture import CircularAperture, CircularAnnulus
     >>> positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
@@ -431,7 +446,9 @@ position::
     >>> print(bkg_mean)  # doctest: +FLOAT_CMP
     [4.96369499 5.10467691 4.9497741 ]
 
-We then perform the photometry in the circular aperture::
+Now let's use :func:`~photutils.aperture.aperture_photometry` to perform
+the photometry in the circular aperture (in the next example, we'll use
+:class:`~photutils.aperture.ApertureStats` to perform the photometry)::
 
     >>> from photutils.aperture import aperture_photometry
     >>> phot_table = aperture_photometry(data, aperture)
@@ -446,8 +463,8 @@ We then perform the photometry in the circular aperture::
       3    48.3   200.3    1250.2186
 
 The total background within the circular aperture is the mean local
-background times the circular aperture area. If you are using
-the default "exact" aperture (see :ref:`aperture-mask methods
+per-pixel background times the circular aperture area. If you are
+using the default "exact" aperture (see :ref:`aperture-mask methods
 <photutils-aperture-overlap>`) and there are no masked pixels, the exact
 analytical aperture area can be accessed via the aperture ``area``
 attribute::
@@ -510,7 +527,7 @@ are::
     >>> print(bkg_stats.median)  # doctest: +FLOAT_CMP
     [4.848213   5.0884354  4.80605993]
 
-The total background within the circular apertures is then the
+The total background within the circular apertures is then the per-pixel
 background level multiplied by the circular-aperture areas::
 
     >>> total_bkg = bkg_stats.median * aper_stats.sum_aper_area.value
@@ -523,6 +540,19 @@ apertures is::
     >>> apersum_bkgsub = aper_stats.sum - total_bkg
     >>> print(apersum_bkgsub)  # doctest: +FLOAT_CMP
     [750.80166351 346.51586233 872.75150158]
+
+Note that if you want to compute all of the source properties (i.e., in
+addition to only :attr:`~photutils.aperture.ApertureStats.sum`) on the
+local-background-subtracted data, you may input the *per-pixel* local
+background values to :class:`~photutils.aperture.ApertureStats` via the
+``local_bkg`` keyword::
+
+    >>> aper_stats_bkgsub = ApertureStats(data, aperture,
+    ...                                   local_bkg=bkg_stats.median)
+    >>> print(aper_stats_bkgsub.sum)  # doctest: +FLOAT_CMP
+    [750.80166351 346.51586233 872.75150158]
+
+Note these background-subtracted values are the same as those above.
 
 
 .. _error_estimation:
