@@ -133,7 +133,7 @@ class ApertureStats:
         ``subpixels ** 2`` subpixels. This keyword is ignored unless
         ``sum_method='subpixel'``.
 
-    local_bkg : float, `~numpy.ndarray`, or `None`
+    local_bkg : float, `~numpy.ndarray`,  `~astropy.units.Quantity`, or `None`
         The *per-pixel* local background values to subtract from the
         data at each aperture position. The ``local_bkg`` values
         correspond to the input ``aperture`` positions. ``local_bkg``
