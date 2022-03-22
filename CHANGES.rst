@@ -31,7 +31,7 @@ New Features
     Astropy ``Angle`` or ``Quantity`` in angular units. [#1308]
 
   - Added an ``ApertureStats`` class for computing statistics of
-    unmasked pixels within an aperture. [#1309,#1314,#1315]
+    unmasked pixels within an aperture. [#1309, #1314, #1315]
 
 - ``photutils.background``
 
@@ -54,14 +54,14 @@ Bug Fixes
 
 - ``photutils.centroid``
 
-    - Fixed a bug in ``centroid_sources`` where setting ``error``,
-      ``xpeak``, or ``ypeak`` to ``None`` would result in an error.
-      [#1297]
+  - Fixed a bug in ``centroid_sources`` where setting ``error``,
+    ``xpeak``, or ``ypeak`` to ``None`` would result in an error.
+    [#1297]
 
 - ``photutils.segmentation``
 
-    - Fixed a bug in ``SourceCatalog`` where a ``UFuncTypeError`` would
-      be raised if the input ``data`` had an integer ``dtype`` [#1312].
+  - Fixed a bug in ``SourceCatalog`` where a ``UFuncTypeError`` would
+    be raised if the input ``data`` had an integer ``dtype`` [#1312].
 
 API Changes
 ^^^^^^^^^^^
@@ -124,7 +124,7 @@ New Features
 
   - Extra keyword arguments can be input to ``centroid_sources`` that
     are then passed on to the ``centroid_func`` if supported.
-    [#1276,#1278]
+    [#1276, #1278]
 
 - ``photutils.segmentation``
 
