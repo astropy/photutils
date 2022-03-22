@@ -299,6 +299,10 @@ the aperture-mask method when calculating the sum-related properties:
 ``error_sumcutout``. The default is ``sum_method='exact'``, which
 produces exact aperture-weighted photometry.
 
+The optional ``local_bkg`` keyword can be used to input the per-pixel
+local background of each source, which will be subtracted before
+computing the aperture statistics.
+
 The optional ``sigma_clip`` keyword can be used to sigma clip the pixel
 values before computing the source properties. This keyword could be
 used, for example, to compute a sigma-clipped median of pixels in an
