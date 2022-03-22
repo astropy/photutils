@@ -1,0 +1,47 @@
+.. doctest-skip-all
+
+.. _whatsnew-1.4:
+
+****************************
+What's New in Photutils 1.4?
+****************************
+
+New ApertureStats class
+=======================
+
+A new :class:`~photutils.aperture.ApertureStats` class was added. This
+class can be used to compute statistics of unmasked pixel within an
+aperture. It can be used to create a catalog of properties, including
+local-background subtracted aperture photometry with the "exact",
+"center", or "subpixel" method, for sources.
+
+The :class:`~photutils.aperture.ApertureStats` class
+can calculate many properties, including statistics
+like :attr:`~photutils.aperture.ApertureStats.min`,
+:attr:`~photutils.aperture.ApertureStats.max`,
+:attr:`~photutils.aperture.ApertureStats.mean`,
+:attr:`~photutils.aperture.ApertureStats.median`,
+:attr:`~photutils.aperture.ApertureStats.std`,
+:attr:`~photutils.aperture.ApertureStats.sum_aper_area`,
+and :attr:`~photutils.aperture.ApertureStats.sum`. It
+also can be used to calculate morphological properties
+like :attr:`~photutils.aperture.ApertureStats.centroid`,
+:attr:`~photutils.aperture.ApertureStats.fwhm`,
+:attr:`~photutils.aperture.ApertureStats.semimajor_sigma`,
+:attr:`~photutils.aperture.ApertureStats.semiminor_sigma`,
+:attr:`~photutils.aperture.ApertureStats.orientation`, and
+:attr:`~photutils.aperture.ApertureStats.eccentricity`.
+
+The properties can be accessed using `~photutils.aperture.ApertureStats`
+attributes or output to an Astropy `~astropy.table.QTable` using the
+:meth:`~photutils.aperture.ApertureStats.to_table` method.
+
+Please see :class:`~photutils.aperture.ApertureStats` for the
+the complete list of properties that can be calculated and the
+:ref:`photutils-aperture-stats` documentation for examples.
+
+
+Other changes
+=============
+
+Please see the :ref:`changelog` for the complete list of changes.
