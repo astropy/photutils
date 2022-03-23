@@ -202,8 +202,7 @@ class ApertureStats:
 
         (data, error, local_bkg), unit = process_quantities(
             (data, error, local_bkg), ('data', 'error', 'local_bkg'))
-        self._data = self._validate_array(data, 'data', shape=False,
-                                          dtype=float)
+        self._data = self._validate_array(data, 'data', shape=False)
         self._data_unit = unit
         self.aperture = self._validate_aperture(aperture)
 
@@ -211,8 +210,8 @@ class ApertureStats:
             if wcs is None:
                 raise ValueError('A wcs is required when using a SkyAperture')
 
-        self._error = self._validate_array(error, 'error', dtype=float)
-        self._mask = self._validate_array(mask, 'mask', dtype=None)
+        self._error = self._validate_array(error, 'error')
+        self._mask = self._validate_array(mask, 'mask')
         self._wcs = wcs
 
         if sigma_clip is not None and not isinstance(sigma_clip, SigmaClip):
@@ -237,7 +236,6 @@ class ApertureStats:
             self._local_bkg = local_bkg
 
         self._ids = np.arange(self.n_apertures) + 1
-        self._data_mask = self._make_data_mask()
         self.default_columns = DEFAULT_COLUMNS
         self.meta = _get_meta()
 
@@ -247,11 +245,11 @@ class ApertureStats:
             raise TypeError('aperture must be an Aperture object')
         return aperture
 
-    def _validate_array(self, array, name, ndim=2, shape=True, dtype=None):
+    def _validate_array(self, array, name, ndim=2, shape=True):
         if name == 'mask' and array is np.ma.nomask:
             array = None
         if array is not None:
-            array = np.asanyarray(array, dtype=dtype)
+            array = np.asanyarray(array)
             if array.ndim != ndim:
                 raise ValueError(f'{name} must be a {ndim}D array.')
             if shape and array.shape != self._data.shape:
@@ -289,7 +287,7 @@ class ApertureStats:
         # attributes defined in __init__ that are copied directly to the
         # new class
         init_attr = ('_data', '_data_unit', '_error', '_mask', '_wcs',
-                     'sigma_clip', 'sum_method', 'subpixels', '_data_mask',
+                     'sigma_clip', 'sum_method', 'subpixels',
                      'default_columns', 'meta')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
@@ -365,16 +363,6 @@ class ApertureStats:
         Return a deep copy of this object.
         """
         return deepcopy(self)
-
-    def _make_data_mask(self):
-        """
-        Create a mask of non-finite ``data`` values combined with the
-        input ``mask`` array.
-        """
-        mask = ~np.isfinite(self._data)
-        if self._mask is not None:
-            mask |= self._mask
-        return mask
 
     @lazyproperty
     def _null_object(self):
@@ -494,16 +482,6 @@ class ApertureStats:
             return 1
         return len(self._pixel_aperture)
 
-    @property
-    def _apertures(self):
-        """
-        The input apertures as a PixelAperture, always as an iterable.
-        """
-        apertures = self._pixel_aperture
-        if self.isscalar:
-            apertures = (apertures,)
-        return apertures
-
     @lazyproperty
     def _pixel_aperture(self):
         """
@@ -565,23 +543,10 @@ class ApertureStats:
             else:
                 # copy is needed to preserve input data because masks are
                 # applied to these cutouts later
-                cutout = self._data[slices[0]].copy() - local_bkg
+                cutout = (self._data[slices[0]].astype(float, copy=True)
+                          - local_bkg)
             cutouts.append(cutout)
         return cutouts
-
-    @lazyproperty
-    def _data_mask_cutouts(self):
-        """
-        The data mask cutouts using the aperture bounding box, always as
-        a iterable.
-
-        The masked values here include the input mask and the non-finite
-        data values.
-        """
-        mask_cutouts = []
-        for slc_large, _ in self._overlap_slices:
-            mask_cutouts.append(self._data_mask[slc_large])
-        return mask_cutouts
 
     def _make_aperture_cutouts(self, aperture_masks):
         """
@@ -605,9 +570,8 @@ class ApertureStats:
         weight_cutouts = []
         overlaps = []
 
-        for (data_cutout, data_mask, apermask, slices) in zip(
-                self._data_cutouts, self._data_mask_cutouts,
-                aperture_masks, self._overlap_slices):
+        for (data_cutout, apermask, slices) in zip(
+                self._data_cutouts, aperture_masks, self._overlap_slices):
 
             slc_large, slc_small = slices
             if slc_large is None:  # aperture does not overlap the data
@@ -617,6 +581,12 @@ class ApertureStats:
                 mask_cutout = np.array([False])
                 weight_cutout = np.array([np.nan])
             else:
+                # create a mask of non-finite ``data`` values combined
+                # with the input ``mask`` array.
+                data_mask = ~np.isfinite(data_cutout)
+                if self._mask is not None:
+                    data_mask |= self._mask[slc_large]
+
                 overlap = True
                 aperweight_cutout = apermask.data[slc_small]
                 weight_cutout = aperweight_cutout * ~data_mask
@@ -1041,7 +1011,10 @@ class ApertureStats:
         The `~photutils.aperture.BoundingBox` of the aperture, always as
         an iterable.
         """
-        return [aperture.bbox for aperture in self._apertures]
+        apertures = self._pixel_aperture
+        if self.isscalar:
+            apertures = (apertures,)
+        return [aperture.bbox for aperture in apertures]
 
     @lazyproperty
     @as_scalar
