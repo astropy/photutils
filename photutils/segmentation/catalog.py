@@ -223,15 +223,13 @@ class SourceCatalog:
 
         (data, error, background), unit = process_quantities(
             (data, error, background), ('data', 'error', 'background'))
-        self._data = self._validate_array(data, 'data', shape=False,
-                                          dtype=float)
+        self._data = self._validate_array(data, 'data', shape=False)
         self._data_unit = unit
         self._segment_img = self._validate_segment_img(segment_img)
-        self._error = self._validate_array(error, 'error', dtype=float)
-        self._mask = self._validate_array(mask, 'mask', dtype=None)
+        self._error = self._validate_array(error, 'error')
+        self._mask = self._validate_array(mask, 'mask')
         self._kernel = kernel
-        self._background = self._validate_array(background, 'background',
-                                                dtype=float)
+        self._background = self._validate_array(background, 'background')
         self._wcs = wcs
 
         self._convolved_data = self._convolve_data()
@@ -268,13 +266,13 @@ class SourceCatalog:
                              'label.')
         return segment_img
 
-    def _validate_array(self, array, name, shape=True, dtype=None):
+    def _validate_array(self, array, name, shape=True):
         if name == 'mask' and array is np.ma.nomask:
             array = None
         if array is not None:
             # UFuncTypeError is raised when subtracting float
             # local_background from int data; convert to float
-            array = np.asanyarray(array, dtype=dtype)
+            array = np.asanyarray(array)
             if array.ndim != 2:
                 raise ValueError(f'{name} must be a 2D array.')
             if shape and array.shape != self._data.shape:
@@ -654,14 +652,20 @@ class SourceCatalog:
         return masks
 
     @as_scalar
-    def _make_cutout(self, array, units=True, masked=False):
+    def _make_cutout(self, array, units=True, masked=False, dtype=None):
         """
         Make cutouts from in the input array using the source minimal
         bounding box.
 
         Masks and units are optionally applied.
         """
-        cutouts = [array[slc] for slc in self._slices_iter]
+        cutouts = []
+        for slc in self._slices_iter:
+            cutout = array[slc]
+            if dtype is not None:
+                cutout = cutout.astype(dtype, copy=True)
+            cutouts.append(cutout)
+
         if units and self._data_unit is not None:
             cutouts = [(cutout << self._data_unit) for cutout in cutouts]
         if masked:
@@ -865,7 +869,8 @@ class SourceCatalog:
         A 2D `~numpy.ndarray` cutout from the data using the minimal
         bounding box of the source.
         """
-        return self._make_cutout(self._data, units=True, masked=False)
+        return self._make_cutout(self._data, units=True, masked=False,
+                                 dtype=float)
 
     @lazyproperty
     def data_ma(self):
@@ -877,7 +882,8 @@ class SourceCatalog:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
-        return self._make_cutout(self._data, units=False, masked=True)
+        return self._make_cutout(self._data, units=False, masked=True,
+                                 dtype=float)
 
     @lazyproperty
     def convdata(self):
