@@ -154,7 +154,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     if ypeak is not None and ((ypeak < 0) or (ypeak > data.shape[0] - 1)):
         raise ValueError('ypeak is outside of the input data')
 
-    data = np.asanyarray(data, dtype=float)
+    data = np.asanyarray(data, dtype=float).copy()
     ny, nx = data.shape
 
     badmask = ~np.isfinite(data)
