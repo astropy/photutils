@@ -1030,9 +1030,9 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def _bbox_minmax(self):
+    def _bbox_bounds(self):
         """
-        The bounding box x/y minimum and maximum.
+        The bounding box x/y minimum and maximum bounds.
         """
         bbox = self.bbox
         if self.isscalar:
@@ -1047,7 +1047,7 @@ class ApertureStats:
         """
         The minimum ``x`` pixel index of the bounding box.
         """
-        return np.transpose(self._bbox_minmax)[0]
+        return np.transpose(self._bbox_bounds)[0]
 
     @lazyproperty
     @as_scalar
@@ -1057,7 +1057,7 @@ class ApertureStats:
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
-        return np.transpose(self._bbox_minmax)[1]
+        return np.transpose(self._bbox_bounds)[1]
 
     @lazyproperty
     @as_scalar
@@ -1065,7 +1065,7 @@ class ApertureStats:
         """
         The minimum ``y`` pixel index of the bounding box.
         """
-        return np.transpose(self._bbox_minmax)[2]
+        return np.transpose(self._bbox_bounds)[2]
 
     @lazyproperty
     @as_scalar
@@ -1075,7 +1075,7 @@ class ApertureStats:
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
-        return np.transpose(self._bbox_minmax)[3]
+        return np.transpose(self._bbox_bounds)[3]
 
     def _calculate_stats(self, stat_func, unit=None):
         """
