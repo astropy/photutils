@@ -305,6 +305,21 @@ class TestCentroidSources:
                                   fit_boxsize=5)
         assert_allclose(xycen5, ([7], [7]))
 
+    def test_centroid_quadratic_mask(self):
+        """
+        Regression test to check that when a mask is input the original
+        data is not alterned.
+        """
+        xc_ref = 24.7
+        yc_ref = 25.2
+        model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
+        y, x = np.mgrid[0:51, 0:51]
+        data = model(x, y)
+        mask = data < 1
+        xycen = centroid_quadratic(data, mask=mask)
+        assert ~np.any(np.isnan(data))
+        assert_allclose(xycen, (xc_ref, yc_ref), atol=0.01)
+
     def test_mask(self):
         mask = np.ones(self.data.shape, dtype=bool)
         xcen1, ycen1 = centroid_sources(self.data, 25, 23, box_size=(55, 55))
