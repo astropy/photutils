@@ -58,6 +58,9 @@ Bug Fixes
     ``xpeak``, or ``ypeak`` to ``None`` would result in an error.
     [#1297]
 
+  - Fixed a bug in ``centroid_quadratic`` where inputting a mask
+    would alter the input data array. [#1317]
+
 - ``photutils.segmentation``
 
   - Fixed a bug in ``SourceCatalog`` where a ``UFuncTypeError`` would
