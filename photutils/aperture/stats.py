@@ -245,11 +245,11 @@ class ApertureStats:
             raise TypeError('aperture must be an Aperture object')
         return aperture
 
-    def _validate_array(self, array, name, ndim=2, shape=True, dtype=None):
+    def _validate_array(self, array, name, ndim=2, shape=True):
         if name == 'mask' and array is np.ma.nomask:
             array = None
         if array is not None:
-            array = np.asanyarray(array, dtype=dtype)
+            array = np.asanyarray(array)
             if array.ndim != ndim:
                 raise ValueError(f'{name} must be a {ndim}D array.')
             if shape and array.shape != self._data.shape:
@@ -481,16 +481,6 @@ class ApertureStats:
         if self.isscalar:
             return 1
         return len(self._pixel_aperture)
-
-    @property
-    def _apertures(self):
-        """
-        The input apertures as a PixelAperture, always as an iterable.
-        """
-        apertures = self._pixel_aperture
-        if self.isscalar:
-            apertures = (apertures,)
-        return apertures
 
     @lazyproperty
     def _pixel_aperture(self):
@@ -1021,7 +1011,10 @@ class ApertureStats:
         The `~photutils.aperture.BoundingBox` of the aperture, always as
         an iterable.
         """
-        return [aperture.bbox for aperture in self._apertures]
+        apertures = self._pixel_aperture
+        if self.isscalar:
+            apertures = (apertures,)
+        return [aperture.bbox for aperture in apertures]
 
     @lazyproperty
     @as_scalar
