@@ -244,7 +244,6 @@ class SourceCatalog:
         self._detection_cat = self._validate_detection_cat(detection_cat)
 
         self._convolved_data = self._convolve_data()
-        self._data_mask = self._make_data_mask()
 
         self.default_columns = DEFAULT_COLUMNS
         self._extra_properties = []
@@ -356,9 +355,8 @@ class SourceCatalog:
         # new class
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
                      '_background', '_wcs', '_data_unit', '_convolved_data',
-                     '_data_mask', '_localbkg_width', '_apermask_method',
-                     '_kron_params', 'default_columns', '_extra_properties',
-                     'meta')
+                     '_localbkg_width', '_apermask_method', '_kron_params',
+                     'default_columns', '_extra_properties', 'meta')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -597,16 +595,6 @@ class SourceCatalog:
             return self._data
         return _filter_data(self._data, self._kernel, mode='constant',
                             fill_value=0.0, check_normalization=True)
-
-    def _make_data_mask(self):
-        """
-        Create a mask of non-finite ``data`` values combined with the
-        input ``mask`` array.
-        """
-        mask = ~np.isfinite(self._data)
-        if self._mask is not None:
-            mask |= self._mask
-        return mask
 
     @lazyproperty
     def _null_object(self):
