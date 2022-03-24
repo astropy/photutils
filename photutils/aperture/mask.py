@@ -77,7 +77,7 @@ class ApertureMask:
         """
         return self.bbox.get_overlap_slices(shape)
 
-    def to_image(self, shape):
+    def to_image(self, shape, dtype=float):
         """
         Return an image of the mask in a 2D array of the given shape,
         taking any edge effects into account.
@@ -86,6 +86,14 @@ class ApertureMask:
         ----------
         shape : tuple of int
             The ``(ny, nx)`` shape of the output array.
+
+        dtype : data-type, optional
+            The desired data type for the array. This should be a
+            floating data type if the `ApertureMask` was created with
+            the "exact" or "subpixel" mode, otherwise the fractional
+            mask weights will be altered. A integer data type may be
+            used if the `ApertureMask` was created with the "center"
+            mode.
 
         Returns
         -------
@@ -102,7 +110,7 @@ class ApertureMask:
             return None  # no overlap
 
         # insert the mask into the output image
-        image = np.zeros(shape)
+        image = np.zeros(shape, dtype=dtype)
         image[slices_large] = self.data[slices_small]
         return image
 
