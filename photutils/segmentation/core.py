@@ -120,16 +120,16 @@ class SegmentationImage:
         if not np.issubdtype(value.dtype, np.integer):
             raise TypeError('data must be have integer type')
 
-        if not np.any(value):
-            raise ValueError('The segmentation image must contain at least '
-                             'one non-zero pixel.')
-
         if np.min(value) < 0:
             raise ValueError('The segmentation image cannot contain '
                              'negative integers.')
 
+        if np.sum(value) == 0:
+            raise ValueError('The segmentation image must contain at least '
+                             'one non-zero pixel.')
+
         if '_data' in self.__dict__:
-            # needed only when data is reassigned, not on init
+            # reset instance properties when data is reassigned, not on init
             self.__dict__ = {}
 
         self._data = value  # pylint: disable=attribute-defined-outside-init
