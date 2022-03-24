@@ -630,10 +630,55 @@ class SourceCatalog:
         values.fill(np.nan)
         return values
 
+    def _make_cutouts(self, slices, cutout_error=False):
+        """
+        Make cutout arrays from the data, segmentation image, mask, and
+        error arrays using the input slices.
+
+        Parameters
+        ----------
+        slices : list of slice objects
+
+        cutout_error : bool, optional
+            Whether to also make cutouts from the error array.
+
+        Returns
+        -------
+        data, segment_img, mask, error : list of lists
+            A list of cutout arrays for the data, segmentation image,
+            mask, and error arrays.
+        """
+        data_cutouts = []
+        segm_cutouts = []
+        mask_cutouts = []
+        error_cutouts = []
+
+        for slc in slices:
+            data_cutouts.append(self._data[slc])
+            segm_cutouts.append(self._segment_img.data[slc])
+            if self._mask is None:
+                mask_cutout = None
+            else:
+                mask_cutout = self._mask[slc]
+            mask_cutouts.append(mask_cutout)
+            if cutout_error:
+                if self._error is None:
+                    error_cutout = None
+                else:
+                    error_cutout = self._error.data[slc]
+                error_cutouts.append(error_cutout)
+
+        return list(zip(data_cutouts, segm_cutouts, mask_cutouts,
+                        error_cutouts))
+
+    @lazyproperty
+    def _segment_cutouts(self):
+        return self._make_cutouts(self._slices, cutout_error=False)
+
     @lazyproperty
     def _cutout_segment_mask(self):
         """
-        Boolean mask for source segment.
+        Cutout boolean mask for source segment.
 
         The mask is `True` for all pixels (background and from other
         source segments) outside of the source segment.
@@ -642,17 +687,36 @@ class SourceCatalog:
                 for label, slc in zip(self._label_iter, self._slices_iter)]
 
     @lazyproperty
+    def _cutout_data_mask(self):
+        """
+        Cutout boolean mask of non-finite ``data`` values combined with
+        the input ``mask`` array.
+
+        The mask is `True` for non-finite ``data`` values and where the
+        input ``mask`` is `True`.
+        """
+        data_masks = []
+        for slc in self._slices_iter:
+            cutout = self._data[slc]
+            data_mask = ~np.isfinite(cutout)
+            if self._mask is not None:
+                data_mask |= self._mask[slc]
+            data_masks.append(data_mask)
+        return data_masks
+
+    @lazyproperty
     def _cutout_total_mask(self):
         """
-        Boolean mask representing the combination of ``_data_mask`` and
-        ``_cutout_segment_mask``.
+        Boolean mask representing the combination of
+        ``_cutout_segment_mask`` and ``_cutout_data_mask``.
 
         This mask is applied to ``data``, ``error``, and ``background``
         inputs when calculating properties.
         """
         masks = []
-        for mask, slc in zip(self._cutout_segment_mask, self._slices_iter):
-            masks.append(mask | self._data_mask[slc])
+        for mask1, mask2 in zip(self._cutout_segment_mask,
+                                self._cutout_data_mask):
+            masks.append(mask1 | mask2)
         return masks
 
     @as_scalar
@@ -1508,7 +1572,7 @@ class SourceCatalog:
         if self._error is None:
             err = self._null_value
         else:
-            err = np.sqrt(np.array([np.sum(arr**2)
+            err = np.sqrt(np.array([np.sum(arr ** 2)
                                     for arr in self._error_values]))
 
         if self._data_unit is not None:
@@ -1559,8 +1623,8 @@ class SourceCatalog:
     @as_scalar
     def background_centroid(self):
         """
-        The value of the ``background`` at the position of the source
-        centroid.
+        The value of the per-pixel ``background`` at the position of the
+        source centroid.
 
         The background value at fractional position values are
         determined using bilinear interpolation.
@@ -2011,6 +2075,10 @@ class SourceCatalog:
         """
         The local background value estimated using a rectangular annulus
         aperture around the source.
+
+        Pixels are masked where the input ``mask`` is `True`, where the
+        input ``data`` is non-finite, and within any non-zero pixel
+        label in the segmentation image.
 
         This property is always an `~numpy.ndarray` without units.
         """
