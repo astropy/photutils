@@ -58,15 +58,6 @@ class SegmentationImage:
         """
         return self._data
 
-    @lazyproperty
-    def _cmap(self):
-        """
-        A matplotlib colormap consisting of (random) muted colors.
-
-        This is useful for plotting the segmentation array.
-        """
-        return self.make_cmap(background_color='#000000', seed=0)
-
     @staticmethod
     def _get_labels(data):
         """
@@ -401,6 +392,15 @@ class SegmentationImage:
             cmap.colors[0] = colors.hex2color(background_color)
 
         return cmap
+
+    @lazyproperty
+    def cmap(self):
+        """
+        A matplotlib colormap consisting of (random) muted colors.
+
+        This is useful for plotting the segmentation array.
+        """
+        return self.make_cmap(background_color='#000000', seed=0)
 
     def reassign_label(self, label, new_label, relabel=False):
         """
