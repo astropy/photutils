@@ -240,6 +240,10 @@ class SourceCatalog:
         self._slices = self._segment_img.slices
         self._labels = self._segment_img.labels
 
+        if self._labels.shape == (0,):
+            raise ValueError('segment_img must have at least one non-zero '
+                             'label.')
+
         # detection_cat validation needs self._labels
         self._detection_cat = self._validate_detection_cat(detection_cat)
 
@@ -254,9 +258,6 @@ class SourceCatalog:
             raise TypeError('segment_img must be a SegmentationImage')
         if segment_img.shape != self._data.shape:
             raise ValueError('segment_img and data must have the same shape.')
-        if np.sum(segment_img.data) == 0:
-            raise ValueError('segment_img must have at least one non-zero '
-                             'label.')
         return segment_img
 
     def _validate_array(self, array, name, shape=True):
