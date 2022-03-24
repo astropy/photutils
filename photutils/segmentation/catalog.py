@@ -598,7 +598,7 @@ class SourceCatalog:
                             fill_value=0.0, check_normalization=True)
 
     @lazyproperty
-    def _null_object(self):
+    def _null_objects(self):
         """
         Return `None` values.
 
@@ -608,7 +608,7 @@ class SourceCatalog:
         return np.array([None] * self.nlabels)
 
     @lazyproperty
-    def _null_value(self):
+    def _null_values(self):
         """
         Return np.nan values.
 
@@ -642,7 +642,7 @@ class SourceCatalog:
         If the input ``mask`` is None then a list of None is returned.
         """
         if self._mask is None:
-            return self._null_object
+            return self._null_objects
         return [self._mask[slc] for slc in self._slices_iter]
 
     @lazyproperty
@@ -653,7 +653,7 @@ class SourceCatalog:
         If the input ``mask`` is None then a list of None is returned.
         """
         if self._error is None:
-            return self._null_object
+            return self._null_objects
         return [self._error[slc] for slc in self._slices_iter]
 
     @lazyproperty
@@ -663,6 +663,16 @@ class SourceCatalog:
         slices.
         """
         return [self._convolved_data[slc] for slc in self._slices_iter]
+
+    @lazyproperty
+    def _background_cutouts(self):
+        """
+        A list of background cutouts using the segmentation image
+        slices.
+        """
+        if self._background is None:
+            return self._null_objects
+        return [self._background[slc] for slc in self._slices_iter]
 
     @staticmethod
     def _make_cutout_data_mask(data_cutout, mask_cutout):
@@ -725,26 +735,26 @@ class SourceCatalog:
             masks.append(mask1 | mask2)
         return masks
 
-    @as_scalar
-    def _make_cutout(self, array, units=True, masked=False, dtype=None):
+    def _prepare_cutouts(self, arrays, units=True, masked=False, dtype=None):
         """
-        Make cutouts from in the input array using the source minimal
-        bounding box.
+        Prepare cutouts by applying optional units, masks, or dtype.
+        """
+        if units and masked:
+            raise ValueError('Both units and masked cannot be True')
 
-        Masks and units are optionally applied.
-        """
-        cutouts = []
-        for slc in self._slices_iter:
-            cutout = array[slc]
-            if dtype is not None:
-                cutout = cutout.astype(dtype, copy=True)
-            cutouts.append(cutout)
+        if dtype is not None:
+            cutouts = []
+            for cutout in arrays:
+                cutouts.append(cutout.astype(dtype, copy=True))
+        else:
+            cutouts = arrays
 
         if units and self._data_unit is not None:
             cutouts = [(cutout << self._data_unit) for cutout in cutouts]
         if masked:
             return [np.ma.masked_array(cutout, mask=mask)
                     for cutout, mask in zip(cutouts, self._cutout_total_masks)]
+
         return cutouts
 
     @lazyproperty
@@ -920,8 +930,8 @@ class SourceCatalog:
         A 2D `~numpy.ndarray` cutout of the segmentation image using the
         minimal bounding box of the source.
         """
-        return self._make_cutout(self._segment_img.data, units=False,
-                                 masked=False)
+        return self._prepare_cutouts(self._segment_img_cutouts, units=False,
+                                     masked=False)
 
     @lazyproperty
     @as_scalar
@@ -934,19 +944,21 @@ class SourceCatalog:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
-        return self._make_cutout(self._segment_img.data, units=False,
-                                 masked=True)
+        return self._prepare_cutouts(self._segment_img_cutouts, units=False,
+                                     masked=True)
 
     @lazyproperty
+    @as_scalar
     def data(self):
         """
         A 2D `~numpy.ndarray` cutout from the data using the minimal
         bounding box of the source.
         """
-        return self._make_cutout(self._data, units=True, masked=False,
-                                 dtype=float)
+        return self._prepare_cutouts(self._data_cutouts, units=True,
+                                     masked=False, dtype=float)
 
     @lazyproperty
+    @as_scalar
     def data_ma(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the data using the
@@ -956,19 +968,21 @@ class SourceCatalog:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
-        return self._make_cutout(self._data, units=False, masked=True,
-                                 dtype=float)
+        return self._prepare_cutouts(self._data_cutouts, units=False,
+                                     masked=True, dtype=float)
 
     @lazyproperty
+    @as_scalar
     def convdata(self):
         """
         A 2D `~numpy.ndarray` cutout from the convolved data using the
         minimal bounding box of the source.
         """
-        return self._make_cutout(self._convolved_data, units=True,
-                                 masked=False)
+        return self._prepare_cutouts(self._convdata_cutouts, units=True,
+                                     masked=False, dtype=float)
 
     @lazyproperty
+    @as_scalar
     def convdata_ma(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the convolved data
@@ -978,8 +992,8 @@ class SourceCatalog:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
-        return self._make_cutout(self._convolved_data, units=False,
-                                 masked=True)
+        return self._prepare_cutouts(self._convdata_cutouts, units=False,
+                                     masked=True, dtype=float)
 
     @lazyproperty
     @as_scalar
@@ -989,9 +1003,9 @@ class SourceCatalog:
         minimal bounding box of the source.
         """
         if self._error is None:
-            return self._null_object
-        return self._make_cutout(self._error, units=True,
-                                 masked=False)
+            return self._null_objects
+        return self._prepare_cutouts(self._error_cutouts, units=True,
+                                     masked=False)
 
     @lazyproperty
     @as_scalar
@@ -1005,9 +1019,9 @@ class SourceCatalog:
         input, or any non-finite ``data`` values (NaN and inf).
         """
         if self._error is None:
-            return self._null_object
-        return self._make_cutout(self._error, units=False,
-                                 masked=True)
+            return self._null_objects
+        return self._prepare_cutouts(self._error_cutouts, units=False,
+                                     masked=True)
 
     @lazyproperty
     @as_scalar
@@ -1017,9 +1031,9 @@ class SourceCatalog:
         minimal bounding box of the source.
         """
         if self._background is None:
-            return self._null_object
-        return self._make_cutout(self._background, units=True,
-                                 masked=False)
+            return self._null_objects
+        return self._prepare_cutouts(self._background_cutouts, units=True,
+                                     masked=False)
 
     @lazyproperty
     @as_scalar
@@ -1033,9 +1047,9 @@ class SourceCatalog:
         input, or any non-finite ``data`` values (NaN and inf).
         """
         if self._background is None:
-            return self._null_object
-        return self._make_cutout(self._background, units=False,
-                                 masked=True)
+            return self._null_objects
+        return self._prepare_cutouts(self._background_cutouts, units=False,
+                                     masked=True)
 
     @lazyproperty
     def _all_masked(self):
@@ -1189,7 +1203,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self._wcs.pixel_to_world(self.xcentroid, self.ycentroid)
 
     @lazyproperty
@@ -1203,7 +1217,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self.sky_centroid.icrs
 
     @lazyproperty
@@ -1320,7 +1334,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ll))
 
     @lazyproperty
@@ -1338,7 +1352,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ul))
 
     @lazyproperty
@@ -1356,7 +1370,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_lr))
 
     @lazyproperty
@@ -1374,7 +1388,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ur))
 
     @lazyproperty
@@ -1576,7 +1590,7 @@ class SourceCatalog:
         masked, are also masked in the error array.
         """
         if self._error is None:
-            err = self._null_value
+            err = self._null_values
         else:
             err = np.sqrt(np.array([np.sum(arr ** 2)
                                     for arr in self._error_values]))
@@ -1596,7 +1610,7 @@ class SourceCatalog:
         masked, are also masked in the background array.
         """
         if self._background is None:
-            bkg_sum = self._null_value
+            bkg_sum = self._null_values
         else:
             bkg_sum = np.array([np.sum(arr)
                                 for arr in self._background_values])
@@ -1616,7 +1630,7 @@ class SourceCatalog:
         masked, are also masked in the background array.
         """
         if self._background is None:
-            bkg_mean = self._null_value
+            bkg_mean = self._null_values
         else:
             bkg_mean = np.array([np.mean(arr)
                                  for arr in self._background_values])
@@ -1636,7 +1650,7 @@ class SourceCatalog:
         determined using bilinear interpolation.
         """
         if self._background is None:
-            bkg = self._null_value
+            bkg = self._null_values
         else:
             from scipy.ndimage import map_coordinates
 
@@ -2057,7 +2071,7 @@ class SourceCatalog:
             return self._detection_cat.local_background_aperture
 
         if self._localbkg_width == 0:
-            return self._null_object
+            return self._null_objects
 
         apertures = []
         for bbox_ in self._bbox:
