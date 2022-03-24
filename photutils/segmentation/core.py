@@ -5,8 +5,10 @@ segment within a segmentation image.
 """
 
 from copy import deepcopy
+import warnings
 
 from astropy.utils import lazyproperty
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from ..aperture import BoundingBox
@@ -115,10 +117,6 @@ class SegmentationImage:
             raise ValueError('The segmentation image cannot contain '
                              'negative integers.')
 
-        if np.sum(value) == 0:
-            raise ValueError('The segmentation image must contain at least '
-                             'one non-zero pixel.')
-
         if '_data' in self.__dict__:
             # reset instance properties when data is reassigned, not on init
             self.__dict__ = {}
@@ -155,7 +153,9 @@ class SegmentationImage:
 
     @lazyproperty
     def max_label(self):
-        """The maximum non-zero label in the segmentation array."""
+        """The maximum label in the segmentation array."""
+        if self.nlabels == 0:
+            return 0
         return np.max(self.labels)
 
     def get_index(self, label):
@@ -292,6 +292,8 @@ class SegmentationImage:
         Boolean value indicating whether or not the non-zero labels in
         the segmentation array are consecutive and start from 1.
         """
+        if self.nlabels == 0:
+            return False
         return ((self.labels[-1] - self.labels[0] + 1) == self.nlabels
                 and self.labels[0] == 1)
 
@@ -355,8 +357,7 @@ class SegmentationImage:
         if bad_labels:
             if len(bad_labels) == 1:
                 raise ValueError(f'label {bad_labels} is invalid')
-            else:
-                raise ValueError(f'labels {bad_labels} are invalid')
+            raise ValueError(f'labels {bad_labels} are invalid')
 
     def make_cmap(self, background_color='#000000', seed=None):
         """
@@ -384,6 +385,9 @@ class SegmentationImage:
         cmap : `matplotlib.colors.ListedColormap`
             The matplotlib colormap.
         """
+        if self.nlabels == 0:
+            return None
+
         from matplotlib import colors
 
         cmap = make_random_cmap(self.max_label + 1, seed=seed)
@@ -592,6 +596,11 @@ class SegmentationImage:
                [5, 5, 0, 4, 4, 4],
                [5, 5, 0, 0, 4, 4]])
         """
+        if self.nlabels == 0:
+            warnings.warn('Cannot relabel a segmentation image of all zeros',
+                          AstropyUserWarning)
+            return
+
         if start_label <= 0:
             raise ValueError('start_label must be > 0.')
 
