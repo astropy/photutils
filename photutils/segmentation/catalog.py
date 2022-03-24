@@ -630,47 +630,55 @@ class SourceCatalog:
         values.fill(np.nan)
         return values
 
-    def _make_cutouts(self, slices):
+    def _make_cutouts(self, array, slices):
         """
-        Make cutout arrays from the data, segmentation image, mask, and
-        error arrays using the input slices.
+        Make cutouts from the array using the input slices.
 
         Parameters
         ----------
-        slices : list of slice objects
+        array : `~numpy.ndarray`
+            The array from which to make the cutout.
+
+        slices : list of tuple slice objects
+            A tuple of slices for each source.
 
         Returns
         -------
-        data, segment_img, mask, error : list of lists
-            A list of cutout arrays for the data, segmentation image,
-            mask, and error arrays.
+        cutouts : list of `~numpy.ndarray`
+            A list of cutout arrays.
         """
-        data_cutouts = []
-        segm_cutouts = []
-        mask_cutouts = []
-        error_cutouts = []
-
+        cutouts = []
         for slc in slices:
-            data_cutouts.append(self._data[slc])
-            segm_cutouts.append(self._segment_img.data[slc])
-            if self._mask is None:
-                mask_cutout = None
+            if array is None:
+                cutout = None
             else:
-                mask_cutout = self._mask[slc]
-            mask_cutouts.append(mask_cutout)
-
-            if self._error is None:
-                error_cutout = None
-            else:
-                error_cutout = self._error[slc]
-            error_cutouts.append(error_cutout)
-
-        return list(zip(data_cutouts, segm_cutouts, mask_cutouts,
-                        error_cutouts))
+                cutout = array[slc]
+            cutouts.append(cutout)
+        return cutouts
 
     @lazyproperty
-    def _segment_bbox_cutouts(self):
-        return self._make_cutouts(self._slices_iter)
+    def _data_cutouts(self):
+        return self._make_cutouts(self._data, self._slices_iter)
+
+    @lazyproperty
+    def _segment_img_cutouts(self):
+        return self._make_cutouts(self._segment_img.data, self._slices_iter)
+
+    @lazyproperty
+    def _mask_cutouts(self):
+        if self._mask is None:
+            return self._null_object
+        return self._make_cutouts(self._mask, self._slices_iter)
+
+    @lazyproperty
+    def _error_cutouts(self):
+        if self._error is None:
+            return self._null_object
+        return self._make_cutouts(self._error, self._slices_iter)
+
+    @lazyproperty
+    def _convdata_cutouts(self):
+        return self._make_cutouts(self._convolved_data, self._slices_iter)
 
     @lazyproperty
     def _cutout_segment_mask(self):
@@ -680,9 +688,9 @@ class SourceCatalog:
         The mask is `True` for all pixels (background and from other
         source segments) outside of the source segment.
         """
-        segment_cutouts = list(zip(*self._segment_bbox_cutouts))[1]
         return [segm != label
-                for label, segm in zip(self._label_iter, segment_cutouts)]
+                for label, segm in zip(self._label_iter,
+                                       self._segment_img_cutouts)]
 
     @lazyproperty
     def _cutout_data_mask(self):
@@ -693,11 +701,9 @@ class SourceCatalog:
         The mask is `True` for non-finite ``data`` values and where the
         input ``mask`` is `True`.
         """
-        data_cutouts = list(zip(*self._segment_bbox_cutouts))[0]
-        mask_cutouts = list(zip(*self._segment_bbox_cutouts))[2]
-
         data_masks = []
-        for (data_cutout, mask_cutout) in zip(data_cutouts, mask_cutouts):
+        for (data_cutout, mask_cutout) in zip(self._data_cutouts,
+                                              self._mask_cutouts):
             data_mask = ~np.isfinite(data_cutout)
             if mask_cutout is not None:
                 data_mask |= mask_cutout
