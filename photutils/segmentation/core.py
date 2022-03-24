@@ -116,11 +116,10 @@ class SegmentationImage:
 
     @data.setter
     def data(self, value):
-        if np.any(~np.isfinite(value)):
-            raise ValueError('data must not contain any non-finite values '
-                             '(e.g., NaN, inf)')
+        value = np.asarray(value)
+        if not np.issubdtype(value.dtype, np.integer):
+            raise TypeError('data must be have integer type')
 
-        value = np.asarray(value, dtype=int)
         if not np.any(value):
             raise ValueError('The segmentation image must contain at least '
                              'one non-zero pixel.')
