@@ -144,7 +144,15 @@ class SegmentationImage:
     @lazyproperty
     def labels(self):
         """The sorted non-zero labels in the segmentation array."""
-        return self._get_labels(self.data)
+        if '_raw_slices' in self.__dict__:
+            labels_all = np.arange(len(self._raw_slices)) + 1
+            labels = []
+            for label, slc in zip(labels_all, self._raw_slices):
+                if slc is not None:
+                    labels.append(label)
+            return np.array(labels)
+        else:
+            return self._get_labels(self.data)
 
     @lazyproperty
     def nlabels(self):
@@ -205,6 +213,11 @@ class SegmentationImage:
         return np.searchsorted(self.labels, labels)
 
     @lazyproperty
+    def _raw_slices(self):
+        from scipy.ndimage import find_objects
+        return find_objects(self.data)
+
+    @lazyproperty
     def slices(self):
         """
         A list of tuples, where each tuple contains two slices
@@ -214,9 +227,7 @@ class SegmentationImage:
         has a length equal to the number of labels and matches the order
         of the ``labels`` attribute.
         """
-        from scipy.ndimage import find_objects
-
-        return [slc for slc in find_objects(self._data) if slc is not None]
+        return [slc for slc in self._raw_slices if slc is not None]
 
     @lazyproperty
     def bbox(self):

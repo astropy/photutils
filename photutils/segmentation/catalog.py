@@ -236,10 +236,11 @@ class SourceCatalog:
         self._kron_params = self._validate_kron_params(kron_params)
 
         # needed for ordering and isscalar
-        self._labels = self._segment_img.labels
+        # NOTE: calculate slices before labels for performance
         self._slices = self._segment_img.slices
+        self._labels = self._segment_img.labels
 
-        # validation needs self._labels
+        # detection_cat validation needs self._labels
         self._detection_cat = self._validate_detection_cat(detection_cat)
 
         self._convolved_data = self._convolve_data()
