@@ -231,9 +231,6 @@ class SourceCatalog:
         self._kernel = kernel
         self._background = self._validate_array(background, 'background')
         self._wcs = wcs
-
-        self._convolved_data = self._convolve_data()
-        self._data_mask = self._make_data_mask()
         self._localbkg_width = self._validate_localbkg_width(localbkg_width)
         self._apermask_method = self._validate_apermask_method(apermask_method)
         self._kron_params = self._validate_kron_params(kron_params)
@@ -241,19 +238,15 @@ class SourceCatalog:
         # needed for ordering and isscalar
         self._labels = self._segment_img.labels
         self._slices = self._segment_img.slices
+
+        # validation needs self._labels
+        self._detection_cat = self._validate_detection_cat(detection_cat)
+
+        self._convolved_data = self._convolve_data()
+        self._data_mask = self._make_data_mask()
+
         self.default_columns = DEFAULT_COLUMNS
-
         self._extra_properties = []
-
-        if detection_cat is not None:
-            if not isinstance(detection_cat, SourceCatalog):
-                raise TypeError('detection_cat must be a SourceCatalog '
-                                'instance')
-            if not np.array_equal(detection_cat.labels, self.labels):
-                raise ValueError('detection_cat must have same source labels '
-                                 'as the input segment_img')
-        self._detection_cat = detection_cat
-
         self.meta = _get_meta()
 
     def _validate_segment_img(self, segment_img):
@@ -304,6 +297,16 @@ class SourceCatalog:
         if kron_params[1] <= 0:
             raise ValueError('kron_params[1] must be > 0')
         return kron_params
+
+    def _validate_detection_cat(self, detection_cat):
+        if detection_cat is not None:
+            if not isinstance(detection_cat, SourceCatalog):
+                raise TypeError('detection_cat must be a SourceCatalog '
+                                'instance')
+            if not np.array_equal(detection_cat.labels, self.labels):
+                raise ValueError('detection_cat must have same source labels '
+                                 'as the input segment_img')
+        return detection_cat
 
     @property
     def _properties(self):
