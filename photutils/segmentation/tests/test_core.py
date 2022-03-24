@@ -3,8 +3,9 @@
 Tests for the core module.
 """
 
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 import pytest
 
 from ..core import Segment, SegmentationImage
@@ -33,15 +34,24 @@ class TestSegmentationImage:
         segm.data[0, 0] = 100.
         assert segm.data[0, 0] != segm2.data[0, 0]
 
+    def test_data_all_zeros(self):
+        data = np.zeros((5, 5), dtype=int)
+        segm = SegmentationImage(data)
+        assert segm.max_label == 0
+        assert not segm.is_consecutive
+        assert segm.cmap is None
+        with pytest.warns(AstropyUserWarning):
+            segm.relabel_consecutive()
+
+    def test_data_reassignment(self):
+        segm = SegmentationImage(self.data)
+        segm.data = np.array(self.data)[0:3, :].copy()
+        assert_equal(segm.labels, [1, 3, 4])
+
     def test_invalid_data(self):
         # is float dtype
         data = np.zeros((3, 3), dtype=float)
         with pytest.raises(TypeError):
-            SegmentationImage(data)
-
-        # contains all zeros
-        data = np.zeros((3, 3), dtype=int)
-        with pytest.raises(ValueError):
             SegmentationImage(data)
 
         # contains a negative value
@@ -155,6 +165,11 @@ class TestSegmentationImage:
 
         with pytest.raises(ValueError):
             self.segm.check_labels([2, 6])
+
+    def test_bbox_1d(self):
+        segm = SegmentationImage([0, 0, 1, 1, 0, 2, 2, 0])
+        with pytest.raises(ValueError):
+            _ = segm.bbox
 
     @pytest.mark.skipif('not HAS_MATPLOTLIB')
     def test_make_cmap(self):
