@@ -244,7 +244,7 @@ class SegmentationImage:
     @lazyproperty
     def background_area(self):
         """The area (in pixel**2) of the background (label=0) region."""
-        return len(self.data[self.data == 0])
+        return self._data.size - np.count_nonzero(self._data)
 
     @lazyproperty
     def areas(self):
@@ -256,9 +256,10 @@ class SegmentationImage:
         returned array has a length equal to the number of labels and
         matches the order of the ``labels`` attribute.
         """
-        return np.array([area
-                         for area in np.bincount(self.data.ravel())[1:]
-                         if area != 0])
+        areas = []
+        for label, slices in zip(self.labels, self.slices):
+            areas.append(np.count_nonzero(self._data[slices] == label))
+        return np.array(areas)
 
     def get_area(self, label):
         """
