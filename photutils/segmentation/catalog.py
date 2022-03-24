@@ -680,20 +680,39 @@ class SourceCatalog:
     def _convdata_cutouts(self):
         return self._make_cutouts(self._convolved_data, self._slices_iter)
 
+    def _make_cutout_segment_masks(self, segment_img_cutouts):
+        return [segm != label
+                for label, segm in zip(self._label_iter, segment_img_cutouts)]
+
+    @staticmethod
+    def _make_cutout_data_masks(data_cutouts, mask_cutouts):
+        data_masks = []
+        for (data_cutout, mask_cutout) in zip(data_cutouts, mask_cutouts):
+            data_mask = ~np.isfinite(data_cutout)
+            if mask_cutout is not None:
+                data_mask |= mask_cutout
+            data_masks.append(data_mask)
+        return data_masks
+
+    @staticmethod
+    def _combine_masks(masks1, masks2):
+        masks = []
+        for mask1, mask2 in zip(masks1, masks2):
+            masks.append(mask1 | mask2)
+        return masks
+
     @lazyproperty
-    def _cutout_segment_mask(self):
+    def _cutout_segment_masks(self):
         """
         Cutout boolean mask for source segment.
 
         The mask is `True` for all pixels (background and from other
         source segments) outside of the source segment.
         """
-        return [segm != label
-                for label, segm in zip(self._label_iter,
-                                       self._segment_img_cutouts)]
+        return self._make_cutout_segment_masks(self._segment_img_cutouts)
 
     @lazyproperty
-    def _cutout_data_mask(self):
+    def _cutout_data_masks(self):
         """
         Cutout boolean mask of non-finite ``data`` values combined with
         the input ``mask`` array.
@@ -701,29 +720,20 @@ class SourceCatalog:
         The mask is `True` for non-finite ``data`` values and where the
         input ``mask`` is `True`.
         """
-        data_masks = []
-        for (data_cutout, mask_cutout) in zip(self._data_cutouts,
-                                              self._mask_cutouts):
-            data_mask = ~np.isfinite(data_cutout)
-            if mask_cutout is not None:
-                data_mask |= mask_cutout
-            data_masks.append(data_mask)
-        return data_masks
+        return self._make_cutout_data_masks(self._data_cutouts,
+                                            self._mask_cutouts)
 
     @lazyproperty
-    def _cutout_total_mask(self):
+    def _cutout_total_masks(self):
         """
         Boolean mask representing the combination of
-        ``_cutout_segment_mask`` and ``_cutout_data_mask``.
+        ``_cutout_segment_masks`` and ``_cutout_data_masks``.
 
         This mask is applied to ``data``, ``error``, and ``background``
         inputs when calculating properties.
         """
-        masks = []
-        for mask1, mask2 in zip(self._cutout_segment_mask,
-                                self._cutout_data_mask):
-            masks.append(mask1 | mask2)
-        return masks
+        return self._combine_masks(self._cutout_segment_masks,
+                                   self._cutout_data_masks)
 
     @as_scalar
     def _make_cutout(self, array, units=True, masked=False, dtype=None):
@@ -744,7 +754,7 @@ class SourceCatalog:
             cutouts = [(cutout << self._data_unit) for cutout in cutouts]
         if masked:
             return [np.ma.masked_array(cutout, mask=mask)
-                    for cutout, mask in zip(cutouts, self._cutout_total_mask)]
+                    for cutout, mask in zip(cutouts, self._cutout_total_masks)]
         return cutouts
 
     @lazyproperty
@@ -771,7 +781,7 @@ class SourceCatalog:
 
         cutouts = []
         for slc, cutout_, mask_ in zip(self._slices_iter, cutout,
-                                       self._cutout_segment_mask):
+                                       self._cutout_segment_masks):
             try:
                 cutout = cutout_.value.copy()  # Quantity array
             except AttributeError:
@@ -1042,7 +1052,7 @@ class SourceCatalog:
         """
         True if all pixels over the source segment are masked.
         """
-        return np.array([np.all(mask) for mask in self._cutout_total_mask])
+        return np.array([np.all(mask) for mask in self._cutout_total_masks])
 
     def _get_values(self, array):
         """
@@ -1707,7 +1717,7 @@ class SourceCatalog:
         weights[[13, 23]] = (1 + np.sqrt(2.)) / 2.
 
         perimeter = []
-        for mask in self._cutout_total_mask:
+        for mask in self._cutout_total_masks:
             if np.all(mask):
                 perimeter.append(np.nan)
                 continue
