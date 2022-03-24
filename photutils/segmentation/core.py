@@ -5,8 +5,10 @@ segment within a segmentation image.
 """
 
 from copy import deepcopy
+import warnings
 
 from astropy.utils import lazyproperty
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from ..aperture import BoundingBox
@@ -58,15 +60,6 @@ class SegmentationImage:
         """
         return self._data
 
-    @lazyproperty
-    def _cmap(self):
-        """
-        A matplotlib colormap consisting of (random) muted colors.
-
-        This is very useful for plotting the segmentation array.
-        """
-        return self.make_cmap(background_color='#000000', seed=0)
-
     @staticmethod
     def _get_labels(data):
         """
@@ -116,21 +109,16 @@ class SegmentationImage:
 
     @data.setter
     def data(self, value):
-        if np.any(~np.isfinite(value)):
-            raise ValueError('data must not contain any non-finite values '
-                             '(e.g., NaN, inf)')
-
-        value = np.asarray(value, dtype=int)
-        if not np.any(value):
-            raise ValueError('The segmentation image must contain at least '
-                             'one non-zero pixel.')
+        value = np.asarray(value)
+        if not np.issubdtype(value.dtype, np.integer):
+            raise TypeError('data must be have integer type')
 
         if np.min(value) < 0:
             raise ValueError('The segmentation image cannot contain '
                              'negative integers.')
 
         if '_data' in self.__dict__:
-            # needed only when data is reassigned, not on init
+            # reset instance properties when data is reassigned, not on init
             self.__dict__ = {}
 
         self._data = value  # pylint: disable=attribute-defined-outside-init
@@ -165,7 +153,9 @@ class SegmentationImage:
 
     @lazyproperty
     def max_label(self):
-        """The maximum non-zero label in the segmentation array."""
+        """The maximum label in the segmentation array."""
+        if self.nlabels == 0:
+            return 0
         return np.max(self.labels)
 
     def get_index(self, label):
@@ -245,7 +235,7 @@ class SegmentationImage:
     @lazyproperty
     def background_area(self):
         """The area (in pixel**2) of the background (label=0) region."""
-        return len(self.data[self.data == 0])
+        return self._data.size - np.count_nonzero(self._data)
 
     @lazyproperty
     def areas(self):
@@ -257,9 +247,10 @@ class SegmentationImage:
         returned array has a length equal to the number of labels and
         matches the order of the ``labels`` attribute.
         """
-        return np.array([area
-                         for area in np.bincount(self.data.ravel())[1:]
-                         if area != 0])
+        areas = []
+        for label, slices in zip(self.labels, self.slices):
+            areas.append(np.count_nonzero(self._data[slices] == label))
+        return np.array(areas)
 
     def get_area(self, label):
         """
@@ -272,10 +263,10 @@ class SegmentationImage:
 
         Returns
         -------
-        area : `~numpy.ndarray`
+        area : float
             The area of the labeled region.
         """
-        return self.get_areas(label)
+        return self.get_areas(label)[0]
 
     def get_areas(self, labels):
         """
@@ -292,17 +283,19 @@ class SegmentationImage:
         areas : `~numpy.ndarray`
             The areas of the labeled regions.
         """
-        idx = self.get_indices(labels)
+        idx = self.get_indices(np.atleast_1d(labels))
         return self.areas[idx]
 
     @lazyproperty
     def is_consecutive(self):
         """
-        Determine whether or not the non-zero labels in the segmentation
-        array are consecutive and start from 1.
+        Boolean value indicating whether or not the non-zero labels in
+        the segmentation array are consecutive and start from 1.
         """
-        return ((self.labels[-1] - self.labels[0] + 1) == self.nlabels and
-                self.labels[0] == 1)
+        if self.nlabels == 0:
+            return False
+        return ((self.labels[-1] - self.labels[0] + 1) == self.nlabels
+                and self.labels[0] == 1)
 
     @lazyproperty
     def missing_labels(self):
@@ -364,15 +357,14 @@ class SegmentationImage:
         if bad_labels:
             if len(bad_labels) == 1:
                 raise ValueError(f'label {bad_labels} is invalid')
-            else:
-                raise ValueError(f'labels {bad_labels} are invalid')
+            raise ValueError(f'labels {bad_labels} are invalid')
 
     def make_cmap(self, background_color='#000000', seed=None):
         """
         Define a matplotlib colormap consisting of (random) muted
         colors.
 
-        This is very useful for plotting the segmentation array.
+        This is useful for plotting the segmentation array.
 
         Parameters
         ----------
@@ -393,6 +385,9 @@ class SegmentationImage:
         cmap : `matplotlib.colors.ListedColormap`
             The matplotlib colormap.
         """
+        if self.nlabels == 0:
+            return None
+
         from matplotlib import colors
 
         cmap = make_random_cmap(self.max_label + 1, seed=seed)
@@ -401,6 +396,15 @@ class SegmentationImage:
             cmap.colors[0] = colors.hex2color(background_color)
 
         return cmap
+
+    @lazyproperty
+    def cmap(self):
+        """
+        A matplotlib colormap consisting of (random) muted colors.
+
+        This is useful for plotting the segmentation array.
+        """
+        return self.make_cmap(background_color='#000000', seed=0)
 
     def reassign_label(self, label, new_label, relabel=False):
         """
@@ -592,6 +596,11 @@ class SegmentationImage:
                [5, 5, 0, 4, 4, 4],
                [5, 5, 0, 0, 4, 4]])
         """
+        if self.nlabels == 0:
+            warnings.warn('Cannot relabel a segmentation image of all zeros',
+                          AstropyUserWarning)
+            return
+
         if start_label <= 0:
             raise ValueError('start_label must be > 0.')
 

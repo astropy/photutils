@@ -3,8 +3,9 @@
 Tests for the core module.
 """
 
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 import pytest
 
 from ..core import Segment, SegmentationImage
@@ -33,27 +34,28 @@ class TestSegmentationImage:
         segm.data[0, 0] = 100.
         assert segm.data[0, 0] != segm2.data[0, 0]
 
+    def test_data_all_zeros(self):
+        data = np.zeros((5, 5), dtype=int)
+        segm = SegmentationImage(data)
+        assert segm.max_label == 0
+        assert not segm.is_consecutive
+        assert segm.cmap is None
+        with pytest.warns(AstropyUserWarning):
+            segm.relabel_consecutive()
+
+    def test_data_reassignment(self):
+        segm = SegmentationImage(self.data)
+        segm.data = np.array(self.data)[0:3, :].copy()
+        assert_equal(segm.labels, [1, 3, 4])
+
     def test_invalid_data(self):
-        # contains all zeros
-        data = np.zeros((3, 3))
-        with pytest.raises(ValueError):
-            SegmentationImage(data)
-
-        # contains a NaN
-        data = np.zeros((5, 5))
-        data[2, 2] = np.nan
-        with pytest.raises(ValueError):
-            SegmentationImage(data)
-
-        # contains an inf
-        data = np.zeros((5, 5))
-        data[2, 2] = np.inf
-        data[0, 0] = -np.inf
-        with pytest.raises(ValueError):
+        # is float dtype
+        data = np.zeros((3, 3), dtype=float)
+        with pytest.raises(TypeError):
             SegmentationImage(data)
 
         # contains a negative value
-        data = np.arange(-1, 8).reshape(3, 3)
+        data = np.arange(-1, 8).reshape(3, 3).astype(int)
         with pytest.raises(ValueError):
             SegmentationImage(data)
 
@@ -164,13 +166,18 @@ class TestSegmentationImage:
         with pytest.raises(ValueError):
             self.segm.check_labels([2, 6])
 
+    def test_bbox_1d(self):
+        segm = SegmentationImage([0, 0, 1, 1, 0, 2, 2, 0])
+        with pytest.raises(ValueError):
+            _ = segm.bbox
+
     @pytest.mark.skipif('not HAS_MATPLOTLIB')
     def test_make_cmap(self):
         cmap = self.segm.make_cmap()
         assert len(cmap.colors) == (self.segm.max_label + 1)
         assert_allclose(cmap.colors[0], [0, 0, 0])
 
-        assert_allclose(self.segm._cmap.colors,
+        assert_allclose(self.segm.cmap.colors,
                         self.segm.make_cmap(background_color='#000000',
                                             seed=0).colors)
 
@@ -304,7 +311,7 @@ class TestSegmentationImage:
         assert_allclose(segm.data, ref_data)
 
     def test_remove_masked_segments_mask_shape(self):
-        segm = SegmentationImage(np.ones((5, 5)))
+        segm = SegmentationImage(np.ones((5, 5), dtype=int))
         mask = np.zeros((3, 3), dtype=bool)
         with pytest.raises(ValueError):
             segm.remove_masked_labels(mask)

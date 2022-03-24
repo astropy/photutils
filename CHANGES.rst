@@ -38,6 +38,11 @@ New Features
   - Added an ``alpha`` keyword to the ``Background2D.plot_meshes``
     method. [#1286]
 
+- ``photutils.segmentation``
+
+  - Added ``SegmentationImage`` ``cmap`` attribute containing a default
+    colormap. [#1319]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -109,6 +114,11 @@ API Changes
   - Removed the deprecated the ``filter_kernel`` keyword in the
     ``detect_sources``, ``deblend_sources``, and ``make_source_mask``
     functions. [#1280]
+
+  - A ``TypeError`` is raised if the input array to
+    ``SegmentationImage`` does not have integer type. [#1319]
+
+  - A ``SegmentationImage`` may contain an array of all zeros. [#1319]
 
 
 1.3.0 (2021-12-21)
