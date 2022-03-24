@@ -2174,8 +2174,14 @@ class SourceCatalog:
         """
         # make cutouts of the data based on the aperture bbox
         slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
-        data = self._data[slc_lg] - local_background
-        data_mask = self._data_mask[slc_lg]
+        data = self._data[slc_lg].astype(float) - local_background
+
+        if self._mask is None:
+            mask_cutout = None
+        else:
+            mask_cutout = self._mask[slc_lg]
+        data_mask = self._make_cutout_data_mask(data, mask_cutout)
+
         if make_error and self._error is not None:
             error = self._error[slc_lg]
         else:
