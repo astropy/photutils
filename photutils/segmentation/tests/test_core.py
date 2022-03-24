@@ -34,26 +34,18 @@ class TestSegmentationImage:
         assert segm.data[0, 0] != segm2.data[0, 0]
 
     def test_invalid_data(self):
+        # is float dtype
+        data = np.zeros((3, 3), dtype=float)
+        with pytest.raises(TypeError):
+            SegmentationImage(data)
+
         # contains all zeros
-        data = np.zeros((3, 3))
-        with pytest.raises(ValueError):
-            SegmentationImage(data)
-
-        # contains a NaN
-        data = np.zeros((5, 5))
-        data[2, 2] = np.nan
-        with pytest.raises(ValueError):
-            SegmentationImage(data)
-
-        # contains an inf
-        data = np.zeros((5, 5))
-        data[2, 2] = np.inf
-        data[0, 0] = -np.inf
+        data = np.zeros((3, 3), dtype=int)
         with pytest.raises(ValueError):
             SegmentationImage(data)
 
         # contains a negative value
-        data = np.arange(-1, 8).reshape(3, 3)
+        data = np.arange(-1, 8).reshape(3, 3).astype(int)
         with pytest.raises(ValueError):
             SegmentationImage(data)
 
@@ -170,7 +162,7 @@ class TestSegmentationImage:
         assert len(cmap.colors) == (self.segm.max_label + 1)
         assert_allclose(cmap.colors[0], [0, 0, 0])
 
-        assert_allclose(self.segm._cmap.colors,
+        assert_allclose(self.segm.cmap.colors,
                         self.segm.make_cmap(background_color='#000000',
                                             seed=0).colors)
 
@@ -304,7 +296,7 @@ class TestSegmentationImage:
         assert_allclose(segm.data, ref_data)
 
     def test_remove_masked_segments_mask_shape(self):
-        segm = SegmentationImage(np.ones((5, 5)))
+        segm = SegmentationImage(np.ones((5, 5), dtype=int))
         mask = np.zeros((3, 3), dtype=bool)
         with pytest.raises(ValueError):
             segm.remove_masked_labels(mask)

@@ -269,7 +269,7 @@ class TestSourceCatalog:
         with pytest.raises(ValueError):
             SourceCatalog(img1d, segm)
 
-        wrong_shape = np.ones((3, 3))
+        wrong_shape = np.ones((3, 3), dtype=int)
         with pytest.raises(ValueError):
             SourceCatalog(wrong_shape, self.segm)
 
@@ -682,7 +682,7 @@ class TestSourceCatalog:
         """
         data = np.zeros((25, 25), dtype=np.uint16)
         data[8:16, 8:16] = 10
-        segmdata = np.zeros((25, 25))
+        segmdata = np.zeros((25, 25), dtype=int)
         segmdata[8:16, 8:16] = 1
         segm = SegmentationImage(segmdata)
         cat = SourceCatalog(data, segm, localbkg_width=3)
