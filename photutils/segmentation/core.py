@@ -63,7 +63,7 @@ class SegmentationImage:
         """
         A matplotlib colormap consisting of (random) muted colors.
 
-        This is very useful for plotting the segmentation array.
+        This is useful for plotting the segmentation array.
         """
         return self.make_cmap(background_color='#000000', seed=0)
 
@@ -272,10 +272,10 @@ class SegmentationImage:
 
         Returns
         -------
-        area : `~numpy.ndarray`
+        area : float
             The area of the labeled region.
         """
-        return self.get_areas(label)
+        return self.get_areas(label)[0]
 
     def get_areas(self, labels):
         """
@@ -292,17 +292,17 @@ class SegmentationImage:
         areas : `~numpy.ndarray`
             The areas of the labeled regions.
         """
-        idx = self.get_indices(labels)
+        idx = self.get_indices(np.atleast_1d(labels))
         return self.areas[idx]
 
     @lazyproperty
     def is_consecutive(self):
         """
-        Determine whether or not the non-zero labels in the segmentation
-        array are consecutive and start from 1.
+        Boolean value indicating whether or not the non-zero labels in
+        the segmentation array are consecutive and start from 1.
         """
-        return ((self.labels[-1] - self.labels[0] + 1) == self.nlabels and
-                self.labels[0] == 1)
+        return ((self.labels[-1] - self.labels[0] + 1) == self.nlabels
+                and self.labels[0] == 1)
 
     @lazyproperty
     def missing_labels(self):
@@ -372,7 +372,7 @@ class SegmentationImage:
         Define a matplotlib colormap consisting of (random) muted
         colors.
 
-        This is very useful for plotting the segmentation array.
+        This is useful for plotting the segmentation array.
 
         Parameters
         ----------
