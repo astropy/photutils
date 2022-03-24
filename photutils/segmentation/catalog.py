@@ -630,7 +630,8 @@ class SourceCatalog:
         values.fill(np.nan)
         return values
 
-    def _make_cutouts(self, array, slices):
+    @staticmethod
+    def _make_cutouts(array, slices):
         """
         Make cutouts from the array using the input slices.
 
@@ -685,13 +686,17 @@ class SourceCatalog:
                 for label, segm in zip(self._label_iter, segment_img_cutouts)]
 
     @staticmethod
-    def _make_cutout_data_masks(data_cutouts, mask_cutouts):
+    def _make_cutout_data_mask(data_cutout, mask_cutout):
+        data_mask = ~np.isfinite(data_cutout)
+        if mask_cutout is not None:
+            data_mask |= mask_cutout
+        return data_mask
+
+    def _make_cutout_data_masks(self, data_cutouts, mask_cutouts):
         data_masks = []
         for (data_cutout, mask_cutout) in zip(data_cutouts, mask_cutouts):
-            data_mask = ~np.isfinite(data_cutout)
-            if mask_cutout is not None:
-                data_mask |= mask_cutout
-            data_masks.append(data_mask)
+            data_masks.append(self._make_cutout_data_mask(data_cutout,
+                                                          mask_cutout))
         return data_masks
 
     @staticmethod
@@ -2056,8 +2061,7 @@ class SourceCatalog:
         return np.array(gini)
 
     @lazyproperty
-    @as_scalar
-    def local_background_aperture(self):
+    def _local_background_apertures(self):
         """
         The `~photutils.aperture.RectangularAnnulus` aperture used to
         estimate the local background.
@@ -2070,7 +2074,7 @@ class SourceCatalog:
         if self._localbkg_width == 0:
             return self._null_object
 
-        aperture = []
+        apertures = []
         for bbox_ in self._bbox:
             xpos = 0.5 * (bbox_.ixmin + bbox_.ixmax - 1)
             ypos = 0.5 * (bbox_.iymin + bbox_.iymax - 1)
@@ -2081,10 +2085,19 @@ class SourceCatalog:
             height_bbox = bbox_.iymax - bbox_.iymin
             height_in = height_bbox * scale
             height_out = height_in + 2 * self._localbkg_width
-            aperture.append(RectangularAnnulus((xpos, ypos), width_in,
-                                               width_out, height_out,
-                                               height_in, theta=0.))
-        return aperture
+            apertures.append(RectangularAnnulus((xpos, ypos), width_in,
+                                                width_out, height_out,
+                                                height_in, theta=0.))
+        return apertures
+
+    @lazyproperty
+    @as_scalar
+    def local_background_aperture(self):
+        """
+        The `~photutils.aperture.RectangularAnnulus` aperture used to
+        estimate the local background.
+        """
+        return self._local_background_apertures
 
     @lazyproperty
     def _local_background(self):
@@ -2099,28 +2112,44 @@ class SourceCatalog:
         This property is always an `~numpy.ndarray` without units.
         """
         if self._localbkg_width == 0:
-            bkg = np.zeros(self.nlabels)
+            local_bkgs = np.zeros(self.nlabels)
         else:
-            mask = self._data_mask | self._segment_img.data.astype(bool)
             sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
             bkg_func = SExtractorBackground(sigma_clip)
-            bkg_aper = self.local_background_aperture
-            if self.isscalar:
-                bkg_aper = (bkg_aper,)
+            bkg_apers = self._local_background_apertures
 
-            bkg = []
-            for aperture in bkg_aper:
+            local_bkgs = []
+            for aperture in bkg_apers:
                 aperture_mask = aperture.to_mask(method='center')
-                values = aperture_mask.get_values(self._data, mask=mask)
-                # check not enough unmasked pixels
-                if len(values) < 10:  # pragma: no cover
-                    bkg.append(0.)
-                    continue
-                bkg.append(bkg_func(values))
-            bkg = np.array(bkg)
+                slc_lg, slc_sm = aperture_mask.get_overlap_slices(
+                    self._data.shape)
 
-        bkg[self._all_masked] = np.nan
-        return bkg
+                data_cutout = self._data[slc_lg].astype(float, copy=True)
+                # all non-zero segment labels are masked
+                segm_mask_cutout = self._segment_img.data[slc_lg].astype(bool)
+                if self._mask is None:
+                    mask_cutout = None
+                else:
+                    mask_cutout = self._mask[slc_lg]
+                data_mask_cutout = self._make_cutout_data_mask(data_cutout,
+                                                               mask_cutout)
+                data_mask_cutout |= segm_mask_cutout
+
+                aperweight_cutout = aperture_mask.data[slc_sm]
+                good_mask = (aperweight_cutout > 0) & ~data_mask_cutout
+
+                data_cutout *= aperweight_cutout
+                data_values = data_cutout[good_mask]  # 1D array
+
+                # check not enough unmasked pixels
+                if len(data_values) < 10:  # pragma: no cover
+                    local_bkgs.append(0.)
+                    continue
+                local_bkgs.append(bkg_func(data_values))
+            local_bkgs = np.array(local_bkgs)
+
+        local_bkgs[self._all_masked] = np.nan
+        return local_bkgs
 
     @lazyproperty
     @as_scalar
