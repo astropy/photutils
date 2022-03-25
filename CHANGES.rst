@@ -41,6 +41,9 @@ New Features
   - Added an ``alpha`` keyword to the ``Background2D.plot_meshes``
     method. [#1286]
 
+  - Added a ``clip`` keyword to the ``BkgZoomInterpolator`` class.
+    [#1324]
+
 - ``photutils.segmentation``
 
   - Added ``SegmentationImage`` ``cmap`` attribute containing a default
@@ -101,6 +104,11 @@ API Changes
 
   - Removed the deprecated ``background_mesh_ma`` and
     ``background_rms_mesh_ma`` ``Background2D`` properties. [#1280]
+
+  - By default, ``BkgZoomInterpolator`` uses ``clip=True`` to prevent
+    the interpolation from producing values outside the given input
+    range. If backwards-compatiblity is needed with older Photutils
+    versions, set ``clip=False``. [#1324]
 
 - ``photutils.centroid``
 
@@ -370,7 +378,7 @@ API Changes
     which makes the interpolator's behavior consistent with
     ``scipy.ndimage.map_coordinates``, ``skimage.transform.resize``, and
     ``OpenCV (cv2.resize)``. If backwards-compatiblity is needed with
-    older Photutils' versions, set ``grid_mode=False``. [#1239]
+    older Photutils versions, set ``grid_mode=False``. [#1239]
 
 - ``photutils.centroid``
 
