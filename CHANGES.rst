@@ -49,6 +49,9 @@ New Features
   - Improved the performance of ``SegmentationImage`` and
     ``SourceCatalog``, especially for large data arrays. [#1320]
 
+  - Added a ``convolved_data`` keyword to ``SourceCatalog``. This is
+    recommended instead of using the ``kernel`` keyword. [#1321]
+
 Bug Fixes
 ^^^^^^^^^
 
