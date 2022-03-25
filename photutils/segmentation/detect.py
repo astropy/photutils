@@ -7,6 +7,7 @@ import warnings
 
 from astropy.convolution import Gaussian2DKernel, convolve
 from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -16,6 +17,8 @@ from ..utils.exceptions import NoDetectionsWarning
 __all__ = ['detect_threshold', 'detect_sources', 'make_source_mask']
 
 
+@deprecated_renamed_argument('mask_value', None, '1.4', message='Use the '
+                             'mask keyword')
 def detect_threshold(data, nsigma, background=None, error=None, mask=None,
                      mask_value=None, sigclip_sigma=3.0, sigclip_iters=None):
     """
@@ -56,6 +59,7 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
         statistics.
 
     mask_value : float, optional
+        Deprecated.
         An image data value (e.g., ``0.0``) that is ignored when
         computing the image background statistics.  ``mask_value`` will
         be ignored if ``mask`` is input.
@@ -82,10 +86,10 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
 
     Notes
     -----
-    The ``mask``, ``mask_value``, ``sigclip_sigma``, and
-    ``sigclip_iters`` inputs are used only if it is necessary to
+    The ``mask``, ``mask_value`` (deprecated), ``sigclip_sigma``,
+    and ``sigclip_iters`` inputs are used only if it is necessary to
     estimate ``background`` or ``error`` using sigma-clipped background
-    statistics.  If ``background`` and ``error`` are both input, then
+    statistics. If ``background`` and ``error`` are both input, then
     ``mask``, ``mask_value``, ``sigclip_sigma``, and ``sigclip_iters``
     are ignored.
     """
@@ -407,6 +411,10 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
                            connectivity=connectivity, mask=mask)[0]
 
 
+@deprecated_renamed_argument('filter_fwhm', None, '1.4', message='Use the '
+                             'kernel keyword')
+@deprecated_renamed_argument('filter_size', None, '1.4', message='Use the '
+                             'kernel keyword')
 def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
                      filter_size=3, kernel=None, sigclip_sigma=3.0,
                      sigclip_iters=5, dilate_size=11):
@@ -441,6 +449,7 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
         statistics.
 
     filter_fwhm : float, optional
+        Deprecated (use the ``kernel`` keyword).
         The full-width at half-maximum (FWHM) of the Gaussian kernel
         to filter the image before thresholding. ``filter_fwhm``
         and ``filter_size`` are ignored if ``kernel`` is defined.
@@ -448,6 +457,7 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
         convolved.
 
     filter_size : float, optional
+        Deprecated (use the ``kernel`` keyword).
         The size of the square Gaussian kernel image. Used only if
         ``filter_fwhm`` is defined. ``filter_fwhm`` and ``filter_size``
         are ignored if ``kernel`` is defined. ``filter_size`` must be
