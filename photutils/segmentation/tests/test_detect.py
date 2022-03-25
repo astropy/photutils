@@ -5,6 +5,7 @@ Tests for the detect module.
 
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
+from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
 import pytest
@@ -83,8 +84,8 @@ class TestDetectThreshold:
 
     def test_mask_value(self):
         """Test detection with mask_value."""
-
-        threshold = detect_threshold(DATA, nsigma=1.0, mask_value=0.0)
+        with pytest.warns(AstropyDeprecationWarning):
+            threshold = detect_threshold(DATA, nsigma=1.0, mask_value=0.0)
         ref = 2. * np.ones((3, 3))
         assert_array_equal(threshold, ref)
 
@@ -103,13 +104,14 @@ class TestDetectThreshold:
 
     def test_image_mask_override(self):
         """Test that image_mask overrides mask_value."""
-
         mask = REF1.astype(bool)
-        threshold = detect_threshold(DATA, nsigma=0.1, error=0, mask_value=0.0,
-                                     mask=mask, sigclip_sigma=10,
-                                     sigclip_iters=1)
-        ref = np.ones((3, 3))
-        assert_array_equal(threshold, ref)
+        with pytest.raises(AstropyDeprecationWarning):
+            threshold = detect_threshold(DATA, nsigma=0.1, error=0,
+                                         mask_value=0.0,
+                                         mask=mask, sigclip_sigma=10,
+                                         sigclip_iters=1)
+            ref = np.ones((3, 3))
+            assert_array_equal(threshold, ref)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -258,8 +260,9 @@ class TestMakeSourceMask:
         assert np.count_nonzero(mask2) > np.count_nonzero(mask1)
 
     def test_kernel(self):
-        mask1 = make_source_mask(self.data, 5, 10, filter_fwhm=2,
-                                 filter_size=3)
+        with pytest.warns(AstropyDeprecationWarning):
+            mask1 = make_source_mask(self.data, 5, 10, filter_fwhm=2,
+                                     filter_size=3)
         sigma = 2 * gaussian_fwhm_to_sigma
         kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
         mask2 = make_source_mask(self.data, 5, 10, kernel=kernel)
