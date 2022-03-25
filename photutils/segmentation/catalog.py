@@ -735,6 +735,37 @@ class SourceCatalog:
             masks.append(mask1 | mask2)
         return masks
 
+    @lazyproperty
+    def _moment_data_cutouts(self):
+        """
+        A list of 2D `~numpy.ndarray` cutouts from the (convolved) data
+        The following pixels are set to zero in these arrays:
+
+            * pixels outside of the source segment
+            * any masked pixels from the input ``mask``
+            * invalid convolved data values (NaN and inf)
+            * negative convolved data values; negative pixels
+              (especially at large radii) can give image moments that have
+              negative variances.
+
+        These arrays are used to derive moment-based properties.
+        """
+        cutouts = []
+        for convdata_cutout, mask_cutout, segmmask_cutout in zip(
+                self._convdata_cutouts, self._mask_cutouts,
+                self._cutout_segment_masks):
+
+            convdata_mask = (~np.isfinite(convdata_cutout)
+                             | (convdata_cutout < 0) | segmmask_cutout)
+
+            if self._mask is not None:
+                convdata_mask |= mask_cutout
+
+            cutout = convdata_cutout.copy()
+            cutout[convdata_mask] = 0.
+            cutouts.append(cutout)
+        return cutouts
+
     def _prepare_cutouts(self, arrays, units=True, masked=False, dtype=None):
         """
         Prepare cutouts by applying optional units, masks, or dtype.
@@ -755,39 +786,6 @@ class SourceCatalog:
             return [np.ma.masked_array(cutout, mask=mask)
                     for cutout, mask in zip(cutouts, self._cutout_total_masks)]
 
-        return cutouts
-
-    @lazyproperty
-    def _cutout_moment_data(self):
-        """
-        A list of 2D `~numpy.ndarray` cutouts from the (convolved) data
-        The following pixels are set to zero in these arrays:
-
-            * any masked pixels
-            * invalid values (NaN and inf)
-            * negative data values - negative pixels (especially at
-              large radii) can give image moments that have negative
-              variances.
-
-        These arrays are used to derive moment-based properties.
-        """
-        mask = ~np.isfinite(self._convolved_data) | (self._convolved_data < 0)
-        if self._mask is not None:
-            mask |= self._mask
-
-        cutout = self.convdata
-        if self.isscalar:
-            cutout = (cutout,)
-
-        cutouts = []
-        for slc, cutout_, mask_ in zip(self._slices_iter, cutout,
-                                       self._cutout_segment_masks):
-            try:
-                cutout = cutout_.value.copy()  # Quantity array
-            except AttributeError:
-                cutout = cutout_.copy()
-            cutout[(mask[slc] | mask_)] = 0.
-            cutouts.append(cutout)
         return cutouts
 
     def get_label(self, label):
@@ -1108,7 +1106,7 @@ class SourceCatalog:
         Spatial moments up to 3rd order of the source.
         """
         return np.array([_moments(arr, order=3) for arr in
-                         self._cutout_moment_data])
+                         self._moment_data_cutouts])
 
     @lazyproperty
     @as_scalar
@@ -1122,7 +1120,7 @@ class SourceCatalog:
             cutout_centroid = cutout_centroid[np.newaxis, :]
         return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
-                         zip(self._cutout_moment_data, cutout_centroid[:, 0],
+                         zip(self._moment_data_cutouts, cutout_centroid[:, 0],
                              cutout_centroid[:, 1])])
 
     @lazyproperty
