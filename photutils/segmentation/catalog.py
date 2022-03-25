@@ -223,39 +223,34 @@ class SourceCatalog:
 
         (data, error, background), unit = process_quantities(
             (data, error, background), ('data', 'error', 'background'))
-        self._data = self._validate_array(data, 'data', shape=False,
-                                          dtype=float)
+        self._data = self._validate_array(data, 'data', shape=False)
         self._data_unit = unit
         self._segment_img = self._validate_segment_img(segment_img)
-        self._error = self._validate_array(error, 'error', dtype=float)
-        self._mask = self._validate_array(mask, 'mask', dtype=None)
+        self._error = self._validate_array(error, 'error')
+        self._mask = self._validate_array(mask, 'mask')
         self._kernel = kernel
-        self._background = self._validate_array(background, 'background',
-                                                dtype=float)
+        self._background = self._validate_array(background, 'background')
         self._wcs = wcs
-
-        self._convolved_data = self._convolve_data()
-        self._data_mask = self._make_data_mask()
         self._localbkg_width = self._validate_localbkg_width(localbkg_width)
         self._apermask_method = self._validate_apermask_method(apermask_method)
         self._kron_params = self._validate_kron_params(kron_params)
 
         # needed for ordering and isscalar
-        self._labels = self._segment_img.labels
+        # NOTE: calculate slices before labels for performance
         self._slices = self._segment_img.slices
+        self._labels = self._segment_img.labels
+
+        if self._labels.shape == (0,):
+            raise ValueError('segment_img must have at least one non-zero '
+                             'label.')
+
+        # detection_cat validation needs self._labels
+        self._detection_cat = self._validate_detection_cat(detection_cat)
+
+        self._convolved_data = self._convolve_data()
+
         self.default_columns = DEFAULT_COLUMNS
-
         self._extra_properties = []
-
-        if detection_cat is not None:
-            if not isinstance(detection_cat, SourceCatalog):
-                raise TypeError('detection_cat must be a SourceCatalog '
-                                'instance')
-            if not np.array_equal(detection_cat.labels, self.labels):
-                raise ValueError('detection_cat must have same source labels '
-                                 'as the input segment_img')
-        self._detection_cat = detection_cat
-
         self.meta = _get_meta()
 
     def _validate_segment_img(self, segment_img):
@@ -263,18 +258,15 @@ class SourceCatalog:
             raise TypeError('segment_img must be a SegmentationImage')
         if segment_img.shape != self._data.shape:
             raise ValueError('segment_img and data must have the same shape.')
-        if np.sum(segment_img.data) == 0:
-            raise ValueError('segment_img must have at least one non-zero '
-                             'label.')
         return segment_img
 
-    def _validate_array(self, array, name, shape=True, dtype=None):
+    def _validate_array(self, array, name, shape=True):
         if name == 'mask' and array is np.ma.nomask:
             array = None
         if array is not None:
             # UFuncTypeError is raised when subtracting float
             # local_background from int data; convert to float
-            array = np.asanyarray(array, dtype=dtype)
+            array = np.asanyarray(array)
             if array.ndim != 2:
                 raise ValueError(f'{name} must be a 2D array.')
             if shape and array.shape != self._data.shape:
@@ -306,6 +298,16 @@ class SourceCatalog:
         if kron_params[1] <= 0:
             raise ValueError('kron_params[1] must be > 0')
         return kron_params
+
+    def _validate_detection_cat(self, detection_cat):
+        if detection_cat is not None:
+            if not isinstance(detection_cat, SourceCatalog):
+                raise TypeError('detection_cat must be a SourceCatalog '
+                                'instance')
+            if not np.array_equal(detection_cat.labels, self.labels):
+                raise ValueError('detection_cat must have same source labels '
+                                 'as the input segment_img')
+        return detection_cat
 
     @property
     def _properties(self):
@@ -354,9 +356,8 @@ class SourceCatalog:
         # new class
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
                      '_background', '_wcs', '_data_unit', '_convolved_data',
-                     '_data_mask', '_localbkg_width', '_apermask_method',
-                     '_kron_params', 'default_columns', '_extra_properties',
-                     'meta')
+                     '_localbkg_width', '_apermask_method', '_kron_params',
+                     'default_columns', '_extra_properties', 'meta')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -596,18 +597,8 @@ class SourceCatalog:
         return _filter_data(self._data, self._kernel, mode='constant',
                             fill_value=0.0, check_normalization=True)
 
-    def _make_data_mask(self):
-        """
-        Create a mask of non-finite ``data`` values combined with the
-        input ``mask`` array.
-        """
-        mask = ~np.isfinite(self._data)
-        if self._mask is not None:
-            mask |= self._mask
-        return mask
-
     @lazyproperty
-    def _null_object(self):
+    def _null_objects(self):
         """
         Return `None` values.
 
@@ -617,7 +608,7 @@ class SourceCatalog:
         return np.array([None] * self.nlabels)
 
     @lazyproperty
-    def _null_value(self):
+    def _null_values(self):
         """
         Return np.nan values.
 
@@ -629,77 +620,172 @@ class SourceCatalog:
         return values
 
     @lazyproperty
-    def _cutout_segment_mask(self):
+    def _data_cutouts(self):
         """
-        Boolean mask for source segment.
+        A list of data cutouts using the segmentation image slices.
+        """
+        return [self._data[slc] for slc in self._slices_iter]
+
+    @lazyproperty
+    def _segment_img_cutouts(self):
+        """
+        A list of segmentation image cutouts using the segmentation image
+        slices.
+        """
+        return [self._segment_img.data[slc] for slc in self._slices_iter]
+
+    @lazyproperty
+    def _mask_cutouts(self):
+        """
+        A list of mask cutouts using the segmentation image slices.
+
+        If the input ``mask`` is None then a list of None is returned.
+        """
+        if self._mask is None:
+            return self._null_objects
+        return [self._mask[slc] for slc in self._slices_iter]
+
+    @lazyproperty
+    def _error_cutouts(self):
+        """
+        A list of error cutouts using the segmentation image slices.
+
+        If the input ``mask`` is None then a list of None is returned.
+        """
+        if self._error is None:
+            return self._null_objects
+        return [self._error[slc] for slc in self._slices_iter]
+
+    @lazyproperty
+    def _convdata_cutouts(self):
+        """
+        A list of convolved data cutouts using the segmentation image
+        slices.
+        """
+        return [self._convolved_data[slc] for slc in self._slices_iter]
+
+    @lazyproperty
+    def _background_cutouts(self):
+        """
+        A list of background cutouts using the segmentation image
+        slices.
+        """
+        if self._background is None:
+            return self._null_objects
+        return [self._background[slc] for slc in self._slices_iter]
+
+    @staticmethod
+    def _make_cutout_data_mask(data_cutout, mask_cutout):
+        """
+        Make a cutout data mask, combining both the input ``mask`` and
+        non-finite ``data`` values.
+        """
+        data_mask = ~np.isfinite(data_cutout)
+        if mask_cutout is not None:
+            data_mask |= mask_cutout
+        return data_mask
+
+    def _make_cutout_data_masks(self, data_cutouts, mask_cutouts):
+        """
+        Make a list of cutout data masks, combining both the input
+        ``mask`` and non-finite ``data`` values for each source.
+        """
+        data_masks = []
+        for (data_cutout, mask_cutout) in zip(data_cutouts, mask_cutouts):
+            data_masks.append(self._make_cutout_data_mask(data_cutout,
+                                                          mask_cutout))
+        return data_masks
+
+    @lazyproperty
+    def _cutout_segment_masks(self):
+        """
+        Cutout boolean mask for source segment.
 
         The mask is `True` for all pixels (background and from other
         source segments) outside of the source segment.
         """
-        return [self._segment_img.data[slc] != label
-                for label, slc in zip(self._label_iter, self._slices_iter)]
+        return [segm != label
+                for label, segm in zip(self._label_iter,
+                                       self._segment_img_cutouts)]
 
     @lazyproperty
-    def _cutout_total_mask(self):
+    def _cutout_data_masks(self):
         """
-        Boolean mask representing the combination of ``_data_mask`` and
-        ``_cutout_segment_mask``.
+        Cutout boolean mask of non-finite ``data`` values combined with
+        the input ``mask`` array.
+
+        The mask is `True` for non-finite ``data`` values and where the
+        input ``mask`` is `True`.
+        """
+        return self._make_cutout_data_masks(self._data_cutouts,
+                                            self._mask_cutouts)
+
+    @lazyproperty
+    def _cutout_total_masks(self):
+        """
+        Boolean mask representing the combination of
+        ``_cutout_segment_masks`` and ``_cutout_data_masks``.
 
         This mask is applied to ``data``, ``error``, and ``background``
         inputs when calculating properties.
         """
         masks = []
-        for mask, slc in zip(self._cutout_segment_mask, self._slices_iter):
-            masks.append(mask | self._data_mask[slc])
+        for mask1, mask2 in zip(self._cutout_segment_masks,
+                                self._cutout_data_masks):
+            masks.append(mask1 | mask2)
         return masks
 
-    @as_scalar
-    def _make_cutout(self, array, units=True, masked=False):
-        """
-        Make cutouts from in the input array using the source minimal
-        bounding box.
-
-        Masks and units are optionally applied.
-        """
-        cutouts = [array[slc] for slc in self._slices_iter]
-        if units and self._data_unit is not None:
-            cutouts = [(cutout << self._data_unit) for cutout in cutouts]
-        if masked:
-            return [np.ma.masked_array(cutout, mask=mask)
-                    for cutout, mask in zip(cutouts, self._cutout_total_mask)]
-        return cutouts
-
     @lazyproperty
-    def _cutout_moment_data(self):
+    def _moment_data_cutouts(self):
         """
         A list of 2D `~numpy.ndarray` cutouts from the (convolved) data
         The following pixels are set to zero in these arrays:
 
-            * any masked pixels
-            * invalid values (NaN and inf)
-            * negative data values - negative pixels (especially at
-              large radii) can give image moments that have negative
-              variances.
+            * pixels outside of the source segment
+            * any masked pixels from the input ``mask``
+            * invalid convolved data values (NaN and inf)
+            * negative convolved data values; negative pixels
+              (especially at large radii) can give image moments that have
+              negative variances.
 
         These arrays are used to derive moment-based properties.
         """
-        mask = ~np.isfinite(self._convolved_data) | (self._convolved_data < 0)
-        if self._mask is not None:
-            mask |= self._mask
-
-        cutout = self.convdata
-        if self.isscalar:
-            cutout = (cutout,)
-
         cutouts = []
-        for slc, cutout_, mask_ in zip(self._slices_iter, cutout,
-                                       self._cutout_segment_mask):
-            try:
-                cutout = cutout_.value.copy()  # Quantity array
-            except AttributeError:
-                cutout = cutout_.copy()
-            cutout[(mask[slc] | mask_)] = 0.
+        for convdata_cutout, mask_cutout, segmmask_cutout in zip(
+                self._convdata_cutouts, self._mask_cutouts,
+                self._cutout_segment_masks):
+
+            convdata_mask = (~np.isfinite(convdata_cutout)
+                             | (convdata_cutout < 0) | segmmask_cutout)
+
+            if self._mask is not None:
+                convdata_mask |= mask_cutout
+
+            cutout = convdata_cutout.copy()
+            cutout[convdata_mask] = 0.
             cutouts.append(cutout)
+        return cutouts
+
+    def _prepare_cutouts(self, arrays, units=True, masked=False, dtype=None):
+        """
+        Prepare cutouts by applying optional units, masks, or dtype.
+        """
+        if units and masked:
+            raise ValueError('Both units and masked cannot be True')
+
+        if dtype is not None:
+            cutouts = []
+            for cutout in arrays:
+                cutouts.append(cutout.astype(dtype, copy=True))
+        else:
+            cutouts = arrays
+
+        if units and self._data_unit is not None:
+            cutouts = [(cutout << self._data_unit) for cutout in cutouts]
+        if masked:
+            return [np.ma.masked_array(cutout, mask=mask)
+                    for cutout, mask in zip(cutouts, self._cutout_total_masks)]
+
         return cutouts
 
     def get_label(self, label):
@@ -842,8 +928,8 @@ class SourceCatalog:
         A 2D `~numpy.ndarray` cutout of the segmentation image using the
         minimal bounding box of the source.
         """
-        return self._make_cutout(self._segment_img.data, units=False,
-                                 masked=False)
+        return self._prepare_cutouts(self._segment_img_cutouts, units=False,
+                                     masked=False)
 
     @lazyproperty
     @as_scalar
@@ -856,18 +942,21 @@ class SourceCatalog:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
-        return self._make_cutout(self._segment_img.data, units=False,
-                                 masked=True)
+        return self._prepare_cutouts(self._segment_img_cutouts, units=False,
+                                     masked=True)
 
     @lazyproperty
+    @as_scalar
     def data(self):
         """
         A 2D `~numpy.ndarray` cutout from the data using the minimal
         bounding box of the source.
         """
-        return self._make_cutout(self._data, units=True, masked=False)
+        return self._prepare_cutouts(self._data_cutouts, units=True,
+                                     masked=False, dtype=float)
 
     @lazyproperty
+    @as_scalar
     def data_ma(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the data using the
@@ -877,18 +966,21 @@ class SourceCatalog:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
-        return self._make_cutout(self._data, units=False, masked=True)
+        return self._prepare_cutouts(self._data_cutouts, units=False,
+                                     masked=True, dtype=float)
 
     @lazyproperty
+    @as_scalar
     def convdata(self):
         """
         A 2D `~numpy.ndarray` cutout from the convolved data using the
         minimal bounding box of the source.
         """
-        return self._make_cutout(self._convolved_data, units=True,
-                                 masked=False)
+        return self._prepare_cutouts(self._convdata_cutouts, units=True,
+                                     masked=False, dtype=float)
 
     @lazyproperty
+    @as_scalar
     def convdata_ma(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the convolved data
@@ -898,8 +990,8 @@ class SourceCatalog:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
-        return self._make_cutout(self._convolved_data, units=False,
-                                 masked=True)
+        return self._prepare_cutouts(self._convdata_cutouts, units=False,
+                                     masked=True, dtype=float)
 
     @lazyproperty
     @as_scalar
@@ -909,9 +1001,9 @@ class SourceCatalog:
         minimal bounding box of the source.
         """
         if self._error is None:
-            return self._null_object
-        return self._make_cutout(self._error, units=True,
-                                 masked=False)
+            return self._null_objects
+        return self._prepare_cutouts(self._error_cutouts, units=True,
+                                     masked=False)
 
     @lazyproperty
     @as_scalar
@@ -925,9 +1017,9 @@ class SourceCatalog:
         input, or any non-finite ``data`` values (NaN and inf).
         """
         if self._error is None:
-            return self._null_object
-        return self._make_cutout(self._error, units=False,
-                                 masked=True)
+            return self._null_objects
+        return self._prepare_cutouts(self._error_cutouts, units=False,
+                                     masked=True)
 
     @lazyproperty
     @as_scalar
@@ -937,9 +1029,9 @@ class SourceCatalog:
         minimal bounding box of the source.
         """
         if self._background is None:
-            return self._null_object
-        return self._make_cutout(self._background, units=True,
-                                 masked=False)
+            return self._null_objects
+        return self._prepare_cutouts(self._background_cutouts, units=True,
+                                     masked=False)
 
     @lazyproperty
     @as_scalar
@@ -953,16 +1045,16 @@ class SourceCatalog:
         input, or any non-finite ``data`` values (NaN and inf).
         """
         if self._background is None:
-            return self._null_object
-        return self._make_cutout(self._background, units=False,
-                                 masked=True)
+            return self._null_objects
+        return self._prepare_cutouts(self._background_cutouts, units=False,
+                                     masked=True)
 
     @lazyproperty
     def _all_masked(self):
         """
         True if all pixels over the source segment are masked.
         """
-        return np.array([np.all(mask) for mask in self._cutout_total_mask])
+        return np.array([np.all(mask) for mask in self._cutout_total_masks])
 
     def _get_values(self, array):
         """
@@ -1014,7 +1106,7 @@ class SourceCatalog:
         Spatial moments up to 3rd order of the source.
         """
         return np.array([_moments(arr, order=3) for arr in
-                         self._cutout_moment_data])
+                         self._moment_data_cutouts])
 
     @lazyproperty
     @as_scalar
@@ -1028,7 +1120,7 @@ class SourceCatalog:
             cutout_centroid = cutout_centroid[np.newaxis, :]
         return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
-                         zip(self._cutout_moment_data, cutout_centroid[:, 0],
+                         zip(self._moment_data_cutouts, cutout_centroid[:, 0],
                              cutout_centroid[:, 1])])
 
     @lazyproperty
@@ -1109,7 +1201,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self._wcs.pixel_to_world(self.xcentroid, self.ycentroid)
 
     @lazyproperty
@@ -1123,7 +1215,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self.sky_centroid.icrs
 
     @lazyproperty
@@ -1240,7 +1332,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ll))
 
     @lazyproperty
@@ -1258,7 +1350,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ul))
 
     @lazyproperty
@@ -1276,7 +1368,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_lr))
 
     @lazyproperty
@@ -1294,7 +1386,7 @@ class SourceCatalog:
         `None` if ``wcs`` is not input.
         """
         if self._wcs is None:
-            return self._null_object
+            return self._null_objects
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ur))
 
     @lazyproperty
@@ -1496,9 +1588,9 @@ class SourceCatalog:
         masked, are also masked in the error array.
         """
         if self._error is None:
-            err = self._null_value
+            err = self._null_values
         else:
-            err = np.sqrt(np.array([np.sum(arr**2)
+            err = np.sqrt(np.array([np.sum(arr ** 2)
                                     for arr in self._error_values]))
 
         if self._data_unit is not None:
@@ -1516,7 +1608,7 @@ class SourceCatalog:
         masked, are also masked in the background array.
         """
         if self._background is None:
-            bkg_sum = self._null_value
+            bkg_sum = self._null_values
         else:
             bkg_sum = np.array([np.sum(arr)
                                 for arr in self._background_values])
@@ -1536,7 +1628,7 @@ class SourceCatalog:
         masked, are also masked in the background array.
         """
         if self._background is None:
-            bkg_mean = self._null_value
+            bkg_mean = self._null_values
         else:
             bkg_mean = np.array([np.mean(arr)
                                  for arr in self._background_values])
@@ -1549,14 +1641,14 @@ class SourceCatalog:
     @as_scalar
     def background_centroid(self):
         """
-        The value of the ``background`` at the position of the source
-        centroid.
+        The value of the per-pixel ``background`` at the position of the
+        source centroid.
 
         The background value at fractional position values are
         determined using bilinear interpolation.
         """
         if self._background is None:
-            bkg = self._null_value
+            bkg = self._null_values
         else:
             from scipy.ndimage import map_coordinates
 
@@ -1627,7 +1719,7 @@ class SourceCatalog:
         weights[[13, 23]] = (1 + np.sqrt(2.)) / 2.
 
         perimeter = []
-        for mask in self._cutout_total_mask:
+        for mask in self._cutout_total_masks:
             if np.all(mask):
                 perimeter.append(np.nan)
                 continue
@@ -1966,8 +2058,7 @@ class SourceCatalog:
         return np.array(gini)
 
     @lazyproperty
-    @as_scalar
-    def local_background_aperture(self):
+    def _local_background_apertures(self):
         """
         The `~photutils.aperture.RectangularAnnulus` aperture used to
         estimate the local background.
@@ -1978,9 +2069,9 @@ class SourceCatalog:
             return self._detection_cat.local_background_aperture
 
         if self._localbkg_width == 0:
-            return self._null_object
+            return self._null_objects
 
-        aperture = []
+        apertures = []
         for bbox_ in self._bbox:
             xpos = 0.5 * (bbox_.ixmin + bbox_.ixmax - 1)
             ypos = 0.5 * (bbox_.iymin + bbox_.iymax - 1)
@@ -1991,10 +2082,19 @@ class SourceCatalog:
             height_bbox = bbox_.iymax - bbox_.iymin
             height_in = height_bbox * scale
             height_out = height_in + 2 * self._localbkg_width
-            aperture.append(RectangularAnnulus((xpos, ypos), width_in,
-                                               width_out, height_out,
-                                               height_in, theta=0.))
-        return aperture
+            apertures.append(RectangularAnnulus((xpos, ypos), width_in,
+                                                width_out, height_out,
+                                                height_in, theta=0.))
+        return apertures
+
+    @lazyproperty
+    @as_scalar
+    def local_background_aperture(self):
+        """
+        The `~photutils.aperture.RectangularAnnulus` aperture used to
+        estimate the local background.
+        """
+        return self._local_background_apertures
 
     @lazyproperty
     def _local_background(self):
@@ -2002,31 +2102,51 @@ class SourceCatalog:
         The local background value estimated using a rectangular annulus
         aperture around the source.
 
+        Pixels are masked where the input ``mask`` is `True`, where the
+        input ``data`` is non-finite, and within any non-zero pixel
+        label in the segmentation image.
+
         This property is always an `~numpy.ndarray` without units.
         """
         if self._localbkg_width == 0:
-            bkg = np.zeros(self.nlabels)
+            local_bkgs = np.zeros(self.nlabels)
         else:
-            mask = self._data_mask | self._segment_img.data.astype(bool)
             sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
             bkg_func = SExtractorBackground(sigma_clip)
-            bkg_aper = self.local_background_aperture
-            if self.isscalar:
-                bkg_aper = (bkg_aper,)
+            bkg_apers = self._local_background_apertures
 
-            bkg = []
-            for aperture in bkg_aper:
+            local_bkgs = []
+            for aperture in bkg_apers:
                 aperture_mask = aperture.to_mask(method='center')
-                values = aperture_mask.get_values(self._data, mask=mask)
-                # check not enough unmasked pixels
-                if len(values) < 10:  # pragma: no cover
-                    bkg.append(0.)
-                    continue
-                bkg.append(bkg_func(values))
-            bkg = np.array(bkg)
+                slc_lg, slc_sm = aperture_mask.get_overlap_slices(
+                    self._data.shape)
 
-        bkg[self._all_masked] = np.nan
-        return bkg
+                data_cutout = self._data[slc_lg].astype(float, copy=True)
+                # all non-zero segment labels are masked
+                segm_mask_cutout = self._segment_img.data[slc_lg].astype(bool)
+                if self._mask is None:
+                    mask_cutout = None
+                else:
+                    mask_cutout = self._mask[slc_lg]
+                data_mask_cutout = self._make_cutout_data_mask(data_cutout,
+                                                               mask_cutout)
+                data_mask_cutout |= segm_mask_cutout
+
+                aperweight_cutout = aperture_mask.data[slc_sm]
+                good_mask = (aperweight_cutout > 0) & ~data_mask_cutout
+
+                data_cutout *= aperweight_cutout
+                data_values = data_cutout[good_mask]  # 1D array
+
+                # check not enough unmasked pixels
+                if len(data_values) < 10:  # pragma: no cover
+                    local_bkgs.append(0.)
+                    continue
+                local_bkgs.append(bkg_func(data_values))
+            local_bkgs = np.array(local_bkgs)
+
+        local_bkgs[self._all_masked] = np.nan
+        return local_bkgs
 
     @lazyproperty
     @as_scalar
@@ -2051,8 +2171,14 @@ class SourceCatalog:
         """
         # make cutouts of the data based on the aperture bbox
         slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
-        data = self._data[slc_lg] - local_background
-        data_mask = self._data_mask[slc_lg]
+        data = self._data[slc_lg].astype(float) - local_background
+
+        if self._mask is None:
+            mask_cutout = None
+        else:
+            mask_cutout = self._mask[slc_lg]
+        data_mask = self._make_cutout_data_mask(data, mask_cutout)
+
         if make_error and self._error is not None:
             error = self._error[slc_lg]
         else:

@@ -105,14 +105,15 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     if segment_img.shape != data.shape:
         raise ValueError('The data and segmentation image must have '
                          'the same shape')
-    if np.sum(segment_img.data) == 0:
-        raise ValueError('The segmentation image must have at least one '
-                         'non-zero label.')
 
     if labels is None:
         labels = segment_img.labels
     labels = np.atleast_1d(labels)
     segment_img.check_labels(labels)
+
+    if labels.shape == (0,):
+        raise ValueError('The segmentation image must have at least one '
+                         'non-zero label.')
 
     if kernel is not None:
         data = _filter_data(data, kernel, mode='constant', fill_value=0.0)

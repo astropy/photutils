@@ -33,6 +33,9 @@ New Features
   - Added an ``ApertureStats`` class for computing statistics of
     unmasked pixels within an aperture. [#1309, #1314, #1315, #1318]
 
+  - Added a ``dtype`` keyword to the ``ApertureMask`` ``to_image``
+    method. [#1320]
+
 - ``photutils.background``
 
   - Added an ``alpha`` keyword to the ``Background2D.plot_meshes``
@@ -42,6 +45,9 @@ New Features
 
   - Added ``SegmentationImage`` ``cmap`` attribute containing a default
     colormap. [#1319]
+
+  - Improved the performance of ``SegmentationImage`` and
+    ``SourceCatalog``, especially for large data arrays. [#1320]
 
 Bug Fixes
 ^^^^^^^^^
