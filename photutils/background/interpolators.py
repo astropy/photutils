@@ -44,13 +44,20 @@ class BkgZoomInterpolator:
         behavior consistent with `scipy.ndimage.map_coordinates` and
         `skimage.transform.resize`. The `False` option is provided only
         for backwards-compatibility.
+
+    clip : bool, optional
+        Whether to clip the output to the range of values in the
+        input image. This is enabled by default, since higher order
+        interpolation may produce values outside the given input range.
     """
 
-    def __init__(self, *, order=3, mode='reflect', cval=0.0, grid_mode=True):
+    def __init__(self, *, order=3, mode='reflect', cval=0.0, grid_mode=True,
+                 clip=True):
         self.order = order
         self.mode = mode
         self.cval = cval
         self.grid_mode = grid_mode
+        self.clip = clip
 
     def __call__(self, mesh, bkg2d_obj):
         """
@@ -82,13 +89,20 @@ class BkgZoomInterpolator:
             zoom_factor = bkg2d_obj.box_size
             result = zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
                           cval=self.cval, grid_mode=self.grid_mode)
-            return result[0:bkg2d_obj.data.shape[0],
-                          0:bkg2d_obj.data.shape[1]]
+            result = result[0:bkg2d_obj.data.shape[0],
+                            0:bkg2d_obj.data.shape[1]]
         else:
             # The mesh is resized directly to the final data size.
             zoom_factor = np.array(bkg2d_obj.data.shape) / mesh.shape
-            return zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
-                        cval=self.cval)
+            result = zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
+                          cval=self.cval)
+
+        if self.clip:
+            minval = np.min(mesh)
+            maxval = np.max(mesh)
+            np.clip(result, minval, maxval, out=result)  # clip in place
+
+        return result
 
 
 class BkgIDWInterpolator:
