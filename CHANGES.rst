@@ -129,6 +129,12 @@ API Changes
 
   - A ``SegmentationImage`` may contain an array of all zeros. [#1319]
 
+  - Deprecated the ``mask_value`` keyword in ``detect_threshold``. Use
+    the ``mask`` keyword instead. [#1322]
+
+  - Deprecated the ``filter_fwhm`` and ``filter_size`` keywords in
+    ``make_source_mask``. Use the ``kernel`` keyword instead. [#1322]
+
 
 1.3.0 (2021-12-21)
 ------------------
