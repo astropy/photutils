@@ -183,6 +183,12 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
     data : array_like
         The 2D array of the image.
 
+        ..note::
+            It is recommended that the user convolve the data with
+            ``kernel`` and input the convolved data directly into the
+            ``data`` parameter. In this case do not input a ``kernel``,
+            otherwise the data will be convolved twice.
+
     thresholds : array-like of floats or arrays
         The data value or pixel-wise data values to
         be used for the detection thresholds. A 2D
@@ -199,7 +205,8 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
         The 2D array of the kernel used to filter the image before
         thresholding. Filtering the image will smooth the noise and
         maximize detectability of objects with a shape similar to the
-        kernel.
+        kernel. ``kernel`` must be `None` if the input ``data`` are
+        already convolved.
 
     connectivity : {4, 8}, optional
         The type of pixel connectivity used in determining how pixels
@@ -315,6 +322,12 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
     data : array_like
         The 2D array of the image.
 
+        ..note::
+            It is recommended that the user convolve the data with
+            ``kernel`` and input the convolved data directly into the
+            ``data`` parameter. In this case do not input a ``kernel``,
+            otherwise the data will be convolved twice.
+
     threshold : float or array-like
         The data value or pixel-wise data values to be used for the
         detection threshold. A 2D ``threshold`` must have the same shape
@@ -330,7 +343,8 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         The 2D array of the kernel used to filter the image before
         thresholding. Filtering the image will smooth the noise and
         maximize detectability of objects with a shape similar to the
-        kernel.
+        kernel. ``kernel`` must be `None` if the input ``data`` are
+        already convolved.
 
     connectivity : {4, 8}, optional
         The type of pixel connectivity used in determining how pixels
@@ -404,6 +418,12 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
     data : array_like
         The 2D array of the image.
 
+        ..note::
+            It is recommended that the user convolve the data with
+            ``kernel`` and input the convolved data directly into the
+            ``data`` parameter. In this case do not input a ``kernel``,
+            otherwise the data will be convolved twice.
+
     nsigma : float
         The number of standard deviations per pixel above the
         ``background`` for which to consider a pixel as possibly being
@@ -421,21 +441,25 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
         statistics.
 
     filter_fwhm : float, optional
-        The full-width at half-maximum (FWHM) of the Gaussian kernel to
-        filter the image before thresholding.  ``filter_fwhm`` and
-        ``filter_size`` are ignored if ``kernel`` is defined.
+        The full-width at half-maximum (FWHM) of the Gaussian kernel
+        to filter the image before thresholding. ``filter_fwhm``
+        and ``filter_size`` are ignored if ``kernel`` is defined.
+        ``filter_fwhm`` must be `None` if the input ``data`` are already
+        convolved.
 
     filter_size : float, optional
-        The size of the square Gaussian kernel image.  Used only if
-        ``filter_fwhm`` is defined.  ``filter_fwhm`` and ``filter_size``
-        are ignored if ``kernel`` is defined.
+        The size of the square Gaussian kernel image. Used only if
+        ``filter_fwhm`` is defined. ``filter_fwhm`` and ``filter_size``
+        are ignored if ``kernel`` is defined. ``filter_size`` must be
+        `None` if the input ``data`` are already convolved.
 
     kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the image before
         thresholding. Filtering the image will smooth the noise
         and maximize detectability of objects with a shape similar
         to the kernel. ``kernel`` overrides ``filter_fwhm`` and
-        ``filter_size``.
+        ``filter_size``. ``kernel`` must be `None` if the input ``data``
+        are already convolved.
 
     sigclip_sigma : float, optional
         The number of standard deviations to use as the clipping limit

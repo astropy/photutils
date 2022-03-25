@@ -61,18 +61,27 @@ class SourceCatalog:
     Parameters
     ----------
     data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
-        The 2D array from which to calculate the source photometry and
-        properties. If ``kernel`` is input, then a convolved version
-        of ``data`` will be used instead of ``data`` to calculate the
-        source centroid and morphological properties. Source photometry
-        is always measured from ``data``. For accurate source properties
-        and photometry, ``data`` should be background-subtracted.
-        Non-finite ``data`` values (NaN and inf) are automatically
-        masked.
+        The 2D array from which to calculate the source photometry
+        and properties. If ``convolved_data`` or ``kernel`` is input,
+        then a convolved version of ``data`` will be used instead of
+        ``data`` to calculate the source centroid and morphological
+        properties. Source photometry is always measured from ``data``.
+        For accurate source properties and photometry, ``data`` should
+        be background-subtracted. Non-finite ``data`` values (NaN and
+        inf) are automatically masked.
 
     segment_img : `~photutils.segmentation.SegmentationImage`
         A `~photutils.segmentation.SegmentationImage` object defining
         the sources.
+
+    convolved_data : data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+        The 2D array used to calculate the source centroid and
+        morphological properties. It is recommended that the user input
+        the convolved data directly instead of using the ``kernel``
+        keyword. If ``convolved_data`` is input, then the ``kernel``
+        keyword will be ignored. If both ``convolved_data`` and
+        ``kernel`` are `None`, then the unconvolved ``data`` will be
+        used instead.
 
     error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The total error array corresponding to the input ``data``
@@ -216,15 +225,19 @@ class SourceCatalog:
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
 
-    def __init__(self, data, segment_img, *, error=None, mask=None,
-                 kernel=None, background=None, wcs=None, localbkg_width=0,
-                 apermask_method='correct', kron_params=(2.5, 1.0),
-                 detection_cat=None):
+    def __init__(self, data, segment_img, *, convolved_data=None, error=None,
+                 mask=None, kernel=None, background=None, wcs=None,
+                 localbkg_width=0, apermask_method='correct',
+                 kron_params=(2.5, 1.0), detection_cat=None):
 
-        (data, error, background), unit = process_quantities(
-            (data, error, background), ('data', 'error', 'background'))
-        self._data = self._validate_array(data, 'data', shape=False)
+        arrays, unit = process_quantities(
+            (data, convolved_data, error, background),
+            ('data', 'convolved_data', 'error', 'background'))
+        data, convolved_data, error, background = arrays
         self._data_unit = unit
+        self._data = self._validate_array(data, 'data', shape=False)
+        self._convolved_data = self._validate_array(convolved_data,
+                                                    'convolved_data')
         self._segment_img = self._validate_segment_img(segment_img)
         self._error = self._validate_array(error, 'error')
         self._mask = self._validate_array(mask, 'mask')
@@ -247,7 +260,11 @@ class SourceCatalog:
         # detection_cat validation needs self._labels
         self._detection_cat = self._validate_detection_cat(detection_cat)
 
-        self._convolved_data = self._convolve_data()
+        if convolved_data is None:
+            if kernel is None:
+                self._convolved_data = self._data
+            else:
+                self._convolved_data = self._convolve_data()
 
         self.default_columns = DEFAULT_COLUMNS
         self._extra_properties = []
@@ -592,8 +609,6 @@ class SourceCatalog:
         """
         Convolve the input data with the input kernel.
         """
-        if self._kernel is None:
-            return self._data
         return _filter_data(self._data, self._kernel, mode='constant',
                             fill_value=0.0, check_normalization=True)
 
