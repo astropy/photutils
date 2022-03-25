@@ -40,6 +40,37 @@ Please see :class:`~photutils.aperture.ApertureStats` for the
 the complete list of properties that can be calculated and the
 :ref:`photutils-aperture-stats` documentation for examples.
 
+New clip keyword in BkgZoomInterpolator
+=======================================
+
+A ``clip`` keyword was added to the
+:class:`~photutils.background.BkgZoomInterpolator` class, which is used
+by :class:`~photutils.background.Background2D`.
+
+By default, :class:`~photutils.background.BkgZoomInterpolator` sets
+``clip=True`` to prevent the interpolation from producing values outside
+the given input range. If backwards-compatiblity is needed with older
+Photutils versions, set ``clip=False``.
+
+Segmentation Performance Improvements
+=====================================
+
+A ``convolved_data`` keyword was added to the
+:class:`~photutils.segmentation.SourceCatalog` class that allows
+the convolved image to be directly input instead of using
+the ``kernel`` keyword. Convolved data can also be directly
+input to the `~photutils.segmentation.detect_sources` and
+`~photutils.segmentation.deblend_sources` functions (using the ``data``
+parameter) instead of using the ``kernel`` keyword. For performance,
+it is strongly recommended that the user first convolve their data, if
+desired, and then input the convolved data to each of these segmentation
+functions. Doing so improves the overall peformance by omitting extra
+convolution steps within each function or class.
+
+Significant improvements were also made to the performance of
+the :class:`~photutils.segmentation.SegmentationImage` and
+`~photutils.segmentation.SourceCatalog` classes in the case of large
+data arrays.
 
 Other changes
 =============
