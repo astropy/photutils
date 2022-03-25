@@ -187,11 +187,11 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
     data : array_like
         The 2D array of the image.
 
-        ..note::
-            It is recommended that the user convolve the data with
-            ``kernel`` and input the convolved data directly into the
-            ``data`` parameter. In this case do not input a ``kernel``,
-            otherwise the data will be convolved twice.
+        .. note::
+           It is recommended that the user convolve the data with
+           ``kernel`` and input the convolved data directly into the
+           ``data`` parameter. In this case do not input a ``kernel``,
+           otherwise the data will be convolved twice.
 
     thresholds : array-like of floats or arrays
         The data value or pixel-wise data values to
@@ -326,11 +326,11 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
     data : array_like
         The 2D array of the image.
 
-        ..note::
-            It is recommended that the user convolve the data with
-            ``kernel`` and input the convolved data directly into the
-            ``data`` parameter. In this case do not input a ``kernel``,
-            otherwise the data will be convolved twice.
+        .. note::
+           It is recommended that the user convolve the data with
+           ``kernel`` and input the convolved data directly into the
+           ``data`` parameter. In this case do not input a ``kernel``,
+           otherwise the data will be convolved twice.
 
     threshold : float or array-like
         The data value or pixel-wise data values to be used for the
@@ -426,11 +426,11 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
     data : array_like
         The 2D array of the image.
 
-        ..note::
-            It is recommended that the user convolve the data with
-            ``kernel`` and input the convolved data directly into the
-            ``data`` parameter. In this case do not input a ``kernel``,
-            otherwise the data will be convolved twice.
+        .. note::
+           It is recommended that the user convolve the data with
+           ``kernel`` and input the convolved data directly into the
+           ``data`` parameter. In this case do not input a ``kernel``,
+           otherwise the data will be convolved twice.
 
     nsigma : float
         The number of standard deviations per pixel above the
