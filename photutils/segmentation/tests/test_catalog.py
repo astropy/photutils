@@ -15,6 +15,7 @@ from ..core import SegmentationImage
 from ..detect import detect_sources
 from ...aperture import CircularAperture, EllipticalAperture
 from ...datasets import make_gwcs, make_wcs, make_noise_image
+from ...utils._convolution import _filter_data
 from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 
@@ -200,6 +201,10 @@ class TestSourceCatalog:
         for prop in props:
             assert getattr(obj, prop) is None
 
+        arr_props = ('_background_cutouts', '_error_cutouts')
+        for prop in arr_props:
+            assert getattr(obj, prop)[0] is None
+
         props = ('background_mean', 'background_sum', 'background_centroid',
                  'segment_fluxerr', 'kron_fluxerr')
         for prop in props:
@@ -263,6 +268,10 @@ class TestSourceCatalog:
         assert tbl.colnames == columns
 
     def test_invalid_inputs(self):
+        segm = SegmentationImage(np.zeros(self.data.shape, dtype=int))
+        with pytest.raises(ValueError):
+            SourceCatalog(self.data, segm)
+
         # test 1D arrays
         img1d = np.arange(4)
         segm = SegmentationImage(img1d)
@@ -419,10 +428,19 @@ class TestSourceCatalog:
     def test_kernel(self):
         kernel = np.array([[1., 2, 1], [2, 4, 2], [1, 2, 100]])
         kernel /= kernel.sum()
+
         cat1 = SourceCatalog(self.data, self.segm, kernel=None)
         cat2 = SourceCatalog(self.data, self.segm, kernel=kernel)
         assert not np.array_equal(cat1.xcentroid, cat2.xcentroid)
         assert not np.array_equal(cat1.ycentroid, cat2.ycentroid)
+
+        convolved_data = _filter_data(self.data, kernel, mode='constant',
+                                      fill_value=0.0,
+                                      check_normalization=True)
+        cat3 = SourceCatalog(self.data, self.segm,
+                             convolved_data=convolved_data)
+        assert_allclose(cat2.centroid, cat3.centroid)
+        assert_allclose(cat2.covariance, cat3.covariance)
 
     def test_detection_cat(self):
         data2 = self.data - 5
