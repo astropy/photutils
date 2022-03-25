@@ -105,7 +105,7 @@ class TestDetectThreshold:
     def test_image_mask_override(self):
         """Test that image_mask overrides mask_value."""
         mask = REF1.astype(bool)
-        with pytest.raises(AstropyDeprecationWarning):
+        with pytest.warns(AstropyDeprecationWarning):
             threshold = detect_threshold(DATA, nsigma=0.1, error=0,
                                          mask_value=0.0,
                                          mask=mask, sigclip_sigma=10,
