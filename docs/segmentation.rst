@@ -440,8 +440,8 @@ label numbers in the segmentation image:
 
 By default, the :meth:`~photutils.segmentation.SourceCatalog.to_table`
 includes only a small subset of source properties. The output table
-properties can be specified (or excluded) in the `~astropy.table.QTable`
-via the ``columns`` or ``exclude_columns`` keywords:
+properties can be customized in the `~astropy.table.QTable` using the
+``columns`` keywords:
 
 .. doctest-requires:: scipy>=1.6.0, skimage
 
@@ -567,18 +567,17 @@ via the ``mask`` keyword (`True` pixel values are masked) to the
 
 Filtering
 ^^^^^^^^^
+
 `SourceExtractor`_'s centroid and morphological parameters are
-calculated from a filtered "detection" image. The usual downside
-of the filtering is the sources will be made more circular than
-they actually are (assuming a circular kernel is used, which is
-common). If you wish to reproduce `SourceExtractor`_ results,
-then use the :class:`~photutils.segmentation.SourceCatalog`
-``kernel`` keyword to filter the ``data`` prior to centroid and
-morphological measurements. The kernel should be the same one used
-with :func:`~photutils.segmentation.detect_sources` that defined the
-segmentation image. If ``kernel`` is `None`, then the centroid and
-morphological measurements will be performed on the unfiltered ``data``.
-Note that photometry is *always* performed on the unfiltered ``data``.
+always calculated from a convolved, or filtered, "detection" image
+(``convolved_data``), i.e., the image used to define the segmentation
+image. The usual downside of the filtering is the sources will be
+made more circular than they actually are. If you wish to reproduce
+`SourceExtractor`_ centroid and morphology results, then input the
+``convolved_data`` (or ``kernel``, but not both). If ``convolved_data``
+and ``kernel`` are both `None`, then the unfiltered ``data`` will be
+used for the source centroid and morphological parameters. Note that
+photometry is *always* performed on the unfiltered ``data``.
 
 
 Reference/API
