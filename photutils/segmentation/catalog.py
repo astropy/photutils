@@ -61,8 +61,8 @@ class SourceCatalog:
     Parameters
     ----------
     data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
-        The 2D array from which to calculate the source photometry
-        and properties. If ``convolved_data`` or ``kernel`` is input,
+        The 2D array from which to calculate the source photometry and
+        properties. If ``convolved_data`` (or ``kernel``) is input,
         then a convolved version of ``data`` will be used instead of
         ``data`` to calculate the source centroid and morphological
         properties. Source photometry is always measured from ``data``.
@@ -81,7 +81,10 @@ class SourceCatalog:
         keyword. If ``convolved_data`` is input, then the ``kernel``
         keyword will be ignored. If both ``convolved_data`` and
         ``kernel`` are `None`, then the unconvolved ``data`` will be
-        used instead.
+        used instead. Non-finite ``convolved_data`` values (NaN and
+        inf) are not automatically masked, unless they are at the same
+        position of non-finite values in the input ``data`` array. Such
+        pixels can be masked using the ``mask`` keyword.
 
     error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The total error array corresponding to the input ``data``
@@ -91,7 +94,7 @@ class SourceCatalog:
         the same shape as the input ``data``. If ``data`` is a
         `~astropy.units.Quantity` array then ``error`` must be a
         `~astropy.units.Quantity` array (and vice versa) with identical
-        units. Non-finite ``error`` values (NaN and +/- inf) are not
+        units. Non-finite ``error`` values (NaN and inf) are not
         automatically masked, unless they are at the same position of
         non-finite values in the input ``data`` array. Such pixels can
         be masked using the ``mask`` keyword. See the Notes section
@@ -110,7 +113,8 @@ class SourceCatalog:
         The kernel should be the same one used in defining the
         source segments, i.e., the detection image (e.g., see
         :func:`~photutils.segmentation.detect_sources`). If `None`, then
-        the unfiltered ``data`` will be used instead.
+        the unfiltered ``data`` will be used instead. This keyword is
+        ignored if ``convolved_data`` is input (recommended).
 
     background : float, 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The background level that was *previously* present in the input
@@ -147,14 +151,15 @@ class SourceCatalog:
         aperture photometry (e.g., circular apertures or elliptical Kron
         apertures).  This parameter also affects the Kron radius.
 
-          * 'correct':  replace pixels assigned to neighboring sources
-                        by replacing them with pixels on the opposite
-                        side of the source center (equivalent to
-                        MASK_TYPE=CORRECT in SourceExtractor).
-          * 'mask':  mask pixels assigned to neighboring sources
-                     (equivalent to MASK_TYPE=BLANK in SourceExtractor).
-          * 'none':  do not mask any pixels (equivalent to
-                     MASK_TYPE=NONE in SourceExtractor).
+          * 'correct': replace pixels assigned to neighboring sources by
+            replacing them with pixels on the opposite side of the source
+            center (equivalent to MASK_TYPE=CORRECT in SourceExtractor).
+
+          * 'mask': mask pixels assigned to neighboring sources
+            (equivalent to MASK_TYPE=BLANK in SourceExtractor).
+
+          * 'none': do not mask any pixels (equivalent to MASK_TYPE=NONE
+            in SourceExtractor).
 
     kron_params : list of 2 floats, optional
         A list of two parameters used to determine how the Kron
@@ -184,13 +189,15 @@ class SourceCatalog:
     for each source.
 
     `SourceExtractor`_'s centroid and morphological parameters are
-    always calculated from a filtered "detection" image, i.e., the
-    image used to define the segmentation image. The usual downside of
-    the filtering is the sources will be made more circular than they
-    actually are. If you wish to reproduce `SourceExtractor`_ centroid
-    and morphology results, then input a ``kernel``. If ``kernel`` is
-    `None`, then the unfiltered ``data`` will be used for the source
-    centroid and morphological parameters.
+    always calculated from a convolved, or filtered, "detection"
+    image (``convolved_data``), i.e., the image used to define the
+    segmentation image. The usual downside of the filtering is the
+    sources will be made more circular than they actually are. If
+    you wish to reproduce `SourceExtractor`_ centroid and morphology
+    results, then input the ``convolved_data`` (or ``kernel``, but not
+    both). If ``convolved_data`` and ``kernel`` are both `None`, then
+    the unfiltered ``data`` will be used for the source centroid and
+    morphological parameters.
 
     Negative data values within the source segment are set to zero
     when calculating morphological properties based on image moments.

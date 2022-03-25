@@ -28,10 +28,9 @@ class SegmentationImage:
     ----------
     data : array_like (int)
         A segmentation array where source regions are labeled by
-        different positive integer values.  A value of zero is reserved
-        for the background.  The segmentation image must contain at
-        least one non-zero pixel and must not contain any non-finite
-        values (e.g., NaN, inf).
+        different positive integer values. A value of zero is reserved
+        for the background. The segmentation image must have an integer
+        type.
     """
 
     def __init__(self, data):
@@ -1118,9 +1117,9 @@ class Segment:
         is a view (not a copy) of the input ``data``.  No pixels are
         altered (e.g., set to zero) within the bounding box.
 
-        If ``masked_array` is `True`, then the returned cutout array is
+        If ``masked_array`` is `True`, then the returned cutout array is
         a `~numpy.ma.MaskedArray`, where the mask is `True` for pixels
-        outside of the segment (labeled region).  The data part of the
+        outside of the segment (labeled region). The data part of the
         masked array is a view (not a copy) of the input ``data``.
 
         Parameters

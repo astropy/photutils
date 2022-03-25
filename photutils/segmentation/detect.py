@@ -381,7 +381,7 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
     .. plot::
         :include-source:
 
-        from astropy.convolution import Gaussian2DKernel
+        from astropy.convolution import Gaussian2DKernel, convolve
         from astropy.stats import gaussian_fwhm_to_sigma
         from astropy.visualization import simple_norm
         import matplotlib.pyplot as plt
@@ -395,8 +395,8 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         threshold = detect_threshold(data, nsigma=3)
         sigma = 3.0 * gaussian_fwhm_to_sigma   # FWHM = 3.
         kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
-        kernel.normalize()
-        segm = detect_sources(data, threshold, npixels=5, kernel=kernel)
+        convolved_data = convolve(data, kernel, normalize_kernel=True)
+        segm = detect_sources(convolved_data, threshold, npixels=5)
 
         # plot the image and the segmentation image
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
@@ -429,8 +429,9 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
         .. note::
            It is recommended that the user convolve the data with
            ``kernel`` and input the convolved data directly into the
-           ``data`` parameter. In this case do not input a ``kernel``,
-           otherwise the data will be convolved twice.
+           ``data`` parameter. In this case do not input a ``kernel``
+           (or ``filter_fwhm``, ``filter_size``; deprecated), otherwise
+           the data will be convolved twice.
 
     nsigma : float
         The number of standard deviations per pixel above the
