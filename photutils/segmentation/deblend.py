@@ -31,7 +31,15 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     Parameters
     ----------
     data : array_like
-        The data array.
+        The data array. This array should be the same array used in
+        `~photutils.segmentation.detect_sources`.
+
+        ..note::
+
+        It is recommended that the user convolve the data with
+        ``kernel`` and input the convolved data directly into the
+        ``data`` parameter. In this case do not input a ``kernel``,
+        otherwise the data will be convolved twice.
 
     segment_img : `~photutils.segmentation.SegmentationImage` or array_like (int)
         A segmentation image, either as a
@@ -47,9 +55,10 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
 
     kernel : array-like or `~astropy.convolution.Kernel2D`, optional
         The array of the kernel used to filter the image before
-        thresholding.  Filtering the image will smooth the noise and
+        thresholding. Filtering the image will smooth the noise and
         maximize detectability of objects with a shape similar to the
-        kernel.
+        kernel. ``kernel`` must be `None` if the input ``data`` are
+        already convolved.
 
     labels : int or array-like of int, optional
         The label numbers to deblend.  If `None` (default), then all
@@ -169,8 +178,8 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     Parameters
     ----------
     data : array_like
-        The cutout data array for a single source.  ``data`` should also
-        already be smoothed by the same filter used in
+        The cutout data array for a single source. ``data`` should
+        also already be smoothed by the same filter used in
         :func:`~photutils.segmentation.detect_sources`, if applicable.
 
     segment_img : `~photutils.segmentation.SegmentationImage`
