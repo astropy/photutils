@@ -41,6 +41,11 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
     check_normalization : bool, optional
         If `True` then a warning will be issued if the kernel is not
         normalized to 1.
+
+    Returns
+    -------
+    result : `~numpy.ndarray`
+        The convolved image.
     """
     from scipy import ndimage
 
@@ -62,16 +67,20 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
             unit = data.unit
             data = data.value
 
-        # NOTE:  astropy.convolution.convolve fails with zero-sum
-        # kernels (used in findstars) (cf. astropy #1647)
         # NOTE: if data is int and kernel is float, ndimage.convolve
-        # will return an int image - here we make the data float so
-        # that a float image is always returned
-        result = ndimage.convolve(data.astype(float), kernel_array,
-                                  mode=mode, cval=fill_value)
+        # will return an int image. If the data dtype is int, we make the
+        # data float so that a float image is always returned
+        if np.issubdtype(data.dtype, np.integer):
+            data = data.astype(float)
 
+        # NOTE: astropy.convolution.convolve fails with zero-sum kernels
+        # (used in findstars) (cf. astropy #1647)
+        result = ndimage.convolve(data, kernel_array, mode=mode,
+                                  cval=fill_value)
+
+        # reapply the input unit
         if unit is not None:
-            result = result * unit  # can't use *= with older astropy
+            result <<= unit
 
         return result
     else:
