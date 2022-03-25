@@ -344,3 +344,24 @@ class TestBackground2D:
         assert_allclose(bkg.background_median, 1.0)
         assert_allclose(bkg.background_rms_median, 0.0)
         assert_allclose(bkg.background_mesh.shape, (4, 5))
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_bkgzoominterp_clip():
+    bkg = Background2D(np.ones((300, 300)), 100)
+    mesh = np.array([[0.01, 0.01, 0.02],
+                     [0.01, 0.02, 0.03],
+                     [0.03, 0.03, 12.9]])
+
+    interp1 = BkgZoomInterpolator(clip=False)
+    zoom1 = interp1(mesh, bkg)
+
+    interp2 = BkgZoomInterpolator(clip=True)
+    zoom2 = interp2(mesh, bkg)
+
+    minval = np.min(mesh)
+    maxval = np.max(mesh)
+    assert np.min(zoom1) < minval
+    assert np.max(zoom1) > maxval
+    assert np.min(zoom2) == minval
+    assert np.max(zoom2) == maxval
