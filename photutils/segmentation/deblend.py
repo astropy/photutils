@@ -35,11 +35,10 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         `~photutils.segmentation.detect_sources`.
 
         ..note::
-
-        It is recommended that the user convolve the data with
-        ``kernel`` and input the convolved data directly into the
-        ``data`` parameter. In this case do not input a ``kernel``,
-        otherwise the data will be convolved twice.
+            It is recommended that the user convolve the data with
+            ``kernel`` and input the convolved data directly into the
+            ``data`` parameter. In this case do not input a ``kernel``,
+            otherwise the data will be convolved twice.
 
     segment_img : `~photutils.segmentation.SegmentationImage` or array_like (int)
         A segmentation image, either as a
