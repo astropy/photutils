@@ -210,6 +210,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         self.positions = positions
         self.w = w
         self.h = h
+        self._theta_radians = 0.0  # defined by theta setter
         self.theta = theta
 
     @property
@@ -381,6 +382,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
                 raise ValueError('"h_out" must be greater than "h_in"')
         self.h_in = h_in
 
+        self._theta_radians = 0.0  # defined by theta setter
         self.theta = theta
 
     @property

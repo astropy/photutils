@@ -187,6 +187,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         self.positions = positions
         self.a = a
         self.b = b
+        self._theta_radians = 0.0  # defined by theta setter
         self.theta = theta
 
     @property
@@ -352,6 +353,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
                 raise ValueError('"b_out" must be greater than "b_in".')
         self.b_in = b_in
 
+        self._theta_radians = 0.0  # defined by theta setter
         self.theta = theta
 
     @property
