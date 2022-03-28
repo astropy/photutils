@@ -4,7 +4,7 @@ Photutils
 
 |PyPI Version| |Conda Version| |PyPI Downloads| |Astropy|
 
-|CI Status| |CircleCI Status| |Codecov Status| |Latest RTD Status| |LGTM Grade|
+|CI Status| |CircleCI Status| |Codecov Status| |Latest RTD Status| |LGTM Status|
 
 Photutils is an `Astropy`_ package for detection and photometry of
 astronomical sources.
@@ -85,8 +85,8 @@ for details.
     :target: https://photutils.readthedocs.io/en/latest/
     :alt: Latest Documentation Status
 
-.. |LGTM Grade| image:: https://img.shields.io/lgtm/grade/python/g/astropy/photutils.svg?logo=lgtm&logoWidth=18
+.. |LGTM Status| image:: https://img.shields.io/lgtm/grade/python/g/astropy/photutils.svg?logo=lgtm&logoWidth=18
     :target: https://lgtm.com/projects/g/astropy/photutils/context:python
-    :alt: LGTM Grade
+    :alt: LGTM Status
 
 .. _Astropy: https://www.astropy.org/
