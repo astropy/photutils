@@ -234,6 +234,10 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         else:
             return patches
 
+    def to_mask(self, method='exact', subpixels=5):
+        return EllipticalMaskMixin.to_mask(self, method=method,
+                                           subpixels=subpixels)
+
     def to_sky(self, wcs):
         """
         Convert the aperture to a `SkyEllipticalAperture` object defined
@@ -398,6 +402,10 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
             return patches[0]
         else:
             return patches
+
+    def to_mask(self, method='exact', subpixels=5):
+        return EllipticalMaskMixin.to_mask(self, method=method,
+                                           subpixels=subpixels)
 
     def to_sky(self, wcs):
         """

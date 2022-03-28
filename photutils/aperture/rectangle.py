@@ -259,6 +259,10 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         else:
             return patches
 
+    def to_mask(self, method='exact', subpixels=5):
+        return RectangularMaskMixin.to_mask(self, method=method,
+                                            subpixels=subpixels)
+
     def to_sky(self, wcs):
         """
         Convert the aperture to a `SkyRectangularAperture` object
@@ -434,6 +438,10 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
             return patches[0]
         else:
             return patches
+
+    def to_mask(self, method='exact', subpixels=5):
+        return RectangularMaskMixin.to_mask(self, method=method,
+                                            subpixels=subpixels)
 
     def to_sky(self, wcs):
         """
