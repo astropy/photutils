@@ -193,6 +193,10 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         else:
             return patches
 
+    def to_mask(self, method='exact', subpixels=5):
+        return CircularMaskMixin.to_mask(self, method=method,
+                                         subpixels=subpixels)
+
     def to_sky(self, wcs):
         """
         Convert the aperture to a `SkyCircularAperture` object defined
@@ -318,6 +322,10 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
             return patches[0]
         else:
             return patches
+
+    def to_mask(self, method='exact', subpixels=5):
+        return CircularMaskMixin.to_mask(self, method=method,
+                                         subpixels=subpixels)
 
     def to_sky(self, wcs):
         """
