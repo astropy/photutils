@@ -353,7 +353,7 @@ class CentralPixel(Isophote):
 
     Parameters
     ----------
-    sample : `~photutils.utils.EllipseSample` instance
+    sample : `~photutils.isophote.EllipseSample` instance
         The sample information.
     """
 
