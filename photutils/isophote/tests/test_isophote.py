@@ -117,6 +117,42 @@ class TestIsophote:
         assert iso.niter == 50
 
 
+def test_isophote_comparisons():
+    data = make_test_image(seed=0)
+    sma1 = 40.
+    sma2 = 100.
+    k = 5
+    sample0 = EllipseSample(data, sma1 + k)
+    sample1 = EllipseSample(data, sma1 + k)
+    sample2 = EllipseSample(data, sma2 + k)
+    sample0.update(DEFAULT_FIX)
+    sample1.update(DEFAULT_FIX)
+    sample2.update(DEFAULT_FIX)
+    iso0 = Isophote(sample0, k, True, 0)
+    iso1 = Isophote(sample1, k, True, 0)
+    iso2 = Isophote(sample2, k, True, 0)
+
+    assert iso1 < iso2
+    assert iso2 > iso1
+    assert iso1 <= iso2
+    assert iso2 >= iso1
+    assert iso1 != iso2
+    assert iso0 == iso1
+
+    with pytest.raises(AttributeError):
+        assert iso1 < sample1
+    with pytest.raises(AttributeError):
+        assert iso1 > sample1
+    with pytest.raises(AttributeError):
+        assert iso1 <= sample1
+    with pytest.raises(AttributeError):
+        assert iso1 >= sample1
+    with pytest.raises(AttributeError):
+        assert iso1 == sample1
+    with pytest.raises(AttributeError):
+        assert iso1 != sample1
+
+
 class TestIsophoteList:
     def setup_class(self):
         data = make_test_image(seed=0)

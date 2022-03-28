@@ -142,9 +142,46 @@ class Isophote:
     # This method is useful for sorting lists of instances. Note
     # that __lt__ is the python3 way of supporting sorting.
     def __lt__(self, other):
-        if hasattr(other, 'sma'):
+        try:
             return self.sma < other.sma
-        raise ValueError('Comparison object does not have a "sma" attribute.')
+        except AttributeError as err:
+            raise AttributeError('Comparison object does not have a "sma" '
+                                 'attribute.') from err
+
+    def __gt__(self, other):
+        try:
+            return self.sma > other.sma
+        except AttributeError as err:
+            raise AttributeError('Comparison object does not have a "sma" '
+                                 'attribute.') from err
+
+    def __le__(self, other):
+        try:
+            return self.sma <= other.sma
+        except AttributeError as err:
+            raise AttributeError('Comparison object does not have a "sma" '
+                                 'attribute.') from err
+
+    def __ge__(self, other):
+        try:
+            return self.sma >= other.sma
+        except AttributeError as err:
+            raise AttributeError('Comparison object does not have a "sma" '
+                                 'attribute.') from err
+
+    def __eq__(self, other):
+        try:
+            return self.sma == other.sma
+        except AttributeError as err:
+            raise AttributeError('Comparison object does not have a "sma" '
+                                 'attribute.') from err
+
+    def __ne__(self, other):
+        try:
+            return self.sma != other.sma
+        except AttributeError as err:
+            raise AttributeError('Comparison object does not have a "sma" '
+                                 'attribute.') from err
 
     def __str__(self):
         return str(self.to_table())
@@ -353,7 +390,7 @@ class CentralPixel(Isophote):
 
     Parameters
     ----------
-    sample : `~photutils.utils.EllipseSample` instance
+    sample : `~photutils.isophote.EllipseSample` instance
         The sample information.
     """
 
