@@ -37,6 +37,7 @@ class TestDeblendSources:
     def test_deblend_sources(self, mode):
         # scipy DeprecationWarning is currently raised from skimage
         # (https://github.com/scikit-image/scikit-image/pull/6231)
+        # This can be removed for skimage >= 0.19.2.
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', DeprecationWarning)
             result = deblend_sources(self.data, self.segm, self.npixels,
