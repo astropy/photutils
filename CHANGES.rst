@@ -13,6 +13,11 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.segmentation``
+
+  - Removed the deprecated ``circular_aperture`` method from
+    ``SourceCatalog``. [#1329]
+
 
 1.4.0 (2022-03-25)
 ------------------

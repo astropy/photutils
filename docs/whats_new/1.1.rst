@@ -63,7 +63,6 @@ New methods and attributes
 The new `~photutils.segmentation.SourceCatalog` class has the following
 new methods:
 
-    * :meth:`~photutils.segmentation.SourceCatalog.circular_aperture`
     * :meth:`~photutils.segmentation.SourceCatalog.circular_photometry`
     * :meth:`~photutils.segmentation.SourceCatalog.fluxfrac_radius`
     * :meth:`~photutils.segmentation.SourceCatalog.get_label`

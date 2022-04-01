@@ -13,7 +13,6 @@ from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated
 import numpy as np
 
 from .core import SegmentationImage
@@ -2316,27 +2315,6 @@ class SourceCatalog:
                 aperture.plot(axes=axes, origin=origin, **kwargs)
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return patches
-
-    @deprecated('1.3', alternative='make_circular_apertures')
-    def circular_aperture(self, radius):
-        """
-        Return a list of circular apertures with the specified radius
-        centered at the source centroid position.
-
-        Parameters
-        ----------
-        radius : float
-            The radius of the circle in pixels.
-
-        Returns
-        -------
-        result : list of `~photutils.aperture.CircularAperture`
-            A list of `~photutils.aperture.CircularAperture` instances.
-            The aperture will be `None` where the source centroid
-            position is not finite or where the source is completely
-            masked.
-        """
-        return self.make_circular_apertures(radius)
 
     def circular_photometry(self, radius, name=None, overwrite=False):
         """
