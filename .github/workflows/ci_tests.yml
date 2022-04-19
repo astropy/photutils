@@ -7,6 +7,10 @@ on:
     # run every Monday at 6am UTC
     - cron: '0 6 * * 1'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   TOXARGS: '-v'
 
