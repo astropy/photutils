@@ -1727,7 +1727,7 @@ class SourceCatalog:
                Implementation of a Perimeter Estimator".  Proceedings of
                the Irish Machine Vision and Image Processing Conference,
                pp. 51-57 (2000).
-               http://www.cs.qub.ac.uk/~d.crookes/webpubs/papers/perimeter.doc
+               https://www.maa.org/sites/default/files/images/upload_library/applets/CirclesRedistrict/perimeter.doc
         """
         from scipy.ndimage import binary_erosion, convolve
 
