@@ -16,11 +16,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: '3.9'
+            python: '3.10'
             tox_env: 'linkcheck'
           - os: ubuntu-latest
-            python: '3.9'
-            tox_env: 'py39-test-alldeps-devdeps'
+            python: '3.10'
+            tox_env: 'py310-test-alldeps-devdeps'
 
     steps:
     - name: Check out repository

@@ -7,6 +7,10 @@ on:
     # run every Monday at 6am UTC
     - cron: '0 6 * * 1'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   TOXARGS: '-v'
 
@@ -23,21 +27,24 @@ jobs:
             toxposargs: --remote-data=any
           - os: ubuntu-latest
             python: '3.9'
-            tox_env: 'py39-test-alldeps-cov'
+            tox_env: 'py39-test-alldeps'
+          - os: ubuntu-latest
+            python: '3.10'
+            tox_env: 'py310-test-alldeps-cov'
           - os: macos-latest
-            python: '3.9'
-            tox_env: 'py39-test-alldeps'
+            python: '3.10'
+            tox_env: 'py310-test-alldeps'
           - os: windows-latest
-            python: '3.9'
-            tox_env: 'py39-test-alldeps'
+            python: '3.10'
+            tox_env: 'py310-test-alldeps'
           - os: ubuntu-latest
-            python: '3.9'
-            tox_env: 'py39-test'
+            python: '3.10'
+            tox_env: 'py310-test'
           - os: ubuntu-latest
-            python: '3.9'
+            python: '3.10'
             tox_env: 'codestyle'
           - os: ubuntu-latest
-            python: '3.9'
+            python: '3.10'
             tox_env: 'bandit'
           - os: ubuntu-latest
             python: '3.8'
@@ -79,8 +86,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: '3.9'
-            tox_env: 'py39-test-alldeps-devdeps'
+            python: '3.10'
+            tox_env: 'py310-test-alldeps-devdeps'
 
     steps:
     - name: Check out repository
