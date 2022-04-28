@@ -781,9 +781,9 @@ def _get_properties(isophote_list):
     Returns
     -------
     result : `dict`
-        An OrderedDict with the list of the isophote_list properties.
+        An dictionary with the list of the isophote_list properties.
     """
-    properties = dict()
+    properties = {}
     for an_item in isophote_list.__class__.__dict__:
         p_type = isophote_list.__class__.__dict__[an_item]
         # Exclude the sample property
