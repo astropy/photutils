@@ -60,7 +60,6 @@ from ...datasets import get_path
 from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
-@pytest.mark.remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
 # @pytest.mark.parametrize('name', ['M51', 'synth', 'synth_lowsnr',
 #                                   'synth_highsnr'])
