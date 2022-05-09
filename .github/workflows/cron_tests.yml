@@ -21,6 +21,7 @@ jobs:
           - os: ubuntu-latest
             python: '3.10'
             tox_env: 'py310-test-alldeps-devdeps'
+            toxposargs: --remote-data=any
 
     steps:
     - name: Check out repository
