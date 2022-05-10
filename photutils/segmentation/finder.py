@@ -57,6 +57,47 @@ class SourceFinder:
         The mode used in defining the spacing between the
         multi-thresholding levels (see the ``nlevels`` keyword) during
         deblending. This keyword is ignored unless ``deblend=True``.
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        from astropy.convolution import Gaussian2DKernel, convolve
+        from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
+        from astropy.visualization import simple_norm
+        import matplotlib.pyplot as plt
+        from photutils.datasets import make_100gaussians_image
+        from photutils.segmentation import SourceFinder
+
+        # make a simulated image
+        data = make_100gaussians_image()
+
+        # for this simple example, we use sigma-clipped statistics to
+        # (roughly) estimate the background and background noise levels
+        mean, _, std = sigma_clipped_stats(data, sigma=3.)
+
+        # subtract the background
+        data -= mean
+
+        # convolve the data
+        sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
+        kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
+        convolved_data = convolve(data, kernel, normalize_kernel=True)
+
+        # detect the sources
+        threshold = 1.5 * std  # per-pixel threshold
+        finder = SourceFinder(npixels=10)
+        segm = finder(convolved_data, threshold)
+
+        # plot the image and the segmentation image
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
+        norm = simple_norm(data, 'sqrt', percent=99.)
+        ax1.imshow(data, origin='lower', interpolation='nearest',
+                   norm=norm)
+        ax2.imshow(segm.data, origin='lower', interpolation='nearest',
+                   cmap=segm.cmap)
+        plt.tight_layout()
     """
 
     def __init__(self, npixels, *, connectivity=8, deblend=True, nlevels=32,
