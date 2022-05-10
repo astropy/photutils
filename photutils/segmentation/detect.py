@@ -25,9 +25,13 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
     Calculate a pixel-wise threshold image that can be used to detect
     sources.
 
+    This is a simple convenience function that uses sigma-clipped
+    statistics to compute a scalar background and noise estimate. In
+    general, one should perform more sophisticated estimates.
+
     Parameters
     ----------
-    data : array_like
+    data : 2D `~numpy.ndarray`
         The 2D array of the image.
 
     nsigma : float
@@ -35,24 +39,24 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
         ``background`` for which to consider a pixel as possibly being
         part of a source.
 
-    background : float or array_like, optional
-        The background value(s) of the input ``data``.  ``background``
-        may either be a scalar value or a 2D image with the same shape
-        as the input ``data``.  If the input ``data`` has been
-        background-subtracted, then set ``background`` to ``0.0``.  If
-        `None`, then a scalar background value will be estimated using
-        sigma-clipped statistics.
+    background : float or 2D `~numpy.ndarray`, optional
+        The background value(s) of the input ``data``. ``background``
+        may either be a scalar value or a 2D array with the same
+        shape as the input ``data``. If the input ``data`` has been
+        background-subtracted, then set ``background`` to ``0.0`` (this
+        should be typical). If `None`, then a scalar background value
+        will be estimated as the sigma-clipped image mean.
 
-    error : float or array_like, optional
-        The Gaussian 1-sigma standard deviation of the background noise
-        in ``data``.  ``error`` should include all sources of
+    error : float or 2D `~numpy.ndarray`, optional
+        The Gaussian 1-sigma standard deviation of the background
+        noise in ``data``. ``error`` should include all sources of
         "background" error, but *exclude* the Poisson error of the
-        sources.  If ``error`` is a 2D image, then it should represent
-        the 1-sigma background error in each pixel of ``data``.  If
+        sources. If ``error`` is a 2D image, then it should represent
+        the 1-sigma background error in each pixel of ``data``. If
         `None`, then a scalar background rms value will be estimated
-        using sigma-clipped statistics.
+        as the sigma-clipped image standard deviation.
 
-    mask : array_like, bool, optional
+    mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
         Masked pixels are ignored when computing the image background
@@ -87,12 +91,12 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
 
     Notes
     -----
-    The ``mask``, ``mask_value`` (deprecated), ``sigclip_sigma``,
-    and ``sigclip_iters`` inputs are used only if it is necessary to
-    estimate ``background`` or ``error`` using sigma-clipped background
-    statistics. If ``background`` and ``error`` are both input, then
-    ``mask``, ``mask_value``, ``sigclip_sigma``, and ``sigclip_iters``
-    are ignored.
+    The ``mask``, ``mask_value`` (deprecated), ``sigclip_sigma``
+    (deprecated), and ``sigclip_iters`` (deprecated) inputs are used
+    only if it is necessary to estimate ``background`` or ``error``
+    using sigma-clipped background statistics. If ``background``
+    and ``error`` are both input, then ``mask``, ``mask_value``,
+    ``sigclip_sigma``, and ``sigclip_iters`` are ignored.
     """
     if background is None or error is None:
         data_mean, _, data_std = sigma_clipped_stats(
@@ -145,8 +149,8 @@ def _make_binary_structure(ndim, connectivity):
 
     Returns
     -------
-    array : ndarray of int or bool
-        The binary structure element.  If ``ndim <= 2`` an array of int
+    array : `~numpy.ndarray`
+        The binary structure element. If ``ndim <= 2`` an array of int
         is returned, otherwise an array of bool is returned.
     """
     if ndim == 1:
@@ -169,8 +173,7 @@ def _make_binary_structure(ndim, connectivity):
 def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
                     mask=None, deblend_skip=False):
     """
-    Detect sources above a specified threshold value in an image and
-    return a `~photutils.segmentation.SegmentationImage` object.
+    Detect sources above a specified threshold value in an image.
 
     Detected sources must have ``npixels`` connected pixels that are
     each greater than the ``threshold`` value.  If the filtering option
@@ -184,7 +187,7 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
 
     Parameters
     ----------
-    data : array_like
+    data : 2D `~numpy.ndarray`
         The 2D array of the image.
 
         .. note::
@@ -193,17 +196,17 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
            ``data`` parameter. In this case do not input a ``kernel``,
            otherwise the data will be convolved twice.
 
-    thresholds : array-like of floats or arrays
-        The data value or pixel-wise data values to be used for the
-        detection thresholds. A 2D ``threshold`` must have the same
-        shape as ``data``.
+    thresholds : 2D `~numpy.ndarray` or 1D array of floats
+        The data values (as a 1D array of floats) or pixel-wise
+        data values to be used for the detection thresholds. A 2D
+        ``threshold`` must have the same shape as ``data``.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
-        that an object must have to be detected.  ``npixels`` must be a
+        that an object must have to be detected. ``npixels`` must be a
         positive integer.
 
-    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
+    kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the image before
         thresholding. Filtering the image will smooth the noise and
         maximize detectability of objects with a shape similar to the
@@ -217,25 +220,25 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
         8-connected pixels touch along their edges or corners. For
         reference, SourceExtractor uses 8-connected pixels.
 
-    mask : array_like of bool, optional
+    mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as the input ``data``, where
-        `True` values indicate masked pixels.  Masked pixels will not be
+        `True` values indicate masked pixels. Masked pixels will not be
         included in any source.
 
     deblend_skip : bool, optional
         If `True` do not include the segmentation image in the output
         list for any threshold level where the number of detected
-        sources is less than 2.  This is useful for source deblending
-        and improves its performance.
+        sources is less than 2. This is useful for source deblending and
+        improves its performance.
 
     Returns
     -------
     segment_image : list of `~photutils.segmentation.SegmentationImage`
         A list of 2D segmentation images, with the same shape as
         ``data``, where sources are marked by different positive integer
-        values.  A value of zero is reserved for the background.  If no
-        sources are found for a given threshold, then the output list
-        will contain `None` for that threshold.  Also see the
+        values. A value of zero is reserved for the background. If
+        no sources are found for a given threshold, then the output
+        list will contain `None` for that threshold. Also see the
         ``deblend_skip`` keyword.
     """
     from scipy import ndimage
@@ -306,8 +309,7 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
 def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
                    mask=None):
     """
-    Detect sources above a specified threshold value in an image and
-    return a `~photutils.segmentation.SegmentationImage` object.
+    Detect sources above a specified threshold value in an image.
 
     Detected sources must have ``npixels`` connected pixels that are
     each greater than the ``threshold`` value.  If the filtering option
@@ -321,7 +323,7 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
 
     Parameters
     ----------
-    data : array_like
+    data : 2D `~numpy.ndarray`
         The 2D array of the image.
 
         .. note::
@@ -330,17 +332,17 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
            ``data`` parameter. In this case do not input a ``kernel``,
            otherwise the data will be convolved twice.
 
-    threshold : float or array-like
+    threshold : float or 2D `~numpy.ndarray`
         The data value or pixel-wise data values to be used for the
-        detection threshold. A 2D ``threshold`` must have the same shape
-        as ``data``.
+        detection threshold. A 2D ``threshold`` array must have the same
+        shape as ``data``.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
-        that an object must have to be detected.  ``npixels`` must be a
+        that an object must have to be detected. ``npixels`` must be a
         positive integer.
 
-    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
+    kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the image before
         thresholding. Filtering the image will smooth the noise and
         maximize detectability of objects with a shape similar to the
@@ -354,18 +356,18 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         8-connected pixels touch along their edges or corners. For
         reference, SourceExtractor uses 8-connected pixels.
 
-    mask : array_like of bool, optional
+    mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as the input ``data``, where
-        `True` values indicate masked pixels.  Masked pixels will not be
+        `True` values indicate masked pixels. Masked pixels will not be
         included in any source.
 
     Returns
     -------
     segment_image : `~photutils.segmentation.SegmentationImage` or `None`
         A 2D segmentation image, with the same shape as ``data``, where
-        sources are marked by different positive integer values.  A
-        value of zero is reserved for the background.  If no sources
-        are found then `None` is returned.
+        sources are marked by different positive integer values. A value
+        of zero is reserved for the background. If no sources are found
+        then `None` is returned.
 
     See Also
     --------
@@ -378,7 +380,7 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         :include-source:
 
         from astropy.convolution import Gaussian2DKernel, convolve
-        from astropy.stats import gaussian_fwhm_to_sigma
+        from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
         from astropy.visualization import simple_norm
         import matplotlib.pyplot as plt
         from photutils.datasets import make_100gaussians_image
@@ -387,9 +389,16 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         # make a simulated image
         data = make_100gaussians_image()
 
+        # use sigma-clipped statistics to (roughly) estimate the background
+        # background noise levels
+        mean, _, std = sigma_clipped_stats(data)
+
+        # subtract the background
+        data -= mean
+
         # detect the sources
-        threshold = detect_threshold(data, nsigma=3)
-        sigma = 3.0 * gaussian_fwhm_to_sigma   # FWHM = 3.
+        threshold = 3. * std
+        sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
         kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
         convolved_data = convolve(data, kernel, normalize_kernel=True)
         segm = detect_sources(convolved_data, threshold, npixels=5)
@@ -419,7 +428,7 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
 
     Parameters
     ----------
-    data : array_like
+    data : 2D `~numpy.ndarray`
         The 2D array of the image.
 
         .. note::
@@ -439,7 +448,7 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
         that an object must have to be detected.  ``npixels`` must be a
         positive integer.
 
-    mask : array_like, bool, optional
+    mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
         Masked pixels are ignored when computing the image background
@@ -460,7 +469,7 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
         are ignored if ``kernel`` is defined. ``filter_size`` must be
         `None` if the input ``data`` are already convolved.
 
-    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
+    kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the image before
         thresholding. Filtering the image will smooth the noise
         and maximize detectability of objects with a shape similar

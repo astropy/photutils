@@ -30,8 +30,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
 
     Parameters
     ----------
-    data : array_like
-        The data array. This array should be the same array used in
+    data : 2D `~numpy.ndarray`
+        The 2D data array. This array should be the same array used in
         `~photutils.segmentation.detect_sources`.
 
         .. note::
@@ -52,43 +52,42 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         that an object must have to be detected.  ``npixels`` must be a
         positive integer.
 
-    kernel : array-like or `~astropy.convolution.Kernel2D`, optional
-        The array of the kernel used to filter the image before
-        thresholding. Filtering the image will smooth the noise and
-        maximize detectability of objects with a shape similar to the
-        kernel. ``kernel`` must be `None` if the input ``data`` are
-        already convolved.
+    kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
+        The 2D kernel used to filter the image before thresholding.
+        Filtering the image will smooth the noise and maximize
+        detectability of objects with a shape similar to the kernel.
+        ``kernel`` must be `None` if the input ``data`` are already
+        convolved.
 
     labels : int or array-like of int, optional
         The label numbers to deblend.  If `None` (default), then all
         labels in the segmentation image will be deblended.
 
     nlevels : int, optional
-        The number of multi-thresholding levels to use.  Each source
-        will be re-thresholded at ``nlevels`` levels spaced
+        The number of multi-thresholding levels to use for deblending.
+        Each source will be re-thresholded at ``nlevels`` levels spaced
         exponentially or linearly (see the ``mode`` keyword) between its
-        minimum and maximum values within the source segment.
+        minimum and maximum values.
 
     contrast : float, optional
-        The fraction of the total (blended) source flux that a local
-        peak must have (at any one of the multi-thresholds) to be
-        considered as a separate object.  ``contrast`` must be between 0
-        and 1, inclusive.  If ``contrast = 0`` then every local peak
-        will be made a separate object (maximum deblending).  If
-        ``contrast = 1`` then no deblending will occur.  The default is
-        0.001, which will deblend sources with a 7.5 magnitude
-        difference.
+        The fraction of the total source flux that a local peak must
+        have (at any one of the multi-thresholds) to be deblended
+        as a separate object. ``contrast`` must be between 0 and 1,
+        inclusive. If ``contrast=0`` then every local peak will be made
+        a separate object (maximum deblending). If ``contrast=1`` then
+        no deblending will occur. The default is 0.001, which will
+        deblend sources with a 7.5 magnitude difference.
 
     mode : {'exponential', 'linear'}, optional
         The mode used in defining the spacing between the
-        multi-thresholding levels (see the ``nlevels`` keyword).  The
-        default is 'exponential'.
+        multi-thresholding levels (see the ``nlevels`` keyword) during
+        deblending.
 
     connectivity : {8, 4}, optional
         The type of pixel connectivity used in determining how pixels
-        are grouped into a detected source.  The options are 8 (default)
-        or 4.  8-connected pixels touch along their edges or corners.
-        4-connected pixels touch along their edges.  For reference,
+        are grouped into a detected source. The options are 8 (default)
+        or 4. 8-connected pixels touch along their edges or corners.
+        4-connected pixels touch along their edges. For reference,
         SourceExtractor uses 8-connected pixels.
 
     relabel : bool
@@ -177,7 +176,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
 
     Parameters
     ----------
-    data : array_like
+    data : 2D `~numpy.ndarray`
         The cutout data array for a single source. ``data`` should
         also already be smoothed by the same filter used in
         :func:`~photutils.segmentation.detect_sources`, if applicable.
