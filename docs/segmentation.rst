@@ -56,7 +56,7 @@ pixels::
     >>> kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
     >>> convolved_data = convolve(data, kernel, normalize_kernel=True)
 
-Now we are ready to detect the sources in the background-subtracted and
+Now we are ready to detect the sources in the background-subtracted
 convolved image. Let's find sources that have 10 connected pixels that
 are each greater than the corresponding pixel-wise ``threshold`` level
 defined above (i.e., 1.5 sigma per pixel above the background noise).
@@ -68,6 +68,11 @@ where pixels touch along their edges or corners. One can also use
 
     >>> from photutils.segmentation import detect_sources
     >>> segment_map = detect_sources(convolved_data, threshold, npixels=10)
+    >>> print(segment_map)
+    <photutils.segmentation.core.SegmentationImage>
+    shape: (300, 500)
+    nlabels: 87
+    labels: [ 1  2  3  4  5 ... 83 84 85 86 87]
 
 The result is a :class:`~photutils.segmentation.SegmentationImage`
 object with the same shape as the data, where detected sources are
@@ -254,11 +259,16 @@ is a convenience class that combines the functionality
 of `~photutils.segmentation.detect_sources` and
 `~photutils.segmentation.deblend_sources`. After defining the object
 with the desired detection and deblending parameters, you call it with
-the (convolved) image and threshold::
+the background-subtracted (convolved) image and threshold::
 
     >>> from photutils.segmentation import SourceFinder
     >>> finder = SourceFinder(npixels=10)
     >>> segment_map = finder(convolved_data, threshold)
+    >>> print(segment_map)
+    <photutils.segmentation.core.SegmentationImage>
+    shape: (300, 500)
+    nlabels: 94
+    labels: [ 1  2  3  4  5 ... 90 91 92 93 94]
 
 
 Modifying a Segmentation Image
@@ -291,15 +301,25 @@ measuring source photometry and other source properties, including:
     Outline the labeled segments for plotting.
 
 
-Centroids, Photometry, and Morphological Properties
----------------------------------------------------
+Photometry, Centroids, and Shape Properties
+-------------------------------------------
 The :class:`~photutils.segmentation.SourceCatalog` class is the primary
-tool for measuring the centroids, photometry, and morphological
-properties of sources defined in a segmentation image. When the
-segmentation image is generated using image thresholding (e.g., using
-:func:`~photutils.segmentation.detect_sources`), the source segments
-represent the isophotal footprint of each source and the resulting
-photometry is effectively isophotal photometry.
+tool for measuring the photometry, centroids, and shape/morphological
+properties of sources defined in a segmentation image. In its most
+basic form, it takes as input the (background-subtracted) image and
+the segmentation image. Usually the convolved image is also input,
+from which the source centroids and shape/morphological properties are
+measured (if not input, the unconvolved image is used instead).
+
+Let's continue our example from above and measure the properties of the
+detected sources::
+
+    >>> from photutils.segmentation import SourceCatalog
+    >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
+    >>> print(cat)
+    <photutils.segmentation.catalog.SourceCatalog>
+    Length: 94
+    labels: [ 1  2  3  4  5 ... 90 91 92 93 94]
 
 The source properties can be accessed using
 `~photutils.segmentation.SourceCatalog` attributes or
@@ -309,64 +329,16 @@ see :class:`~photutils.segmentation.SourceCatalog` for the the many
 properties that can be calculated for each source. More properties are
 likely to be added in the future.
 
-Let's detect sources and measure their properties in a synthetic
-image. `~photutils.segmentation.SourceCatalog` requires that the
-input data be background-subtracted, so for this example we will use
-the :class:`~photutils.background.Background2D` class to produce a
-background and background noise image. After subtracting the background,
-we define a 2D detection threshold image using only the background RMS
-image. We set the threshold at the 2-sigma (per pixel) noise level.
-In this example, the threshold does not include the background level
-because it was already subtracted from the data:
+Here we'll use the
+:meth:`~photutils.segmentation.SourceCatalog.to_table` method to
+generate a `~astropy.table.QTable` of source properties. Each row in the
+table represents a source. The columns represent the calculated source
+properties. The ``label`` column corresponds to the label value in the
+input segmentation image. Note that only a small subset of the source
+properties are shown below:
 
 .. doctest-requires:: scipy>=1.6.0
 
-    >>> from photutils.datasets import make_100gaussians_image
-    >>> from photutils.background import Background2D, MedianBackground
-    >>> data = make_100gaussians_image()
-    >>> bkg_estimator = MedianBackground()
-    >>> bkg = Background2D(data, (50, 50), filter_size=(3, 3),
-    ...                    bkg_estimator=bkg_estimator)
-    >>> data -= bkg.background  # subtract the background
-    >>> threshold = 2. * bkg.background_rms  # above the background
-
-Now we find sources that have 5 connected pixels (``npixels`` keyword)
-that are each greater than the corresponding threshold image defined
-above. We also smooth the data with a 2D circular Gaussian kernel with a
-FWHM of 3 pixels to filter the image prior to thresholding:
-
-.. doctest-requires:: scipy>=1.6.0, skimage
-
-    >>> from astropy.convolution import Gaussian2DKernel, convolve
-    >>> from astropy.stats import gaussian_fwhm_to_sigma
-    >>> from photutils.segmentation import detect_threshold, detect_sources
-    >>> sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
-    >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
-    >>> convolved_data = convolve(data, kernel, normalize_kernel=True)
-    >>> npixels = 5
-    >>> segm = detect_sources(convolved_data, threshold, npixels=npixels)
-    >>> segm_deblend = deblend_sources(convolved_data, segm, npixels=npixels,
-    ...                                nlevels=32, contrast=0.001)
-
-As described earlier, the result is a
-:class:`~photutils.segmentation.SegmentationImage` where sources are
-labeled by different positive integer values.
-
-Now let's measure the properties of the detected sources
-defined in the segmentation image using a simple call
-to :class:`~photutils.segmentation.SourceCatalog`. The
-output `~astropy.table.QTable` of source properties is
-generated by the :class:`~photutils.segmentation.SourceCatalog`
-:meth:`~photutils.segmentation.SourceCatalog.to_table` method. Each row
-in the table represents a source. The columns represent the calculated
-source properties. Note that the only a subset of the source properties
-are shown below. Please see `~photutils.segmentation.SourceCatalog` for
-the list of the many properties that are calculated for each source:
-
-.. doctest-requires:: scipy>=1.6.0, skimage
-
-    >>> from photutils.segmentation import SourceCatalog
-    >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
     >>> tbl = cat.to_table()
     >>> tbl['xcentroid'].info.format = '.2f'  # optional format
     >>> tbl['ycentroid'].info.format = '.2f'
@@ -375,24 +347,24 @@ the list of the many properties that are calculated for each source:
     label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
                               ...
     ----- --------- --------- ... --------------- --------- ------------
-        1    235.21      1.25 ...             nan    512.09          nan
-        2    494.00      5.76 ...             nan    544.60          nan
-        3    207.32     10.02 ...             nan    695.14          nan
-        4    364.80     11.19 ...             nan    736.52          nan
-        5    258.29     11.84 ...             nan    664.64          nan
+        1    235.31      1.44 ...             nan    506.17          nan
+        2    493.92      5.79 ...             nan    540.29          nan
+        3    207.42      9.81 ...             nan    666.61          nan
+        4    364.86     11.11 ...             nan    705.10          nan
+        5    258.27     11.94 ...             nan    661.22          nan
       ...       ...       ... ...             ...       ...          ...
-       91    427.08    147.42 ...             nan    892.63          nan
-       92    426.61    211.12 ...             nan    895.20          nan
-       93    419.75    216.64 ...             nan    871.92          nan
-       94    433.90    280.71 ...             nan    646.42          nan
-       95    434.08    288.88 ...             nan    931.40          nan
-    Length = 95 rows
+       90    419.52    216.55 ...             nan    841.21          nan
+       91     74.54    259.86 ...             nan    865.42          nan
+       92     82.58    267.53 ...             nan    785.81          nan
+       93    433.90    280.73 ...             nan    638.76          nan
+       94    434.08    288.90 ...             nan    922.73          nan
+    Length = 94 rows
 
 The error columns are NaN because we did not input an error array (see
-the Photometric Errors section below).
+the :ref:`photutils-segmentation_errors` section below).
 
-Let's now plot the calculated elliptical Kron apertures (based on the
-shapes of each source) on the data:
+Let's plot the calculated elliptical Kron apertures (based on the shapes
+of each source) on the data:
 
 .. doctest-skip::
 
@@ -403,12 +375,12 @@ shapes of each source) on the data:
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     >>> ax1.set_title('Data')
-    >>> cmap = segm_deblend.make_cmap(seed=123)
-    >>> ax2.imshow(segm_deblend, origin='lower', cmap=cmap,
+    >>> ax2.imshow(segm_deblend, origin='lower', cmap=segm_deblend.cmap,
     ...            interpolation='nearest')
     >>> ax2.set_title('Segmentation Image')
-    >>> cat.plot_kron_apertures((2.5, 1.0), axes=ax1, color='white', lw=1.5)
-    >>> cat.plot_kron_apertures((2.5, 1.0), axes=ax2, color='white', lw=1.5)
+    >>> kron_params = (2.5, 0.5)
+    >>> cat.plot_kron_apertures(kron_params, axes=ax1, color='white', lw=1.5)
+    >>> cat.plot_kron_apertures(kron_params, axes=ax2, color='white', lw=1.5)
 
 .. plot::
 
@@ -416,35 +388,39 @@ shapes of each source) on the data:
     from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.visualization import simple_norm
     import matplotlib.pyplot as plt
-    from photutils.datasets import make_100gaussians_image
     from photutils.background import Background2D, MedianBackground
-    from photutils.segmentation import (detect_sources, deblend_sources,
-                                        SourceCatalog)
+    from photutils.datasets import make_100gaussians_image
+    from photutils.segmentation import SourceFinder, SourceCatalog
 
     data = make_100gaussians_image()
+
     bkg_estimator = MedianBackground()
     bkg = Background2D(data, (50, 50), filter_size=(3, 3),
                        bkg_estimator=bkg_estimator)
-    data -= bkg.background
-    threshold = 2. * bkg.background_rms
-    sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
-    kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+    data -= bkg.background  # subtract the background
+
+    threshold = 1.5 * bkg.background_rms
+
+    sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
+    kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
     convolved_data = convolve(data, kernel, normalize_kernel=True)
-    npixels = 5
-    segm = detect_sources(convolved_data, threshold, npixels=npixels)
-    segm_deblend = deblend_sources(convolved_data, segm, npixels=npixels,
-                                   nlevels=32, contrast=0.001)
-    cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
+
+    npixels = 10
+    finder = SourceFinder(npixels=npixels)
+    segment_map = finder(convolved_data, threshold)
+
+    kron_params = (2.5, 0.5)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        kron_params=kron_params)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     norm = simple_norm(data, 'sqrt')
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     ax1.set_title('Data with Kron apertures')
-    cmap = segm_deblend.make_cmap(seed=123)
-    ax2.imshow(segm_deblend, origin='lower', cmap=cmap,
+    ax2.imshow(segment_map, origin='lower', cmap=segment_map.cmap,
                interpolation='nearest')
     ax2.set_title('Segmentation Image with Kron apertures')
-    cat.plot_kron_apertures((2.5, 1.0), axes=ax1, color='white', lw=1.5)
-    cat.plot_kron_apertures((2.5, 1.0), axes=ax2, color='white', lw=1.5)
+    cat.plot_kron_apertures(kron_params, axes=ax1, color='white', lw=1.5)
+    cat.plot_kron_apertures(kron_params, axes=ax2, color='white', lw=1.5)
     plt.tight_layout()
 
 
@@ -452,7 +428,7 @@ We can also create a `~photutils.segmentation.SourceCatalog` object
 containing only a specific subset of sources, defined by their
 label numbers in the segmentation image:
 
-.. doctest-requires:: scipy>=1.6.0, skimage
+.. doctest-requires:: scipy>=1.6.0
 
     >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
@@ -465,19 +441,19 @@ label numbers in the segmentation image:
     label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
                               ...
     ----- --------- --------- ... --------------- --------- ------------
-        1    235.21      1.25 ...             nan    512.09          nan
-        5    258.29     11.84 ...             nan    664.64          nan
-       20    346.99     66.87 ...             nan    820.40          nan
-       50    145.07    168.55 ...             nan    702.45          nan
-       75    301.92    239.25 ...             nan    520.75          nan
-       80     43.20    250.01 ...             nan    643.78          nan
+        1    235.31      1.44 ...             nan    506.17          nan
+        5    258.27     11.94 ...             nan    661.22          nan
+       20    346.99     66.83 ...             nan    811.49          nan
+       50      5.29    178.94 ...             nan    614.47          nan
+       75     42.96    249.88 ...             nan    616.23          nan
+       80    130.75    297.11 ...             nan    246.91          nan
 
 By default, the :meth:`~photutils.segmentation.SourceCatalog.to_table`
 includes only a small subset of source properties. The output table
 properties can be customized in the `~astropy.table.QTable` using the
-``columns`` keywords:
+``columns`` keyword:
 
-.. doctest-requires:: scipy>=1.6.0, skimage
+.. doctest-requires:: scipy>=1.6.0
 
     >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
@@ -491,12 +467,12 @@ properties can be customized in the `~astropy.table.QTable` using the
     label xcentroid ycentroid area segment_flux
                               pix2
     ----- --------- --------- ---- ------------
-        1  235.2101    1.2460 38.0     421.5376
-        5  258.2890   11.8421 55.0     370.8626
-       20  346.9938   66.8697 73.0     480.2523
-       50  145.0675  168.5479 33.0     714.4084
-       75  301.9203  239.2540 37.0     210.0043
-       80   43.1994  250.0146 55.0     340.2903
+        1  235.3112    1.4439 47.0     445.6095
+        5  258.2728   11.9414 79.0     472.4109
+       20  346.9917   66.8322 98.0     571.3138
+       50    5.2914  178.9445 57.0     257.4050
+       75   42.9645  249.8834 79.0     428.7122
+       80  130.7530  297.1056 25.0     108.7877
 
 A `~astropy.wcs.WCS` transformation can also be input to
 :class:`~photutils.segmentation.SourceCatalog` via the ``wcs`` keyword,
@@ -527,13 +503,15 @@ properties for each source will also be calculated:
     >>> print(tbl4)
     label background_centroid background_mean background_sum
     ----- ------------------- --------------- --------------
-        1        5.2031158074    5.2024840319 197.6943932116
-        5        5.2369739745    5.2231049504 287.2707722718
-       20        5.2393038724    5.2702114208 384.7254337205
-       50        5.1749011227    5.1984776900 171.5497637688
-       75        5.1184051931    5.1235119327 189.5699415102
-       80        5.2010035835    5.2251343812 287.3823909639
+        1        5.2031964942    5.2026137494 244.5228462210
+        5        5.2369908637    5.2229743435 412.6149731353
+       20        5.2392999510    5.2702094547 516.4805265603
+       50        5.1910069327    5.2466148918 299.0570488310
+       75        5.2010736005    5.2249844756 412.7737735748
+       80        5.2669562370    5.2642197829 131.6054945730
 
+
+.. _photutils-segmentation_errors:
 
 Photometric Errors
 ^^^^^^^^^^^^^^^^^^
@@ -558,12 +536,13 @@ exposure time (here we set it to 500 seconds). Here we use
 :func:`~photutils.utils.calc_total_error` to calculate the total error
 and input it into the :class:`~photutils.segmentation.SourceCatalog`
 class. When a total ``error`` is input, the
-`~photutils.segmentation.SourceCatalog.segment_fluxerr` property is
+`~photutils.segmentation.SourceCatalog.segment_fluxerr` and
+`~photutils.segmentation.SourceCatalog.kron_fluxerr` properties are
 calculated. `~photutils.segmentation.SourceCatalog.segment_flux`
 and `~photutils.segmentation.SourceCatalog.segment_fluxerr` are the
 instrumental flux and propagated flux error within the source segments:
 
-.. doctest-requires:: scipy>=1.6.0, skimage
+.. doctest-requires:: scipy>=1.6.0
 
     >>> from photutils.utils import calc_total_error
     >>> effective_gain = 500.
@@ -583,12 +562,12 @@ instrumental flux and propagated flux error within the source segments:
     >>> print(tbl5)
     label xcentroid ycentroid segment_flux segment_fluxerr
     ----- --------- --------- ------------ ---------------
-        1 235.15975 1.1019039    421.53765       13.163281
-        5 258.28461  11.82915     370.8626       15.906871
-       20  347.0215 66.918884    480.25233       18.710973
-       50 145.06198 168.54152    714.40843       11.835923
-       75 301.91639 239.25306    210.00431       12.230255
-       80 43.219501 250.03333    340.29029       16.000811
+        1 235.24243 1.2020749    445.60947       14.634553
+        5 258.29728 11.899213    472.41087       19.060458
+       20 346.94871 66.802889    571.31384       21.674279
+       50 5.2694265  178.9268    257.40504       16.431396
+       75 43.030177 249.92847    428.71216       19.175229
+       80 130.64209 297.11218    108.78768       10.882015
 
 
 Pixel Masking
@@ -596,12 +575,12 @@ Pixel Masking
 Pixels can be completely ignored/excluded (e.g., bad pixels) when
 measuring the source properties by providing a boolean mask image
 via the ``mask`` keyword (`True` pixel values are masked) to the
-:class:`~photutils.segmentation.SourceCatalog` class.
+:class:`~photutils.segmentation.SourceCatalog` class. Note that
+non-finite ``data`` values (NaN and inf) are automatically masked.
 
 
 Filtering
 ^^^^^^^^^
-
 `SourceExtractor`_'s centroid and morphological parameters are
 always calculated from a convolved, or filtered, "detection" image
 (``convolved_data``), i.e., the image used to define the segmentation
