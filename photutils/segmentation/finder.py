@@ -73,21 +73,21 @@ class SourceFinder:
         :include-source:
 
         from astropy.convolution import Gaussian2DKernel, convolve
-        from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
+        from astropy.stats import gaussian_fwhm_to_sigma
         from astropy.visualization import simple_norm
         import matplotlib.pyplot as plt
+        from photutils.background import Background2D, MedianBackground
         from photutils.datasets import make_100gaussians_image
         from photutils.segmentation import SourceFinder
 
         # make a simulated image
         data = make_100gaussians_image()
 
-        # for this simple example, we use sigma-clipped statistics to
-        # (roughly) estimate the background and background noise levels
-        mean, _, std = sigma_clipped_stats(data, sigma=3.)
-
         # subtract the background
-        data -= mean
+        bkg_estimator = MedianBackground()
+        bkg = Background2D(data, (50, 50), filter_size=(3, 3),
+                           bkg_estimator=bkg_estimator)
+        data -= bkg.background
 
         # convolve the data
         sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
@@ -95,7 +95,7 @@ class SourceFinder:
         convolved_data = convolve(data, kernel, normalize_kernel=True)
 
         # detect the sources
-        threshold = 1.5 * std  # per-pixel threshold
+        threshold = 1.5 * bkg.background_rms  # per-pixel threshold
         finder = SourceFinder(npixels=10)
         segm = finder(convolved_data, threshold)
 
