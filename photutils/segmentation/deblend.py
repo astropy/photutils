@@ -106,6 +106,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     See Also
     --------
     :func:`photutils.segmentation.detect_sources`
+    :class:`photutils.segmentation.SourceFinder`
     """
     if not isinstance(segment_img, SegmentationImage):
         segment_img = SegmentationImage(segment_img)

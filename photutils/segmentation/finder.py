@@ -14,6 +14,10 @@ class SourceFinder:
     Class to detect sources, including deblending, in an image using
     segmentation.
 
+    This is a convenience class that combines the functionality
+    of `~photutils.segmentation.detect_sources` and
+    `~photutils.segmentation.deblend_sources`.
+
     Sources are deblended using a combination of
     multi-thresholding and `watershed segmentation
     <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. In
@@ -57,6 +61,11 @@ class SourceFinder:
         The mode used in defining the spacing between the
         multi-thresholding levels (see the ``nlevels`` keyword) during
         deblending. This keyword is ignored unless ``deblend=True``.
+
+    See Also
+    --------
+    :func:`photutils.segmentation.detect_sources`
+    :func:`photutils.segmentation.deblend_sources`
 
     Examples
     --------
