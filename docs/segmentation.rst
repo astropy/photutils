@@ -247,6 +247,20 @@ Let's plot one of the deblended sources:
     plt.tight_layout()
 
 
+SourceFinder
+------------
+The :class:`~photutils.segmentation.SourceFinder` class
+is a convenience class that combines the functionality
+of `~photutils.segmentation.detect_sources` and
+`~photutils.segmentation.deblend_sources`. After defining the object
+with the desired detection and deblending parameters, you call it with
+the (convolved) image and threshold::
+
+    >>> from photutils.segmentation import SourceFinder
+    >>> finder = SourceFinder(npixels=10)
+    >>> segment_map = finder(convolved_data, threshold)
+
+
 Modifying a Segmentation Image
 ------------------------------
 The :class:`~photutils.segmentation.SegmentationImage` object provides
