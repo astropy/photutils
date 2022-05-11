@@ -6,88 +6,78 @@ Image Segmentation (`photutils.segmentation`)
 
 Introduction
 ------------
-Photutils includes a general-use function to detect sources (both
+Photutils includes general-use functions to detect sources (both
 point-like and extended) in an image using a process called `image
 segmentation <https://en.wikipedia.org/wiki/Image_segmentation>`_. After
 detecting sources using image segmentation, we can then measure their
-photometry, centroids, and morphological properties by using additional
-tools in Photutils.
+photometry, centroids, and shape properties.
 
 
 Source Extraction Using Image Segmentation
 ------------------------------------------
-Photutils provides tools to detect astronomical sources using image
-segmentation, which is a process of assigning a label to every pixel
+Image segmentation is a process of assigning a label to every pixel
 in an image such that pixels with the same label are part of the same
 source. Detected sources must have a minimum number of connected pixels
 that are each greater than a specified threshold value in an image. The
-threshold level is usually defined at some multiple of the background
-noise (sigma) above the background. The image can also be filtered
+threshold level is usually defined as some multiple of the background
+noise (sigma level) above the background. The image is usually filtered
 before thresholding to smooth the noise and maximize the detectability
 of objects with a shape similar to the filter kernel.
 
-Let's start by detecting sources in a synthetic image provided by the
+Let's start by making a synthetic image provided by the
 :ref:`photutils.datasets <datasets>` module::
 
     >>> from photutils.datasets import make_100gaussians_image
     >>> data = make_100gaussians_image()
 
-The source segmentation/extraction is performed using
-the :func:`~photutils.segmentation.detect_sources`
-function. We will use a convenience function called
-:func:`~photutils.segmentation.detect_threshold` to produce a 2D
-detection threshold image using simple sigma-clipped statistics to
-estimate the background level and RMS.
+Next, we need to subtract the background from the image. In this
+example, we'll use the :class:`~photutils.background.Background2D` class
+to produce a background and background noise image::
 
-The threshold level is calculated using the ``nsigma`` input as the
-number of standard deviations (per pixel) above the background.  Here
-we generate a simple threshold at 2 sigma (per pixel) above the
-background::
+    >>> from photutils.background import Background2D, MedianBackground
+    >>> bkg_estimator = MedianBackground()
+    >>> bkg = Background2D(data, (50, 50), filter_size=(3, 3),
+    ...                    bkg_estimator=bkg_estimator)
+    >>> data -= bkg.background  # subtract the background
 
-    >>> from photutils.segmentation import detect_threshold
-    >>> threshold = detect_threshold(data, nsigma=2.)
+After subtracting the background, we need to define the detection
+threshold. In this example, we'll define a 2D detection threshold image
+using the background RMS image. We set the threshold at the 1.5-sigma (per
+pixel) noise level::
 
-For more sophisticated analyses, one should generate a 2D background and
-background-only error image (e.g., from your data reduction or by using
-:class:`~photutils.background.Background2D`). In that case, a 2-sigma
-threshold image is simply::
+    >>> threshold = 1.5 * bkg.background_rms
 
-    >>> threshold = bkg + (2.0 * bkg_rms)  # doctest: +SKIP
-
-Note that if the threshold includes the background level (as above),
-then the image input into :func:`~photutils.segmentation.detect_sources`
-should *not* be background subtracted. In other words, the input
-threshold value(s) are compared directly to the input image. Because the
-threshold returned by :func:`~photutils.segmentation.detect_threshold`
-includes the background, we do not subtract the background from the data
-here.
-
-Let's find sources that have 5 connected pixels that are each greater
-than the corresponding pixel-wise ``threshold`` level defined above
-(i.e., 2 sigma per pixel above the background noise). Note that by
-default "connected pixels" means "8-connected" pixels, where pixels
-touch along their edges or corners. One can also use "4-connected"
-pixels that touch only along their edges by setting ``connectivity=4``
-in :func:`~photutils.segmentation.detect_sources`.
-
-Here, we convolve the data with a 2D circular Gaussian kernel with a
-FWHM of 3 pixels to smooth the image prior to thresholding:
-
-.. doctest-requires:: scipy>=1.6.0
+Next, let's convolve the data with a 2D Gaussian kernel with a FWHM of 3
+pixels::
 
     >>> from astropy.convolution import Gaussian2DKernel, convolve
     >>> from astropy.stats import gaussian_fwhm_to_sigma
-    >>> from photutils.segmentation import detect_sources
-    >>> sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
-    >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+    >>> sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
+    >>> kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
     >>> convolved_data = convolve(data, kernel, normalize_kernel=True)
-    >>> segm = detect_sources(convolved_data, threshold, npixels=5)
+
+Now we are ready to detect the sources in the background-subtracted and
+convolved image. Let's find sources that have 10 connected pixels that
+are each greater than the corresponding pixel-wise ``threshold`` level
+defined above (i.e., 1.5 sigma per pixel above the background noise).
+
+Note that by default "connected pixels" means "8-connected" pixels,
+where pixels touch along their edges or corners. One can also use
+"4-connected" pixels that touch only along their edges by setting
+``connectivity=4``::
+
+    >>> from photutils.segmentation import detect_sources
+    >>> segment_map = detect_sources(convolved_data, threshold, npixels=10)
 
 The result is a :class:`~photutils.segmentation.SegmentationImage`
 object with the same shape as the data, where detected sources are
-labeled by different positive integer values. A value of zero is
-always reserved for the background. Let's plot both the image and the
-segmentation image showing the detected sources:
+labeled by different positive integer values. Background pixels
+(non-sources) always have a value of zero. Because the segmentation
+image is generated using image thresholding, the source segments
+represent the isophotal footprints of each source.
+
+Let's plot both the background-subtracted image and the segmentation
+image showing the detected sources:
 
 .. doctest-skip::
 
@@ -98,9 +88,9 @@ segmentation image showing the detected sources:
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    >>> ax1.set_title('Data')
-    >>> cmap = segm.make_cmap(seed=123)
-    >>> ax2.imshow(segm, origin='lower', cmap=cmap, interpolation='nearest')
+    >>> ax1.set_title('Background-subtracted Data')
+    >>> ax2.imshow(segment_map, origin='lower', cmap=segment_map.cmap,
+    ...            interpolation='nearest')
     >>> ax2.set_title('Segmentation Image')
 
 .. plot::
@@ -110,27 +100,33 @@ segmentation image showing the detected sources:
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
+    from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import detect_threshold, detect_sources
+    from photutils.segmentation import detect_sources
 
     data = make_100gaussians_image()
-    threshold = detect_threshold(data, nsigma=2.)
-    sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
-    kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+
+    bkg_estimator = MedianBackground()
+    bkg = Background2D(data, (50, 50), filter_size=(3, 3),
+                       bkg_estimator=bkg_estimator)
+    data -= bkg.background  # subtract the background
+
+    threshold = 1.5 * bkg.background_rms
+
+    sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
+    kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
     convolved_data = convolve(data, kernel, normalize_kernel=True)
-    segm = detect_sources(convolved_data, threshold, npixels=5)
+
+    segment_map = detect_sources(convolved_data, threshold, npixels=10)
+
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    ax1.set_title('Data')
-    cmap = segm.make_cmap(seed=123)
-    ax2.imshow(segm, origin='lower', cmap=cmap, interpolation='nearest')
+    ax1.set_title('Background-subtracted Data')
+    ax2.imshow(segment_map, origin='lower', cmap=segment_map.cmap,
+               interpolation='nearest')
     ax2.set_title('Segmentation Image')
     plt.tight_layout()
-
-When the segmentation image is generated using image thresholding (e.g.,
-using :func:`~photutils.segmentation.detect_sources`), the source
-segments represent the isophotal footprints of each source.
 
 
 Source Deblending
@@ -143,27 +139,28 @@ function that deblends sources uses a combination
 of multi-thresholding and `watershed segmentation
 <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. Note
 that in order to deblend sources, they must be separated enough such
-that there is a saddle between them.
+that there is a saddle point between them.
 
 The amount of deblending can be controlled with the two
-:func:`~photutils.segmentation.deblend_sources` keywords ``nlevels``
-and ``contrast``.  ``nlevels`` is the number of multi-thresholding
-levels to use.  ``contrast`` is the fraction of the total source flux
-that a local peak must have to be considered as a separate object.
+:func:`~photutils.segmentation.deblend_sources` keywords ``nlevels`` and
+``contrast``. ``nlevels`` is the number of multi-thresholding levels to
+use. ``contrast`` is the fraction of the total source flux that a local
+peak must have to be considered as a separate object.
 
 Here's a simple example of source deblending:
 
-.. doctest-requires:: scipy>=1.6.0, skimage
+.. doctest-requires:: skimage
 
     >>> from photutils.segmentation import deblend_sources
-    >>> segm_deblend = deblend_sources(convolved_data, segm, npixels=5,
-    ...                                nlevels=32, contrast=0.001)
+    >>> segm_deblend = deblend_sources(convolved_data, segment_map,
+    ...                                npixels=10, nlevels=32, contrast=0.001)
 
-where ``segm`` is the :class:`~photutils.segmentation.SegmentationImage`
-that was generated by :func:`~photutils.segmentation.detect_sources`.
-Note that the ``convolved_data`` and ``npixels`` input values should
+where ``segment_map`` is the
+:class:`~photutils.segmentation.SegmentationImage` that was
+generated by :func:`~photutils.segmentation.detect_sources`. Note
+that the ``convolved_data`` and ``npixels`` input values should
 match those used in :func:`~photutils.segmentation.detect_sources`
-to generate ``segm``. The result is a new
+to generate ``segment_map``. The result is a new
 :class:`~photutils.segmentation.SegmentationImage` object containing the
 deblended segmentation image:
 
@@ -174,22 +171,32 @@ deblended segmentation image:
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
+    from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import (detect_threshold, detect_sources,
-                                        deblend_sources)
+    from photutils.segmentation import detect_sources, deblend_sources
 
     data = make_100gaussians_image()
-    threshold = detect_threshold(data, nsigma=2.)
-    sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
-    kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+
+    bkg_estimator = MedianBackground()
+    bkg = Background2D(data, (50, 50), filter_size=(3, 3),
+                       bkg_estimator=bkg_estimator)
+    data -= bkg.background  # subtract the background
+
+    threshold = 1.5 * bkg.background_rms
+
+    sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
+    kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
     convolved_data = convolve(data, kernel, normalize_kernel=True)
-    segm = detect_sources(convolved_data, threshold, npixels=5)
-    segm_deblend = deblend_sources(convolved_data, segm, npixels=5)
+
+    npixels = 10
+    segment_map = detect_sources(convolved_data, threshold, npixels=npixels)
+    segm_deblend = deblend_sources(convolved_data, segment_map,
+                                   npixels=npixels)
 
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, ax = plt.subplots(1, 1, figsize=(10, 6.5))
-    cmap = segm_deblend.make_cmap(seed=123)
-    ax.imshow(segm_deblend, origin='lower', cmap=cmap, interpolation='nearest')
+    ax.imshow(segm_deblend, origin='lower', cmap=segm_deblend.cmap,
+              interpolation='nearest')
     ax.set_title('Deblended Segmentation Image')
     plt.tight_layout()
 
@@ -199,28 +206,41 @@ Let's plot one of the deblended sources:
 
     from astropy.convolution import Gaussian2DKernel, convolve
     from astropy.stats import gaussian_fwhm_to_sigma
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
+    from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import (detect_threshold, detect_sources,
-                                        deblend_sources)
+    from photutils.segmentation import detect_sources, deblend_sources
 
     data = make_100gaussians_image()
-    threshold = detect_threshold(data, nsigma=2.)
-    sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
-    kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
-    convolved_data = convolve(data, kernel, normalize_kernel=True)
-    segm = detect_sources(convolved_data, threshold, npixels=5)
-    segm_deblend = deblend_sources(convolved_data, segm, npixels=5)
 
+    bkg_estimator = MedianBackground()
+    bkg = Background2D(data, (50, 50), filter_size=(3, 3),
+                       bkg_estimator=bkg_estimator)
+    data -= bkg.background  # subtract the background
+
+    threshold = 1.5 * bkg.background_rms
+
+    sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
+    kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
+    convolved_data = convolve(data, kernel, normalize_kernel=True)
+
+    npixels = 10
+    segment_map = detect_sources(convolved_data, threshold, npixels=npixels)
+    segm_deblend = deblend_sources(convolved_data, segment_map,
+                                   npixels=npixels)
+
+    norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 4))
     slc = (slice(273, 297), slice(425, 444))
     ax1.imshow(data[slc], origin='lower')
-    ax1.set_title('Data')
-    cmap1 = segm.make_cmap(seed=123)
-    ax2.imshow(segm.data[slc], origin='lower', cmap=cmap1,
+    ax1.set_title('Background-subtracted Data')
+    cmap1 = segment_map.cmap
+    ax2.imshow(segment_map.data[slc], origin='lower', cmap=cmap1,
                interpolation='nearest')
     ax2.set_title('Original Segment')
-    cmap2 = segm_deblend.make_cmap(seed=123)
+    cmap2 = segm_deblend.cmap
     ax3.imshow(segm_deblend.data[slc], origin='lower', cmap=cmap2,
                interpolation='nearest')
     ax3.set_title('Deblended Segments')
@@ -239,7 +259,7 @@ measuring source photometry and other source properties, including:
 
   * :meth:`~photutils.segmentation.SegmentationImage.relabel_consecutive`:
     Reassign the label numbers consecutively, such that there are no
-    missing label numbers (up to the maximum label number).
+    missing label numbers.
 
   * :meth:`~photutils.segmentation.SegmentationImage.keep_labels`:
     Keep only the specified labels.
