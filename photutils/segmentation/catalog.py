@@ -2618,29 +2618,30 @@ class SourceCatalog:
         return kron_apertures
 
     @as_scalar
-    def plot_kron_apertures(self, kron_params, axes=None, origin=(0, 0),
+    def plot_kron_apertures(self, kron_params=None, axes=None, origin=(0, 0),
                             **kwargs):
         """
         Plot Kron elliptical apertures on a matplotlib
         `~matplotlib.axes.Axes` instance.
 
-        The apertures are defined by the specified radius and are
-        centered at the source centroid position.
-
-        If provided, the `SourceCatalog` ``detection_cat`` will be used
-        for the source centroids and elliptical shape parameters.
+        If a ``detection_cat`` was input to `SourceCatalog, it will be
+        used for the source centroids and elliptical shape parameters.
 
         Parameters
         ----------
-        kron_params : list of 2 floats, optional
-            A list of two parameters used to determine how the Kron
-            radius and flux are calculated. The first item is the
-            scaling parameter of the Kron radius (`kron_radius`)
-            and the second item represents the minimum circular
-            radius. If the Kron radius times sqrt( `semimajor_sigma` *
-            `semiminor_sigma`) is less than than this radius, then the
-            Kron flux will be measured in a circle with this minimum
-            radius.
+        kron_params : `None` or list of 2 floats, optional
+            If `None` (default), then the ``kron_params`` input to
+            `SourceCatalog` will be used. These are the Kron parameters
+            used to define the Kron radii and photometry in the
+            catalog. Instead, one may input ``kron_params`` to plot
+            different Kron apertures, but note that doing so does
+            not change the Kron radii and photometry in the source
+            catalog. The first item is the scaling parameter of the
+            Kron radius (`kron_radius`) and the second item represents
+            the minimum circular radius. If the Kron radius times sqrt(
+            `semimajor_sigma` * `semiminor_sigma`) is less than than
+            this radius, then the Kron flux will be measured in a circle
+            with this minimum radius.
 
         axes : `matplotlib.axes.Axes` or `None`, optional
             The matplotlib axes on which to plot.  If `None`, then the
@@ -2660,6 +2661,8 @@ class SourceCatalog:
             A list of matplotlib patches for the plotted aperture. The
             patches can be used, for example, when adding a plot legend.
         """
+        if kron_params is None:
+            kron_params = self._kron_params
         apertures = self.make_kron_apertures(kron_params)
         patches = []
         for aperture in apertures:
