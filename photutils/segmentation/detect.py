@@ -83,6 +83,7 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
     See Also
     --------
     :func:`photutils.segmentation.detect_sources`
+    :class:`photutils.segmentation.SourceFinder`
 
     Notes
     -----
@@ -148,8 +149,6 @@ def _make_binary_structure(ndim, connectivity):
         The binary structure element.  If ``ndim <= 2`` an array of int
         is returned, otherwise an array of bool is returned.
     """
-    from scipy.ndimage import generate_binary_structure
-
     if ndim == 1:
         selem = np.array((1, 1, 1))
     elif ndim == 2:
@@ -161,6 +160,7 @@ def _make_binary_structure(ndim, connectivity):
             raise ValueError(f'Invalid connectivity={connectivity}.  '
                              'Options are 4 or 8.')
     else:
+        from scipy.ndimage import generate_binary_structure
         selem = generate_binary_structure(ndim, 1)
 
     return selem
@@ -194,11 +194,9 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
            otherwise the data will be convolved twice.
 
     thresholds : array-like of floats or arrays
-        The data value or pixel-wise data values to
-        be used for the detection thresholds. A 2D
-        ``threshold`` must have the same shape as ``data``. See
-        `~photutils.segmentation.detect_threshold` for one way to create
-        a ``threshold`` image.
+        The data value or pixel-wise data values to be used for the
+        detection thresholds. A 2D ``threshold`` must have the same
+        shape as ``data``.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
@@ -335,8 +333,7 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
     threshold : float or array-like
         The data value or pixel-wise data values to be used for the
         detection threshold. A 2D ``threshold`` must have the same shape
-        as ``data``. See `~photutils.segmentation.detect_threshold` for
-        one way to create a ``threshold`` image.
+        as ``data``.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
@@ -372,9 +369,8 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
 
     See Also
     --------
-    :func:`photutils.segmentation.detect_threshold`
-    :class:`photutils.segmentation.SegmentationImage`
     :func:`photutils.segmentation.deblend_sources`
+    :class:`photutils.segmentation.SourceFinder`
 
     Examples
     --------
