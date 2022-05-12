@@ -149,8 +149,6 @@ def _make_binary_structure(ndim, connectivity):
         The binary structure element.  If ``ndim <= 2`` an array of int
         is returned, otherwise an array of bool is returned.
     """
-    from scipy.ndimage import generate_binary_structure
-
     if ndim == 1:
         selem = np.array((1, 1, 1))
     elif ndim == 2:
@@ -162,6 +160,7 @@ def _make_binary_structure(ndim, connectivity):
             raise ValueError(f'Invalid connectivity={connectivity}.  '
                              'Options are 4 or 8.')
     else:
+        from scipy.ndimage import generate_binary_structure
         selem = generate_binary_structure(ndim, 1)
 
     return selem

@@ -13,6 +13,7 @@ from ...utils.exceptions import NoDetectionsWarning
 from ...utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 class TestSourceFinder:
     data = make_100gaussians_image() - 5.0  # subtract background
     sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
@@ -21,6 +22,7 @@ class TestSourceFinder:
     threshold = 1.5 * 2.0
     npixels = 10
 
+    @pytest.mark.skipif('not HAS_SKIMAGE')
     def test_deblend(self):
         finder = SourceFinder(npixels=self.npixels)
         segm = finder(self.convolved_data, self.threshold)

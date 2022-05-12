@@ -32,7 +32,9 @@ Let's start by making a synthetic image provided by the
 
 Next, we need to subtract the background from the image. In this
 example, we'll use the :class:`~photutils.background.Background2D` class
-to produce a background and background noise image::
+to produce a background and background noise image:
+
+.. doctest-requires:: scipy
 
     >>> from photutils.background import Background2D, MedianBackground
     >>> bkg_estimator = MedianBackground()
@@ -43,7 +45,9 @@ to produce a background and background noise image::
 After subtracting the background, we need to define the detection
 threshold. In this example, we'll define a 2D detection threshold image
 using the background RMS image. We set the threshold at the 1.5-sigma (per
-pixel) noise level::
+pixel) noise level:
+
+.. doctest-requires:: scipy
 
     >>> threshold = 1.5 * bkg.background_rms
 
@@ -64,7 +68,9 @@ defined above (i.e., 1.5 sigma per pixel above the background noise).
 Note that by default "connected pixels" means "8-connected" pixels,
 where pixels touch along their edges or corners. One can also use
 "4-connected" pixels that touch only along their edges by setting
-``connectivity=4``::
+``connectivity=4``:
+
+.. doctest-requires:: scipy
 
     >>> from photutils.segmentation import detect_sources
     >>> segment_map = detect_sources(convolved_data, threshold, npixels=10)
@@ -154,7 +160,7 @@ peak must have to be considered as a separate object.
 
 Here's a simple example of source deblending:
 
-.. doctest-requires:: skimage
+.. doctest-requires:: scipy, skimage
 
     >>> from photutils.segmentation import deblend_sources
     >>> segm_deblend = deblend_sources(convolved_data, segment_map,
@@ -259,7 +265,9 @@ is a convenience class that combines the functionality
 of `~photutils.segmentation.detect_sources` and
 `~photutils.segmentation.deblend_sources`. After defining the object
 with the desired detection and deblending parameters, you call it with
-the background-subtracted (convolved) image and threshold::
+the background-subtracted (convolved) image and threshold:
+
+.. doctest-requires:: scipy, skimage
 
     >>> from photutils.segmentation import SourceFinder
     >>> finder = SourceFinder(npixels=10)
@@ -312,7 +320,9 @@ from which the source centroids and shape/morphological properties are
 measured (if not input, the unconvolved image is used instead).
 
 Let's continue our example from above and measure the properties of the
-detected sources::
+detected sources:
+
+.. doctest-requires:: scipy, skimage
 
     >>> from photutils.segmentation import SourceCatalog
     >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
@@ -337,7 +347,7 @@ properties. The ``label`` column corresponds to the label value in the
 input segmentation image. Note that only a small subset of the source
 properties are shown below:
 
-.. doctest-requires:: scipy>=1.6.0
+.. doctest-requires:: scipy, skimage
 
     >>> tbl = cat.to_table()
     >>> tbl['xcentroid'].info.format = '.2f'  # optional format
@@ -428,7 +438,7 @@ We can also create a `~photutils.segmentation.SourceCatalog` object
 containing only a specific subset of sources, defined by their
 label numbers in the segmentation image:
 
-.. doctest-requires:: scipy>=1.6.0
+.. doctest-requires:: scipy, skimage
 
     >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
@@ -453,7 +463,7 @@ includes only a small subset of source properties. The output table
 properties can be customized in the `~astropy.table.QTable` using the
 ``columns`` keyword:
 
-.. doctest-requires:: scipy>=1.6.0
+.. doctest-requires:: scipy, skimage
 
     >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
@@ -489,7 +499,7 @@ that was subtracted from the data into the ``background`` keyword
 of :class:`~photutils.segmentation.SourceCatalog`, the background
 properties for each source will also be calculated:
 
-.. doctest-requires:: scipy>=1.6.0, skimage
+.. doctest-requires:: scipy, skimage
 
     >>> cat = SourceCatalog(data, segm_deblend, background=bkg.background)
     >>> labels = [1, 5, 20, 50, 75, 80]
@@ -542,7 +552,7 @@ calculated. `~photutils.segmentation.SourceCatalog.segment_flux`
 and `~photutils.segmentation.SourceCatalog.segment_fluxerr` are the
 instrumental flux and propagated flux error within the source segments:
 
-.. doctest-requires:: scipy>=1.6.0
+.. doctest-requires:: scipy, skimage
 
     >>> from photutils.utils import calc_total_error
     >>> effective_gain = 500.
