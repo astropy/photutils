@@ -162,13 +162,10 @@ class SourceCatalog:
             in SourceExtractor).
 
     kron_params : list of 2 floats, optional
-        A list of two parameters used to determine how the Kron
-        radius and flux are calculated. The first item is the scaling
-        parameter of the Kron radius and the second item represents
-        the minimum circular radius. If the Kron radius times
-        sqrt(``semimajor_sigma`` * ``semiminor_sigma``) is less than
-        than this radius, then the Kron flux will be measured in a
-        circle with this minimum radius.
+        A list of two parameters used to determine the Kron aperture.
+        The first item is the scaling parameter of the unscaled Kron
+        radius and the second item represents the minimum value for the
+        unscaled Kron radius in pixels.
 
     detection_cat : `SourceCatalog`, optional
         A `SourceCatalog` object for the detection image. The source
@@ -235,7 +232,7 @@ class SourceCatalog:
     def __init__(self, data, segment_img, *, convolved_data=None, error=None,
                  mask=None, kernel=None, background=None, wcs=None,
                  localbkg_width=0, apermask_method='correct',
-                 kron_params=(2.5, 1.0), detection_cat=None):
+                 kron_params=(2.5, 1.4), detection_cat=None):
 
         arrays, unit = process_quantities(
             (data, convolved_data, error, background),
@@ -2584,8 +2581,11 @@ class SourceCatalog:
 
             kron_radius.append(flux_numer / flux_denom)
 
-        kron_radius = np.array(kron_radius) * u.pix
-        return kron_radius
+        # set minimum (unscaled) kron radius
+        kron_radius = np.array(kron_radius)
+        kron_radius[kron_radius < self._kron_params[1]] = self._kron_params[1]
+
+        return kron_radius << u.pix
 
     def _make_kron_apertures(self, kron_params):
         """
@@ -2604,16 +2604,11 @@ class SourceCatalog:
 
         Parameters
         ----------
-        kron_params : list of 2 floats or `None`, optional
+        kron_params : list of 2 floats, optional
             A list of two parameters used to determine the Kron
             aperture. The first item is the scaling parameter of the
-            Kron radius (`kron_radius`) and the second item represents
-            the minimum circular radius. If the Kron radius times sqrt(
-            `semimajor_sigma` * `semiminor_sigma`) is less than than
-            this radius, then the Kron aperture will be a circle with
-            this minimum radius. If `None`, then the ``kron_params``
-            input into `SourceCatalog` will be used (the returned
-            apertures will be the same as those in `kron_aperture`).
+            unscaled Kron radius and the second item represents the
+            minimum value for the unscaled Kron radius in pixels.
 
         Returns
         -------
@@ -2635,19 +2630,6 @@ class SourceCatalog:
         scale = kron_radius * kron_params[0]
         # NOTE: if kron_radius = NaN, scale = NaN and kron_aperture = None
         kron_apertures = self._make_elliptical_apertures(scale=scale)
-
-        # check for minimum Kron radius
-        major_sigma = detcat.semimajor_sigma.value
-        minor_sigma = detcat.semiminor_sigma.value
-        circ_radius = kron_radius * np.sqrt(major_sigma * minor_sigma)
-        min_radius = kron_params[1]
-
-        mask = (circ_radius < min_radius)
-        idx = np.atleast_1d(mask).nonzero()[0]
-        if idx.size > 0:
-            circ_aperture = self._make_circular_apertures(min_radius)
-            for i in idx:
-                kron_apertures[i] = circ_aperture[i]
 
         return kron_apertures
 
@@ -2672,13 +2654,11 @@ class SourceCatalog:
         kron_params : list of 2 floats or `None`, optional
             A list of two parameters used to determine the Kron
             aperture. The first item is the scaling parameter of the
-            Kron radius (`kron_radius`) and the second item represents
-            the minimum circular radius. If the Kron radius times sqrt(
-            `semimajor_sigma` * `semiminor_sigma`) is less than than
-            this radius, then the Kron aperture will be a circle with
-            this minimum radius. If `None`, then the ``kron_params``
-            input into `SourceCatalog` will be used (the returned
-            apertures will be the same as those in `kron_aperture`).
+            unscaled Kron radius and the second item represents the
+            minimum value for the unscaled Kron radius in pixels. If
+            `None`, then the ``kron_params`` input into `SourceCatalog`
+            will be used (the apertures will be the same as those in
+            `kron_aperture`).
 
         Returns
         -------
@@ -2716,13 +2696,11 @@ class SourceCatalog:
         kron_params : list of 2 floats or `None`, optional
             A list of two parameters used to determine the Kron
             aperture. The first item is the scaling parameter of the
-            Kron radius (`kron_radius`) and the second item represents
-            the minimum circular radius. If the Kron radius times sqrt(
-            `semimajor_sigma` * `semiminor_sigma`) is less than than
-            this radius, then the Kron aperture will be a circle with
-            this minimum radius. If `None`, then the ``kron_params``
-            input into `SourceCatalog` will be used (the plotted
-            apertures will be the same as those in `kron_aperture`).
+            unscaled Kron radius and the second item represents the
+            minimum value for the unscaled Kron radius in pixels. If
+            `None`, then the ``kron_params`` input into `SourceCatalog`
+            will be used (the apertures will be the same as those in
+            `kron_aperture`).
 
         axes : `matplotlib.axes.Axes` or `None`, optional
             The matplotlib axes on which to plot.  If `None`, then the
@@ -2858,14 +2836,10 @@ class SourceCatalog:
         Parameters
         ----------
         kron_params : list of 2 floats, optional
-            A list of two parameters used to determine how the Kron
-            radius and flux are calculated. The first item is the
-            scaling parameter of the Kron radius (`kron_radius`)
-            and the second item represents the minimum circular
-            radius. If the Kron radius times sqrt( `semimajor_sigma` *
-            `semiminor_sigma`) is less than than this radius, then the
-            Kron flux will be measured in a circle with this minimum
-            radius.
+            A list of two parameters used to determine the Kron
+            aperture. The first item is the scaling parameter of the
+            unscaled Kron radius and the second item represents the
+            minimum value for the unscaled Kron radius in pixels.
 
         name : str or `None`, optional
             The prefix name which will be used to define attribute
