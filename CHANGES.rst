@@ -22,6 +22,9 @@ API Changes
   - Removed the deprecated ``circular_aperture`` method from
     ``SourceCatalog``. [#1329]
 
+  - The ``SourceCatalog`` ``plot_kron_apertures`` method now sets a
+    default ``kron_apers`` value. [#1346]
+
 
 1.4.0 (2022-03-25)
 ------------------
