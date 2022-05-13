@@ -8,8 +8,8 @@ New Features
 ^^^^^^^^^^^^
 - ``photutils.segmentation``
 
-    - Added ``SourceFinder`` class, which is a convenience class
-      combining ``detect_sources`` and ``deblend_sources``. [#1344]
+  - Added ``SourceFinder`` class, which is a convenience class
+    combining ``detect_sources`` and ``deblend_sources``. [#1344]
 
 Bug Fixes
 ^^^^^^^^^
