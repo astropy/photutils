@@ -239,6 +239,10 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
         if mask.shape != data.shape:
             raise ValueError('mask must have the same shape as the input '
                              'image.')
+        if mask.all():
+            raise ValueError('mask must not be True for every pixel. There '
+                             'are no unmasked pixels in the image to detect '
+                             'sources.')
 
     if kernel is not None:
         with warnings.catch_warnings():
