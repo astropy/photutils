@@ -2468,7 +2468,7 @@ class SourceCatalog:
         The *unscaled* first-moment Kron radius is given by:
 
         .. math::
-            k_r = \frac{\sum_{i \in A} \ r_i I_i}{\sum_{i \in A} I_i}
+            r_k = \frac{\sum_{i \in A} \ r_i I_i}{\sum_{i \in A} I_i}
 
         where :math:`I_i` are the data values and the sum is over
         pixels in an elliptical aperture whose axes are defined by
@@ -2487,18 +2487,20 @@ class SourceCatalog:
         centroid and the coefficients are based on image moments (`cxx`,
         `cxy`, and `cyy`).
 
-        The scaling parameter of the `kron_radius` is defined using the
-        `SourceCatalog` ``kron_params`` keyword.
+        Because `kron_radius` is unscaled, it does not depend on
+        the `SourceCatalog` ``kron_params`` keyword values. The
+        ``kron_params`` keyword values (e.g., scaling parameter) will be
+        used to scale the Kron radius to compute the Kron aperture and
+        photometry.
 
         See the `SourceCatalog` ``apermask_method`` keyword for options
         to mask neighboring sources.
 
         If either the numerator or denominator above is less than or
         equal to 0, then ``np.nan`` will be returned for both the Kron
-        radius and Kron flux.
-
-        If the source is completely masked, then ``np.nan`` will be
-        returned for both the Kron radius and Kron flux.
+        radius and Kron flux. If the source is completely masked, then
+        ``np.nan`` will be returned for both the Kron radius and Kron
+        flux.
 
         If the `SourceCatalog` ``detection_cat`` was provided, then
         its ``kron_radius`` will be returned if the source is not
@@ -2567,20 +2569,27 @@ class SourceCatalog:
         Return a list of Kron elliptical apertures with the specified
         scaling and centered at the source centroid position.
 
-        If provided, the `SourceCatalog` ``detection_cat`` will be used
-        for the source centroids and elliptical shape parameters.
+        If a ``detection_cat`` was input to `SourceCatalog`, it will be
+        used for the source centroids and elliptical shape parameters.
+
+        ``kron_params`` controls the scaling of the Kron aperture.
+
+        Note that changing ``kron_params`` from the values input
+        into `SourceCatalog` does not change the Kron apertures
+        `kron_aperture` and photometry (`kron_flux` and `kron_fluxerr`)
+        in source catalog. This method should be used only to explore
+        alternative ``kron_params``.
 
         Parameters
         ----------
         kron_params : list of 2 floats, optional
-            A list of two parameters used to determine how the Kron
-            radius and flux are calculated. The first item is the
-            scaling parameter of the Kron radius (`kron_radius`)
-            and the second item represents the minimum circular
-            radius. If the Kron radius times sqrt( `semimajor_sigma` *
-            `semiminor_sigma`) is less than than this radius, then the
-            Kron flux will be measured in a circle with this minimum
-            radius.
+            A list of two parameters used to determine the Kron
+            aperture. The first item is the scaling parameter of the
+            Kron radius (`kron_radius`) and the second item represents
+            the minimum circular radius. If the Kron radius times sqrt(
+            `semimajor_sigma` * `semiminor_sigma`) is less than than
+            this radius, then the Kron flux will be measured in a circle
+            with this minimum radius.
 
         Returns
         -------
@@ -2618,29 +2627,38 @@ class SourceCatalog:
         return kron_apertures
 
     @as_scalar
-    def plot_kron_apertures(self, kron_params, axes=None, origin=(0, 0),
+    def plot_kron_apertures(self, kron_params=None, axes=None, origin=(0, 0),
                             **kwargs):
         """
         Plot Kron elliptical apertures on a matplotlib
         `~matplotlib.axes.Axes` instance.
 
-        The apertures are defined by the specified radius and are
-        centered at the source centroid position.
+        If a ``detection_cat`` was input to `SourceCatalog`, it will be
+        used for the source centroids and elliptical shape parameters.
 
-        If provided, the `SourceCatalog` ``detection_cat`` will be used
-        for the source centroids and elliptical shape parameters.
+        ``kron_params`` controls the scaling of the Kron aperture.
+
+        Note that changing ``kron_params`` from the values input
+        into `SourceCatalog` does not change the Kron apertures
+        `kron_aperture` and photometry (`kron_flux` and `kron_fluxerr`)
+        in source catalog. Changing the default ``kron_params`` should
+        be used only to visualize/explore alternative ``kron_params``.
 
         Parameters
         ----------
-        kron_params : list of 2 floats, optional
-            A list of two parameters used to determine how the Kron
-            radius and flux are calculated. The first item is the
-            scaling parameter of the Kron radius (`kron_radius`)
-            and the second item represents the minimum circular
-            radius. If the Kron radius times sqrt( `semimajor_sigma` *
-            `semiminor_sigma`) is less than than this radius, then the
-            Kron flux will be measured in a circle with this minimum
-            radius.
+        kron_params : `None` or list of 2 floats, optional
+            If `None` (default), then the ``kron_params`` input to
+            `SourceCatalog` will be used. These are the Kron parameters
+            used to define the Kron radii and photometry in the
+            catalog. Instead, one may input ``kron_params`` to plot
+            different Kron apertures, but note that doing so does
+            not change the Kron radii and photometry in the source
+            catalog. The first item is the scaling parameter of the
+            Kron radius (`kron_radius`) and the second item represents
+            the minimum circular radius. If the Kron radius times sqrt(
+            `semimajor_sigma` * `semiminor_sigma`) is less than than
+            this radius, then the Kron flux will be measured in a circle
+            with this minimum radius.
 
         axes : `matplotlib.axes.Axes` or `None`, optional
             The matplotlib axes on which to plot.  If `None`, then the
@@ -2660,6 +2678,8 @@ class SourceCatalog:
             A list of matplotlib patches for the plotted aperture. The
             patches can be used, for example, when adding a plot legend.
         """
+        if kron_params is None:
+            kron_params = self._kron_params
         apertures = self.make_kron_apertures(kron_params)
         patches = []
         for aperture in apertures:
@@ -2674,18 +2694,21 @@ class SourceCatalog:
         r"""
         The elliptical Kron aperture.
 
+        The Kron aperture has been scaled based on the `SourceCatalog`
+        ``kron_params`` keyword values.
+
         For sources where
 
         .. math::
-            k_r \ \sqrt{a \cdot b} < rc_{min}
+            r_k \ \sqrt{a \cdot b} < r_{min\_c}
 
-        where :math:`k_r` is the `kron_radius`, :math:`a` and
+        where :math:`r_k` is the `kron_radius`, :math:`a` and
         :math:`b` are the semimajor (`semimajor_sigma`) and semiminor
-        (`semiminor_sigma`) axes, respectively, and :math:`rc_{min}` is
-        the minimum circular radius defined by ``kron_params[1]`` (see
-        `SourceCatalog`), then a circular aperture with a radius equal
-        to ``kron_params[1]`` will be returned. If ``kron_params[1] <=
-        0``, then the Kron aperture will be `None`.
+        (`semiminor_sigma`) axes, respectively, and :math:`r_{min\_c}`
+        is the minimum circular radius defined by ``kron_params[1]``
+        (see `SourceCatalog`), then a circular aperture with a
+        radius equal to ``kron_params[1]`` will be returned. If
+        ``kron_params[1] <= 0``, then the Kron aperture will be `None`.
 
         If ``kron_radius = np.nan`` then a circular aperture with a
         radius equal to ``kron_params[1]`` will be returned if the
