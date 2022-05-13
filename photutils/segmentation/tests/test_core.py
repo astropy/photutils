@@ -15,19 +15,19 @@ from ...utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSegmentationImage:
     def setup_class(self):
-        self.data = [[1, 1, 0, 0, 4, 4],
-                     [0, 0, 0, 0, 0, 4],
-                     [0, 0, 3, 3, 0, 0],
-                     [7, 0, 0, 0, 0, 5],
-                     [7, 7, 0, 5, 5, 5],
-                     [7, 7, 0, 0, 5, 5]]
+        self.data = np.array([[1, 1, 0, 0, 4, 4],
+                              [0, 0, 0, 0, 0, 4],
+                              [0, 0, 3, 3, 0, 0],
+                              [7, 0, 0, 0, 0, 5],
+                              [7, 7, 0, 5, 5, 5],
+                              [7, 7, 0, 0, 5, 5]])
         self.segm = SegmentationImage(self.data)
 
     def test_array(self):
         assert_allclose(self.segm.data, self.segm.__array__())
 
     def test_copy(self):
-        segm = SegmentationImage(self.data)
+        segm = SegmentationImage(self.data.copy())
         segm2 = segm.copy()
         assert segm.data is not segm2.data
         assert segm.labels is not segm2.labels
@@ -44,8 +44,8 @@ class TestSegmentationImage:
             segm.relabel_consecutive()
 
     def test_data_reassignment(self):
-        segm = SegmentationImage(self.data)
-        segm.data = np.array(self.data)[0:3, :].copy()
+        segm = SegmentationImage(self.data.copy())
+        segm.data = self.data[0:3, :].copy()
         assert_equal(segm.labels, [1, 3, 4])
 
     def test_invalid_data(self):
@@ -182,7 +182,7 @@ class TestSegmentationImage:
                                             seed=0).colors)
 
     def test_reassign_labels(self):
-        segm = SegmentationImage(self.data)
+        segm = SegmentationImage(self.data.copy())
         segm.reassign_labels(labels=[1, 7], new_label=2)
         ref_data = np.array([[2, 2, 0, 0, 4, 4],
                              [0, 0, 0, 0, 0, 4],
@@ -195,7 +195,7 @@ class TestSegmentationImage:
 
     @pytest.mark.parametrize('start_label', [1, 5])
     def test_relabel_consecutive(self, start_label):
-        segm = SegmentationImage(self.data)
+        segm = SegmentationImage(self.data.copy())
         ref_data = np.array([[1, 1, 0, 0, 3, 3],
                              [0, 0, 0, 0, 0, 3],
                              [0, 0, 2, 2, 0, 0],
@@ -214,7 +214,7 @@ class TestSegmentationImage:
     @pytest.mark.parametrize('start_label', [0, -1])
     def test_relabel_consecutive_start_invalid(self, start_label):
         with pytest.raises(ValueError):
-            segm = SegmentationImage(self.data)
+            segm = SegmentationImage(self.data.copy())
             segm.relabel_consecutive(start_label=start_label)
 
     def test_keep_labels(self):
@@ -224,7 +224,7 @@ class TestSegmentationImage:
                              [0, 0, 0, 0, 0, 5],
                              [0, 0, 0, 5, 5, 5],
                              [0, 0, 0, 0, 5, 5]])
-        segm = SegmentationImage(self.data)
+        segm = SegmentationImage(self.data.copy())
         segm.keep_labels([5, 3])
         assert_allclose(segm.data, ref_data)
 
@@ -235,7 +235,7 @@ class TestSegmentationImage:
                              [0, 0, 0, 0, 0, 2],
                              [0, 0, 0, 2, 2, 2],
                              [0, 0, 0, 0, 2, 2]])
-        segm = SegmentationImage(self.data)
+        segm = SegmentationImage(self.data.copy())
         segm.keep_labels([5, 3], relabel=True)
         assert_allclose(segm.data, ref_data)
 
@@ -246,7 +246,7 @@ class TestSegmentationImage:
                              [7, 0, 0, 0, 0, 0],
                              [7, 7, 0, 0, 0, 0],
                              [7, 7, 0, 0, 0, 0]])
-        segm = SegmentationImage(self.data)
+        segm = SegmentationImage(self.data.copy())
         segm.remove_labels(labels=[5, 3])
         assert_allclose(segm.data, ref_data)
 
@@ -257,7 +257,7 @@ class TestSegmentationImage:
                              [3, 0, 0, 0, 0, 0],
                              [3, 3, 0, 0, 0, 0],
                              [3, 3, 0, 0, 0, 0]])
-        segm = SegmentationImage(self.data)
+        segm = SegmentationImage(self.data.copy())
         segm.remove_labels(labels=[5, 3], relabel=True)
         assert_allclose(segm.data, ref_data)
 
@@ -268,17 +268,17 @@ class TestSegmentationImage:
                              [0, 0, 0, 0, 0, 0],
                              [0, 0, 0, 0, 0, 0],
                              [0, 0, 0, 0, 0, 0]])
-        segm = SegmentationImage(self.data)
+        segm = SegmentationImage(self.data.copy())
         segm.remove_border_labels(border_width=1)
         assert_allclose(segm.data, ref_data)
 
     def test_remove_border_labels_border_width(self):
         with pytest.raises(ValueError):
-            segm = SegmentationImage(self.data)
+            segm = SegmentationImage(self.data.copy())
             segm.remove_border_labels(border_width=3)
 
     def test_remove_border_labels_no_remaining_segments(self):
-        alt_data = np.copy(self.data)
+        alt_data = self.data.copy()
         alt_data[alt_data == 3] = 0
         segm = SegmentationImage(alt_data)
         segm.remove_border_labels(border_width=1, relabel=True)
@@ -291,7 +291,7 @@ class TestSegmentationImage:
                              [7, 0, 0, 0, 0, 5],
                              [7, 7, 0, 5, 5, 5],
                              [7, 7, 0, 0, 5, 5]])
-        segm = SegmentationImage(self.data)
+        segm = SegmentationImage(self.data.copy())
         mask = np.zeros(segm.data.shape, dtype=bool)
         mask[0, :] = True
         segm.remove_masked_labels(mask)
@@ -304,7 +304,7 @@ class TestSegmentationImage:
                              [7, 0, 0, 0, 0, 5],
                              [7, 7, 0, 5, 5, 5],
                              [7, 7, 0, 0, 5, 5]])
-        segm = SegmentationImage(self.data)
+        segm = SegmentationImage(self.data.copy())
         mask = np.zeros(segm.data.shape, dtype=bool)
         mask[0, :] = True
         segm.remove_masked_labels(mask, partial_overlap=False)

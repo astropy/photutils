@@ -26,10 +26,10 @@ class SegmentationImage:
 
     Parameters
     ----------
-    data : array_like (int)
-        A segmentation array where source regions are labeled by
+    data : 2D int `~numpy.ndarray`
+        A 2D segmentation array where source regions are labeled by
         different positive integer values. A value of zero is reserved
-        for the background. The segmentation image must have an integer
+        for the background. The segmentation image must have integer
         type.
     """
 
@@ -1124,7 +1124,7 @@ class Segment:
 
         Parameters
         ----------
-        data : array-like
+        data : 2D `~numpy.ndarray`
             The data array from which to create the masked cutout array.
             ``data`` must have the same shape as the segmentation array.
 
@@ -1136,10 +1136,9 @@ class Segment:
 
         Returns
         -------
-        result : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+        result : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
             The cutout array.
         """
-        data = np.asanyarray(data)
         if data.shape != self._segment_data.shape:
             raise ValueError('data must have the same shape as the '
                              'segmentation array.')

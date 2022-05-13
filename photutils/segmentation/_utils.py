@@ -16,10 +16,10 @@ def mask_to_mirrored_value(data, replace_mask, xycenter, mask=None):
 
     Parameters
     ----------
-    data : `numpy.ndarray`, 2D
+    data : 2D `~numpy.ndarray`
         A 2D array.
 
-    replace_mask : array-like, bool
+    replace_mask : 2D bool `~numpy.ndarray`
         A boolean mask where `True` values indicate the pixels that
         should be replaced, if possible, by mirrored pixel values. It
         must have the same shape as ``data``.
@@ -28,7 +28,7 @@ def mask_to_mirrored_value(data, replace_mask, xycenter, mask=None):
         The (x, y) center coordinates around which masked pixels will be
         mirrored.
 
-    mask : array-like, bool
+    mask : 2D bool `~numpy.ndarray`
         A boolean mask where `True` values indicate ``replace_mask``
         *mirrored* pixels that should never be used to fix
         ``replace_mask`` pixels. In other words, if a pixel in
@@ -38,7 +38,7 @@ def mask_to_mirrored_value(data, replace_mask, xycenter, mask=None):
 
     Returns
     -------
-    result : `numpy.ndarray`, 2D
+    result : 2D `~numpy.ndarray`
         A 2D array with replaced masked pixels.
     """
     outdata = np.copy(data)
