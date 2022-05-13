@@ -132,7 +132,7 @@ API Changes
 
   - By default, ``BkgZoomInterpolator`` uses ``clip=True`` to prevent
     the interpolation from producing values outside the given input
-    range. If backwards-compatiblity is needed with older Photutils
+    range. If backwards-compatibility is needed with older Photutils
     versions, set ``clip=False``. [#1324]
 
 - ``photutils.centroid``
@@ -402,7 +402,7 @@ API Changes
     For zooming 2D images, this keyword should be set to True,
     which makes the interpolator's behavior consistent with
     ``scipy.ndimage.map_coordinates``, ``skimage.transform.resize``, and
-    ``OpenCV (cv2.resize)``. If backwards-compatiblity is needed with
+    ``OpenCV (cv2.resize)``. If backwards-compatibility is needed with
     older Photutils versions, set ``grid_mode=False``. [#1239]
 
 - ``photutils.centroid``
@@ -513,8 +513,8 @@ New Features
   - Added a modified, significantly faster, ``SourceCatalog`` class.
     [#1170, #1188, #1191]
 
-  - Added ``circular_aperture`` and ``circular_phometry`` methods to the
-    ``SourceCatalog`` class. [#1188]
+  - Added ``circular_aperture`` and ``circular_photometry`` methods to
+    the ``SourceCatalog`` class. [#1188]
 
   - Added ``fwhm`` property to the ``SourceCatalog`` class. [#1191]
 
@@ -1550,7 +1550,7 @@ API Changes
 
 - ``photutils.datasets``
 
-  - The ``make_poission_noise`` function was renamed to
+  - The ``make_poisson_noise`` function was renamed to
     ``apply_poisson_noise``.  [#527]
 
   - The ``make_random_gaussians`` function was renamed to
@@ -1723,7 +1723,7 @@ New Features
 
   - Added ``filter_data`` function. [#398]
 
-  - Added ``DAOStarFinder`` and ``IRAFStarFinder`` as oop interfaces for
+  - Added ``DAOStarFinder`` and ``IRAFStarFinder`` as OOP interfaces for
     ``daofind`` and ``irafstarfinder``, respectively, which are now
     deprecated. [#379]
 
