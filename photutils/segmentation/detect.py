@@ -103,32 +103,20 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
             data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
             maxiters=sigclip_iters)
 
-        bkgrd_image = np.zeros_like(data) + data_mean
-        bkgrdrms_image = np.zeros_like(data) + data_std
-
     if background is None:
-        background = bkgrd_image
-    else:
-        if np.isscalar(background):
-            background = np.zeros_like(data) + background
-        else:
-            if background.shape != data.shape:
-                raise ValueError('If input background is 2D, then it '
-                                 'must have the same shape as the input '
-                                 'data.')
+        background = data_mean
+    if not np.isscalar(background) and background.shape != data.shape:
+        raise ValueError('If input background is 2D, then it must have the '
+                         'same shape as the input data.')
 
     if error is None:
-        error = bkgrdrms_image
-    else:
-        if np.isscalar(error):
-            error = np.zeros_like(data) + error
-        else:
-            if error.shape != data.shape:
-                raise ValueError('If input error is 2D, then it '
-                                 'must have the same shape as the input '
-                                 'data.')
+        error = data_std
+    if not np.isscalar(error) and error.shape != data.shape:
+        raise ValueError('If input error is 2D, then it must have the same '
+                         'shape as the input data.')
 
-    return background + (error * nsigma)
+    return (np.broadcast_to(background, data.shape)
+            + np.broadcast_to(error * nsigma, data.shape))
 
 
 def _make_binary_structure(ndim, connectivity):
