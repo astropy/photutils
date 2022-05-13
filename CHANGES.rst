@@ -25,6 +25,13 @@ API Changes
   - The ``SourceCatalog`` ``plot_kron_apertures`` method now sets a
     default ``kron_apers`` value. [#1346]
 
+  - ``deblend_sources`` no longer allows an array to be input as a
+    segmentation image. It must be a ``SegmentationImage`` object.
+    [#1347]
+
+  - ``SegmentationImage`` no longer allows array-like input. It must be
+    a numpy ``ndarray``. [#1347]
+
 
 1.4.0 (2022-03-25)
 ------------------
