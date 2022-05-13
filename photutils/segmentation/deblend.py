@@ -40,12 +40,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
            ``data`` parameter. In this case do not input a ``kernel``,
            otherwise the data will be convolved twice.
 
-    segment_img : `~photutils.segmentation.SegmentationImage` or array_like (int)
-        A segmentation image, either as a
-        `~photutils.segmentation.SegmentationImage` object or an
-        `~numpy.ndarray`, with the same shape as ``data`` where sources
-        are labeled by different positive integer values.  A value of
-        zero is reserved for the background.
+    segment_img : `~photutils.segmentation.SegmentationImage`
+        The segmentation image to deblend.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
@@ -108,7 +104,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     :class:`photutils.segmentation.SourceFinder`
     """
     if not isinstance(segment_img, SegmentationImage):
-        segment_img = SegmentationImage(segment_img)
+        raise ValueError('segment_img must be a SegmentationImage')
 
     if segment_img.shape != data.shape:
         raise ValueError('The data and segmentation image must have '

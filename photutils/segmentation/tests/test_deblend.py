@@ -167,10 +167,6 @@ class TestDeblendSources:
         assert result.nlabels == 3
         assert_allclose(np.nonzero(self.segm3), np.nonzero(result))
 
-    def test_deblend_sources_segm_array(self):
-        result = deblend_sources(self.data, self.segm.data, self.npixels)
-        assert result.nlabels == 2
-
     def test_segment_img_badshape(self):
         segm_wrong = np.ones((2, 2), dtype=int)
         with pytest.raises(ValueError):
