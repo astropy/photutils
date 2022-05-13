@@ -1139,7 +1139,6 @@ class Segment:
         result : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
             The cutout array.
         """
-        data = np.asanyarray(data)
         if data.shape != self._segment_data.shape:
             raise ValueError('data must have the same shape as the '
                              'segmentation array.')
