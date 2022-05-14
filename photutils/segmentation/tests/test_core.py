@@ -148,7 +148,7 @@ class TestSegmentationImage:
     def test_is_consecutive(self):
         assert not self.segm.is_consecutive
 
-        data = [[2, 2, 0], [0, 3, 3], [0, 0, 4]]
+        data = np.array([[2, 2, 0], [0, 3, 3], [0, 0, 4]])
         segm = SegmentationImage(data)
         assert not segm.is_consecutive  # does not start with label=1
 
@@ -167,7 +167,7 @@ class TestSegmentationImage:
             self.segm.check_labels([2, 6])
 
     def test_bbox_1d(self):
-        segm = SegmentationImage([0, 0, 1, 1, 0, 2, 2, 0])
+        segm = SegmentationImage(np.array([0, 0, 1, 1, 0, 2, 2, 0]))
         with pytest.raises(ValueError):
             _ = segm.bbox
 
