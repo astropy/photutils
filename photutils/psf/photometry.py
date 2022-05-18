@@ -422,6 +422,15 @@ class BasicPSFPhotometry:
                                         position=(row['y_0'], row['x_0']),
                                         mode='trim')[0]] = True
 
+            # if NaNs are in the data, no actually fitting takes place
+            # https://github.com/astropy/astropy/pull/12811
+            mask = ~np.isfinite(image)
+            if np.any(mask):
+                warnings.warn('Input data contains non-finite values (NaN '
+                              'or inf), which were automatically ignored.',
+                              AstropyUserWarning)
+                usepixel &= ~mask
+
             fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
                                     image[usepixel])
             param_table = self._model_params2table(fit_model,
