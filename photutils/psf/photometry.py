@@ -187,8 +187,8 @@ class BasicPSFPhotometry:
 
         Returns
         -------
-        residual_image : 2D array-like, `~astropy.io.fits.ImageHDU`, \
-            `~astropy.io.fits.HDUList`
+        residual_image : 2D `~numpy.ndarray`
+            The 2D residual image.
         """
         return self._residual_image
 
@@ -220,14 +220,38 @@ class BasicPSFPhotometry:
                           'consider supplying a specific aperture_radius.',
                           AstropyUserWarning)
 
-    def __call__(self, image, init_guesses=None):
+    @staticmethod
+    def _make_mask(image, mask):
+        if mask is not None:
+            if image.shape != mask.shape:
+                raise ValueError('image and mask must have the same shape')
+
+        # if NaNs are in the data, no actually fitting takes place
+        # https://github.com/astropy/astropy/pull/12811
+        finite_mask = ~np.isfinite(image)
+
+        if mask is not None:
+            mask |= finite_mask
+            if np.any(finite_mask & ~mask):
+                warnings.warn('Input data contains unmasked non-finite '
+                              'values (NaN or inf), which were '
+                              'automatically ignored.', AstropyUserWarning)
+        else:
+            mask = finite_mask
+            if np.any(finite_mask):
+                warnings.warn('Input data contains unmasked non-finite '
+                              'values (NaN or inf), which were '
+                              'automatically ignored.', AstropyUserWarning)
+        return mask
+
+    def __call__(self, image, *, mask=None, init_guesses=None):
         """
         Perform PSF photometry. See `do_photometry` for more details
         including the `__call__` signature.
         """
-        return self.do_photometry(image, init_guesses)
+        return self.do_photometry(image, mask=mask, init_guesses=init_guesses)
 
-    def do_photometry(self, image, init_guesses=None):
+    def do_photometry(self, image, *, mask=None, init_guesses=None):
         """
         Perform PSF photometry in ``image``.
 
@@ -244,10 +268,9 @@ class BasicPSFPhotometry:
 
         Parameters
         ----------
-        image : 2D array-like, `~astropy.io.fits.ImageHDU`, \
-                `~astropy.io.fits.HDUList`
+        image : 2D `~numpy.ndarray`
             Image to perform photometry.
-        init_guesses: `~astropy.table.Table`
+        init_guesses : `~astropy.table.Table`
             Table which contains the initial guesses (estimates) for the
             set of parameters. Columns 'x_0' and 'y_0' which represent
             the positions (in pixel coordinates) for each object must be
@@ -260,6 +283,10 @@ class BasicPSFPhotometry:
             ``extra_output_cols`` the initial values are used; if the columns
             specified in ``extra_output_cols`` are not given in
             ``init_guesses`` then NaNs will be returned.
+        mask : 2D bool `~numpy.ndarray`, optional
+            A boolean mask with the same shape as ``image``, where
+            a `True` value indicates the corresponding element of
+            ``image`` is masked.
 
         Returns
         -------
@@ -273,6 +300,8 @@ class BasicPSFPhotometry:
             covariance matrix. If ``param_cov`` is not present,
             uncertanties are not reported.
         """
+        mask = self._make_mask(image, mask)
+
         if self.bkg_estimator is not None:
             image = image - self.bkg_estimator(image)
 
@@ -303,7 +332,7 @@ class BasicPSFPhotometry:
                                              r=self.aperture_radius)
 
                 init_guesses['flux_0'] = aperture_photometry(
-                    image, apertures)['aperture_sum']
+                    image, apertures, mask=mask)['aperture_sum']
 
             # if extra_output_cols have been given, check whether init_guesses
             # was supplied with extra_output_cols pre-attached and populate
@@ -317,7 +346,7 @@ class BasicPSFPhotometry:
             if self.finder is None:
                 raise ValueError('Finder cannot be None if init_guesses are '
                                  'not given.')
-            sources = self.finder(image)
+            sources = self.finder(image, mask=mask)
             if len(sources) > 0:
                 positions = np.transpose((sources['xcentroid'],
                                           sources['ycentroid']))
@@ -325,7 +354,7 @@ class BasicPSFPhotometry:
                                              r=self.aperture_radius)
 
                 sources['aperture_flux'] = aperture_photometry(
-                    image, apertures)['aperture_sum']
+                    image, apertures, mask=mask)['aperture_sum']
 
                 # init_guesses should be the initial 3 required
                 # parameters (x, y, flux) and then concatenated with any
@@ -351,7 +380,8 @@ class BasicPSFPhotometry:
         else:
             star_groups = self.group_maker(init_guesses)
 
-        output_tab, self._residual_image = self.nstar(image, star_groups)
+        output_tab, self._residual_image = self.nstar(image, star_groups,
+                                                      mask=mask)
         star_groups = star_groups.group_by('group_id')
 
         if hasattr(output_tab, 'update'):  # requires Astropy >= 5.0
@@ -369,7 +399,7 @@ class BasicPSFPhotometry:
 
         return star_groups
 
-    def nstar(self, image, star_groups):
+    def nstar(self, image, star_groups, *, mask=None):
         """
         Fit, as appropriate, a compound or single model to the given
         ``star_groups``. Groups are fitted sequentially from the
@@ -378,7 +408,7 @@ class BasicPSFPhotometry:
 
         Parameters
         ----------
-        image : numpy.ndarray
+        image : 2D `~numpy.ndarray`
             Background-subtracted image.
 
         star_groups : `~astropy.table.Table`
@@ -390,12 +420,17 @@ class BasicPSFPhotometry:
             other parameter in the psf model is free (i.e., the
             ``fixed`` attribute of that parameter is ``False``).
 
+        mask : 2D bool `~numpy.ndarray`, optional
+            A boolean mask with the same shape as ``image``, where
+            a `True` value indicates the corresponding element of
+            ``image`` is masked.
+
         Returns
         -------
         result_tab : `~astropy.table.QTable`
             Astropy table that contains photometry results.
 
-        image : numpy.ndarray
+        image : 2D `~numpy.ndarray`
             Residual image.
         """
         result_tab = QTable()
@@ -422,13 +457,7 @@ class BasicPSFPhotometry:
                                         position=(row['y_0'], row['x_0']),
                                         mode='trim')[0]] = True
 
-            # if NaNs are in the data, no actually fitting takes place
-            # https://github.com/astropy/astropy/pull/12811
-            mask = ~np.isfinite(image)
-            if np.any(mask):
-                warnings.warn('Input data contains non-finite values (NaN '
-                              'or inf), which were automatically ignored.',
-                              AstropyUserWarning)
+            if mask is not None:
                 usepixel &= ~mask
 
             fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
@@ -702,7 +731,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         else:
             self._finder = value
 
-    def do_photometry(self, image, init_guesses=None):
+    def do_photometry(self, image, *, mask=None, init_guesses=None):
         """
         Perform PSF photometry in ``image``.
 
@@ -719,10 +748,9 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
         Parameters
         ----------
-        image : 2D array-like, `~astropy.io.fits.ImageHDU`, \
-                `~astropy.io.fits.HDUList`
+        image : 2D `~numpy.ndarray`
             Image to perform photometry.
-        init_guesses: `~astropy.table.Table`
+        init_guesses : `~astropy.table.Table`
             Table which contains the initial guesses (estimates) for the
             set of parameters. Columns 'x_0' and 'y_0' which represent
             the positions (in pixel coordinates) for each object must be
@@ -735,6 +763,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             ``extra_output_cols`` the initial values are used; if the columns
             specified in ``extra_output_cols`` are not given in
             ``init_guesses`` then NaNs will be returned.
+        mask : 2D bool `~numpy.ndarray`, optional
+            A boolean mask with the same shape as ``image``, where
+            a `True` value indicates the corresponding element of
+            ``image`` is masked.
 
         Returns
         -------
@@ -747,13 +779,16 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             ``fit_info`` with the key ``param_cov``, which contains the
             covariance matrix.
         """
+        mask = super()._make_mask(image, mask)
+
         if init_guesses is not None:
-            table = super().do_photometry(image, init_guesses)
+            table = super().do_photometry(image, mask=mask,
+                                          init_guesses=init_guesses)
             table['iter_detected'] = np.ones(table['x_fit'].shape, dtype=int)
 
             # n_start = 2 because it starts in the second iteration
             # since the first iteration is above
-            output_table = self._do_photometry(n_start=2)
+            output_table = self._do_photometry(n_start=2, mask=mask)
             output_table = vstack([table, output_table])
         else:
             if self.bkg_estimator is not None:
@@ -764,13 +799,13 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             if self.aperture_radius is None:
                 self.set_aperture_radius()
 
-            output_table = self._do_photometry()
+            output_table = self._do_photometry(mask=mask)
 
         output_table.meta = {'version': _get_version_info()}
 
         return QTable(output_table)
 
-    def _do_photometry(self, n_start=1):
+    def _do_photometry(self, n_start=1, mask=None):
         """
         Helper function which performs the iterations of the photometry
         process.
@@ -796,7 +831,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             output_table.add_column(Column(name=init_parname))
             output_table.add_column(Column(name=fit_parname))
 
-        sources = self.finder(self._residual_image)
+        sources = self.finder(self._residual_image, mask=mask)
 
         n = n_start
         while((sources is not None and len(sources) > 0) and
@@ -806,7 +841,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             apertures = CircularAperture(positions,
                                          r=self.aperture_radius)
             sources['aperture_flux'] = aperture_photometry(
-                self._residual_image, apertures)['aperture_sum']
+                self._residual_image, apertures, mask=mask)['aperture_sum']
 
             init_guess_tab = QTable(names=['id', 'x_0', 'y_0', 'flux_0'],
                                     data=[sources['id'], sources['xcentroid'],
@@ -837,7 +872,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             # do not warn if no sources are found beyond the first iteration
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', NoDetectionsWarning)
-                sources = self.finder(self._residual_image)
+                sources = self.finder(self._residual_image, mask=mask)
 
             n += 1
 
