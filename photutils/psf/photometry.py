@@ -347,7 +347,9 @@ class BasicPSFPhotometry:
                 raise ValueError('Finder cannot be None if init_guesses are '
                                  'not given.')
             sources = self.finder(image, mask=mask)
-            if len(sources) > 0:
+            if sources is None:
+                return None
+            else:
                 positions = np.transpose((sources['xcentroid'],
                                           sources['ycentroid']))
                 apertures = CircularAperture(positions,
