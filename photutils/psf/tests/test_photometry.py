@@ -209,7 +209,7 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
                                                 sources['y_0']])
         cp_pos = pos.copy()
 
-        result_tab = phot_proc(image, pos)
+        result_tab = phot_proc(image, init_guesses=pos)
         residual_image = phot_proc.get_residual_image()
         assert 'x_0_unc' not in result_tab.colnames
         assert 'y_0_unc' not in result_tab.colnames
@@ -492,7 +492,7 @@ def test_default_aperture_radius():
     Test psf_photometry with non-Gaussian model, such that it raises a
     warning about aperture_radius.
     """
-    def tophatfinder(image):
+    def tophatfinder(image, mask=None):
         """ Simple top hat finder function for use with a top hat PRF"""
         fluxes = np.unique(image[image > 1])
         table = Table(names=['id', 'xcentroid', 'ycentroid', 'flux'],
@@ -773,7 +773,7 @@ def test_finder_return_none():
     Test psf_photometry with finder that does not return None if no
     sources are detected, to test Iterative PSF fitting.
     """
-    def tophatfinder(image):
+    def tophatfinder(image, mask=None):
         """ Simple top hat finder function for use with a top hat PRF"""
         fluxes = np.unique(image[image > 1])
         table = Table(names=['id', 'xcentroid', 'ycentroid', 'flux'],
@@ -855,5 +855,41 @@ def test_re_use_result_as_initial_guess():
     result_table['flux'] = result_table['flux_fit']
     with pytest.warns(AstropyUserWarning, match='Both init_guesses and finder '
                       'are different than None'):
-        second_result = dao_phot_obj(image, result_table)
+        second_result = dao_phot_obj(image, init_guesses=result_table)
     assert second_result
+
+
+def test_photometry_mask_nan():
+    size = 64
+    sources1 = Table()
+    sources1['flux'] = [800]
+    sources1['x_0'] = [size / 2]
+    sources1['y_0'] = [size / 2]
+    sources1['sigma'] = [6]
+    sources1['theta'] = [0]
+
+    img_shape = (size, size)
+    data = make_gaussian_prf_sources_image(img_shape, sources1)
+    data[30, 20:40] = np.nan
+
+    daogroup = DAOGroup(3.)
+    psf_model = IntegratedGaussianPRF(sigma=2.)
+    psfphot = BasicPSFPhotometry(group_maker=daogroup, finder=None,
+                                 bkg_estimator=None, psf_model=psf_model,
+                                 fitshape=(11, 11))
+
+    init = Table()
+    init['x_0'] = [30]
+    init['y_0'] = [30]
+    init['flux_0'] = [200.]
+
+    mask = ~np.isfinite(data)
+    tbl = psfphot(data, init_guesses=init, mask=mask)
+    assert tbl['x_fit'] != init['x_0']
+    assert tbl['y_fit'] != init['y_0']
+    assert tbl['flux_fit'] != init['flux_0']
+
+    with pytest.warns(AstropyUserWarning, match='Input data contains unmasked '
+                      'non-finite values'):
+        tbl2 = psfphot(data, init_guesses=init)
+        assert tbl == tbl2
