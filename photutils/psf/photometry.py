@@ -269,7 +269,8 @@ class BasicPSFPhotometry:
         Parameters
         ----------
         image : 2D `~numpy.ndarray`
-            Image to perform photometry.
+            Image to perform photometry. Invalid data values (i.e., NaN
+            or inf) are automatically ignored.
         init_guesses : `~astropy.table.Table`
             Table which contains the initial guesses (estimates) for the
             set of parameters. Columns 'x_0' and 'y_0' which represent
@@ -411,7 +412,8 @@ class BasicPSFPhotometry:
         Parameters
         ----------
         image : 2D `~numpy.ndarray`
-            Background-subtracted image.
+            Background-subtracted image. Invalid data values (i.e., NaN
+            or inf) are automatically ignored.
 
         star_groups : `~astropy.table.Table`
             This table must contain the following columns: ``id``,
@@ -751,7 +753,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         Parameters
         ----------
         image : 2D `~numpy.ndarray`
-            Image to perform photometry.
+            Image to perform photometry. Invalid data values (i.e., NaN
+            or inf) are automatically ignored.
         init_guesses : `~astropy.table.Table`
             Table which contains the initial guesses (estimates) for the
             set of parameters. Columns 'x_0' and 'y_0' which represent
