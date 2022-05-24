@@ -859,6 +859,7 @@ def test_re_use_result_as_initial_guess():
     assert second_result
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_photometry_mask_nan():
     size = 64
     sources1 = Table()
