@@ -6,6 +6,11 @@ General
 
 New Features
 ^^^^^^^^^^^^
+- ``photutils.psf``
+
+  - Added a ``mask`` keyword when calling the PSF-fitting classes.
+    [#1350]
+
 - ``photutils.segmentation``
 
   - Added ``SourceFinder`` class, which is a convenience class
@@ -16,6 +21,11 @@ Bug Fixes
 
 API Changes
 ^^^^^^^^^^^
+
+- ``photutils.psf``
+
+  - Invalid data values (i.e., NaN or inf) are now automatically masked
+    when performing PSF fitting. [#1350]
 
 - ``photutils.segmentation``
 
