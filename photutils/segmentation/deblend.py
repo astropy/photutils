@@ -110,23 +110,30 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         raise ValueError('The data and segmentation image must have '
                          'the same shape')
 
+    if mode not in ('exponential', 'linear'):
+        raise ValueError(f'"{mode}" is an invalid mode; mode must be '
+                         '"exponential" or "linear"')
+
     if labels is None:
         labels = segment_img.labels
-    labels = np.atleast_1d(labels)
-    segment_img.check_labels(labels)
+    else:
+        labels = np.atleast_1d(labels)
+        segment_img.check_labels(labels)
 
-    if labels.shape == (0,):
-        raise ValueError('The segmentation image must have at least one '
-                         'non-zero label.')
+    # a source must have at least 2 * npixels to be deblended into
+    # multiple sources, each with a minimum of npixels
+    mask = (segment_img.areas[segment_img.get_indices(labels)]
+            >= (npixels * 2))
+    labels = labels[mask]
 
     if kernel is not None:
         data = _filter_data(data, kernel, mode='constant', fill_value=0.0)
 
-    last_label = segment_img.max_label
     segm_deblended = object.__new__(SegmentationImage)
     segm_deblended._data = np.copy(segment_img.data)
-    for label in labels:
-        source_slice = segment_img.slices[segment_img.get_index(label)]
+    last_label = segment_img.max_label
+    for idx, label in zip(segment_img.get_indices(labels), labels):
+        source_slice = segment_img.slices[idx]
         source_data = data[source_slice]
 
         source_segm = object.__new__(SegmentationImage)
@@ -254,9 +261,6 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     elif mode == 'linear':
         thresholds = source_min + ((source_max - source_min) /
                                    (nlevels + 1)) * steps
-    else:
-        raise ValueError(f'"{mode}" is an invalid mode; mode must be '
-                         '"exponential" or "linear"')
 
     # suppress NoDetectionsWarning during deblending
     warnings.filterwarnings('ignore', category=NoDetectionsWarning)
