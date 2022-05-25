@@ -9,7 +9,7 @@ New Features
 - ``photutils.psf``
 
   - Added a ``mask`` keyword when calling the PSF-fitting classes.
-    [#1350]
+    [#1350, #1351]
 
 - ``photutils.segmentation``
 

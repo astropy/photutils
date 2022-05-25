@@ -864,7 +864,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
             star_groups = self.group_maker(init_guess_tab)
             table, self._residual_image = super().nstar(
-                self._residual_image, star_groups)
+                self._residual_image, star_groups, mask=mask)
 
             star_groups = star_groups.group_by('group_id')
             table = hstack([star_groups, table])
