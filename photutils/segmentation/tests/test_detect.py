@@ -4,7 +4,7 @@ Tests for the detect module.
 """
 
 from astropy.convolution import Gaussian2DKernel
-from astropy.stats import gaussian_fwhm_to_sigma
+from astropy.stats import gaussian_fwhm_to_sigma, SigmaClip
 from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
@@ -24,14 +24,12 @@ REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 class TestDetectThreshold:
     def test_nsigma(self):
         """Test basic nsigma."""
-
         threshold = detect_threshold(DATA, nsigma=0.1)
         ref = 0.4 * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_nsigma_zero(self):
         """Test nsigma=0."""
-
         threshold = detect_threshold(DATA, nsigma=0.0)
         ref = (1. / 3.) * np.ones((3, 3))
         assert_allclose(threshold, ref)
@@ -95,21 +93,21 @@ class TestDetectThreshold:
         Set sigma=10 and iters=1 to prevent sigma clipping after
         applying the mask.
         """
-
         mask = REF1.astype(bool)
+        sigma_clip = SigmaClip(sigma=10, maxiters=1)
         threshold = detect_threshold(DATA, nsigma=1., error=0, mask=mask,
-                                     sigclip_sigma=10, sigclip_iters=1)
+                                     sigma_clip=sigma_clip)
         ref = (1. / 8.) * np.ones((3, 3))
         assert_array_equal(threshold, ref)
 
     def test_image_mask_override(self):
         """Test that image_mask overrides mask_value."""
         mask = REF1.astype(bool)
+        sigma_clip = SigmaClip(sigma=10, maxiters=1)
         with pytest.warns(AstropyDeprecationWarning):
             threshold = detect_threshold(DATA, nsigma=0.1, error=0,
                                          mask_value=0.0,
-                                         mask=mask, sigclip_sigma=10,
-                                         sigclip_iters=1)
+                                         mask=mask, sigma_clip=sigma_clip)
             ref = np.ones((3, 3))
             assert_array_equal(threshold, ref)
 
@@ -128,13 +126,11 @@ class TestDetectSources:
 
     def test_detection(self):
         """Test basic detection."""
-
         segm = detect_sources(self.data, threshold=0.9, npixels=2)
         assert_array_equal(segm.data, self.refdata)
 
     def test_small_sources(self):
         """Test detection where sources are smaller than npixels size."""
-
         with pytest.warns(NoDetectionsWarning, match='No sources were found'):
             detect_sources(self.data, threshold=0.9, npixels=5)
 
@@ -143,7 +139,6 @@ class TestDetectSources:
         Test removal of sources whose size is less than npixels.
         Regression tests for #663.
         """
-
         data = np.zeros((8, 8))
         data[0:4, 0] = 1
         data[0, 0:4] = 1
@@ -173,26 +168,22 @@ class TestDetectSources:
 
     def test_zerothresh(self):
         """Test detection with zero threshold."""
-
         segm = detect_sources(self.data, threshold=0., npixels=2)
         assert_array_equal(segm.data, self.refdata)
 
     def test_zerodet(self):
         """Test detection with large threshold giving no detections."""
-
         with pytest.warns(NoDetectionsWarning, match='No sources were found'):
             detect_sources(self.data, threshold=7, npixels=2)
 
     def test_8connectivity(self):
         """Test detection with connectivity=8."""
-
         data = np.eye(3)
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=8)
         assert_array_equal(segm.data, data)
 
     def test_4connectivity(self):
         """Test detection with connectivity=4."""
-
         data = np.eye(3)
         ref = np.diag([1, 2, 3])
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=4)
@@ -200,7 +191,6 @@ class TestDetectSources:
 
     def test_basic_kernel(self):
         """Test detection with kernel."""
-
         kernel = np.ones((3, 3)) / 9.
         threshold = 0.3
         expected = np.ones((3, 3))
@@ -210,19 +200,16 @@ class TestDetectSources:
 
     def test_npixels_nonint(self):
         """Test if error raises if npixel is non-integer."""
-
         with pytest.raises(ValueError):
             detect_sources(self.data, threshold=1, npixels=0.1)
 
     def test_npixels_negative(self):
         """Test if error raises if npixel is negative."""
-
         with pytest.raises(ValueError):
             detect_sources(self.data, threshold=1, npixels=-1)
 
     def test_connectivity_invalid(self):
         """Test if error raises if connectivity is invalid."""
-
         with pytest.raises(ValueError):
             detect_sources(self.data, threshold=1, npixels=1, connectivity=10)
 
