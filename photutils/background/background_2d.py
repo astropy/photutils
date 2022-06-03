@@ -16,8 +16,8 @@ from numpy.lib.index_tricks import index_exp
 
 from .core import SExtractorBackground, StdBackgroundRMS
 from .interpolators import BkgZoomInterpolator
-from ._utils import nanmedian
 from ..utils import ShepardIDWInterpolator
+from ..utils._stats import nanmedian
 
 __all__ = ['Background2D']
 
