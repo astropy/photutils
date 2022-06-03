@@ -3,31 +3,39 @@
 This module provides tools for detecting sources in an image.
 """
 
+from copy import deepcopy
 import warnings
 
 from astropy.convolution import Gaussian2DKernel, convolve
-from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
+from astropy.stats import gaussian_fwhm_to_sigma, SigmaClip
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
+from ..utils._stats import nanmean, nanstd
 from ..utils.exceptions import NoDetectionsWarning
 
 __all__ = ['detect_threshold', 'detect_sources', 'make_source_mask']
 
 
-@deprecated_renamed_argument('mask_value', None, '1.4', message='Use the '
-                             'mask keyword')
+@deprecated_renamed_argument('mask_value', None, '1.4',
+                             alternative='mask')
+@deprecated_renamed_argument('sigclip_sigma', None, '1.5',
+                             alternative='sigma_clip')
+@deprecated_renamed_argument('sigclip_iters', None, '1.5',
+                             alternative='sigma_clip')
 def detect_threshold(data, nsigma, background=None, error=None, mask=None,
-                     mask_value=None, sigclip_sigma=3.0, sigclip_iters=None):
+                     mask_value=None, sigclip_sigma=3.0, sigclip_iters=10,
+                     sigma_clip=SigmaClip(sigma=3.0, maxiters=10)):
     """
     Calculate a pixel-wise threshold image that can be used to detect
     sources.
 
     This is a simple convenience function that uses sigma-clipped
     statistics to compute a scalar background and noise estimate. In
-    general, one should perform more sophisticated estimates.
+    general, one should perform more sophisticated estimates, e.g.,
+    using `~photutils.background.Background2D`.
 
     Parameters
     ----------
@@ -69,14 +77,20 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
         be ignored if ``mask`` is input.
 
     sigclip_sigma : float, optional
+        Deprecated (use the ``sigma_clip`` keyword).
         The number of standard deviations to use as the clipping limit
         when calculating the image background statistics.
 
     sigclip_iters : int, optional
+        Deprecated (use the ``sigma_clip`` keyword).
         The maximum number of iterations to perform sigma clipping, or
         `None` to clip until convergence is achieved (i.e., continue
         until the last iteration clips nothing) when calculating the
         image background statistics.
+
+    sigma_clip : `astropy.stats.SigmaClip` instance, optional
+        A `~astropy.stats.SigmaClip` object that defines the sigma
+        clipping parameters.
 
     Returns
     -------
@@ -86,31 +100,52 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
 
     See Also
     --------
+    :class:`photutils.background.Background2D`
     :func:`photutils.segmentation.detect_sources`
     :class:`photutils.segmentation.SourceFinder`
 
     Notes
     -----
     The ``mask``, ``mask_value`` (deprecated), ``sigclip_sigma``
-    (deprecated), and ``sigclip_iters`` (deprecated) inputs are used
-    only if it is necessary to estimate ``background`` or ``error``
-    using sigma-clipped background statistics. If ``background``
-    and ``error`` are both input, then ``mask``, ``mask_value``,
-    ``sigclip_sigma``, and ``sigclip_iters`` are ignored.
+    (deprecated), ``sigclip_iters`` (deprecated), and ``sigma_clip``
+    inputs are used only if it is necessary to estimate ``background``
+    or ``error`` using sigma-clipped background statistics. If
+    ``background`` and ``error`` are both input, then ``mask``,
+    ``mask_value``, ``sigclip_sigma``, ``sigclip_iters``, and
+    ``sigma_clip`` are ignored.
+
+    The deprecated ``sigclip_sigma`` and ``sigclip_iters`` keywords
+    should not be used with the ``sigma_clip`` keyword. If they are,
+    then their values will override the corresponding ``sigma_clip``
+    values.
     """
+    if not isinstance(sigma_clip, SigmaClip):
+        raise TypeError('sigma_clip must be a SigmaClip object')
+
+    if sigclip_sigma != sigma_clip.sigma:
+        sigma_clip = deepcopy(sigma_clip)
+        sigma_clip.sigma = sigclip_sigma
+    if sigclip_iters != sigma_clip.maxiters:
+        sigma_clip = deepcopy(sigma_clip)
+        sigma_clip.maxiters = sigclip_iters
+
     if background is None or error is None:
-        data_mean, _, data_std = sigma_clipped_stats(
-            data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
-            maxiters=sigclip_iters)
+        if mask is not None:
+            data = np.ma.MaskedArray(data, mask)
+        if mask_value is not None:
+            data = np.ma.masked_values(data, mask_value)
+
+        clipped_data = sigma_clip(data, masked=False, return_bounds=False,
+                                  copy=True)
 
     if background is None:
-        background = data_mean
+        background = nanmean(clipped_data)
     if not np.isscalar(background) and background.shape != data.shape:
         raise ValueError('If input background is 2D, then it must have the '
                          'same shape as the input data.')
 
     if error is None:
-        error = data_std
+        error = nanstd(clipped_data)
     if not np.isscalar(error) and error.shape != data.shape:
         raise ValueError('If input error is 2D, then it must have the same '
                          'shape as the input data.')
@@ -490,9 +525,9 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
     """
     from scipy import ndimage
 
+    sigma_clip = SigmaClip(sigma=sigclip_sigma, maxiters=sigclip_iters)
     threshold = detect_threshold(data, nsigma, background=None, error=None,
-                                 mask=mask, sigclip_sigma=sigclip_sigma,
-                                 sigclip_iters=sigclip_iters)
+                                 mask=mask, sigma_clip=sigma_clip)
 
     if kernel is None and filter_fwhm is not None:
         kernel_sigma = filter_fwhm * gaussian_fwhm_to_sigma
