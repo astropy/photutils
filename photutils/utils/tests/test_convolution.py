@@ -5,7 +5,6 @@ Tests for the convolution module.
 
 from astropy.convolution import Gaussian2DKernel
 import astropy.units as u
-from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 import pytest
 
@@ -35,7 +34,6 @@ class TestFilterData:
         """
         Test to ensure output is a float array for integer input data.
         """
-
         filt_data = _filter_data(self.data.astype(int),
                                  self.kernel.array.astype(int))
         assert filt_data.dtype == float
@@ -56,16 +54,6 @@ class TestFilterData:
         """
         Test for kernel=None.
         """
-
         kernel = None
         filt_data = _filter_data(self.data, kernel)
         assert_allclose(filt_data, self.data)
-
-    def test_filter_data_check_normalization(self):
-        """
-        Test kernel normalization check.
-        """
-
-        with pytest.warns(AstropyUserWarning) as w:
-            _filter_data(self.data, self.kernel, check_normalization=True)
-        assert len(w) == 1
