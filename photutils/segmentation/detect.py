@@ -6,13 +6,14 @@ This module provides tools for detecting sources in an image.
 from copy import deepcopy
 import warnings
 
-from astropy.convolution import Gaussian2DKernel, convolve
+from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma, SigmaClip
 from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
+from .utils import _make_binary_structure
 from ..utils._stats import nanmean, nanstd
 from ..utils.exceptions import NoDetectionsWarning
 
@@ -152,45 +153,6 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
 
     return (np.broadcast_to(background, data.shape)
             + np.broadcast_to(error * nsigma, data.shape))
-
-
-def _make_binary_structure(ndim, connectivity):
-    """
-    Make a binary structure element.
-
-    Parameters
-    ----------
-    ndim : int
-        The number of array dimensions.
-
-    connectivity : {4, 8}
-        For the case of ``ndim=2``, the type of pixel connectivity used
-        in determining how pixels are grouped into a detected source.
-        The options are 4 or 8 (default). 4-connected pixels touch along
-        their edges. 8-connected pixels touch along their edges or
-        corners. For reference, SourceExtractor uses 8-connected pixels.
-
-    Returns
-    -------
-    array : `~numpy.ndarray`
-        The binary structure element. If ``ndim <= 2`` an array of int
-        is returned, otherwise an array of bool is returned.
-    """
-    if ndim == 1:
-        selem = np.array((1, 1, 1))
-    elif ndim == 2:
-        if connectivity == 4:
-            selem = np.array(((0, 1, 0), (1, 1, 1), (0, 1, 0)))
-        elif connectivity == 8:
-            selem = np.ones((3, 3), dtype=int)
-        else:
-            raise ValueError(f'Invalid connectivity={connectivity}.  '
-                             'Options are 4 or 8.')
-    else:
-        from scipy.ndimage import generate_binary_structure
-        selem = generate_binary_structure(ndim, 1)
-
-    return selem
 
 
 def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
@@ -424,12 +386,13 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
     .. plot::
         :include-source:
 
-        from astropy.convolution import Gaussian2DKernel, convolve
-        from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
+        from astropy.convolution import convolve
+        from astropy.stats import sigma_clipped_stats
         from astropy.visualization import simple_norm
         import matplotlib.pyplot as plt
         from photutils.datasets import make_100gaussians_image
-        from photutils.segmentation import detect_threshold, detect_sources
+        from photutils.segmentation import (detect_threshold, detect_sources,
+                                            make_2dgaussian_kernel)
 
         # make a simulated image
         data = make_100gaussians_image()
@@ -443,9 +406,8 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
 
         # detect the sources
         threshold = 3. * std
-        sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
-        kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
-        convolved_data = convolve(data, kernel, normalize_kernel=True)
+        kernel = make_2dgaussian_kernel(3.0, size=3)  # FWHM = 3.
+        convolved_data = convolve(data, kernel)
         segm = detect_sources(convolved_data, threshold, npixels=5)
 
         # plot the image and the segmentation image

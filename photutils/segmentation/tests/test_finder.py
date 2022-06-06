@@ -3,11 +3,11 @@
 Tests for the finder module.
 """
 
-from astropy.convolution import Gaussian2DKernel, convolve
-from astropy.stats import gaussian_fwhm_to_sigma
+from astropy.convolution import convolve
 import pytest
 
 from ..finder import SourceFinder
+from ..utils import make_2dgaussian_kernel
 from ...datasets import make_100gaussians_image
 from ...utils.exceptions import NoDetectionsWarning
 from ...utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
@@ -16,8 +16,7 @@ from ...utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourceFinder:
     data = make_100gaussians_image() - 5.0  # subtract background
-    sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
-    kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
+    kernel = make_2dgaussian_kernel(3., size=5)
     convolved_data = convolve(data, kernel, normalize_kernel=True)
     threshold = 1.5 * 2.0
     npixels = 10
@@ -31,7 +30,7 @@ class TestSourceFinder:
     def test_no_deblend(self):
         finder = SourceFinder(npixels=self.npixels, deblend=False)
         segm = finder(self.convolved_data, self.threshold)
-        assert segm.nlabels == 86
+        assert segm.nlabels == 85
 
     def test_no_sources(self):
         finder = SourceFinder(npixels=self.npixels, deblend=True)

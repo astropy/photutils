@@ -54,11 +54,10 @@ pixel) noise level:
 Next, let's convolve the data with a 2D Gaussian kernel with a FWHM of 3
 pixels::
 
-    >>> from astropy.convolution import Gaussian2DKernel, convolve
-    >>> from astropy.stats import gaussian_fwhm_to_sigma
-    >>> sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
-    >>> kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
-    >>> convolved_data = convolve(data, kernel, normalize_kernel=True)
+    >>> from astropy.convolution import convolve
+    >>> from photutils.segmentation import make_2dgaussian_kernel
+    >>> kernel = make_2dgaussian_kernel(3.0, size=5)  # FWHM = 3.
+    >>> convolved_data = convolve(data, kernel)
 
 Now we are ready to detect the sources in the background-subtracted
 convolved image. Let's find sources that have 10 connected pixels that
@@ -106,14 +105,13 @@ image showing the detected sources:
 
 .. plot::
 
-    from astropy.convolution import Gaussian2DKernel, convolve
-    from astropy.stats import gaussian_fwhm_to_sigma
+    from astropy.convolution import convolve
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import detect_sources
+    from photutils.segmentation import detect_sources, make_2dgaussian_kernel
 
     data = make_100gaussians_image()
 
@@ -124,9 +122,8 @@ image showing the detected sources:
 
     threshold = 1.5 * bkg.background_rms
 
-    sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
-    kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
-    convolved_data = convolve(data, kernel, normalize_kernel=True)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
 
     segment_map = detect_sources(convolved_data, threshold, npixels=10)
 
@@ -177,14 +174,14 @@ deblended segmentation image:
 
 .. plot::
 
-    from astropy.convolution import Gaussian2DKernel, convolve
-    from astropy.stats import gaussian_fwhm_to_sigma
+    from astropy.convolution import convolve
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import detect_sources, deblend_sources
+    from photutils.segmentation import (detect_sources, deblend_sources,
+                                        make_2dgaussian_kernel)
 
     data = make_100gaussians_image()
 
@@ -195,9 +192,8 @@ deblended segmentation image:
 
     threshold = 1.5 * bkg.background_rms
 
-    sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
-    kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
-    convolved_data = convolve(data, kernel, normalize_kernel=True)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
 
     npixels = 10
     segment_map = detect_sources(convolved_data, threshold, npixels=npixels)
@@ -215,14 +211,14 @@ Let's plot one of the deblended sources:
 
 .. plot::
 
-    from astropy.convolution import Gaussian2DKernel, convolve
-    from astropy.stats import gaussian_fwhm_to_sigma
+    from astropy.convolution import convolve
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import detect_sources, deblend_sources
+    from photutils.segmentation import (detect_sources, deblend_sources,
+                                        make_2dgaussian_kernel)
 
     data = make_100gaussians_image()
 
@@ -233,9 +229,8 @@ Let's plot one of the deblended sources:
 
     threshold = 1.5 * bkg.background_rms
 
-    sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
-    kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
-    convolved_data = convolve(data, kernel, normalize_kernel=True)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
 
     npixels = 10
     segment_map = detect_sources(convolved_data, threshold, npixels=npixels)
@@ -357,17 +352,17 @@ properties are shown below:
     label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
                               ...
     ----- --------- --------- ... --------------- --------- ------------
-        1    235.31      1.44 ...             nan    506.17          nan
-        2    493.92      5.79 ...             nan    540.29          nan
-        3    207.42      9.81 ...             nan    666.61          nan
-        4    364.86     11.11 ...             nan    705.10          nan
+        1    235.31      1.45 ...             nan    506.24          nan
+        2    493.92      5.79 ...             nan    540.31          nan
+        3    207.42      9.81 ...             nan    666.76          nan
+        4    364.86     11.11 ...             nan    704.23          nan
         5    258.27     11.94 ...             nan    661.22          nan
       ...       ...       ... ...             ...       ...          ...
-       90    419.52    216.55 ...             nan    841.21          nan
-       91     74.54    259.86 ...             nan    865.42          nan
-       92     82.58    267.53 ...             nan    785.81          nan
-       93    433.90    280.73 ...             nan    638.76          nan
-       94    434.08    288.90 ...             nan    922.73          nan
+       90    419.52    216.55 ...             nan    842.48          nan
+       91     74.55    259.86 ...             nan    865.56          nan
+       92     82.56    267.55 ...             nan    787.72          nan
+       93    433.88    280.75 ...             nan    652.12          nan
+       94    434.07    288.90 ...             nan    917.41          nan
     Length = 94 rows
 
 The error columns are NaN because we did not input an error array (see
@@ -393,13 +388,13 @@ of each source) on the data:
 
 .. plot::
 
-    from astropy.convolution import Gaussian2DKernel, convolve
-    from astropy.stats import gaussian_fwhm_to_sigma
+    from astropy.convolution import convolve
     from astropy.visualization import simple_norm
     import matplotlib.pyplot as plt
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import SourceFinder, SourceCatalog
+    from photutils.segmentation import (SourceFinder, SourceCatalog,
+                                        make_2dgaussian_kernel)
 
     data = make_100gaussians_image()
 
@@ -410,9 +405,8 @@ of each source) on the data:
 
     threshold = 1.5 * bkg.background_rms
 
-    sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
-    kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
-    convolved_data = convolve(data, kernel, normalize_kernel=True)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
 
     npixels = 10
     finder = SourceFinder(npixels=npixels)
@@ -450,12 +444,12 @@ label numbers in the segmentation image:
     label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
                               ...
     ----- --------- --------- ... --------------- --------- ------------
-        1    235.31      1.44 ...             nan    506.17          nan
+        1    235.31      1.45 ...             nan    506.24          nan
         5    258.27     11.94 ...             nan    661.22          nan
-       20    346.99     66.83 ...             nan    811.49          nan
-       50      5.29    178.94 ...             nan    614.47          nan
-       75     42.96    249.88 ...             nan    616.23          nan
-       80    130.75    297.11 ...             nan    246.91          nan
+       20    346.99     66.83 ...             nan    811.70          nan
+       50      5.29    178.94 ...             nan    614.46          nan
+       75     42.96    249.88 ...             nan    617.18          nan
+       80    130.75    297.10 ...             nan    246.91          nan
 
 By default, the :meth:`~photutils.segmentation.SourceCatalog.to_table`
 includes only a small subset of source properties. The output table
@@ -476,12 +470,12 @@ properties can be customized in the `~astropy.table.QTable` using the
     label xcentroid ycentroid area segment_flux
                               pix2
     ----- --------- --------- ---- ------------
-        1  235.3112    1.4439 47.0     445.6095
-        5  258.2728   11.9414 79.0     472.4109
-       20  346.9917   66.8322 98.0     571.3138
-       50    5.2914  178.9445 57.0     257.4050
-       75   42.9645  249.8834 79.0     428.7122
-       80  130.7530  297.1056 25.0     108.7877
+        1  235.3128    1.4483 47.0     445.6095
+        5  258.2727   11.9418 79.0     472.4109
+       20  346.9920   66.8323 98.0     571.3138
+       50    5.2910  178.9449 57.0     257.4050
+       75   42.9629  249.8825 79.0     428.7122
+       80  130.7542  297.1048 25.0     108.7877
 
 A `~astropy.wcs.WCS` transformation can also be input to
 :class:`~photutils.segmentation.SourceCatalog` via the ``wcs`` keyword,

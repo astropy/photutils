@@ -72,13 +72,14 @@ class SourceFinder:
     .. plot::
         :include-source:
 
-        from astropy.convolution import Gaussian2DKernel, convolve
+        from astropy.convolution import convolve
         from astropy.stats import gaussian_fwhm_to_sigma
         from astropy.visualization import simple_norm
         import matplotlib.pyplot as plt
         from photutils.background import Background2D, MedianBackground
         from photutils.datasets import make_100gaussians_image
-        from photutils.segmentation import SourceFinder
+        from photutils.segmentation import (SourceFinder,
+                                            make_2dgaussian_kernel)
 
         # make a simulated image
         data = make_100gaussians_image()
@@ -90,9 +91,8 @@ class SourceFinder:
         data -= bkg.background
 
         # convolve the data
-        sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
-        kernel = Gaussian2DKernel(sigma, x_size=5, y_size=5)
-        convolved_data = convolve(data, kernel, normalize_kernel=True)
+        kernel = make_2dgaussian_kernel(3., size=5)  # FWHM = 3.
+        convolved_data = convolve(data, kernel)
 
         # detect the sources
         threshold = 1.5 * bkg.background_rms  # per-pixel threshold

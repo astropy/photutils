@@ -11,7 +11,7 @@ from astropy.nddata.utils import extract_array, subpixel_indices
 from astropy.table import Table
 import numpy as np
 
-from ..segmentation._utils import mask_to_mirrored_value
+from ..segmentation.utils import _mask_to_mirrored_value
 
 __all__ = ['DiscretePRF', 'Reproject']
 
@@ -280,7 +280,7 @@ class DiscretePRF(Fittable2DModel):
                                         prf_nan[size // 2, size // 2]):
                                     continue
                                 else:
-                                    extracted_prf = mask_to_mirrored_value(
+                                    extracted_prf = _mask_to_mirrored_value(
                                         extracted_prf, prf_nan,
                                         (size // 2, size // 2))
                         # Normalize and add extracted PRF to data cube
