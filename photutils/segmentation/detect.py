@@ -6,13 +6,14 @@ This module provides tools for detecting sources in an image.
 from copy import deepcopy
 import warnings
 
-from astropy.convolution import Gaussian2DKernel, convolve
+from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma, SigmaClip
 from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
+from .utils import _make_binary_structure
 from ..utils._stats import nanmean, nanstd
 from ..utils.exceptions import NoDetectionsWarning
 
@@ -152,45 +153,6 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
 
     return (np.broadcast_to(background, data.shape)
             + np.broadcast_to(error * nsigma, data.shape))
-
-
-def _make_binary_structure(ndim, connectivity):
-    """
-    Make a binary structure element.
-
-    Parameters
-    ----------
-    ndim : int
-        The number of array dimensions.
-
-    connectivity : {4, 8}
-        For the case of ``ndim=2``, the type of pixel connectivity used
-        in determining how pixels are grouped into a detected source.
-        The options are 4 or 8 (default). 4-connected pixels touch along
-        their edges. 8-connected pixels touch along their edges or
-        corners. For reference, SourceExtractor uses 8-connected pixels.
-
-    Returns
-    -------
-    array : `~numpy.ndarray`
-        The binary structure element. If ``ndim <= 2`` an array of int
-        is returned, otherwise an array of bool is returned.
-    """
-    if ndim == 1:
-        selem = np.array((1, 1, 1))
-    elif ndim == 2:
-        if connectivity == 4:
-            selem = np.array(((0, 1, 0), (1, 1, 1), (0, 1, 0)))
-        elif connectivity == 8:
-            selem = np.ones((3, 3), dtype=int)
-        else:
-            raise ValueError(f'Invalid connectivity={connectivity}.  '
-                             'Options are 4 or 8.')
-    else:
-        from scipy.ndimage import generate_binary_structure
-        selem = generate_binary_structure(ndim, 1)
-
-    return selem
 
 
 def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
