@@ -990,6 +990,50 @@ class SegmentationImage:
             remove_labels = list(set(remove_labels) - set(interior_labels))
         self.remove_labels(remove_labels, relabel=relabel)
 
+    def make_source_mask(self, footprint=None):
+        """
+        Make a source mask from the segmentation image.
+
+        Use the ``footprint`` keyword to perform binary dilation on the
+        segmentation image.
+
+        Parameters
+        ----------
+        footprint : 2D `~numpy.ndarray`, optional
+            The local footprint used for the source dilation. Non-zero
+            elements are considered `True`.  If `None`, then no dilation
+            is performed.
+
+        Returns
+        -------
+        mask : 2D bool `~numpy.ndarray`
+            A 2D boolean image containing the source mask.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from photutils import SegmentationImage
+        >>> from photutils.utils import circular_footprint
+        >>> data = np.zeros((7, 7), dtype=int)
+        >>> data[3, 3] = 1
+        >>> segm = SegmentationImage(data)
+        >>> footprint = circular_footprint(radius=3)
+        >>> mask = segm.make_source_mask(footprint=footprint)
+        >>> mask
+        array([[False, False, False,  True, False, False, False],
+               [False,  True,  True,  True,  True,  True, False],
+               [False,  True,  True,  True,  True,  True, False],
+               [ True,  True,  True,  True,  True,  True,  True],
+               [False,  True,  True,  True,  True,  True, False],
+               [False,  True,  True,  True,  True,  True, False],
+               [False, False, False,  True, False, False, False]])
+        """
+        if footprint is None:
+            return self._data.astype(bool)
+
+        from scipy.ndimage import binary_dilation
+        return binary_dilation(self._data.astype(bool), structure=footprint)
+
     def outline_segments(self, mask_background=False):
         """
         Outline the labeled segments.
