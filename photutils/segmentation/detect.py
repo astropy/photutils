@@ -386,12 +386,13 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
     .. plot::
         :include-source:
 
-        from astropy.convolution import Gaussian2DKernel, convolve
-        from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
+        from astropy.convolution import convolve
+        from astropy.stats import sigma_clipped_stats
         from astropy.visualization import simple_norm
         import matplotlib.pyplot as plt
         from photutils.datasets import make_100gaussians_image
-        from photutils.segmentation import detect_threshold, detect_sources
+        from photutils.segmentation import (detect_threshold, detect_sources,
+                                            make_2dgaussian_kernel)
 
         # make a simulated image
         data = make_100gaussians_image()
@@ -405,9 +406,8 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
 
         # detect the sources
         threshold = 3. * std
-        sigma = 3. * gaussian_fwhm_to_sigma  # FWHM = 3.
-        kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
-        convolved_data = convolve(data, kernel, normalize_kernel=True)
+        kernel = make_2dgaussian_kernel(3.0, size=3)  # FWHM = 3.
+        convolved_data = convolve(data, kernel)
         segm = detect_sources(convolved_data, threshold, npixels=5)
 
         # plot the image and the segmentation image

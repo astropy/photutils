@@ -10,9 +10,10 @@ import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
 import pytest
 
-from ...utils.exceptions import NoDetectionsWarning
 from ..detect import detect_threshold, detect_sources, make_source_mask
+from ..utils import make_2dgaussian_kernel
 from ...datasets import make_4gaussians_image
+from ...utils.exceptions import NoDetectionsWarning
 from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
@@ -123,9 +124,7 @@ class TestDetectSources:
                               [0, 0, 0]]).astype(float)
         self.refdata = np.array([[0, 1, 0], [0, 1, 0], [0, 0, 0]])
 
-        fwhm2sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
-        kernel = Gaussian2DKernel(2. * fwhm2sigma, x_size=3, y_size=3)
-        kernel.normalize()
+        kernel = make_2dgaussian_kernel(2.0, size=3)
         self.kernel = kernel
 
     def test_detection(self):
