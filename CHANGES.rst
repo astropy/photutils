@@ -21,6 +21,8 @@ New Features
   - Added a ``make_source_mask`` method to ``SegmentationImage``.
     [#1355]
 
+  - Added a ``make_2dgaussian_kernel`` convenience function. [#1356]
+
 - ``photutils.utils``
 
   - Added a ``circular_footprint`` convenience function. [#1355]
