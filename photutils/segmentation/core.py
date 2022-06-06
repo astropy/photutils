@@ -110,7 +110,6 @@ class SegmentationImage:
 
     @data.setter
     def data(self, value):
-        value = np.asarray(value)
         if not np.issubdtype(value.dtype, np.integer):
             raise TypeError('data must be have integer type')
 

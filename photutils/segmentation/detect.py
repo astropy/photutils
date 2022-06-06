@@ -256,43 +256,61 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
         # ignore RuntimeWarning caused by > comparison when data contains NaNs
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
-            data2 = data > threshold
+            segment_img = data > threshold
 
         if mask is not None:
-            data2 &= ~mask
+            segment_img &= ~mask
 
         # return if threshold was too high to detect any sources
-        if np.count_nonzero(data2) == 0:
+        if np.count_nonzero(segment_img) == 0:
             warnings.warn('No sources were found.', NoDetectionsWarning)
             if not deblend_skip:
                 segms.append(None)
             continue
 
-        segm_img, _ = ndimage.label(data2, structure=selem)
+        # this is faster than recasting segment_img to int and using
+        # output=segment_img
+        segment_img, nlabels = ndimage.label(segment_img, structure=selem)
+        labels = np.arange(nlabels) + 1
 
         # remove objects with less than npixels
-        # NOTE:  for typical data, making the cutout images is ~10x faster
-        # than using segm_img directly
-        segm_slices = ndimage.find_objects(segm_img)
-        for i, slices in enumerate(segm_slices):
-            cutout = segm_img[slices]
-            segment_mask = (cutout == (i + 1))
+        # NOTE: making cutout images and setting their pixels to 0 is
+        # ~10x faster than using segment_img directly and ~2x faster
+        # than using ndimage.sum_labels.
+        slices = ndimage.find_objects(segment_img)
+        segm_labels = []
+        segm_slices = []
+        for label, slc in zip(labels, slices):
+            cutout = segment_img[slc]
+            segment_mask = (cutout == label)
             if np.count_nonzero(segment_mask) < npixels:
                 cutout[segment_mask] = 0
+            else:
+                segm_labels.append(label)
+                segm_slices.append(slc)
 
-        if np.count_nonzero(segm_img) == 0:
+        if np.count_nonzero(segment_img) == 0:
             warnings.warn('No sources were found.', NoDetectionsWarning)
             if not deblend_skip:
                 segms.append(None)
             continue
 
+        # relabel the segmentation image with consecutive numbers
+        nlabels = len(segm_labels)
+        if len(labels) != nlabels:
+            label_map = np.zeros(np.max(labels) + 1, dtype=int)
+            labels = np.arange(nlabels) + 1
+            label_map[segm_labels] = labels
+            segment_img = label_map[segment_img]
+
         segm = object.__new__(SegmentationImage)
-        segm._data = segm_img
+        segm._data = segment_img
+        segm.__dict__['labels'] = labels
+        segm.__dict__['slices'] = segm_slices
 
         if deblend_skip and segm.nlabels == 1:
             continue
 
-        segm.relabel_consecutive()
         segms.append(segm)
 
     return segms
