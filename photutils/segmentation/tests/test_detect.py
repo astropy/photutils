@@ -242,8 +242,10 @@ class TestMakeSourceMask:
         self.data = make_4gaussians_image()
 
     def test_dilate_size(self):
-        mask1 = make_source_mask(self.data, 5, 10)
-        mask2 = make_source_mask(self.data, 5, 10, dilate_size=20)
+        with pytest.warns(AstropyDeprecationWarning):
+            mask1 = make_source_mask(self.data, 5, 10)
+        with pytest.warns(AstropyDeprecationWarning):
+            mask2 = make_source_mask(self.data, 5, 10, dilate_size=20)
         assert np.count_nonzero(mask2) > np.count_nonzero(mask1)
 
     def test_kernel(self):
@@ -252,10 +254,11 @@ class TestMakeSourceMask:
                                      filter_size=3)
         sigma = 2 * gaussian_fwhm_to_sigma
         kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
-        mask2 = make_source_mask(self.data, 5, 10, kernel=kernel)
+        with pytest.warns(AstropyDeprecationWarning):
+            mask2 = make_source_mask(self.data, 5, 10, kernel=kernel)
         assert_allclose(mask1, mask2)
 
     def test_no_detections(self):
-        with pytest.warns(NoDetectionsWarning):
+        with pytest.warns(AstropyDeprecationWarning):
             mask = make_source_mask(self.data, 100, 100)
             assert np.count_nonzero(mask) == 0

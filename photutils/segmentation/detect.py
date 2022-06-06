@@ -8,7 +8,7 @@ import warnings
 
 from astropy.convolution import Gaussian2DKernel, convolve
 from astropy.stats import gaussian_fwhm_to_sigma, SigmaClip
-from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -461,6 +461,7 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
                            connectivity=connectivity, mask=mask)[0]
 
 
+@deprecated('1.5.0', alternative='SegmentationImage.make_source_mask')
 @deprecated_renamed_argument('filter_fwhm', None, '1.4', message='Use the '
                              'kernel keyword')
 @deprecated_renamed_argument('filter_size', None, '1.4', message='Use the '
