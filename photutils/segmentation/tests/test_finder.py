@@ -3,8 +3,7 @@
 Tests for the finder module.
 """
 
-from astropy.convolution import Gaussian2DKernel, convolve
-from astropy.stats import gaussian_fwhm_to_sigma
+from astropy.convolution import convolve
 import pytest
 
 from ..finder import SourceFinder
