@@ -1,11 +1,67 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides tools for detecting sources in an image.
+This module provides utility functions for image segmentation.
 """
 
 import numpy as np
 
-__all__ = []
+from astropy.convolution import Gaussian2DKernel
+from astropy.stats import gaussian_fwhm_to_sigma
+
+from ..utils._parameters import as_pair
+
+__all__ = ['make_2dgaussian_kernel']
+
+
+def make_2dgaussian_kernel(fwhm, size, mode='oversample', oversampling=10):
+    """
+    Make a normalized 2D circular Gaussian kernel.
+
+    The kernel must have odd sizes in both X and Y, be centered in the
+    central pixel, and normalized to sum to 1.
+
+    Parameters
+    ----------
+    fwhm : float
+        The full-width at half-maximum (FWHM) of the 2D circular
+        Gaussian kernel.
+
+    size : int or (2,) int array_like
+        The size of the kernel along each axis. If ``size`` is a scalar
+        then a square size of ``size`` will be used. If ``size`` has two
+        elements, they should be in ``(ny, nx)`` (i.e., array shape)
+        order.
+
+    mode : {'oversample', 'center', 'linear_interp', 'integrate'}, optional
+        The mode to use for discretizing the 2D Gaussian model:
+            * 'oversample' (default)
+              Discretize model by taking the average on an oversampled
+              grid.
+            * 'center'
+              Discretize model by taking the value at the center of the
+              bin.
+            * 'linear_interp'
+              Discretize model by performing a bilinear interpolation
+              between the values at the corners of the bin.
+            * 'integrate'
+              Discretize model by integrating the model over the bin.
+
+    oversampling : int, optional
+        The oversampling factor used when ``mode='oversample'``.
+
+    Returns
+    -------
+    kernel : `astropy.convolution.Kernel2D`
+        The output smoothing kernel, normalized such that it sums to 1.
+    """
+    ysize, xsize = as_pair('size', size, lower_bound=(0, 0))
+
+    kernel = Gaussian2DKernel(fwhm * gaussian_fwhm_to_sigma,
+                              x_size=xsize, y_size=ysize, mode=mode,
+                              factor=oversampling)
+    kernel.normalize(mode='integral')  # ensure kernel sums to 1
+
+    return kernel
 
 
 def _make_binary_structure(ndim, connectivity):

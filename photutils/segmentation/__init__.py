@@ -10,3 +10,4 @@ from .core import *  # noqa
 from .deblend import *  # noqa
 from .detect import *  # noqa
 from .finder import *  # noqa
+from .utils import *  # noqa
