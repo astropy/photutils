@@ -9,6 +9,7 @@ from numpy.testing import assert_allclose, assert_equal
 import pytest
 
 from ..core import Segment, SegmentationImage
+from ...utils import circular_footprint
 from ...utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 
@@ -57,6 +58,11 @@ class TestSegmentationImage:
         # contains a negative value
         data = np.arange(-1, 8).reshape(3, 3).astype(int)
         with pytest.raises(ValueError):
+            SegmentationImage(data)
+
+        # is not ndarray
+        data = [[1, 1], [0, 1]]
+        with pytest.raises(TypeError):
             SegmentationImage(data)
 
     @pytest.mark.parametrize('label', [0, -1, 2])
@@ -315,6 +321,24 @@ class TestSegmentationImage:
         mask = np.zeros((3, 3), dtype=bool)
         with pytest.raises(ValueError):
             segm.remove_masked_labels(mask)
+
+    def test_make_source_mask(self):
+        segm_array = np.zeros((7, 7)).astype(int)
+        segm_array[3, 3] = 1
+        segm = SegmentationImage(segm_array)
+        footprint = circular_footprint(radius=3)
+        mask = segm.make_source_mask(footprint=footprint)
+        expected = np.array([[0, 0, 0, 1, 0, 0, 0],
+                             [0, 1, 1, 1, 1, 1, 0],
+                             [0, 1, 1, 1, 1, 1, 0],
+                             [1, 1, 1, 1, 1, 1, 1],
+                             [0, 1, 1, 1, 1, 1, 0],
+                             [0, 1, 1, 1, 1, 1, 0],
+                             [0, 0, 0, 1, 0, 0, 0]])
+        assert_equal(mask.astype(int), expected)
+
+        mask = segm.make_source_mask(footprint=None)
+        assert_equal(mask, segm.data.astype(bool))
 
     def test_outline_segments(self):
         segm_array = np.zeros((5, 5)).astype(int)

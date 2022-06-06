@@ -5,9 +5,11 @@ Tests for the _utils module.
 
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
+import pytest
 
 from ..utils import (make_2dgaussian_kernel, _make_binary_structure,
                      _mask_to_mirrored_value)
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 def test_make_2dgaussian_kernel():
@@ -19,6 +21,7 @@ def test_make_2dgaussian_kernel():
     assert_allclose(kernel.array.sum(), 1.)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_make_2dgaussian_kernel_modes():
     kernel = make_2dgaussian_kernel(3.0, 5)
     assert_allclose(kernel.array.sum(), 1.)
@@ -33,6 +36,7 @@ def test_make_2dgaussian_kernel_modes():
     assert_allclose(kernel.array.sum(), 1.)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_make_binary_structure():
     selem = _make_binary_structure(1, 4)
     assert_allclose(selem, np.array([1, 1, 1]))

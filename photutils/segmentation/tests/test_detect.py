@@ -111,6 +111,10 @@ class TestDetectThreshold:
             ref = np.ones((3, 3))
             assert_array_equal(threshold, ref)
 
+    def test_invalid_sigma_clip(self):
+        with pytest.raises(TypeError):
+            detect_threshold(DATA, 1.0, sigma_clip=10)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestDetectSources:
@@ -230,6 +234,11 @@ class TestDetectSources:
         segm1 = detect_sources(data, 1., 1.)
         segm2 = detect_sources(data, 1., 1., mask=mask)
         assert segm2.areas[0] == segm1.areas[0] - mask.sum()
+
+        # mask with all True
+        with pytest.raises(ValueError):
+            mask = np.ones(data.shape, dtype=bool)
+            detect_sources(data, 1., 1., mask=mask)
 
     def test_mask_shape(self):
         with pytest.raises(ValueError):
