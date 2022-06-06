@@ -4,9 +4,10 @@ Tests for the _utils module.
 """
 
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
-from ..utils import make_2dgaussian_kernel, _mask_to_mirrored_value
+from ..utils import (make_2dgaussian_kernel, _make_binary_structure,
+                     _mask_to_mirrored_value)
 
 
 def test_make_2dgaussian_kernel():
@@ -30,6 +31,24 @@ def test_make_2dgaussian_kernel_modes():
 
     kernel = make_2dgaussian_kernel(3.0, 5, mode='integrate')
     assert_allclose(kernel.array.sum(), 1.)
+
+
+def test_make_binary_structure():
+    selem = _make_binary_structure(1, 4)
+    assert_allclose(selem, np.array([1, 1, 1]))
+
+    selem = _make_binary_structure(3, 4)
+    assert_equal(selem[0, 0], np.array([False, False, False]))
+    expected = np.array([[[0, 0, 0],
+                          [0, 1, 0],
+                          [0, 0, 0]],
+                         [[0, 1, 0],
+                          [1, 1, 1],
+                          [0, 1, 0]],
+                         [[0, 0, 0],
+                          [0, 1, 0],
+                          [0, 0, 0]]])
+    assert_equal(selem.astype(int), expected)
 
 
 def test_mask_to_mirrored_value():
