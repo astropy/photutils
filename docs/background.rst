@@ -121,27 +121,32 @@ on the background and background noise. Therefore, this method for
 estimating the background and background RMS requires an iterative
 procedure.
 
-Photutils provides a convenience function,
-:func:`~photutils.segmentation.make_source_mask`, for creating source
-masks.  It uses sigma-clipped statistics as the first estimate of the
-background and noise levels for the source detection.  Sources are
-then identified using image segmentation.  Finally, the source masks
-are dilated to mask more extended regions around the detected sources.
-
-Here we use an aggressive 2-sigma detection threshold to maximize the
-source detections and dilate using a 11x11 box:
+One method to create a source mask is to use a
+:ref:`segmentation image <image_segmentation>`. Here we use the
+`~photutils.segmentation.detect_threshold` convenience function to get a
+rough estimate of the threshold at the 2-sigma background noise level.
+Then we use the `~photutils.segmentation.detect_sources` function to
+generate a `~photutils.segmentation.SegmentationImage`. Finally, we use
+the :meth:`~photutils.segmentation.SegmentationImage.make_source_mask`
+method with a circular dilation footprint to create the source mask:
 
 .. doctest-requires:: scipy
 
-    >>> from photutils.segmentation import make_source_mask
-    >>> mask = make_source_mask(data, nsigma=2, npixels=5, dilate_size=11)
+    >>> from astropy.stats import sigma_clipped_stats, SigmaClip
+    >>> from photutils.segmentation import detect_threshold, detect_sources
+    >>> from photutils.utils import circular_footprint
+    >>> sigma_clip = SigmaClip(sigma=3.0, maxiters=10)
+    >>> threshold = detect_threshold(data, nsigma=2.0, sigma_clip=sigma_clip)
+    >>> segment_img = detect_sources(data, threshold, npixels=10)
+    >>> footprint = circular_footprint(radius=10)
+    >>> mask = segment_img.make_source_mask(footprint=footprint)
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
     >>> print((mean, median, std))  # doctest: +FLOAT_CMP
-    (5.001013475475569, 5.000584905604376, 1.970887100626572)
+    (4.994042038715669, 4.991333562774164, 1.9699473426119296)
 
 Of course, the source detection and masking procedure can be iterated
-further.  Even with one iteration we are within 0.02% of the true
-background and 1.5% of the true background RMS.
+further. Even with one iteration we are within 0.2% of the true
+background value and 1.5% of the true background RMS.
 
 .. _scipy: https://www.scipy.org/
 
