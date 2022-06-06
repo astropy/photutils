@@ -6,7 +6,30 @@ Tests for the _utils module.
 import numpy as np
 from numpy.testing import assert_allclose
 
-from ..utils import _mask_to_mirrored_value
+from ..utils import make_2dgaussian_kernel, _mask_to_mirrored_value
+
+
+def test_make_2dgaussian_kernel():
+    kernel = make_2dgaussian_kernel(1.0, size=3)
+    expected = np.array([[0.01411809, 0.0905834, 0.01411809],
+                         [0.0905834, 0.58119403, 0.0905834],
+                         [0.01411809, 0.0905834, 0.01411809]])
+    assert_allclose(kernel.array, expected, atol=1.e-6)
+    assert_allclose(kernel.array.sum(), 1.)
+
+
+def test_make_2dgaussian_kernel_modes():
+    kernel = make_2dgaussian_kernel(3.0, 5)
+    assert_allclose(kernel.array.sum(), 1.)
+
+    kernel = make_2dgaussian_kernel(3.0, 5, mode='center')
+    assert_allclose(kernel.array.sum(), 1.)
+
+    kernel = make_2dgaussian_kernel(3.0, 5, mode='linear_interp')
+    assert_allclose(kernel.array.sum(), 1.)
+
+    kernel = make_2dgaussian_kernel(3.0, 5, mode='integrate')
+    assert_allclose(kernel.array.sum(), 1.)
 
 
 def test_mask_to_mirrored_value():
