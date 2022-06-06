@@ -18,6 +18,13 @@ New Features
 
   - Added a ``sigma_clip`` keyword to ``detect_threshold``. [#1354]
 
+  - Added a ``make_source_mask`` method to ``SegmentationImage``.
+    [#1355]
+
+- ``photutils.utils``
+
+  - Added a ``circular_footprint`` convenience function. [#1355]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -47,6 +54,9 @@ API Changes
   - Deprecated the ``detect_threshold`` ``sigclip_sigma`` and
     ``sigclip_iters`` keywords.  Use the ``sigma_clip`` keyword instead.
     [#1354]
+
+  - Deprecated the ``make_source_mask`` function in favor of the
+    ``SegmentationImage`` ``make_source_mask`` method. [#1355]
 
 
 1.4.0 (2022-03-25)
