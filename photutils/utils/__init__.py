@@ -6,4 +6,5 @@ This subpackage provides general-purpose utility functions.
 from .colormaps import *  # noqa
 from .errors import *  # noqa
 from .exceptions import *  # noqa
+from .footprints import *  # noqa
 from .interpolation import *  # noqa
