@@ -1008,6 +1008,25 @@ class SegmentationImage:
         -------
         mask : 2D bool `~numpy.ndarray`
             A 2D boolean image containing the source mask.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from photutils import SegmentationImage
+        >>> from photutils.utils import circular_footprint
+        >>> data = np.zeros((7, 7), dtype=int)
+        >>> data[3, 3] = 1
+        >>> segm = SegmentationImage(data)
+        >>> footprint = circular_footprint(radius=3)
+        >>> mask = segm.make_source_mask(footprint=footprint)
+        >>> mask
+        array([[False, False, False,  True, False, False, False],
+               [False,  True,  True,  True,  True,  True, False],
+               [False,  True,  True,  True,  True,  True, False],
+               [ True,  True,  True,  True,  True,  True,  True],
+               [False,  True,  True,  True,  True,  True, False],
+               [False,  True,  True,  True,  True,  True, False],
+               [False, False, False,  True, False, False, False]])
         """
         if footprint is None:
             return self._data.astype(bool)
