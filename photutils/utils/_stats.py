@@ -7,7 +7,7 @@ for performance if available.
 import astropy.units as u
 import numpy as np
 
-from ..utils._optional_deps import HAS_BOTTLENECK
+from ._optional_deps import HAS_BOTTLENECK
 
 if HAS_BOTTLENECK:
     import bottleneck as bn

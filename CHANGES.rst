@@ -16,6 +16,8 @@ New Features
   - Added ``SourceFinder`` class, which is a convenience class
     combining ``detect_sources`` and ``deblend_sources``. [#1344]
 
+  - Added a ``sigma_clip`` keyword to ``detect_threshold``. [#1354]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -41,6 +43,10 @@ API Changes
 
   - ``SegmentationImage`` no longer allows array-like input. It must be
     a numpy ``ndarray``. [#1347]
+
+  - Deprecated the ``detect_threshold`` ``sigclip_sigma`` and
+    ``sigclip_iters`` keywords.  Use the ``sigma_clip`` keyword instead.
+    [#1354]
 
 
 1.4.0 (2022-03-25)

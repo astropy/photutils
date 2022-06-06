@@ -11,7 +11,7 @@ from astropy.stats import (biweight_location, biweight_scale, mad_std,
                            SigmaClip)
 import numpy as np
 
-from ._utils import nanmean, nanmedian, nanstd
+from ..utils._stats import nanmean, nanmedian, nanstd
 
 SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
 
