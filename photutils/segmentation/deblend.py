@@ -125,6 +125,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         labels = np.atleast_1d(labels)
         segment_img.check_labels(labels)
 
+    selem = _make_binary_structure(data.ndim, connectivity)
+
     # a source must have at least 2 * npixels to be deblended into
     # multiple sources, each with a minimum of npixels
     mask = (segment_img.areas[segment_img.get_indices(labels)]
@@ -146,7 +148,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
 
         source_segm.keep_labels(label)  # include only one label
         source_deblended = _deblend_source(
-            source_data, source_segm, npixels, nlevels=nlevels,
+            source_data, source_segm, npixels, selem, nlevels=nlevels,
             contrast=contrast, mode=mode, connectivity=connectivity)
 
         if not np.array_equal(source_deblended.data.astype(bool),
@@ -177,8 +179,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     return segm_deblended
 
 
-def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
-                    mode='exponential', connectivity=8):
+def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
+                    contrast=0.001, mode='exponential', connectivity=8):
     """
     Deblend a single labeled source.
 
@@ -269,8 +271,6 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     segments = _detect_sources(data, thresholds, npixels=npixels,
                                connectivity=connectivity, mask=mask,
                                deblend_skip=True)
-
-    selem = _make_binary_structure(data.ndim, connectivity)
 
     # define the sources (markers) for the watershed algorithm
     nsegments = len(segments)
