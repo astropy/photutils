@@ -27,7 +27,6 @@ class TestEPSFBuild:
         """
         Create a simulated image for testing.
         """
-
         from scipy.spatial import cKDTree
 
         shape = (750, 750)
@@ -81,9 +80,8 @@ class TestEPSFBuild:
         """
         This is an end-to-end test of EPSFBuilder on a simulated image.
         """
-
         size = 25
-        oversampling = 4.
+        oversampling = 4
         with pytest.warns(AstropyUserWarning, match='were not extracted'):
             stars = extract_stars(self.nddata, self.init_stars, size=size)
         epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=15,
@@ -99,21 +97,23 @@ class TestEPSFBuild:
 
         psf_model = IntegratedGaussianPRF(sigma=self.stddev)
         z = epsf.data
-        x = psf_model.evaluate(y.reshape(-1, 1), y.reshape(1, -1), 1, y0, y0, self.stddev)
+        x = psf_model.evaluate(y.reshape(-1, 1), y.reshape(1, -1), 1, y0, y0,
+                               self.stddev)
         assert_allclose(z, x, rtol=1e-2, atol=1e-5)
 
         resid_star = fitted_stars[0].compute_residual_image(epsf)
-        assert_almost_equal(np.sum(resid_star)/fitted_stars[0].flux, 0, decimal=3)
+        assert_almost_equal(np.sum(resid_star)/fitted_stars[0].flux, 0,
+                            decimal=3)
 
     def test_epsf_fitting_bounds(self):
         size = 25
-        oversampling = 4.
+        oversampling = 4
         with pytest.warns(AstropyUserWarning, match='were not extracted'):
             stars = extract_stars(self.nddata, self.init_stars, size=size)
         epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=8,
                                    progress_bar=True, norm_radius=25,
                                    recentering_maxiters=5,
-                                   fitter=EPSFFitter(fit_boxsize=30),
+                                   fitter=EPSFFitter(fit_boxsize=31),
                                    smoothing_kernel='quadratic')
         # With a boxsize larger than the cutout we expect the fitting to
         # fail for all stars, due to star._fit_error_status
@@ -124,7 +124,6 @@ class TestEPSFBuild:
         """
         Test that the input fitter is an EPSFFitter instance.
         """
-
         with pytest.raises(TypeError):
             EPSFBuilder(fitter=EPSFFitter, maxiters=3)
 

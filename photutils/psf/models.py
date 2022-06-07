@@ -13,6 +13,7 @@ from astropy.utils.exceptions import AstropyWarning
 import numpy as np
 
 from ..aperture import CircularAperture
+from ..utils._parameters import as_pair
 
 __all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
            'GriddedPSFModel', 'IntegratedGaussianPRF', 'PRFAdapter']
@@ -108,11 +109,11 @@ class FittableImageModel(Fittable2DModel):
         the `compute_interpolator` method.  See `compute_interpolator`
         for more details.
 
-    oversampling : int or tuple of two int, optional
-        The oversampling factor(s) of the model in the ``x`` and ``y``
-        directions.  If ``oversampling`` is a scalar it will be treated
-        as being the same in both x and y; otherwise a tuple of two
-        floats will be treated as ``(x_oversamp, y_oversamp)``.
+    oversampling : int or array_like (int)
+        The integer oversampling factor(s) of the ePSF relative to the
+        input ``stars`` along each axis. If ``oversampling`` is a scalar
+        then it will be used for both axes. If ``oversampling`` has two
+        elements, they must be in ``(y, x)`` order.
     """
 
     flux = Parameter(description='Intensity scaling factor for image data.',
@@ -133,7 +134,8 @@ class FittableImageModel(Fittable2DModel):
         self._img_norm = None
         self._normalization_status = 0 if normalize else 2
         self._store_interpolator_kwargs(**kwargs)
-        self._set_oversampling(oversampling)
+        self._oversampling = as_pair('oversampling', oversampling,
+                                     lower_bound=(0, 1))
 
         if normalization_correction <= 0:
             raise ValueError("'normalization_correction' must be strictly "
@@ -240,29 +242,6 @@ class FittableImageModel(Fittable2DModel):
         index into the stored image.
         """
         return self._oversampling
-
-    def _set_oversampling(self, value):
-        value = np.atleast_1d(value)
-
-        if np.any(~np.isfinite(value)):
-            raise ValueError('Oversampling factor must be a finite value')
-
-        if np.any(value <= 0):
-            raise ValueError('Oversampling factor must be greater than 0')
-
-        if len(value) == 1:
-            value = np.repeat(value, 2)
-        if len(value) != 2:
-            raise ValueError('Oversampling factor must have 1 or 2 '
-                             'elements')
-        if value.ndim != 1:
-            raise ValueError('Oversampling factor must be 1D')
-
-        value_int = value.astype(int)
-        if np.any(value_int != value):  # e.g., 2.0 is OK, 2.1 is not
-            raise ValueError('Oversampling elements must be integers')
-
-        self._oversampling = value
 
     @property
     def data(self):
@@ -517,11 +496,11 @@ class EPSFModel(FittableImageModel):
 
     Parameters
     ----------
-    oversampling : int or tuple of two int, optional
-        The oversampling factor(s) of the model in the ``x`` and ``y``
-        directions.  If ``oversampling`` is a scalar it will be treated
-        as being the same in both x and y; otherwise a tuple of two
-        floats will be treated as ``(x_oversamp, y_oversamp)``.
+    oversampling : int or array_like (int)
+        The integer oversampling factor(s) of the ePSF relative to the
+        input ``stars`` along each axis. If ``oversampling`` is a scalar
+        then it will be used for both axes. If ``oversampling`` has two
+        elements, they must be in ``(y, x)`` order.
 
     norm_radius : float, optional
         The radius inside which the ePSF is normalized by the sum over

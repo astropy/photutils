@@ -17,6 +17,7 @@ from numpy.lib.index_tricks import index_exp
 from .core import SExtractorBackground, StdBackgroundRMS
 from .interpolators import BkgZoomInterpolator
 from ..utils import ShepardIDWInterpolator
+from ..utils._parameters import as_pair
 from ..utils._stats import nanmedian
 
 __all__ = ['Background2D']
@@ -45,13 +46,13 @@ class Background2D:
         background RMS map.
 
     box_size : int or array_like (int)
-        The box size along each axis.  If ``box_size`` is a scalar then
-        a square box of size ``box_size`` will be used.  If ``box_size``
-        has two elements, they should be in ``(ny, nx)`` order.  For
-        best results, the box shape should be chosen such that the
-        ``data`` are covered by an integer number of boxes in both
-        dimensions.  When this is not the case, see the ``edge_method``
-        keyword for more options.
+        The box size along each axis. If ``box_size`` is a scalar then
+        a square box of size ``box_size`` will be used. If ``box_size``
+        has two elements, they must be in ``(ny, nx)`` order. For best
+        results, the box shape should be chosen such that the ``data``
+        are covered by an integer number of boxes in both dimensions.
+        When this is not the case, see the ``edge_method`` keyword for
+        more options.
 
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -93,11 +94,11 @@ class Background2D:
 
     filter_size : int or array_like (int), optional
         The window size of the 2D median filter to apply to the
-        low-resolution background map.  If ``filter_size`` is a scalar
-        then a square box of size ``filter_size`` will be used.  If
-        ``filter_size`` has two elements, they should be in ``(ny, nx)``
-        order.  A filter size of ``1`` (or ``(1, 1)``) means no
-        filtering.
+        low-resolution background map. If ``filter_size`` is a scalar
+        then a square box of size ``filter_size`` will be used. If
+        ``filter_size`` has two elements, they must be in ``(ny, nx)``
+        order. ``filter_size`` must be odd along both axes. A filter
+        size of ``1`` (or ``(1, 1)``) means no filtering.
 
     filter_threshold : int, optional
         The threshold value for used for selective median filtering of
@@ -197,17 +198,17 @@ class Background2D:
                                                   'coverage_mask')
         self.total_mask = self._combine_masks()
 
-        box_size = self._process_size_input(box_size)
         # box_size cannot be larger than the data array size
-        self.box_size = np.array((min(box_size[0], data.shape[0]),
-                                  min(box_size[1], data.shape[1])))
+        self.box_size = as_pair('box_size', box_size, lower_bound=(0, 1),
+                                upper_bound=data.shape)
 
         self.fill_value = fill_value
         if exclude_percentile < 0 or exclude_percentile > 100:
             raise ValueError('exclude_percentile must be between 0 and 100 '
                              '(inclusive).')
         self.exclude_percentile = exclude_percentile
-        self.filter_size = self._process_size_input(filter_size)
+        self.filter_size = as_pair('filter_size', filter_size,
+                                   lower_bound=(0, 1), check_odd=True)
         self.filter_threshold = filter_threshold
         self.edge_method = edge_method
         self.sigma_clip = sigma_clip
@@ -227,16 +228,6 @@ class Background2D:
         self._bkgrms_stats = None
 
         self._prepare_box_data()
-
-    @staticmethod
-    def _process_size_input(array):
-        array = np.atleast_1d(array).astype(int)
-        if len(array) == 1:
-            array = np.repeat(array, 2)
-        if len(array) != 2:
-            raise ValueError('box_size and filter_size inputs must have only '
-                             '1 or 2 elements')
-        return array
 
     def _validate_array(self, array, name, shape=True):
         if name in ('mask', 'coverage_mask') and array is np.ma.nomask:
@@ -364,13 +355,13 @@ class Background2D:
         box_idx = np.where(nmasked <= self._box_npixels_threshold)[0]
 
         if box_idx.size == 0:
-            raise ValueError('All boxes contain > {0} ({1} percent per '
+            raise ValueError('All boxes contain > '
+                             f'{self._box_npixels_threshold} '
+                             f'({self.exclude_percentile} percent per '
                              'box) masked pixels (or all are completely '
                              'masked). Please check your data or increase '
                              '"exclude_percentile" to allow more boxes to '
-                             'be included.'
-                             .format(self._box_npixels_threshold,
-                                     self.exclude_percentile))
+                             'be included.')
 
         return box_idx
 

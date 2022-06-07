@@ -11,6 +11,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from ..utils._round import _py2intround
+from ..utils._parameters import as_pair
 
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
@@ -32,11 +33,10 @@ def centroid_com(data, mask=None, oversampling=1):
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
-    oversampling : int or tuple of two int, optional
-        Oversampling factors of pixel indices. If ``oversampling`` is
-        a scalar this is treated as both x and y directions having
-        the same oversampling factor; otherwise it is treated as
-        ``(x_oversamp, y_oversamp)``.
+    oversampling : int or array_like (int)
+        The integer oversampling factor(s). If ``oversampling`` is a
+        scalar then it will be used for both axes. If ``oversampling``
+        has two elements, they must be in ``(y, x)`` order.
 
     Returns
     -------
@@ -52,12 +52,7 @@ def centroid_com(data, mask=None, oversampling=1):
             raise ValueError('data and mask must have the same shape.')
         data[mask] = 0.
 
-    oversampling = np.atleast_1d(oversampling)
-    if len(oversampling) == 1:
-        oversampling = np.repeat(oversampling, 2)
-    oversampling = oversampling[::-1]  # reverse to (y, x) order
-    if np.any(oversampling <= 0):
-        raise ValueError('Oversampling factors must all be positive numbers.')
+    oversampling = as_pair('oversampling', oversampling, lower_bound=(0, 1))
 
     badmask = ~np.isfinite(data)
     if np.any(badmask):
@@ -111,18 +106,20 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     fit_boxsize : int or tuple of int, optional
         The size (in pixels) of the box used to define the fitting
-        region. If ``fit_boxsize`` has two elements, they should be in
+        region. If ``fit_boxsize`` has two elements, they must be in
         ``(ny, nx)`` order. If ``fit_boxsize`` is a scalar then a square
-        box of size ``fit_boxsize`` will be used.
+        box of size ``fit_boxsize`` will be used. ``fit_boxsize`` must
+        have odd values for both axes.
 
     search_boxsize : int or tuple of int, optional
         The size (in pixels) of the box used to search for the maximum
         pixel value if ``xpeak`` and ``ypeak`` are both specified. If
-        ``fit_boxsize`` has two elements, they should be in ``(ny,
-        nx)`` order. If ``fit_boxsize`` is a scalar then a square box
-        of size ``fit_boxsize`` will be used. This parameter is ignored
+        ``fit_boxsize`` has two elements, they must be in ``(ny,
+        nx)`` order. If ``search_boxsize`` is a scalar then a square
+        box of size ``search_boxsize`` will be used. ``search_boxsize``
+        must have odd values for both axes. This parameter is ignored
         if either ``xpeak`` or ``ypeak`` is `None`. In that case, the
-        entire array is search for the maximum value.
+        entire array is searched for the maximum value.
 
     mask : bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -169,7 +166,8 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
             raise ValueError('data and mask must have the same shape.')
         data[mask] = np.nan
 
-    fit_boxsize = _process_boxsize(fit_boxsize, data.shape)
+    fit_boxsize = as_pair('fit_boxsize', fit_boxsize, lower_bound=(0, 1),
+                          upper_bound=data.shape, check_odd=True)
 
     if np.product(fit_boxsize) < 6:
         raise ValueError('fit_boxsize is too small.  6 values are required '
@@ -182,7 +180,9 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         yidx = _py2intround(ypeak)
 
         if search_boxsize is not None:
-            search_boxsize = _process_boxsize(search_boxsize, data.shape)
+            search_boxsize = as_pair('search_boxsize', search_boxsize,
+                                     lower_bound=(0, 1),
+                                     upper_bound=data.shape, check_odd=True)
 
             slc_data, _ = overlap_slices(data.shape, search_boxsize,
                                          (yidx, xidx), mode='trim')
@@ -257,20 +257,6 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     return xycen
 
 
-def _process_boxsize(box_size, data_shape):
-    box_size = np.round(np.atleast_1d(box_size)).astype(int)
-    if len(box_size) == 1:
-        box_size = np.repeat(box_size, 2)
-    if len(box_size) > 2:
-        raise ValueError('box size must contain only 1 or 2 values')
-    if np.any(box_size < 0):
-        raise ValueError('box size must be >= 0')
-    # box_size cannot be larger than the data shape
-    box_size = (min(box_size[0], data_shape[0]),
-                min(box_size[1], data_shape[1]))
-    return box_size
-
-
 def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
                      centroid_func=centroid_com, **kwargs):
     """
@@ -292,14 +278,14 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         calculate the centroid.
 
     box_size : int or array-like of int, optional
-        The size of the cutout image along each axis. If ``box_size``
-        is a number, then a square cutout of ``box_size`` will be
-        created. If ``box_size`` has two elements, they should be in
-        ``(ny, nx)`` order. Either ``box_size`` or ``footprint`` must be
-        defined. If they are both defined, then ``footprint`` overrides
-        ``box_size``.
+        The size of the cutout image along each axis. If ``box_size`` is
+        a number, then a square cutout of ``box_size`` will be created.
+        If ``box_size`` has two elements, they must be in ``(ny, nx)``
+        order. ``box_size`` must have odd values for both axes. Either
+        ``box_size`` or ``footprint`` must be defined. If they are both
+        defined, then ``footprint`` overrides ``box_size``.
 
-    footprint : `~numpy.ndarray` of bools, optional
+    footprint : bool `~numpy.ndarray`, optional
         A 2D boolean array where `True` values describe the local
         footprint region to cutout. ``footprint`` can be used to create
         a non-rectangular cutout image, in which case the input ``xpos``
@@ -356,13 +342,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
     if footprint is None:
         if box_size is None:
             raise ValueError('box_size or footprint must be defined.')
-
-        box_size = np.atleast_1d(box_size)
-        if len(box_size) == 1:
-            box_size = np.repeat(box_size, 2)
-        if len(box_size) != 2:
-            raise ValueError('box_size must have 1 or 2 elements.')
-
+        box_size = as_pair('box_size', box_size, lower_bound=(0, 1),
+                           check_odd=True)
         footprint = np.ones(box_size, dtype=bool)
     else:
         footprint = np.asanyarray(footprint, dtype=bool)

@@ -638,7 +638,7 @@ def test_sky_aperture_repr():
 
 
 def test_rectangular_bbox():
-    # odd sizes
+    # test odd sizes
     width = 7
     height = 3
     a = RectangularAperture((50, 50), w=width, h=height, theta=0)
@@ -650,7 +650,7 @@ def test_rectangular_bbox():
     a = RectangularAperture((50, 50), w=width, h=height, theta=90.*np.pi/180.)
     assert a.bbox.shape == (width, height)
 
-    # even sizes
+    # test even sizes
     width = 8
     height = 4
     a = RectangularAperture((50, 50), w=width, h=height, theta=0)

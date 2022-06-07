@@ -15,6 +15,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from ..aperture import BoundingBox
+from ..utils._parameters import as_pair
 
 __all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars']
 
@@ -557,10 +558,9 @@ def extract_stars(data, catalogs, size=(11, 11)):
     size : int or array_like (int), optional
         The extraction box size along each axis.  If ``size`` is a
         scalar then a square box of size ``size`` will be used.  If
-        ``size`` has two elements, they should be in ``(ny, nx)`` order.
-        The size must be greater than or equal to 3 pixel for both axes.
-        Size must be odd in both axes; if either is even, it is padded
-        by one to force oddness.
+        ``size`` has two elements, they must be in ``(ny, nx)`` order.
+        ``size`` must have odd values and be greater than or equal to 3
+        for both axes.
 
     Returns
     -------
@@ -612,17 +612,7 @@ def extract_stars(data, catalogs, size=(11, 11)):
                              'of catalogs must match the number of input '
                              'images.')
 
-    size = np.atleast_1d(size)
-    if len(size) == 1:
-        size = np.repeat(size, 2)
-
-    # Force size to odd numbers such that there is always a central pixel with
-    # even spacing either side of the pixel.
-    size = tuple(_size+1 if _size % 2 == 0 else _size for _size in size)
-
-    min_size = 3
-    if size[0] < min_size or size[1] < min_size:
-        raise ValueError(f'size must be >= {min_size} for x and y')
+    size = as_pair('size', size, lower_bound=(3, 0), check_odd=True)
 
     if len(catalogs) == 1:  # may included linked stars
         use_xy = True
@@ -696,12 +686,10 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
         coordinates will be used.
 
     size : int or array_like (int), optional
-        The extraction box size along each axis.  If ``size`` is a
-        scalar then a square box of size ``size`` will be used.  If
-        ``size`` has two elements, they should be in ``(ny, nx)`` order.
-        The size must be greater than or equal to 3 pixel for both axes.
-        Size must be odd in both axes; if either is even, it is padded
-        by one to force oddness.
+        The extraction box size along each axis. If ``size`` is a scalar
+        then a square box of size ``size`` will be used. If ``size`` has
+        two elements, they must be in ``(ny, nx)`` order. ``size`` must
+        have odd values and be greater than or equal to 3 for both axes.
 
     use_xy : bool, optional
         Whether to use the ``x`` and ``y`` pixel positions when both
@@ -714,12 +702,7 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
     stars : list of `EPSFStar` objects
         A list of `EPSFStar` instances containing the extracted stars.
     """
-    # Force size to odd numbers such that there is always a central pixel with
-    # even spacing either side of the pixel.
-    if np.isscalar(size):
-        size = size+1 if size % 2 == 0 else size
-    else:
-        size = tuple(_size+1 if _size % 2 == 0 else _size for _size in size)
+    size = as_pair('size', size, lower_bound=(3, 0), check_odd=True)
 
     colnames = catalog.colnames
     if ('x' not in colnames or 'y' not in colnames) or not use_xy:

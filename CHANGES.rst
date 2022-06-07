@@ -31,8 +31,14 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+
 API Changes
 ^^^^^^^^^^^
+
+- ``photutils.centroids``
+
+  - Changed the axes order of ``oversampling`` keyword in
+    ``centroid_com`` when input as a tuple. [#1358]
 
 - ``photutils.psf``
 
@@ -41,6 +47,9 @@ API Changes
 
   - Deprecated the ``sandbox`` classes ``DiscretePRF`` and
     ``Reproject``. [#1357]
+
+  - Changed the axes order of ``oversampling`` keywords when input as a
+    tuple. [#1358]
 
 - ``photutils.segmentation``
 
@@ -57,12 +66,11 @@ API Changes
   - ``SegmentationImage`` no longer allows array-like input. It must be
     a numpy ``ndarray``. [#1347]
 
-  - Deprecated the ``detect_threshold`` ``sigclip_sigma`` and
-    ``sigclip_iters`` keywords.  Use the ``sigma_clip`` keyword instead.
-    [#1354]
+  - Deprecated the ``sigclip_sigma`` and ``sigclip_iters`` keywords in
+    ``detect_threshold``. Use the ``sigma_clip`` keyword instead. [#1354]
 
   - Deprecated the ``make_source_mask`` function in favor of the
-    ``SegmentationImage`` ``make_source_mask`` method. [#1355]
+    ``SegmentationImage.make_source_mask`` method. [#1355]
 
 
 1.4.0 (2022-03-25)
