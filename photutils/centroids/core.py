@@ -33,11 +33,10 @@ def centroid_com(data, mask=None, oversampling=1):
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
-    oversampling : int or tuple of two int, optional
-        Oversampling factors of pixel indices. If ``oversampling`` is
-        a scalar this is treated as both x and y directions having
-        the same oversampling factor; otherwise it is treated as
-        ``(x_oversamp, y_oversamp)``.
+    oversampling : int or array_like (int)
+        The integer oversampling factor(s). If ``oversampling`` is a
+        scalar then it will be used for both axes. If ``oversampling``
+        has two elements, they must be in ``(y, x)`` order.
 
     Returns
     -------
@@ -54,7 +53,6 @@ def centroid_com(data, mask=None, oversampling=1):
         data[mask] = 0.
 
     oversampling = as_pair('oversampling', oversampling, lower_bound=(0, 1))
-    oversampling = oversampling[::-1]  # reverse to (y, x) order
 
     badmask = ~np.isfinite(data)
     if np.any(badmask):

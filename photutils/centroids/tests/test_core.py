@@ -58,14 +58,14 @@ def test_centroid_com(x_std, y_std, theta):
     assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=0.015)
 
     # test with oversampling
-    for oversampling in [4, (4, 6)]:
+    for oversampling in [4, (6, 4)]:
         if not hasattr(oversampling, '__len__'):
             _oversampling = (oversampling, oversampling)
         else:
             _oversampling = oversampling
         xc, yc = centroid_com(data, mask=mask, oversampling=oversampling)
 
-        desired = [XCEN / _oversampling[0], YCEN / _oversampling[1]]
+        desired = [XCEN / _oversampling[1], YCEN / _oversampling[0]]
         assert_allclose((xc, yc), desired, rtol=0, atol=1.e-3)
 
 

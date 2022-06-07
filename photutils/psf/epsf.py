@@ -226,13 +226,11 @@ class EPSFBuilder:
 
     Parameters
     ----------
-    oversampling : int or tuple of two int, optional
-        The oversampling factor(s) of the ePSF relative to the input
-        ``stars`` along the x and y axes. The ``oversampling`` can
-        either be a single float or a tuple of two floats of the form
-        ``(x_oversamp, y_oversamp)``.  If ``oversampling`` is a scalar
-        then the oversampling will be the same for both the x and y
-        axes.
+    oversampling : int or array_like (int)
+        The integer oversampling factor(s) of the ePSF relative to the
+        input ``stars`` along each axis. If ``oversampling`` is a scalar
+        then it will be used for both axes. If ``oversampling`` has two
+        elements, they must be in ``(y, x)`` order.
 
     shape : float, tuple of two floats, or `None`, optional
         The shape of the output ePSF.  If the ``shape`` is not `None`,

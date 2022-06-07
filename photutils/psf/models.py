@@ -109,11 +109,11 @@ class FittableImageModel(Fittable2DModel):
         the `compute_interpolator` method.  See `compute_interpolator`
         for more details.
 
-    oversampling : int or tuple of two int, optional
-        The oversampling factor(s) of the model in the ``x`` and ``y``
-        directions.  If ``oversampling`` is a scalar it will be treated
-        as being the same in both x and y; otherwise a tuple of two
-        floats will be treated as ``(x_oversamp, y_oversamp)``.
+    oversampling : int or array_like (int)
+        The integer oversampling factor(s) of the ePSF relative to the
+        input ``stars`` along each axis. If ``oversampling`` is a scalar
+        then it will be used for both axes. If ``oversampling`` has two
+        elements, they must be in ``(y, x)`` order.
     """
 
     flux = Parameter(description='Intensity scaling factor for image data.',
@@ -496,11 +496,11 @@ class EPSFModel(FittableImageModel):
 
     Parameters
     ----------
-    oversampling : int or tuple of two int, optional
-        The oversampling factor(s) of the model in the ``x`` and ``y``
-        directions.  If ``oversampling`` is a scalar it will be treated
-        as being the same in both x and y; otherwise a tuple of two
-        floats will be treated as ``(x_oversamp, y_oversamp)``.
+    oversampling : int or array_like (int)
+        The integer oversampling factor(s) of the ePSF relative to the
+        input ``stars`` along each axis. If ``oversampling`` is a scalar
+        then it will be used for both axes. If ``oversampling`` has two
+        elements, they must be in ``(y, x)`` order.
 
     norm_radius : float, optional
         The radius inside which the ePSF is normalized by the sum over
