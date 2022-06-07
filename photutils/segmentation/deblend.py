@@ -136,6 +136,9 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     if kernel is not None:
         data = _filter_data(data, kernel, mode='constant', fill_value=0.0)
 
+    # suppress NoDetectionsWarning during deblending
+    warnings.filterwarnings('ignore', category=NoDetectionsWarning)
+
     segm_deblended = object.__new__(SegmentationImage)
     segm_deblended._data = np.copy(segment_img.data)
     last_label = segment_img.max_label
@@ -263,9 +266,6 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
     elif mode == 'linear':
         thresholds = source_min + ((source_max - source_min) /
                                    (nlevels + 1)) * steps
-
-    # suppress NoDetectionsWarning during deblending
-    warnings.filterwarnings('ignore', category=NoDetectionsWarning)
 
     mask = ~segm_mask
     segments = _detect_sources(data, thresholds, npixels=npixels,
