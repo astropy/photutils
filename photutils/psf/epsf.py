@@ -20,6 +20,7 @@ from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from .models import EPSFModel
 from ..centroids import centroid_com
 from ..utils._optional_deps import HAS_BOTTLENECK  # noqa
+from ..utils._parameters import as_pair
 from ..utils._round import _py2intround
 
 
@@ -37,13 +38,13 @@ class EPSFFitter:
 
     fit_boxsize : int, tuple of int, or `None`, optional
         The size (in pixels) of the box centered on the star to be used
-        for ePSF fitting.  This allows using only a small number of
+        for ePSF fitting. This allows using only a small number of
         central pixels of the star (i.e., where the star is brightest)
-        for fitting.  If ``fit_boxsize`` is a scalar then a square box
-        of size ``fit_boxsize`` will be used.  If ``fit_boxsize`` has
-        two elements, they should be in ``(ny, nx)`` order.  The size
-        must be greater than or equal to 3 pixels for both axes.  If
-        `None`, the fitter will use the entire star image.
+        for fitting. If ``fit_boxsize`` is a scalar then a square box of
+        size ``fit_boxsize`` will be used. If ``fit_boxsize`` has two
+        elements, they must be in ``(ny, nx)`` order. ``fit_boxsize``
+        must have odd values and be greater than or equal to 3 for both
+        axes. If `None`, the fitter will use the entire star image.
 
     fitter_kwargs : dict-like, optional
         Any additional keyword arguments (except ``x``, ``y``, ``z``, or
@@ -56,17 +57,8 @@ class EPSFFitter:
 
         self.fitter = fitter
         self.fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
-
-        if fit_boxsize is not None:
-            fit_boxsize = np.atleast_1d(fit_boxsize).astype(int)
-            if len(fit_boxsize) == 1:
-                fit_boxsize = np.repeat(fit_boxsize, 2)
-
-            min_size = 3
-            if any([size < min_size for size in fit_boxsize]):
-                raise ValueError(f'size must be >= {min_size} for x and y')
-
-        self.fit_boxsize = fit_boxsize
+        self.fit_boxsize = as_pair('fit_boxsize', fit_boxsize,
+                                   lower_bound=(3, 0), check_odd=True)
 
         # remove any fitter keyword arguments that we need to set
         remove_kwargs = ['x', 'y', 'z', 'weights']
@@ -270,10 +262,9 @@ class EPSFBuilder:
         each ePSF build iteration.
 
     fitter : `EPSFFitter` object, optional
-        A `EPSFFitter` object use to fit the ePSF to stars.  To set
-        fitter options, a new object with specific options should be
-        passed in - the default uses simply the default options.  To see
-        more of these options, see the `EPSFFitter` documentation.
+        A `EPSFFitter` object use to fit the ePSF to stars. To set
+        custom fitter options, input a new `EPSFFitter` object. See the
+        `EPSFFitter` documentation for options.
 
     maxiters : int, optional
         The maximum number of iterations to perform.
@@ -289,10 +280,13 @@ class EPSFBuilder:
         be a strictly positive number.
 
     recentering_boxsize : float or tuple of two floats, optional
-            The size (in pixels) of the box used to calculate the centroid
-            of the ePSF during each build iteration.  If a single integer
-            number is provided, then a square box will be used.  If two
-            values are provided, then they should be in ``(ny, nx)`` order.
+            The size (in pixels) of the box used to calculate the
+            centroid of the ePSF during each build iteration. If a
+            single integer number is provided, then a square box will
+            be used. If two values are provided, then they must be in
+            ``(ny, nx)`` order. ``recentering_boxsize`` must have odd
+            must have odd values and be greater than or equal to 3 for
+            both axes.
 
     center_accuracy : float, optional
             The desired accuracy for the centers of stars.  The building
@@ -314,7 +308,7 @@ class EPSFBuilder:
     .. _bottleneck:  https://github.com/pydata/bottleneck
     """
 
-    def __init__(self, oversampling=4., shape=None,
+    def __init__(self, oversampling=4, shape=None,
                  smoothing_kernel='quartic', recentering_func=centroid_com,
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
                  progress_bar=True, norm_radius=5.5, shift_val=0.5,
@@ -324,23 +318,20 @@ class EPSFBuilder:
 
         if oversampling is None:
             raise ValueError("'oversampling' must be specified.")
-        oversampling = np.atleast_1d(oversampling).astype(int)
-        if len(oversampling) == 1:
-            oversampling = np.repeat(oversampling, 2)
-        if np.any(oversampling <= 0.0):
-            raise ValueError('oversampling must be a positive number.')
+        self.oversampling = as_pair('oversampling', oversampling,
+                                    lower_bound=(0, 1))
         self._norm_radius = norm_radius
         self._shift_val = shift_val
-        self.oversampling = oversampling
-        self.shape = self._init_img_params(shape)
-        if self.shape is not None:
-            self.shape = self.shape.astype(int)
+        if shape is not None:
+            self.shape = as_pair('shape', shape, lower_bound=(0, 1))
+        else:
+            self.shape = shape
 
         self.recentering_func = recentering_func
         self.recentering_maxiters = recentering_maxiters
-        self.recentering_boxsize = self._init_img_params(recentering_boxsize)
-        self.recentering_boxsize = self.recentering_boxsize.astype(int)
-
+        self.recentering_boxsize = as_pair('recentering_boxsize',
+                                           recentering_boxsize,
+                                           lower_bound=(3, 0), check_odd=True)
         self.smoothing_kernel = smoothing_kernel
 
         if not isinstance(fitter, EPSFFitter):
@@ -369,19 +360,6 @@ class EPSFBuilder:
     def __call__(self, stars):
         return self.build_epsf(stars)
 
-    @staticmethod
-    def _init_img_params(param):
-        """
-        Initialize 2D image-type parameters that can accept either a
-        single or two values.
-        """
-        if param is not None:
-            param = np.atleast_1d(param)
-            if len(param) == 1:
-                param = np.repeat(param, 2)
-
-        return param
-
     def _create_initial_epsf(self, stars):
         """
         Create an initial `EPSFModel` object.
@@ -390,9 +368,9 @@ class EPSFBuilder:
 
         If ``shape`` is not specified, the shape of the ePSF data array
         is determined from the shape of the input ``stars`` and the
-        oversampling factor.  If the size is even along any axis, it
-        will be made odd by adding one.  The output ePSF will always
-        have odd sizes along both axes to ensure a central pixel.
+        oversampling factor. If the size is even along any axis, it will
+        be made odd by adding one. The output ePSF will always have odd
+        sizes along both axes to ensure a central pixel.
 
         Parameters
         ----------
@@ -411,9 +389,7 @@ class EPSFBuilder:
 
         # define the ePSF shape
         if shape is not None:
-            shape = np.atleast_1d(shape).astype(int)
-            if len(shape) == 1:
-                shape = np.repeat(shape, 2)
+            shape = as_pair('shape', shape, lower_bound=(0, 1), check_odd=True)
         else:
             # Stars class should have odd-sized dimensions, and thus we
             # get the oversampled shape as oversampling * len + 1; if
@@ -609,10 +585,11 @@ class EPSFBuilder:
 
         box_size : float or tuple of two floats, optional
             The size (in pixels) of the box used to calculate the
-            centroid of the ePSF during each build iteration.  If a
-            single integer number is provided, then a square box will be
-            used.  If two values are provided, then they should be in
-            ``(ny, nx)`` order.
+            centroid of the ePSF during each build iteration. If a
+            single integer number is provided, then a square box will
+            be used. If two values are provided, then they must be in
+            ``(ny, nx)`` order. ``box_size`` must have odd values and be
+            greater than or equal to 3 for both axes.
 
         maxiters : int, optional
             The maximum number of recentering iterations to perform.

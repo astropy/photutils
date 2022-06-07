@@ -13,6 +13,7 @@ from astropy.utils.exceptions import AstropyWarning
 import numpy as np
 
 from ..aperture import CircularAperture
+from ..utils._parameters import as_pair
 
 __all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
            'GriddedPSFModel', 'IntegratedGaussianPRF', 'PRFAdapter']
@@ -133,7 +134,8 @@ class FittableImageModel(Fittable2DModel):
         self._img_norm = None
         self._normalization_status = 0 if normalize else 2
         self._store_interpolator_kwargs(**kwargs)
-        self._set_oversampling(oversampling)
+        self._oversampling = as_pair('oversampling', oversampling,
+                                     lower_bound=(0, 1))
 
         if normalization_correction <= 0:
             raise ValueError("'normalization_correction' must be strictly "
@@ -240,29 +242,6 @@ class FittableImageModel(Fittable2DModel):
         index into the stored image.
         """
         return self._oversampling
-
-    def _set_oversampling(self, value):
-        value = np.atleast_1d(value)
-
-        if np.any(~np.isfinite(value)):
-            raise ValueError('Oversampling factor must be a finite value')
-
-        if np.any(value <= 0):
-            raise ValueError('Oversampling factor must be greater than 0')
-
-        if len(value) == 1:
-            value = np.repeat(value, 2)
-        if len(value) != 2:
-            raise ValueError('Oversampling factor must have 1 or 2 '
-                             'elements')
-        if value.ndim != 1:
-            raise ValueError('Oversampling factor must be 1D')
-
-        value_int = value.astype(int)
-        if np.any(value_int != value):  # e.g., 2.0 is OK, 2.1 is not
-            raise ValueError('Oversampling elements must be integers')
-
-        self._oversampling = value
 
     @property
     def data(self):
