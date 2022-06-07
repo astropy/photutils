@@ -182,6 +182,33 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     return segm_deblended
 
 
+def multithreshold(data, segment_img, mode, nlevels, segm_mask, npixels,
+                   connectivity, source_min, source_max):
+
+    if mode == 'exponential' and source_min < 0:
+        warnings.warn(f'Source "{segment_img.labels[0]}" contains negative '
+                      'values, setting deblending mode to "linear"',
+                      AstropyUserWarning)
+        mode = 'linear'
+
+    steps = np.arange(1., nlevels + 1)
+    if mode == 'exponential':
+        if source_min == 0:
+            source_min = source_max * 0.01
+        thresholds = source_min * ((source_max / source_min) **
+                                   (steps / (nlevels + 1)))
+    elif mode == 'linear':
+        thresholds = source_min + ((source_max - source_min) /
+                                   (nlevels + 1)) * steps
+
+    mask = ~segm_mask
+    segments = _detect_sources(data, thresholds, npixels=npixels,
+                               connectivity=connectivity, mask=mask,
+                               deblend_skip=True)
+
+    return segments
+
+
 def make_markers(segments, selem):
     from scipy.ndimage import label as ndilabel
     for i in range(len(segments) - 1):
@@ -279,26 +306,8 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
     if source_min == source_max:
         return segment_img  # no deblending
 
-    if mode == 'exponential' and source_min < 0:
-        warnings.warn(f'Source "{segment_img.labels[0]}" contains negative '
-                      'values, setting deblending mode to "linear"',
-                      AstropyUserWarning)
-        mode = 'linear'
-
-    steps = np.arange(1., nlevels + 1)
-    if mode == 'exponential':
-        if source_min == 0:
-            source_min = source_max * 0.01
-        thresholds = source_min * ((source_max / source_min) **
-                                   (steps / (nlevels + 1)))
-    elif mode == 'linear':
-        thresholds = source_min + ((source_max - source_min) /
-                                   (nlevels + 1)) * steps
-
-    mask = ~segm_mask
-    segments = _detect_sources(data, thresholds, npixels=npixels,
-                               connectivity=connectivity, mask=mask,
-                               deblend_skip=True)
+    segments = multithreshold(data, segment_img, mode, nlevels, segm_mask,
+                              npixels, connectivity, source_min, source_max)
 
     # define the sources (markers) for the watershed algorithm
     if len(segments) == 0:  # no deblending
