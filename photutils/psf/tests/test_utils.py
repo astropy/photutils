@@ -6,6 +6,7 @@ Tests for the utils module.
 from astropy.convolution.utils import discretize_model
 from astropy.modeling.models import Gaussian2D
 from astropy.table import Table
+from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -250,8 +251,8 @@ def test_get_grouped_psf_model_submodel_names(prf_model):
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_subtract_psf():
     """Test subtract_psf."""
-
-    prf = DiscretePRF(test_psf, subsampling=1)
+    with pytest.warns(AstropyDeprecationWarning):
+        prf = DiscretePRF(test_psf, subsampling=1)
     posflux = INTAB.copy()
     for n in posflux.colnames:
         posflux.rename_column(n, n.split('_')[0] + '_fit')

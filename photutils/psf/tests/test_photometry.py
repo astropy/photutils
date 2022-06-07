@@ -9,7 +9,8 @@ from astropy.modeling.fitting import LevMarLSQFitter, SimplexLSQFitter
 from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Table
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyUserWarning,
+                                      AstropyDeprecationWarning)
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 import pytest
@@ -431,8 +432,8 @@ for x, y, flux in WIDE_INTAB:
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_photometry_discrete():
     """ Test psf_photometry with discrete PRF model. """
-
-    prf = DiscretePRF(test_psf, subsampling=1)
+    with pytest.warns(AstropyDeprecationWarning):
+        prf = DiscretePRF(test_psf, subsampling=1)
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
                                     bkg_estimator=None, psf_model=prf,
                                     fitshape=7)
@@ -450,8 +451,8 @@ def test_tune_coordinates():
     Test psf_photometry with discrete PRF model and coordinates that need
     to be adjusted in the fit.
     """
-
-    prf = DiscretePRF(test_psf, subsampling=1)
+    with pytest.warns(AstropyDeprecationWarning):
+        prf = DiscretePRF(test_psf, subsampling=1)
     prf.x_0.fixed = False
     prf.y_0.fixed = False
     # Shift all sources by 0.3 pixels
@@ -474,8 +475,8 @@ def test_psf_boundary():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
     """
-
-    prf = DiscretePRF(test_psf, subsampling=1)
+    with pytest.warns(AstropyDeprecationWarning):
+        prf = DiscretePRF(test_psf, subsampling=1)
 
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
                                     bkg_estimator=None, psf_model=prf,
@@ -570,7 +571,6 @@ def test_psf_boundary_gaussian():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
     """
-
     psf = IntegratedGaussianPRF(GAUSSIAN_WIDTH)
 
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
@@ -587,7 +587,6 @@ def test_psf_photometry_gaussian():
     """
     Test psf_photometry with Gaussian PSF model.
     """
-
     psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
 
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
@@ -604,7 +603,6 @@ def test_psf_photometry_gaussian2(renormalize_psf):
     """
     Test psf_photometry with Gaussian PSF model from Astropy.
     """
-
     psf = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
                      PSF_SIZE // 2, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
     psf = prepare_psf_model(psf, xname='x_mean', yname='y_mean',
@@ -627,7 +625,6 @@ def test_psf_photometry_moffat():
     """
     Test psf_photometry with Moffat PSF model from Astropy.
     """
-
     psf = Moffat2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
                    PSF_SIZE // 2, 1, 1)
     psf = prepare_psf_model(psf, xname='x_0', yname='y_0',
@@ -653,7 +650,6 @@ def test_psf_fitting_data_on_edge():
     No mask is input explicitly here, but source 2 is so close to the
     edge that the subarray that's extracted gets a mask internally.
     """
-
     psf_guess = IntegratedGaussianPRF(flux=1, sigma=WIDE_GAUSSIAN_WIDTH)
     psf_guess.flux.fixed = psf_guess.x_0.fixed = psf_guess.y_0.fixed = False
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
@@ -675,7 +671,6 @@ def test_psf_extra_output_cols(sigma_psf, sources):
     """
     Test the handling of a non-None extra_output_cols
     """
-
     psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
     tshape = (32, 32)
     image = (make_gaussian_prf_sources_image(tshape, sources) +
@@ -721,7 +716,6 @@ def test_psf_extra_output_cols(sigma_psf, sources):
 
 @pytest.fixture(params=[2, 3])
 def overlap_image(request):
-
     if request.param == 2:
         close_tab = Table([[50., 53.], [50., 50.], [25., 25.]], names=['x_0', 'y_0', 'flux_0'])
     elif request.param == 3:
@@ -742,7 +736,10 @@ def overlap_image(request):
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_fitting_group(overlap_image):
-    """ Test psf_photometry when two input stars are close and need to be fit together """
+    """
+    Test psf_photometry when two input stars are close and need to be
+    fit together.
+    """
     from photutils.background import MADStdBackgroundRMS
 
     # There are a few models here that fail, be it something
@@ -836,7 +833,6 @@ def test_psf_photometry_uncertainties():
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_re_use_result_as_initial_guess():
-
     img_shape = (32, 32)
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)

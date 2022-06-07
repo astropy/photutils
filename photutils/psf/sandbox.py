@@ -9,6 +9,7 @@ from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import extract_array, subpixel_indices
 from astropy.table import Table
+from astropy.utils.decorators import deprecated
 import numpy as np
 
 from ..segmentation.utils import _mask_to_mirrored_value
@@ -18,6 +19,7 @@ __all__ = ['DiscretePRF', 'Reproject']
 __doctest_requires__ = {('Reproject'): ['gwcs']}
 
 
+@deprecated('1.5.0')
 class DiscretePRF(Fittable2DModel):
     """
     A discrete Pixel Response Function (PRF) model.
@@ -299,6 +301,7 @@ class DiscretePRF(Fittable2DModel):
         return cls(prf_model, subsampling=subsampling)
 
 
+@deprecated('1.5.0')
 class Reproject:
     """
     Class to reproject pixel coordinates between unrectified and
