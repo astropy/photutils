@@ -248,6 +248,9 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
 
     selem = _make_binary_structure(data.ndim, connectivity)
 
+    if mask is not None:
+        mask_inv = np.logical_not(mask)
+
     segms = []
     for threshold in thresholds:
         # ignore RuntimeWarning caused by > comparison when data contains NaNs
@@ -256,7 +259,7 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
             segment_img = data > threshold
 
         if mask is not None:
-            segment_img &= ~mask
+            segment_img &= mask_inv
 
         # return if threshold was too high to detect any sources
         if np.count_nonzero(segment_img) == 0:
