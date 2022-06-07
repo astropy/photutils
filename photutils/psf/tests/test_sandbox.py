@@ -6,8 +6,10 @@ Tests for the sandbox module.
 from astropy.convolution.utils import discretize_model
 from astropy.modeling.models import Gaussian2D
 from astropy.table import Table
+from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 from numpy.testing import assert_allclose
+import pytest
 
 from ..sandbox import DiscretePRF
 
@@ -56,11 +58,11 @@ def test_create_prf_mean():
     Check if create_prf works correctly on simulated data.
     Position input format: list
     """
-
-    prf = DiscretePRF.create_from_image(image,
-                                        list(INTAB['x_0', 'y_0'].as_array()),
-                                        PSF_SIZE, subsampling=1, mode='mean')
-    assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
+    sources = list(INTAB['x_0', 'y_0'].as_array())
+    with pytest.warns(AstropyDeprecationWarning):
+        prf = DiscretePRF.create_from_image(image, sources, PSF_SIZE,
+                                            subsampling=1, mode='mean')
+        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
 
 
 def test_create_prf_median():
@@ -68,11 +70,12 @@ def test_create_prf_median():
     Check if create_prf works correctly on simulated data.
     Position input format: astropy.table.Table
     """
-
-    prf = DiscretePRF.create_from_image(image, np.array(INTAB['x_0', 'y_0']),
-                                        PSF_SIZE, subsampling=1,
-                                        mode='median')
-    assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
+    with pytest.warns(AstropyDeprecationWarning):
+        prf = DiscretePRF.create_from_image(image,
+                                            np.array(INTAB['x_0', 'y_0']),
+                                            PSF_SIZE, subsampling=1,
+                                            mode='median')
+        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
 
 
 def test_create_prf_nan():
@@ -83,18 +86,23 @@ def test_create_prf_nan():
     image_nan = image.copy()
     image_nan[52, 52] = np.nan
     image_nan[52, 48] = np.nan
-    prf = DiscretePRF.create_from_image(image, np.array(INTAB['x_0', 'y_0']),
-                                        PSF_SIZE, subsampling=1, fix_nan=True)
-    assert not np.isnan(prf._prf_array[0, 0]).any()
+    with pytest.warns(AstropyDeprecationWarning):
+        prf = DiscretePRF.create_from_image(image,
+                                            np.array(INTAB['x_0', 'y_0']),
+                                            PSF_SIZE, subsampling=1,
+                                            fix_nan=True)
+        assert not np.isnan(prf._prf_array[0, 0]).any()
 
 
 def test_create_prf_flux():
     """
     Check if create_prf works correctly when FLUXES are specified.
     """
-
-    prf = DiscretePRF.create_from_image(image, np.array(INTAB['x_0', 'y_0']),
-                                        PSF_SIZE, subsampling=1,
-                                        mode='median', fluxes=INTAB['flux_0'])
-    assert_allclose(prf._prf_array[0, 0].sum(), 1)
-    assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
+    with pytest.warns(AstropyDeprecationWarning):
+        prf = DiscretePRF.create_from_image(image,
+                                            np.array(INTAB['x_0', 'y_0']),
+                                            PSF_SIZE, subsampling=1,
+                                            mode='median',
+                                            fluxes=INTAB['flux_0'])
+        assert_allclose(prf._prf_array[0, 0].sum(), 1)
+        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
