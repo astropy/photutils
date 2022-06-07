@@ -110,6 +110,11 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         raise ValueError('The data and segmentation image must have '
                          'the same shape')
 
+    if nlevels < 1:
+        raise ValueError(f'nlevels must be >= 1, got "{nlevels}"')
+    if contrast < 0 or contrast > 1:
+        raise ValueError(f'contrast must be >= 0 and <= 1, got "{contrast}"')
+
     if mode not in ('exponential', 'linear'):
         raise ValueError(f'"{mode}" is an invalid mode; mode must be '
                          '"exponential" or "linear"')
@@ -232,11 +237,6 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     """
     from scipy.ndimage import label as ndilabel
     from skimage.segmentation import watershed
-
-    if nlevels < 1:
-        raise ValueError(f'nlevels must be >= 1, got "{nlevels}"')
-    if contrast < 0 or contrast > 1:
-        raise ValueError(f'contrast must be >= 0 and <= 1, got "{contrast}"')
 
     segm_mask = (segment_img.data > 0)
     source_values = data[segm_mask]
