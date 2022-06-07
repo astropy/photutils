@@ -6,6 +6,7 @@ General
 
 New Features
 ^^^^^^^^^^^^
+
 - ``photutils.psf``
 
   - Added a ``mask`` keyword when calling the PSF-fitting classes.
@@ -37,6 +38,9 @@ API Changes
 
   - Invalid data values (i.e., NaN or inf) are now automatically masked
     when performing PSF fitting. [#1350]
+
+  - Deprecated the ``sandbox`` classes ``DiscretePRF`` and
+    ``Reproject``. [#1357]
 
 - ``photutils.segmentation``
 
