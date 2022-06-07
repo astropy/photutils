@@ -276,51 +276,51 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
     nsegments = len(segments)
     if nsegments == 0:  # no deblending
         return segment_img
-    else:
-        for i in range(nsegments - 1):
-            segm_lower = segments[i].data
-            segm_upper = segments[i + 1].data
-            relabel = False
-            # if the are more sources at the upper level, then
-            # remove the parent source(s) from the lower level,
-            # but keep any sources in the lower level that do not have
-            # multiple children in the upper level
-            for label in segments[i].labels:
-                mask = (segm_lower == label)
-                # checks for 1-to-1 label mapping n -> m (where m >= 0)
-                upper_labels = segm_upper[mask]
-                upper_labels = np.unique(upper_labels[upper_labels != 0])
-                if upper_labels.size >= 2:
-                    relabel = True
-                    segm_lower[mask] = segm_upper[mask]
 
-            if relabel:
-                segm_new = object.__new__(SegmentationImage)
-                segm_new._data = ndilabel(segm_lower, structure=selem)[0]
-                segments[i + 1] = segm_new
-            else:
-                segments[i + 1] = segments[i]
+    for i in range(nsegments - 1):
+        segm_lower = segments[i].data
+        segm_upper = segments[i + 1].data
+        relabel = False
+        # if the are more sources at the upper level, then
+        # remove the parent source(s) from the lower level,
+        # but keep any sources in the lower level that do not have
+        # multiple children in the upper level
+        for label in segments[i].labels:
+            mask = (segm_lower == label)
+            # checks for 1-to-1 label mapping n -> m (where m >= 0)
+            upper_labels = segm_upper[mask]
+            upper_labels = np.unique(upper_labels[upper_labels != 0])
+            if upper_labels.size >= 2:
+                relabel = True
+                segm_lower[mask] = segm_upper[mask]
 
-        # Deblend using watershed.  If any sources do not meet the
-        # contrast criterion, then remove the faintest such source and
-        # repeat until all sources meet the contrast criterion.
-        markers = segments[-1].data
-        mask = segment_img.data.astype(bool)
-        remove_marker = True
-        while remove_marker:
-            markers = watershed(-data, markers, mask=mask, connectivity=selem)
+        if relabel:
+            segm_new = object.__new__(SegmentationImage)
+            segm_new._data = ndilabel(segm_lower, structure=selem)[0]
+            segments[i + 1] = segm_new
+        else:
+            segments[i + 1] = segments[i]
 
-            labels = np.unique(markers[markers != 0])
-            flux_frac = np.array([np.sum(data[markers == label])
-                                  for label in labels]) / source_sum
-            remove_marker = any(flux_frac < contrast)
+    # Deblend using watershed.  If any sources do not meet the
+    # contrast criterion, then remove the faintest such source and
+    # repeat until all sources meet the contrast criterion.
+    markers = segments[-1].data
+    mask = segment_img.data.astype(bool)
+    remove_marker = True
+    while remove_marker:
+        markers = watershed(-data, markers, mask=mask, connectivity=selem)
 
-            if remove_marker:
-                # remove only the faintest source (one at a time)
-                # because several faint sources could combine to meet the
-                # contrast criterion
-                markers[markers == labels[np.argmin(flux_frac)]] = 0.
+        labels = np.unique(markers[markers != 0])
+        flux_frac = np.array([np.sum(data[markers == label])
+                              for label in labels]) / source_sum
+        remove_marker = any(flux_frac < contrast)
 
-        segm_new = object.__new__(SegmentationImage)
-        segm_new._data = markers
-        return segm_new
+        if remove_marker:
+            # remove only the faintest source (one at a time)
+            # because several faint sources could combine to meet the
+            # contrast criterion
+            markers[markers == labels[np.argmin(flux_frac)]] = 0.
+
+    segm_new = object.__new__(SegmentationImage)
+    segm_new._data = markers
+    return segm_new
