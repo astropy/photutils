@@ -28,9 +28,9 @@ def make_2dgaussian_kernel(fwhm, size, mode='oversample', oversampling=10):
 
     size : int or (2,) int array_like
         The size of the kernel along each axis. If ``size`` is a scalar
-        then a square size of ``size`` will be used. If ``size`` has two
-        elements, they should be in ``(ny, nx)`` (i.e., array shape)
-        order.
+        then a square size of ``size`` will be used. If ``size`` has
+        two elements, they must be in ``(ny, nx)`` (i.e., array shape)
+        order. ``size`` must have odd values for both axes.
 
     mode : {'oversample', 'center', 'linear_interp', 'integrate'}, optional
         The mode to use for discretizing the 2D Gaussian model:
@@ -54,7 +54,7 @@ def make_2dgaussian_kernel(fwhm, size, mode='oversample', oversampling=10):
     kernel : `astropy.convolution.Kernel2D`
         The output smoothing kernel, normalized such that it sums to 1.
     """
-    ysize, xsize = as_pair('size', size, lower_bound=(0, 0))
+    ysize, xsize = as_pair('size', size, lower_bound=(0, 1), check_odd=True)
 
     kernel = Gaussian2DKernel(fwhm * gaussian_fwhm_to_sigma,
                               x_size=xsize, y_size=ysize, mode=mode,
