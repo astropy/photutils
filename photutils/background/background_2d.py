@@ -355,13 +355,13 @@ class Background2D:
         box_idx = np.where(nmasked <= self._box_npixels_threshold)[0]
 
         if box_idx.size == 0:
-            raise ValueError('All boxes contain > {0} ({1} percent per '
+            raise ValueError('All boxes contain > '
+                             f'{self._box_npixels_threshold} '
+                             f'({self.exclude_percentile} percent per '
                              'box) masked pixels (or all are completely '
                              'masked). Please check your data or increase '
                              '"exclude_percentile" to allow more boxes to '
-                             'be included.'
-                             .format(self._box_npixels_threshold,
-                                     self.exclude_percentile))
+                             'be included.')
 
         return box_idx
 
