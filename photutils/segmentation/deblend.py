@@ -320,7 +320,7 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
         value of zero is reserved for the background.  Note that the
         returned `SegmentationImage` may *not* have consecutive labels.
     """
-    segm_mask = (segment_img.data > 0)
+    segm_mask = segment_img.data.astype(bool)
     source_values = data[segm_mask]
     source_sum = float(np.nansum(source_values))
     source_min = np.nanmin(source_values)
@@ -338,8 +338,7 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
     segments = make_markers(segments, selem)
 
     markers = segments[-1].data
-    mask = segment_img.data.astype(bool)
-    markers = apply_watershed(data, markers, selem, mask, source_sum,
+    markers = apply_watershed(data, markers, selem, segm_mask, source_sum,
                               contrast)
 
     segm_new = object.__new__(SegmentationImage)
