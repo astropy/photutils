@@ -176,55 +176,49 @@ def _detect_sources(data, thresholds, npixels, *, selem=None,
         The 2D array of the image.
 
         .. note::
-           It is recommended that the user convolve the data with
-           ``kernel`` and input the convolved data directly into the
-           ``data`` parameter. In this case do not input a ``kernel``,
-           otherwise the data will be convolved twice.
+           It is strongly recommended that the user convolve the data
+           with ``kernel`` and input the convolved data directly
+           into the ``data`` parameter. In this case do not input a
+           ``kernel``, otherwise the data will be convolved twice.
 
-    thresholds : 2D `~numpy.ndarray` or 1D array of floats
-        The data values (as a 1D array of floats) or pixel-wise
-        data values to be used for the detection thresholds. A 2D
-        ``threshold`` must have the same shape as ``data``.
+    thresholds : list of 2D `~numpy.ndarray` or 1D array of floats
+        The data values (as a 1D array of floats) or pixel-wise data
+        values (as a sequence of 2D arrays) to be used for the detection
+        thresholds. 2D threshold arrays must have the same shape as
+        ``data``.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
         that an object must have to be detected. ``npixels`` must be a
         positive integer.
 
-    kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
-        The 2D array of the kernel used to filter the image before
-        thresholding. Filtering the image will smooth the noise and
-        maximize detectability of objects with a shape similar to the
-        kernel. ``kernel`` must be `None` if the input ``data`` are
-        already convolved.
+    selem : array_like
+        A structuring element that defines feature connections. As
+        an example, for connectivity along pixel edges only, the
+        structuring element is ``np.array([[0, 1, 0]], [1, 1, 1],
+        [0, 1, 0]])``.
 
-    connectivity : {4, 8}, optional
-        The type of pixel connectivity used in determining how pixels
-        are grouped into a detected source. The options are 4 or
-        8 (default). 4-connected pixels touch along their edges.
-        8-connected pixels touch along their edges or corners. For
-        reference, SourceExtractor uses 8-connected pixels.
-
-    mask : 2D bool `~numpy.ndarray`, optional
+    inverse_mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as the input ``data``, where
-        `True` values indicate masked pixels. Masked pixels will not be
-        included in any source.
+        `False` values indicate masked pixels (the inverse of usual
+        pixel masks). Masked pixels will not be included in any source.
 
     deblend_mode : bool, optional
         If `True` do not include the segmentation image in the output
         list for any threshold level where the number of detected
-        sources is less than 2. This is useful for source deblending and
-        improves its performance.
+        sources is less than 2. The deblend mode also does not relabel
+        the output segmentation image to have consecutive label. This
+        keyword improves performance of source deblending.
 
     Returns
     -------
     segment_image : list of `~photutils.segmentation.SegmentationImage`
-        A list of 2D segmentation images, with the same shape as
-        ``data``, where sources are marked by different positive integer
-        values. A value of zero is reserved for the background. If
-        no sources are found for a given threshold, then the output
-        list will contain `None` for that threshold. Also see the
-        ``deblend_mode`` keyword.
+        A list of 2D segmentation images, one for each input threshold,
+        with the same shape as ``data``, where sources are marked
+        by different positive integer values. A value of zero is
+        reserved for the background. If no sources are found for a given
+        threshold, then the output list will contain `None` for that
+        threshold. Also see the ``deblend_mode`` keyword.
     """
     from scipy.ndimage import label as ndi_label
     from scipy.ndimage import find_objects
@@ -314,10 +308,10 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         The 2D array of the image.
 
         .. note::
-           It is recommended that the user convolve the data with
-           ``kernel`` and input the convolved data directly into the
-           ``data`` parameter. In this case do not input a ``kernel``,
-           otherwise the data will be convolved twice.
+           It is strongly recommended that the user convolve the data
+           with ``kernel`` and input the convolved data directly
+           into the ``data`` parameter. In this case do not input a
+           ``kernel``, otherwise the data will be convolved twice.
 
     threshold : float or 2D `~numpy.ndarray`
         The data value or pixel-wise data values to be used for the
