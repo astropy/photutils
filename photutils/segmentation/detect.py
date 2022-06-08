@@ -155,8 +155,8 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
             + np.broadcast_to(error * nsigma, data.shape))
 
 
-def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
-                    mask=None, deblend_skip=False):
+def _detect_sources(data, thresholds, npixels, *, kernel=None, connectivity=8,
+                    selem=None, inverse_mask=None, deblend_skip=False):
     """
     Detect sources above a specified threshold value in an image.
 
@@ -226,30 +226,8 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
         list will contain `None` for that threshold. Also see the
         ``deblend_skip`` keyword.
     """
-    from scipy import ndimage
-
-    if (npixels <= 0) or (int(npixels) != npixels):
-        raise ValueError('npixels must be a positive integer, got '
-                         f'"{npixels}"')
-
-    if mask is not None:
-        if mask.shape != data.shape:
-            raise ValueError('mask must have the same shape as the input '
-                             'image.')
-        if mask.all():
-            raise ValueError('mask must not be True for every pixel. There '
-                             'are no unmasked pixels in the image to detect '
-                             'sources.')
-
-    if kernel is not None:
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', AstropyUserWarning)
-            data = convolve(data, kernel, mask=mask, normalize_kernel=True)
-
-    selem = _make_binary_structure(data.ndim, connectivity)
-
-    if mask is not None:
-        mask_inv = np.logical_not(mask)
+    from scipy.ndimage import label as ndi_label
+    from scipy.ndimage import find_objects
 
     segms = []
     for threshold in thresholds:
@@ -258,8 +236,8 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
             warnings.simplefilter('ignore', category=RuntimeWarning)
             segment_img = data > threshold
 
-        if mask is not None:
-            segment_img &= mask_inv
+        if inverse_mask is not None:
+            segment_img &= inverse_mask
 
         # return if threshold was too high to detect any sources
         if np.count_nonzero(segment_img) == 0:
@@ -270,14 +248,14 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
 
         # this is faster than recasting segment_img to int and using
         # output=segment_img
-        segment_img, nlabels = ndimage.label(segment_img, structure=selem)
+        segment_img, nlabels = ndi_label(segment_img, structure=selem)
         labels = np.arange(nlabels) + 1
 
         # remove objects with less than npixels
         # NOTE: making cutout images and setting their pixels to 0 is
         # ~10x faster than using segment_img directly and ~2x faster
         # than using ndimage.sum_labels.
-        slices = ndimage.find_objects(segment_img)
+        slices = find_objects(segment_img)
         segm_labels = []
         segm_slices = []
         for label, slc in zip(labels, slices):
@@ -422,8 +400,32 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
                    cmap=segm.make_cmap(seed=1234))
         plt.tight_layout()
     """
+    if (npixels <= 0) or (int(npixels) != npixels):
+        raise ValueError('npixels must be a positive integer, got '
+                         f'"{npixels}"')
+
+    if mask is not None:
+        if mask.shape != data.shape:
+            raise ValueError('mask must have the same shape as the input '
+                             'image.')
+        if mask.all():
+            raise ValueError('mask must not be True for every pixel. There '
+                             'are no unmasked pixels in the image to detect '
+                             'sources.')
+        inverse_mask = np.logical_not(mask)
+    else:
+        inverse_mask = None
+
+    if kernel is not None:
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyUserWarning)
+            data = convolve(data, kernel, mask=mask, normalize_kernel=True)
+
+    selem = _make_binary_structure(data.ndim, connectivity)
+
     return _detect_sources(data, (threshold,), npixels, kernel=kernel,
-                           connectivity=connectivity, mask=mask)[0]
+                           connectivity=connectivity, selem=selem,
+                           inverse_mask=inverse_mask)[0]
 
 
 @deprecated('1.5.0', alternative='SegmentationImage.make_source_mask')

@@ -183,7 +183,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
 
 
 def multithreshold(data, segment_img, mode, nlevels, segm_mask, npixels,
-                   connectivity, source_min, source_max):
+                   connectivity, selem, source_min, source_max):
 
     if mode == 'exponential' and source_min < 0:
         warnings.warn(f'Source "{segment_img.labels[0]}" contains negative '
@@ -201,10 +201,9 @@ def multithreshold(data, segment_img, mode, nlevels, segm_mask, npixels,
         thresholds = source_min + ((source_max - source_min) /
                                    (nlevels + 1)) * steps
 
-    mask = ~segm_mask
     segments = _detect_sources(data, thresholds, npixels=npixels,
-                               connectivity=connectivity, mask=mask,
-                               deblend_skip=True)
+                               connectivity=connectivity, selem=selem,
+                               inverse_mask=segm_mask, deblend_skip=True)
 
     return segments
 
@@ -329,7 +328,8 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
         return segment_img  # no deblending
 
     segments = multithreshold(data, segment_img, mode, nlevels, segm_mask,
-                              npixels, connectivity, source_min, source_max)
+                              npixels, connectivity, selem, source_min,
+                              source_max)
 
     if len(segments) == 0:  # no deblending
         return segment_img
