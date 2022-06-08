@@ -322,7 +322,7 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
     """
     segm_mask = segment_img.data.astype(bool)
     source_values = data[segm_mask]
-    source_sum = float(np.nansum(source_values))
+    source_sum = np.nansum(source_values)
     source_min = np.nanmin(source_values)
     source_max = np.nanmax(source_values)
     if source_min == source_max:
@@ -331,10 +331,10 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
     segments = multithreshold(data, segment_img, mode, nlevels, segm_mask,
                               npixels, connectivity, source_min, source_max)
 
-    # define the sources (markers) for the watershed algorithm
     if len(segments) == 0:  # no deblending
         return segment_img
 
+    # define the sources (markers) for the watershed algorithm
     segments = make_markers(segments, selem)
 
     markers = segments[-1].data
