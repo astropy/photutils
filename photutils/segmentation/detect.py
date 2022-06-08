@@ -156,7 +156,7 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
 
 
 def _detect_sources(data, thresholds, npixels, *, kernel=None, connectivity=8,
-                    selem=None, inverse_mask=None, deblend_skip=False):
+                    selem=None, inverse_mask=None, deblend_mode=False):
     """
     Detect sources above a specified threshold value in an image.
 
@@ -210,7 +210,7 @@ def _detect_sources(data, thresholds, npixels, *, kernel=None, connectivity=8,
         `True` values indicate masked pixels. Masked pixels will not be
         included in any source.
 
-    deblend_skip : bool, optional
+    deblend_mode : bool, optional
         If `True` do not include the segmentation image in the output
         list for any threshold level where the number of detected
         sources is less than 2. This is useful for source deblending and
@@ -224,7 +224,7 @@ def _detect_sources(data, thresholds, npixels, *, kernel=None, connectivity=8,
         values. A value of zero is reserved for the background. If
         no sources are found for a given threshold, then the output
         list will contain `None` for that threshold. Also see the
-        ``deblend_skip`` keyword.
+        ``deblend_mode`` keyword.
     """
     from scipy.ndimage import label as ndi_label
     from scipy.ndimage import find_objects
@@ -241,7 +241,7 @@ def _detect_sources(data, thresholds, npixels, *, kernel=None, connectivity=8,
         # return if threshold was too high to detect any sources
         if np.count_nonzero(segment_img) == 0:
             warnings.warn('No sources were found.', NoDetectionsWarning)
-            if not deblend_skip:
+            if not deblend_mode:
                 segms.append(None)
             continue
 
@@ -268,7 +268,7 @@ def _detect_sources(data, thresholds, npixels, *, kernel=None, connectivity=8,
 
         if np.count_nonzero(segment_img) == 0:
             warnings.warn('No sources were found.', NoDetectionsWarning)
-            if not deblend_skip:
+            if not deblend_mode:
                 segms.append(None)
             continue
 
@@ -285,7 +285,7 @@ def _detect_sources(data, thresholds, npixels, *, kernel=None, connectivity=8,
         segm.__dict__['labels'] = labels
         segm.__dict__['slices'] = segm_slices
 
-        if deblend_skip and segm.nlabels == 1:
+        if deblend_mode and segm.nlabels == 1:
             continue
 
         segms.append(segm)
