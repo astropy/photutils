@@ -152,7 +152,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         source_segm.keep_labels(label)  # include only one label
         source_deblended = _deblend_source(
             source_data, source_segm, npixels, selem, nlevels=nlevels,
-            contrast=contrast, mode=mode, connectivity=connectivity)
+            contrast=contrast, mode=mode)
 
         if not np.array_equal(source_deblended.data.astype(bool),
                               source_segm.data.astype(bool)):
@@ -183,7 +183,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
 
 
 def multithreshold(data, segment_img, mode, nlevels, segm_mask, npixels,
-                   connectivity, selem, source_min, source_max):
+                   selem, source_min, source_max):
 
     if mode == 'exponential' and source_min < 0:
         warnings.warn(f'Source "{segment_img.labels[0]}" contains negative '
@@ -204,8 +204,8 @@ def multithreshold(data, segment_img, mode, nlevels, segm_mask, npixels,
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=RuntimeWarning)
         segments = _detect_sources(data, thresholds, npixels=npixels,
-                                   connectivity=connectivity, selem=selem,
-                                   inverse_mask=segm_mask, deblend_mode=True)
+                                   selem=selem, inverse_mask=segm_mask,
+                                   deblend_mode=True)
 
     return segments
 
@@ -264,7 +264,7 @@ def apply_watershed(data, markers, selem, mask, source_sum, contrast):
 
 
 def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
-                    contrast=0.001, mode='exponential', connectivity=8):
+                    contrast=0.001, mode='exponential'):
     """
     Deblend a single labeled source.
 
@@ -330,8 +330,7 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
         return segment_img  # no deblending
 
     segments = multithreshold(data, segment_img, mode, nlevels, segm_mask,
-                              npixels, connectivity, selem, source_min,
-                              source_max)
+                              npixels, selem, source_min, source_max)
 
     if len(segments) == 0:  # no deblending
         return segment_img

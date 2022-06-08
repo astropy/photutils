@@ -155,8 +155,8 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
             + np.broadcast_to(error * nsigma, data.shape))
 
 
-def _detect_sources(data, thresholds, npixels, *, kernel=None, connectivity=8,
-                    selem=None, inverse_mask=None, deblend_mode=False):
+def _detect_sources(data, thresholds, npixels, *, selem=None,
+                    inverse_mask=None, deblend_mode=False):
     """
     Detect sources above a specified threshold value in an image.
 
@@ -245,14 +245,14 @@ def _detect_sources(data, thresholds, npixels, *, kernel=None, connectivity=8,
                 segms.append(None)
             continue
 
-        # this is faster than recasting segment_img to int and using
-        # output=segment_img
+        # recasting segment_img to int and using output=segment_img
+        # gives similar performance
         segment_img, nlabels = ndi_label(segment_img, structure=selem)
         labels = np.arange(nlabels) + 1
 
         # remove objects with less than npixels
         # NOTE: making cutout images and setting their pixels to 0 is
-        # ~10x faster than using segment_img directly and ~2x faster
+        # ~10x faster than using segment_img directly and ~50% faster
         # than using ndimage.sum_labels.
         slices = find_objects(segment_img)
         segm_labels = []
@@ -424,8 +424,7 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=RuntimeWarning)
-        return _detect_sources(data, (threshold,), npixels, kernel=kernel,
-                               connectivity=connectivity, selem=selem,
+        return _detect_sources(data, (threshold,), npixels, selem=selem,
                                inverse_mask=inverse_mask)[0]
 
 
