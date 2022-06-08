@@ -36,10 +36,10 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         `~photutils.segmentation.detect_sources`.
 
         .. note::
-           It is recommended that the user convolve the data with
-           ``kernel`` and input the convolved data directly into the
-           ``data`` parameter. In this case do not input a ``kernel``,
-           otherwise the data will be convolved twice.
+           It is strongly recommended that the user convolve the data
+           with ``kernel`` and input the convolved data directly
+           into the ``data`` parameter. In this case do not input a
+           ``kernel``, otherwise the data will be convolved twice.
 
     segment_img : `~photutils.segmentation.SegmentationImage`
         The segmentation image to deblend.
@@ -117,13 +117,12 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                          'the same shape')
 
     if nlevels < 1:
-        raise ValueError(f'nlevels must be >= 1, got "{nlevels}"')
+        raise ValueError('nlevels must be >= 1')
     if contrast < 0 or contrast > 1:
-        raise ValueError(f'contrast must be >= 0 and <= 1, got "{contrast}"')
+        raise ValueError('contrast must be >= 0 and <= 1')
 
     if mode not in ('exponential', 'linear'):
-        raise ValueError(f'"{mode}" is an invalid mode; mode must be '
-                         '"exponential" or "linear"')
+        raise ValueError('mode must be "exponential" or "linear"')
 
     if labels is None:
         labels = segment_img.labels
@@ -133,8 +132,9 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
 
     selem = _make_binary_structure(data.ndim, connectivity)
 
-    # a source must have at least 2 * npixels to be deblended into
-    # multiple sources, each with a minimum of npixels
+    # include only sources that have at least (2 * npixels);
+    # this is required for it to be deblended into multiple sources,
+    # each with a minimum of npixels
     mask = (segment_img.areas[segment_img.get_indices(labels)]
             >= (npixels * 2))
     labels = labels[mask]
