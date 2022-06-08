@@ -238,6 +238,30 @@ def make_markers(segments, selem):
     return segments
 
 
+def apply_watershed(data, markers, selem, mask, source_sum, contrast):
+    from scipy.ndimage import sum_labels
+    from skimage.segmentation import watershed
+
+    # Deblend using watershed. If any source does not meet the contrast
+    # criterion, then remove the faintest such source and repeat until
+    # all sources meet the contrast criterion.
+    remove_marker = True
+    while remove_marker:
+        markers = watershed(-data, markers, mask=mask, connectivity=selem)
+
+        labels = np.unique(markers[markers != 0])
+        flux_frac = sum_labels(data, markers, index=labels) / source_sum
+        remove_marker = any(flux_frac < contrast)
+
+        if remove_marker:
+            # remove only the faintest source (one at a time) because
+            # several faint sources could combine to meet the contrast
+            # criterion
+            markers[markers == labels[np.argmin(flux_frac)]] = 0.
+
+    return markers
+
+
 def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
                     contrast=0.001, mode='exponential', connectivity=8):
     """
@@ -296,8 +320,6 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
         value of zero is reserved for the background.  Note that the
         returned `SegmentationImage` may *not* have consecutive labels.
     """
-    from skimage.segmentation import watershed
-
     segm_mask = (segment_img.data > 0)
     source_values = data[segm_mask]
     source_sum = float(np.nansum(source_values))
@@ -315,25 +337,10 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
 
     segments = make_markers(segments, selem)
 
-    # Deblend using watershed.  If any sources do not meet the
-    # contrast criterion, then remove the faintest such source and
-    # repeat until all sources meet the contrast criterion.
     markers = segments[-1].data
     mask = segment_img.data.astype(bool)
-    remove_marker = True
-    while remove_marker:
-        markers = watershed(-data, markers, mask=mask, connectivity=selem)
-
-        labels = np.unique(markers[markers != 0])
-        flux_frac = np.array([np.sum(data[markers == label])
-                              for label in labels]) / source_sum
-        remove_marker = any(flux_frac < contrast)
-
-        if remove_marker:
-            # remove only the faintest source (one at a time)
-            # because several faint sources could combine to meet the
-            # contrast criterion
-            markers[markers == labels[np.argmin(flux_frac)]] = 0.
+    markers = apply_watershed(data, markers, selem, mask, source_sum,
+                              contrast)
 
     segm_new = object.__new__(SegmentationImage)
     segm_new._data = markers
