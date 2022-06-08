@@ -201,9 +201,11 @@ def multithreshold(data, segment_img, mode, nlevels, segm_mask, npixels,
         thresholds = source_min + ((source_max - source_min) /
                                    (nlevels + 1)) * steps
 
-    segments = _detect_sources(data, thresholds, npixels=npixels,
-                               connectivity=connectivity, selem=selem,
-                               inverse_mask=segm_mask, deblend_skip=True)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=RuntimeWarning)
+        segments = _detect_sources(data, thresholds, npixels=npixels,
+                                   connectivity=connectivity, selem=selem,
+                                   inverse_mask=segm_mask, deblend_skip=True)
 
     return segments
 

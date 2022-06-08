@@ -231,10 +231,9 @@ def _detect_sources(data, thresholds, npixels, *, kernel=None, connectivity=8,
 
     segms = []
     for threshold in thresholds:
-        # ignore RuntimeWarning caused by > comparison when data contains NaNs
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', category=RuntimeWarning)
-            segment_img = data > threshold
+        # RuntimeWarning caused by > comparison when data contains NaNs
+        # is ignored when calling _detect_sources
+        segment_img = data > threshold
 
         if inverse_mask is not None:
             segment_img &= inverse_mask
@@ -423,9 +422,11 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
 
     selem = _make_binary_structure(data.ndim, connectivity)
 
-    return _detect_sources(data, (threshold,), npixels, kernel=kernel,
-                           connectivity=connectivity, selem=selem,
-                           inverse_mask=inverse_mask)[0]
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=RuntimeWarning)
+        return _detect_sources(data, (threshold,), npixels, kernel=kernel,
+                               connectivity=connectivity, selem=selem,
+                               inverse_mask=inverse_mask)[0]
 
 
 @deprecated('1.5.0', alternative='SegmentationImage.make_source_mask')
