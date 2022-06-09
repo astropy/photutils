@@ -12,16 +12,20 @@ jobs:
   cron-test:
     name: ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.allow_failure }}
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
             python: '3.10'
             tox_env: 'linkcheck'
+            allow_failure: false
+
           - os: ubuntu-latest
             python: '3.10'
             tox_env: 'py310-test-alldeps-devdeps'
             toxposargs: --remote-data=any
+            allow_failure: false
 
     steps:
     - name: Check out repository
