@@ -194,11 +194,11 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     return segm_deblended
 
 
-def multithreshold(data, segment_img, mode, nlevels, segm_mask, npixels,
+def multithreshold(data, label, mode, nlevels, segm_mask, npixels,
                    selem, source_min, source_max):
 
     if mode == 'exponential' and source_min < 0:
-        warnings.warn(f'Source "{segment_img.labels[0]}" contains negative '
+        warnings.warn(f'Source label "{label}" contains negative '
                       'values, setting deblending mode to "linear"',
                       AstropyUserWarning)
         mode = 'linear'
@@ -341,7 +341,8 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
     if source_min == source_max:
         return segment_img  # no deblending
 
-    segments = multithreshold(data, segment_img, mode, nlevels, segm_mask,
+    label = segment_img.labels[0]  # should only be 1 label
+    segments = multithreshold(data, label, mode, nlevels, segm_mask,
                               npixels, selem, source_min, source_max)
 
     if len(segments) == 0:  # no deblending
