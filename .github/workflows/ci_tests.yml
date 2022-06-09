@@ -67,6 +67,12 @@ jobs:
 
           - os: ubuntu-latest
             python: '3.10'
+            tox_env: 'pep517'
+            allow_failure: false
+            prefix: ''
+
+          - os: ubuntu-latest
+            python: '3.10'
             tox_env: 'bandit'
             allow_failure: false
             prefix: ''
