@@ -1,4 +1,4 @@
-name: CI Tests
+name: CI
 
 on:
   push:
@@ -16,7 +16,7 @@ env:
 
 jobs:
   ci-tests:
-    name: ${{ matrix.os }}, ${{ matrix.tox_env }}
+    name: ${{ matrix.prefix }} ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.allow_failure }}
     strategy:
@@ -26,53 +26,63 @@ jobs:
             python: '3.8'
             tox_env: 'py38-test-alldeps'
             allow_failure: false
+            prefix: ''
 
           - os: ubuntu-latest
             python: '3.9'
             tox_env: 'py39-test-alldeps'
             allow_failure: false
+            prefix: ''
 
           - os: ubuntu-latest
             python: '3.10'
             tox_env: 'py310-test-alldeps-cov'
             toxposargs: --remote-data=any
             allow_failure: false
+            prefix: ''
 
           - os: macos-latest
             python: '3.10'
             tox_env: 'py310-test-alldeps'
             allow_failure: false
+            prefix: ''
 
           - os: windows-latest
             python: '3.10'
             tox_env: 'py310-test-alldeps'
             allow_failure: false
+            prefix: ''
 
           - os: ubuntu-latest
             python: '3.10'
             tox_env: 'py310-test'
             allow_failure: false
+            prefix: ''
 
           - os: ubuntu-latest
             python: '3.10'
             tox_env: 'codestyle'
             allow_failure: false
+            prefix: ''
 
           - os: ubuntu-latest
             python: '3.10'
             tox_env: 'bandit'
             allow_failure: false
+            prefix: ''
 
           - os: ubuntu-latest
             python: '3.8'
             tox_env: 'py38-test-alldeps-astropylts-numpy118'
             allow_failure: false
+            prefix: ''
 
           - os: ubuntu-latest
             python: '3.10'
             tox_env: 'py310-test-alldeps-devdeps'
             toxposargs: --remote-data=any
             allow_failure: true
+            prefix: '(Allowed failure)'
 
     steps:
     - name: Check out repository
