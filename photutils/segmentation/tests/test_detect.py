@@ -198,8 +198,10 @@ class TestDetectSources:
         threshold = 0.3
         expected = np.ones((3, 3))
         expected[2] = 0
-        segm = detect_sources(self.data, threshold, npixels=1, kernel=kernel)
-        assert_array_equal(segm.data, expected)
+        with pytest.warns(AstropyDeprecationWarning):
+            segm = detect_sources(self.data, threshold, npixels=1,
+                                  kernel=kernel)
+            assert_array_equal(segm.data, expected)
 
     def test_npixels_nonint(self):
         """Test if error raises if npixel is non-integer."""
@@ -217,13 +219,16 @@ class TestDetectSources:
             detect_sources(self.data, threshold=1, npixels=1, connectivity=10)
 
     def test_kernel_array(self):
-        segm = detect_sources(self.data, 0.1, npixels=1,
-                              kernel=self.kernel.array)
-        assert_array_equal(segm.data, np.ones((3, 3)))
+        with pytest.warns(AstropyDeprecationWarning):
+            segm = detect_sources(self.data, 0.1, npixels=1,
+                                  kernel=self.kernel.array)
+            assert_array_equal(segm.data, np.ones((3, 3)))
 
     def test_kernel(self):
-        segm = detect_sources(self.data, 0.1, npixels=1, kernel=self.kernel)
-        assert_array_equal(segm.data, np.ones((3, 3)))
+        with pytest.warns(AstropyDeprecationWarning):
+            segm = detect_sources(self.data, 0.1, npixels=1,
+                                  kernel=self.kernel)
+            assert_array_equal(segm.data, np.ones((3, 3)))
 
     def test_mask(self):
         data = np.zeros((11, 11))
