@@ -184,8 +184,18 @@ class TestSegmentationImage:
         assert_allclose(cmap.colors[0], [0, 0, 0, 1])
 
         assert_allclose(self.segm.cmap.colors,
-                        self.segm.make_cmap(background_color='#000000',
+                        self.segm.make_cmap(background_color='#000000ff',
                                             seed=0).colors)
+
+    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    @pytest.mark.parametrize('color, alpha', (('#00000000', 0.),
+                                              ('#00000040', 64/255),
+                                              ('#00000080', 128/255),
+                                              ('#000000C0', 192/255),
+                                              ('#000000FF', 1.)))
+    def test_make_cmap_alpha(self, color, alpha):
+        cmap = self.segm.make_cmap(background_color=color)
+        assert_allclose(cmap.colors[0], (0, 0, 0, alpha))
 
     def test_reassign_labels(self):
         segm = SegmentationImage(self.data.copy())
