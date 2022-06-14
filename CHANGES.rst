@@ -27,6 +27,9 @@ New Features
   - Allow ``SegmentationImage.make_cmap`` ``background_color`` to be in
     any matplotlib color format. [#1361]
 
+  - Added an ``imshow`` convenience method to ``SegmentationImage``.
+    [#1362]
+
 - ``photutils.utils``
 
   - Added a ``circular_footprint`` convenience function. [#1355]
