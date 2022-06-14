@@ -368,3 +368,9 @@ class TestSegmentationImage:
         assert isinstance(segm_outlines, np.ma.MaskedArray)
         assert np.ma.count(segm_outlines) == 8
         assert np.ma.count_masked(segm_outlines) == 17
+
+    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    def test_imshow(self):
+        axim = self.segm.imshow(figsize=(5, 5))
+        from matplotlib.image import AxesImage
+        assert isinstance(axim, AxesImage)
