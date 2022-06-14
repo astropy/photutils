@@ -181,7 +181,7 @@ class TestSegmentationImage:
     def test_make_cmap(self):
         cmap = self.segm.make_cmap()
         assert len(cmap.colors) == (self.segm.max_label + 1)
-        assert_allclose(cmap.colors[0], [0, 0, 0])
+        assert_allclose(cmap.colors[0], [0, 0, 0, 1])
 
         assert_allclose(self.segm.cmap.colors,
                         self.segm.make_cmap(background_color='#000000',
