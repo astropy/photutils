@@ -1096,6 +1096,70 @@ class SegmentationImage:
 
         return outlines
 
+    def imshow(self, axes=None, figsize=None, dpi=None, cmap=None, alpha=None):
+        """
+        Display the segmentation image in a matplotlib
+        `~matplotlib.axes.Axes` instance.
+
+        The segmentation image will be displayed with no interpolation
+        and with the origin set to "lower".
+
+        Parameters
+        ----------
+        axes : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot. If `None`, then a new
+            `~matplotlib.axes.Axes` instance will be created.
+
+        figsize : 2-tuple of floats or `None`, optional
+            The figure dimension (width, height) in inches when creating
+            a new Axes. This keyword is ignored if ``axes`` is input.
+
+        dpi : float or `None`, optional
+            The figure dots per inch when creating a new Axes. This
+            keyword is ignored if ``axes`` is input.
+
+        cmap : `matplotlib.colors.Colormap`, str, or `None`, optional
+            The `~matplotlib.colors.Colormap` instance or a registered
+            matplotlib colormap name used to map scalar data to colors.
+            If `None`, then the colormap defined by the `cmap` attribute
+            will be used.
+
+        alpha : float, array-like, or `None`, optional
+            The alpha blending value, between 0 (transparent) and 1
+            (opaque). If alpha is an array, the alpha blending values
+            are applied pixel by pixel, and alpha must have the same
+            shape as the segmentation image.
+
+        Returns
+        -------
+        result : `matplotlib.image.AxesImage`
+            An image attached to an `matplotlib.axes.Axes`.
+
+        Examples
+        --------
+        .. plot::
+            :include-source:
+
+            from photutils.segmentation import SegmentationImage
+            data = np.array([[1, 1, 0, 0, 4, 4],
+                            [0, 0, 0, 0, 0, 4],
+                            [0, 0, 3, 3, 0, 0],
+                            [7, 0, 0, 0, 0, 5],
+                            [7, 7, 0, 5, 5, 5],
+                            [7, 7, 0, 0, 5, 5]])
+            segm = SegmentationImage(data)
+            segm.imshow(figsize=(5, 5))
+        """
+        import matplotlib.pyplot as plt
+
+        if axes is None:
+            _, axes = plt.subplots(figsize=figsize, dpi=dpi)
+        if cmap is None:
+            cmap = self.cmap
+
+        return axes.imshow(self.data, cmap=cmap, interpolation='none',
+                           origin='lower', alpha=alpha)
+
 
 class Segment:
     """
