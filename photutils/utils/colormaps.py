@@ -28,7 +28,7 @@ def make_random_cmap(ncolors=256, seed=None):
     Returns
     -------
     cmap : `matplotlib.colors.ListedColormap`
-        The matplotlib colormap with random colors.
+        The matplotlib colormap with random colors in RGBA format.
     """
     from matplotlib import colors
 
@@ -39,4 +39,4 @@ def make_random_cmap(ncolors=256, seed=None):
     hsv = np.dstack((hue, sat, val))
     rgb = np.squeeze(colors.hsv_to_rgb(hsv))
 
-    return colors.ListedColormap(rgb)
+    return colors.ListedColormap(colors.to_rgba_array(rgb))

@@ -370,7 +370,7 @@ class SegmentationImage:
                 raise ValueError(f'label {bad_labels} is invalid')
             raise ValueError(f'labels {bad_labels} are invalid')
 
-    def make_cmap(self, background_color='#000000', seed=None):
+    def make_cmap(self, background_color='#000000ff', seed=None):
         """
         Define a matplotlib colormap consisting of (random) muted
         colors.
@@ -379,22 +379,25 @@ class SegmentationImage:
 
         Parameters
         ----------
-        background_color : str or `None`, optional
-            A hex string in the "#rrggbb" format defining the first
-            color in the colormap.  This color will be used as the
-            background color (label = 0) when plotting the segmentation
-            array.  The default is black ('#000000').
+        background_color : Matplotlib color, optional
+            The color of the first color in the colormap.
+            The color may be specified using any of
+            the `Matplotlib color formats
+            <https://matplotlib.org/stable/tutorials/colors/colors.html>`_.
+            This color will be used as the background color (label = 0)
+            when plotting the segmentation image. The default color is
+            black with alpha=1.0 ('#000000ff').
 
         seed : int, optional
             A seed to initialize the `numpy.random.BitGenerator`. If
             `None`, then fresh, unpredictable entropy will be pulled
-            from the OS.  Separate function calls with the same ``seed``
+            from the OS. Separate function calls with the same ``seed``
             will generate the same colormap.
 
         Returns
         -------
         cmap : `matplotlib.colors.ListedColormap`
-            The matplotlib colormap.
+            The matplotlib colormap with colors in RGBA format.
         """
         if self.nlabels == 0:
             return None
@@ -404,7 +407,7 @@ class SegmentationImage:
         cmap = make_random_cmap(self.max_label + 1, seed=seed)
 
         if background_color is not None:
-            cmap.colors[0] = colors.hex2color(background_color)
+            cmap.colors[0] = colors.to_rgba(background_color)
 
         return cmap
 
@@ -415,7 +418,7 @@ class SegmentationImage:
 
         This is useful for plotting the segmentation array.
         """
-        return self.make_cmap(background_color='#000000', seed=0)
+        return self.make_cmap(background_color='#000000ff', seed=0)
 
     def reassign_label(self, label, new_label, relabel=False):
         """

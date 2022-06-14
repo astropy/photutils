@@ -24,6 +24,9 @@ New Features
 
   - Added a ``make_2dgaussian_kernel`` convenience function. [#1356]
 
+  - Allow ``SegmentationImage.make_cmap`` ``background_color`` to be in
+    any matplotlib color format. [#1361]
+
 - ``photutils.utils``
 
   - Added a ``circular_footprint`` convenience function. [#1355]
@@ -71,6 +74,11 @@ API Changes
 
   - Deprecated the ``make_source_mask`` function in favor of the
     ``SegmentationImage.make_source_mask`` method. [#1355]
+
+- ``photutils.utils``
+
+  - The colormap returned from ``make_random_cmap`` now has colors in
+    RGBA format. [#1361]
 
 
 1.4.0 (2022-03-25)
