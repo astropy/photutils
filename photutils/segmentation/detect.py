@@ -123,11 +123,10 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
     if not isinstance(sigma_clip, SigmaClip):
         raise TypeError('sigma_clip must be a SigmaClip object')
 
-    if sigclip_sigma != sigma_clip.sigma:
+    if (sigclip_sigma != sigma_clip.sigma
+            or sigclip_iters != sigma_clip.maxiters):
         sigma_clip = deepcopy(sigma_clip)
         sigma_clip.sigma = sigclip_sigma
-    if sigclip_iters != sigma_clip.maxiters:
-        sigma_clip = deepcopy(sigma_clip)
         sigma_clip.maxiters = sigclip_iters
 
     if background is None or error is None:
