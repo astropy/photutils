@@ -113,7 +113,8 @@ class SegmentationImage:
         if not np.issubdtype(value.dtype, np.integer):
             raise TypeError('data must be have integer type')
 
-        if np.min(value) < 0:
+        labels = self._get_labels(value)  # array([]) if value all zeros
+        if labels.shape != (0,) and np.min(labels) < 0:
             raise ValueError('The segmentation image cannot contain '
                              'negative integers.')
 
@@ -122,6 +123,7 @@ class SegmentationImage:
             self.__dict__ = {}
 
         self._data = value  # pylint: disable=attribute-defined-outside-init
+        self.__dict__['labels'] = labels
 
     @lazyproperty
     def data_ma(self):
@@ -147,6 +149,7 @@ class SegmentationImage:
         if '_raw_slices' in self.__dict__:
             labels_all = np.arange(len(self._raw_slices)) + 1
             labels = []
+            # if a label is missing, raw_slices will be None instead of a slice
             for label, slc in zip(labels_all, self._raw_slices):
                 if slc is not None:
                     labels.append(label)
