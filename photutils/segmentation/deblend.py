@@ -13,13 +13,14 @@ from .core import SegmentationImage
 from .detect import _make_binary_structure, _detect_sources
 from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
+from ..utils._optional_deps import HAS_TQDM  # noqa
 
 __all__ = ['deblend_sources']
 
 
 def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                     nlevels=32, contrast=0.001, mode='exponential',
-                    connectivity=8, relabel=True):
+                    connectivity=8, relabel=True, progress_bar=True):
     """
     Deblend overlapping sources labeled in a segmentation image.
 
@@ -91,6 +92,11 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         relabeled such that the labels are in consecutive order starting
         from 1.
 
+     progress_bar : bool, optional
+        Whether to display a progress bar. The progress bar requires
+        that the `tqdm <https://tqdm.github.io/>`_ optional dependency
+        be installed.
+
     Returns
     -------
     segment_image : `~photutils.segmentation.SegmentationImage`
@@ -142,7 +148,13 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     segm_deblended = object.__new__(SegmentationImage)
     segm_deblended._data = np.copy(segment_img.data)
     last_label = segment_img.max_label
-    for idx, label in zip(segment_img.get_indices(labels), labels):
+
+    indices = segment_img.get_indices(labels)
+    if progress_bar and HAS_TQDM:
+        from tqdm import tqdm
+        labels = tqdm(labels)
+
+    for idx, label in zip(indices, labels):
         source_slice = segment_img.slices[idx]
         source_data = data[source_slice]
 
