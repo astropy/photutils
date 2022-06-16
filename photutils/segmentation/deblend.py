@@ -182,6 +182,35 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     return segm_deblended
 
 
+def make_markers(segments, selem):
+    from scipy.ndimage import label as ndilabel
+    for i in range(len(segments) - 1):
+        segm_lower = segments[i].data
+        segm_upper = segments[i + 1].data
+        relabel = False
+        # if the are more sources at the upper level, then
+        # remove the parent source(s) from the lower level,
+        # but keep any sources in the lower level that do not have
+        # multiple children in the upper level
+        for label in segments[i].labels:
+            mask = (segm_lower == label)
+            # checks for 1-to-1 label mapping n -> m (where m >= 0)
+            upper_labels = segm_upper[mask]
+            upper_labels = np.unique(upper_labels[upper_labels != 0])
+            if upper_labels.size >= 2:
+                relabel = True
+                segm_lower[mask] = segm_upper[mask]
+
+        if relabel:
+            segm_new = object.__new__(SegmentationImage)
+            segm_new._data = ndilabel(segm_lower, structure=selem)[0]
+            segments[i + 1] = segm_new
+        else:
+            segments[i + 1] = segments[i]
+
+    return segments
+
+
 def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
                     contrast=0.001, mode='exponential', connectivity=8):
     """
@@ -240,7 +269,6 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
         value of zero is reserved for the background.  Note that the
         returned `SegmentationImage` may *not* have consecutive labels.
     """
-    from scipy.ndimage import label as ndilabel
     from skimage.segmentation import watershed
 
     segm_mask = (segment_img.data > 0)
@@ -273,33 +301,10 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
                                deblend_skip=True)
 
     # define the sources (markers) for the watershed algorithm
-    nsegments = len(segments)
-    if nsegments == 0:  # no deblending
+    if len(segments) == 0:  # no deblending
         return segment_img
 
-    for i in range(nsegments - 1):
-        segm_lower = segments[i].data
-        segm_upper = segments[i + 1].data
-        relabel = False
-        # if the are more sources at the upper level, then
-        # remove the parent source(s) from the lower level,
-        # but keep any sources in the lower level that do not have
-        # multiple children in the upper level
-        for label in segments[i].labels:
-            mask = (segm_lower == label)
-            # checks for 1-to-1 label mapping n -> m (where m >= 0)
-            upper_labels = segm_upper[mask]
-            upper_labels = np.unique(upper_labels[upper_labels != 0])
-            if upper_labels.size >= 2:
-                relabel = True
-                segm_lower[mask] = segm_upper[mask]
-
-        if relabel:
-            segm_new = object.__new__(SegmentationImage)
-            segm_new._data = ndilabel(segm_lower, structure=selem)[0]
-            segments[i + 1] = segm_new
-        else:
-            segments[i + 1] = segments[i]
+    segments = make_markers(segments, selem)
 
     # Deblend using watershed.  If any sources do not meet the
     # contrast criterion, then remove the faintest such source and
