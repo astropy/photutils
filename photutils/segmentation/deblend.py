@@ -351,6 +351,11 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
     markers = apply_watershed(data, markers, selem, segm_mask, source_sum,
                               contrast)
 
+    if not np.array_equal(segment_img.data.astype(bool), markers.astype(bool)):
+        raise ValueError(f'Deblending failed for source "{label}". Please '
+                         'ensure you used the same pixel connectivity in '
+                         'detect_sources and deblend_sources.')
+
     segm_new = object.__new__(SegmentationImage)
     segm_new._data = markers
     segm_new.relabel_consecutive()
