@@ -36,6 +36,9 @@ Photutils also optionally depends on other packages for some features:
   performance of sigma clipping and other functionality that may require
   computing statistics on arrays with NaN values.
 
+* `tqdm <https://tqdm.github.io/>`_: Used to display optional progress
+  bars.
+
 Photutils depends on `pytest-astropy
 <https://github.com/astropy/pytest-astropy>`_ (0.4 or later) to run
 the test suite.
