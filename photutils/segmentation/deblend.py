@@ -129,14 +129,14 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         labels = np.atleast_1d(labels)
         segment_img.check_labels(labels)
 
-    selem = _make_binary_structure(data.ndim, connectivity)
-
     # include only sources that have at least (2 * npixels);
     # this is required for it to be deblended into multiple sources,
     # each with a minimum of npixels
     mask = (segment_img.areas[segment_img.get_indices(labels)]
             >= (npixels * 2))
     labels = labels[mask]
+
+    selem = _make_binary_structure(data.ndim, connectivity)
 
     if kernel is not None:
         data = _filter_data(data, kernel, mode='constant', fill_value=0.0)
@@ -153,22 +153,13 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     for idx, label in zip(indices, labels):
         source_slice = segment_img.slices[idx]
         source_data = data[source_slice]
+        source_segment = object.__new__(SegmentationImage)
+        source_segment._data = np.copy(segment_img.data[source_slice])
+        source_segment.keep_labels(label)  # include only one label
 
-        source_segm = object.__new__(SegmentationImage)
-        source_segm._data = np.copy(segment_img.data[source_slice])
-
-        source_segm.keep_labels(label)  # include only one label
-        source_deblended = _deblend_source(
-            source_data, source_segm, npixels, selem, nlevels=nlevels,
-            contrast=contrast, mode=mode)
-
-        if not np.array_equal(source_deblended.data.astype(bool),
-                              source_segm.data.astype(bool)):
-            raise ValueError(f'Deblending failed for source "{label}".  '
-                             'Please ensure you used the same pixel '
-                             'connectivity in detect_sources and '
-                             'deblend_sources.  If this issue persists, '
-                             'then please inform the developers.')
+        source_deblended = _deblend_source(source_data, source_segment,
+                                           npixels, selem, nlevels, contrast,
+                                           mode)
 
         if source_deblended.nlabels > 1:
             source_deblended.relabel_consecutive(start_label=1)
@@ -190,9 +181,11 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     return segm_deblended
 
 
-def multithreshold(data, label, mode, nlevels, segm_mask, npixels,
-                   selem, source_min, source_max):
-
+def _multithreshold(data, segment_mask, npixels, label, nlevels, mode,
+                    selem, source_min, source_max):
+    """
+    Perform multithreshold detection for each source.
+    """
     if mode == 'exponential' and source_min < 0:
         warnings.warn(f'Source label "{label}" contains negative '
                       'values, setting deblending mode to "linear"',
@@ -212,14 +205,18 @@ def multithreshold(data, label, mode, nlevels, segm_mask, npixels,
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=RuntimeWarning)
         segments = _detect_sources(data, thresholds, npixels=npixels,
-                                   selem=selem, inverse_mask=segm_mask,
+                                   selem=selem, inverse_mask=segment_mask,
                                    deblend_mode=True)
 
     return segments
 
 
-def make_markers(segments, selem):
+def _make_markers(segments, selem):
+    """
+    Make markers (possible sources) for the watershed algorithm.
+    """
     from scipy.ndimage import label as ndilabel
+
     for i in range(len(segments) - 1):
         segm_lower = segments[i].data
         segm_upper = segments[i + 1].data
@@ -244,10 +241,13 @@ def make_markers(segments, selem):
         else:
             segments[i + 1] = segments[i]
 
-    return segments
+    return segments[-1].data  # all markers are now at the top level
 
 
-def apply_watershed(data, markers, selem, mask, source_sum, contrast):
+def _apply_watershed(data, markers, mask, selem, contrast, source_sum):
+    """
+    Apply the watershed algorithm to the markers for each source.
+    """
     from scipy.ndimage import sum_labels
     from skimage.segmentation import watershed
 
@@ -271,21 +271,21 @@ def apply_watershed(data, markers, selem, mask, source_sum, contrast):
     return markers
 
 
-def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
-                    contrast=0.001, mode='exponential'):
+def _deblend_source(source_data, source_segment, npixels, selem, nlevels,
+                    contrast, mode):
     """
     Deblend a single labeled source.
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
+    source_data : 2D `~numpy.ndarray`
         The cutout data array for a single source. ``data`` should
         also already be smoothed by the same filter used in
         :func:`~photutils.segmentation.detect_sources`, if applicable.
 
-    segment_img : `~photutils.segmentation.SegmentationImage`
+    source_segment : `~photutils.segmentation.SegmentationImage`
         A cutout `~photutils.segmentation.SegmentationImage` object with
-        the same shape as ``data``.  ``segment_img`` should contain only
+        the same shape as ``data``. ``segment_img`` should contain only
         *one* source label.
 
     npixels : int
@@ -293,13 +293,13 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
         that an object must have to be detected.  ``npixels`` must be a
         positive integer.
 
-    nlevels : int, optional
+    nlevels : int
         The number of multi-thresholding levels to use.  Each source
         will be re-thresholded at ``nlevels`` levels spaced
         exponentially or linearly (see the ``mode`` keyword) between its
         minimum and maximum values within the source segment.
 
-    contrast : float, optional
+    contrast : float
         The fraction of the total (blended) source flux that a local
         peak must have (at any one of the multi-thresholds) to be
         considered as a separate object.  ``contrast`` must be between 0
@@ -309,17 +309,10 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
         0.001, which will deblend sources with a 7.5 magnitude
         difference.
 
-    mode : {'exponential', 'linear'}, optional
+    mode : {'exponential', 'linear'}
         The mode used in defining the spacing between the
         multi-thresholding levels (see the ``nlevels`` keyword).  The
         default is 'exponential'.
-
-    connectivity : {8, 4}, optional
-        The type of pixel connectivity used in determining how pixels
-        are grouped into a detected source.  The options are 8 (default)
-        or 4.  8-connected pixels touch along their edges or corners.
-        4-connected pixels touch along their edges.  For reference,
-        SourceExtractor uses 8-connected pixels.
 
     Returns
     -------
@@ -329,29 +322,28 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
         value of zero is reserved for the background.  Note that the
         returned `SegmentationImage` may *not* have consecutive labels.
     """
-    segm_mask = segment_img.data.astype(bool)
-    source_values = data[segm_mask]
+    segment_mask = source_segment.data.astype(bool)
+    source_values = source_data[segment_mask]
     source_sum = np.nansum(source_values)
     source_min = np.nanmin(source_values)
     source_max = np.nanmax(source_values)
-    if source_min == source_max:
-        return segment_img  # no deblending
+    if source_min == source_max:  # no deblending
+        return source_segment
 
-    label = segment_img.labels[0]  # should only be 1 label
-    segments = multithreshold(data, label, mode, nlevels, segm_mask,
-                              npixels, selem, source_min, source_max)
+    label = source_segment.labels[0]  # should only be 1 label
+    segments = _multithreshold(source_data, segment_mask, npixels, label,
+                               nlevels, mode, selem, source_min, source_max)
 
     if len(segments) == 0:  # no deblending
-        return segment_img
+        return source_segment
 
-    # define the sources (markers) for the watershed algorithm
-    segments = make_markers(segments, selem)
+    # define the markers (possible sources) for the watershed algorithm
+    markers = _make_markers(segments, selem)
 
-    markers = segments[-1].data
-    markers = apply_watershed(data, markers, selem, segm_mask, source_sum,
-                              contrast)
+    markers = _apply_watershed(source_data, markers, segment_mask, selem,
+                               contrast, source_sum)
 
-    if not np.array_equal(segment_img.data.astype(bool), markers.astype(bool)):
+    if not np.array_equal(segment_mask, markers.astype(bool)):
         raise ValueError(f'Deblending failed for source "{label}". Please '
                          'ensure you used the same pixel connectivity in '
                          'detect_sources and deblend_sources.')

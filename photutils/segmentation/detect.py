@@ -154,8 +154,8 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
             + np.broadcast_to(error * nsigma, data.shape))
 
 
-def _detect_sources(data, thresholds, npixels, *, selem=None,
-                    inverse_mask=None, deblend_mode=False):
+def _detect_sources(data, thresholds, npixels, *, selem, inverse_mask,
+                    deblend_mode=False):
     """
     Detect sources above a specified threshold value in an image.
 
@@ -197,7 +197,7 @@ def _detect_sources(data, thresholds, npixels, *, selem=None,
         structuring element is ``np.array([[0, 1, 0]], [1, 1, 1],
         [0, 1, 0]])``.
 
-    inverse_mask : 2D bool `~numpy.ndarray`, optional
+    inverse_mask : 2D bool `~numpy.ndarray`
         A boolean mask, with the same shape as the input ``data``, where
         `False` values indicate masked pixels (the inverse of usual
         pixel masks). Masked pixels will not be included in any source.
