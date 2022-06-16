@@ -12,7 +12,6 @@ import numpy as np
 from .core import SegmentationImage
 from .detect import _make_binary_structure, _detect_sources
 from ..utils._convolution import _filter_data
-from ..utils.exceptions import NoDetectionsWarning
 from ..utils._optional_deps import HAS_TQDM  # noqa
 
 __all__ = ['deblend_sources']
@@ -141,9 +140,6 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
 
     if kernel is not None:
         data = _filter_data(data, kernel, mode='constant', fill_value=0.0)
-
-    # suppress NoDetectionsWarning during deblending
-    warnings.filterwarnings('ignore', category=NoDetectionsWarning)
 
     segm_deblended = object.__new__(SegmentationImage)
     segm_deblended._data = np.copy(segment_img.data)

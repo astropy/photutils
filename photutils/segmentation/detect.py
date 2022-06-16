@@ -233,8 +233,8 @@ def _detect_sources(data, thresholds, npixels, *, selem=None,
 
         # return if threshold was too high to detect any sources
         if np.count_nonzero(segment_img) == 0:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
             if not deblend_mode:
+                warnings.warn('No sources were found.', NoDetectionsWarning)
                 segms.append(None)
             continue
 
@@ -260,8 +260,8 @@ def _detect_sources(data, thresholds, npixels, *, selem=None,
                 segm_slices.append(slc)
 
         if np.count_nonzero(segment_img) == 0:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
             if not deblend_mode:
+                warnings.warn('No sources were found.', NoDetectionsWarning)
                 segms.append(None)
             continue
 
