@@ -353,4 +353,5 @@ def _deblend_source(data, segment_img, npixels, selem, nlevels=32,
 
     segm_new = object.__new__(SegmentationImage)
     segm_new._data = markers
+    segm_new.relabel_consecutive()
     return segm_new
