@@ -161,18 +161,11 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                                            npixels, selem, nlevels, contrast,
                                            mode)
 
-        if source_deblended.nlabels > 1:
-            source_deblended.relabel_consecutive(start_label=1)
-
+        if source_deblended is not None:
             # replace the original source with the deblended source
-            source_mask = (source_deblended.data > 0)
-            segm_tmp = segm_deblended.data
-            segm_tmp[source_slice][source_mask] = (
-                source_deblended.data[source_mask] + last_label)
-
-            segm_deblended.__dict__ = {}  # reset cached properties
-            segm_deblended._data = segm_tmp
-
+            segment_mask = (source_deblended.data > 0)
+            segm_deblended._data[source_slice][segment_mask] = (
+                source_deblended.data[segment_mask] + last_label)
             last_label += source_deblended.nlabels
 
     if relabel:
@@ -320,7 +313,8 @@ def _deblend_source(source_data, source_segment, npixels, selem, nlevels,
         A segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values.  A
         value of zero is reserved for the background.  Note that the
-        returned `SegmentationImage` may *not* have consecutive labels.
+        returned `SegmentationImage` will have consecutive labels
+        starting with 1.
     """
     segment_mask = source_segment.data.astype(bool)
     source_values = source_data[segment_mask]
@@ -328,14 +322,14 @@ def _deblend_source(source_data, source_segment, npixels, selem, nlevels,
     source_min = np.nanmin(source_values)
     source_max = np.nanmax(source_values)
     if source_min == source_max:  # no deblending
-        return source_segment
+        return None
 
     label = source_segment.labels[0]  # should only be 1 label
     segments = _multithreshold(source_data, segment_mask, npixels, label,
                                nlevels, mode, selem, source_min, source_max)
 
     if len(segments) == 0:  # no deblending
-        return source_segment
+        return None
 
     # define the markers (possible sources) for the watershed algorithm
     markers = _make_markers(segments, selem)
@@ -348,7 +342,11 @@ def _deblend_source(source_data, source_segment, npixels, selem, nlevels,
                          'ensure you used the same pixel connectivity in '
                          'detect_sources and deblend_sources.')
 
+    if len(np.unique(markers[markers != 0])) == 1:  # no deblending
+        return None
+
     segm_new = object.__new__(SegmentationImage)
     segm_new._data = markers
-    segm_new.relabel_consecutive()
+    segm_new.relabel_consecutive(start_label=1)
+
     return segm_new
