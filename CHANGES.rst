@@ -84,6 +84,10 @@ API Changes
   - Deprecated the ``make_source_mask`` function in favor of the
     ``SegmentationImage.make_source_mask`` method. [#1355]
 
+  - Deprecated the ``kernel`` keyword in ``detect_sources`` and
+    ``deblend_sources``. Instead, if filtering is desired, input a
+    convolved image directly into the ``data`` parameter. [#1365]
+
 - ``photutils.utils``
 
   - The colormap returned from ``make_random_cmap`` now has colors in

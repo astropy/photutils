@@ -286,6 +286,11 @@ def _detect_sources(data, thresholds, npixels, *, selem, inverse_mask,
     return segms
 
 
+@deprecated_renamed_argument('kernel', None, '1.5', message='"kernel" was '
+                             'deprecated in version 1.5 and will be removed '
+                             'in a future version. Instead, if filtering is '
+                             'desired, please input a convolved image '
+                             'directly into the "data" parameter.')
 def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
                    mask=None):
     """
@@ -323,6 +328,9 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         positive integer.
 
     kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
+        Deprecated. If filtering is desired, please input a convolved
+        image directly into the ``data`` parameter.
+
         The 2D array of the kernel used to filter the image before
         thresholding. Filtering the image will smooth the noise and
         maximize detectability of objects with a shape similar to the
