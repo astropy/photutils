@@ -123,11 +123,10 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
     if not isinstance(sigma_clip, SigmaClip):
         raise TypeError('sigma_clip must be a SigmaClip object')
 
-    if sigclip_sigma != sigma_clip.sigma:
+    if (sigclip_sigma != sigma_clip.sigma
+            or sigclip_iters != sigma_clip.maxiters):
         sigma_clip = deepcopy(sigma_clip)
         sigma_clip.sigma = sigclip_sigma
-    if sigclip_iters != sigma_clip.maxiters:
-        sigma_clip = deepcopy(sigma_clip)
         sigma_clip.maxiters = sigclip_iters
 
     if background is None or error is None:
@@ -155,8 +154,8 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
             + np.broadcast_to(error * nsigma, data.shape))
 
 
-def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
-                    mask=None, deblend_skip=False):
+def _detect_sources(data, thresholds, npixels, *, selem, inverse_mask,
+                    deblend_mode=False):
     """
     Detect sources above a specified threshold value in an image.
 
@@ -176,105 +175,79 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
         The 2D array of the image.
 
         .. note::
-           It is recommended that the user convolve the data with
-           ``kernel`` and input the convolved data directly into the
-           ``data`` parameter. In this case do not input a ``kernel``,
-           otherwise the data will be convolved twice.
+           It is strongly recommended that the user convolve the data
+           with ``kernel`` and input the convolved data directly
+           into the ``data`` parameter. In this case do not input a
+           ``kernel``, otherwise the data will be convolved twice.
 
-    thresholds : 2D `~numpy.ndarray` or 1D array of floats
-        The data values (as a 1D array of floats) or pixel-wise
-        data values to be used for the detection thresholds. A 2D
-        ``threshold`` must have the same shape as ``data``.
+    thresholds : list of 2D `~numpy.ndarray` or 1D array of floats
+        The data values (as a 1D array of floats) or pixel-wise data
+        values (as a sequence of 2D arrays) to be used for the detection
+        thresholds. 2D threshold arrays must have the same shape as
+        ``data``.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
         that an object must have to be detected. ``npixels`` must be a
         positive integer.
 
-    kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
-        The 2D array of the kernel used to filter the image before
-        thresholding. Filtering the image will smooth the noise and
-        maximize detectability of objects with a shape similar to the
-        kernel. ``kernel`` must be `None` if the input ``data`` are
-        already convolved.
+    selem : array_like
+        A structuring element that defines feature connections. As
+        an example, for connectivity along pixel edges only, the
+        structuring element is ``np.array([[0, 1, 0]], [1, 1, 1],
+        [0, 1, 0]])``.
 
-    connectivity : {4, 8}, optional
-        The type of pixel connectivity used in determining how pixels
-        are grouped into a detected source. The options are 4 or
-        8 (default). 4-connected pixels touch along their edges.
-        8-connected pixels touch along their edges or corners. For
-        reference, SourceExtractor uses 8-connected pixels.
-
-    mask : 2D bool `~numpy.ndarray`, optional
+    inverse_mask : 2D bool `~numpy.ndarray`
         A boolean mask, with the same shape as the input ``data``, where
-        `True` values indicate masked pixels. Masked pixels will not be
-        included in any source.
+        `False` values indicate masked pixels (the inverse of usual
+        pixel masks). Masked pixels will not be included in any source.
 
-    deblend_skip : bool, optional
+    deblend_mode : bool, optional
         If `True` do not include the segmentation image in the output
         list for any threshold level where the number of detected
-        sources is less than 2. This is useful for source deblending and
-        improves its performance.
+        sources is less than 2. The deblend mode also does not relabel
+        the output segmentation image to have consecutive label. This
+        keyword improves performance of source deblending.
 
     Returns
     -------
     segment_image : list of `~photutils.segmentation.SegmentationImage`
-        A list of 2D segmentation images, with the same shape as
-        ``data``, where sources are marked by different positive integer
-        values. A value of zero is reserved for the background. If
-        no sources are found for a given threshold, then the output
-        list will contain `None` for that threshold. Also see the
-        ``deblend_skip`` keyword.
+        A list of 2D segmentation images, one for each input threshold,
+        with the same shape as ``data``, where sources are marked
+        by different positive integer values. A value of zero is
+        reserved for the background. If no sources are found for a given
+        threshold, then the output list will contain `None` for that
+        threshold. Also see the ``deblend_mode`` keyword.
     """
-    from scipy import ndimage
-
-    if (npixels <= 0) or (int(npixels) != npixels):
-        raise ValueError('npixels must be a positive integer, got '
-                         f'"{npixels}"')
-
-    if mask is not None:
-        if mask.shape != data.shape:
-            raise ValueError('mask must have the same shape as the input '
-                             'image.')
-        if mask.all():
-            raise ValueError('mask must not be True for every pixel. There '
-                             'are no unmasked pixels in the image to detect '
-                             'sources.')
-
-    if kernel is not None:
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', AstropyUserWarning)
-            data = convolve(data, kernel, mask=mask, normalize_kernel=True)
-
-    selem = _make_binary_structure(data.ndim, connectivity)
+    from scipy.ndimage import label as ndi_label
+    from scipy.ndimage import find_objects
 
     segms = []
     for threshold in thresholds:
-        # ignore RuntimeWarning caused by > comparison when data contains NaNs
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', category=RuntimeWarning)
-            segment_img = data > threshold
+        # RuntimeWarning caused by > comparison when data contains NaNs
+        # is ignored when calling _detect_sources
+        segment_img = data > threshold
 
-        if mask is not None:
-            segment_img &= ~mask
+        if inverse_mask is not None:
+            segment_img &= inverse_mask
 
         # return if threshold was too high to detect any sources
         if np.count_nonzero(segment_img) == 0:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
-            if not deblend_skip:
+            if not deblend_mode:
+                warnings.warn('No sources were found.', NoDetectionsWarning)
                 segms.append(None)
             continue
 
-        # this is faster than recasting segment_img to int and using
-        # output=segment_img
-        segment_img, nlabels = ndimage.label(segment_img, structure=selem)
+        # recasting segment_img to int and using output=segment_img
+        # gives similar performance
+        segment_img, nlabels = ndi_label(segment_img, structure=selem)
         labels = np.arange(nlabels) + 1
 
         # remove objects with less than npixels
         # NOTE: making cutout images and setting their pixels to 0 is
-        # ~10x faster than using segment_img directly and ~2x faster
+        # ~10x faster than using segment_img directly and ~50% faster
         # than using ndimage.sum_labels.
-        slices = ndimage.find_objects(segment_img)
+        slices = find_objects(segment_img)
         segm_labels = []
         segm_slices = []
         for label, slc in zip(labels, slices):
@@ -287,8 +260,8 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
                 segm_slices.append(slc)
 
         if np.count_nonzero(segment_img) == 0:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
-            if not deblend_skip:
+            if not deblend_mode:
+                warnings.warn('No sources were found.', NoDetectionsWarning)
                 segms.append(None)
             continue
 
@@ -305,7 +278,7 @@ def _detect_sources(data, thresholds, npixels, kernel=None, connectivity=8,
         segm.__dict__['labels'] = labels
         segm.__dict__['slices'] = segm_slices
 
-        if deblend_skip and segm.nlabels == 1:
+        if deblend_mode and segm.nlabels == 1:
             continue
 
         segms.append(segm)
@@ -334,10 +307,10 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         The 2D array of the image.
 
         .. note::
-           It is recommended that the user convolve the data with
-           ``kernel`` and input the convolved data directly into the
-           ``data`` parameter. In this case do not input a ``kernel``,
-           otherwise the data will be convolved twice.
+           It is strongly recommended that the user convolve the data
+           with ``kernel`` and input the convolved data directly
+           into the ``data`` parameter. In this case do not input a
+           ``kernel``, otherwise the data will be convolved twice.
 
     threshold : float or 2D `~numpy.ndarray`
         The data value or pixel-wise data values to be used for the
@@ -419,8 +392,33 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
                    cmap=segm.make_cmap(seed=1234))
         plt.tight_layout()
     """
-    return _detect_sources(data, (threshold,), npixels, kernel=kernel,
-                           connectivity=connectivity, mask=mask)[0]
+    if (npixels <= 0) or (int(npixels) != npixels):
+        raise ValueError('npixels must be a positive integer, got '
+                         f'"{npixels}"')
+
+    if mask is not None:
+        if mask.shape != data.shape:
+            raise ValueError('mask must have the same shape as the input '
+                             'image.')
+        if mask.all():
+            raise ValueError('mask must not be True for every pixel. There '
+                             'are no unmasked pixels in the image to detect '
+                             'sources.')
+        inverse_mask = np.logical_not(mask)
+    else:
+        inverse_mask = None
+
+    if kernel is not None:
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyUserWarning)
+            data = convolve(data, kernel, mask=mask, normalize_kernel=True)
+
+    selem = _make_binary_structure(data.ndim, connectivity)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=RuntimeWarning)
+        return _detect_sources(data, (threshold,), npixels, selem=selem,
+                               inverse_mask=inverse_mask)[0]
 
 
 @deprecated('1.5.0', alternative='SegmentationImage.make_source_mask')

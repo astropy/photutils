@@ -429,6 +429,8 @@ class SegmentationImage:
 
         If ``new_label`` is already present in the segmentation array,
         then it will be combined with the input ``label`` number.
+        Note that this can result in a label that is no longer pixel
+        connected.
 
         Parameters
         ----------
@@ -501,9 +503,10 @@ class SegmentationImage:
         Reassign one or more label numbers.
 
         Multiple input ``labels`` will all be reassigned to the same
-        ``new_label`` number.  If ``new_label`` is already present in
+        ``new_label`` number. If ``new_label`` is already present in
         the segmentation array, then it will be combined with the input
-        ``labels``.
+        ``labels``. Note that both of these can result in a label that
+        is no longer pixel connected.
 
         Parameters
         ----------
@@ -632,12 +635,17 @@ class SegmentationImage:
                 (self.labels[-1] - self.labels[0] + 1) == self.nlabels):
             return
 
-        new_labels = np.zeros(self.max_label + 1, dtype=int)
-        new_labels[self.labels] = np.arange(self.nlabels) + start_label
+        old_slices = self.__dict__.get('slices', None)
+        new_labels = np.arange(self.nlabels) + start_label
+        new_label_map = np.zeros(self.max_label + 1, dtype=int)
+        new_label_map[self.labels] = new_labels
 
-        data_new = new_labels[self.data]
+        data_new = new_label_map[self.data]
         self.__dict__ = {}  # reset all cached properties
         self._data = data_new  # use _data to avoid validation
+        self.__dict__['labels'] = new_labels
+        if old_slices is not None:
+            self.__dict__['slices'] = old_slices  # slice order is unchanged
 
     def keep_label(self, label, relabel=False):
         """
