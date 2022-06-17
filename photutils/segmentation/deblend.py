@@ -206,9 +206,8 @@ def _multithreshold(data, segment_mask, npixels, label, nlevels, mode,
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=RuntimeWarning)
-        segments = _detect_sources(data, thresholds, npixels=npixels,
-                                   selem=selem, inverse_mask=segment_mask,
-                                   deblend_mode=True)
+        segments = _detect_sources(data, thresholds, npixels, selem,
+                                   segment_mask, deblend_mode=True)
 
     return segments
 

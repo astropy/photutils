@@ -154,7 +154,7 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
             + np.broadcast_to(error * nsigma, data.shape))
 
 
-def _detect_sources(data, thresholds, npixels, *, selem, inverse_mask,
+def _detect_sources(data, thresholds, npixels, selem, inverse_mask,
                     deblend_mode=False):
     """
     Detect sources above a specified threshold value in an image.
@@ -425,8 +425,8 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=RuntimeWarning)
-        return _detect_sources(data, (threshold,), npixels, selem=selem,
-                               inverse_mask=inverse_mask)[0]
+        return _detect_sources(data, (threshold,), npixels, selem,
+                               inverse_mask, deblend_mode=False)[0]
 
 
 @deprecated('1.5.0', alternative='SegmentationImage.make_source_mask')
