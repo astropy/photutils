@@ -4,6 +4,8 @@
 General
 ^^^^^^^
 
+- Added ``tqdm`` as an optional dependency. [#1364]
+
 New Features
 ^^^^^^^^^^^^
 
@@ -29,6 +31,10 @@ New Features
 
   - Added an ``imshow`` convenience method to ``SegmentationImage``.
     [#1362]
+
+  - Improved performance of ``deblend_sources``. [#1364]
+
+  - Added a ``progress_bar`` keyword to ``deblend_sources``. [#1364]
 
 - ``photutils.utils``
 
