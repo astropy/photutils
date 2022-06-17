@@ -11,7 +11,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
-from .detect import _make_binary_structure, _detect_sources
+from .detect import _detect_sources
+from .utils import _make_binary_structure
 from ..utils._convolution import _filter_data
 from ..utils._optional_deps import HAS_TQDM  # noqa
 
