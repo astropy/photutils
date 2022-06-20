@@ -62,6 +62,12 @@ class SourceFinder:
         multi-thresholding levels (see the ``nlevels`` keyword) during
         deblending. This keyword is ignored unless ``deblend=True``.
 
+    relabel : bool
+        If `True` (default), then the segmentation image will be
+        relabeled after deblending such that the labels are in
+        consecutive order starting from 1. This keyword is ignored
+        unless ``deblend=True``.
+
     progress_bar : bool, optional
        Whether to display a progress bar during source deblending. The
        progress bar requires that the `tqdm <https://tqdm.github.io/>`_
@@ -117,13 +123,15 @@ class SourceFinder:
     """
 
     def __init__(self, npixels, *, connectivity=8, deblend=True, nlevels=32,
-                 contrast=0.001, mode='exponential', progress_bar=True):
+                 contrast=0.001, mode='exponential', relabel=True,
+                 progress_bar=True):
         self.npixels = npixels
         self.deblend = deblend
         self.connectivity = connectivity
         self.nlevels = nlevels
         self.contrast = contrast
         self.mode = mode
+        self.relabel = relabel
         self.progress_bar = progress_bar
 
     def __call__(self, data, threshold, mask=None):
@@ -168,7 +176,7 @@ class SourceFinder:
                                           contrast=self.contrast,
                                           mode=self.mode,
                                           connectivity=self.connectivity,
-                                          relabel=True,
+                                          relabel=self.relabel,
                                           progress_bar=self.progress_bar)
 
         return segment_img
