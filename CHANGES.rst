@@ -14,6 +14,9 @@ New Features
   - Added a ``mask`` keyword when calling the PSF-fitting classes.
     [#1350, #1351]
 
+  - The ``EPSFBuilder`` progress bar will use ``tqdm`` if the optional
+    package is installed. [#1367]
+
 - ``photutils.segmentation``
 
   - Added ``SourceFinder`` class, which is a convenience class

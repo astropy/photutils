@@ -19,7 +19,7 @@ import numpy as np
 from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from .models import EPSFModel
 from ..centroids import centroid_com
-from ..utils._optional_deps import HAS_BOTTLENECK  # noqa
+from ..utils._optional_deps import HAS_BOTTLENECK, HAS_TQDM  # noqa
 from ..utils._parameters import as_pair
 from ..utils._round import _py2intround
 
@@ -268,7 +268,11 @@ class EPSFBuilder:
         The maximum number of iterations to perform.
 
     progress_bar : bool, option
-        Whether to print the progress bar during the build iterations.
+        Whether to print the progress bar during the build
+        iterations. A nicer format is presented if the `tqdm
+        <https://tqdm.github.io/>`_ optional dependency is installed.
+        Note that the ``tqdm`` progress bar does not currently work in
+        the Jupyter console due to limitations in ``tqdm``.
 
     norm_radius : float, optional
         The pixel radius over which the ePSF is normalized.
@@ -786,13 +790,20 @@ class EPSFBuilder:
         center_dist_sq = self.center_accuracy_sq + 1.
         centers = stars.cutout_center_flat
 
+        if self.progress_bar and HAS_TQDM:
+            from tqdm.auto import tqdm
+            pbar_desc = f'EPSFBuilder ({self.maxiters} maxiters)'
+            pbar = tqdm(total=self.maxiters, desc=pbar_desc)
+        else:
+            pbar = None
+
         while (iter_num < self.maxiters and not np.all(fit_failed) and
                np.max(center_dist_sq) >= self.center_accuracy_sq):
 
             t_start = time.time()
             iter_num += 1
 
-            if self.progress_bar:
+            if self.progress_bar and pbar is None:
                 if iter_num == 1:
                     dt_str = ' [? s/iter]'
                 else:
@@ -835,6 +846,16 @@ class EPSFBuilder:
             self._epsf.append(epsf)
 
             dt = time.time() - t_start
+
+            if pbar is not None:
+                pbar.update()
+
+        if pbar is not None:
+            if iter_num < self.maxiters:
+                pbar.write(f'EPSFBuilder converged after {iter_num} '
+                           f'iterations (of {self.maxiters} maximum '
+                           'iterations)')
+            pbar.close()
 
         return epsf, stars
 
