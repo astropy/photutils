@@ -402,11 +402,13 @@ class _Deblender:
                              'connectivity in detect_sources and '
                              'deblend_sources.')
 
-        if len(np.unique(markers[markers != 0])) == 1:  # no deblending
+        labels = np.unique(markers[markers != 0])
+        if len(labels) == 1:  # no deblending
             return None
 
         segm_new = object.__new__(SegmentationImage)
         segm_new._data = markers
+        segm_new.__dict__['labels'] = labels
         segm_new.relabel_consecutive(start_label=1)
 
         return segm_new
