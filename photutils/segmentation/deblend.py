@@ -160,7 +160,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         from tqdm import tqdm
         labels = tqdm(labels)
 
-    for idx, label in zip(indices, labels):
+    for label, idx in zip(labels, indices):
         source_slice = segment_img.slices[idx]
         source_data = data[source_slice]
         source_segment = object.__new__(SegmentationImage)
