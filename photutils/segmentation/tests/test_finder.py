@@ -23,17 +23,19 @@ class TestSourceFinder:
 
     @pytest.mark.skipif('not HAS_SKIMAGE')
     def test_deblend(self):
-        finder = SourceFinder(npixels=self.npixels)
+        finder = SourceFinder(npixels=self.npixels, progress_bar=False)
         segm = finder(self.convolved_data, self.threshold)
         assert segm.nlabels == 94
 
     def test_no_deblend(self):
-        finder = SourceFinder(npixels=self.npixels, deblend=False)
+        finder = SourceFinder(npixels=self.npixels, deblend=False,
+                              progress_bar=False)
         segm = finder(self.convolved_data, self.threshold)
         assert segm.nlabels == 85
 
     def test_no_sources(self):
-        finder = SourceFinder(npixels=self.npixels, deblend=True)
+        finder = SourceFinder(npixels=self.npixels, deblend=True,
+                              progress_bar=False)
         with pytest.warns(NoDetectionsWarning):
             segm = finder(self.convolved_data, 1000)
             assert segm is None
