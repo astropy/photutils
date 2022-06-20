@@ -104,7 +104,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
      progress_bar : bool, optional
         Whether to display a progress bar. The progress bar requires
         that the `tqdm <https://tqdm.github.io/>`_ optional dependency
-        be installed.
+        be installed. Note that the progress bar does not currently work
+        in the Jupyter console due to limitations in ``tqdm``.
 
     Returns
     -------
@@ -157,10 +158,10 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
 
     indices = segment_img.get_indices(labels)
     if progress_bar and HAS_TQDM:
-        from tqdm import tqdm
+        from tqdm.auto import tqdm
         labels = tqdm(labels)
 
-    for idx, label in zip(indices, labels):
+    for label, idx in zip(labels, indices):
         source_slice = segment_img.slices[idx]
         source_data = data[source_slice]
         source_segment = object.__new__(SegmentationImage)
