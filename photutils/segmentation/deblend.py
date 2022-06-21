@@ -273,7 +273,17 @@ class _Deblender:
         self.source_max = np.nanmax(self.source_values)
         self.source_sum = np.nansum(self.source_values)
         self.label = source_segment.labels[0]  # should only be 1 label
+
+        # NOTE: this includes the source min/max, but we exclude those
+        # later, giving nlevels thresholds between min and max
+        # (nlevels + 1 parts)
+        self.linear_thresholds = np.linspace(self.source_min, self.source_max,
+                                             self.nlevels + 2)
         self.thresholds = self.compute_thresholds()
+
+    def normalized_thresholds(self):
+        return ((self.linear_thresholds - self.source_min)
+                / (self.source_max - self.source_min))
 
     def compute_thresholds(self):
         """
@@ -283,19 +293,17 @@ class _Deblender:
             self.info['negval'] = 'negative data values'
             self.mode = 'linear'
 
-        steps = np.arange(1., self.nlevels + 1)
-        if self.mode == 'exponential':
-            if self.source_min == 0:
-                self.source_min = self.source_max * 0.01
-            thresholds = (self.source_min
-                          * ((self.source_max / self.source_min)
-                             ** (steps / (self.nlevels + 1))))
-        elif self.mode == 'linear':
-            thresholds = (self.source_min
-                          + ((self.source_max - self.source_min)
-                             / (self.nlevels + 1)) * steps)
+        if self.mode == 'linear':
+            thresholds = self.linear_thresholds
+        elif self.mode == 'exponential':
+            minval = self.source_min
+            maxval = self.source_max
+            if minval == 0:
+                minval = maxval * 0.01
+            thresholds = self.normalized_thresholds()
+            thresholds = minval * (maxval / minval) ** thresholds
 
-        return thresholds
+        return thresholds[1:-1]  # do not include source min and max
 
     def multithreshold(self):
         """
