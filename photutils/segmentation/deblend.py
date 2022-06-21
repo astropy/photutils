@@ -161,6 +161,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         from tqdm.auto import tqdm
         labels = tqdm(labels)
 
+    warn_negval_labels = []
     for label, idx in zip(labels, indices):
         source_slice = segment_img.slices[idx]
         source_data = data[source_slice]
@@ -178,6 +179,23 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
             segm_deblended._data[source_slice][segment_mask] = (
                 source_deblended.data[segment_mask] + last_label)
             last_label += source_deblended.nlabels
+
+            if hasattr(source_deblended, 'info'):
+                if source_deblended.info.get('negval', None) is not None:
+                    warn_negval_labels.append(label)
+
+    if warn_negval_labels:
+        warnings.warn('The deblending mode of one or more source labels from '
+                      'the input segmentation image was changed from '
+                      '"exponential" to "linear". See the "info" attribute '
+                      'for the list of affected input labels.',
+                      AstropyUserWarning)
+
+        segm_deblended.info = {'warnings': {}}
+        negval = {'message': 'Deblending mode changed from exponential to '
+                  'linear due to negative data values.',
+                  'input_labels': np.array(warn_negval_labels)}
+        segm_deblended.info['warnings']['negval'] = negval
 
     if relabel:
         segm_deblended.relabel_consecutive()
@@ -247,6 +265,7 @@ class _Deblender:
         self.nlevels = nlevels
         self.contrast = contrast
         self.mode = mode
+        self.info = {}
 
         self.segment_mask = source_segment.data.astype(bool)
         self.source_values = source_data[self.segment_mask]
@@ -261,9 +280,7 @@ class _Deblender:
         Compute the multi-level detection thresholds for the source.
         """
         if self.mode == 'exponential' and self.source_min < 0:
-            warnings.warn(f'Source label "{self.label}" contains negative '
-                          'values, setting deblending mode to "linear"',
-                          AstropyUserWarning)
+            self.info['negval'] = 'negative data values'
             self.mode = 'linear'
 
         steps = np.arange(1., self.nlevels + 1)
@@ -410,5 +427,8 @@ class _Deblender:
         segm_new._data = markers
         segm_new.__dict__['labels'] = labels
         segm_new.relabel_consecutive(start_label=1)
+
+        if self.info:
+            segm_new.info = self.info
 
         return segm_new

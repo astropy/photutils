@@ -199,9 +199,9 @@ class TestDeblendSources:
     def test_source_with_negval(self):
         data = self.data.copy()
         data -= 20
-        with pytest.warns(AstropyUserWarning,
-                          match='contains negative values'):
-            deblend_sources(data, self.segm, self.npixels)
+        with pytest.warns(AstropyUserWarning, match='The deblending mode'):
+            segm = deblend_sources(data, self.segm, self.npixels)
+            assert segm.info['warnings']['negval']['input_labels'] == 1
 
     def test_source_zero_min(self):
         data = self.data.copy()
