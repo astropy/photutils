@@ -33,7 +33,7 @@ class TestDeblendSources:
         self.segm = detect_sources(self.data, self.threshold, self.npixels)
         self.segm3 = detect_sources(self.data3, self.threshold, self.npixels)
 
-    @pytest.mark.parametrize('mode', ['exponential', 'linear'])
+    @pytest.mark.parametrize('mode', ['exponential', 'linear', 'sinh'])
     def test_deblend_sources(self, mode):
         # scipy DeprecationWarning is currently raised from skimage
         # (https://github.com/scikit-image/scikit-image/pull/6231)

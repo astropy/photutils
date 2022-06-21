@@ -72,8 +72,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     nlevels : int, optional
         The number of multi-thresholding levels to use for deblending.
         Each source will be re-thresholded at ``nlevels`` levels spaced
-        exponentially or linearly (see the ``mode`` keyword) between its
-        minimum and maximum values.
+        between its minimum and maximum values (non-inclusive). The
+        ``mode`` keyword determines how the levels are spaced.
 
     contrast : float, optional
         The fraction of the total source flux that a local peak must
@@ -84,10 +84,19 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         no deblending will occur. The default is 0.001, which will
         deblend sources with a 7.5 magnitude difference.
 
-    mode : {'exponential', 'linear'}, optional
+    mode : {'exponential', 'linear', 'sinh'}, optional
         The mode used in defining the spacing between the
         multi-thresholding levels (see the ``nlevels`` keyword) during
-        deblending.
+        deblending. The ``'exponential'`` and ``'sinh'`` modes have
+        more threshold levels near the source minimum and less near
+        the source maximum. The ``'linear'`` mode evenly spaces the
+        threshold levels between the source minimum and maximum.
+        The ``'exponential'`` and ``'sinh'`` modes differ in that
+        the ``'exponential'`` levels are dependent on the source
+        maximum/minimum ratio (smaller ratios are more linear; larger
+        ratios are more exponential), while the ``'sinh'`` levels
+        are not. Also, the ``'exponential'`` mode will be changed to
+        ``'linear'`` for sources with non-positive minimum data values.
 
     connectivity : {8, 4}, optional
         The type of pixel connectivity used in determining how pixels
@@ -131,8 +140,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     if contrast < 0 or contrast > 1:
         raise ValueError('contrast must be >= 0 and <= 1')
 
-    if mode not in ('exponential', 'linear'):
-        raise ValueError('mode must be "exponential" or "linear"')
+    if mode not in ('exponential', 'linear', 'sinh'):
+        raise ValueError('mode must be "exponential", "linear", or "sinh"')
 
     if labels is None:
         labels = segment_img.labels
@@ -241,7 +250,7 @@ class _Deblender:
         0.001, which will deblend sources with a 7.5 magnitude
         difference.
 
-    mode : {'exponential', 'linear'}
+    mode : {'exponential', 'linear', 'sinh'}
         The mode used in defining the spacing between the
         multi-thresholding levels (see the ``nlevels`` keyword).  The
         default is 'exponential'.
@@ -280,7 +289,6 @@ class _Deblender:
         # (nlevels + 1 parts)
         self.linear_thresholds = np.linspace(self.source_min, self.source_max,
                                              self.nlevels + 2)
-        self.thresholds = self.compute_thresholds()
 
     def normalized_thresholds(self):
         return ((self.linear_thresholds - self.source_min)
@@ -296,6 +304,14 @@ class _Deblender:
 
         if self.mode == 'linear':
             thresholds = self.linear_thresholds
+        elif self.mode == 'sinh':
+            a = 0.25
+            minval = self.source_min
+            maxval = self.source_max
+            thresholds = self.normalized_thresholds()
+            thresholds = np.sinh(thresholds / a) / np.sinh(1.0 / a)
+            thresholds *= (maxval - minval)
+            thresholds += minval
         elif self.mode == 'exponential':
             minval = self.source_min
             maxval = self.source_max
@@ -308,9 +324,10 @@ class _Deblender:
         """
         Perform multithreshold detection for each source.
         """
+        thresholds = self.compute_thresholds()
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
-            segments = _detect_sources(self.source_data, self.thresholds,
+            segments = _detect_sources(self.source_data, thresholds,
                                        self.npixels, self.selem,
                                        self.segment_mask, deblend_mode=True)
         return segments
@@ -418,6 +435,7 @@ class _Deblender:
         # define the markers (possible sources) for the watershed algorithm
         markers = self.make_markers(segments)
 
+        # deblend using the watershed algorithm using the markers as seeds
         markers = self.apply_watershed(markers)
 
         if not np.array_equal(self.segment_mask, markers.astype(bool)):
