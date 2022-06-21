@@ -81,6 +81,17 @@ class TestDeblendSources:
         result = deblend_sources(data, segm, self.npixels)
         assert result.nlabels == 3
 
+    def test_deblend_labels(self):
+        g1 = Gaussian2D(100, 50, 50, 20, 5, theta=45)
+        g2 = Gaussian2D(100, 35, 50, 5, 5)
+        g3 = Gaussian2D(100, 60, 20, 5, 5)
+        x = self.x
+        y = self.y
+        data = (g1 + g2 + g3)(x, y)
+        segm = detect_sources(data, self.threshold, self.npixels)
+        result = deblend_sources(data, segm, self.npixels, labels=1)
+        assert result.nlabels == 2
+
     @pytest.mark.parametrize('contrast, nlabels',
                              ((0.001, 6), (0.017, 5), (0.06, 4), (0.1, 3),
                               (0.15, 2), (0.45, 1)))
@@ -167,8 +178,12 @@ class TestDeblendSources:
         assert result.nlabels == 3
         assert_allclose(np.nonzero(self.segm3), np.nonzero(result))
 
-    def test_segment_img_badshape(self):
-        segm_wrong = np.ones((2, 2), dtype=int)
+    def test_segment_img(self):
+        segm_wrong = np.ones((2, 2), dtype=int)  # ndarray
+        with pytest.raises(ValueError):
+            deblend_sources(self.data, segm_wrong, self.npixels)
+
+        segm_wrong = SegmentationImage(segm_wrong)  # wrong shape
         with pytest.raises(ValueError):
             deblend_sources(self.data, segm_wrong, self.npixels)
 
