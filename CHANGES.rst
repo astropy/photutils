@@ -39,6 +39,11 @@ New Features
 
   - Added a ``progress_bar`` keyword to ``deblend_sources``. [#1364]
 
+  - Added a ``'sinh'`` mode to ``deblend_sources``. [#1368]
+
+  - Improved the resetting of cached ``SegmentationImage`` properties so
+    that custom (non-cached) attributes can be kept. [#1368]
+
 - ``photutils.utils``
 
   - Added a ``circular_footprint`` convenience function. [#1355]
@@ -90,6 +95,15 @@ API Changes
   - Deprecated the ``kernel`` keyword in ``detect_sources`` and
     ``deblend_sources``. Instead, if filtering is desired, input a
     convolved image directly into the ``data`` parameter. [#1365]
+
+  - Sources with a data minimum of zero are now treated the same as
+    negative minima (i.e., the mode is changed to "linear") for the
+    "exponential" deblending mode. [#1368]
+
+  - A single warning (as opposed to 1 per source) is now raised about
+    negative/zero minimum data values using the 'exponential' deblending
+    mode. The affected labels is available in a new "info" attribute.
+    [#1368]
 
 - ``photutils.utils``
 
