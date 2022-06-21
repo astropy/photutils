@@ -161,7 +161,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         from tqdm.auto import tqdm
         labels = tqdm(labels)
 
-    warn_negval_labels = []
+    nonposmin_labels = []
     for label, idx in zip(labels, indices):
         source_slice = segment_img.slices[idx]
         source_data = data[source_slice]
@@ -180,11 +180,12 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                 source_deblended.data[segment_mask] + last_label)
             last_label += source_deblended.nlabels
 
-            if hasattr(source_deblended, 'info'):
-                if source_deblended.info.get('negval', None) is not None:
-                    warn_negval_labels.append(label)
+            if hasattr(source_deblended, 'warnings'):
+                if source_deblended.warnings.get('nonposmin',
+                                                 None) is not None:
+                    nonposmin_labels.append(label)
 
-    if warn_negval_labels:
+    if nonposmin_labels:
         warnings.warn('The deblending mode of one or more source labels from '
                       'the input segmentation image was changed from '
                       '"exponential" to "linear". See the "info" attribute '
@@ -192,10 +193,10 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                       AstropyUserWarning)
 
         segm_deblended.info = {'warnings': {}}
-        negval = {'message': 'Deblending mode changed from exponential to '
-                  'linear due to negative data values.',
-                  'input_labels': np.array(warn_negval_labels)}
-        segm_deblended.info['warnings']['negval'] = negval
+        nonposmin = {'message': 'Deblending mode changed from exponential to '
+                     'linear due to non-positive minimum data values.',
+                     'input_labels': np.array(nonposmin_labels)}
+        segm_deblended.info['warnings']['nonposmin'] = nonposmin
 
     if relabel:
         segm_deblended.relabel_consecutive()
@@ -265,7 +266,7 @@ class _Deblender:
         self.nlevels = nlevels
         self.contrast = contrast
         self.mode = mode
-        self.info = {}
+        self.warnings = {}
 
         self.segment_mask = source_segment.data.astype(bool)
         self.source_values = source_data[self.segment_mask]
@@ -289,8 +290,8 @@ class _Deblender:
         """
         Compute the multi-level detection thresholds for the source.
         """
-        if self.mode == 'exponential' and self.source_min < 0:
-            self.info['negval'] = 'negative data values'
+        if self.mode == 'exponential' and self.source_min <= 0:
+            self.warnings['nonposmin'] = 'non-positive minimum'
             self.mode = 'linear'
 
         if self.mode == 'linear':
@@ -298,8 +299,6 @@ class _Deblender:
         elif self.mode == 'exponential':
             minval = self.source_min
             maxval = self.source_max
-            if minval == 0:
-                minval = maxval * 0.01
             thresholds = self.normalized_thresholds()
             thresholds = minval * (maxval / minval) ** thresholds
 
@@ -436,7 +435,7 @@ class _Deblender:
         segm_new.__dict__['labels'] = labels
         segm_new.relabel_consecutive(start_label=1)
 
-        if self.info:
-            segm_new.info = self.info
+        if self.warnings:
+            segm_new.warnings = self.warnings
 
         return segm_new

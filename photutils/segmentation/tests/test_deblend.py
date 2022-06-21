@@ -201,14 +201,14 @@ class TestDeblendSources:
         data -= 20
         with pytest.warns(AstropyUserWarning, match='The deblending mode'):
             segm = deblend_sources(data, self.segm, self.npixels)
-            assert segm.info['warnings']['negval']['input_labels'] == 1
+            assert segm.info['warnings']['nonposmin']['input_labels'] == 1
 
     def test_source_zero_min(self):
         data = self.data.copy()
         data -= data[self.segm.data > 0].min()
-        result1 = deblend_sources(self.data, self.segm, self.npixels)
-        result2 = deblend_sources(data, self.segm, self.npixels)
-        assert_allclose(result1, result2)
+        with pytest.warns(AstropyUserWarning, match='The deblending mode'):
+            segm = deblend_sources(data, self.segm, self.npixels)
+            assert segm.info['warnings']['nonposmin']['input_labels'] == 1
 
     def test_connectivity(self):
         """Regression test for #341."""
