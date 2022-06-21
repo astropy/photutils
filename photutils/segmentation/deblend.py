@@ -72,8 +72,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     nlevels : int, optional
         The number of multi-thresholding levels to use for deblending.
         Each source will be re-thresholded at ``nlevels`` levels spaced
-        exponentially or linearly (see the ``mode`` keyword) between its
-        minimum and maximum values.
+        between its minimum and maximum values (non-inclusive). The
+        ``mode`` keyword determines how the levels are spaced.
 
     contrast : float, optional
         The fraction of the total source flux that a local peak must
@@ -84,10 +84,19 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         no deblending will occur. The default is 0.001, which will
         deblend sources with a 7.5 magnitude difference.
 
-    mode : {'exponential', 'linear'}, optional
+    mode : {'exponential', 'linear', 'sinh'}, optional
         The mode used in defining the spacing between the
         multi-thresholding levels (see the ``nlevels`` keyword) during
-        deblending.
+        deblending. The ``'exponential'`` and ``'sinh'`` modes have
+        more threshold levels near the source minimum and less near
+        the source maximum. The ``'linear'`` mode evenly spaces the
+        threshold levels between the source minimum and maximum.
+        The ``'exponential'`` and ``'sinh'`` modes differ in that
+        the ``'exponential'`` levels are dependent on the source
+        maximum/minimum ratio (smaller ratios are more linear; larger
+        ratios are more exponential), while the ``'sinh'`` levels
+        are not. Also, the ``'exponential'`` mode will be changed to
+        ``'linear'`` for sources with non-positive minimum data values.
 
     connectivity : {8, 4}, optional
         The type of pixel connectivity used in determining how pixels
@@ -131,8 +140,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     if contrast < 0 or contrast > 1:
         raise ValueError('contrast must be >= 0 and <= 1')
 
-    if mode not in ('exponential', 'linear'):
-        raise ValueError('mode must be "exponential" or "linear"')
+    if mode not in ('exponential', 'linear', 'sinh'):
+        raise ValueError('mode must be "exponential", "linear", or "sinh"')
 
     if labels is None:
         labels = segment_img.labels
@@ -161,6 +170,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         from tqdm.auto import tqdm
         labels = tqdm(labels)
 
+    nonposmin_labels = []
     for label, idx in zip(labels, indices):
         source_slice = segment_img.slices[idx]
         source_data = data[source_slice]
@@ -168,9 +178,9 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         source_segment._data = np.copy(segment_img.data[source_slice])
         source_segment.keep_labels(label)  # include only one label
 
-        source_deblended = _deblend_source(source_data, source_segment,
-                                           npixels, selem, nlevels, contrast,
-                                           mode)
+        deblender = _Deblender(source_data, source_segment, npixels, selem,
+                               nlevels, contrast, mode)
+        source_deblended = deblender.deblend_source()
 
         if source_deblended is not None:
             # replace the original source with the deblended source
@@ -179,105 +189,33 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                 source_deblended.data[segment_mask] + last_label)
             last_label += source_deblended.nlabels
 
+            if hasattr(source_deblended, 'warnings'):
+                if source_deblended.warnings.get('nonposmin',
+                                                 None) is not None:
+                    nonposmin_labels.append(label)
+
+    if nonposmin_labels:
+        warnings.warn('The deblending mode of one or more source labels from '
+                      'the input segmentation image was changed from '
+                      '"exponential" to "linear". See the "info" attribute '
+                      'for the list of affected input labels.',
+                      AstropyUserWarning)
+
+        segm_deblended.info = {'warnings': {}}
+        nonposmin = {'message': 'Deblending mode changed from exponential to '
+                     'linear due to non-positive minimum data values.',
+                     'input_labels': np.array(nonposmin_labels)}
+        segm_deblended.info['warnings']['nonposmin'] = nonposmin
+
     if relabel:
         segm_deblended.relabel_consecutive()
 
     return segm_deblended
 
 
-def _multithreshold(data, segment_mask, npixels, label, nlevels, mode,
-                    selem, source_min, source_max):
+class _Deblender:
     """
-    Perform multithreshold detection for each source.
-    """
-    if mode == 'exponential' and source_min < 0:
-        warnings.warn(f'Source label "{label}" contains negative '
-                      'values, setting deblending mode to "linear"',
-                      AstropyUserWarning)
-        mode = 'linear'
-
-    steps = np.arange(1., nlevels + 1)
-    if mode == 'exponential':
-        if source_min == 0:
-            source_min = source_max * 0.01
-        thresholds = source_min * ((source_max / source_min) **
-                                   (steps / (nlevels + 1)))
-    elif mode == 'linear':
-        thresholds = source_min + ((source_max - source_min) /
-                                   (nlevels + 1)) * steps
-
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', category=RuntimeWarning)
-        segments = _detect_sources(data, thresholds, npixels, selem,
-                                   segment_mask, deblend_mode=True)
-
-    return segments
-
-
-def _make_markers(segments, selem):
-    """
-    Make markers (possible sources) for the watershed algorithm.
-    """
-    from scipy.ndimage import label as ndilabel
-
-    for i in range(len(segments) - 1):
-        segm_lower = segments[i].data
-        segm_upper = segments[i + 1].data
-        relabel = False
-        # if the are more sources at the upper level, then
-        # remove the parent source(s) from the lower level,
-        # but keep any sources in the lower level that do not have
-        # multiple children in the upper level
-        for label in segments[i].labels:
-            mask = (segm_lower == label)
-            # checks for 1-to-1 label mapping n -> m (where m >= 0)
-            upper_labels = segm_upper[mask]
-            upper_labels = np.unique(upper_labels[upper_labels != 0])
-            if upper_labels.size >= 2:
-                relabel = True
-                segm_lower[mask] = segm_upper[mask]
-
-        if relabel:
-            segm_new = object.__new__(SegmentationImage)
-            segm_new._data = ndilabel(segm_lower, structure=selem)[0]
-            segments[i + 1] = segm_new
-        else:
-            segments[i + 1] = segments[i]
-
-    return segments[-1].data  # all markers are now at the top level
-
-
-def _apply_watershed(data, markers, mask, selem, contrast, source_sum):
-    """
-    Apply the watershed algorithm to the markers for each source.
-    """
-    from scipy.ndimage import sum_labels
-    from skimage.segmentation import watershed
-
-    # Deblend using watershed. If any source does not meet the contrast
-    # criterion, then remove the faintest such source and repeat until
-    # all sources meet the contrast criterion.
-    remove_marker = True
-    while remove_marker:
-        markers = watershed(-data, markers, mask=mask, connectivity=selem)
-
-        labels = np.unique(markers[markers != 0])
-        flux_frac = sum_labels(data, markers, index=labels) / source_sum
-        remove_marker = any(flux_frac < contrast)
-
-        if remove_marker:
-            # remove only the faintest source (one at a time) because
-            # several faint sources could combine to meet the contrast
-            # criterion
-            markers[markers == labels[np.argmin(flux_frac)]] = 0.
-
-    return markers
-
-
-def _deblend_source(source_data, source_segment, npixels, selem, nlevels,
-                    contrast, mode):
-    """
-    Deblend a single labeled source.
+    Class to deblend a single labeled source.
 
     Parameters
     ----------
@@ -312,7 +250,7 @@ def _deblend_source(source_data, source_segment, npixels, selem, nlevels,
         0.001, which will deblend sources with a 7.5 magnitude
         difference.
 
-    mode : {'exponential', 'linear'}
+    mode : {'exponential', 'linear', 'sinh'}
         The mode used in defining the spacing between the
         multi-thresholding levels (see the ``nlevels`` keyword).  The
         default is 'exponential'.
@@ -326,37 +264,196 @@ def _deblend_source(source_data, source_segment, npixels, selem, nlevels,
         returned `SegmentationImage` will have consecutive labels
         starting with 1.
     """
-    segment_mask = source_segment.data.astype(bool)
-    source_values = source_data[segment_mask]
-    source_sum = np.nansum(source_values)
-    source_min = np.nanmin(source_values)
-    source_max = np.nanmax(source_values)
-    if source_min == source_max:  # no deblending
-        return None
 
-    label = source_segment.labels[0]  # should only be 1 label
-    segments = _multithreshold(source_data, segment_mask, npixels, label,
-                               nlevels, mode, selem, source_min, source_max)
+    def __init__(self, source_data, source_segment, npixels, selem, nlevels,
+                 contrast, mode):
 
-    if len(segments) == 0:  # no deblending
-        return None
+        self.source_data = source_data
+        self.source_segment = source_segment
+        self.npixels = npixels
+        self.selem = selem
+        self.nlevels = nlevels
+        self.contrast = contrast
+        self.mode = mode
+        self.warnings = {}
 
-    # define the markers (possible sources) for the watershed algorithm
-    markers = _make_markers(segments, selem)
+        self.segment_mask = source_segment.data.astype(bool)
+        self.source_values = source_data[self.segment_mask]
+        self.source_min = np.nanmin(self.source_values)
+        self.source_max = np.nanmax(self.source_values)
+        self.source_sum = np.nansum(self.source_values)
+        self.label = source_segment.labels[0]  # should only be 1 label
 
-    markers = _apply_watershed(source_data, markers, segment_mask, selem,
-                               contrast, source_sum)
+        # NOTE: this includes the source min/max, but we exclude those
+        # later, giving nlevels thresholds between min and max
+        # (nlevels + 1 parts)
+        self.linear_thresholds = np.linspace(self.source_min, self.source_max,
+                                             self.nlevels + 2)
 
-    if not np.array_equal(segment_mask, markers.astype(bool)):
-        raise ValueError(f'Deblending failed for source "{label}". Please '
-                         'ensure you used the same pixel connectivity in '
-                         'detect_sources and deblend_sources.')
+    def normalized_thresholds(self):
+        return ((self.linear_thresholds - self.source_min)
+                / (self.source_max - self.source_min))
 
-    if len(np.unique(markers[markers != 0])) == 1:  # no deblending
-        return None
+    def compute_thresholds(self):
+        """
+        Compute the multi-level detection thresholds for the source.
+        """
+        if self.mode == 'exponential' and self.source_min <= 0:
+            self.warnings['nonposmin'] = 'non-positive minimum'
+            self.mode = 'linear'
 
-    segm_new = object.__new__(SegmentationImage)
-    segm_new._data = markers
-    segm_new.relabel_consecutive(start_label=1)
+        if self.mode == 'linear':
+            thresholds = self.linear_thresholds
+        elif self.mode == 'sinh':
+            a = 0.25
+            minval = self.source_min
+            maxval = self.source_max
+            thresholds = self.normalized_thresholds()
+            thresholds = np.sinh(thresholds / a) / np.sinh(1.0 / a)
+            thresholds *= (maxval - minval)
+            thresholds += minval
+        elif self.mode == 'exponential':
+            minval = self.source_min
+            maxval = self.source_max
+            thresholds = self.normalized_thresholds()
+            thresholds = minval * (maxval / minval) ** thresholds
 
-    return segm_new
+        return thresholds[1:-1]  # do not include source min and max
+
+    def multithreshold(self):
+        """
+        Perform multithreshold detection for each source.
+        """
+        thresholds = self.compute_thresholds()
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=RuntimeWarning)
+            segments = _detect_sources(self.source_data, thresholds,
+                                       self.npixels, self.selem,
+                                       self.segment_mask, deblend_mode=True)
+        return segments
+
+    def make_markers(self, segments):
+        """
+        Make markers (possible sources) for the watershed algorithm.
+
+        Parameters
+        ----------
+        segments : list of `~photutils.segmentation.SegmentationImage`
+            A list of segmentation images, one for each threshold.
+
+        Returns
+        -------
+        markers : list of `~photutils.segmentation.SegmentationImage`
+            A list of segmentation images that contain possible sources
+            as markers. The last list element contains all of the
+            potential source markers.
+        """
+        from scipy.ndimage import label as ndilabel
+
+        for i in range(len(segments) - 1):
+            segm_lower = segments[i].data
+            segm_upper = segments[i + 1].data
+            relabel = False
+            # if the are more sources at the upper level, then
+            # remove the parent source(s) from the lower level,
+            # but keep any sources in the lower level that do not have
+            # multiple children in the upper level
+            for label in segments[i].labels:
+                mask = (segm_lower == label)
+                # checks for 1-to-1 label mapping n -> m (where m >= 0)
+                upper_labels = segm_upper[mask]
+                upper_labels = np.unique(upper_labels[upper_labels != 0])
+                if upper_labels.size >= 2:
+                    relabel = True
+                    segm_lower[mask] = segm_upper[mask]
+
+            if relabel:
+                segm_new = object.__new__(SegmentationImage)
+                segm_new._data = ndilabel(segm_lower, structure=self.selem)[0]
+                segments[i + 1] = segm_new
+            else:
+                segments[i + 1] = segments[i]
+
+        return segments
+
+    def apply_watershed(self, markers):
+        """
+        Apply the watershed algorithm to the source markers.
+
+        Parameters
+        ----------
+        markers : list of `~photutils.segmentation.SegmentationImage`
+            A list of segmentation images that contain possible sources
+            as markers. The last list element contains all of the
+            potential source markers.
+
+        Returns
+        -------
+        segment_data : 2D int `~numpy.ndarray`
+            A 2D int array containing the deblended source labels. Note
+            that the source labels may not be consecutive.
+        """
+        from scipy.ndimage import sum_labels
+        from skimage.segmentation import watershed
+
+        # all markers are at the top level
+        markers = markers[-1].data
+
+        # Deblend using watershed. If any source does not meet the contrast
+        # criterion, then remove the faintest such source and repeat until
+        # all sources meet the contrast criterion.
+        remove_marker = True
+        while remove_marker:
+            markers = watershed(-self.source_data, markers,
+                                mask=self.segment_mask,
+                                connectivity=self.selem)
+
+            labels = np.unique(markers[markers != 0])
+            flux_frac = (sum_labels(self.source_data, markers, index=labels)
+                         / self.source_sum)
+            remove_marker = any(flux_frac < self.contrast)
+
+            if remove_marker:
+                # remove only the faintest source (one at a time) because
+                # several faint sources could combine to meet the contrast
+                # criterion
+                markers[markers == labels[np.argmin(flux_frac)]] = 0.
+
+        return markers
+
+    def deblend_source(self):
+        """
+        Deblend a single labeled source.
+        """
+        if self.source_min == self.source_max:  # no deblending
+            return None
+
+        segments = self.multithreshold()
+        if len(segments) == 0:  # no deblending
+            return None
+
+        # define the markers (possible sources) for the watershed algorithm
+        markers = self.make_markers(segments)
+
+        # deblend using the watershed algorithm using the markers as seeds
+        markers = self.apply_watershed(markers)
+
+        if not np.array_equal(self.segment_mask, markers.astype(bool)):
+            raise ValueError(f'Deblending failed for source "{self.label}". '
+                             'Please ensure you used the same pixel '
+                             'connectivity in detect_sources and '
+                             'deblend_sources.')
+
+        labels = np.unique(markers[markers != 0])
+        if len(labels) == 1:  # no deblending
+            return None
+
+        segm_new = object.__new__(SegmentationImage)
+        segm_new._data = markers
+        segm_new.__dict__['labels'] = labels
+        segm_new.relabel_consecutive(start_label=1)
+
+        if self.warnings:
+            segm_new.warnings = self.warnings
+
+        return segm_new

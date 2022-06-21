@@ -5,6 +5,7 @@ segment within a segmentation image.
 """
 
 from copy import deepcopy
+import inspect
 import warnings
 
 from astropy.utils import lazyproperty
@@ -108,6 +109,21 @@ class SegmentationImage:
         """The segmentation array."""
         return self._data
 
+    @property
+    def _lazyproperties(self):
+        """
+        A list of all class lazyproperties (even in superclasses).
+        """
+        def islazyproperty(obj):
+            return isinstance(obj, lazyproperty)
+
+        return [i[0] for i in inspect.getmembers(self.__class__,
+                                                 predicate=islazyproperty)]
+
+    def _reset_lazyproperties(self):
+        for key in self._lazyproperties:
+            self.__dict__.pop(key, None)
+
     @data.setter
     def data(self, value):
         if not np.issubdtype(value.dtype, np.integer):
@@ -119,8 +135,8 @@ class SegmentationImage:
                              'negative integers.')
 
         if '_data' in self.__dict__:
-            # reset instance properties when data is reassigned, not on init
-            self.__dict__ = {}
+            # reset cached properties when data is reassigned, but not on init
+            self._reset_lazyproperties()
 
         self._data = value  # pylint: disable=attribute-defined-outside-init
         self.__dict__['labels'] = labels
@@ -590,7 +606,7 @@ class SegmentationImage:
                 idx = idx2[idx]
 
         data_new = idx[self.data]
-        self.__dict__ = {}  # reset all cached properties
+        self._reset_lazyproperties()  # reset all cached properties
         self._data = data_new  # use _data to avoid validation
 
     def relabel_consecutive(self, start_label=1):
@@ -641,7 +657,7 @@ class SegmentationImage:
         new_label_map[self.labels] = new_labels
 
         data_new = new_label_map[self.data]
-        self.__dict__ = {}  # reset all cached properties
+        self._reset_lazyproperties()  # reset all cached properties
         self._data = data_new  # use _data to avoid validation
         self.__dict__['labels'] = new_labels
         if old_slices is not None:

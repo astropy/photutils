@@ -3,6 +3,7 @@
 Tests for the core module.
 """
 
+from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
@@ -374,3 +375,33 @@ class TestSegmentationImage:
         axim = self.segm.imshow(figsize=(5, 5))
         from matplotlib.image import AxesImage
         assert isinstance(axim, AxesImage)
+
+
+class CustomSegm(SegmentationImage):
+    @lazyproperty
+    def value(self):
+        return np.median(self.data)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_subclass():
+    """
+    Test that cached properties are reset in SegmentationImage
+    subclasses.
+    """
+    data = np.array([[1, 1, 0, 0, 4, 4],
+                     [0, 0, 0, 0, 0, 4],
+                     [0, 0, 3, 3, 0, 0],
+                     [7, 0, 0, 0, 0, 5],
+                     [7, 7, 0, 5, 5, 5],
+                     [7, 7, 0, 0, 5, 5]])
+    segm = CustomSegm(data)
+    _ = segm.slices, segm.labels, segm.value, segm.areas
+
+    data2 = np.array([[10, 10, 0, 40],
+                      [0, 0, 0, 40],
+                      [70, 70, 0, 0],
+                      [70, 70, 0, 1]])
+    segm.data = data2
+    assert len(segm.__dict__) == 2
+    assert_equal(segm.areas, [1, 2, 2, 4])
