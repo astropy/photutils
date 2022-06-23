@@ -300,8 +300,7 @@ class EPSFStars:
         del self._data[index]
 
     def __iter__(self):
-        for i in self._data:
-            yield i
+        yield from self._data
 
     # explicit set/getstate to avoid infinite recursion
     # from pickler using __getattr__

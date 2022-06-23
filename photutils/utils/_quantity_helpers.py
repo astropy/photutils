@@ -35,7 +35,7 @@ def process_quantities(arrays, names):
     ValueError
         If the input arrays do not all have the same units.
     """
-    unit = set(getattr(arr, 'unit', None) for arr in arrays if arr is not None)
+    unit = {getattr(arr, 'unit', None) for arr in arrays if arr is not None}
     if len(unit) > 1:
         if len(names) == 2:
             str_names = f'{names[0]} or {names[1]}'

@@ -38,7 +38,7 @@ def _moments_central(data, center=None, order=1):
         from ..centroids import centroid_com
         center = centroid_com(data)
 
-    indices = np.ogrid[tuple([slice(0, i) for i in data.shape])]
+    indices = np.ogrid[tuple(slice(0, i) for i in data.shape)]
     ypowers = (indices[0] - center[1]) ** np.arange(order + 1)
     xpowers = np.transpose(indices[1] - center[0]) ** np.arange(order + 1)
 
