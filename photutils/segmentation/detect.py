@@ -372,7 +372,7 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         from astropy.visualization import simple_norm
         import matplotlib.pyplot as plt
         from photutils.datasets import make_100gaussians_image
-        from photutils.segmentation import (detect_threshold, detect_sources,
+        from photutils.segmentation import (detect_sources,
                                             make_2dgaussian_kernel)
 
         # make a simulated image

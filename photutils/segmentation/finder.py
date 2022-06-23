@@ -86,7 +86,6 @@ class SourceFinder:
         :include-source:
 
         from astropy.convolution import convolve
-        from astropy.stats import gaussian_fwhm_to_sigma
         from astropy.visualization import simple_norm
         import matplotlib.pyplot as plt
         from photutils.background import Background2D, MedianBackground
