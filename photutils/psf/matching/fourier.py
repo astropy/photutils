@@ -97,5 +97,5 @@ def create_matching_kernel(source_psf, target_psf, window=None):
     if window is not None:
         ratio *= window(target_psf.shape)
 
-    kernel = np.real(fftshift((ifft2(ifftshift(ratio)))))
+    kernel = np.real(fftshift(ifft2(ifftshift(ratio))))
     return kernel / kernel.sum()

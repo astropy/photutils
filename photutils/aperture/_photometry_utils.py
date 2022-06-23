@@ -41,8 +41,8 @@ def _handle_units(data, error):
     and `~photutils.aperture.PixelAperture.do_photometry`.
     """
     # check Quantity inputs
-    unit = set(getattr(arr, 'unit', None)
-               for arr in (data, error) if arr is not None)
+    unit = {getattr(arr, 'unit', None) for arr in (data, error)
+            if arr is not None}
     if len(unit) > 1:
         raise ValueError('If data or error has units, then they both must '
                          'have the same units.')

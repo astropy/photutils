@@ -149,10 +149,9 @@ def calc_total_error(data, bkg_error, effective_gain):
         count_units = [u.electron, u.photon]
         datagain_unit = data.unit * effective_gain.unit
         if datagain_unit not in count_units:
-            raise u.UnitsError('(data * effective_gain) has units of "{0}", '
-                               'but it must have count units (e.g., '
-                               'u.electron or u.photon).'
-                               .format(datagain_unit))
+            raise u.UnitsError('(data * effective_gain) has units of '
+                               f'{datagain_unit}, but it must have count '
+                               'units (e.g., u.electron or u.photon).')
 
     if not isiterable(effective_gain):
         effective_gain = np.zeros(data.shape) + effective_gain

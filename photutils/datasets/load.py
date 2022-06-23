@@ -99,7 +99,9 @@ def load_spitzer_image(show_progress=False):  # pragma: no cover
     .. plot::
         :include-source:
 
+        import matplotlib.pyplot as plt
         from photutils.datasets import load_spitzer_image
+
         hdu = load_spitzer_image()
         plt.imshow(hdu.data, origin='lower', vmax=50)
     """
@@ -137,7 +139,9 @@ def load_spitzer_catalog(show_progress=False):  # pragma: no cover
     .. plot::
         :include-source:
 
+        import matplotlib.pyplot as plt
         from photutils.datasets import load_spitzer_catalog
+
         catalog = load_spitzer_catalog()
         plt.scatter(catalog['l'], catalog['b'])
         plt.xlabel('Galactic l')
@@ -180,8 +184,10 @@ def load_irac_psf(channel, show_progress=False):  # pragma: no cover
     .. plot::
         :include-source:
 
+        import matplotlib.pyplot as plt
         from astropy.visualization import LogStretch, ImageNormalize
         from photutils.datasets import load_irac_psf
+
         hdu1 = load_irac_psf(1)
         hdu2 = load_irac_psf(2)
         hdu3 = load_irac_psf(3)
@@ -236,7 +242,9 @@ def load_fermi_image(show_progress=False):
     .. plot::
         :include-source:
 
+        import matplotlib.pyplot as plt
         from photutils.datasets import load_fermi_image
+
         hdu = load_fermi_image()
         plt.imshow(hdu.data, vmax=10, origin='lower', interpolation='nearest')
     """
@@ -273,7 +281,9 @@ def load_star_image(show_progress=False):  # pragma: no cover
     .. plot::
         :include-source:
 
+        import matplotlib.pyplot as plt
         from photutils.datasets import load_star_image
+
         hdu = load_star_image()
         plt.imshow(hdu.data, origin='lower', interpolation='nearest')
     """
@@ -306,7 +316,9 @@ def load_simulated_hst_star_image(show_progress=False):  # pragma: no cover
     .. plot::
         :include-source:
 
+        import matplotlib.pyplot as plt
         from photutils.datasets import load_simulated_hst_star_image
+
         hdu = load_simulated_hst_star_image()
         plt.imshow(hdu.data, origin='lower', interpolation='nearest')
     """

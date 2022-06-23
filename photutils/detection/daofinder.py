@@ -327,7 +327,7 @@ class _DAOStarFinderCatalog:
         self.id = np.arange(len(self)) + 1
         self.threshold_eff = threshold * kernel.relerr
         self.cutout_shape = kernel.shape
-        self.cutout_center = tuple([(size - 1) // 2 for size in kernel.shape])
+        self.cutout_center = tuple((size - 1) // 2 for size in kernel.shape)
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'sharpness',
                                 'roundness1', 'roundness2', 'npix', 'sky',
                                 'peak', 'flux', 'mag')

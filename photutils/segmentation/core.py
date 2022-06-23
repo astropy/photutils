@@ -1167,6 +1167,7 @@ class SegmentationImage:
         .. plot::
             :include-source:
 
+            import numpy as np
             from photutils.segmentation import SegmentationImage
             data = np.array([[1, 1, 0, 0, 4, 4],
                             [0, 0, 0, 0, 0, 4],

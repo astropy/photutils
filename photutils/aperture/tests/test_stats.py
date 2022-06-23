@@ -91,12 +91,12 @@ class TestApertureStats:
         apstats = ApertureStats(self.data, self.aperture)
         props = ('sky_centroid', 'sky_centroid_icrs', 'error_sumcutout')
         for prop in props:
-            assert set(getattr(apstats, prop)) == set([None])
+            assert set(getattr(apstats, prop)) == {None}
         assert np.all(np.isnan(apstats.sum_err))
-        assert set(apstats._variance_cutout) == set([None])
+        assert set(apstats._variance_cutout) == {None}
 
         apstats = ApertureStats(self.data, self.aperture, sum_method='center')
-        assert set(apstats._variance_cutout_center) == set([None])
+        assert set(apstats._variance_cutout_center) == {None}
 
     @pytest.mark.parametrize('sum_method', ('exact', 'subpixel'))
     def test_sum_method(self, sum_method):
