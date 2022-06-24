@@ -105,7 +105,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         4-connected pixels touch along their edges. For reference,
         SourceExtractor uses 8-connected pixels.
 
-    relabel : bool
+    relabel : bool, optional
         If `True` (default), then the segmentation image will be
         relabeled such that the labels are in consecutive order starting
         from 1.
