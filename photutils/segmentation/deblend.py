@@ -4,8 +4,7 @@ This module provides tools for deblending overlapping sources labeled in
 a segmentation image.
 """
 
-from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import cpu_count, RawArray
+from multiprocessing import cpu_count, Pool, RawArray
 import warnings
 
 from astropy.utils.decorators import deprecated_renamed_argument
@@ -240,20 +239,13 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         initargs = (shared_data, shared_segment_data, shape, data.dtype,
                     segment_img.data.dtype)
 
-        # setting chunksize with large iterables is much faster than
-        # leaving it at the default of 1 due to interprocess
-        # communication
-        chunksize = int(np.ceil(len(labels) / nproc * 4))
-
         if progress_bar and HAS_TQDM:
             # no progress bar for multiprocessing
             pass
 
-        with ProcessPoolExecutor(max_workers=nproc,
-                                 initializer=_init_pool,
-                                 initargs=initargs) as executor:
-            all_source_deblends = executor.map(_deblend_source, args_all,
-                                               chunksize=chunksize)
+        with Pool(processes=nproc, initializer=_init_pool,
+                  initargs=initargs) as pool:
+            all_source_deblends = pool.map(_deblend_source, args_all)
 
     nonposmin_labels = []
     for (label, source_deblended) in zip(labels, all_source_deblends):
