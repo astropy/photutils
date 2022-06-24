@@ -4,7 +4,7 @@ This module provides tools for deblending overlapping sources labeled in
 a segmentation image.
 """
 
-from multiprocessing import cpu_count, Pool
+from multiprocessing import cpu_count, get_context
 import warnings
 
 from astropy.utils.decorators import deprecated_renamed_argument
@@ -217,7 +217,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         if progress_bar and HAS_TQDM:
             args_all = tqdm(args_all, total=nlabels)
 
-        with Pool(processes=nproc) as executor:
+        with get_context('spawn').Pool(processes=nproc) as executor:
             all_source_deblends = executor.starmap(_deblend_source, args_all)
 
     nonposmin_labels = []
