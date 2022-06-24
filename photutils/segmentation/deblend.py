@@ -4,6 +4,8 @@ This module provides tools for deblending overlapping sources labeled in
 a segmentation image.
 """
 
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import cpu_count, RawArray
 import warnings
 
 from astropy.utils.decorators import deprecated_renamed_argument
@@ -19,6 +21,30 @@ from ..utils._optional_deps import HAS_TQDM  # noqa
 __all__ = ['deblend_sources']
 
 
+def _to_shared_array(arr):
+    ctype = np.ctypeslib.as_ctypes_type(arr.dtype)
+    shared_array = RawArray(ctype, arr.size)
+    # temp = np.frombuffer(shared_array, dtype=arr.dtype).reshape(arr.shape)
+    temp = np.ctypeslib.as_array(shared_array).reshape(arr.shape)
+    np.copyto(temp, arr)
+    return shared_array
+
+
+def _to_numpy_array(shared_array, shape, dtype):
+    """
+    Create a numpy array backed by a shared memory Array.
+    """
+    # return np.frombuffer(shared_array, dtype=dtype).reshape(shape)
+    return np.ctypeslib.as_array(shared_array).reshape(shape)
+
+
+def _init_pool(data, segment_data, shape, data_dtype, segm_dtype):
+    global shared_data
+    global shared_segment_data
+    shared_data = _to_numpy_array(data, shape, data_dtype)
+    shared_segment_data = _to_numpy_array(segment_data, shape, segm_dtype)
+
+
 @deprecated_renamed_argument('kernel', None, '1.5', message='"kernel" was '
                              'deprecated in version 1.5 and will be removed '
                              'in a future version. Instead, if filtering is '
@@ -26,7 +52,7 @@ __all__ = ['deblend_sources']
                              'directly into the "data" parameter.')
 def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                     nlevels=32, contrast=0.001, mode='exponential',
-                    connectivity=8, relabel=True, progress_bar=True):
+                    connectivity=8, relabel=True, nproc=1, progress_bar=True):
     """
     Deblend overlapping sources labeled in a segmentation image.
 
@@ -110,11 +136,21 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         relabeled such that the labels are in consecutive order starting
         from 1.
 
+    nproc : int, optional
+        The number of processes to use for multiprocessing (if larger
+        than 1). If set to 1, then a serial implementation is used
+        instead of a parallel one. If `None`, then the number of
+        processes will be set to the number of CPUs detected on the
+        machine.
+
      progress_bar : bool, optional
-        Whether to display a progress bar. The progress bar requires
-        that the `tqdm <https://tqdm.github.io/>`_ optional dependency
-        be installed. Note that the progress bar does not currently work
-        in the Jupyter console due to limitations in ``tqdm``.
+        Whether to display a progress bar. Note that if multiprocessing
+        is used (``nproc > 1``), the estimation times (e.g., time per
+        iteration and time remaining, etc) may be unreliable. The
+        progress bar requires that the `tqdm <https://tqdm.github.io/>`_
+        optional dependency be installed. Note that the progress
+        bar does not currently work in the Jupyter console due to
+        limitations in ``tqdm``.
 
     Returns
     -------
@@ -161,29 +197,69 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     if kernel is not None:
         data = _filter_data(data, kernel, mode='constant', fill_value=0.0)
 
+    if nproc is None:
+        nproc = cpu_count()
+
+    if progress_bar and HAS_TQDM:
+        from tqdm.auto import tqdm
+
+    if nproc > 1:
+        # Multiprocssing with shared memory does not work (pickling
+        # errors) with arrays that have '>' (big endian) or '<' (little
+        # endian) dtypes. Data read from FITS files are always big
+        # endian, even if the machine is little endian.
+        data = data.astype(data.dtype.name, copy=False)
+        segment_img._data = segment_img._data.astype(
+            segment_img._data.dtype.name, copy=False)
+
     segm_deblended = object.__new__(SegmentationImage)
     segm_deblended._data = np.copy(segment_img.data)
     last_label = segment_img.max_label
 
-    indices = segment_img.get_indices(labels)
-    if progress_bar and HAS_TQDM:
-        from tqdm.auto import tqdm
-        labels = tqdm(labels)
+    if nproc == 1:
+        if progress_bar and HAS_TQDM:
+            labels = tqdm(labels)
+
+        all_source_deblends = []
+        for label in labels:
+            deblender = _Deblender(label, npixels, selem, nlevels, contrast,
+                                   mode, None, None, data=data,
+                                   segment_img=segment_img)
+            source_deblended = deblender.deblend_source()
+            all_source_deblends.append(source_deblended)
+
+    else:
+        args_all = []
+        for label in labels:
+            args_all.append((label, npixels, selem, nlevels, contrast, mode,
+                             segment_img.labels, segment_img.slices))
+
+        shared_data = _to_shared_array(data)
+        shared_segment_data = _to_shared_array(segment_img.data)
+        shape = data.shape
+        initargs = (shared_data, shared_segment_data, shape, data.dtype,
+                    segment_img.data.dtype)
+
+        # setting chunksize with large iterables is much faster than
+        # leaving it at the default of 1 due to interprocess
+        # communication
+        chunksize = int(np.ceil(len(labels) / nproc * 4))
+
+        if progress_bar and HAS_TQDM:
+            # no progress bar for multiprocessing
+            pass
+
+        with ProcessPoolExecutor(max_workers=nproc,
+                                 initializer=_init_pool,
+                                 initargs=initargs) as executor:
+            all_source_deblends = executor.map(_deblend_source, args_all,
+                                               chunksize=chunksize)
 
     nonposmin_labels = []
-    for label, idx in zip(labels, indices):
-        source_slice = segment_img.slices[idx]
-        source_data = data[source_slice]
-        source_segment = object.__new__(SegmentationImage)
-        source_segment._data = np.copy(segment_img.data[source_slice])
-        source_segment.keep_labels(label)  # include only one label
-
-        deblender = _Deblender(source_data, source_segment, npixels, selem,
-                               nlevels, contrast, mode)
-        source_deblended = deblender.deblend_source()
-
+    for (label, source_deblended) in zip(labels, all_source_deblends):
         if source_deblended is not None:
             # replace the original source with the deblended source
+            source_slice = segment_img.slices[segment_img.get_index(label)]
             segment_mask = (source_deblended.data > 0)
             segm_deblended._data[source_slice][segment_mask] = (
                 source_deblended.data[segment_mask] + last_label)
@@ -211,6 +287,21 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         segm_deblended.relabel_consecutive()
 
     return segm_deblended
+
+
+def _deblend_source(args):
+    """
+    Convenience function to deblend a single labeled source.
+
+    "args" needs to be a single argument (which is unpacked here)
+    because ProcessPoolExecutor does not have a starmap method.
+    """
+    (label, npixels, selem, nlevels, contrast, mode, shsegm_labels,
+     shsegm_slices) = args
+
+    deblender = _Deblender(label, npixels, selem, nlevels, contrast, mode,
+                           shsegm_labels, shsegm_slices)
+    return deblender.deblend_source()
 
 
 class _Deblender:
@@ -265,30 +356,50 @@ class _Deblender:
         starting with 1.
     """
 
-    def __init__(self, source_data, source_segment, npixels, selem, nlevels,
-                 contrast, mode):
+    def __init__(self, label, npixels, selem, nlevels, contrast, mode,
+                 shsegm_labels, shsegm_slices, data=None, segment_img=None):
 
-        self.source_data = source_data
-        self.source_segment = source_segment
+        self.label = label
         self.npixels = npixels
         self.selem = selem
         self.nlevels = nlevels
         self.contrast = contrast
         self.mode = mode
         self.warnings = {}
+        self.data = data
+        self.segment_img = segment_img
+
+        if data is None:
+            # global from _init_workers
+            self.data = shared_data
+            segment_img = object.__new__(SegmentationImage)
+            segment_img._data = shared_segment_data
+            segment_img.__dict__['slices'] = shsegm_slices
+            segment_img.__dict__['labels'] = shsegm_labels
+            self.segment_img = segment_img
+
+        self.source_data, source_segment = self.make_cutouts()
 
         self.segment_mask = source_segment.data.astype(bool)
-        self.source_values = source_data[self.segment_mask]
+        self.source_values = self.source_data[self.segment_mask]
         self.source_min = np.nanmin(self.source_values)
         self.source_max = np.nanmax(self.source_values)
         self.source_sum = np.nansum(self.source_values)
-        self.label = source_segment.labels[0]  # should only be 1 label
 
         # NOTE: this includes the source min/max, but we exclude those
         # later, giving nlevels thresholds between min and max
-        # (nlevels + 1 parts)
+        # (noninclusive; i.e., nlevels + 1 parts)
         self.linear_thresholds = np.linspace(self.source_min, self.source_max,
                                              self.nlevels + 2)
+
+    def make_cutouts(self):
+        idx = self.segment_img.get_index(self.label)
+        source_slice = self.segment_img.slices[idx]
+        source_data = self.data[source_slice]
+        source_segment = object.__new__(SegmentationImage)
+        source_segment._data = self.segment_img.data[source_slice]
+        source_segment.keep_labels(self.label)  # include only one label
+        return source_data, source_segment
 
     def normalized_thresholds(self):
         return ((self.linear_thresholds - self.source_min)
