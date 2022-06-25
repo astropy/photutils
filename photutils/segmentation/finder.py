@@ -62,11 +62,23 @@ class SourceFinder:
         multi-thresholding levels (see the ``nlevels`` keyword) during
         deblending. This keyword is ignored unless ``deblend=True``.
 
-    relabel : bool
+    relabel : bool, optional
         If `True` (default), then the segmentation image will be
         relabeled after deblending such that the labels are in
         consecutive order starting from 1. This keyword is ignored
         unless ``deblend=True``.
+
+    nproc : int, optional
+        The number of processes to use for multiprocessing (if larger
+        than 1). If set to 1, then a serial implementation is used
+        instead of a parallel one. If `None`, then the number of
+        processes will be set to the number of CPUs detected on the
+        machine. Please note that due to overheads, multiprocessing may
+        be slower than serial processing. This is especially true if one
+        only has a small number of sources to deblend. The benefits of
+        multiprocessing require ~1000 or more sources to deblend, with
+        large gains as the number of sources increase. This keyword is
+        ignored unless ``deblend=True``.
 
     progress_bar : bool, optional
        Whether to display a progress bar during source deblending. The
@@ -122,7 +134,7 @@ class SourceFinder:
     """
 
     def __init__(self, npixels, *, connectivity=8, deblend=True, nlevels=32,
-                 contrast=0.001, mode='exponential', relabel=True,
+                 contrast=0.001, mode='exponential', relabel=True, nproc=1,
                  progress_bar=True):
         self.npixels = npixels
         self.deblend = deblend
@@ -131,6 +143,7 @@ class SourceFinder:
         self.contrast = contrast
         self.mode = mode
         self.relabel = relabel
+        self.nproc = nproc
         self.progress_bar = progress_bar
 
     def __call__(self, data, threshold, mask=None):
@@ -176,6 +189,7 @@ class SourceFinder:
                                           mode=self.mode,
                                           connectivity=self.connectivity,
                                           relabel=self.relabel,
+                                          nproc=self.nproc,
                                           progress_bar=self.progress_bar)
 
         return segment_img
