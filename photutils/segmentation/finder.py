@@ -120,7 +120,7 @@ class SourceFinder:
 
         # detect the sources
         threshold = 1.5 * bkg.background_rms  # per-pixel threshold
-        finder = SourceFinder(npixels=10)
+        finder = SourceFinder(npixels=10, progress_bar=False)
         segm = finder(convolved_data, threshold)
 
         # plot the image and the segmentation image
