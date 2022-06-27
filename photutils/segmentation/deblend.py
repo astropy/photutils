@@ -52,9 +52,9 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         The segmentation image to deblend.
 
     npixels : int
-        The number of connected pixels, each greater than ``threshold``,
-        that an object must have to be detected.  ``npixels`` must be a
-        positive integer.
+        The minimum number of connected pixels, each greater than
+        ``threshold``, that an object must have to be deblended.
+        ``npixels`` must be a positive integer.
 
     kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
         Deprecated. If filtering is desired, please input a convolved
@@ -103,8 +103,9 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         The type of pixel connectivity used in determining how pixels
         are grouped into a detected source. The options are 8 (default)
         or 4. 8-connected pixels touch along their edges or corners.
-        4-connected pixels touch along their edges. For reference,
-        SourceExtractor uses 8-connected pixels.
+        4-connected pixels touch along their edges. The ``connectivity``
+        must be the same as that used to create the input segmentation
+        image.
 
     relabel : bool, optional
         If `True` (default), then the segmentation image will be
@@ -225,6 +226,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
             all_source_deblends = executor.starmap(_deblend_source, args_all)
 
     nonposmin_labels = []
+    nmarkers_labels = []
     for (label, source_deblended, source_slice) in zip(
             labels, all_source_deblends, all_source_slices):
 
@@ -239,19 +241,29 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                 if source_deblended.warnings.get('nonposmin',
                                                  None) is not None:
                     nonposmin_labels.append(label)
+                if source_deblended.warnings.get('nmarkers',
+                                                 None) is not None:
+                    nmarkers_labels.append(label)
 
-    if nonposmin_labels:
+    if nonposmin_labels or nmarkers_labels:
+        segm_deblended.info = {'warnings': {}}
         warnings.warn('The deblending mode of one or more source labels from '
                       'the input segmentation image was changed from '
                       '"exponential" to "linear". See the "info" attribute '
                       'for the list of affected input labels.',
                       AstropyUserWarning)
 
-        segm_deblended.info = {'warnings': {}}
-        nonposmin = {'message': 'Deblending mode changed from exponential to '
-                     'linear due to non-positive minimum data values.',
-                     'input_labels': np.array(nonposmin_labels)}
-        segm_deblended.info['warnings']['nonposmin'] = nonposmin
+        if nonposmin_labels:
+            warn = {'message': 'Deblending mode changed from exponential to '
+                    'linear due to non-positive minimum data values.',
+                    'input_labels': np.array(nonposmin_labels)}
+            segm_deblended.info['warnings']['nonposmin'] = warn
+
+        if nmarkers_labels:
+            warn = {'message': 'Deblending mode changed from exponential to '
+                    'linear due to too many potential deblended sources.',
+                    'input_labels': np.array(nmarkers_labels)}
+        segm_deblended.info['warnings']['nmarkers'] = warn
 
     if relabel:
         segm_deblended.relabel_consecutive()
@@ -491,6 +503,20 @@ class _Deblender:
 
         # define the markers (possible sources) for the watershed algorithm
         markers = self.make_markers(segments)
+
+        # If there are too many markers (e.g., due to low threshold
+        # and/or small npixels), the watershed step can be very slow
+        # (the threshold of 200 is arbitrary, but seems to work well).
+        # This mostly affects the "exponential" mode, where there are
+        # many levels at low thresholds, so here we try again with
+        # "linear" mode.
+        if self.mode != 'linear' and markers[-1].nlabels > 200:
+            self.warnings['nmarkers'] = 'too many markers'
+            self.mode = 'linear'
+            segments = self.multithreshold()
+            if len(segments) == 0:  # no deblending
+                return None
+            markers = self.make_markers(segments)
 
         # deblend using the watershed algorithm using the markers as seeds
         markers = self.apply_watershed(markers)
