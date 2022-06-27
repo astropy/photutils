@@ -108,6 +108,11 @@ API Changes
     mode. The affected labels is available in a new "info" attribute.
     [#1368]
 
+  - If the mode in ``deblend_sources`` is "exponential" or "sinh" and there
+    are too many potential deblended sources within a given source
+    (watershed markers), a warning will be raised and the mode will be
+    changed to "linear". [#1369]
+
 - ``photutils.utils``
 
   - The colormap returned from ``make_random_cmap`` now has colors in
