@@ -187,9 +187,9 @@ def _detect_sources(data, thresholds, npixels, selem, inverse_mask,
         ``data``.
 
     npixels : int
-        The number of connected pixels, each greater than ``threshold``,
-        that an object must have to be detected. ``npixels`` must be a
-        positive integer.
+        The minimum number of connected pixels, each greater than
+        ``threshold``, that an object must have to be detected.
+        ``npixels`` must be a positive integer.
 
     selem : array_like
         A structuring element that defines feature connections. As
@@ -323,9 +323,9 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         shape as ``data``.
 
     npixels : int
-        The number of connected pixels, each greater than ``threshold``,
-        that an object must have to be detected. ``npixels`` must be a
-        positive integer.
+        The minimum number of connected pixels, each greater than
+        ``threshold``, that an object must have to be detected.
+        ``npixels`` must be a positive integer.
 
     kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
         Deprecated. If filtering is desired, please input a convolved
@@ -341,8 +341,7 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         The type of pixel connectivity used in determining how pixels
         are grouped into a detected source. The options are 4 or
         8 (default). 4-connected pixels touch along their edges.
-        8-connected pixels touch along their edges or corners. For
-        reference, SourceExtractor uses 8-connected pixels.
+        8-connected pixels touch along their edges or corners.
 
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as the input ``data``, where
@@ -458,9 +457,9 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
         part of a source.
 
     npixels : int
-        The number of connected pixels, each greater than ``threshold``,
-        that an object must have to be detected.  ``npixels`` must be a
-        positive integer.
+        The minimum number of connected pixels, each greater than
+        ``threshold``, that an object must have to be detected.
+        ``npixels`` must be a positive integer.
 
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data``, where a `True`

@@ -26,16 +26,15 @@ class SourceFinder:
     Parameters
     ----------
     npixels : int
-        The number of connected pixels, each greater than a specified
-        threshold, that an object must have to be detected. ``npixels``
-        must be a positive integer.
+        The minimum number of connected pixels, each greater than a
+        specified threshold, that an object must have to be detected.
+        ``npixels`` must be a positive integer.
 
     connectivity : {4, 8}, optional
         The type of pixel connectivity used in determining how pixels
         are grouped into a detected source. The options are 4 or
         8 (default). 4-connected pixels touch along their edges.
-        8-connected pixels touch along their edges or corners. For
-        reference, SourceExtractor uses 8-connected pixels.
+        8-connected pixels touch along their edges or corners.
 
     deblend : bool, optional
         Whether to deblend overlapping sources.
