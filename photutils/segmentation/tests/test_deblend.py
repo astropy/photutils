@@ -7,7 +7,7 @@ import warnings
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 import pytest
 
 from ..core import SegmentationImage
@@ -42,6 +42,13 @@ class TestDeblendSources:
             warnings.simplefilter('ignore', DeprecationWarning)
             result = deblend_sources(self.data, self.segm, self.npixels,
                                      mode=mode, progress_bar=False)
+
+            if mode == 'linear':
+                # test multiprocessing
+                result2 = deblend_sources(self.data, self.segm, self.npixels,
+                                          mode=mode, progress_bar=False,
+                                          nproc=2)
+                assert_equal(result.data, result2.data)
 
         assert result.nlabels == 2
         assert result.nlabels == len(result.slices)
