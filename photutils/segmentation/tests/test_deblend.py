@@ -7,7 +7,7 @@ import warnings
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 import pytest
 
 from ..core import SegmentationImage
@@ -41,7 +41,14 @@ class TestDeblendSources:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', DeprecationWarning)
             result = deblend_sources(self.data, self.segm, self.npixels,
-                                     mode=mode)
+                                     mode=mode, progress_bar=False)
+
+            if mode == 'linear':
+                # test multiprocessing
+                result2 = deblend_sources(self.data, self.segm, self.npixels,
+                                          mode=mode, progress_bar=False,
+                                          nproc=2)
+                assert_equal(result.data, result2.data)
 
         assert result.nlabels == 2
         assert result.nlabels == len(result.slices)
@@ -60,7 +67,7 @@ class TestDeblendSources:
         y = self.y
         data = self.data + g4(x, y) + g5(x, y) + g6(x, y) + g7(x, y)
         segm = detect_sources(data, self.threshold, self.npixels)
-        result = deblend_sources(data, segm, self.npixels)
+        result = deblend_sources(data, segm, self.npixels, progress_bar=False)
         assert result.nlabels == 6
         assert result.nlabels == len(result.slices)
         assert result.areas[0] == result.areas[1]
@@ -78,7 +85,7 @@ class TestDeblendSources:
         y = self.y
         data = (g1 + g2 + g3)(x, y)
         segm = detect_sources(data, self.threshold, self.npixels)
-        result = deblend_sources(data, segm, self.npixels)
+        result = deblend_sources(data, segm, self.npixels, progress_bar=False)
         assert result.nlabels == 3
 
     def test_deblend_labels(self):
@@ -89,7 +96,8 @@ class TestDeblendSources:
         y = self.y
         data = (g1 + g2 + g3)(x, y)
         segm = detect_sources(data, self.threshold, self.npixels)
-        result = deblend_sources(data, segm, self.npixels, labels=1)
+        result = deblend_sources(data, segm, self.npixels, labels=1,
+                                 progress_bar=False)
         assert result.nlabels == 2
 
     @pytest.mark.parametrize('contrast, nlabels',
@@ -108,7 +116,8 @@ class TestDeblendSources:
         npixels = 5
         segm = detect_sources(data, 1.0, npixels)
         segm2 = deblend_sources(data, segm, npixels, mode='linear',
-                                nlevels=32, contrast=contrast)
+                                nlevels=32, contrast=contrast,
+                                progress_bar=False)
         assert segm2.nlabels == nlabels
 
     def test_deblend_connectivity(self):
@@ -125,16 +134,19 @@ class TestDeblendSources:
 
         segm = detect_sources(data, 0.1, 1, connectivity=4)
         assert segm.nlabels == 9
-        segm2 = deblend_sources(data, segm, 1, mode='linear', connectivity=4)
+        segm2 = deblend_sources(data, segm, 1, mode='linear', connectivity=4,
+                                progress_bar=False)
         assert segm2.nlabels == 9
 
         segm = detect_sources(data, 0.1, 1, connectivity=8)
         assert segm.nlabels == 1
-        segm2 = deblend_sources(data, segm, 1, mode='linear', connectivity=8)
+        segm2 = deblend_sources(data, segm, 1, mode='linear', connectivity=8,
+                                progress_bar=False)
         assert segm2.nlabels == 3
 
         with pytest.raises(ValueError):
-            deblend_sources(data, segm, 1, mode='linear', connectivity=4)
+            deblend_sources(data, segm, 1, mode='linear', connectivity=4,
+                            progress_bar=False)
 
     def test_deblend_label_assignment(self):
         """
@@ -159,13 +171,13 @@ class TestDeblendSources:
         npixels = 5
         segm1 = detect_sources(data, 5.0, npixels)
         segm2 = deblend_sources(data, segm1, npixels, mode='linear',
-                                nlevels=32, contrast=0.3)
+                                nlevels=32, contrast=0.3, progress_bar=False)
         assert segm2.nlabels == 4
 
     @pytest.mark.parametrize('mode', ['exponential', 'linear'])
     def test_deblend_sources_norelabel(self, mode):
         result = deblend_sources(self.data, self.segm, self.npixels,
-                                 mode=mode, relabel=False)
+                                 mode=mode, relabel=False, progress_bar=False)
         assert result.nlabels == 2
         assert len(result.slices) <= result.max_label
         assert len(result.slices) == result.nlabels
@@ -174,55 +186,62 @@ class TestDeblendSources:
     @pytest.mark.parametrize('mode', ['exponential', 'linear'])
     def test_deblend_three_sources(self, mode):
         result = deblend_sources(self.data3, self.segm3, self.npixels,
-                                 mode=mode)
+                                 mode=mode, progress_bar=False)
         assert result.nlabels == 3
         assert_allclose(np.nonzero(self.segm3), np.nonzero(result))
 
     def test_segment_img(self):
         segm_wrong = np.ones((2, 2), dtype=int)  # ndarray
         with pytest.raises(ValueError):
-            deblend_sources(self.data, segm_wrong, self.npixels)
+            deblend_sources(self.data, segm_wrong, self.npixels,
+                            progress_bar=False)
 
         segm_wrong = SegmentationImage(segm_wrong)  # wrong shape
         with pytest.raises(ValueError):
-            deblend_sources(self.data, segm_wrong, self.npixels)
+            deblend_sources(self.data, segm_wrong, self.npixels,
+                            progress_bar=False)
 
     def test_invalid_nlevels(self):
         with pytest.raises(ValueError):
-            deblend_sources(self.data, self.segm, self.npixels, nlevels=0)
+            deblend_sources(self.data, self.segm, self.npixels, nlevels=0,
+                            progress_bar=False)
 
     def test_invalid_contrast(self):
         with pytest.raises(ValueError):
-            deblend_sources(self.data, self.segm, self.npixels, contrast=-1)
+            deblend_sources(self.data, self.segm, self.npixels, contrast=-1,
+                            progress_bar=False)
 
     def test_invalid_mode(self):
         with pytest.raises(ValueError):
             deblend_sources(self.data, self.segm, self.npixels,
-                            mode='invalid')
+                            mode='invalid', progress_bar=False)
 
     def test_invalid_connectivity(self):
         with pytest.raises(ValueError):
             deblend_sources(self.data, self.segm, self.npixels,
-                            connectivity='invalid')
+                            connectivity='invalid', progress_bar=False)
 
     def test_constant_source(self):
         data = self.data.copy()
         data[data.nonzero()] = 1.
-        result = deblend_sources(data, self.segm, self.npixels)
+        result = deblend_sources(data, self.segm, self.npixels,
+                                 progress_bar=False)
         assert_allclose(result, self.segm)
 
     def test_source_with_negval(self):
         data = self.data.copy()
         data -= 20
         with pytest.warns(AstropyUserWarning, match='The deblending mode'):
-            segm = deblend_sources(data, self.segm, self.npixels)
+            segm = deblend_sources(data, self.segm, self.npixels,
+                                   progress_bar=False)
             assert segm.info['warnings']['nonposmin']['input_labels'] == 1
 
     def test_source_zero_min(self):
         data = self.data.copy()
         data -= data[self.segm.data > 0].min()
         with pytest.warns(AstropyUserWarning, match='The deblending mode'):
-            segm = deblend_sources(data, self.segm, self.npixels)
+            segm = deblend_sources(data, self.segm, self.npixels,
+                                   progress_bar=False)
             assert segm.info['warnings']['nonposmin']['input_labels'] == 1
 
     def test_connectivity(self):
@@ -235,10 +254,12 @@ class TestDeblendSources:
         segm[data.nonzero()] = 1
         segm = SegmentationImage(segm)
         data = data * 100.
-        segm_deblend = deblend_sources(data, segm, npixels=1, connectivity=8)
+        segm_deblend = deblend_sources(data, segm, npixels=1, connectivity=8,
+                                       progress_bar=False)
         assert segm_deblend.nlabels == 1
         with pytest.raises(ValueError):
-            deblend_sources(data, segm, npixels=1, connectivity=4)
+            deblend_sources(data, segm, npixels=1, connectivity=4,
+                            progress_bar=False)
 
     def test_data_nan(self):
         """
@@ -248,7 +269,7 @@ class TestDeblendSources:
 
         data = self.data.copy()
         data[50, 50] = np.nan
-        segm2 = deblend_sources(data, self.segm, 5)
+        segm2 = deblend_sources(data, self.segm, 5, progress_bar=False)
         assert segm2.nlabels == 2
 
     def test_watershed(self):
@@ -262,7 +283,8 @@ class TestDeblendSources:
 
         segm = self.segm.copy()
         segm.reassign_label(1, 512)
-        result = deblend_sources(self.data, segm, self.npixels)
+        result = deblend_sources(self.data, segm, self.npixels,
+                                 progress_bar=False)
         assert result.nlabels == 2
 
     def test_nondetection(self):
@@ -278,10 +300,11 @@ class TestDeblendSources:
         data[50, 50] = 1000.
         data[50, 70] = 500.
         self.segm = detect_sources(data, self.threshold, self.npixels)
-        deblend_sources(data, self.segm, self.npixels)
+        deblend_sources(data, self.segm, self.npixels, progress_bar=False)
 
     def test_nonconsecutive_labels(self):
         segm = self.segm.copy()
         segm.reassign_label(1, 1000)
-        result = deblend_sources(self.data, segm, self.npixels)
+        result = deblend_sources(self.data, segm, self.npixels,
+                                 progress_bar=False)
         assert result.nlabels == 2

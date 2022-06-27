@@ -4,6 +4,7 @@ This module provides tools for deblending overlapping sources labeled in
 a segmentation image.
 """
 
+from multiprocessing import cpu_count, get_context
 import warnings
 
 from astropy.utils.decorators import deprecated_renamed_argument
@@ -26,7 +27,7 @@ __all__ = ['deblend_sources']
                              'directly into the "data" parameter.')
 def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                     nlevels=32, contrast=0.001, mode='exponential',
-                    connectivity=8, relabel=True, progress_bar=True):
+                    connectivity=8, relabel=True, nproc=1, progress_bar=True):
     """
     Deblend overlapping sources labeled in a segmentation image.
 
@@ -110,11 +111,25 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         relabeled such that the labels are in consecutive order starting
         from 1.
 
+    nproc : int, optional
+        The number of processes to use for multiprocessing (if larger
+        than 1). If set to 1, then a serial implementation is used
+        instead of a parallel one. If `None`, then the number of
+        processes will be set to the number of CPUs detected on the
+        machine. Please note that due to overheads, multiprocessing may
+        be slower than serial processing. This is especially true if one
+        only has a small number of sources to deblend. The benefits of
+        multiprocessing require ~1000 or more sources to deblend, with
+        large gains as the number of sources increase.
+
      progress_bar : bool, optional
-        Whether to display a progress bar. The progress bar requires
-        that the `tqdm <https://tqdm.github.io/>`_ optional dependency
-        be installed. Note that the progress bar does not currently work
-        in the Jupyter console due to limitations in ``tqdm``.
+        Whether to display a progress bar. Note that if multiprocessing
+        is used (``nproc > 1``), the estimation times (e.g., time per
+        iteration and time remaining, etc) may be unreliable. The
+        progress bar requires that the `tqdm <https://tqdm.github.io/>`_
+        optional dependency be installed. Note that the progress
+        bar does not currently work in the Jupyter console due to
+        limitations in ``tqdm``.
 
     Returns
     -------
@@ -161,26 +176,57 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     if kernel is not None:
         data = _filter_data(data, kernel, mode='constant', fill_value=0.0)
 
+    if nproc is None:
+        nproc = cpu_count()
+
+    if progress_bar and HAS_TQDM:
+        from tqdm.auto import tqdm
+
     segm_deblended = object.__new__(SegmentationImage)
     segm_deblended._data = np.copy(segment_img.data)
     last_label = segment_img.max_label
-
     indices = segment_img.get_indices(labels)
-    if progress_bar and HAS_TQDM:
-        from tqdm.auto import tqdm
-        labels = tqdm(labels)
 
-    nonposmin_labels = []
+    all_source_data = []
+    all_source_segments = []
+    all_source_slices = []
     for label, idx in zip(labels, indices):
         source_slice = segment_img.slices[idx]
         source_data = data[source_slice]
         source_segment = object.__new__(SegmentationImage)
-        source_segment._data = np.copy(segment_img.data[source_slice])
+        source_segment._data = segment_img.data[source_slice]
         source_segment.keep_labels(label)  # include only one label
+        all_source_data.append(source_data)
+        all_source_segments.append(source_segment)
+        all_source_slices.append(source_slice)
 
-        deblender = _Deblender(source_data, source_segment, npixels, selem,
-                               nlevels, contrast, mode)
-        source_deblended = deblender.deblend_source()
+    if nproc == 1:
+        if progress_bar and HAS_TQDM:
+            all_source_data = tqdm(all_source_data)
+
+        all_source_deblends = []
+        for source_data, source_segment in zip(all_source_data,
+                                               all_source_segments):
+            deblender = _Deblender(source_data, source_segment, npixels,
+                                   selem, nlevels, contrast, mode)
+            source_deblended = deblender.deblend_source()
+            all_source_deblends.append(source_deblended)
+
+    else:
+        nlabels = len(labels)
+        args_all = zip(all_source_data, all_source_segments,
+                       (npixels,) * nlabels, (selem,) * nlabels,
+                       (nlevels,) * nlabels, (contrast,) * nlabels,
+                       (mode,) * nlabels)
+        if progress_bar and HAS_TQDM:
+            args_all = tqdm(args_all, total=nlabels)
+
+        with get_context('spawn').Pool(processes=nproc) as executor:
+            all_source_deblends = executor.starmap(_deblend_source, args_all)
+
+    nonposmin_labels = []
+    for (label, source_deblended, source_slice) in zip(
+            labels, all_source_deblends, all_source_slices):
 
         if source_deblended is not None:
             # replace the original source with the deblended source
@@ -211,6 +257,17 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         segm_deblended.relabel_consecutive()
 
     return segm_deblended
+
+
+def _deblend_source(source_data, source_segment, npixels, selem, nlevels,
+                    contrast, mode):
+    """
+    Convenience function to deblend a single labeled source with
+    multiprocessing.
+    """
+    deblender = _Deblender(source_data, source_segment, npixels, selem,
+                           nlevels, contrast, mode)
+    return deblender.deblend_source()
 
 
 class _Deblender:
@@ -286,7 +343,7 @@ class _Deblender:
 
         # NOTE: this includes the source min/max, but we exclude those
         # later, giving nlevels thresholds between min and max
-        # (nlevels + 1 parts)
+        # (noninclusive; i.e., nlevels + 1 parts)
         self.linear_thresholds = np.linspace(self.source_min, self.source_max,
                                              self.nlevels + 2)
 

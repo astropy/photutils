@@ -161,7 +161,8 @@ Here's a simple example of source deblending:
 
     >>> from photutils.segmentation import deblend_sources
     >>> segm_deblend = deblend_sources(convolved_data, segment_map,
-    ...                                npixels=10, nlevels=32, contrast=0.001)
+    ...                                npixels=10, nlevels=32, contrast=0.001,
+    ...                                progress_bar=False)
 
 where ``segment_map`` is the
 :class:`~photutils.segmentation.SegmentationImage` that was
@@ -198,7 +199,7 @@ deblended segmentation image:
     npixels = 10
     segment_map = detect_sources(convolved_data, threshold, npixels=npixels)
     segm_deblend = deblend_sources(convolved_data, segment_map,
-                                   npixels=npixels)
+                                   npixels=npixels, progress_bar=False)
 
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, ax = plt.subplots(1, 1, figsize=(10, 6.5))
@@ -235,7 +236,7 @@ Let's plot one of the deblended sources:
     npixels = 10
     segment_map = detect_sources(convolved_data, threshold, npixels=npixels)
     segm_deblend = deblend_sources(convolved_data, segment_map,
-                                   npixels=npixels)
+                                   npixels=npixels, progress_bar=False)
 
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 4))
@@ -265,7 +266,7 @@ the background-subtracted (convolved) image and threshold:
 .. doctest-requires:: scipy, skimage
 
     >>> from photutils.segmentation import SourceFinder
-    >>> finder = SourceFinder(npixels=10)
+    >>> finder = SourceFinder(npixels=10, progress_bar=False)
     >>> segment_map = finder(convolved_data, threshold)
     >>> print(segment_map)
     <photutils.segmentation.core.SegmentationImage>
@@ -409,7 +410,7 @@ of each source) on the data:
     convolved_data = convolve(data, kernel)
 
     npixels = 10
-    finder = SourceFinder(npixels=npixels)
+    finder = SourceFinder(npixels=npixels, progress_bar=False)
     segment_map = finder(convolved_data, threshold)
 
     kron_params = (2.5, 0.5)
