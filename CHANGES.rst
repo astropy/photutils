@@ -44,6 +44,9 @@ New Features
   - Improved the resetting of cached ``SegmentationImage`` properties so
     that custom (non-cached) attributes can be kept. [#1368]
 
+  - Added a ``nproc`` keyword to enable multiprocessing in
+    ``deblend_sources`` and ``SourceFinder``. [#1372]
+
 - ``photutils.utils``
 
   - Added a ``circular_footprint`` convenience function. [#1355]
