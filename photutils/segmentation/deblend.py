@@ -175,13 +175,13 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     selem = _make_binary_structure(data.ndim, connectivity)
 
     if kernel is not None:
-        data = _filter_data(data, kernel, mode='constant', fill_value=0.0)
+        data = _filter_data(data, kernel, mode='constant', fill_value=0.0)  # pragma: no cover
 
     if nproc is None:
-        nproc = cpu_count()
+        nproc = cpu_count()  # pragma: no cover
 
     if progress_bar and HAS_TQDM:
-        from tqdm.auto import tqdm
+        from tqdm.auto import tqdm  # pragma: no cover
 
     segm_deblended = object.__new__(SegmentationImage)
     segm_deblended._data = np.copy(segment_img.data)
@@ -203,7 +203,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
 
     if nproc == 1:
         if progress_bar and HAS_TQDM:
-            all_source_data = tqdm(all_source_data)
+            all_source_data = tqdm(all_source_data)  # pragma: no cover
 
         all_source_deblends = []
         for source_data, source_segment in zip(all_source_data,
@@ -220,7 +220,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                        (nlevels,) * nlabels, (contrast,) * nlabels,
                        (mode,) * nlabels)
         if progress_bar and HAS_TQDM:
-            args_all = tqdm(args_all, total=nlabels)
+            args_all = tqdm(args_all, total=nlabels)  # pragma: no cover
 
         with get_context('spawn').Pool(processes=nproc) as executor:
             all_source_deblends = executor.starmap(_deblend_source, args_all)

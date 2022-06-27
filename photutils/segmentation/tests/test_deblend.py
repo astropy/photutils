@@ -308,3 +308,31 @@ class TestDeblendSources:
         result = deblend_sources(self.data, segm, self.npixels,
                                  progress_bar=False)
         assert result.nlabels == 2
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SKIMAGE')
+def test_nmarkers_fallback():
+    """
+    If there are too many markers, a warning is raised.
+    """
+    size = 51
+    data1 = np.resize([0, 0, 1, 1], size)
+    data1 = np.abs(data1 - np.atleast_2d(data1).T) + 2
+
+    for i in range(size):
+        if i % 2 == 0:
+            data1[i, :] = 1
+            data1[:, i] = 1
+
+    ny, nx = data1.shape
+    data = np.zeros((101, 101))
+    data[25:25 + size, 25:25 + size] = data1
+    data[50:60, 50:60] = 10.
+
+    segm = detect_sources(data, 0.01, 10)
+    with pytest.raises(AstropyUserWarning):
+        segm2 = deblend_sources(data, segm, 1, mode='exponential')
+        assert segm2.info['warnings']['nmarkers']['input_labels'][0] == 1
+        mesg = segm2.info['warnings']['nmarkers']['message']
+        assert mesg.startswith('Deblending mode changed')
