@@ -42,7 +42,8 @@ class TestSegmentationImage:
         assert segm.max_label == 0
         assert not segm.is_consecutive
         assert segm.cmap is None
-        with pytest.warns(AstropyUserWarning):
+        with pytest.warns(AstropyUserWarning,
+                          match='segmentation image of all zeros'):
             segm.relabel_consecutive()
 
     def test_data_reassignment(self):
