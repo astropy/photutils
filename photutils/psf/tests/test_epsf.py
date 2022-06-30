@@ -166,13 +166,11 @@ def test_epsfmodel_inputs():
 
     data = np.ones((5, 5), dtype=float)
     data[2, 2] = np.inf
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='must be finite'):
         EPSFModel(data)
 
-    with pytest.warns(RuntimeWarning,
-                      match='overflow encountered in double_scalars'):
-        data[2, 2] = np.finfo(float).max * 2
-    with pytest.raises(ValueError):
+    data[2, 2] = np.nan
+    with pytest.raises(ValueError, match='must be finite'):
         EPSFModel(data, flux=None)
 
     data[2, 2] = 1

@@ -314,7 +314,8 @@ def test_finder_positions_warning():
              make_noise_image((32, 32), distribution='poisson', mean=6.,
                               seed=0))
 
-    with pytest.warns(AstropyUserWarning):
+    with pytest.warns(AstropyUserWarning, match='Both init_guesses and '
+                      'finder are different than None'):
         result_tab = basic_phot_obj(image=image, init_guesses=positions)
     assert_array_equal(result_tab['x_0'], positions['x_0'])
     assert_array_equal(result_tab['y_0'], positions['y_0'])
