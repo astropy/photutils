@@ -751,7 +751,8 @@ def test_position_units():
     """Regression test for unit check."""
     pos = (10, 10) * u.pix
     pos = np.sqrt(pos**2)
-    with pytest.warns(AstropyDeprecationWarning):
+    with pytest.warns(AstropyDeprecationWarning,
+                      match='Inputing positions as a Quantity'):
         ap = CircularAperture(pos, r=3.)
         assert_allclose(ap.positions, np.array([10, 10]))
 
@@ -759,9 +760,10 @@ def test_position_units():
 def test_radius_units():
     """Regression test for unit check."""
     pos = SkyCoord(10, 10, unit='deg')
-    r = 3.*u.pix
+    r = 3. * u.pix
     r = np.sqrt(r**2)
-    with pytest.warns(AstropyDeprecationWarning):
+    with pytest.warns(AstropyDeprecationWarning, match='Inputing sky '
+                      'aperture quantities in pixel units'):
         ap = SkyCircularAperture(pos, r=r)
         assert ap.r.value == 3.0
         assert ap.r.unit == u.pix
