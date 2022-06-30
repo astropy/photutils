@@ -36,6 +36,7 @@ class TestSourceFinder:
     def test_no_sources(self):
         finder = SourceFinder(npixels=self.npixels, deblend=True,
                               progress_bar=False)
-        with pytest.warns(NoDetectionsWarning):
+        with pytest.warns(NoDetectionsWarning,
+                          match='No sources were found'):
             segm = finder(self.convolved_data, 1000)
             assert segm is None
