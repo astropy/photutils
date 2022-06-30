@@ -169,7 +169,10 @@ def calc_total_error(data, bkg_error, effective_gain):
         effective_gain = effective_gain.value
 
     # do not include source variance where effective_gain = 0
-    source_variance = np.where(effective_gain != 0, data / effective_gain, 0)
+    source_variance = data.copy()
+    mask = effective_gain != 0
+    source_variance[mask] /= effective_gain[mask]
+    source_variance[~mask] = 0.0
 
     # do not include source variance where data is negative (note that
     # effective_gain cannot be negative)
