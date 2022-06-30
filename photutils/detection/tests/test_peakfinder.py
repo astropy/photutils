@@ -119,19 +119,22 @@ class TestFindPeaks:
 
     def test_no_peaks(self):
         """
-        Test for an empty output table with the expected column names
-        when no peaks are found.
+        Tests for when no peaks are found.
         """
-        with pytest.warns(NoDetectionsWarning):
+        with pytest.warns(NoDetectionsWarning,
+                          match='No local peaks were found'):
             tbl = find_peaks(IMAGE, 10000)
             assert tbl is None
-        with pytest.warns(NoDetectionsWarning):
+        with pytest.warns(NoDetectionsWarning,
+                          match='No local peaks were found'):
             tbl = find_peaks(IMAGE, 100000, centroid_func=centroid_com)
             assert tbl is None
-        with pytest.warns(NoDetectionsWarning):
+        with pytest.warns(NoDetectionsWarning,
+                          match='No local peaks were found'):
             tbl = find_peaks(IMAGE, 100000, wcs=FITSWCS)
             assert tbl is None
-        with pytest.warns(NoDetectionsWarning):
+        with pytest.warns(NoDetectionsWarning,
+                          match='No local peaks were found'):
             tbl = find_peaks(IMAGE, 100000, wcs=FITSWCS,
                              centroid_func=centroid_com)
             assert tbl is None
