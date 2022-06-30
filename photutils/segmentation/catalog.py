@@ -20,6 +20,7 @@ from ..aperture import (BoundingBox, CircularAperture, EllipticalAperture,
                         RectangularAnnulus)
 from ..background import SExtractorBackground
 from ..utils._convolution import _filter_data
+from ..utils.cutouts import CutoutImage
 from ..utils._misc import _get_meta
 from ..utils._moments import _moments, _moments_central
 from ..utils._quantity_helpers import process_quantities
@@ -3029,3 +3030,41 @@ class SourceCatalog:
             self.add_extra_property(name, result, overwrite=overwrite)
 
         return result
+
+    def make_cutouts(self, shape):
+        """
+        Return a list of cutout arrays of the given shape centered at
+        the source centroid position(s).
+
+        If provided, the `SourceCatalog` ``detection_cat`` will be used
+        for the source centroids.
+
+        Parameters
+        ----------
+        shape : 2-tuple
+            The cutout shape along each axis in ``(ny, nx)`` order.
+
+        Returns
+        -------
+        cutouts : list of `~photutils.utils.CutoutImage`
+            The `~photutils.utils.CutoutImage` for each source.
+        """
+        if self._detection_cat is not None:
+            # use detection catalog for centroids
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
+        cutouts = []
+        for (xcen, ycen, all_masked) in zip(detcat._xcentroid,
+                                            detcat._ycentroid,
+                                            self._all_masked):
+
+            if all_masked or np.any(~np.isfinite((xcen, ycen))):
+                cutouts.append(None)
+                continue
+
+            cutouts.append(CutoutImage(self._data, (ycen, xcen), shape,
+                                       mode='partial', fill_value=np.nan))
+
+        return cutouts
