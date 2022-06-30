@@ -62,6 +62,9 @@ def centroid_com(data, mask=None, oversampling=1):
         data[badmask] = 0.
 
     total = np.sum(data)
+    if total == 0:
+        return np.array((np.nan, np.nan))
+
     indices = np.ogrid[[slice(0, i) for i in data.shape]]
 
     # note the output array is reversed to give (x, y) order

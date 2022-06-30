@@ -81,15 +81,15 @@ def test_centroids_nan_withmask(use_mask):
 
     with ctx as warnlist:
         xc, yc = centroid_1dg(data, mask=mask)
-    assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-    if nwarn == 1:
-        assert len(warnlist) == nwarn
+        assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+        if nwarn == 1:
+            assert len(warnlist) == nwarn
 
     with ctx as warnlist:
         xc, yc = centroid_2dg(data, mask=mask)
-    assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-    if nwarn == 1:
-        assert len(warnlist) == nwarn
+        assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+        if nwarn == 1:
+            assert len(warnlist) == nwarn
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -138,7 +138,10 @@ def test_gaussian1d_moments():
     data[0] = np.nan
     mask = np.zeros(data.shape).astype(bool)
     mask[0] = True
-    with pytest.warns(AstropyUserWarning) as warnlist:
+
+    ctx = pytest.warns(AstropyUserWarning,
+                       match='Input data contains non-finite values')
+    with ctx as warnlist:
         result = _gaussian1d_moments(data, mask=mask)
-    assert_allclose(result, desired, rtol=0, atol=1.e-6)
-    assert len(warnlist) == 1
+        assert_allclose(result, desired, rtol=0, atol=1.e-6)
+        assert len(warnlist) == 1
