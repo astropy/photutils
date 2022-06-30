@@ -91,17 +91,17 @@ def test_centroid_com_nan_withmask(use_mask):
 
     with ctx as warnlist:
         xc, yc = centroid_com(data, mask=mask)
-    assert_allclose(xc, xc_ref, rtol=0, atol=1.e-3)
-    assert yc > yc_ref
-    if nwarn == 1:
-        assert len(warnlist) == nwarn
+        assert_allclose(xc, xc_ref, rtol=0, atol=1.e-3)
+        assert yc > yc_ref
+        if nwarn == 1:
+            assert len(warnlist) == nwarn
 
-    with pytest.warns(AstropyUserWarning,
-                      match='Input data contains non-finite '
-                      'values') as warnlist:
+    ctx = pytest.warns(AstropyUserWarning,
+                       match='Input data contains non-finite values')
+    with ctx as warnlist:
         xc, yc = centroid_quadratic(data, mask=mask)
-    assert_allclose(xc, xc_ref, rtol=0, atol=0.15)
-    assert len(warnlist) == 1
+        assert_allclose(xc, xc_ref, rtol=0, atol=0.15)
+        assert len(warnlist) == 1
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -146,7 +146,8 @@ def test_centroid_quadratic_npts():
     mask = np.zeros(data.shape, dtype=bool)
     mask[0, :] = True
     mask[2, :] = True
-    with pytest.warns(AstropyUserWarning):
+    with pytest.warns(AstropyUserWarning,
+                      match='at least 6 unmasked data points'):
         centroid_quadratic(data, mask=mask)
 
 
@@ -182,7 +183,8 @@ def test_centroid_quadratic_edge():
 
     data = np.zeros((5, 5))
     data[0, 0] = 100
-    with pytest.warns(AstropyUserWarning):
+    with pytest.warns(AstropyUserWarning,
+                      match='maximum value is at the edge'):
         xycen = centroid_quadratic(data)
     assert_allclose(xycen, (0, 0))
 
@@ -321,14 +323,23 @@ class TestCentroidSources:
         assert_allclose(xycen, (xc_ref, yc_ref), atol=0.01)
 
     def test_mask(self):
-        mask = np.ones(self.data.shape, dtype=bool)
         xcen1, ycen1 = centroid_sources(self.data, 25, 23, box_size=(55, 55))
-        with pytest.warns(RuntimeWarning,
-                          match='invalid value encountered in double_scalars'):
-            xcen2, ycen2 = centroid_sources(self.data, 25, 23,
-                                            box_size=(55, 55), mask=mask)
+
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[0, 0] = True
+        mask[24, 24] = True
+        mask[11, 24] = True
+        xcen2, ycen2 = centroid_sources(self.data, 25, 23,
+                                        box_size=(55, 55), mask=mask)
         assert not np.allclose(xcen1, xcen2)
         assert not np.allclose(ycen1, ycen2)
+
+        # mask all data values
+        mask = np.ones(self.data.shape, dtype=bool)
+        xcen3, ycen3 = centroid_sources(self.data, 25, 23,
+                                        box_size=(55, 55), mask=mask)
+        assert np.isnan(xcen3[0])
+        assert np.isnan(ycen3[0])
 
     def test_error_none(self):
         xycen1 = centroid_sources(self.data, xpos=25, ypos=25, error=None,
