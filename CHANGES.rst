@@ -84,6 +84,9 @@ API Changes
   - Removed the unused ``shift_val`` keyword in ``EPSFBuilder`` and
     ``EPSFModel``. [#1377]
 
+  - Renamed the ``flux_residual_sigclip`` keyword (now deprecated) to
+    ``sigma_clip`` in ``EPSFBuilder``. [#1378]
+
 - ``photutils.segmentation``
 
   - Removed the deprecated ``circular_aperture`` method from
