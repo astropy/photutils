@@ -232,7 +232,7 @@ class SourceCatalog:
     def __init__(self, data, segment_img, *, convolved_data=None, error=None,
                  mask=None, kernel=None, background=None, wcs=None,
                  localbkg_width=0, apermask_method='correct',
-                 kron_params=(2.5, 1.4), detection_cat=None):
+                 kron_params=(2.5, 1.4, 0.0), detection_cat=None):
 
         arrays, unit = process_quantities(
             (data, convolved_data, error, background),
@@ -312,12 +312,15 @@ class SourceCatalog:
     @staticmethod
     def _validate_kron_params(kron_params):
         kron_params = np.atleast_1d(kron_params)
-        if len(kron_params) != 2:
-            raise ValueError('kron_params must have 2 elements')
+        nparams = len(kron_params)
+        if nparams not in (2, 3):
+            raise ValueError('kron_params must have 2 or 3 elements')
         if kron_params[0] <= 0:
             raise ValueError('kron_params[0] must be > 0')
         if kron_params[1] <= 0:
             raise ValueError('kron_params[1] must be > 0')
+        if nparams == 3 and kron_params[2] < 0:
+            raise ValueError('kron_params[2] must be >= 0')
         return kron_params
 
     def _validate_detection_cat(self, detection_cat):
@@ -2631,7 +2634,57 @@ class SourceCatalog:
         # NOTE: if kron_radius = NaN, scale = NaN and kron_aperture = None
         kron_apertures = self._make_elliptical_apertures(scale=scale)
 
+        # check for minimum circular radius
+        if len(kron_params) == 3:
+            min_radius = kron_params[2]
+            major_sigma = detcat.semimajor_sigma.value
+            minor_sigma = detcat.semiminor_sigma.value
+            circ_radius = (kron_params[0] * kron_radius
+                           * np.sqrt(major_sigma * minor_sigma))
+            mask = (circ_radius <= min_radius)
+            idx = np.atleast_1d(mask).nonzero()[0]
+            if idx.size > 0:
+                circ_aperture = self._make_circular_apertures(min_radius)
+                for i in idx:
+                    kron_apertures[i] = circ_aperture[i]
+                    # TODO
+                    # kron_radius[i] = 0.0
+
         return kron_apertures
+
+    @lazyproperty
+    @as_scalar
+    def kron_aperture(self):
+        r"""
+        The elliptical Kron aperture.
+
+        The Kron aperture has been scaled based on the `SourceCatalog`
+        ``kron_params`` keyword values.
+
+        For sources where
+
+        .. math::
+            r_k \ \sqrt{a \cdot b} < r_{min\_c}
+
+        where :math:`r_k` is the `kron_radius`, :math:`a` and
+        :math:`b` are the semimajor (`semimajor_sigma`) and semiminor
+        (`semiminor_sigma`) axes, respectively, and :math:`r_{min\_c}`
+        is the minimum circular radius defined by ``kron_params[1]``
+        (see `SourceCatalog`), then a circular aperture with a
+        radius equal to ``kron_params[1]`` will be returned. If
+        ``kron_params[1] <= 0``, then the Kron aperture will be `None`.
+
+        If ``kron_radius = np.nan`` then a circular aperture with a
+        radius equal to ``kron_params[1]`` will be returned if the
+        source is not completely masked, otherwise `None` will be
+        returned.
+
+        Note that if the Kron aperture is `None`, the Kron flux will be
+        ``np.nan``.
+        """
+        if self._detection_cat is not None:
+            return self._detection_cat.kron_aperture
+        return self._make_kron_apertures(self._kron_params)
 
     @as_scalar
     def make_kron_apertures(self, kron_params=None):
@@ -2721,8 +2774,10 @@ class SourceCatalog:
             patches can be used, for example, when adding a plot legend.
         """
         if kron_params is None:
-            kron_params = self._kron_params
-        apertures = self._make_kron_apertures(kron_params)
+            apertures = self.kron_aperture
+        else:
+            apertures = self._make_kron_apertures(kron_params)
+
         patches = []
         for aperture in apertures:
             if aperture is not None:
@@ -2730,41 +2785,7 @@ class SourceCatalog:
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return patches
 
-    @lazyproperty
-    @as_scalar
-    def kron_aperture(self):
-        r"""
-        The elliptical Kron aperture.
-
-        The Kron aperture has been scaled based on the `SourceCatalog`
-        ``kron_params`` keyword values.
-
-        For sources where
-
-        .. math::
-            r_k \ \sqrt{a \cdot b} < r_{min\_c}
-
-        where :math:`r_k` is the `kron_radius`, :math:`a` and
-        :math:`b` are the semimajor (`semimajor_sigma`) and semiminor
-        (`semiminor_sigma`) axes, respectively, and :math:`r_{min\_c}`
-        is the minimum circular radius defined by ``kron_params[1]``
-        (see `SourceCatalog`), then a circular aperture with a
-        radius equal to ``kron_params[1]`` will be returned. If
-        ``kron_params[1] <= 0``, then the Kron aperture will be `None`.
-
-        If ``kron_radius = np.nan`` then a circular aperture with a
-        radius equal to ``kron_params[1]`` will be returned if the
-        source is not completely masked, otherwise `None` will be
-        returned.
-
-        Note that if the Kron aperture is `None`, the Kron flux will be
-        ``np.nan``.
-        """
-        if self._detection_cat is not None:
-            return self._detection_cat.kron_aperture
-        return self._make_kron_apertures(self._kron_params)
-
-    def _calc_kron_photometry(self, kron_params):
+    def _calc_kron_photometry(self, kron_params=None):
         """
         Calculate the flux and flux error in the Kron aperture (without
         units).
@@ -2780,8 +2801,13 @@ class SourceCatalog:
         kron_flux, kron_fluxerr : tuple of `~numpy.ndarray`
             The Kron flux and flux error.
         """
-        # check kron_params
-        kron_params = self._validate_kron_params(kron_params)
+        if kron_params is None:
+            kron_aperture = self.kron_aperture
+            if self.isscalar:
+                kron_aperture = (kron_aperture,)
+        else:
+            kron_params = self._validate_kron_params(kron_params)
+            kron_aperture = self._make_kron_apertures(kron_params)
 
         if self._detection_cat is not None:
             detcat = self._detection_cat
@@ -2790,7 +2816,6 @@ class SourceCatalog:
 
         kron_flux = []
         kron_fluxerr = []
-        kron_aperture = self._make_kron_apertures(kron_params)
         for label, xcen, ycen, aperture, bkg in zip(detcat._label_iter,
                                                     detcat._xcentroid,
                                                     detcat._ycentroid,
@@ -2878,7 +2903,7 @@ class SourceCatalog:
         return kron_flux, kron_fluxerr
 
     @lazyproperty
-    def _kron_flux_fluxerr(self):
+    def _kron_photometry(self):
         """
         The flux and flux error in the Kron aperture (without units).
 
@@ -2888,7 +2913,7 @@ class SourceCatalog:
         If the Kron aperture is `None`, then ``np.nan`` will be
         returned.
         """
-        return np.transpose(self._calc_kron_photometry(self._kron_params))
+        return np.transpose(self._calc_kron_photometry(kron_params=None))
 
     @lazyproperty
     @as_scalar
@@ -2901,7 +2926,7 @@ class SourceCatalog:
 
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
-        kron_flux = self._kron_flux_fluxerr[:, 0]
+        kron_flux = self._kron_photometry[:, 0]
         if self._data_unit is not None:
             kron_flux <<= self._data_unit
         return kron_flux
@@ -2917,7 +2942,7 @@ class SourceCatalog:
 
         If the Kron aperture is `None`, then ``np.nan`` will be returned.
         """
-        kron_fluxerr = self._kron_flux_fluxerr[:, 1]
+        kron_fluxerr = self._kron_photometry[:, 1]
         if self._data_unit is not None:
             kron_fluxerr <<= self._data_unit
         return kron_fluxerr
@@ -2956,7 +2981,7 @@ class SourceCatalog:
         else:
             detcat = self
 
-        kron_flux = self._kron_flux_fluxerr[:, 0]  # unitless
+        kron_flux = self._kron_photometry[:, 0]  # unitless
         max_radius = self._max_circular_kron_radius
 
         args = []
