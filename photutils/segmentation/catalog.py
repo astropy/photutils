@@ -20,6 +20,7 @@ from ..aperture import (BoundingBox, CircularAperture, EllipticalAperture,
                         RectangularAnnulus)
 from ..background import SExtractorBackground
 from ..utils._convolution import _filter_data
+from ..utils.cutouts import CutoutImage
 from ..utils._misc import _get_meta
 from ..utils._moments import _moments, _moments_central
 from ..utils._quantity_helpers import process_quantities
@@ -2229,13 +2230,13 @@ class SourceCatalog:
 
         return data, error, mask, cutout_xycen, slc_sm
 
-    def make_circular_apertures(self, radius):
+    def _make_circular_apertures(self, radius):
         """
-        Return a list of circular apertures with the specified radius
-        centered at the source centroid position.
+        Make circular aperture for each source.
 
-        If provided, the `SourceCatalog` ``detection_cat`` will be used
-        for the source centroids.
+        The aperture for each source will be centered at its centroid
+        position. If a ``detection_cat`` was input to `SourceCatalog`,
+        it will be used for the source centroids.
 
         Parameters
         ----------
@@ -2273,17 +2274,39 @@ class SourceCatalog:
         return apertures
 
     @as_scalar
+    def make_circular_apertures(self, radius):
+        """
+        Make circular aperture for each source.
+
+        The aperture for each source will be centered at its centroid
+        position. If a ``detection_cat`` was input to `SourceCatalog`,
+        it will be used for the source centroids.
+
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
+
+        Returns
+        -------
+        result : `~photutils.aperture.CircularAperture` or \
+                 list of `~photutils.aperture.CircularAperture`
+            The circular aperture for each source. The aperture will be
+            `None` where the source centroid position is not finite or
+            where the source is completely masked.
+        """
+        return self._make_circular_apertures(radius)
+
+    @as_scalar
     def plot_circular_apertures(self, radius, axes=None, origin=(0, 0),
                                 **kwargs):
         """
-        Plot circular apertures on a matplotlib `~matplotlib.axes.Axes`
-        instance.
+        Plot circular apertures for each source on a matplotlib
+        `~matplotlib.axes.Axes` instance.
 
-        The apertures are defined by the specified radius and are
-        centered at the source centroid position.
-
-        If provided, the `SourceCatalog` ``detection_cat`` will be used
-        for the source centroids.
+        The aperture for each source will be centered at its centroid
+        position. If a ``detection_cat`` was input to `SourceCatalog`,
+        it will be used for the source centroids.
 
         Parameters
         ----------
@@ -2308,7 +2331,7 @@ class SourceCatalog:
             A list of matplotlib patches for the plotted aperture. The
             patches can be used, for example, when adding a plot legend.
         """
-        apertures = self.make_circular_apertures(radius)
+        apertures = self._make_circular_apertures(radius)
         patches = []
         for aperture in apertures:
             if aperture is not None:
@@ -2357,7 +2380,7 @@ class SourceCatalog:
         else:
             detcat = self
 
-        apertures = self.make_circular_apertures(radius)
+        apertures = self._make_circular_apertures(radius)
 
         flux = []
         fluxerr = []
@@ -2564,38 +2587,40 @@ class SourceCatalog:
         kron_radius = np.array(kron_radius) * u.pix
         return kron_radius
 
-    def make_kron_apertures(self, kron_params):
+    def _make_kron_apertures(self, kron_params):
         """
-        Return a list of Kron elliptical apertures with the specified
-        scaling and centered at the source centroid position.
+        Make Kron apertures for each source.
 
-        If a ``detection_cat`` was input to `SourceCatalog`, it will be
-        used for the source centroids and elliptical shape parameters.
+        The aperture for each source will be centered at its centroid
+        position. If a ``detection_cat`` was input to `SourceCatalog`,
+        it will be used for the source centroids.
 
-        ``kron_params`` controls the scaling of the Kron aperture.
-
-        Note that changing ``kron_params`` from the values input
-        into `SourceCatalog` does not change the Kron apertures
-        `kron_aperture` and photometry (`kron_flux` and `kron_fluxerr`)
-        in source catalog. This method should be used only to explore
-        alternative ``kron_params``.
+        ``kron_params`` controls the scaling of the Kron aperture and
+        its minimum radius. Note that changing ``kron_params`` from
+        the values input into `SourceCatalog` does not change the Kron
+        apertures (`kron_aperture`) and photometry (`kron_flux` and
+        `kron_fluxerr`) in the source catalog. This method should be
+        used only to explore alternative ``kron_params``.
 
         Parameters
         ----------
-        kron_params : list of 2 floats, optional
+        kron_params : list of 2 floats or `None`, optional
             A list of two parameters used to determine the Kron
             aperture. The first item is the scaling parameter of the
             Kron radius (`kron_radius`) and the second item represents
             the minimum circular radius. If the Kron radius times sqrt(
             `semimajor_sigma` * `semiminor_sigma`) is less than than
-            this radius, then the Kron flux will be measured in a circle
-            with this minimum radius.
+            this radius, then the Kron aperture will be a circle with
+            this minimum radius. If `None`, then the ``kron_params``
+            input into `SourceCatalog` will be used (the returned
+            apertures will be the same as those in `kron_aperture`).
 
         Returns
         -------
         result : list of `~photutils.aperture.PixelAperture`
-            A list of `~photutils.aperture.EllipticalAperture` or
-            `~photutils.aperture.CircularAperture` instances. The
+            The Kron apertures for each source. Each aperture will
+            either be a `~photutils.aperture.EllipticalAperture`,
+            `~photutils.aperture.CircularAperture`, or `None`. The
             aperture will be `None` where the source centroid position
             is not finite or where the source is completely masked.
         """
@@ -2620,45 +2645,84 @@ class SourceCatalog:
         mask = (circ_radius < min_radius)
         idx = np.atleast_1d(mask).nonzero()[0]
         if idx.size > 0:
-            circ_aperture = self.make_circular_apertures(min_radius)
+            circ_aperture = self._make_circular_apertures(min_radius)
             for i in idx:
                 kron_apertures[i] = circ_aperture[i]
 
         return kron_apertures
 
     @as_scalar
-    def plot_kron_apertures(self, kron_params=None, axes=None, origin=(0, 0),
-                            **kwargs):
+    def make_kron_apertures(self, kron_params=None):
         """
-        Plot Kron elliptical apertures on a matplotlib
-        `~matplotlib.axes.Axes` instance.
+        Make Kron apertures for each source.
 
-        If a ``detection_cat`` was input to `SourceCatalog`, it will be
-        used for the source centroids and elliptical shape parameters.
+        The aperture for each source will be centered at its centroid
+        position. If a ``detection_cat`` was input to `SourceCatalog`,
+        it will be used for the source centroids.
 
-        ``kron_params`` controls the scaling of the Kron aperture.
-
-        Note that changing ``kron_params`` from the values input
-        into `SourceCatalog` does not change the Kron apertures
-        `kron_aperture` and photometry (`kron_flux` and `kron_fluxerr`)
-        in source catalog. Changing the default ``kron_params`` should
-        be used only to visualize/explore alternative ``kron_params``.
+        ``kron_params`` controls the scaling of the Kron aperture and
+        its minimum radius. Note that changing ``kron_params`` from
+        the values input into `SourceCatalog` does not change the Kron
+        apertures (`kron_aperture`) and photometry (`kron_flux` and
+        `kron_fluxerr`) in the source catalog. This method should be
+        used only to explore alternative ``kron_params``.
 
         Parameters
         ----------
-        kron_params : `None` or list of 2 floats, optional
-            If `None` (default), then the ``kron_params`` input to
-            `SourceCatalog` will be used. These are the Kron parameters
-            used to define the Kron radii and photometry in the
-            catalog. Instead, one may input ``kron_params`` to plot
-            different Kron apertures, but note that doing so does
-            not change the Kron radii and photometry in the source
-            catalog. The first item is the scaling parameter of the
+        kron_params : list of 2 floats or `None`, optional
+            A list of two parameters used to determine the Kron
+            aperture. The first item is the scaling parameter of the
             Kron radius (`kron_radius`) and the second item represents
             the minimum circular radius. If the Kron radius times sqrt(
             `semimajor_sigma` * `semiminor_sigma`) is less than than
-            this radius, then the Kron flux will be measured in a circle
-            with this minimum radius.
+            this radius, then the Kron aperture will be a circle with
+            this minimum radius. If `None`, then the ``kron_params``
+            input into `SourceCatalog` will be used (the returned
+            apertures will be the same as those in `kron_aperture`).
+
+        Returns
+        -------
+        result : `~photutils.aperture.PixelAperture` or list of `~photutils.aperture.PixelAperture`
+            The Kron apertures for each source. Each aperture will
+            either be a `~photutils.aperture.EllipticalAperture`,
+            `~photutils.aperture.CircularAperture`, or `None`. The
+            aperture will be `None` where the source centroid position
+            is not finite or where the source is completely masked.
+        """
+        if kron_params is None:
+            return self.kron_aperture
+        return self._make_kron_apertures(kron_params)
+
+    @as_scalar
+    def plot_kron_apertures(self, kron_params=None, axes=None, origin=(0, 0),
+                            **kwargs):
+        """
+        Plot Kron apertures for each source on a matplotlib
+        `~matplotlib.axes.Axes` instance.
+
+        The aperture for each source will be centered at its centroid
+        position. If a ``detection_cat`` was input to `SourceCatalog`,
+        it will be used for the source centroids.
+
+        ``kron_params`` controls the scaling of the Kron aperture and
+        its minimum radius. Note that changing ``kron_params`` from
+        the values input into `SourceCatalog` does not change the Kron
+        apertures (`kron_aperture`) and photometry (`kron_flux` and
+        `kron_fluxerr`) in the source catalog. This method should be
+        used only to visualize/explore alternative ``kron_params``.
+
+        Parameters
+        ----------
+        kron_params : list of 2 floats or `None`, optional
+            A list of two parameters used to determine the Kron
+            aperture. The first item is the scaling parameter of the
+            Kron radius (`kron_radius`) and the second item represents
+            the minimum circular radius. If the Kron radius times sqrt(
+            `semimajor_sigma` * `semiminor_sigma`) is less than than
+            this radius, then the Kron aperture will be a circle with
+            this minimum radius. If `None`, then the ``kron_params``
+            input into `SourceCatalog` will be used (the plotted
+            apertures will be the same as those in `kron_aperture`).
 
         axes : `matplotlib.axes.Axes` or `None`, optional
             The matplotlib axes on which to plot.  If `None`, then the
@@ -2680,7 +2744,7 @@ class SourceCatalog:
         """
         if kron_params is None:
             kron_params = self._kron_params
-        apertures = self.make_kron_apertures(kron_params)
+        apertures = self._make_kron_apertures(kron_params)
         patches = []
         for aperture in apertures:
             if aperture is not None:
@@ -2720,7 +2784,7 @@ class SourceCatalog:
         """
         if self._detection_cat is not None:
             return self._detection_cat.kron_aperture
-        return self.make_kron_apertures(self._kron_params)
+        return self._make_kron_apertures(self._kron_params)
 
     def _calc_kron_photometry(self, kron_params):
         """
@@ -2748,7 +2812,7 @@ class SourceCatalog:
 
         kron_flux = []
         kron_fluxerr = []
-        kron_aperture = self.make_kron_apertures(kron_params)
+        kron_aperture = self._make_kron_apertures(kron_params)
         for label, xcen, ycen, aperture, bkg in zip(detcat._label_iter,
                                                     detcat._xcentroid,
                                                     detcat._ycentroid,
@@ -3029,3 +3093,44 @@ class SourceCatalog:
             self.add_extra_property(name, result, overwrite=overwrite)
 
         return result
+
+    @as_scalar
+    def make_cutouts(self, shape):
+        """
+        Make cutout arrays for each source.
+
+        The cutout for each source will be centered at its centroid
+        position. If a ``detection_cat`` was input to `SourceCatalog`,
+        it will be used for the source centroids.
+
+        Parameters
+        ----------
+        shape : 2-tuple
+            The cutout shape along each axis in ``(ny, nx)`` order.
+
+        Returns
+        -------
+        cutouts : `~photutils.utils.CutoutImage` or list of `~photutils.utils.CutoutImage`
+            The `~photutils.utils.CutoutImage` for each source. The
+            cutout will be `None` where the source centroid position is
+            not finite or where the source is completely masked.
+        """
+        if self._detection_cat is not None:
+            # use detection catalog for centroids
+            detcat = self._detection_cat
+        else:
+            detcat = self
+
+        cutouts = []
+        for (xcen, ycen, all_masked) in zip(detcat._xcentroid,
+                                            detcat._ycentroid,
+                                            self._all_masked):
+
+            if all_masked or np.any(~np.isfinite((xcen, ycen))):
+                cutouts.append(None)
+                continue
+
+            cutouts.append(CutoutImage(self._data, (ycen, xcen), shape,
+                                       mode='partial', fill_value=np.nan))
+
+        return cutouts
