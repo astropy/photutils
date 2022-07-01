@@ -47,9 +47,14 @@ New Features
   - Added a ``nproc`` keyword to enable multiprocessing in
     ``deblend_sources`` and ``SourceFinder``. [#1372]
 
+  - Added a ``make_cutouts`` method to ``SourceCatalog`` for making
+    custom-shaped cutout images. [#1376]
+
 - ``photutils.utils``
 
   - Added a ``circular_footprint`` convenience function. [#1355]
+
+  - Added a ``CutoutImage`` class. [#1376]
 
 Bug Fixes
 ^^^^^^^^^
@@ -112,6 +117,11 @@ API Changes
     are too many potential deblended sources within a given source
     (watershed markers), a warning will be raised and the mode will be
     changed to "linear". [#1369]
+
+  - The ``SourceCatalog`` ``make_circular_apertures`` and
+    ``make_kron_apertures`` methods now return a single aperture
+    (instead of a list with one item) for a scalar ``SourceCatalog``.
+    [#1376]
 
 - ``photutils.utils``
 
