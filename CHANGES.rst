@@ -68,6 +68,8 @@ API Changes
   - Changed the axes order of ``oversampling`` keyword in
     ``centroid_com`` when input as a tuple. [#1358]
 
+  - Deprecated the ``oversampling`` keyword in ``centroid_com``. [#1377]
+
 - ``photutils.psf``
 
   - Invalid data values (i.e., NaN or inf) are now automatically masked
@@ -78,6 +80,9 @@ API Changes
 
   - Changed the axes order of ``oversampling`` keywords when input as a
     tuple. [#1358]
+
+  - Removed the unused ``shift_val`` keyword in ``EPSFBuilder`` and
+    ``EPSFModel``. [#1377]
 
 - ``photutils.segmentation``
 

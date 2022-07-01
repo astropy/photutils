@@ -7,6 +7,7 @@ import inspect
 import warnings
 
 from astropy.nddata.utils import overlap_slices
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -16,6 +17,7 @@ from ..utils._parameters import as_pair
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
 
+@deprecated_renamed_argument('oversampling', None, '1.5')
 def centroid_com(data, mask=None, oversampling=1):
     """
     Calculate the centroid of an n-dimensional array as its "center of
@@ -34,6 +36,7 @@ def centroid_com(data, mask=None, oversampling=1):
         value indicates the corresponding element of ``data`` is masked.
 
     oversampling : int or array_like (int)
+        Deprecated.
         The integer oversampling factor(s). If ``oversampling`` is a
         scalar then it will be used for both axes. If ``oversampling``
         has two elements, they must be in ``(y, x)`` order.
@@ -353,15 +356,15 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         if footprint.ndim != 2:
             raise ValueError('footprint must be a 2D array.')
 
-    spec = inspect.getfullargspec(centroid_func)
-    if 'mask' not in spec.args:
+    spec = inspect.signature(centroid_func)
+    if 'mask' not in spec.parameters:
         raise ValueError('The input "centroid_func" must have a "mask" '
                          'keyword.')
 
     # drop any **kwargs not supported by the centroid_func
     centroid_kwargs = {}
     for key, val in kwargs.items():
-        if key in spec.args:
+        if key in spec.parameters:
             centroid_kwargs[key] = val
 
     xcentroids = []

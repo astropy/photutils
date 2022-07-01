@@ -7,7 +7,8 @@ import itertools
 from contextlib import nullcontext
 
 from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyUserWarning,
+                                      AstropyDeprecationWarning)
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -58,15 +59,16 @@ def test_centroid_com(x_std, y_std, theta):
     assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=0.015)
 
     # test with oversampling
-    for oversampling in [4, (6, 4)]:
-        if not hasattr(oversampling, '__len__'):
-            _oversampling = (oversampling, oversampling)
-        else:
-            _oversampling = oversampling
-        xc, yc = centroid_com(data, mask=mask, oversampling=oversampling)
+    with pytest.warns(AstropyDeprecationWarning):
+        for oversampling in [4, (6, 4)]:
+            if not hasattr(oversampling, '__len__'):
+                _oversampling = (oversampling, oversampling)
+            else:
+                _oversampling = oversampling
+            xc, yc = centroid_com(data, mask=mask, oversampling=oversampling)
 
-        desired = [XCEN / _oversampling[1], YCEN / _oversampling[0]]
-        assert_allclose((xc, yc), desired, rtol=0, atol=1.e-3)
+            desired = [XCEN / _oversampling[1], YCEN / _oversampling[0]]
+            assert_allclose((xc, yc), desired, rtol=0, atol=1.e-3)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -110,7 +112,7 @@ def test_centroid_com_invalid_inputs():
     mask = np.zeros((2, 2), dtype=bool)
     with pytest.raises(ValueError):
         centroid_com(data, mask=mask)
-    with pytest.raises(ValueError):
+    with pytest.warns(AstropyDeprecationWarning), pytest.raises(ValueError):
         centroid_com(data, oversampling=-1)
 
 
