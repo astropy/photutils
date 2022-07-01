@@ -463,12 +463,16 @@ class TestSourceCatalog:
             SourceCatalog(self.data, self.segm, detection_cat=cat)
 
     def test_kron_minradius(self):
-        kron_params = (2.5, 10.0)
+        kron_params = (2.5, 2.5)
         cat = SourceCatalog(self.data, self.segm, mask=self.mask,
                             apermask_method='none', kron_params=kron_params)
         assert cat.kron_aperture[0] is None
+        assert np.isnan(cat.kron_radius[0])
+        kronrad = cat.kron_radius.value
+        kronrad = kronrad[~np.isnan(kronrad)]
+        assert np.min(kronrad) == kron_params[1]
         assert isinstance(cat.kron_aperture[2], EllipticalAperture)
-        assert isinstance(cat.kron_aperture[4], CircularAperture)
+        assert isinstance(cat.kron_aperture[4], EllipticalAperture)
 
     def test_kron_masking(self):
         apermask_method = 'none'

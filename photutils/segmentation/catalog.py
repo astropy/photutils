@@ -2248,14 +2248,14 @@ class SourceCatalog:
             position is not finite or where the source is completely
             masked.
         """
+        if radius <= 0:
+            raise ValueError('radius must be > 0')
+
         if self._detection_cat is not None:
             # use detection catalog for centroids
             detcat = self._detection_cat
         else:
             detcat = self
-
-        if radius <= 0:
-            raise ValueError('radius must be > 0')
 
         apertures = []
         for (xcen, ycen, all_masked) in zip(detcat._xcentroid,
