@@ -638,22 +638,11 @@ class EPSFBuilder:
             epsf_cutout = epsf_data[slices_large]
             mask = ~np.isfinite(epsf_cutout)
 
-            try:
-                # find a new center position
-                xcenter_new, ycenter_new = centroid_func(
-                    epsf_cutout, mask=mask, oversampling=epsf.oversampling,
-                    shift_val=epsf._shift_val)
-            except TypeError:
-                # centroid_func doesn't accept oversampling and/or shift_val
-                # keywords - try oversampling alone
-                try:
-                    xcenter_new, ycenter_new = centroid_func(
-                        epsf_cutout, mask=mask, oversampling=epsf.oversampling)
-                except TypeError:
-                    # centroid_func doesn't accept oversampling and
-                    # shift_val
-                    xcenter_new, ycenter_new = centroid_func(epsf_cutout,
-                                                             mask=mask)
+            # find a new center position
+            xcenter_new, ycenter_new = centroid_func(epsf_cutout,
+                                                     mask=mask)
+            xcenter_new /= self.oversampling[1]
+            ycenter_new /= self.oversampling[0]
 
             xcenter_new += slices_large[1].start/self.oversampling[0]
             ycenter_new += slices_large[0].start/self.oversampling[1]
