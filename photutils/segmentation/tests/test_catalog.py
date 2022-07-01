@@ -16,6 +16,7 @@ from ..detect import detect_sources
 from ...aperture import CircularAperture, EllipticalAperture
 from ...datasets import make_gwcs, make_wcs, make_noise_image
 from ...utils._convolution import _filter_data
+from ...utils.cutouts import CutoutImage
 from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 
@@ -692,7 +693,7 @@ class TestSourceCatalog:
     def test_copy(self):
         cat = SourceCatalog(self.data, self.segm)
         cat2 = cat.copy()
-        cat.kron_flux
+        _ = cat.kron_flux
         assert 'kron_flux' not in cat2.__dict__
         tbl = cat2.to_table()
         assert len(tbl) == 7
@@ -711,3 +712,39 @@ class TestSourceCatalog:
         cat = SourceCatalog(data, segm, localbkg_width=3)
         assert cat.min_value == 10
         assert cat.max_value == 10
+
+    def test_make_circular_apertures(self):
+        radius = 10
+        aper = self.cat.make_circular_apertures(radius)
+        assert len(aper) == len(self.cat)
+        assert isinstance(aper[1], CircularAperture)
+        assert aper[1].r == radius
+
+        obj = self.cat[1]
+        aper = obj.make_circular_apertures(radius)
+        assert isinstance(aper, CircularAperture)
+        assert aper.r == radius
+
+    def test_make_kron_apertures(self):
+        aper = self.cat.make_kron_apertures()
+        assert len(aper) == len(self.cat)
+        assert isinstance(aper[1], EllipticalAperture)
+
+        aper2 = self.cat.make_kron_apertures((2.5, 1))
+        assert len(aper2) == len(self.cat)
+
+        obj = self.cat[1]
+        aper = obj.make_kron_apertures()
+        assert isinstance(aper, EllipticalAperture)
+
+    def test_make_cutouts(self):
+        shape = (10, 11)
+        cut = self.cat.make_cutouts(shape)
+        assert len(cut) == len(self.cat)
+        assert isinstance(cut[1], CutoutImage)
+        assert cut[1].data.shape == shape
+
+        obj = self.cat[1]
+        cut = obj.make_cutouts(shape)
+        assert isinstance(cut, CutoutImage)
+        assert cut.data.shape == shape
