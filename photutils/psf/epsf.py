@@ -13,6 +13,7 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
 from astropy.stats import SigmaClip
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -292,11 +293,11 @@ class EPSFBuilder:
             less than ``center_accuracy`` pixels between iterations.  All
             stars must meet this condition for the loop to exit.
 
-    flux_residual_sigclip : `~astropy.stats.SigmaClip` object, optional
-        A `~astropy.stats.SigmaClip` object used to determine which pixels
-        are ignored based on the star sampling flux residuals, when
-        computing the average residual of ePSF grid points in each iteration
-        step.
+    sigma_clip : `astropy.stats.SigmaClip` instance, optional
+        A `~astropy.stats.SigmaClip` object that defines the sigma
+        clipping parameters used to determine which pixels are ignored
+        when stacking the ePSF residuals in each iteration step. If
+        `None` then no sigma clipping will be performed.
 
     Notes
     -----
@@ -306,13 +307,13 @@ class EPSFBuilder:
     .. _bottleneck:  https://github.com/pydata/bottleneck
     """
 
+    @deprecated_renamed_argument('flux_residual_sigclip', 'sigma_clip', '1.5')
     def __init__(self, oversampling=4, shape=None,
                  smoothing_kernel='quartic', recentering_func=centroid_com,
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
                  progress_bar=True, norm_radius=5.5,
                  recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
-                 flux_residual_sigclip=SigmaClip(sigma=3, cenfunc='median',
-                                                 maxiters=10)):
+                 sigma_clip=SigmaClip(sigma=3, cenfunc='median', maxiters=10)):
 
         if oversampling is None:
             raise ValueError("'oversampling' must be specified.")
@@ -346,10 +347,10 @@ class EPSFBuilder:
 
         self.progress_bar = progress_bar
 
-        if not isinstance(flux_residual_sigclip, SigmaClip):
-            raise ValueError("'flux_residual_sigclip' must be an"
-                             " astropy.stats.SigmaClip function.")
-        self.flux_residual_sigclip = flux_residual_sigclip
+        if not isinstance(sigma_clip, SigmaClip):
+            raise ValueError('sigma_clip must be an '
+                             'astropy.stats.SigmaClip instance.')
+        self._sigma_clip = sigma_clip
 
         # store each ePSF build iteration
         self._epsf = []
@@ -697,9 +698,8 @@ class EPSFBuilder:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             warnings.simplefilter('ignore', category=AstropyUserWarning)
-            residuals = self.flux_residual_sigclip(residuals, axis=0,
-                                                   masked=False,
-                                                   return_bounds=False)
+            residuals = self._sigma_clip(residuals, axis=0, masked=False,
+                                         return_bounds=False)
             if HAS_BOTTLENECK:
                 import bottleneck
                 residuals = bottleneck.nanmedian(residuals, axis=0)
