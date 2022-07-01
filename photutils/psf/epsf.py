@@ -6,7 +6,6 @@ ISR WFC3 2016-12.
 """
 
 import copy
-import time
 import warnings
 
 from astropy.modeling.fitting import LevMarLSQFitter
@@ -270,10 +269,10 @@ class EPSFBuilder:
 
     progress_bar : bool, option
         Whether to print the progress bar during the build
-        iterations. A nicer format is presented if the `tqdm
-        <https://tqdm.github.io/>`_ optional dependency is installed.
-        Note that the ``tqdm`` progress bar does not currently work in
-        the Jupyter console due to limitations in ``tqdm``.
+        iterations. The progress bar requires that the `tqdm
+        <https://tqdm.github.io/>`_ optional dependency be installed.
+        Note that the progress bar does not currently work in the
+        Jupyter console due to limitations in ``tqdm``.
 
     norm_radius : float, optional
         The pixel radius over which the ePSF is normalized.
@@ -765,7 +764,6 @@ class EPSFBuilder:
         n_stars = stars.n_stars
         fit_failed = np.zeros(n_stars, dtype=bool)
         epsf = init_epsf
-        dt = 0.
         center_dist_sq = self.center_accuracy_sq + 1.
         centers = stars.cutout_center_flat
 
@@ -779,16 +777,7 @@ class EPSFBuilder:
         while (iter_num < self.maxiters and not np.all(fit_failed) and
                np.max(center_dist_sq) >= self.center_accuracy_sq):
 
-            t_start = time.time()
             iter_num += 1
-
-            if self.progress_bar and pbar is None:
-                if iter_num == 1:
-                    dt_str = ' [? s/iter]'
-                else:
-                    dt_str = f' [{dt:.1f} s/iter]'
-                print(f'PROGRESS: iteration {iter_num:d} (of max '
-                      f'{self.maxiters}){dt_str}', end='\r')
 
             # build/improve the ePSF
             epsf = self._build_epsf_step(stars, epsf=epsf)
@@ -823,8 +812,6 @@ class EPSFBuilder:
             centers = stars.cutout_center_flat
 
             self._epsf.append(epsf)
-
-            dt = time.time() - t_start
 
             if pbar is not None:
                 pbar.update()
