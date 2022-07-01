@@ -87,6 +87,9 @@ API Changes
   - Renamed the ``flux_residual_sigclip`` keyword (now deprecated) to
     ``sigma_clip`` in ``EPSFBuilder``. [#1378]
 
+  - The ``EPSFBuilder`` progress bar now requires that the optional
+    ``tqdm`` package be installed. [#1379]
+
 - ``photutils.segmentation``
 
   - Removed the deprecated ``circular_aperture`` method from
