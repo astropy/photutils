@@ -356,15 +356,15 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         if footprint.ndim != 2:
             raise ValueError('footprint must be a 2D array.')
 
-    spec = inspect.getfullargspec(centroid_func)
-    if 'mask' not in spec.args:
+    spec = inspect.signature(centroid_func)
+    if 'mask' not in spec.parameters:
         raise ValueError('The input "centroid_func" must have a "mask" '
                          'keyword.')
 
     # drop any **kwargs not supported by the centroid_func
     centroid_kwargs = {}
     for key, val in kwargs.items():
-        if key in spec.args:
+        if key in spec.parameters:
             centroid_kwargs[key] = val
 
     xcentroids = []
