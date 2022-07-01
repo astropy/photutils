@@ -2289,7 +2289,8 @@ class SourceCatalog:
 
         Returns
         -------
-        result : `~photutils.aperture.CircularAperture` or list of `~photutils.aperture.CircularAperture`
+        result : `~photutils.aperture.CircularAperture` or \
+                 list of `~photutils.aperture.CircularAperture`
             The circular aperture for each source. The aperture will be
             `None` where the source centroid position is not finite or
             where the source is completely masked.
