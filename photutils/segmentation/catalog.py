@@ -74,7 +74,8 @@ class SourceCatalog:
         A `~photutils.segmentation.SegmentationImage` object defining
         the sources.
 
-    convolved_data : data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+    convolved_data : data : 2D `~numpy.ndarray` \
+                     or `~astropy.units.Quantity`, optional
         The 2D array used to calculate the source centroid and
         morphological properties. It is recommended that the user input
         the convolved data directly instead of using the ``kernel``
@@ -116,7 +117,8 @@ class SourceCatalog:
         the unfiltered ``data`` will be used instead. This keyword is
         ignored if ``convolved_data`` is input (recommended).
 
-    background : float, 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+    background : float, 2D `~numpy.ndarray` \
+                 or `~astropy.units.Quantity`, optional
         The background level that was *previously* present in the input
         ``data``. ``background`` may either be a scalar value or a 2D
         image with the same shape as the input ``data``. If ``data``
@@ -2264,7 +2266,6 @@ class SourceCatalog:
         for (xcen, ycen, all_masked) in zip(detcat._xcentroid,
                                             detcat._ycentroid,
                                             self._all_masked):
-
             if all_masked or np.any(~np.isfinite((xcen, ycen))):
                 apertures.append(None)
                 continue
@@ -2308,6 +2309,10 @@ class SourceCatalog:
         position. If a ``detection_cat`` was input to `SourceCatalog`,
         it will be used for the source centroids.
 
+        An aperture will not be plotted for sources where the source
+        centroid position is not finite or where the source is
+        completely masked.
+
         Parameters
         ----------
         radius : float
@@ -2327,9 +2332,10 @@ class SourceCatalog:
 
         Returns
         -------
-        patch : list of `~matplotlib.patches.Patch`
-            A list of matplotlib patches for the plotted aperture. The
-            patches can be used, for example, when adding a plot legend.
+        patch : `~matplotlib.patches.Patch` or \
+                list of `~matplotlib.patches.Patch`
+            The matplotlib patch for each plotted aperture. The patches
+            can be used, for example, when adding a plot legend.
         """
         apertures = self._make_circular_apertures(radius)
         patches = []
@@ -2341,9 +2347,11 @@ class SourceCatalog:
 
     def circular_photometry(self, radius, name=None, overwrite=False):
         """
-        Perform aperture photometry for each source using a circular
-        aperture of the specified radius centered at the source centroid
-        position.
+        Perform circular aperture photometry for each source.
+
+        The circular aperture for each source will be centered at
+        its centroid position. If a ``detection_cat`` was input to
+        `SourceCatalog`, it will be used for the source centroids.
 
         See the `SourceCatalog` ``apermask_method`` keyword for options
         to mask neighboring sources.
@@ -2366,10 +2374,11 @@ class SourceCatalog:
 
         Returns
         -------
-        flux, fluxerr : `~numpy.ndarray` of floats, floats, or `~astropy.units.Quantity`
+        flux, fluxerr : float or `~numpy.ndarray` of floats
             The aperture fluxes and flux errors. NaN will be returned
-            where the circular aperture is `None` (e.g., where the
-            source centroid position is not finite).
+            where the aperture is `None` (e.g., where the source
+            centroid position is not finite or the source is completely
+            masked).
         """
         if radius <= 0:
             raise ValueError('radius must be > 0')
@@ -2388,6 +2397,8 @@ class SourceCatalog:
                 self.labels, apertures, detcat._xcentroid, detcat._ycentroid,
                 self._local_background):
 
+            # return NaN for completely masked sources or sources where
+            # the centroid is not finite
             if aperture is None:
                 flux.append(np.nan)
                 fluxerr.append(np.nan)
@@ -2434,8 +2445,8 @@ class SourceCatalog:
         Return a list of elliptical apertures based on the scaled
         isophotal shape of the sources.
 
-        If provided, the `SourceCatalog` ``detection_cat`` will be used
-        for the source centroids.
+        If a ``detection_cat`` was input to `SourceCatalog`, it will be
+        used for the source centroids.
 
         Parameters
         ----------
@@ -2510,31 +2521,27 @@ class SourceCatalog:
         centroid and the coefficients are based on image moments (`cxx`,
         `cxy`, and `cyy`).
 
-        Because `kron_radius` is unscaled, it does not depend on
-        the `SourceCatalog` ``kron_params`` keyword values. The
-        ``kron_params`` keyword values (e.g., scaling parameter) will be
-        used to scale the Kron radius to compute the Kron aperture and
-        photometry.
+        The `kron_radius` value is the raw unscaled moment value. The
+        minimum unscaled radius can be set using the second element of
+        the ``kron_params`` keyword.
+
+        The Kron aperture used for Kron photometry is defined by
+        multiplying the unscaled `kron_radius` by the scaling factor
+        defined as the first element of the ``kron_params`` keyword.
 
         See the `SourceCatalog` ``apermask_method`` keyword for options
         to mask neighboring sources.
 
-        If either the numerator or denominator above is less than or
-        equal to 0, then ``np.nan`` will be returned for both the Kron
-        radius and Kron flux. If the source is completely masked, then
-        ``np.nan`` will be returned for both the Kron radius and Kron
-        flux.
+        If the source is completely masked or if either the numerator or
+        denominator above is less than or equal to 0, then ``np.nan``
+        will be returned for both the Kron radius and Kron flux (the
+        Kron aperture will be `None`).
 
-        If the `SourceCatalog` ``detection_cat`` was provided, then
-        its ``kron_radius`` will be returned if the source is not
-        completely masked.
+        If a ``detection_cat`` was input to `SourceCatalog`, then its
+        ``kron_radius`` will be returned.
         """
         if self._detection_cat is not None:
-            kron_radius = self._detection_cat.kron_radius
-            if self.isscalar:
-                kron_radius = np.atleast_1d(kron_radius)
-            kron_radius[self._all_masked] = np.nan
-            return kron_radius
+            return self._detection_cat.kron_radius
 
         labels = self._label_iter
         apertures = self._make_elliptical_apertures(scale=6.0)
@@ -2600,10 +2607,11 @@ class SourceCatalog:
 
         ``kron_params`` controls the scaling of the Kron aperture and
         its minimum radius. Note that changing ``kron_params`` from
-        the values input into `SourceCatalog` does not change the Kron
-        apertures (`kron_aperture`) and photometry (`kron_flux` and
-        `kron_fluxerr`) in the source catalog. This method should be
-        used only to explore alternative ``kron_params``.
+        the values input into `SourceCatalog` does not change the
+        Kron apertures (`kron_aperture`) and photometry (`kron_flux`
+        and `kron_fluxerr`) in the source catalog. This method should
+        be used only to explore alternative ``kron_params`` with a
+        detection image.
 
         Parameters
         ----------
@@ -2620,7 +2628,8 @@ class SourceCatalog:
             either be a `~photutils.aperture.EllipticalAperture`,
             `~photutils.aperture.CircularAperture`, or `None`. The
             aperture will be `None` where the source centroid position
-            is not finite or where the source is completely masked.
+            or elliptical shape parameters are not finite or where the
+            source is completely masked.
         """
         if self._detection_cat is not None:
             # use detection catalog for centroids and elliptical shape
@@ -2661,6 +2670,10 @@ class SourceCatalog:
         The Kron aperture has been scaled based on the `SourceCatalog`
         ``kron_params`` keyword values.
 
+        The aperture will be `None` where the source centroid position
+        or elliptical shape parameters are not finite or where the
+        source is completely masked.
+
         For sources where
 
         .. math::
@@ -2673,14 +2686,6 @@ class SourceCatalog:
         (see `SourceCatalog`), then a circular aperture with a
         radius equal to ``kron_params[1]`` will be returned. If
         ``kron_params[1] <= 0``, then the Kron aperture will be `None`.
-
-        If ``kron_radius = np.nan`` then a circular aperture with a
-        radius equal to ``kron_params[1]`` will be returned if the
-        source is not completely masked, otherwise `None` will be
-        returned.
-
-        Note that if the Kron aperture is `None`, the Kron flux will be
-        ``np.nan``.
         """
         if self._detection_cat is not None:
             return self._detection_cat.kron_aperture
@@ -2697,10 +2702,11 @@ class SourceCatalog:
 
         ``kron_params`` controls the scaling of the Kron aperture and
         its minimum radius. Note that changing ``kron_params`` from
-        the values input into `SourceCatalog` does not change the Kron
-        apertures (`kron_aperture`) and photometry (`kron_flux` and
-        `kron_fluxerr`) in the source catalog. This method should be
-        used only to explore alternative ``kron_params``.
+        the values input into `SourceCatalog` does not change the
+        Kron apertures (`kron_aperture`) and photometry (`kron_flux`
+        and `kron_fluxerr`) in the source catalog. This method should
+        be used only to explore alternative ``kron_params`` with a
+        detection image.
 
         Parameters
         ----------
@@ -2715,12 +2721,14 @@ class SourceCatalog:
 
         Returns
         -------
-        result : `~photutils.aperture.PixelAperture` or list of `~photutils.aperture.PixelAperture`
+        result : `~photutils.aperture.PixelAperture` \
+                 or list of `~photutils.aperture.PixelAperture`
             The Kron apertures for each source. Each aperture will
             either be a `~photutils.aperture.EllipticalAperture`,
             `~photutils.aperture.CircularAperture`, or `None`. The
             aperture will be `None` where the source centroid position
-            is not finite or where the source is completely masked.
+            or elliptical shape parameters are not finite or where the
+            source is completely masked.
         """
         if kron_params is None:
             return self.kron_aperture
@@ -2737,12 +2745,17 @@ class SourceCatalog:
         position. If a ``detection_cat`` was input to `SourceCatalog`,
         it will be used for the source centroids.
 
+        An aperture will not be plotted for sources where the source
+        centroid position or elliptical shape parameters are not finite
+        or where the source is completely masked.
+
         ``kron_params`` controls the scaling of the Kron aperture and
         its minimum radius. Note that changing ``kron_params`` from
         the values input into `SourceCatalog` does not change the Kron
         apertures (`kron_aperture`) and photometry (`kron_flux` and
         `kron_fluxerr`) in the source catalog. This method should be
-        used only to visualize/explore alternative ``kron_params``.
+        used only to visualize/explore alternative ``kron_params`` with
+        a detection image.
 
         Parameters
         ----------
@@ -2821,6 +2834,7 @@ class SourceCatalog:
                                                     detcat._ycentroid,
                                                     kron_aperture,
                                                     self._local_background):
+
             if aperture is None:
                 kron_flux.append(np.nan)
                 kron_fluxerr.append(np.nan)
@@ -2879,10 +2893,11 @@ class SourceCatalog:
 
         Returns
         -------
-        flux, fluxerr : `~numpy.ndarray` of floats, floats, or `~astropy.units.Quantity`
+        flux, fluxerr : float or `~numpy.ndarray` of floats
             The aperture fluxes and flux errors. NaN will be returned
-            where the circular aperture is `None` (e.g., where the
-            source centroid position is not finite).
+            where the aperture is `None` (e.g., where the source
+            centroid position or elliptical shape parameters are not
+            finite or where the source is completely masked).
         """
         kron_flux, kron_fluxerr = self._calc_kron_photometry(kron_params)
         if self._data_unit is not None:
@@ -2911,7 +2926,9 @@ class SourceCatalog:
         to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
-        returned.
+        returned. This will occur where the source centroid position or
+        elliptical shape parameters are not finite or where the source
+        is completely masked
         """
         return np.transpose(self._calc_kron_photometry(kron_params=None))
 
@@ -2924,7 +2941,10 @@ class SourceCatalog:
         See the `SourceCatalog` ``apermask_method`` keyword for options
         to mask neighboring sources.
 
-        If the Kron aperture is `None`, then ``np.nan`` will be returned.
+        If the Kron aperture is `None`, then ``np.nan`` will be
+        returned. This will occur where the source centroid position or
+        elliptical shape parameters are not finite or where the source
+        is completely masked
         """
         kron_flux = self._kron_photometry[:, 0]
         if self._data_unit is not None:
@@ -2940,7 +2960,10 @@ class SourceCatalog:
         See the `SourceCatalog` ``apermask_method`` keyword for options
         to mask neighboring sources.
 
-        If the Kron aperture is `None`, then ``np.nan`` will be returned.
+        If the Kron aperture is `None`, then ``np.nan`` will be
+        returned. This will occur where the source centroid position or
+        elliptical shape parameters are not finite or where the source
+        is completely masked
         """
         kron_fluxerr = self._kron_photometry[:, 1]
         if self._data_unit is not None:
@@ -3035,7 +3058,7 @@ class SourceCatalog:
         radius : 1D `~numpy.ndarray`
             The circular radius that encloses the specified fraction of
             the Kron flux. NaN is returned where no solution was found
-            or if the Kron flux is zero.
+            or where the Kron flux is zero or non-finite.
         """
         if fluxfrac <= 0 or fluxfrac > 1:
             raise ValueError('fluxfrac must be > 0 and <= 1')
@@ -3109,7 +3132,8 @@ class SourceCatalog:
 
         Returns
         -------
-        cutouts : `~photutils.utils.CutoutImage` or list of `~photutils.utils.CutoutImage`
+        cutouts : `~photutils.utils.CutoutImage` \
+                  or list of `~photutils.utils.CutoutImage`
             The `~photutils.utils.CutoutImage` for each source. The
             cutout will be `None` where the source centroid position is
             not finite or where the source is completely masked.
