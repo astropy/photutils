@@ -2300,14 +2300,12 @@ class SourceCatalog:
     def plot_circular_apertures(self, radius, axes=None, origin=(0, 0),
                                 **kwargs):
         """
-        Plot circular apertures on a matplotlib `~matplotlib.axes.Axes`
-        instance.
+        Plot circular apertures for each source on a matplotlib
+        `~matplotlib.axes.Axes` instance.
 
-        The apertures are defined by the specified radius and are
-        centered at the source centroid position.
-
-        If provided, the `SourceCatalog` ``detection_cat`` will be used
-        for the source centroids.
+        The aperture for each source will be centered at its centroid
+        position. If a ``detection_cat`` was input to `SourceCatalog`,
+        it will be used for the source centroids.
 
         Parameters
         ----------
@@ -2698,35 +2696,32 @@ class SourceCatalog:
     def plot_kron_apertures(self, kron_params=None, axes=None, origin=(0, 0),
                             **kwargs):
         """
-        Plot Kron elliptical apertures on a matplotlib
+        Plot Kron apertures for each source on a matplotlib
         `~matplotlib.axes.Axes` instance.
 
-        If a ``detection_cat`` was input to `SourceCatalog`, it will be
-        used for the source centroids and elliptical shape parameters.
+        The aperture for each source will be centered at its centroid
+        position. If a ``detection_cat`` was input to `SourceCatalog`,
+        it will be used for the source centroids.
 
-        ``kron_params`` controls the scaling of the Kron aperture.
-
-        Note that changing ``kron_params`` from the values input
-        into `SourceCatalog` does not change the Kron apertures
-        `kron_aperture` and photometry (`kron_flux` and `kron_fluxerr`)
-        in source catalog. Changing the default ``kron_params`` should
-        be used only to visualize/explore alternative ``kron_params``.
+        ``kron_params`` controls the scaling of the Kron aperture and
+        its minimum radius. Note that changing ``kron_params`` from
+        the values input into `SourceCatalog` does not change the Kron
+        apertures (`kron_aperture`) and photometry (`kron_flux` and
+        `kron_fluxerr`) in the source catalog. This method should be
+        used only to visualize/explore alternative ``kron_params``.
 
         Parameters
         ----------
-        kron_params : `None` or list of 2 floats, optional
-            If `None` (default), then the ``kron_params`` input to
-            `SourceCatalog` will be used. These are the Kron parameters
-            used to define the Kron radii and photometry in the
-            catalog. Instead, one may input ``kron_params`` to plot
-            different Kron apertures, but note that doing so does
-            not change the Kron radii and photometry in the source
-            catalog. The first item is the scaling parameter of the
+        kron_params : list of 2 floats or `None`, optional
+            A list of two parameters used to determine the Kron
+            aperture. The first item is the scaling parameter of the
             Kron radius (`kron_radius`) and the second item represents
             the minimum circular radius. If the Kron radius times sqrt(
             `semimajor_sigma` * `semiminor_sigma`) is less than than
-            this radius, then the Kron flux will be measured in a circle
-            with this minimum radius.
+            this radius, then the Kron aperture will be a circle with
+            this minimum radius. If `None`, then the ``kron_params``
+            input into `SourceCatalog` will be used (the plotted
+            apertures will be the same as those in `kron_aperture`).
 
         axes : `matplotlib.axes.Axes` or `None`, optional
             The matplotlib axes on which to plot.  If `None`, then the
