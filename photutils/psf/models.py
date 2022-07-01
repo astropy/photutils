@@ -505,19 +505,13 @@ class EPSFModel(FittableImageModel):
     norm_radius : float, optional
         The radius inside which the ePSF is normalized by the sum over
         undersampled integer pixel values inside a circular aperture.
-
-    shift_val : float, optional
-        The fractional undersampled pixel amount (equivalent to an
-        integer oversampled pixel value) at which to evaluate the
-        asymmetric ePSF centroid corrections.
     """
 
     def __init__(self, data, flux=1.0, x_0=0.0, y_0=0.0, normalize=True,
                  normalization_correction=1.0, origin=None, oversampling=1,
-                 fill_value=0.0, norm_radius=5.5, shift_val=0.5, **kwargs):
+                 fill_value=0.0, norm_radius=5.5, **kwargs):
 
         self._norm_radius = norm_radius
-        self._shift_val = shift_val
 
         super().__init__(data=data, flux=flux, x_0=x_0, y_0=y_0,
                          normalize=normalize,

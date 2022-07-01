@@ -277,10 +277,6 @@ class EPSFBuilder:
     norm_radius : float, optional
         The pixel radius over which the ePSF is normalized.
 
-    shift_val : float, optional
-        The undersampled value at which to compute the shifts.  It must
-        be a strictly positive number.
-
     recentering_boxsize : float or tuple of two floats, optional
             The size (in pixels) of the box used to calculate the
             centroid of the ePSF during each build iteration. If a
@@ -313,7 +309,7 @@ class EPSFBuilder:
     def __init__(self, oversampling=4, shape=None,
                  smoothing_kernel='quartic', recentering_func=centroid_com,
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
-                 progress_bar=True, norm_radius=5.5, shift_val=0.5,
+                 progress_bar=True, norm_radius=5.5,
                  recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
                  flux_residual_sigclip=SigmaClip(sigma=3, cenfunc='median',
                                                  maxiters=10)):
@@ -323,7 +319,6 @@ class EPSFBuilder:
         self.oversampling = as_pair('oversampling', oversampling,
                                     lower_bound=(0, 1))
         self._norm_radius = norm_radius
-        self._shift_val = shift_val
         if shape is not None:
             self.shape = as_pair('shape', shape, lower_bound=(0, 1))
         else:
@@ -385,7 +380,6 @@ class EPSFBuilder:
             The initial ePSF model.
         """
         norm_radius = self._norm_radius
-        shift_val = self._shift_val
         oversampling = self.oversampling
         shape = self.shape
 
@@ -417,8 +411,7 @@ class EPSFBuilder:
         ycenter = stars._max_shape[1] / 2.
 
         epsf = EPSFModel(data=data, origin=(xcenter, ycenter),
-                         oversampling=oversampling, norm_radius=norm_radius,
-                         shift_val=shift_val)
+                         oversampling=oversampling, norm_radius=norm_radius)
 
         return epsf
 
@@ -610,8 +603,7 @@ class EPSFBuilder:
 
         epsf = EPSFModel(data=epsf._data, origin=epsf.origin,
                          oversampling=epsf.oversampling,
-                         norm_radius=epsf._norm_radius,
-                         shift_val=epsf._shift_val, normalize=False)
+                         norm_radius=epsf._norm_radius, normalize=False)
 
         xcenter, ycenter = epsf.origin
 
@@ -731,8 +723,7 @@ class EPSFBuilder:
 
         epsf = EPSFModel(data=new_epsf, origin=epsf.origin,
                          oversampling=epsf.oversampling,
-                         norm_radius=epsf._norm_radius,
-                         shift_val=epsf._shift_val, normalize=False)
+                         norm_radius=epsf._norm_radius, normalize=False)
 
         epsf._data = self._recenter_epsf(
             epsf, centroid_func=self.recentering_func,
@@ -746,8 +737,7 @@ class EPSFBuilder:
 
         return EPSFModel(data=epsf._data, origin=(xcenter, ycenter),
                          oversampling=epsf.oversampling,
-                         norm_radius=epsf._norm_radius,
-                         shift_val=epsf._shift_val)
+                         norm_radius=epsf._norm_radius)
 
     def build_epsf(self, stars, init_epsf=None):
         """
