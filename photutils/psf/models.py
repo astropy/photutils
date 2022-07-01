@@ -456,8 +456,8 @@ class FittableImageModel(Fittable2DModel):
             input indices will be multiplied by this factor.
         """
         if use_oversampling:
-            xi = self._oversampling[0] * (np.asarray(x) - x_0)
-            yi = self._oversampling[1] * (np.asarray(y) - y_0)
+            xi = self._oversampling[1] * (np.asarray(x) - x_0)
+            yi = self._oversampling[0] * (np.asarray(y) - y_0)
         else:
             xi = np.asarray(x) - x_0
             yi = np.asarray(y) - y_0
@@ -580,8 +580,8 @@ class EPSFModel(FittableImageModel):
     @FittableImageModel.origin.setter
     def origin(self, origin):
         if origin is None:
-            self._x_origin = (self._nx - 1) / 2.0 / self.oversampling[0]
-            self._y_origin = (self._ny - 1) / 2.0 / self.oversampling[1]
+            self._x_origin = (self._nx - 1) / 2.0 / self.oversampling[1]
+            self._y_origin = (self._ny - 1) / 2.0 / self.oversampling[0]
         elif (hasattr(origin, '__iter__') and len(origin) == 2):
             self._x_origin, self._y_origin = origin
         else:
@@ -650,8 +650,8 @@ class EPSFModel(FittableImageModel):
 
         # Interpolator must be set to interpolate on the undersampled
         # pixel grid, going from 0 to len(undersampled_grid)
-        x = np.arange(self._nx, dtype=float) / self.oversampling[0]
-        y = np.arange(self._ny, dtype=float) / self.oversampling[1]
+        x = np.arange(self._nx, dtype=float) / self.oversampling[1]
+        y = np.arange(self._ny, dtype=float) / self.oversampling[0]
         self.interpolator = RectBivariateSpline(
             x, y, self._data.T, kx=degx, ky=degy, s=smoothness)
 
@@ -671,9 +671,9 @@ class EPSFModel(FittableImageModel):
             # find indices of pixels that are outside the input pixel
             # grid and set these pixels to the 'fill_value':
             invalid = (((xi < 0) | (xi > (self._nx - 1)
-                                    / self.oversampling[0])) |
+                                    / self.oversampling[1])) |
                        ((yi < 0) | (yi > (self._ny - 1)
-                                    / self.oversampling[1])))
+                                    / self.oversampling[0])))
             evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
