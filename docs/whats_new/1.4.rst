@@ -64,7 +64,7 @@ input to the `~photutils.segmentation.detect_sources` and
 parameter) instead of using the ``kernel`` keyword. For performance,
 it is strongly recommended that the user first convolve their data, if
 desired, and then input the convolved data to each of these segmentation
-functions. Doing so improves the overall peformance by omitting extra
+functions. Doing so improves the overall performance by omitting extra
 convolution steps within each function or class.
 
 Significant improvements were also made to the performance of
