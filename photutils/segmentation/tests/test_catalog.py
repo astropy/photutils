@@ -312,13 +312,19 @@ class TestSourceCatalog:
             SourceCatalog(self.data, self.segm,
                           apermask_method=apermask_method)
         with pytest.raises(ValueError):
-            kron_params = (2.5, 0.0, 3.0)
+            kron_params = (0.0, 1.0)
+            SourceCatalog(self.data, self.segm, kron_params=kron_params)
+        with pytest.raises(ValueError):
+            kron_params = (2.5, 0.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
         with pytest.raises(ValueError):
             kron_params = (-2.5, 0.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
         with pytest.raises(ValueError):
             kron_params = (2.5, -4.0)
+            SourceCatalog(self.data, self.segm, kron_params=kron_params)
+        with pytest.raises(ValueError):
+            kron_params = (2.5, 1.4, -2.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
 
     def test_invalid_units(self):
@@ -491,8 +497,7 @@ class TestSourceCatalog:
 
     def test_kron_negative(self):
         cat = SourceCatalog(self.data - 10, self.segm)
-        assert np.all(np.isnan(cat.kron_radius.value))
-        assert np.all(np.isnan(cat.kron_flux))
+        assert_allclose(cat.kron_radius.value, cat._kron_params[1])
 
     def test_kron_photometry(self):
         flux1, fluxerr1 = self.cat.kron_photometry((2.5, 1.0))
@@ -605,7 +610,7 @@ class TestSourceCatalog:
                             background=self.background, mask=self.mask,
                             wcs=self.wcs, localbkg_width=24)
         radius_hl = cat.fluxfrac_radius(0.5)
-        assert np.all(np.isnan(radius_hl))
+        assert np.isnan(radius_hl[0])
 
     def test_cutout_units(self):
         obj = self.cat_units[0]
