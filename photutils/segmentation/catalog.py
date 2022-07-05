@@ -2448,6 +2448,10 @@ class SourceCatalog:
         If a ``detection_cat`` was input to `SourceCatalog`, it will be
         used for the source centroids.
 
+        If scale is zero (due to a minimum circular radius set in
+        ``kron_params``) then a circular aperture will be returned with
+        the minimum circular radius.
+
         Parameters
         ----------
         scale : float or `~numpy.ndarray`, optional
@@ -2488,9 +2492,16 @@ class SourceCatalog:
                 aperture.append(None)
                 continue
 
+            # kron_radius = 0 -> scale = 0 -> major/minor_size = 0
+            if values[2] == 0 and values[3] == 0:
+                aperture.append(CircularAperture((values[0], values[1]),
+                                                 r=self._kron_params[2]))
+                continue
+
             (xcen_, ycen_, major_, minor_, theta_) = values[:-1]
             aperture.append(EllipticalAperture((xcen_, ycen_), major_, minor_,
                                                theta=theta_))
+
         return aperture
 
     @lazyproperty
@@ -2585,8 +2596,10 @@ class SourceCatalog:
                 flux_numer = np.sum((aperture_weights * data * rr)[pixel_mask])
                 flux_denom = np.sum((aperture_weights * data)[pixel_mask])
 
+            # set Kron radius to the minimum Kron radius if numerator or
+            # denominator is negative
             if flux_numer <= 0 or flux_denom <= 0:
-                kron_radius.append(np.nan)
+                kron_radius.append(self._kron_params[1])
                 continue
 
             kron_radius.append(flux_numer / flux_denom)
@@ -2594,6 +2607,14 @@ class SourceCatalog:
         # set minimum (unscaled) kron radius
         kron_radius = np.array(kron_radius)
         kron_radius[kron_radius < self._kron_params[1]] = self._kron_params[1]
+
+        # check for minimum circular radius
+        if len(self._kron_params) == 3:
+            major_sigma = self.semimajor_sigma.value
+            minor_sigma = self.semiminor_sigma.value
+            circ_radius = (self._kron_params[0] * kron_radius
+                           * np.sqrt(major_sigma * minor_sigma))
+            kron_radius[circ_radius <= self._kron_params[2]] = 0.0
 
         return kron_radius << u.pix
 
@@ -2642,22 +2663,6 @@ class SourceCatalog:
         scale = kron_radius * kron_params[0]
         # NOTE: if kron_radius = NaN, scale = NaN and kron_aperture = None
         kron_apertures = self._make_elliptical_apertures(scale=scale)
-
-        # check for minimum circular radius
-        if len(kron_params) == 3:
-            min_radius = kron_params[2]
-            major_sigma = detcat.semimajor_sigma.value
-            minor_sigma = detcat.semiminor_sigma.value
-            circ_radius = (kron_params[0] * kron_radius
-                           * np.sqrt(major_sigma * minor_sigma))
-            mask = (circ_radius <= min_radius)
-            idx = np.atleast_1d(mask).nonzero()[0]
-            if idx.size > 0:
-                circ_aperture = self._make_circular_apertures(min_radius)
-                for i in idx:
-                    kron_apertures[i] = circ_aperture[i]
-                    # TODO
-                    # kron_radius[i] = 0.0
 
         return kron_apertures
 
@@ -2984,6 +2989,9 @@ class SourceCatalog:
         semimajor_sig = detcat.semimajor_sigma.value
         kron_radius = detcat.kron_radius.value
         radius = semimajor_sig * kron_radius * self._kron_params[0]
+        mask = radius == 0
+        if np.any(mask):
+            radius[mask] = self._kron_params[2]
         if self.isscalar:
             radius = np.array([radius])
         return radius
