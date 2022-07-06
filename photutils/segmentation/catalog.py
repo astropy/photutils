@@ -74,8 +74,7 @@ class SourceCatalog:
         A `~photutils.segmentation.SegmentationImage` object defining
         the sources.
 
-    convolved_data : data : 2D `~numpy.ndarray` \
-                     or `~astropy.units.Quantity`, optional
+    convolved_data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The 2D array used to calculate the source centroid and
         morphological properties. It is recommended that the user input
         the convolved data directly instead of using the ``kernel``
@@ -117,8 +116,7 @@ class SourceCatalog:
         the unfiltered ``data`` will be used instead. This keyword is
         ignored if ``convolved_data`` is input (recommended).
 
-    background : float, 2D `~numpy.ndarray` \
-                 or `~astropy.units.Quantity`, optional
+    background : float, 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The background level that was *previously* present in the input
         ``data``. ``background`` may either be a scalar value or a 2D
         image with the same shape as the input ``data``. If ``data``
@@ -163,11 +161,15 @@ class SourceCatalog:
           * 'none': do not mask any pixels (equivalent to MASK_TYPE=NONE
             in SourceExtractor).
 
-    kron_params : list of 2 floats, optional
-        A list of two parameters used to determine the Kron aperture.
+    kron_params : list of 2 or 3 floats, optional
+        A list of parameters used to determine the Kron aperture.
         The first item is the scaling parameter of the unscaled Kron
-        radius and the second item represents the minimum value for the
-        unscaled Kron radius in pixels.
+        radius and the second item represents the minimum value for
+        the unscaled Kron radius in pixels. The optional third item is
+        the minimum circular radius in pixels. If ``kron_params[0]`` *
+        `kron_radius` * sqrt(`semimajor_sigma` * `semiminor_sigma`) is
+        less than or equal to this radius, then the Kron aperture will
+        be a circle with this minimum radius.
 
     detection_cat : `SourceCatalog`, optional
         A `SourceCatalog` object for the detection image. The source
@@ -2532,24 +2534,34 @@ class SourceCatalog:
         centroid and the coefficients are based on image moments (`cxx`,
         `cxy`, and `cyy`).
 
-        The `kron_radius` value is the raw unscaled moment value. The
+        The `kron_radius` value is the unscaled moment value. The
         minimum unscaled radius can be set using the second element of
-        the ``kron_params`` keyword.
+        the `SourceCatalog` ``kron_params`` keyword.
 
-        The Kron aperture used for Kron photometry is defined by
-        multiplying the unscaled `kron_radius` by the scaling factor
-        defined as the first element of the ``kron_params`` keyword.
+        If either the numerator or denominator above is less than
+        or equal to 0, then the minimum unscaled Kron radius
+        (``kron_params[1]``) will be used.
 
-        See the `SourceCatalog` ``apermask_method`` keyword for options
-        to mask neighboring sources.
+        The Kron aperture is calculated for each source using its shape
+        parameters, `kron_radius`, and the ``kron_params`` scaling and
+        minimum values input into `SourceCatalog`. The Kron aperture is
+        used to compute the Kron photometry.
 
-        If the source is completely masked or if either the numerator or
-        denominator above is less than or equal to 0, then ``np.nan``
-        will be returned for both the Kron radius and Kron flux (the
-        Kron aperture will be `None`).
+        If ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma` *
+        `semiminor_sigma`) is less than or equal to the minimum circular
+        radius (``kron_params[2]``), then the Kron radius will be set to
+        zero and the Kron aperture will be a circle with this minimum
+        radius.
+
+        If the source is completely masked, then ``np.nan`` will be
+        returned for both the Kron radius and Kron flux (the Kron
+        aperture will be `None`).
 
         If a ``detection_cat`` was input to `SourceCatalog`, then its
         ``kron_radius`` will be returned.
+
+        See the `SourceCatalog` ``apermask_method`` keyword for options
+        to mask neighboring sources.
         """
         if self._detection_cat is not None:
             return self._detection_cat.kron_radius
@@ -2626,21 +2638,25 @@ class SourceCatalog:
         position. If a ``detection_cat`` was input to `SourceCatalog`,
         it will be used for the source centroids.
 
-        ``kron_params`` controls the scaling of the Kron aperture and
-        its minimum radius. Note that changing ``kron_params`` from
-        the values input into `SourceCatalog` does not change the
-        Kron apertures (`kron_aperture`) and photometry (`kron_flux`
-        and `kron_fluxerr`) in the source catalog. This method should
+        Note that changing ``kron_params`` from the values
+        input into `SourceCatalog` does not change the Kron
+        apertures (`kron_aperture`) and photometry (`kron_flux` and
+        `kron_fluxerr`) in the source catalog. This method should
         be used only to explore alternative ``kron_params`` with a
         detection image.
 
         Parameters
         ----------
-        kron_params : list of 2 floats, optional
-            A list of two parameters used to determine the Kron
-            aperture. The first item is the scaling parameter of the
-            unscaled Kron radius and the second item represents the
-            minimum value for the unscaled Kron radius in pixels.
+        kron_params : list of 2 or 3 floats, optional
+            A list of parameters used to determine the Kron aperture.
+            The first item is the scaling parameter of the unscaled
+            Kron radius and the second item represents the minimum
+            value for the unscaled Kron radius in pixels. The optional
+            third item is the minimum circular radius in pixels. If
+            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma`
+            * `semiminor_sigma`) is less than or equal to this radius,
+            then the Kron aperture will be a circle with this minimum
+            radius.
 
         Returns
         -------
@@ -2670,27 +2686,21 @@ class SourceCatalog:
     @as_scalar
     def kron_aperture(self):
         r"""
-        The elliptical Kron aperture.
+        The elliptical (or circular) Kron aperture.
 
-        The Kron aperture has been scaled based on the `SourceCatalog`
-        ``kron_params`` keyword values.
+        The Kron aperture is calculated for each source using its shape
+        parameters, `kron_radius`, and the ``kron_params`` scaling and
+        minimum values input into `SourceCatalog`. The Kron aperture is
+        used to compute the Kron photometry.
+
+        If ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma` *
+        `semiminor_sigma`) is less than or equal to the minimum circular
+        radius (``kron_params[2]``), then the Kron aperture will be a
+        circle with this minimum radius.
 
         The aperture will be `None` where the source centroid position
         or elliptical shape parameters are not finite or where the
         source is completely masked.
-
-        For sources where
-
-        .. math::
-            r_k \ \sqrt{a \cdot b} < r_{min\_c}
-
-        where :math:`r_k` is the `kron_radius`, :math:`a` and
-        :math:`b` are the semimajor (`semimajor_sigma`) and semiminor
-        (`semiminor_sigma`) axes, respectively, and :math:`r_{min\_c}`
-        is the minimum circular radius defined by ``kron_params[1]``
-        (see `SourceCatalog`), then a circular aperture with a
-        radius equal to ``kron_params[1]`` will be returned. If
-        ``kron_params[1] <= 0``, then the Kron aperture will be `None`.
         """
         if self._detection_cat is not None:
             return self._detection_cat.kron_aperture
@@ -2705,24 +2715,27 @@ class SourceCatalog:
         position. If a ``detection_cat`` was input to `SourceCatalog`,
         it will be used for the source centroids.
 
-        ``kron_params`` controls the scaling of the Kron aperture and
-        its minimum radius. Note that changing ``kron_params`` from
-        the values input into `SourceCatalog` does not change the
-        Kron apertures (`kron_aperture`) and photometry (`kron_flux`
-        and `kron_fluxerr`) in the source catalog. This method should
+        Note that changing ``kron_params`` from the values
+        input into `SourceCatalog` does not change the Kron
+        apertures (`kron_aperture`) and photometry (`kron_flux` and
+        `kron_fluxerr`) in the source catalog. This method should
         be used only to explore alternative ``kron_params`` with a
         detection image.
 
         Parameters
         ----------
-        kron_params : list of 2 floats or `None`, optional
-            A list of two parameters used to determine the Kron
-            aperture. The first item is the scaling parameter of the
-            unscaled Kron radius and the second item represents the
-            minimum value for the unscaled Kron radius in pixels. If
-            `None`, then the ``kron_params`` input into `SourceCatalog`
-            will be used (the apertures will be the same as those in
-            `kron_aperture`).
+        kron_params : list of 2 or 3 floats or `None`, optional
+            A list of parameters used to determine the Kron aperture.
+            The first item is the scaling parameter of the unscaled
+            Kron radius and the second item represents the minimum
+            value for the unscaled Kron radius in pixels. The optional
+            third item is the minimum circular radius in pixels. If
+            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma`
+            * `semiminor_sigma`) is less than or equal to this radius,
+            then the Kron aperture will be a circle with this minimum
+            radius. If `None`, then the ``kron_params`` input into
+            `SourceCatalog` will be used (the apertures will be the same
+            as those in `kron_aperture`).
 
         Returns
         -------
@@ -2754,9 +2767,8 @@ class SourceCatalog:
         centroid position or elliptical shape parameters are not finite
         or where the source is completely masked.
 
-        ``kron_params`` controls the scaling of the Kron aperture and
-        its minimum radius. Note that changing ``kron_params`` from
-        the values input into `SourceCatalog` does not change the Kron
+        Note that changing ``kron_params`` from the values
+        input into `SourceCatalog` does not change the Kron
         apertures (`kron_aperture`) and photometry (`kron_flux` and
         `kron_fluxerr`) in the source catalog. This method should be
         used only to visualize/explore alternative ``kron_params`` with
@@ -2764,14 +2776,18 @@ class SourceCatalog:
 
         Parameters
         ----------
-        kron_params : list of 2 floats or `None`, optional
-            A list of two parameters used to determine the Kron
-            aperture. The first item is the scaling parameter of the
-            unscaled Kron radius and the second item represents the
-            minimum value for the unscaled Kron radius in pixels. If
-            `None`, then the ``kron_params`` input into `SourceCatalog`
-            will be used (the apertures will be the same as those in
-            `kron_aperture`).
+        kron_params : list of 2 or 3 floats or `None`, optional
+            A list of parameters used to determine the Kron aperture.
+            The first item is the scaling parameter of the unscaled
+            Kron radius and the second item represents the minimum
+            value for the unscaled Kron radius in pixels. The optional
+            third item is the minimum circular radius in pixels. If
+            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma`
+            * `semiminor_sigma`) is less than or equal to this radius,
+            then the Kron aperture will be a circle with this minimum
+            radius. If `None`, then the ``kron_params`` input into
+            `SourceCatalog` will be used (the apertures will be the same
+            as those in `kron_aperture`).
 
         axes : `matplotlib.axes.Axes` or `None`, optional
             The matplotlib axes on which to plot.  If `None`, then the
@@ -2872,18 +2888,24 @@ class SourceCatalog:
         aperture.
 
         This method can be used to calculate the Kron photometry using
-        different scalings of the Kron radius (`kron_radius`).
+        alternate ``kron_params`` (e.g., different scalings of the Kron
+        radius).
 
         See the `SourceCatalog` ``apermask_method`` keyword for options
         to mask neighboring sources.
 
         Parameters
         ----------
-        kron_params : list of 2 floats, optional
-            A list of two parameters used to determine the Kron
-            aperture. The first item is the scaling parameter of the
-            unscaled Kron radius and the second item represents the
-            minimum value for the unscaled Kron radius in pixels.
+        kron_params : list of 2 or 3 floats, optional
+            A list of parameters used to determine the Kron aperture.
+            The first item is the scaling parameter of the unscaled
+            Kron radius and the second item represents the minimum
+            value for the unscaled Kron radius in pixels. The optional
+            third item is the minimum circular radius in pixels. If
+            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma`
+            * `semiminor_sigma`) is less than or equal to this radius,
+            then the Kron aperture will be a circle with this minimum
+            radius.
 
         name : str or `None`, optional
             The prefix name which will be used to define attribute
