@@ -115,29 +115,30 @@ class Isophote:
         self.valid = valid
         self.stop_code = stop_code
 
-        self.intens = sample.mean
-        self.rms = np.std(sample.values[2])
-        self.int_err = self.rms / np.sqrt(sample.actual_points)
-        self.pix_stddev = self.rms * np.sqrt(sample.sector_area)
-        self.grad = sample.gradient
-        self.grad_error = sample.gradient_error
+        if sample.geometry.sma > 0:
+            self.intens = sample.mean
+            self.rms = np.std(sample.values[2])
+            self.int_err = self.rms / np.sqrt(sample.actual_points)
+            self.pix_stddev = self.rms * np.sqrt(sample.sector_area)
+            self.grad = sample.gradient
+            self.grad_error = sample.gradient_error
 
-        self.grad_r_error = sample.gradient_relative_error
-        self.sarea = sample.sector_area
-        self.ndata = sample.actual_points
-        self.nflag = sample.total_points - sample.actual_points
+            self.grad_r_error = sample.gradient_relative_error
+            self.sarea = sample.sector_area
+            self.ndata = sample.actual_points
+            self.nflag = sample.total_points - sample.actual_points
 
-        # flux contained inside ellipse and circle
-        (self.tflux_e, self.tflux_c, self.npix_e,
-         self.npix_c) = self._compute_fluxes()
+            # flux contained inside ellipse and circle
+            (self.tflux_e, self.tflux_c, self.npix_e,
+            self.npix_c) = self._compute_fluxes()
 
-        self._compute_errors()
+            self._compute_errors()
 
-        # deviations from a perfect ellipse
-        (self.a3, self.b3, self.a3_err,
-         self.b3_err) = self._compute_deviations(sample, 3)
-        (self.a4, self.b4, self.a4_err,
-         self.b4_err) = self._compute_deviations(sample, 4)
+            # deviations from a perfect ellipse
+            (self.a3, self.b3, self.a3_err,
+            self.b3_err) = self._compute_deviations(sample, 3)
+            (self.a4, self.b4, self.a4_err,
+            self.b4_err) = self._compute_deviations(sample, 4)
 
     # This method is useful for sorting lists of instances. Note
     # that __lt__ is the python3 way of supporting sorting.
@@ -395,10 +396,7 @@ class CentralPixel(Isophote):
     """
 
     def __init__(self, sample):
-        self.sample = sample
-        self.niter = 0
-        self.valid = True
-        self.stop_code = 0
+        super().__init__(sample, 0, True, 0)
 
         self.intens = sample.mean
 
@@ -425,6 +423,13 @@ class CentralPixel(Isophote):
         self.pa_err = 0.
         self.x0_err = 0.
         self.y0_err = 0.
+
+    def __eq__(self, other):
+        try:
+            return self.sma == other.sma
+        except AttributeError as err:
+            raise AttributeError('Comparison object does not have a "sma" '
+                                 'attribute.') from err
 
     @property
     def eps(self):
