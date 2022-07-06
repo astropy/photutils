@@ -2,6 +2,7 @@
 """
 Tests for the catalog module.
 """
+from astropy.convolution import convolve
 from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
@@ -13,8 +14,12 @@ import pytest
 from ..catalog import SourceCatalog
 from ..core import SegmentationImage
 from ..detect import detect_sources
+from ..finder import SourceFinder
+from ..utils import make_2dgaussian_kernel
 from ...aperture import CircularAperture, EllipticalAperture
-from ...datasets import make_gwcs, make_wcs, make_noise_image
+from ...background import Background2D, MedianBackground
+from ...datasets import (make_gwcs, make_wcs, make_noise_image,
+                         make_100gaussians_image)
 from ...utils._convolution import _filter_data
 from ...utils.cutouts import CutoutImage
 from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY  # noqa
@@ -312,13 +317,19 @@ class TestSourceCatalog:
             SourceCatalog(self.data, self.segm,
                           apermask_method=apermask_method)
         with pytest.raises(ValueError):
-            kron_params = (2.5, 0.0, 3.0)
+            kron_params = (0.0, 1.0)
+            SourceCatalog(self.data, self.segm, kron_params=kron_params)
+        with pytest.raises(ValueError):
+            kron_params = (2.5, 0.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
         with pytest.raises(ValueError):
             kron_params = (-2.5, 0.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
         with pytest.raises(ValueError):
             kron_params = (2.5, -4.0)
+            SourceCatalog(self.data, self.segm, kron_params=kron_params)
+        with pytest.raises(ValueError):
+            kron_params = (2.5, 1.4, -2.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
 
     def test_invalid_units(self):
@@ -463,12 +474,16 @@ class TestSourceCatalog:
             SourceCatalog(self.data, self.segm, detection_cat=cat)
 
     def test_kron_minradius(self):
-        kron_params = (2.5, 10.0)
+        kron_params = (2.5, 2.5)
         cat = SourceCatalog(self.data, self.segm, mask=self.mask,
                             apermask_method='none', kron_params=kron_params)
         assert cat.kron_aperture[0] is None
+        assert np.isnan(cat.kron_radius[0])
+        kronrad = cat.kron_radius.value
+        kronrad = kronrad[~np.isnan(kronrad)]
+        assert np.min(kronrad) == kron_params[1]
         assert isinstance(cat.kron_aperture[2], EllipticalAperture)
-        assert isinstance(cat.kron_aperture[4], CircularAperture)
+        assert isinstance(cat.kron_aperture[4], EllipticalAperture)
 
     def test_kron_masking(self):
         apermask_method = 'none'
@@ -487,8 +502,7 @@ class TestSourceCatalog:
 
     def test_kron_negative(self):
         cat = SourceCatalog(self.data - 10, self.segm)
-        assert np.all(np.isnan(cat.kron_radius.value))
-        assert np.all(np.isnan(cat.kron_flux))
+        assert_allclose(cat.kron_radius.value, cat._kron_params[1])
 
     def test_kron_photometry(self):
         flux1, fluxerr1 = self.cat.kron_photometry((2.5, 1.0))
@@ -601,7 +615,7 @@ class TestSourceCatalog:
                             background=self.background, mask=self.mask,
                             wcs=self.wcs, localbkg_width=24)
         radius_hl = cat.fluxfrac_radius(0.5)
-        assert np.all(np.isnan(radius_hl))
+        assert np.isnan(radius_hl[0])
 
     def test_cutout_units(self):
         obj = self.cat_units[0]
@@ -748,3 +762,57 @@ class TestSourceCatalog:
         cut = obj.make_cutouts(shape)
         assert isinstance(cut, CutoutImage)
         assert cut.data.shape == shape
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_kron_params():
+    data = make_100gaussians_image()
+    bkg_estimator = MedianBackground()
+    bkg = Background2D(data, (50, 50), filter_size=(3, 3),
+                       bkg_estimator=bkg_estimator)
+    data -= bkg.background  # subtract the background
+
+    threshold = 1.5 * bkg.background_rms
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+
+    npixels = 10
+    finder = SourceFinder(npixels=npixels, progress_bar=False)
+    segm = finder(convolved_data, threshold)
+
+    minrad = 1.4
+    kron_params = (2.5, minrad, 0.0)
+    cat = SourceCatalog(data, segm, convolved_data=convolved_data,
+                        kron_params=kron_params)
+    assert cat.kron_radius.value.min() == minrad
+    assert_allclose(cat.kron_flux.min(), 246.91339096556538)
+    rh = cat.fluxfrac_radius(0.5)
+    assert_allclose(rh.value.min(), 1.3925520107605818)
+
+    minrad = 1.2
+    kron_params = (2.5, minrad, 0.0)
+    cat = SourceCatalog(data, segm, convolved_data=convolved_data,
+                        kron_params=kron_params)
+    assert cat.kron_radius.value.min() == minrad
+    assert_allclose(cat.kron_flux.min(), 246.91339096556538)
+    rh = cat.fluxfrac_radius(0.5)
+    assert_allclose(rh.value.min(), 1.3979610808075127)
+
+    minrad = 0.2
+    kron_params = (2.5, minrad, 0.0)
+    cat = SourceCatalog(data, segm, convolved_data=convolved_data,
+                        kron_params=kron_params)
+    assert_allclose(cat.kron_radius.value.min(), 0.5712931578847312)
+    assert_allclose(cat.kron_flux.min(), 246.91339096556538)
+    rh = cat.fluxfrac_radius(0.5)
+    assert_allclose(rh.value.min(), 1.34218684691197)
+
+    kron_params = (2.5, 1.4, 7.0)
+    cat = SourceCatalog(data, segm, convolved_data=convolved_data,
+                        kron_params=kron_params)
+    assert cat.kron_radius.value.min() == 0.0
+    assert_allclose(cat.kron_flux.min(), 246.91339096556538)
+    rh = cat.fluxfrac_radius(0.5)
+    assert_allclose(rh.value.min(), 1.3649418211298536)
+    assert isinstance(cat.kron_aperture[0], CircularAperture)

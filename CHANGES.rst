@@ -59,6 +59,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.segmentation``
+
+  - Fixed the ability to set a minimum unscaled Kron radius in
+    ``SourceCatalog``. [#1381]
+
 
 API Changes
 ^^^^^^^^^^^
@@ -133,6 +138,13 @@ API Changes
     ``make_kron_apertures`` methods now return a single aperture
     (instead of a list with one item) for a scalar ``SourceCatalog``.
     [#1376]
+
+  - The ``SourceCatalog`` ``kron_params`` keyword now has an optional
+    third item representing the minimum circular radius. [#1381]
+
+  - The ``SourceCatalog`` ``kron_radius`` is now set to the minimum Kron
+    radius (the second element of ``kron_params``) if the data or
+    radially weighted data sum to zero. [#1381]
 
 - ``photutils.utils``
 
