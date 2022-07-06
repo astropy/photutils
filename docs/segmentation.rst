@@ -353,17 +353,17 @@ properties are shown below:
     label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
                               ...
     ----- --------- --------- ... --------------- --------- ------------
-        1    235.31      1.45 ...             nan    506.24          nan
-        2    493.92      5.79 ...             nan    540.31          nan
-        3    207.42      9.81 ...             nan    666.76          nan
+        1    235.31      1.45 ...             nan    509.74          nan
+        2    493.92      5.79 ...             nan    544.31          nan
+        3    207.42      9.81 ...             nan    722.26          nan
         4    364.86     11.11 ...             nan    704.23          nan
         5    258.27     11.94 ...             nan    661.22          nan
       ...       ...       ... ...             ...       ...          ...
-       90    419.52    216.55 ...             nan    842.48          nan
-       91     74.55    259.86 ...             nan    865.56          nan
-       92     82.56    267.55 ...             nan    787.72          nan
+       90    419.52    216.55 ...             nan    866.40          nan
+       91     74.55    259.86 ...             nan    870.31          nan
+       92     82.56    267.55 ...             nan    811.81          nan
        93    433.88    280.75 ...             nan    652.12          nan
-       94    434.07    288.90 ...             nan    917.41          nan
+       94    434.07    288.90 ...             nan    942.22          nan
     Length = 94 rows
 
 The error columns are NaN because we did not input an error array (see
@@ -413,9 +413,7 @@ of each source) on the data:
     finder = SourceFinder(npixels=npixels, progress_bar=False)
     segment_map = finder(convolved_data, threshold)
 
-    kron_params = (2.5, 0.5)
-    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
-                        kron_params=kron_params)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     norm = simple_norm(data, 'sqrt')
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
@@ -445,7 +443,7 @@ label numbers in the segmentation image:
     label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
                               ...
     ----- --------- --------- ... --------------- --------- ------------
-        1    235.31      1.45 ...             nan    506.24          nan
+        1    235.31      1.45 ...             nan    509.74          nan
         5    258.27     11.94 ...             nan    661.22          nan
        20    346.99     66.83 ...             nan    811.70          nan
        50      5.29    178.94 ...             nan    614.46          nan
