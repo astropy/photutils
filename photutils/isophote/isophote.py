@@ -130,15 +130,15 @@ class Isophote:
 
             # flux contained inside ellipse and circle
             (self.tflux_e, self.tflux_c, self.npix_e,
-            self.npix_c) = self._compute_fluxes()
+             self.npix_c) = self._compute_fluxes()
 
             self._compute_errors()
 
             # deviations from a perfect ellipse
             (self.a3, self.b3, self.a3_err,
-            self.b3_err) = self._compute_deviations(sample, 3)
+             self.b3_err) = self._compute_deviations(sample, 3)
             (self.a4, self.b4, self.a4_err,
-            self.b4_err) = self._compute_deviations(sample, 4)
+             self.b4_err) = self._compute_deviations(sample, 4)
 
     # This method is useful for sorting lists of instances. Note
     # that __lt__ is the python3 way of supporting sorting.
