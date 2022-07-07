@@ -45,20 +45,20 @@ def test_fitting_raw():
 
     # pick first guess ellipse that is off in just
     # one of the parameters (eps).
-    sample = EllipseSample(DATA, 40., eps=2*0.2)
+    sample = EllipseSample(DATA, 40., eps=2 * 0.2)
     sample.update(DEFAULT_FIX)
     s = sample.extract()
 
     harmonics = fit_first_and_second_harmonics(s[0], s[2])
-    y0, a1, b1, a2, b2 = harmonics[0]
+    _, a1, b1, a2, b2 = harmonics[0]
 
     # when eps is off, b2 is the largest (in absolute value).
     assert abs(b2) > abs(a1)
     assert abs(b2) > abs(b1)
     assert abs(b2) > abs(a2)
 
-    correction = (b2 * 2. * (1. - sample.geometry.eps) /
-                  sample.geometry.sma / sample.gradient)
+    correction = (b2 * 2. * (1. - sample.geometry.eps)
+                  / sample.geometry.sma / sample.gradient)
     new_eps = sample.geometry.eps - correction
 
     # got closer to test data (eps=0.2)
@@ -78,7 +78,7 @@ def test_fitting_small_radii():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_eps():
     # initial guess is off in the eps parameter
-    sample = EllipseSample(DATA, 40., eps=2*0.2)
+    sample = EllipseSample(DATA, 40., eps=2 * 0.2)
     fitter = EllipseFitter(sample)
     isophote = fitter.fit()
 
@@ -90,7 +90,7 @@ def test_fitting_eps():
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_pa():
-    data = make_test_image(pa=np.pi/4, noise=0.01, seed=0)
+    data = make_test_image(pa=np.pi / 4, noise=0.01, seed=0)
 
     # initial guess is off in the pa parameter
     sample = EllipseSample(data, 40)
@@ -98,8 +98,8 @@ def test_fitting_pa():
     isophote = fitter.fit()
     g = isophote.sample.geometry
 
-    assert g.pa >= (np.pi/4 - 0.05)
-    assert g.pa <= (np.pi/4 + 0.05)
+    assert g.pa >= (np.pi / 4 - 0.05)
+    assert g.pa <= (np.pi / 4 + 0.05)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -181,7 +181,7 @@ class TestM51:
 
         # sample taken in high SNR region
         sample = EllipseSample(self.data, 21.44, eps=0.18,
-                               position_angle=(36./180.*np.pi))
+                               position_angle=(36. / 180. * np.pi))
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()
 
@@ -190,7 +190,7 @@ class TestM51:
 
         # last sample taken by the original code, before turning inwards.
         sample = EllipseSample(self.data, 61.16, eps=0.219,
-                               position_angle=((77.5+90)/180*np.pi))
+                               position_angle=((77.5 + 90) / 180 * np.pi))
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()
 
@@ -202,7 +202,7 @@ class TestM51:
         # data points lay outside the image frame. This checks
         # for the presence of gaps in the sample arrays.
         sample = EllipseSample(self.data, 330., eps=0.2,
-                               position_angle=((90)/180*np.pi),
+                               position_angle=((90) / 180 * np.pi),
                                integrmode='median')
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()

@@ -5,7 +5,7 @@ This module provides tools for pixel integration.
 
 import math
 
-import numpy.ma as ma
+import numpy as np
 
 __all__ = ['INTEGRATORS', 'NEAREST_NEIGHBOR', 'BILINEAR', 'MEAN', 'MEDIAN']
 
@@ -148,16 +148,16 @@ class _NearestNeighborIntegrator(_Integrator):
         self._r = radius
 
         # Get image coordinates of (radius, phi) pixel
-        i = int(radius * math.cos(phi + self._geometry.pa) +
-                self._geometry.x0)
-        j = int(radius * math.sin(phi + self._geometry.pa) +
-                self._geometry.y0)
+        i = int(radius * math.cos(phi + self._geometry.pa)
+                + self._geometry.x0)
+        j = int(radius * math.sin(phi + self._geometry.pa)
+                + self._geometry.y0)
 
         # ignore data point if outside image boundaries
         if (i in self._i_range) and (j in self._j_range):
             sample = self._image[j][i]
 
-            if sample is not ma.masked:
+            if sample is not np.ma.masked:
                 self._store_results(phi, radius, sample)
 
     def get_polar_angle_step(self):
@@ -189,15 +189,15 @@ class _BiLinearIntegrator(_Integrator):
             qx = 1. - fx
             qy = 1. - fy
 
-            if (self._image[j][i] is not ma.masked and
-                    self._image[j+1][i] is not ma.masked and
-                    self._image[j][i+1] is not ma.masked and
-                    self._image[j+1][i+1] is not ma.masked):
+            if (self._image[j][i] is not np.ma.masked
+                    and self._image[j + 1][i] is not np.ma.masked
+                    and self._image[j][i + 1] is not np.ma.masked
+                    and self._image[j + 1][i + 1] is not np.ma.masked):
 
-                sample = (self._image[j][i] * qx * qy +
-                          self._image[j + 1][i] * qx * fy +
-                          self._image[j][i + 1] * fx * qy +
-                          self._image[j + 1][i + 1] * fy * fx)
+                sample = (self._image[j][i] * qx * qy
+                          + self._image[j + 1][i] * qx * fy
+                          + self._image[j][i + 1] * fx * qy
+                          + self._image[j + 1][i + 1] * fy * fx)
 
                 self._store_results(phi, radius, sample)
 
@@ -264,10 +264,10 @@ class _AreaIntegrator(_Integrator):
 
                         # check if radius is inside bounding ellipses
                         sma1, sma2 = self._geometry.bounding_ellipses()
-                        aux = ((1. - self._geometry.eps) /
-                               math.sqrt(((1. - self._geometry.eps) *
-                                          math.cos(phip))**2 +
-                                         (math.sin(phip))**2))
+                        aux = ((1. - self._geometry.eps)
+                               / math.sqrt(((1. - self._geometry.eps)
+                                            * math.cos(phip))**2
+                                           + (math.sin(phip))**2))
 
                         r1 = sma1 * aux
                         r2 = sma2 * aux
@@ -275,7 +275,7 @@ class _AreaIntegrator(_Integrator):
                         if rp < r2 and rp >= r1:
                             # update accumulator with pixel value
                             pix_value = self._image[j][i]
-                            if pix_value is not ma.masked:
+                            if pix_value is not np.ma.masked:
                                 accumulator, npix = self.accumulate(
                                     pix_value, accumulator)
 
@@ -347,7 +347,7 @@ class _MedianIntegrator(_AreaIntegrator):
 
     def compute_sample_value(self, accumulator):
         accumulator.sort()
-        return accumulator[int(self._npix/2)]
+        return accumulator[int(self._npix / 2)]
 
 
 # Specific integrator subclasses can be instantiated from here.

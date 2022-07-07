@@ -43,7 +43,7 @@ class TestEllipse:
         data = hdu[0].data
         hdu.close()
 
-        geometry = EllipseGeometry(252, 253, 10., 0.2, np.pi/2)
+        geometry = EllipseGeometry(252, 253, 10., 0.2, np.pi / 2)
         geometry.find_center(data)
         assert geometry.x0 == 257.
         assert geometry.y0 == 258.
@@ -99,7 +99,7 @@ class TestEllipse:
     def test_offcenter_fit(self):
         # A first guess ellipse that is roughly centered on the
         # offset galaxy image.
-        g = EllipseGeometry(POS+5, POS+5, 10., eps=0.2, pa=PA, astep=0.1)
+        g = EllipseGeometry(POS + 5, POS + 5, 10., eps=0.2, pa=PA, astep=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g)
         isophote_list = ellipse.fit_image()
 
@@ -111,7 +111,7 @@ class TestEllipse:
     def test_offcenter_go_beyond_frame(self):
         # Same as before, but now force the fit to goo
         # beyond the image frame limits.
-        g = EllipseGeometry(POS+5, POS+5, 10., eps=0.2, pa=PA, astep=0.1)
+        g = EllipseGeometry(POS + 5, POS + 5, 10., eps=0.2, pa=PA, astep=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g)
         isophote_list = ellipse.fit_image(maxsma=400.)
 
@@ -129,7 +129,8 @@ class TestEllipse:
 
         ny = 500
         nx = 150
-        g = Gaussian2D(100., nx / 2., ny / 2., 20, 12, theta=40.*np.pi/180.)
+        g = Gaussian2D(100., nx / 2., ny / 2., 20, 12,
+                       theta=40. * np.pi / 180.)
         y, x = np.mgrid[0:ny, 0:nx]
         noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
                                  stddev=2., seed=0)
@@ -149,7 +150,7 @@ class TestEllipseOnRealData:
         data = hdu[0].data[0]
         hdu.close()
 
-        g = EllipseGeometry(530., 511, 30., 0.2, 20./180.*3.14)
+        g = EllipseGeometry(530., 511, 30., 0.2, 20. / 180. * 3.14)
 
         ellipse = Ellipse(data, geometry=g)
         isophote_list = ellipse.fit_image()

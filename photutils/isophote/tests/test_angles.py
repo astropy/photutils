@@ -36,7 +36,7 @@ def test_angles(phi_min=0.05, phi_max=0.2):
     r4 = a1 * aux / np.sqrt((aux * np.cos(phi2))**2 + (np.sin(phi2))**2)
 
     ncount = 0
-    while phi < np.pi*2:
+    while phi < np.pi * 2:
         phi1 = phi2
         r1 = r4
         r2 = r3

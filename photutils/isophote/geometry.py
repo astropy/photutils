@@ -59,7 +59,7 @@ def _area(sma, eps, phi, r):
     signal = aux / abs(aux)
     if abs(aux) >= 1.:
         aux = signal
-    return abs(sma**2 * (1.-eps) / 2. * math.acos(aux))
+    return abs(sma**2 * (1. - eps) / 2. * math.acos(aux))
 
 
 class EllipseGeometry:
@@ -215,8 +215,8 @@ class EllipseGeometry:
         shape = image.shape
         _x0 = self.x0
         _y0 = self.y0
-        if (_x0 is None or _x0 < 0 or _x0 >= shape[1] or _y0 is None or
-                _y0 < 0 or _y0 >= shape[0]):
+        if (_x0 is None or _x0 < 0 or _x0 >= shape[1] or _y0 is None
+                or _y0 < 0 or _y0 >= shape[0]):
             _x0 = shape[1] / 2
             _y0 = shape[0] / 2
 
@@ -284,9 +284,9 @@ class EllipseGeometry:
         radius : float
             The polar radius (pixels).
         """
-        return (self.sma * (1. - self.eps) /
-                np.sqrt(((1. - self.eps) * np.cos(angle))**2 +
-                        (np.sin(angle))**2))
+        return (self.sma * (1. - self.eps)
+                / np.sqrt(((1. - self.eps) * np.cos(angle))**2
+                          + (np.sin(angle))**2))
 
     def initialize_sector_geometry(self, phi):
         """
@@ -340,8 +340,8 @@ class EllipseGeometry:
 
         # angular width of sector. It is calculated such that the sectors
         # come out with roughly constant area along the ellipse.
-        self.sector_angular_width = max(min((self._area_factor / (r3 - r4) /
-                                             r4), self._phi_max),
+        self.sector_angular_width = max(min((self._area_factor / (r3 - r4)
+                                             / r4), self._phi_max),
                                         self._phi_min)
 
         # compute the 4 vertices that define the elliptical sector.
@@ -449,7 +449,7 @@ class EllipseGeometry:
             angle = 1.
 
         if x1 >= 0. and y1 < 0.:
-            angle = 2*np.pi - angle
+            angle = 2 * np.pi - angle
         elif x1 < 0. and y1 >= 0.:
             angle = np.pi - angle
         elif x1 < 0. and y1 < 0.:
@@ -457,10 +457,10 @@ class EllipseGeometry:
 
         pa1 = self.pa
         if self.pa < 0.:
-            pa1 = self.pa + 2*np.pi
+            pa1 = self.pa + 2 * np.pi
         angle = angle - pa1
         if angle < 0.:
-            angle = angle + 2*np.pi
+            angle = angle + 2 * np.pi
 
         return radius, angle
 
@@ -478,7 +478,7 @@ class EllipseGeometry:
         angle[~imask] = 1.
 
         idx = (x1 >= 0.) & (y1 < 0)
-        angle[idx] = 2*np.pi - angle[idx]
+        angle[idx] = 2 * np.pi - angle[idx]
         idx = (x1 < 0.) & (y1 >= 0.)
         angle[idx] = np.pi - angle[idx]
         idx = (x1 < 0.) & (y1 < 0.)
@@ -486,9 +486,9 @@ class EllipseGeometry:
 
         pa1 = self.pa
         if self.pa < 0.:
-            pa1 = self.pa + 2*np.pi
+            pa1 = self.pa + 2 * np.pi
         angle = angle - pa1
-        angle[angle < 0] += 2*np.pi
+        angle[angle < 0] += 2 * np.pi
 
         return radius, angle
 

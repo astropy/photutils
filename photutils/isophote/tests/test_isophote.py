@@ -39,7 +39,7 @@ class TestIsophote:
         iso = fitter.fit(maxit=400)
 
         assert iso.valid
-        assert iso.stop_code == 0 or iso.stop_code == 2
+        assert iso.stop_code in (0, 2)
 
         # fitted values
         assert iso.intens <= 201.
@@ -71,7 +71,7 @@ class TestIsophote:
         iso = fitter.fit()
 
         assert iso.valid
-        assert iso.stop_code == 0 or iso.stop_code == 2
+        assert iso.stop_code in (0, 2)
 
         # geometry
         g = iso.sample.geometry
@@ -251,25 +251,24 @@ class TestIsophoteList:
         inner_list = self.isolist_sma10[:]
         outer_list = self.isolist_sma100[:]
         sublist = inner_list[2:-2]
-        dummy = sublist.extend(outer_list)
-        assert not dummy
-        assert len(sublist) == 2*self.slen - 4
+        sublist.extend(outer_list)
+        assert len(sublist) == 2 * self.slen - 4
 
         # try one more slice.
         even_outer_list = self.isolist_sma200
         sublist.extend(even_outer_list[1:-1])
-        assert len(sublist) == 2*self.slen - 4 + 3
+        assert len(sublist) == 2 * self.slen - 4 + 3
 
         # combine __add__ with slicing.
         sublist = inner_list[2:-2]
         result = sublist + outer_list
         assert isinstance(result, IsophoteList)
         assert len(sublist) == self.slen - 4
-        assert len(result) == 2*self.slen - 4
+        assert len(result) == 2 * self.slen - 4
 
         result = inner_list[2:-2] + outer_list
         assert isinstance(result, IsophoteList)
-        assert len(result) == 2*self.slen - 4
+        assert len(result) == 2 * self.slen - 4
 
     def test_sort(self):
         inner_list = self.isolist_sma10[:]

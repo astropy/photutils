@@ -184,7 +184,7 @@ class Ellipse:
             _x0 = image.shape[1] / 2
             _y0 = image.shape[0] / 2
             self._geometry = EllipseGeometry(_x0, _y0, 10., eps=0.2,
-                                             pa=np.pi/2)
+                                             pa=np.pi / 2)
         self.set_threshold(threshold)
 
     def set_threshold(self, threshold):
@@ -397,7 +397,8 @@ class Ellipse:
             return IsophoteList([])
         if fix_center or fix_pa or fix_eps:
             # Note that this overrides the geometry instance for good.
-            self._geometry.fix = np.array([fix_center, fix_center, fix_pa, fix_eps])
+            self._geometry.fix = np.array([fix_center, fix_center, fix_pa,
+                                           fix_eps])
 
         # first, go from initial sma outwards until
         # hitting one of several stopping criteria.
@@ -436,8 +437,8 @@ class Ellipse:
                 # shut off iterative mode. Or, bail out and
                 # change to go inwards.
                 if len(isophote_list) > 2:
-                    if ((isophote.stop_code == 5 and
-                         isophote_list[-2].stop_code == 5)
+                    if ((isophote.stop_code == 5
+                         and isophote_list[-2].stop_code == 5)
                             or isophote.stop_code == 1):
                         if maxsma and maxsma > isophote.sma:
                             # if a maximum sma value was provided by

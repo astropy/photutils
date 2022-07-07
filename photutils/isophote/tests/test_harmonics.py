@@ -21,7 +21,7 @@ def test_harmonics_1():
 
     # this is an almost as-is example taken from stackoverflow
     N = 100  # number of data points
-    t = np.linspace(0, 4*np.pi, N)
+    t = np.linspace(0, 4 * np.pi, N)
 
     # create artificial data with noise:
     # mean = 0.5, amplitude = 3., phase = 0.1, noise-std = 0.01
@@ -54,7 +54,7 @@ def test_harmonics_1():
 def test_harmonics_2():
     # this uses the actual functional form used for fitting ellipses
     N = 100
-    E = np.linspace(0, 4*np.pi, N)
+    E = np.linspace(0, 4 * np.pi, N)
 
     y0_0 = 100.
     a1_0 = 10.
@@ -62,13 +62,13 @@ def test_harmonics_2():
     a2_0 = 8.
     b2_0 = 2.
     rng = np.random.default_rng(0)
-    data = (y0_0 + a1_0*np.sin(E) + b1_0*np.cos(E) + a2_0*np.sin(2*E) +
-            b2_0*np.cos(2*E) + 0.01*rng.standard_normal(N))
+    data = (y0_0 + a1_0 * np.sin(E) + b1_0 * np.cos(E) + a2_0 * np.sin(2 * E)
+            + b2_0 * np.cos(2 * E) + 0.01 * rng.standard_normal(N))
 
     harmonics = fit_first_and_second_harmonics(E, data)
     y0, a1, b1, a2, b2 = harmonics[0]
-    data_fit = (y0 + a1*np.sin(E) + b1*np.cos(E) + a2*np.sin(2*E) +
-                b2*np.cos(2*E) + 0.01*rng.standard_normal(N))
+    data_fit = (y0 + a1 * np.sin(E) + b1 * np.cos(E) + a2 * np.sin(2 * E)
+                + b2 * np.cos(2 * E) + 0.01 * rng.standard_normal(N))
     residual = data - data_fit
 
     assert_allclose(np.mean(residual), 0., atol=0.01)
@@ -80,20 +80,20 @@ def test_harmonics_3():
     """Tests an upper harmonic fit."""
 
     N = 100
-    E = np.linspace(0, 4*np.pi, N)
+    E = np.linspace(0, 4 * np.pi, N)
     y0_0 = 100.
     a1_0 = 10.
     b1_0 = 5.
     order = 3
     rng = np.random.default_rng(0)
-    data = (y0_0 + a1_0*np.sin(order*E) + b1_0*np.cos(order*E) +
-            0.01*rng.standard_normal(N))
+    data = (y0_0 + a1_0 * np.sin(order * E) + b1_0 * np.cos(order * E)
+            + 0.01 * rng.standard_normal(N))
 
     harmonic = fit_upper_harmonic(E, data, order)
     y0, a1, b1 = harmonic[0]
     rng = np.random.default_rng(0)
-    data_fit = (y0 + a1*np.sin(order*E) + b1*np.cos(order*E) +
-                0.01*rng.standard_normal(N))
+    data_fit = (y0 + a1 * np.sin(order * E) + b1 * np.cos(order * E)
+                + 0.01 * rng.standard_normal(N))
     residual = data - data_fit
 
     assert_allclose(np.mean(residual), 0., atol=0.01)
@@ -107,7 +107,7 @@ class TestFitEllipseSamples:
         self.data1 = make_test_image(seed=0)
 
         # major axis tilted 45 deg wrt X image axis
-        self.data2 = make_test_image(pa=np.pi/4, seed=0)
+        self.data2 = make_test_image(pa=np.pi / 4, seed=0)
 
     def test_fit_ellipsesample_1(self):
         sample = EllipseSample(self.data1, 40.)
