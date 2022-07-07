@@ -9,7 +9,7 @@ from numpy.fft import fft2, ifft2, fftshift, ifftshift
 __all__ = ['resize_psf', 'create_matching_kernel']
 
 
-def resize_psf(psf, input_pixel_scale, output_pixel_scale, order=3):
+def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     """
     Resize a PSF using spline interpolation of the requested order.
 
@@ -40,7 +40,7 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, order=3):
     return zoom(psf, ratio, order=order) / ratio**2
 
 
-def create_matching_kernel(source_psf, target_psf, window=None):
+def create_matching_kernel(source_psf, target_psf, *, window=None):
     """
     Create a kernel to match 2D point spread functions (PSF) using the
     ratio of Fourier transforms.

@@ -126,7 +126,7 @@ class BasicPSFPhotometry:
         https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract
     """
 
-    def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
+    def __init__(self, group_maker, bkg_estimator, psf_model, fitshape, *,
                  finder=None, fitter=LevMarLSQFitter(), aperture_radius=None,
                  extra_output_cols=None):
         self.group_maker = group_maker
@@ -696,11 +696,13 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     """
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
-                 finder, fitter=LevMarLSQFitter(), niters=3,
+                 finder, *, fitter=LevMarLSQFitter(), niters=3,
                  aperture_radius=None, extra_output_cols=None):
 
         super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
-                         finder, fitter, aperture_radius, extra_output_cols)
+                         finder=finder, fitter=fitter,
+                         aperture_radius=aperture_radius,
+                         extra_output_cols=extra_output_cols)
         self.niters = niters
 
     @property
@@ -996,7 +998,7 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
     """
 
     def __init__(self, crit_separation, threshold, fwhm, psf_model, fitshape,
-                 sigma=3., ratio=1.0, theta=0.0, sigma_radius=1.5,
+                 *, sigma=3., ratio=1.0, theta=0.0, sigma_radius=1.5,
                  sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
                  fitter=LevMarLSQFitter(),
                  niters=3, aperture_radius=None, extra_output_cols=None):

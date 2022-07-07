@@ -60,8 +60,8 @@ class EPSFStar:
         An optional identification number or label for the star.
     """
 
-    def __init__(self, data, weights=None, cutout_center=None, origin=(0, 0),
-                 wcs_large=None, id_label=None):
+    def __init__(self, data, *, weights=None, cutout_center=None,
+                 origin=(0, 0), wcs_large=None, id_label=None):
 
         self._data = np.asanyarray(data)
         self.shape = self._data.shape
@@ -505,7 +505,7 @@ class LinkedEPSFStar(EPSFStars):
             star.cutout_center = np.array(center) - star.origin
 
 
-def extract_stars(data, catalogs, size=(11, 11)):
+def extract_stars(data, catalogs, *, size=(11, 11)):
     """
     Extract cutout images centered on stars defined in the input
     catalog(s).
@@ -661,7 +661,7 @@ def extract_stars(data, catalogs, size=(11, 11)):
     return EPSFStars(stars_out)
 
 
-def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
+def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     """
     Extract cutout images from a single image centered on stars defined
     in the single input catalog.
@@ -743,7 +743,7 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
 
         origin = (large_slc[1].start, large_slc[0].start)
         cutout_center = (xcenter - origin[0], ycenter - origin[1])
-        star = EPSFStar(data_cutout, weights_cutout,
+        star = EPSFStar(data_cutout, weights=weights_cutout,
                         cutout_center=cutout_center, origin=origin,
                         wcs_large=data.wcs, id_label=obj_id)
 

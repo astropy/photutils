@@ -25,7 +25,7 @@ class _InverseShift(Shift):
         return [d_offset]
 
 
-def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
+def prepare_psf_model(psfmodel, *, xname=None, yname=None, fluxname=None,
                       renormalize_psf=True):
     """
     Convert a 2D PSF model to one suitable for use with
@@ -215,7 +215,7 @@ def _call_fitter(fitter, psf, x, y, data, weights):
         return fitter(psf, x, y, data, weights=weights)
 
 
-def subtract_psf(data, psf, posflux, subshape=None):
+def subtract_psf(data, psf, posflux, *, subshape=None):
     """
     Subtract PSF/PRFs from an image.
 

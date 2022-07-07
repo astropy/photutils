@@ -125,7 +125,7 @@ class FittableImageModel(Fittable2DModel):
                     'the output coordinate grid on which the model is '
                     'evaluated.', default=0.0)
 
-    def __init__(self, data, flux=flux.default, x_0=x_0.default,
+    def __init__(self, data, *, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, normalize=False,
                  normalization_correction=1.0, origin=None, oversampling=1,
                  fill_value=0.0, **kwargs):
@@ -443,7 +443,7 @@ class FittableImageModel(Fittable2DModel):
 
         self._store_interpolator_kwargs(**kwargs)
 
-    def evaluate(self, x, y, flux, x_0, y_0, use_oversampling=True):
+    def evaluate(self, x, y, flux, x_0, y_0, *, use_oversampling=True):
         """
         Evaluate the model on some input variables and provided model
         parameters.
@@ -507,7 +507,7 @@ class EPSFModel(FittableImageModel):
         undersampled integer pixel values inside a circular aperture.
     """
 
-    def __init__(self, data, flux=1.0, x_0=0.0, y_0=0.0, normalize=True,
+    def __init__(self, data, *, flux=1.0, x_0=0.0, y_0=0.0, normalize=True,
                  normalization_correction=1.0, origin=None, oversampling=1,
                  fill_value=0.0, norm_radius=5.5, **kwargs):
 
@@ -713,7 +713,7 @@ class GriddedPSFModel(Fittable2DModel):
     y_0 = Parameter(description='y position in the output coordinate grid '
                     'where the model is evaluated.', default=0.0)
 
-    def __init__(self, data, flux=flux.default, x_0=x_0.default,
+    def __init__(self, data, *, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, fill_value=0.0):
 
         if not isinstance(data, NDData):
@@ -1051,7 +1051,7 @@ class PRFAdapter(Fittable2DModel):
     x_0 = Parameter(default=0)
     y_0 = Parameter(default=0)
 
-    def __init__(self, psfmodel, renormalize_psf=True, flux=flux.default,
+    def __init__(self, psfmodel, *, renormalize_psf=True, flux=flux.default,
                  x_0=x_0.default, y_0=y_0.default, xname=None, yname=None,
                  fluxname=None, **kwargs):
 
