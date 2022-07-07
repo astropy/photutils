@@ -62,6 +62,10 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Fixed a warning message in ``EPSFFitter``. [#1382]
+
 - ``photutils.segmentation``
 
   - Fixed an issue in generating watershed markers used for source
