@@ -232,8 +232,7 @@ class ShepardIDWInterpolator:
                                  'interpolator.')
         elif positions.ndim == 1:
             # assume we have a single point
-            if (self.coords_ndim != 1 and
-                    (positions.shape[-1] != self.coords_ndim)):
+            if self.coords_ndim not in (1, positions.shape[-1]):
                 raise ValueError('The input position was provided as a 1D '
                                  'array, but its length does not match the '
                                  'dimensionality of the coordinates used '
