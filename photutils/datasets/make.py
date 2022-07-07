@@ -545,8 +545,8 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
     colnames = source_table.colnames
     if 'flux' in colnames and 'amplitude' not in colnames:
         source_table = source_table.copy()
-        source_table['amplitude'] = (source_table['flux'] /
-                                     (2. * np.pi * xstd * ystd))
+        source_table['amplitude'] = (source_table['flux']
+                                     / (2. * np.pi * xstd * ystd))
 
     return make_model_sources_image(shape, model, source_table,
                                     oversample=oversample)
@@ -625,8 +625,8 @@ def make_gaussian_prf_sources_image(shape, source_table):
     colnames = source_table.colnames
     if 'flux' not in colnames and 'amplitude' in colnames:
         source_table = source_table.copy()
-        source_table['flux'] = (source_table['amplitude'] *
-                                (2. * np.pi * sigma * sigma))
+        source_table['flux'] = (source_table['amplitude']
+                                * (2. * np.pi * sigma * sigma))
 
     return make_model_sources_image(shape, model, source_table,
                                     oversample=1)
@@ -860,8 +860,8 @@ def make_gwcs(shape, galactic=False):
     rho = np.pi / 3.
     scale = 0.1 / 3600.  # 0.1 arcsec/pixel in deg/pix
 
-    shift_by_crpix = (models.Shift((-shape[1] / 2) + 1) &
-                      models.Shift((-shape[0] / 2) + 1))
+    shift_by_crpix = (models.Shift((-shape[1] / 2) + 1)
+                      & models.Shift((-shape[0] / 2) + 1))
 
     cd_matrix = np.array([[-scale * np.cos(rho), scale * np.sin(rho)],
                           [scale * np.sin(rho), scale * np.cos(rho)]])
