@@ -234,9 +234,9 @@ First let's create an image with four overlapping stars::
 
 .. doctest-requires:: matplotlib
 
+    >>> import matplotlib.pyplot as plt
     >>> from matplotlib import rcParams
     >>> rcParams['font.size'] = 13
-    >>> import matplotlib.pyplot as plt
     >>> plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
     ...            origin='lower')  # doctest: +SKIP
     >>> plt.title('Simulated data')  # doctest: +SKIP
@@ -549,12 +549,12 @@ the fainter star as well. Also, note that both of the stars have
 .. plot::
     :include-source:
 
+    from astropy.table import Table
     import numpy as np
-    import matplotlib.pyplot as plt
     from matplotlib.colors import LogNorm
+    import matplotlib.pyplot as plt
     from photutils.datasets import (make_noise_image,
                                     make_gaussian_sources_image)
-    from astropy.table import Table
 
     sources = Table()
     sources['flux'] = [10000, 1000]
@@ -620,15 +620,15 @@ Let's take a look at the residual image::
 
 .. plot::
 
-    from photutils.datasets import (make_noise_image,
-                                    make_gaussian_sources_image)
     import matplotlib.pyplot as plt
-    from photutils.psf import IterativelySubtractedPSFPhotometry
+    from astropy.modeling.fitting import LevMarLSQFitter
     from astropy.table import Table
     from photutils.background import MMMBackground
-    from photutils.psf import IntegratedGaussianPRF, DAOGroup
+    from photutils.datasets import (make_noise_image,
+                                    make_gaussian_sources_image)
     from photutils.detection import IRAFStarFinder
-    from astropy.modeling.fitting import LevMarLSQFitter
+    from photutils.psf import IterativelySubtractedPSFPhotometry
+    from photutils.psf import IntegratedGaussianPRF, DAOGroup
 
     sources = Table()
     sources['flux'] = [10000, 1000]
