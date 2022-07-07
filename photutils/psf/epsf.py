@@ -144,8 +144,8 @@ class EPSFFitter:
                                               (ycenter, xcenter),
                                               mode='strict')
             except (PartialOverlapError, NoOverlapError):
-                warnings.warn('The star at ({star.center[0]}, '
-                              '{star.center[1]}) cannot be fit because '
+                warnings.warn(f'The star at ({star.center[0]}, '
+                              f'{star.center[1]}) cannot be fit because '
                               'its fitting region extends beyond the star '
                               'cutout image.', AstropyUserWarning)
 
