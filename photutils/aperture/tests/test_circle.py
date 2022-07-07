@@ -93,31 +93,31 @@ class TestCircularAnnulus(BaseTestAperture):
 
 
 class TestSkyCircularAperture(BaseTestAperture):
-    aperture = SkyCircularAperture(SKYCOORD, r=3.*UNIT)
+    aperture = SkyCircularAperture(SKYCOORD, r=3. * UNIT)
 
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
         with pytest.raises(ValueError):
-            SkyCircularAperture(SKYCOORD, r=radius*UNIT)
+            SkyCircularAperture(SKYCOORD, r=radius * UNIT)
 
     def test_copy_eq(self):
         aper = self.aperture.copy()
         assert aper == self.aperture
-        aper.r = 2.*UNIT
+        aper.r = 2. * UNIT
         assert aper != self.aperture
 
 
 class TestSkyCircularAnnulus(BaseTestAperture):
-    aperture = SkyCircularAnnulus(SKYCOORD, r_in=3.*UNIT, r_out=7.*UNIT)
+    aperture = SkyCircularAnnulus(SKYCOORD, r_in=3. * UNIT, r_out=7. * UNIT)
 
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
         with pytest.raises(ValueError):
-            SkyCircularAnnulus(SKYCOORD, r_in=radius*UNIT, r_out=7.*UNIT)
+            SkyCircularAnnulus(SKYCOORD, r_in=radius * UNIT, r_out=7. * UNIT)
         with pytest.raises(ValueError):
-            SkyCircularAnnulus(SKYCOORD, r_in=3.*UNIT, r_out=radius*UNIT)
+            SkyCircularAnnulus(SKYCOORD, r_in=3. * UNIT, r_out=radius * UNIT)
 
     def test_copy_eq(self):
         aper = self.aperture.copy()
@@ -146,7 +146,7 @@ def test_area_overlap():
     xypos = [(0, 0), (5, 5), (50, 50)]
     aper = CircularAperture(xypos, r=3)
     areas = aper.area_overlap(data)
-    assert_allclose(areas, [10.304636, np.pi*9., np.nan])
+    assert_allclose(areas, [10.304636, np.pi * 9., np.nan])
 
     aper2 = CircularAperture(xypos[1], r=3)
     area2 = aper2.area_overlap(data)
@@ -161,7 +161,7 @@ def test_area_overlap_mask():
     xypos = [(0, 0), (5, 5), (50, 50)]
     aper = CircularAperture(xypos, r=3)
     areas = aper.area_overlap(data, mask=mask)
-    areas_exp = np.array([10.304636, np.pi*9., np.nan]) - 2.
+    areas_exp = np.array([10.304636, np.pi * 9., np.nan]) - 2.
     assert_allclose(areas, areas_exp)
 
     with pytest.raises(ValueError):

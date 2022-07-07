@@ -22,15 +22,15 @@ RADII = (0.0, -1.0, -np.inf)
 
 
 class TestRectangularAperture(BaseTestAperture):
-    aperture = RectangularAperture(POSITIONS, w=10., h=5., theta=np.pi/2.)
+    aperture = RectangularAperture(POSITIONS, w=10., h=5., theta=np.pi / 2.)
 
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
         with pytest.raises(ValueError):
-            RectangularAperture(POSITIONS, w=radius, h=5., theta=np.pi/2.)
+            RectangularAperture(POSITIONS, w=radius, h=5., theta=np.pi / 2.)
         with pytest.raises(ValueError):
-            RectangularAperture(POSITIONS, w=10., h=radius, theta=np.pi/2.)
+            RectangularAperture(POSITIONS, w=10., h=radius, theta=np.pi / 2.)
 
     def test_copy_eq(self):
         aper = self.aperture.copy()
@@ -41,23 +41,23 @@ class TestRectangularAperture(BaseTestAperture):
 
 class TestRectangularAnnulus(BaseTestAperture):
     aperture = RectangularAnnulus(POSITIONS, w_in=10., w_out=20., h_out=17,
-                                  theta=np.pi/3)
+                                  theta=np.pi / 3)
 
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
         with pytest.raises(ValueError):
             RectangularAnnulus(POSITIONS, w_in=radius, w_out=20., h_out=17,
-                               theta=np.pi/3)
+                               theta=np.pi / 3)
         with pytest.raises(ValueError):
             RectangularAnnulus(POSITIONS, w_in=10., w_out=radius, h_out=17,
-                               theta=np.pi/3)
+                               theta=np.pi / 3)
         with pytest.raises(ValueError):
             RectangularAnnulus(POSITIONS, w_in=10., w_out=20., h_out=radius,
-                               theta=np.pi/3)
+                               theta=np.pi / 3)
         with pytest.raises(ValueError):
             RectangularAnnulus(POSITIONS, w_in=10., w_out=20., h_out=17,
-                               h_in=radius, theta=np.pi/3)
+                               h_in=radius, theta=np.pi / 3)
 
     def test_copy_eq(self):
         aper = self.aperture.copy()
@@ -67,18 +67,18 @@ class TestRectangularAnnulus(BaseTestAperture):
 
 
 class TestSkyRectangularAperture(BaseTestAperture):
-    aperture = SkyRectangularAperture(SKYCOORD, w=10.*UNIT, h=5.*UNIT,
-                                      theta=30*u.deg)
+    aperture = SkyRectangularAperture(SKYCOORD, w=10. * UNIT, h=5. * UNIT,
+                                      theta=30 * u.deg)
 
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
         with pytest.raises(ValueError):
-            SkyRectangularAperture(SKYCOORD, w=radius*UNIT, h=5.*UNIT,
-                                   theta=30*u.deg)
+            SkyRectangularAperture(SKYCOORD, w=radius * UNIT, h=5. * UNIT,
+                                   theta=30 * u.deg)
         with pytest.raises(ValueError):
-            SkyRectangularAperture(SKYCOORD, w=10.*UNIT, h=radius*UNIT,
-                                   theta=30*u.deg)
+            SkyRectangularAperture(SKYCOORD, w=10. * UNIT, h=radius * UNIT,
+                                   theta=30 * u.deg)
 
     def test_copy_eq(self):
         aper = self.aperture.copy()
@@ -88,25 +88,28 @@ class TestSkyRectangularAperture(BaseTestAperture):
 
 
 class TestSkyRectangularAnnulus(BaseTestAperture):
-    aperture = SkyRectangularAnnulus(SKYCOORD, w_in=10.*UNIT, w_out=20.*UNIT,
-                                     h_out=17.*UNIT, theta=60*u.deg)
+    aperture = SkyRectangularAnnulus(SKYCOORD, w_in=10. * UNIT,
+                                     w_out=20. * UNIT, h_out=17. * UNIT,
+                                     theta=60 * u.deg)
 
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
         with pytest.raises(ValueError):
-            SkyRectangularAnnulus(SKYCOORD, w_in=radius*UNIT, w_out=20.*UNIT,
-                                  h_out=17.*UNIT, theta=60*u.deg)
+            SkyRectangularAnnulus(SKYCOORD, w_in=radius * UNIT,
+                                  w_out=20. * UNIT, h_out=17. * UNIT,
+                                  theta=60 * u.deg)
         with pytest.raises(ValueError):
-            SkyRectangularAnnulus(SKYCOORD, w_in=10.*UNIT, w_out=radius*UNIT,
-                                  h_out=17.*UNIT, theta=60*u.deg)
+            SkyRectangularAnnulus(SKYCOORD, w_in=10. * UNIT,
+                                  w_out=radius * UNIT, h_out=17. * UNIT,
+                                  theta=60 * u.deg)
         with pytest.raises(ValueError):
-            SkyRectangularAnnulus(SKYCOORD, w_in=10.*UNIT, w_out=20.*UNIT,
-                                  h_out=radius*UNIT, theta=60*u.deg)
+            SkyRectangularAnnulus(SKYCOORD, w_in=10. * UNIT, w_out=20. * UNIT,
+                                  h_out=radius * UNIT, theta=60 * u.deg)
         with pytest.raises(ValueError):
-            SkyRectangularAnnulus(SKYCOORD, w_in=10.*UNIT, w_out=20.*UNIT,
-                                  h_out=17.*UNIT, h_in=radius*UNIT,
-                                  theta=60*u.deg)
+            SkyRectangularAnnulus(SKYCOORD, w_in=10. * UNIT, w_out=20. * UNIT,
+                                  h_out=17. * UNIT, h_in=radius * UNIT,
+                                  theta=60 * u.deg)
 
     def test_copy_eq(self):
         aper = self.aperture.copy()
@@ -116,7 +119,7 @@ class TestSkyRectangularAnnulus(BaseTestAperture):
 
 
 def test_rectangle_theta_quantity():
-    aper1 = RectangularAperture(POSITIONS, w=10., h=5., theta=np.pi/2.)
+    aper1 = RectangularAperture(POSITIONS, w=10., h=5., theta=np.pi / 2.)
     theta = u.Quantity(90 * u.deg)
     aper2 = RectangularAperture(POSITIONS, w=10., h=5., theta=theta)
     theta = Angle(90 * u.deg)
@@ -128,7 +131,7 @@ def test_rectangle_theta_quantity():
 
 def test_rectangle_annulus_theta_quantity():
     aper1 = RectangularAnnulus(POSITIONS, w_in=10., w_out=20., h_out=17,
-                               theta=np.pi/3)
+                               theta=np.pi / 3)
     theta = u.Quantity(60 * u.deg)
     aper2 = RectangularAnnulus(POSITIONS, w_in=10., w_out=20., h_out=17,
                                theta=theta)
