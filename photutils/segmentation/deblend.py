@@ -249,18 +249,18 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         segm_deblended.info = {'warnings': {}}
         warnings.warn('The deblending mode of one or more source labels from '
                       'the input segmentation image was changed from '
-                      '"exponential" to "linear". See the "info" attribute '
+                      f'"{mode}" to "linear". See the "info" attribute '
                       'for the list of affected input labels.',
                       AstropyUserWarning)
 
         if nonposmin_labels:
-            warn = {'message': 'Deblending mode changed from exponential to '
+            warn = {'message': f'Deblending mode changed from {mode} to '
                     'linear due to non-positive minimum data values.',
                     'input_labels': np.array(nonposmin_labels)}
             segm_deblended.info['warnings']['nonposmin'] = warn
 
         if nmarkers_labels:
-            warn = {'message': 'Deblending mode changed from exponential to '
+            warn = {'message': f'Deblending mode changed from {mode} to '
                     'linear due to too many potential deblended sources.',
                     'input_labels': np.array(nmarkers_labels)}
         segm_deblended.info['warnings']['nmarkers'] = warn
