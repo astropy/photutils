@@ -50,6 +50,9 @@ New Features
   - Added a ``make_cutouts`` method to ``SourceCatalog`` for making
     custom-shaped cutout images. [#1376]
 
+  - Added the ability to set a minimum unscaled Kron radius in
+    ``SourceCatalog``. [#1381]
+
 - ``photutils.utils``
 
   - Added a ``circular_footprint`` convenience function. [#1355]
@@ -61,9 +64,8 @@ Bug Fixes
 
 - ``photutils.segmentation``
 
-  - Fixed the ability to set a minimum unscaled Kron radius in
-    ``SourceCatalog``. [#1381]
-
+  - Fixed an issue in generating watershed markers used for source
+    deblending. [#1383]
 
 API Changes
 ^^^^^^^^^^^
