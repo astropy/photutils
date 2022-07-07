@@ -14,6 +14,7 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
+from .utils import _interpolate_missing_data
 from ..aperture import BoundingBox
 from ..utils._parameters import as_pair
 
@@ -157,8 +158,6 @@ class EPSFStar:
         Missing data is filled in by interpolation to better estimate
         the total flux.
         """
-        from .epsf import _interpolate_missing_data
-
         if np.any(self.mask):
             data_interp = _interpolate_missing_data(self.data, method='cubic',
                                                     mask=self.mask)
