@@ -106,12 +106,12 @@ class TestDeblendSources:
     def test_deblend_contrast(self, contrast, nlabels):
         y, x = np.mgrid[0:51, 0:151]
         y0 = 25
-        data = (Gaussian2D(9.5, 16, y0, 5, 5)(x, y) +
-                Gaussian2D(51, 30, y0, 3, 3)(x, y) +
-                Gaussian2D(30, 42, y0, 5, 5)(x, y) +
-                Gaussian2D(80, 66, y0, 8, 8)(x, y) +
-                Gaussian2D(71, 88, y0, 8, 8)(x, y) +
-                Gaussian2D(18, 119, y0, 7, 7)(x, y))
+        data = (Gaussian2D(9.5, 16, y0, 5, 5)(x, y)
+                + Gaussian2D(51, 30, y0, 3, 3)(x, y)
+                + Gaussian2D(30, 42, y0, 5, 5)(x, y)
+                + Gaussian2D(80, 66, y0, 8, 8)(x, y)
+                + Gaussian2D(71, 88, y0, 8, 8)(x, y)
+                + Gaussian2D(18, 119, y0, 7, 7)(x, y))
 
         npixels = 5
         segm = detect_sources(data, 1.0, npixels)
@@ -159,14 +159,14 @@ class TestDeblendSources:
         yshift = 100
         y0b = y0a + yshift
         y1b = y1a + yshift
-        data = (Gaussian2D(80, 36, y0a, 8, 8)(x, y) +
-                Gaussian2D(71, 58, y1a, 8, 8)(x, y) +
-                Gaussian2D(30, 36, y1a, 7, 7)(x, y) +
-                Gaussian2D(30, 58, y0a, 7, 7)(x, y) +
-                Gaussian2D(80, 36, y0b, 8, 8)(x, y) +
-                Gaussian2D(71, 58, y1b, 8, 8)(x, y) +
-                Gaussian2D(30, 36, y1b, 7, 7)(x, y) +
-                Gaussian2D(30, 58, y0b, 7, 7)(x, y))
+        data = (Gaussian2D(80, 36, y0a, 8, 8)(x, y)
+                + Gaussian2D(71, 58, y1a, 8, 8)(x, y)
+                + Gaussian2D(30, 36, y1a, 7, 7)(x, y)
+                + Gaussian2D(30, 58, y0a, 7, 7)(x, y)
+                + Gaussian2D(80, 36, y0b, 8, 8)(x, y)
+                + Gaussian2D(71, 58, y1b, 8, 8)(x, y)
+                + Gaussian2D(30, 36, y1b, 7, 7)(x, y)
+                + Gaussian2D(30, 58, y0b, 7, 7)(x, y))
 
         npixels = 5
         segm1 = detect_sources(data, 5.0, npixels)
@@ -325,7 +325,6 @@ def test_nmarkers_fallback():
             data1[i, :] = 1
             data1[:, i] = 1
 
-    ny, nx = data1.shape
     data = np.zeros((101, 101))
     data[25:25 + size, 25:25 + size] = data1
     data[50:60, 50:60] = 10.

@@ -647,8 +647,8 @@ class SegmentationImage:
         if start_label <= 0:
             raise ValueError('start_label must be > 0.')
 
-        if ((self.labels[0] == start_label) and
-                (self.labels[-1] - self.labels[0] + 1) == self.nlabels):
+        if ((self.labels[0] == start_label)
+                and (self.labels[-1] - self.labels[0] + 1) == self.nlabels):
             return
 
         old_slices = self.__dict__.get('slices', None)
