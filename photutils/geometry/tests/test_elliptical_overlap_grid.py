@@ -15,16 +15,14 @@ grid_sizes = [50, 500, 1000]
 maj_sizes = [0.2, 0.4, 0.8]
 min_sizes = [0.2, 0.4, 0.8]
 angles = [0.0, 0.5, 1.0]
-use_exact = [0, 1]
+use_exacts = [0, 1]
 subsamples = [1, 5, 10]
-arg_list = ['grid_size', 'maj_size', 'min_size', 'angle', 'use_exact',
-            'subsample']
 
 
 @pytest.mark.parametrize(('grid_size', 'maj_size', 'min_size', 'angle',
                           'use_exact', 'subsample'),
                          list(itertools.product(grid_sizes, maj_sizes,
-                                                min_sizes, angles, use_exact,
+                                                min_sizes, angles, use_exacts,
                                                 subsamples)))
 def test_elliptical_overlap_grid(grid_size, maj_size, min_size, angle,
                                  use_exact, subsample):
@@ -32,7 +30,6 @@ def test_elliptical_overlap_grid(grid_size, maj_size, min_size, angle,
     Test normalization of the overlap grid to make sure that a fully
     enclosed pixel has a value of 1.0.
     """
-
     g = elliptical_overlap_grid(-1.0, 1.0, -1.0, 1.0, grid_size, grid_size,
                                 maj_size, min_size, angle, use_exact,
                                 subsample)
