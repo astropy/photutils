@@ -249,18 +249,18 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         segm_deblended.info = {'warnings': {}}
         warnings.warn('The deblending mode of one or more source labels from '
                       'the input segmentation image was changed from '
-                      '"exponential" to "linear". See the "info" attribute '
+                      f'"{mode}" to "linear". See the "info" attribute '
                       'for the list of affected input labels.',
                       AstropyUserWarning)
 
         if nonposmin_labels:
-            warn = {'message': 'Deblending mode changed from exponential to '
+            warn = {'message': f'Deblending mode changed from {mode} to '
                     'linear due to non-positive minimum data values.',
                     'input_labels': np.array(nonposmin_labels)}
             segm_deblended.info['warnings']['nonposmin'] = warn
 
         if nmarkers_labels:
-            warn = {'message': 'Deblending mode changed from exponential to '
+            warn = {'message': f'Deblending mode changed from {mode} to '
                     'linear due to too many potential deblended sources.',
                     'input_labels': np.array(nmarkers_labels)}
         segm_deblended.info['warnings']['nmarkers'] = warn
@@ -417,11 +417,12 @@ class _Deblender:
             as markers. The last list element contains all of the
             potential source markers.
         """
-        from scipy.ndimage import label as ndilabel
+        from scipy.ndimage import label as ndi_label
 
         for i in range(len(segments) - 1):
             segm_lower = segments[i].data
             segm_upper = segments[i + 1].data
+            markers = segm_lower.astype(bool)
             relabel = False
             # if the are more sources at the upper level, then
             # remove the parent source(s) from the lower level,
@@ -429,16 +430,18 @@ class _Deblender:
             # multiple children in the upper level
             for label in segments[i].labels:
                 mask = (segm_lower == label)
-                # checks for 1-to-1 label mapping n -> m (where m >= 0)
+                # find label mapping from the lower to upper level
                 upper_labels = segm_upper[mask]
                 upper_labels = np.unique(upper_labels[upper_labels != 0])
                 if upper_labels.size >= 2:
                     relabel = True
-                    segm_lower[mask] = segm_upper[mask]
+                    markers[mask] = segm_upper[mask].astype(bool)
 
             if relabel:
+                segm_data, nlabels = ndi_label(markers, structure=self.selem)
                 segm_new = object.__new__(SegmentationImage)
-                segm_new._data = ndilabel(segm_lower, structure=self.selem)[0]
+                segm_new._data = segm_data
+                segm_new.__dict__['labels'] = np.arange(nlabels) + 1
                 segments[i + 1] = segm_new
             else:
                 segments[i + 1] = segments[i]

@@ -255,9 +255,9 @@ def _detect_sources(data, thresholds, npixels, selem, inverse_mask,
             segment_mask = (cutout == label)
             if np.count_nonzero(segment_mask) < npixels:
                 cutout[segment_mask] = 0
-            else:
-                segm_labels.append(label)
-                segm_slices.append(slc)
+                continue
+            segm_labels.append(label)
+            segm_slices.append(slc)
 
         if np.count_nonzero(segment_img) == 0:
             if not deblend_mode:
@@ -265,13 +265,16 @@ def _detect_sources(data, thresholds, npixels, selem, inverse_mask,
                 segms.append(None)
             continue
 
-        # relabel the segmentation image with consecutive numbers
-        nlabels = len(segm_labels)
-        if len(labels) != nlabels:
-            label_map = np.zeros(np.max(labels) + 1, dtype=int)
-            labels = np.arange(nlabels) + 1
-            label_map[segm_labels] = labels
-            segment_img = label_map[segment_img]
+        if not deblend_mode:
+            # relabel the segmentation image with consecutive numbers
+            nlabels = len(segm_labels)
+            if len(labels) != nlabels:
+                label_map = np.zeros(np.max(labels) + 1, dtype=int)
+                labels = np.arange(nlabels) + 1
+                label_map[segm_labels] = labels
+                segment_img = label_map[segment_img]
+        else:
+            labels = segm_labels
 
         segm = object.__new__(SegmentationImage)
         segm._data = segment_img
