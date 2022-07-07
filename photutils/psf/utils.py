@@ -105,7 +105,7 @@ def prepare_psf_model(psfmodel, *, xname=None, yname=None, fluxname=None,
 
         integrand = integrate.dblquad(psfmodel, -np.inf, np.inf,
                                       lambda x: -np.inf, lambda x: np.inf)[0]
-        normmod = Const2D(1./integrand, name='renormalize_scaling')
+        normmod = Const2D(1. / integrand, name='renormalize_scaling')
         outmod = outmod * normmod
 
     # final setup of the output model - fix all the non-offset/scale
@@ -286,3 +286,59 @@ def subtract_psf(data, psf, posflux, *, subshape=None):
             subbeddata = add_array(subbeddata, -psf(x, y), (y_0, x_0))
 
     return subbeddata
+
+
+def _interpolate_missing_data(data, mask, method='cubic'):
+    """
+    Interpolate missing data as identified by the ``mask`` keyword.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        An array containing the 2D image.
+
+    mask : 2D bool `~numpy.ndarray`
+        A 2D boolean mask array with the same shape as the input
+        ``data``, where a `True` value indicates the corresponding
+        element of ``data`` is masked.  The masked data points are
+        those that will be interpolated.
+
+    method : {'cubic', 'nearest'}, optional
+        The method of used to interpolate the missing data:
+
+        * ``'cubic'``:  Masked data are interpolated using 2D cubic
+            splines.  This is the default.
+
+        * ``'nearest'``:  Masked data are interpolated using
+            nearest-neighbor interpolation.
+
+    Returns
+    -------
+    data_interp : 2D `~numpy.ndarray`
+        The interpolated 2D image.
+    """
+    from scipy import interpolate
+
+    data_interp = np.array(data, copy=True)
+
+    if len(data_interp.shape) != 2:
+        raise ValueError("'data' must be a 2D array.")
+
+    if mask.shape != data.shape:
+        raise ValueError("'mask' and 'data' must have the same shape.")
+
+    y, x = np.indices(data_interp.shape)
+    xy = np.dstack((x[~mask].ravel(), y[~mask].ravel()))[0]
+    z = data_interp[~mask].ravel()
+
+    if method == 'nearest':
+        interpol = interpolate.NearestNDInterpolator(xy, z)
+    elif method == 'cubic':
+        interpol = interpolate.CloughTocher2DInterpolator(xy, z)
+    else:
+        raise ValueError('Unsupported interpolation method.')
+
+    xy_missing = np.dstack((x[mask].ravel(), y[mask].ravel()))[0]
+    data_interp[mask] = interpol(xy_missing)
+
+    return data_interp

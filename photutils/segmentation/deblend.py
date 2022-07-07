@@ -175,7 +175,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     selem = _make_binary_structure(data.ndim, connectivity)
 
     if kernel is not None:
-        data = _filter_data(data, kernel, mode='constant', fill_value=0.0)  # pragma: no cover
+        data = _filter_data(data, kernel, mode='constant',
+                            fill_value=0.0)  # pragma: no cover
 
     if nproc is None:
         nproc = cpu_count()  # pragma: no cover

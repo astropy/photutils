@@ -225,8 +225,8 @@ class DiscretePRF(Fittable2DModel):
             positions = np.array(positions)
 
         if isinstance(positions, Table) or \
-                (isinstance(positions, np.ndarray) and
-                 positions.dtype.names is not None):
+                (isinstance(positions, np.ndarray)
+                 and positions.dtype.names is not None):
             # One can do clever things like
             # positions['x_0', 'y_0'].as_array().view((positions['x_0'].dtype,
             #                                          2))
@@ -271,28 +271,29 @@ class DiscretePRF(Fittable2DModel):
                                                   (y, x))
                     # Check shape to exclude incomplete PRFs at the boundaries
                     # of the image
-                    if (extracted_prf.shape == (size, size) and
-                            np.ma.sum(extracted_prf) != 0):
+                    if (extracted_prf.shape == (size, size)
+                            and np.ma.sum(extracted_prf) != 0):
                         # Replace NaN values by mirrored value, with respect
                         # to the prf's center
                         if fix_nan:
                             prf_nan = extracted_prf.mask
                             if prf_nan.any():
-                                if (prf_nan.sum() > 3 or
-                                        prf_nan[size // 2, size // 2]):
+                                if (prf_nan.sum() > 3
+                                        or prf_nan[size // 2, size // 2]):
                                     continue
-                                else:
-                                    extracted_prf = _mask_to_mirrored_value(
-                                        extracted_prf, prf_nan,
-                                        (size // 2, size // 2))
+
+                                extracted_prf = _mask_to_mirrored_value(
+                                    extracted_prf, prf_nan,
+                                    (size // 2, size // 2))
+
                         # Normalize and add extracted PRF to data cube
                         if fluxes is None:
-                            extracted_prf_norm = (np.ma.copy(extracted_prf) /
-                                                  np.ma.sum(extracted_prf))
+                            extracted_prf_norm = (np.ma.copy(extracted_prf)
+                                                  / np.ma.sum(extracted_prf))
                         else:
                             fluxes_sub_prfs = fluxes[sub_prf_indices]
-                            extracted_prf_norm = (np.ma.copy(extracted_prf) /
-                                                  fluxes_sub_prfs[k])
+                            extracted_prf_norm = (np.ma.copy(extracted_prf)
+                                                  / fluxes_sub_prfs[k])
                         extracted_sub_prfs.append(extracted_prf_norm)
                     else:
                         continue
@@ -346,9 +347,9 @@ class Reproject:
         try:
             skycoord = wcs1.pixel_to_world(x, y)
             return wcs2.world_to_pixel(skycoord)
-        except AttributeError:
+        except AttributeError as exc:
             raise ValueError('Input wcs objects do not support the shared '
-                             'WCS interface.')
+                             'WCS interface.') from exc
 
     def to_rectified(self, x, y):
         """

@@ -200,8 +200,8 @@ class BasicPSFPhotometry:
         if hasattr(self.psf_model, 'fwhm'):
             self.aperture_radius = self.psf_model.fwhm.value
         elif hasattr(self.psf_model, 'sigma'):
-            self.aperture_radius = (self.psf_model.sigma.value *
-                                    gaussian_sigma_to_fwhm)
+            self.aperture_radius = (self.psf_model.sigma.value
+                                    * gaussian_sigma_to_fwhm)
         # If PSF model doesn't have FWHM or sigma value -- as it
         # is not a Gaussian; most likely because it's an ePSF --
         # then we fall back on fitting a circle of the average
@@ -375,8 +375,8 @@ class BasicPSFPhotometry:
         self._define_fit_param_names()
         for p0, param in self._pars_to_set.items():
             if p0 not in init_guesses.colnames:
-                init_guesses[p0] = (len(init_guesses) *
-                                    [getattr(self.psf_model, param).value])
+                init_guesses[p0] = (len(init_guesses)
+                                    * [getattr(self.psf_model, param).value])
 
         if skip_group_maker:
             star_groups = init_guesses
@@ -438,7 +438,7 @@ class BasicPSFPhotometry:
             Residual image.
         """
         result_tab = QTable()
-        for param_tab_name in self._pars_to_output.keys():
+        for param_tab_name in self._pars_to_output:
             result_tab.add_column(Column(name=param_tab_name))
 
         unc_tab = QTable()
@@ -449,13 +449,12 @@ class BasicPSFPhotometry:
         y, x = np.indices(image.shape)
 
         star_groups = star_groups.group_by('group_id')
-        for n in range(len(star_groups.groups)):
-            group_psf = get_grouped_psf_model(self.psf_model,
-                                              star_groups.groups[n],
+        for group in star_groups.groups:
+            group_psf = get_grouped_psf_model(self.psf_model, group,
                                               self._pars_to_set)
             usepixel = np.zeros_like(image, dtype=bool)
 
-            for row in star_groups.groups[n]:
+            for row in group:
                 usepixel[overlap_slices(large_array_shape=image.shape,
                                         small_array_shape=self.fitshape,
                                         position=(row['y_0'], row['x_0']),
@@ -466,15 +465,13 @@ class BasicPSFPhotometry:
 
             fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
                                     image[usepixel])
-            param_table = self._model_params2table(fit_model,
-                                                   star_groups.groups[n])
+            param_table = self._model_params2table(fit_model, group)
             result_tab = vstack([result_tab, param_table])
 
             param_cov = self.fitter.fit_info.get('param_cov', None)
             if param_cov is not None:
                 unc_tab = vstack([unc_tab,
-                                  self._get_uncertainties(
-                                      len(star_groups.groups[n]))])
+                                  self._get_uncertainties(len(group))])
 
             # do not subtract if the fitting did not go well
             try:
@@ -576,7 +573,7 @@ class BasicPSFPhotometry:
         """
         param_tab = QTable()
 
-        for param_tab_name in self._pars_to_output.keys():
+        for param_tab_name in self._pars_to_output:
             param_tab.add_column(Column(name=param_tab_name,
                                         data=np.empty(len(star_group))))
 
@@ -589,7 +586,8 @@ class BasicPSFPhotometry:
                     # searches leaves and we might want a intermediate
                     # node of the tree
                     sub_models = [model for model
-                                  in fit_model.traverse_postorder() if model.name == i]
+                                  in fit_model.traverse_postorder()
+                                  if model.name == i]
                     if len(sub_models) != 1:
                         raise ValueError('sub_models must have a length of 1')
                     sub_model = sub_models[0]
@@ -717,11 +715,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             try:
                 if value <= 0:
                     raise ValueError('niters must be positive.')
-                else:
-                    self._niters = int(value)
-            except ValueError:
+                self._niters = int(value)
+            except ValueError as exc:
                 raise ValueError('niters must be None or an integer or '
-                                 'convertable into an integer.')
+                                 'convertable into an integer.') from exc
 
     @property
     def finder(self):
@@ -734,8 +731,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                              "IterativelySubtractedPSFPhotometry - you may "
                              "want to use BasicPSFPhotometry. Please see the "
                              "Detection section on photutils documentation.")
-        else:
-            self._finder = value
+        self._finder = value
 
     def do_photometry(self, image, *, mask=None, init_guesses=None):
         """
@@ -841,8 +837,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         sources = self.finder(self._residual_image, mask=mask)
 
         n = n_start
-        while((sources is not None and len(sources) > 0) and
-              (self.niters is None or n <= self.niters)):
+        while ((sources is not None and len(sources) > 0)
+               and (self.niters is None or n <= self.niters)):
             positions = np.transpose((sources['xcentroid'],
                                       sources['ycentroid']))
             apertures = CircularAperture(positions,
@@ -860,9 +856,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                 if param_tab_name not in (['x_0', 'y_0', 'flux_0']):
                     init_guess_tab.add_column(
                         Column(name=param_tab_name,
-                               data=(getattr(self.psf_model,
-                                             param_name) *
-                                     np.ones(len(sources)))))
+                               data=(getattr(self.psf_model, param_name)
+                                     * np.ones(len(sources)))))
 
             star_groups = self.group_maker(init_guess_tab)
             table, self._residual_image = super().nstar(

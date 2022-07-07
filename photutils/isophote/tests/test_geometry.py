@@ -12,7 +12,7 @@ from ..geometry import EllipseGeometry
 
 @pytest.mark.parametrize('astep, linear_growth', [(0.2, False), (20., True)])
 def test_geometry(astep, linear_growth):
-    geometry = EllipseGeometry(255., 255., 100., 0.4, np.pi/2, astep,
+    geometry = EllipseGeometry(255., 255., 100., 0.4, np.pi / 2, astep,
                                linear_growth)
 
     sma1, sma2 = geometry.bounding_ellipses()
@@ -37,28 +37,28 @@ def test_to_polar():
 
     r, p = geometry.to_polar(0., 100.)
     assert_allclose(r, 100., atol=0.1)
-    assert_allclose(p, np.pi/2., atol=0.0001)
+    assert_allclose(p, np.pi / 2., atol=0.0001)
 
     # vector with length 100. at 45 deg angle
     r, p = geometry.to_polar(70.71, 70.71)
     assert_allclose(r, 100., atol=0.1)
-    assert_allclose(p, np.pi/4., atol=0.0001)
+    assert_allclose(p, np.pi / 4., atol=0.0001)
 
     # position angle tilted 45 deg from X axis
-    geometry = EllipseGeometry(0., 0., 100., 0.0, np.pi/4., 0.2, False)
+    geometry = EllipseGeometry(0., 0., 100., 0.0, np.pi / 4., 0.2, False)
 
     r, p = geometry.to_polar(100., 0.)
     assert_allclose(r, 100., atol=0.1)
-    assert_allclose(p, np.pi*7./4., atol=0.0001)
+    assert_allclose(p, np.pi * 7. / 4., atol=0.0001)
 
     r, p = geometry.to_polar(0., 100.)
     assert_allclose(r, 100., atol=0.1)
-    assert_allclose(p, np.pi/4., atol=0.0001)
+    assert_allclose(p, np.pi / 4., atol=0.0001)
 
     # vector with length 100. at 45 deg angle
     r, p = geometry.to_polar(70.71, 70.71)
     assert_allclose(r, 100., atol=0.1)
-    assert_allclose(p, np.pi*2., atol=0.0001)
+    assert_allclose(p, np.pi * 2., atol=0.0001)
 
 
 def test_area():
@@ -66,7 +66,8 @@ def test_area():
     geometry = EllipseGeometry(0., 0., 100., 0.0, 0., 0.2, False)
 
     # sector at 45 deg on circle
-    vertex_x, vertex_y = geometry.initialize_sector_geometry(45./180.*np.pi)
+    vertex_x, vertex_y = geometry.initialize_sector_geometry(
+        45. / 180. * np.pi)
     assert_allclose(vertex_x, [65.21, 79.70, 62.03, 75.81], atol=0.01)
     assert_allclose(vertex_y, [62.03, 75.81, 65.21, 79.70], atol=0.01)
 
@@ -81,12 +82,14 @@ def test_area2():
     geometry = EllipseGeometry(100., 100., 100., 0.0, 0., 0.2, False)
 
     # sector at 45 deg on circle
-    vertex_x, vertex_y = geometry.initialize_sector_geometry(45./180.*np.pi)
+    vertex_x, vertex_y = geometry.initialize_sector_geometry(
+        45. / 180. * np.pi)
     assert_allclose(vertex_x, [165.21, 179.70, 162.03, 175.81], atol=0.01)
     assert_allclose(vertex_y, [162.03, 175.81, 165.21, 179.70], atol=0.01)
 
     # sector at 225 deg on circle
-    vertex_x, vertex_y = geometry.initialize_sector_geometry(225./180.*np.pi)
+    vertex_x, vertex_y = geometry.initialize_sector_geometry(
+        225. / 180. * np.pi)
     assert_allclose(vertex_x, [34.79, 20.30, 37.97, 24.19], atol=0.01)
     assert_allclose(vertex_y, [37.97, 24.19, 34.79, 20.30], atol=0.01)
 
@@ -114,23 +117,23 @@ def test_update_sma():
 
 
 def test_polar_angle_sector_limits():
-    geometry = EllipseGeometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
-    geometry.initialize_sector_geometry(np.pi/3)
+    geometry = EllipseGeometry(0., 0., 100., 0.3, np.pi / 4, 0.2, False)
+    geometry.initialize_sector_geometry(np.pi / 3)
     phi1, phi2 = geometry.polar_angle_sector_limits()
     assert_allclose(phi1, 1.022198, atol=0.0001)
     assert_allclose(phi2, 1.072198, atol=0.0001)
 
 
 def test_bounding_ellipses():
-    geometry = EllipseGeometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
+    geometry = EllipseGeometry(0., 0., 100., 0.3, np.pi / 4, 0.2, False)
     sma1, sma2 = geometry.bounding_ellipses()
     assert_allclose((sma1, sma2), (90.0, 110.0), atol=0.01)
 
 
 def test_radius():
-    geometry = EllipseGeometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
+    geometry = EllipseGeometry(0., 0., 100., 0.3, np.pi / 4, 0.2, False)
     r = geometry.radius(0.0)
     assert_allclose(r, 100.0, atol=0.01)
 
-    r = geometry.radius(np.pi/2)
+    r = geometry.radius(np.pi / 2)
     assert_allclose(r, 70.0, atol=0.01)

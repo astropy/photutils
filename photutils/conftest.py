@@ -4,7 +4,8 @@
 # packagename.test
 
 try:
-    from pytest_astropy_header.display import PYTEST_HEADER_MODULES, TESTED_VERSIONS
+    from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
+                                               TESTED_VERSIONS)
     ASTROPY_HEADER = True
 except ImportError:
     ASTROPY_HEADER = False

@@ -296,8 +296,8 @@ class Background2D:
         if np.sum(extra_size) != 0:
             # pad or crop the data
             if self.edge_method == 'pad':
-                pad_size = (np.ceil(self.data.shape /
-                                    self.box_size).astype(int)
+                pad_size = (np.ceil(self.data.shape
+                                    / self.box_size).astype(int)
                             * self.box_size) - self.data.shape
                 pad_width = ((0, pad_size[0]), (0, pad_size[1]))
                 data = np.pad(self.data, pad_width, mode='constant',

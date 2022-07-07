@@ -208,7 +208,7 @@ class EllipseSample:
         # walk along elliptical path, integrating at specified
         # places defined by polar vector. Need to go a bit beyond
         # full circle to ensure full coverage.
-        while phi <= np.pi*2. + phi_min:
+        while phi <= np.pi * 2. + phi_min:
             # do the integration at phi-radius position, and append
             # results to the angles, radii, and intensities lists.
             integrator.integrate(radius, phi)
@@ -244,7 +244,7 @@ class EllipseSample:
 
     def _sigma_clip(self, angles, radii, intensities):
         if self.nclip > 0:
-            for i in range(self.nclip):
+            for _ in range(self.nclip):
                 # do not use list.copy()! must be python2-compliant.
                 angles, radii, intensities = self._iter_sigma_clip(
                     angles[:], radii[:], intensities[:])
@@ -353,9 +353,9 @@ class EllipseSample:
         sigma = np.std(s[2])
         sigma_g = np.std(sg[2])
 
-        gradient_error = (np.sqrt(sigma**2 / len(s[2]) +
-                                  sigma_g**2 / len(sg[2])) /
-                          self.geometry.sma / step)
+        gradient_error = (np.sqrt(sigma**2 / len(s[2])
+                                  + sigma_g**2 / len(sg[2]))
+                          / self.geometry.sma / step)
 
         return gradient, gradient_error
 
@@ -375,11 +375,11 @@ class EllipseSample:
         y = np.zeros(len(angles))
 
         for i in range(len(x)):
-            x[i] = (radii[i] * np.cos(angles[i] + self.geometry.pa) +
-                    self.geometry.x0)
+            x[i] = (radii[i] * np.cos(angles[i] + self.geometry.pa)
+                    + self.geometry.x0)
 
-            y[i] = (radii[i] * np.sin(angles[i] + self.geometry.pa) +
-                    self.geometry.y0)
+            y[i] = (radii[i] * np.sin(angles[i] + self.geometry.pa)
+                    + self.geometry.y0)
 
         return x, y
 

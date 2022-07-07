@@ -28,6 +28,7 @@ class ApertureAttribute:
 
     def __init__(self, doc=''):
         self.__doc__ = doc
+        self.name = ''
 
     def __set_name__(self, owner, name):
         self.name = name
@@ -163,8 +164,8 @@ class ScalarAngleOrValue(ApertureAttribute):
             if not value.isscalar:
                 raise ValueError(f'{self.name!r} must be a scalar')
 
-            if not (value.unit.physical_type == 'angle' or
-                    value.unit == u.pixel):
+            if not (value.unit.physical_type == 'angle'
+                    or value.unit == u.pixel):
                 raise ValueError(f'{self.name!r} must have angular or pixel '
                                  'units')
         else:
@@ -187,8 +188,8 @@ class ScalarAngleOrPixel(ApertureAttribute):
             if not value.isscalar:
                 raise ValueError(f'{self.name!r} must be a scalar')
 
-            if not (value.unit.physical_type == 'angle' or
-                    value.unit == u.pixel):
+            if not (value.unit.physical_type == 'angle'
+                    or value.unit == u.pixel):
                 raise ValueError(f'{self.name!r} must have angular or pixel '
                                  'units')
 

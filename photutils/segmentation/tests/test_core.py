@@ -191,9 +191,9 @@ class TestSegmentationImage:
 
     @pytest.mark.skipif('not HAS_MATPLOTLIB')
     @pytest.mark.parametrize('color, alpha', (('#00000000', 0.),
-                                              ('#00000040', 64/255),
-                                              ('#00000080', 128/255),
-                                              ('#000000C0', 192/255),
+                                              ('#00000040', 64 / 255),
+                                              ('#00000080', 128 / 255),
+                                              ('#000000C0', 192 / 255),
                                               ('#000000FF', 1.)))
     def test_make_cmap_alpha(self, color, alpha):
         cmap = self.segm.make_cmap(background_color=color)

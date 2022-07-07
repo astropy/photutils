@@ -274,8 +274,8 @@ class Isophote:
             b = up_coeffs[2] / self.sma / sample.gradient
 
             def errfunc(x, phi, order, intensities):
-                return (x[0] + x[1] * np.sin(order * phi) +
-                        x[2] * np.cos(order * phi) - intensities)
+                return (x[0] + x[1] * np.sin(order * phi)
+                        + x[2] * np.cos(order * phi) - intensities)
 
             up_var_residual = np.std(errfunc(up_coeffs, self.sample.values[0],
                                              n, self.sample.values[2]),
@@ -323,11 +323,11 @@ class Isophote:
             eb = abs(errors[1] * (1. - eps) / self.grad)
             self.x0_err = np.sqrt((ea * np.cos(pa))**2 + (eb * np.sin(pa))**2)
             self.y0_err = np.sqrt((ea * np.sin(pa))**2 + (eb * np.cos(pa))**2)
-            self.ellip_err = (abs(2. * errors[4] * (1. - eps) / self.sma /
-                                  self.grad))
+            self.ellip_err = (abs(2. * errors[4] * (1. - eps) / self.sma
+                                  / self.grad))
             if abs(eps) > np.finfo(float).resolution:
-                self.pa_err = (abs(2. * errors[3] * (1. - eps) / self.sma /
-                                   self.grad / (1. - (1. - eps)**2)))
+                self.pa_err = (abs(2. * errors[3] * (1. - eps) / self.sma
+                                   / self.grad / (1. - (1. - eps)**2)))
             else:
                 self.pa_err = 0.
         except Exception:  # we want to catch everything
@@ -827,11 +827,11 @@ def _isophote_list_to_table(isophote_list, columns='main'):
     # the isophote_list parameters
 
     def __rename_properties(properties,
-                            orig_names=['int_err', 'eps', 'ellip_err',
-                                        'grad_r_error', 'nflag'],
-                            new_names=['intens_err', 'ellipticity',
+                            orig_names=('int_err', 'eps', 'ellip_err',
+                                        'grad_r_error', 'nflag'),
+                            new_names=('intens_err', 'ellipticity',
                                        'ellipticity_err', 'grad_rerror',
-                                       'nflag']):
+                                       'nflag')):
         """
         Simple renaming for some of the isophote_list parameters.
 

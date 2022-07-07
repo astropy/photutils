@@ -37,9 +37,9 @@ APERTURE_CL = [CircularAperture,
 TEST_APERTURES = list(zip(APERTURE_CL, ((3.,),
                                         (3., 5.),
                                         (3., 5., 1.),
-                                        (3., 5., 4., 12./5., 1.),
+                                        (3., 5., 4., 12. / 5., 1.),
                                         (5, 8, np.pi / 4),
-                                        (8, 12, 8, 16./3., np.pi / 8))))
+                                        (8, 12, 8, 16. / 3., np.pi / 8))))
 
 
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
@@ -199,8 +199,8 @@ class TestEllipticalAnnulus(BaseTestAperturePhotometry):
         theta = -np.pi / 4.
         self.aperture = EllipticalAnnulus(position, a_in, a_out, b_out,
                                           theta=theta)
-        self.area = (np.pi * (a_out * b_out) -
-                     np.pi * (a_in * b_out * a_in / a_out))
+        self.area = (np.pi * (a_out * b_out)
+                     - np.pi * (a_in * b_out * a_in / a_out))
         self.true_flux = self.area
 
 
@@ -256,10 +256,10 @@ class BaseTestDifferentData:
         assert_allclose(table['aperture_sum'].value, self.true_flux)
         assert table['aperture_sum'].unit, self.fluxunit
 
-        assert np.all(table['xcenter'].value ==
-                      np.transpose(self.position)[0])
-        assert np.all(table['ycenter'].value ==
-                      np.transpose(self.position)[1])
+        assert np.all(table['xcenter'].value
+                      == np.transpose(self.position)[0])
+        assert np.all(table['ycenter'].value
+                      == np.transpose(self.position)[1])
 
 
 class TestInputNDData(BaseTestDifferentData):
@@ -290,8 +290,8 @@ def test_wcs_based_photometry_to_catalogue():
 
     # Photometric unit conversion is needed to match the catalogue
     factor = (1.2 * u.arcsec) ** 2 / u.pixel
-    converted_aperture_sum = (photometry_skycoord['aperture_sum'] *
-                              factor).to(u.mJy / u.pixel)
+    converted_aperture_sum = (photometry_skycoord['aperture_sum']
+                              * factor).to(u.mJy / u.pixel)
 
     fluxes_catalog = catalog['f4_5'].filled()
 
@@ -338,8 +338,8 @@ def test_wcs_based_photometry():
                     photometry_skycoord_circ_ann_s['aperture_sum'])
 
     assert_allclose(photometry_skycoord_circ_ann['aperture_sum'],
-                    photometry_skycoord_circ['aperture_sum'] -
-                    photometry_skycoord_circ_2['aperture_sum'])
+                    photometry_skycoord_circ['aperture_sum']
+                    - photometry_skycoord_circ_2['aperture_sum'])
 
     photometry_skycoord_ell = aperture_photometry(
         data, SkyEllipticalAperture(pos_skycoord, 3 * u.arcsec,
@@ -372,8 +372,8 @@ def test_wcs_based_photometry():
                     photometry_skycoord_circ['aperture_sum'], rtol=5e-3)
 
     assert_allclose(photometry_skycoord_ell_ann['aperture_sum'],
-                    photometry_skycoord_ell['aperture_sum'] -
-                    photometry_skycoord_ell_2['aperture_sum'], rtol=1e-4)
+                    photometry_skycoord_ell['aperture_sum']
+                    - photometry_skycoord_ell_2['aperture_sum'], rtol=1e-4)
 
     photometry_skycoord_rec = aperture_photometry(
         data, SkyRectangularAperture(pos_skycoord,
@@ -403,15 +403,15 @@ def test_wcs_based_photometry():
     assert_allclose(photometry_skycoord_rec['aperture_sum'][2],
                     photometry_skycoord_rec_s['aperture_sum'])
 
-    assert np.all(photometry_skycoord_rec['aperture_sum'] >
-                  photometry_skycoord_circ['aperture_sum'])
+    assert np.all(photometry_skycoord_rec['aperture_sum']
+                  > photometry_skycoord_circ['aperture_sum'])
 
     assert_allclose(photometry_skycoord_rec_ann['aperture_sum'][2],
                     photometry_skycoord_rec_ann_s['aperture_sum'])
 
     assert_allclose(photometry_skycoord_rec_ann['aperture_sum'],
-                    photometry_skycoord_rec['aperture_sum'] -
-                    photometry_skycoord_rec_4['aperture_sum'], rtol=1e-4)
+                    photometry_skycoord_rec['aperture_sum']
+                    - photometry_skycoord_rec_4['aperture_sum'], rtol=1e-4)
 
 
 def test_basic_circular_aperture_photometry_unit():
@@ -566,7 +566,7 @@ def test_pixel_aperture_repr():
 def test_sky_aperture_repr():
     s = SkyCoord([1, 2], [3, 4], unit='deg')
 
-    aper = SkyCircularAperture(s, r=3*u.deg)
+    aper = SkyCircularAperture(s, r=3 * u.deg)
     a_repr = ('<SkyCircularAperture(<SkyCoord (ICRS): (ra, dec) in deg\n'
               '    [(1., 3.), (2., 4.)]>, r=3.0 deg)>')
     a_str = ('Aperture: SkyCircularAperture\npositions: <SkyCoord '
@@ -576,7 +576,7 @@ def test_sky_aperture_repr():
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
-    aper = SkyCircularAnnulus(s, r_in=3.*u.deg, r_out=5*u.deg)
+    aper = SkyCircularAnnulus(s, r_in=3. * u.deg, r_out=5 * u.deg)
     a_repr = ('<SkyCircularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg\n'
               '    [(1., 3.), (2., 4.)]>, r_in=3.0 deg, r_out=5.0 deg)>')
     a_str = ('Aperture: SkyCircularAnnulus\npositions: <SkyCoord '
@@ -586,7 +586,7 @@ def test_sky_aperture_repr():
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
-    aper = SkyEllipticalAperture(s, a=3*u.deg, b=5*u.deg, theta=15*u.deg)
+    aper = SkyEllipticalAperture(s, a=3 * u.deg, b=5 * u.deg, theta=15 * u.deg)
     a_repr = ('<SkyEllipticalAperture(<SkyCoord (ICRS): (ra, dec) in '
               'deg\n    [(1., 3.), (2., 4.)]>, a=3.0 deg, b=5.0 deg, '
               'theta=15.0 deg)>')
@@ -597,8 +597,8 @@ def test_sky_aperture_repr():
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
-    aper = SkyEllipticalAnnulus(s, a_in=3*u.deg, a_out=5*u.deg, b_out=3*u.deg,
-                                theta=15*u.deg)
+    aper = SkyEllipticalAnnulus(s, a_in=3 * u.deg, a_out=5 * u.deg,
+                                b_out=3 * u.deg, theta=15 * u.deg)
     a_repr = ('<SkyEllipticalAnnulus(<SkyCoord (ICRS): (ra, dec) in '
               'deg\n    [(1., 3.), (2., 4.)]>, a_in=3.0 deg, '
               'a_out=5.0 deg, b_in=1.8 deg, b_out=3.0 deg, '
@@ -611,7 +611,8 @@ def test_sky_aperture_repr():
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
-    aper = SkyRectangularAperture(s, w=3*u.deg, h=5*u.deg, theta=15*u.deg)
+    aper = SkyRectangularAperture(s, w=3 * u.deg, h=5 * u.deg,
+                                  theta=15 * u.deg)
     a_repr = ('<SkyRectangularAperture(<SkyCoord (ICRS): (ra, dec) in '
               'deg\n    [(1., 3.), (2., 4.)]>, w=3.0 deg, h=5.0 deg'
               ', theta=15.0 deg)>')
@@ -622,8 +623,8 @@ def test_sky_aperture_repr():
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
-    aper = SkyRectangularAnnulus(s, w_in=5*u.deg, w_out=10*u.deg,
-                                 h_out=6*u.deg, theta=15*u.deg)
+    aper = SkyRectangularAnnulus(s, w_in=5 * u.deg, w_out=10 * u.deg,
+                                 h_out=6 * u.deg, theta=15 * u.deg)
     a_repr = ('<SkyRectangularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg'
               '\n    [(1., 3.), (2., 4.)]>, w_in=5.0 deg, '
               'w_out=10.0 deg, h_in=3.0 deg, h_out=6.0 deg, '
@@ -647,7 +648,8 @@ def test_rectangular_bbox():
     a = RectangularAperture((50.5, 50.5), w=width, h=height, theta=0)
     assert a.bbox.shape == (height + 1, width + 1)
 
-    a = RectangularAperture((50, 50), w=width, h=height, theta=90.*np.pi/180.)
+    a = RectangularAperture((50, 50), w=width, h=height,
+                            theta=90. * np.pi / 180.)
     assert a.bbox.shape == (width, height)
 
     # test even sizes
@@ -660,7 +662,7 @@ def test_rectangular_bbox():
     assert a.bbox.shape == (height, width)
 
     a = RectangularAperture((50.5, 50.5), w=width, h=height,
-                            theta=90.*np.pi/180.)
+                            theta=90. * np.pi / 180.)
     assert a.bbox.shape == (width, height)
 
 
@@ -669,25 +671,25 @@ def test_elliptical_bbox():
     a = 7
     b = 3
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=0)
-    assert ap.bbox.shape == (2*b + 1, 2*a + 1)
+    assert ap.bbox.shape == (2 * b + 1, 2 * a + 1)
 
     ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
-    assert ap.bbox.shape == (2*b, 2*a)
+    assert ap.bbox.shape == (2 * b, 2 * a)
 
-    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.*np.pi/180.)
-    assert ap.bbox.shape == (2*a + 1, 2*b + 1)
+    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90. * np.pi / 180.)
+    assert ap.bbox.shape == (2 * a + 1, 2 * b + 1)
 
     # fractional axes
     a = 7.5
     b = 4.5
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=0)
-    assert ap.bbox.shape == (2*b, 2*a)
+    assert ap.bbox.shape == (2 * b, 2 * a)
 
     ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
-    assert ap.bbox.shape == (2*b + 1, 2*a + 1)
+    assert ap.bbox.shape == (2 * b + 1, 2 * a + 1)
 
-    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.*np.pi/180.)
-    assert ap.bbox.shape == (2*a, 2*b)
+    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90. * np.pi / 180.)
+    assert ap.bbox.shape == (2 * a, 2 * b)
 
 
 @pytest.mark.skipif('not HAS_GWCS')
@@ -713,7 +715,7 @@ def test_to_sky_pixel(wcs_type):
     assert_allclose(ap.r_out, ap2.r_out)
 
     ap = EllipticalAperture(((12.3, 15.7), (48.19, 98.14)), a=3.14, b=5.32,
-                            theta=103.*np.pi/180.)
+                            theta=103. * np.pi / 180.)
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.a, ap2.a)
@@ -721,7 +723,7 @@ def test_to_sky_pixel(wcs_type):
     assert_allclose(ap.theta, ap2.theta)
 
     ap = EllipticalAnnulus(((12.3, 15.7), (48.19, 98.14)), a_in=3.14,
-                           a_out=15.32, b_out=4.89, theta=103.*np.pi/180.)
+                           a_out=15.32, b_out=4.89, theta=103. * np.pi / 180.)
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.a_in, ap2.a_in)
@@ -730,7 +732,7 @@ def test_to_sky_pixel(wcs_type):
     assert_allclose(ap.theta, ap2.theta)
 
     ap = RectangularAperture(((12.3, 15.7), (48.19, 98.14)), w=3.14, h=5.32,
-                             theta=103.*np.pi/180.)
+                             theta=103. * np.pi / 180.)
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.w, ap2.w)
@@ -738,7 +740,7 @@ def test_to_sky_pixel(wcs_type):
     assert_allclose(ap.theta, ap2.theta)
 
     ap = RectangularAnnulus(((12.3, 15.7), (48.19, 98.14)), w_in=3.14,
-                            w_out=15.32, h_out=4.89, theta=103.*np.pi/180.)
+                            w_out=15.32, h_out=4.89, theta=103. * np.pi / 180.)
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.w_in, ap2.w_in)
@@ -830,7 +832,7 @@ def test_scalar_skycoord():
     data = make_4gaussians_image()
     wcs = make_wcs(data.shape)
     skycoord = wcs.pixel_to_world(90, 60)
-    aper = SkyCircularAperture(skycoord, r=0.1*u.arcsec)
+    aper = SkyCircularAperture(skycoord, r=0.1 * u.arcsec)
     tbl = aperture_photometry(data, aper, wcs=wcs)
     assert isinstance(tbl['sky_center'], SkyCoord)
 
@@ -843,10 +845,10 @@ def test_nddata_input():
     unit = 'adu'
     wcs = make_wcs(data.shape)
     skycoord = wcs.pixel_to_world(10, 10)
-    aper = SkyCircularAperture(skycoord, r=0.7*u.arcsec)
+    aper = SkyCircularAperture(skycoord, r=0.7 * u.arcsec)
 
-    tbl1 = aperture_photometry(data*u.adu, aper, error=error*u.adu, mask=mask,
-                               wcs=wcs)
+    tbl1 = aperture_photometry(data * u.adu, aper, error=error * u.adu,
+                               mask=mask, wcs=wcs)
 
     uncertainty = StdDevUncertainty(error)
     nddata = NDData(data, uncertainty=uncertainty, mask=mask, wcs=wcs,

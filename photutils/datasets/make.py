@@ -67,7 +67,6 @@ def apply_poisson_noise(data, seed=None):
         data2 = apply_poisson_noise(data1, seed=0)
 
         # plot the images
-        import matplotlib.pyplot as plt
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
         ax1.imshow(data1, origin='lower', interpolation='nearest')
         ax1.set_title('Original image')
@@ -408,6 +407,7 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
         :include-source:
 
         from astropy.modeling.models import Moffat2D
+        import matplotlib.pyplot as plt
         from photutils.datasets import (make_random_models_table,
                                         make_model_sources_image)
 
@@ -499,8 +499,13 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
     .. plot::
         :include-source:
 
-        # make a table of Gaussian sources
+        import numpy as np
         from astropy.table import QTable
+        import matplotlib.pyplot as plt
+        from photutils.datasets import make_gaussian_sources_image
+        from photutils.datasets import make_noise_image
+
+        # make a table of Gaussian sources
         table = QTable()
         table['amplitude'] = [50, 70, 150, 210]
         table['x_mean'] = [160, 25, 150, 90]
@@ -511,8 +516,6 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
 
         # make an image of the sources without noise, with Gaussian
         # noise, and with Poisson noise
-        from photutils.datasets import make_gaussian_sources_image
-        from photutils.datasets import make_noise_image
         shape = (100, 200)
         image1 = make_gaussian_sources_image(shape, table)
         image2 = image1 + make_noise_image(shape, distribution='gaussian',
@@ -521,7 +524,6 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
                                            mean=5.)
 
         # plot the images
-        import matplotlib.pyplot as plt
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 12))
         ax1.imshow(image1, origin='lower', interpolation='nearest')
         ax1.set_title('Original image')
@@ -545,8 +547,8 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
     colnames = source_table.colnames
     if 'flux' in colnames and 'amplitude' not in colnames:
         source_table = source_table.copy()
-        source_table['amplitude'] = (source_table['flux'] /
-                                     (2. * np.pi * xstd * ystd))
+        source_table['amplitude'] = (source_table['flux']
+                                     / (2. * np.pi * xstd * ystd))
 
     return make_model_sources_image(shape, model, source_table,
                                     oversample=oversample)
@@ -585,8 +587,12 @@ def make_gaussian_prf_sources_image(shape, source_table):
     .. plot::
         :include-source:
 
-        # make a table of Gaussian sources
+        import matplotlib.pyplot as plt
         from astropy.table import QTable
+        from photutils.datasets import make_gaussian_prf_sources_image
+        from photutils.datasets import make_noise_image
+
+        # make a table of Gaussian sources
         table = QTable()
         table['amplitude'] = [50, 70, 150, 210]
         table['x_0'] = [160, 25, 150, 90]
@@ -595,17 +601,14 @@ def make_gaussian_prf_sources_image(shape, source_table):
 
         # make an image of the sources without noise, with Gaussian
         # noise, and with Poisson noise
-        from photutils.datasets import make_gaussian_prf_sources_image
-        from photutils.datasets import make_noise_image
         shape = (100, 200)
         image1 = make_gaussian_prf_sources_image(shape, table)
         image2 = (image1 + make_noise_image(shape, distribution='gaussian',
                                             mean=5., stddev=5.))
-        image3 =  (image1 + make_noise_image(shape, distribution='poisson',
-                                             mean=5.))
+        image3 = (image1 + make_noise_image(shape, distribution='poisson',
+                                            mean=5.))
 
         # plot the images
-        import matplotlib.pyplot as plt
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 12))
         ax1.imshow(image1, origin='lower', interpolation='nearest')
         ax1.set_title('Original image')
@@ -625,8 +628,8 @@ def make_gaussian_prf_sources_image(shape, source_table):
     colnames = source_table.colnames
     if 'flux' not in colnames and 'amplitude' in colnames:
         source_table = source_table.copy()
-        source_table['flux'] = (source_table['amplitude'] *
-                                (2. * np.pi * sigma * sigma))
+        source_table['flux'] = (source_table['amplitude']
+                                * (2. * np.pi * sigma * sigma))
 
     return make_model_sources_image(shape, model, source_table,
                                     oversample=1)
@@ -662,6 +665,7 @@ def make_4gaussians_image(noise=True):
     .. plot::
         :include-source:
 
+        import matplotlib.pyplot as plt
         from photutils.datasets import make_4gaussians_image
         image = make_4gaussians_image()
         plt.imshow(image, origin='lower', interpolation='nearest')
@@ -714,6 +718,7 @@ def make_100gaussians_image(noise=True):
     .. plot::
         :include-source:
 
+        import matplotlib.pyplot as plt
         from photutils.datasets import make_100gaussians_image
         image = make_100gaussians_image()
         plt.imshow(image, origin='lower', interpolation='nearest')
@@ -860,8 +865,8 @@ def make_gwcs(shape, galactic=False):
     rho = np.pi / 3.
     scale = 0.1 / 3600.  # 0.1 arcsec/pixel in deg/pix
 
-    shift_by_crpix = (models.Shift((-shape[1] / 2) + 1) &
-                      models.Shift((-shape[0] / 2) + 1))
+    shift_by_crpix = (models.Shift((-shape[1] / 2) + 1)
+                      & models.Shift((-shape[0] / 2) + 1))
 
     cd_matrix = np.array([[-scale * np.cos(rho), scale * np.sin(rho)],
                           [scale * np.sin(rho), scale * np.cos(rho)]])

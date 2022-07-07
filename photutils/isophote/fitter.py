@@ -7,7 +7,6 @@ import math
 
 from astropy import log
 import numpy as np
-import numpy.ma as ma
 
 from .harmonics import (first_and_second_harmonic_function,
                         fit_first_and_second_harmonics)
@@ -179,7 +178,7 @@ class EllipseFitter:
                 return Isophote(sample, i + 1, False, 3)
 
             # Mask out coefficients that control fixed ellipse parameters.
-            free_coeffs = ma.masked_array(coeffs[1:], mask=fixed_parameters)
+            free_coeffs = np.ma.masked_array(coeffs[1:], mask=fixed_parameters)
 
             # Largest non-masked harmonic in absolute value drives the
             # correction.
@@ -270,10 +269,10 @@ class EllipseFitter:
         # check if ellipse geometry diverged.
         if abs(sample.geometry.eps > MAX_EPS):
             proceed = False
-        if (sample.geometry.x0 < 1. or
-                sample.geometry.x0 > sample.image.shape[1] or
-                sample.geometry.y0 < 1. or
-                sample.geometry.y0 > sample.image.shape[0]):
+        if (sample.geometry.x0 < 1.
+                or sample.geometry.x0 > sample.image.shape[1]
+                or sample.geometry.y0 < 1.
+                or sample.geometry.y0 > sample.image.shape[0]):
             proceed = False
 
         # See if eps == 0 (round isophote) was crossed.
@@ -344,8 +343,8 @@ class _AngleCorrector(_ParameterCorrector):
         sma = sample.geometry.sma
         gradient = sample.gradient
 
-        correction = (harmonic * 2. * (1. - eps) / sma / gradient /
-                      ((1. - eps)**2 - 1.))
+        correction = (harmonic * 2. * (1. - eps) / sma / gradient
+                      / ((1. - eps)**2 - 1.))
 
         # '% np.pi' to make angle lie between 0 and np.pi radians
         new_pa = (sample.geometry.pa + correction) % np.pi

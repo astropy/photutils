@@ -43,12 +43,12 @@ class TestFittableImageModel:
         model_norm2 = FittableImageModel(self.gm(xx, yy), normalize=True,
                                          normalization_correction=2)
         assert not np.allclose(model_norm2(0, 0), self.gm(0, 0))
-        assert_allclose(model_norm(0, 0), model_norm2(0, 0)*2)
+        assert_allclose(model_norm(0, 0), model_norm2(0, 0) * 2)
         assert_allclose(np.sum(model_norm2(xx, yy)), 0.5)
 
     def test_fittable_image_model_oversampling(self):
         oversamp = 3  # oversampling factor
-        yy, xx = np.mgrid[-3:3.00001:(1/oversamp), -3:3.00001:(1/oversamp)]
+        yy, xx = np.mgrid[-3:3.00001:(1 / oversamp), -3:3.00001:(1 / oversamp)]
 
         im = self.gm(xx, yy)
         assert im.shape[0] > 7
@@ -138,8 +138,8 @@ class TestGriddedPSFModel:
         assert len(self.psfmodel.meta) == 2
         assert len(self.psfmodel.meta['grid_xypos']) == 16
         assert self.psfmodel.oversampling == 4
-        assert (self.psfmodel.meta['oversampling'] ==
-                self.psfmodel.oversampling)
+        assert (self.psfmodel.meta['oversampling']
+                == self.psfmodel.oversampling)
         assert self.psfmodel.data.shape == (16, 101, 101)
 
     @pytest.mark.skipif('not HAS_SCIPY')
@@ -249,10 +249,10 @@ class TestGriddedPSFModel:
 
         shape = (200, 200)
         data = np.zeros(shape)
-        eval_xshape = (np.ceil(self.psfmodel.data.shape[2] /
-                               self.psfmodel.oversampling)).astype(int)
-        eval_yshape = (np.ceil(self.psfmodel.data.shape[1] /
-                               self.psfmodel.oversampling)).astype(int)
+        eval_xshape = (np.ceil(self.psfmodel.data.shape[2]
+                               / self.psfmodel.oversampling)).astype(int)
+        eval_yshape = (np.ceil(self.psfmodel.data.shape[1]
+                               / self.psfmodel.oversampling)).astype(int)
 
         xx = [40, 50, 160, 160]
         yy = [60, 150, 50, 140]
@@ -263,14 +263,10 @@ class TestGriddedPSFModel:
             x1 = x0 + eval_xshape
             y1 = y0 + eval_yshape
 
-            if x0 < 0:
-                x0 = 0
-            if y0 < 0:
-                y0 = 0
-            if x1 > shape[1]:
-                x1 = shape[1]
-            if y1 > shape[0]:
-                y1 = shape[0]
+            x0 = max(x0, 0)
+            y0 = max(y0, 0)
+            x1 = min(x1, shape[1])
+            y1 = min(y1, shape[0])
 
             y, x = np.mgrid[y0:y1, x0:x1]
             data[y, x] += self.psfmodel.evaluate(x=x, y=y, flux=zzi, x_0=xxi,
@@ -318,7 +314,7 @@ class TestPRFAdapter:
     def normalize_moffat(self, mof):
         # this is the analytic value needed to get a total flux of 1
         mof = mof.copy()
-        mof.amplitude = (mof.alpha-1)/(np.pi*mof.gamma**2)
+        mof.amplitude = (mof.alpha - 1) / (np.pi * mof.gamma**2)
         return mof
 
     @pytest.mark.parametrize("adapterkwargs", [
@@ -351,7 +347,7 @@ class TestPRFAdapter:
 
         # first check that the PRF over a central grid ends up summing to the
         # integrand over the whole PSF
-        xg, yg = np.meshgrid(*([(-1, 0, 1)]*2))
+        xg, yg = np.meshgrid(*([(-1, 0, 1)] * 2))
         evalmod = prf1(xg, yg)
 
         if adapterkwargs['renormalize_psf']:
@@ -375,8 +371,8 @@ class TestPRFAdapter:
         mof2 = self.normalize_moffat(Moffat2D(gamma=2, alpha=4.8))
         prf2 = PRFAdapter(mof2, **adapterkwargs)
 
-        xg1, yg1 = np.meshgrid(*([(-0.5, 0.5)]*2))
-        xg2, yg2 = np.meshgrid(*([(-1.5, -0.5, 0.5, 1.5)]*2))
+        xg1, yg1 = np.meshgrid(*([(-0.5, 0.5)] * 2))
+        xg2, yg2 = np.meshgrid(*([(-1.5, -0.5, 0.5, 1.5)] * 2))
 
         eval11 = prf1(xg1, yg1)
         eval22 = prf2(xg2, yg2)
@@ -384,4 +380,4 @@ class TestPRFAdapter:
         integrand, itol = dblquad(mof1, -2, 2, lambda x: -2, lambda x: 2)
         # it's a bit of a guess that the above itol is appropriate, but
         # it should be close
-        assert_allclose(np.sum(eval11), np.sum(eval22), atol=itol*100)
+        assert_allclose(np.sum(eval11), np.sum(eval22), atol=itol * 100)

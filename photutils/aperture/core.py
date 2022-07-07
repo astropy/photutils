@@ -38,7 +38,7 @@ class Aperture(metaclass=abc.ABCMeta):
             raise TypeError(f'A scalar {self.__class__.__name__!r} object '
                             'cannot be indexed')
 
-        kwargs = dict()
+        kwargs = {}
         for param in self._params:
             if param == 'positions':
                 # slice the positions array
@@ -160,7 +160,7 @@ class PixelAperture(Aperture):
         """
         A dictionary of default matplotlib.patches.Patch properties.
         """
-        mpl_params = dict()
+        mpl_params = {}
 
         # matplotlib.patches.Patch default is ``fill=True``
         mpl_params['fill'] = False
@@ -663,7 +663,8 @@ class PixelAperture(Aperture):
             value = getattr(self, param)
             if param == 'positions':
                 continue
-            elif param == 'theta':
+
+            if param == 'theta':
                 # photutils aperture sky angles are defined as the PA of
                 # the semimajor axis (i.e., relative to the WCS latitude
                 # axis). region sky angles are defined relative to the WCS
@@ -671,6 +672,7 @@ class PixelAperture(Aperture):
                 value = (value * u.rad) - angle.to(u.rad)
             else:
                 value = (value * u.pix * pixscale).to(u.arcsec)
+
             sky_params[param] = value
 
         return sky_params
@@ -745,7 +747,8 @@ class SkyAperture(Aperture):
             value = getattr(self, param)
             if param == 'positions':
                 continue
-            elif param == 'theta':
+
+            if param == 'theta':
                 # photutils aperture sky angles are defined as the PA of
                 # the semimajor axis (i.e., relative to the WCS latitude
                 # axis). region sky angles are defined relative to the WCS
@@ -756,6 +759,7 @@ class SkyAperture(Aperture):
                     value = (value / pixscale).to(u.pixel).value
                 else:
                     value = value.value
+
             pixel_params[param] = value
 
         return pixel_params

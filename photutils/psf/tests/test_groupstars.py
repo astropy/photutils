@@ -43,16 +43,16 @@ class TestDAOGROUP:
         the centroid of a star.
         """
 
-        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
-        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
+        x_0 = np.array([0, np.sqrt(2) / 4, np.sqrt(2) / 4, -np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
+        y_0 = np.array([0, np.sqrt(2) / 4, -np.sqrt(2) / 4, np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
         x_1 = x_0 + 2.0
         first_group = Table([x_0, y_0, np.arange(len(x_0)) + 1,
                             np.ones(len(x_0), dtype=int)],
                             names=('x_0', 'y_0', 'id', 'group_id'))
         second_group = Table([x_1, y_0, len(x_0) + np.arange(len(x_0)) + 1,
-                              2*np.ones(len(x_0), dtype=int)],
+                              2 * np.ones(len(x_0), dtype=int)],
                              names=('x_0', 'y_0', 'id', 'group_id'))
         starlist = vstack([first_group, second_group])
         daogroup = DAOGroup(crit_separation=0.6)
@@ -83,7 +83,7 @@ class TestDAOGROUP:
                              np.arange(5) + 1, np.ones(5, dtype=int)],
                             names=('x_0', 'y_0', 'id', 'group_id'))
         second_group = Table([np.zeros(5), np.linspace(2, 3, 5),
-                              6 + np.arange(5), 2*np.ones(5, dtype=int)],
+                              6 + np.arange(5), 2 * np.ones(5, dtype=int)],
                              names=('x_0', 'y_0', 'id', 'group_id'))
         starlist = vstack([first_group, second_group])
         daogroup = DAOGroup(crit_separation=0.3)
@@ -114,7 +114,7 @@ class TestDAOGROUP:
                              np.arange(5) + 1, np.ones(5, dtype=int)],
                             names=('x_0', 'y_0', 'id', 'group_id'))
         second_group = Table([np.linspace(2, 3, 5), np.zeros(5),
-                              6 + np.arange(5), 2*np.ones(5, dtype=int)],
+                              6 + np.arange(5), 2 * np.ones(5, dtype=int)],
                              names=('x_0', 'y_0', 'id', 'group_id'))
         starlist = vstack([first_group, second_group])
         daogroup = DAOGroup(crit_separation=0.3)
@@ -175,17 +175,17 @@ class TestDAOGROUP:
                0       0.5       1      1.5       2       2.5       3
         """
 
-        first_group = Table([1.5*np.ones(5), np.linspace(0, 1, 5),
+        first_group = Table([1.5 * np.ones(5), np.linspace(0, 1, 5),
                              np.arange(5) + 1, np.ones(5, dtype=int)],
                             names=('x_0', 'y_0', 'id', 'group_id'))
-        second_group = Table([1.5*np.ones(5), np.linspace(2, 3, 5),
-                              6 + np.arange(5), 2*np.ones(5, dtype=int)],
+        second_group = Table([1.5 * np.ones(5), np.linspace(2, 3, 5),
+                              6 + np.arange(5), 2 * np.ones(5, dtype=int)],
                              names=('x_0', 'y_0', 'id', 'group_id'))
-        third_group = Table([np.linspace(0, 1, 5), 1.5*np.ones(5),
-                             11 + np.arange(5), 3*np.ones(5, dtype=int)],
+        third_group = Table([np.linspace(0, 1, 5), 1.5 * np.ones(5),
+                             11 + np.arange(5), 3 * np.ones(5, dtype=int)],
                             names=('x_0', 'y_0', 'id', 'group_id'))
-        fourth_group = Table([np.linspace(2, 3, 5), 1.5*np.ones(5),
-                              16 + np.arange(5), 4*np.ones(5, dtype=int)],
+        fourth_group = Table([np.linspace(2, 3, 5), 1.5 * np.ones(5),
+                              16 + np.arange(5), 4 * np.ones(5, dtype=int)],
                              names=('x_0', 'y_0', 'id', 'group_id'))
         starlist = vstack([first_group, second_group, third_group,
                            fourth_group])
@@ -213,20 +213,20 @@ class TestDAOGROUP:
                     0          1          2          3          4
         """
 
-        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
-        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
+        x_0 = np.array([0, np.sqrt(2) / 4, np.sqrt(2) / 4, -np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
+        y_0 = np.array([0, np.sqrt(2) / 4, -np.sqrt(2) / 4, np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
         x_1 = x_0 + 2.0
         x_2 = x_0 + 4.0
         first_group = Table([x_0, y_0, np.arange(5) + 1,
                              np.ones(5, dtype=int)],
                             names=('x_0', 'y_0', 'id', 'group_id'))
         second_group = Table([x_1, y_0, 6 + np.arange(5),
-                              2*np.ones(5, dtype=int)],
+                              2 * np.ones(5, dtype=int)],
                              names=('x_0', 'y_0', 'id', 'group_id'))
         third_group = Table([x_2, y_0, 11 + np.arange(5),
-                             3*np.ones(5, dtype=int)],
+                             3 * np.ones(5, dtype=int)],
                             names=('x_0', 'y_0', 'id', 'group_id'))
         starlist = vstack([first_group, second_group, third_group])
         daogroup = DAOGroup(crit_separation=0.6)
@@ -237,10 +237,10 @@ class TestDAOGROUP:
         """
         Test case when all sources are isolated.
         """
-        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
-        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
+        x_0 = np.array([0, np.sqrt(2) / 4, np.sqrt(2) / 4, -np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
+        y_0 = np.array([0, np.sqrt(2) / 4, -np.sqrt(2) / 4, np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
                           np.arange(len(x_0)) + 1],
                          names=('x_0', 'y_0', 'id', 'group_id'))
@@ -249,10 +249,10 @@ class TestDAOGROUP:
         assert_table_almost_equal(starlist, test_starlist)
 
     def test_id_column(self):
-        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
-        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
+        x_0 = np.array([0, np.sqrt(2) / 4, np.sqrt(2) / 4, -np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
+        y_0 = np.array([0, np.sqrt(2) / 4, -np.sqrt(2) / 4, np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
                           np.arange(len(x_0)) + 1],
                          names=('x_0', 'y_0', 'id', 'group_id'))
@@ -261,10 +261,10 @@ class TestDAOGROUP:
         assert_table_almost_equal(starlist, test_starlist)
 
     def test_id_column_raise_error(self):
-        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
-        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
+        x_0 = np.array([0, np.sqrt(2) / 4, np.sqrt(2) / 4, -np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
+        y_0 = np.array([0, np.sqrt(2) / 4, -np.sqrt(2) / 4, np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)),
                           np.arange(len(x_0)) + 1],
                          names=('x_0', 'y_0', 'id', 'group_id'))
@@ -275,35 +275,35 @@ class TestDAOGROUP:
 
 @pytest.mark.skipif('not HAS_SKLEARN')
 class TestDBSCANGroup:
-    def test_group_stars_one(object):
-        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
-        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
+    def test_group_stars_one(self):
+        x_0 = np.array([0, np.sqrt(2) / 4, np.sqrt(2) / 4, -np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
+        y_0 = np.array([0, np.sqrt(2) / 4, -np.sqrt(2) / 4, np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
         x_1 = x_0 + 2.0
         first_group = Table([x_0, y_0, np.arange(len(x_0)) + 1,
                             np.ones(len(x_0), dtype=int)],
                             names=('x_0', 'y_0', 'id', 'group_id'))
         second_group = Table([x_1, y_0, len(x_0) + np.arange(len(x_0)) + 1,
-                              2*np.ones(len(x_0), dtype=int)],
+                              2 * np.ones(len(x_0), dtype=int)],
                              names=('x_0', 'y_0', 'id', 'group_id'))
         starlist = vstack([first_group, second_group])
         dbscan = DBSCANGroup(crit_separation=0.6)
         test_starlist = dbscan(starlist['x_0', 'y_0', 'id'])
         assert_table_almost_equal(starlist, test_starlist)
 
-    def test_group_stars_two(object):
-        first_group = Table([1.5*np.ones(5), np.linspace(0, 1, 5),
+    def test_group_stars_two(self):
+        first_group = Table([1.5 * np.ones(5), np.linspace(0, 1, 5),
                              np.arange(5) + 1, np.ones(5, dtype=int)],
                             names=('x_0', 'y_0', 'id', 'group_id'))
-        second_group = Table([1.5*np.ones(5), np.linspace(2, 3, 5),
-                              6 + np.arange(5), 2*np.ones(5, dtype=int)],
+        second_group = Table([1.5 * np.ones(5), np.linspace(2, 3, 5),
+                              6 + np.arange(5), 2 * np.ones(5, dtype=int)],
                              names=('x_0', 'y_0', 'id', 'group_id'))
-        third_group = Table([np.linspace(0, 1, 5), 1.5*np.ones(5),
-                             11 + np.arange(5), 3*np.ones(5, dtype=int)],
+        third_group = Table([np.linspace(0, 1, 5), 1.5 * np.ones(5),
+                             11 + np.arange(5), 3 * np.ones(5, dtype=int)],
                             names=('x_0', 'y_0', 'id', 'group_id'))
-        fourth_group = Table([np.linspace(2, 3, 5), 1.5*np.ones(5),
-                              16 + np.arange(5), 4*np.ones(5, dtype=int)],
+        fourth_group = Table([np.linspace(2, 3, 5), 1.5 * np.ones(5),
+                              16 + np.arange(5), 4 * np.ones(5, dtype=int)],
                              names=('x_0', 'y_0', 'id', 'group_id'))
         starlist = vstack([first_group, second_group, third_group,
                            fourth_group])
@@ -315,10 +315,10 @@ class TestDBSCANGroup:
         """
         Test case when all sources are isolated.
         """
-        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
-        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
+        x_0 = np.array([0, np.sqrt(2) / 4, np.sqrt(2) / 4, -np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
+        y_0 = np.array([0, np.sqrt(2) / 4, -np.sqrt(2) / 4, np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
                           np.arange(len(x_0)) + 1],
                          names=('x_0', 'y_0', 'id', 'group_id'))
@@ -327,10 +327,10 @@ class TestDBSCANGroup:
         assert_table_almost_equal(starlist, test_starlist)
 
     def test_id_column(self):
-        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
-        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
+        x_0 = np.array([0, np.sqrt(2) / 4, np.sqrt(2) / 4, -np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
+        y_0 = np.array([0, np.sqrt(2) / 4, -np.sqrt(2) / 4, np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
                           np.arange(len(x_0)) + 1],
                          names=('x_0', 'y_0', 'id', 'group_id'))
@@ -339,10 +339,10 @@ class TestDBSCANGroup:
         assert_table_almost_equal(starlist, test_starlist)
 
     def test_id_column_raise_error(self):
-        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
-        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
-                        -np.sqrt(2)/4])
+        x_0 = np.array([0, np.sqrt(2) / 4, np.sqrt(2) / 4, -np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
+        y_0 = np.array([0, np.sqrt(2) / 4, -np.sqrt(2) / 4, np.sqrt(2) / 4,
+                        -np.sqrt(2) / 4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)),
                           np.arange(len(x_0)) + 1],
                          names=('x_0', 'y_0', 'id', 'group_id'))

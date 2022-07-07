@@ -5,7 +5,6 @@ Tests for the integrator module.
 
 from astropy.io import fits
 import numpy as np
-import numpy.ma as ma
 from numpy.testing import assert_allclose
 import pytest
 
@@ -25,7 +24,7 @@ class TestData:
 
     def make_sample(self, masked=False, sma=40., integrmode=BILINEAR):
         if masked:
-            data = ma.masked_values(self.data, 200., atol=10.0, rtol=0.)
+            data = np.ma.masked_values(self.data, 200., atol=10.0, rtol=0.)
         else:
             data = self.data
         sample = EllipseSample(data, sma, integrmode=integrmode)

@@ -510,7 +510,7 @@ class SkyRectangularAperture(SkyAperture):
     theta = ScalarAngle('The position angle (in angular units) of the '
                         'rectangle "width" side.')
 
-    def __init__(self, positions, w, h, theta=0.*u.deg):
+    def __init__(self, positions, w, h, theta=0. * u.deg):
         if w.unit.physical_type != h.unit.physical_type:
             raise ValueError('"w" and "h" should either both be angles or '
                              'in pixels')
@@ -603,7 +603,7 @@ class SkyRectangularAnnulus(SkyAperture):
                         'rectangle "width" side.')
 
     def __init__(self, positions, w_in, w_out, h_out, h_in=None,
-                 theta=0.*u.deg):
+                 theta=0. * u.deg):
         if w_in.unit.physical_type != w_out.unit.physical_type:
             raise ValueError('w_in and w_out should either both be angles or '
                              'in pixels')

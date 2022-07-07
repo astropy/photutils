@@ -227,8 +227,9 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         patches = []
         theta_deg = self._theta_radians * 180. / np.pi
         for xy_position in xy_positions:
-            patches.append(mpatches.Ellipse(xy_position, 2.*self.a, 2.*self.b,
-                                            theta_deg, **patch_kwargs))
+            patches.append(mpatches.Ellipse(xy_position, 2. * self.a,
+                                            2. * self.b, theta_deg,
+                                            **patch_kwargs))
 
         if self.isscalar:
             return patches[0]
@@ -393,10 +394,10 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         patches = []
         theta_deg = self._theta_radians * 180. / np.pi
         for xy_position in xy_positions:
-            patch_inner = mpatches.Ellipse(xy_position, 2.*self.a_in,
-                                           2.*self.b_in, theta_deg)
-            patch_outer = mpatches.Ellipse(xy_position, 2.*self.a_out,
-                                           2.*self.b_out, theta_deg)
+            patch_inner = mpatches.Ellipse(xy_position, 2. * self.a_in,
+                                           2. * self.b_in, theta_deg)
+            patch_outer = mpatches.Ellipse(xy_position, 2. * self.a_out,
+                                           2. * self.b_out, theta_deg)
             path = self._make_annulus_path(patch_inner, patch_outer)
             patches.append(mpatches.PathPatch(path, **patch_kwargs))
 
@@ -472,7 +473,7 @@ class SkyEllipticalAperture(SkyAperture):
     theta = ScalarAngle('The position angle in angular units of the ellipse '
                         'semimajor axis.')
 
-    def __init__(self, positions, a, b, theta=0.*u.deg):
+    def __init__(self, positions, a, b, theta=0. * u.deg):
         if a.unit.physical_type != b.unit.physical_type:
             raise ValueError('a and b should either both be angles '
                              'or in pixels')
@@ -561,7 +562,7 @@ class SkyEllipticalAnnulus(SkyAperture):
                         'semimajor axis.')
 
     def __init__(self, positions, a_in, a_out, b_out, b_in=None,
-                 theta=0.*u.deg):
+                 theta=0. * u.deg):
         if a_in.unit.physical_type != a_out.unit.physical_type:
             raise ValueError('a_in and a_out should either both be angles '
                              'or in pixels')

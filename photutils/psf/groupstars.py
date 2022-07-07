@@ -105,11 +105,11 @@ class DAOGroup(GroupStarsBase):
             raise ValueError('crit_separation is expected to be either float'
                              f'or int. Received {type(crit_separation)}.')
 
-        elif crit_separation < 0.0:
+        if crit_separation < 0.0:
             raise ValueError('crit_separation is expected to be a positive '
                              f'real number. Got {crit_separation}.')
-        else:
-            self._crit_separation = crit_separation
+
+        self._crit_separation = crit_separation
 
     def group_stars(self, starlist):
         cstarlist = starlist.copy()
@@ -130,7 +130,7 @@ class DAOGroup(GroupStarsBase):
             init_star = cstarlist[np.where(cstarlist['group_id'] == 0)[0][0]]
             index = self.find_group(init_star,
                                     cstarlist[cstarlist['group_id'] == 0])
-            cstarlist['group_id'][index-1] = n
+            cstarlist['group_id'][index - 1] = n
             k = 1
             K = len(index)
             while k < K:
@@ -138,7 +138,7 @@ class DAOGroup(GroupStarsBase):
                 tmp_index = self.find_group(
                     init_star, cstarlist[cstarlist['group_id'] == 0])
                 if len(tmp_index) > 0:
-                    cstarlist['group_id'][tmp_index-1] = n
+                    cstarlist['group_id'][tmp_index - 1] = n
                     index = np.append(index, tmp_index)
                     K = len(index)
                 k += 1
@@ -239,6 +239,6 @@ class DBSCANGroup(GroupStarsBase):
         dbscan = DBSCAN(eps=self.crit_separation,
                         min_samples=self.min_samples, metric=self.metric,
                         algorithm=self.algorithm, leaf_size=self.leaf_size)
-        cstarlist['group_id'] = (dbscan.fit(pos_stars).labels_ +
-                                 np.ones(len(cstarlist), dtype=int))
+        cstarlist['group_id'] = (dbscan.fit(pos_stars).labels_
+                                 + np.ones(len(cstarlist), dtype=int))
         return cstarlist
