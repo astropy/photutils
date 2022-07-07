@@ -141,6 +141,7 @@ class FittableImageModel(Fittable2DModel):
             raise ValueError("'normalization_correction' must be strictly "
                              "positive.")
         self._normalization_correction = normalization_correction
+        self._normalization_constant = 1.0 / self._normalization_correction
 
         self._data = np.array(data, copy=True, dtype=float)
 
@@ -187,7 +188,7 @@ class FittableImageModel(Fittable2DModel):
         """
         return np.sum(self._data, dtype=float)
 
-    def _compute_normalization(self, normalize):
+    def _compute_normalization(self, normalize=True):
         r"""
         Helper function that computes (corrected) normalization factor
         of the original image data. This quantity is computed as the
@@ -473,8 +474,8 @@ class FittableImageModel(Fittable2DModel):
         if self._fill_value is not None:
             # find indices of pixels that are outside the input pixel grid and
             # set these pixels to the 'fill_value':
-            invalid = (((xi < 0) | (xi > self._nx - 1)) |
-                       ((yi < 0) | (yi > self._ny - 1)))
+            invalid = (((xi < 0) | (xi > self._nx - 1))
+                       | ((yi < 0) | (yi > self._ny - 1)))
             evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
@@ -545,29 +546,33 @@ class EPSFModel(FittableImageModel):
         flux, _ = aper.do_photometry(self._data, method='exact')
         return flux[0] / np.product(self.oversampling)
 
-    def _compute_normalization(self):
+    def _compute_normalization(self, normalize=True):
         """
         Helper function that computes (corrected) normalization factor
         of the original image data. For the ePSF this is defined as the
         sum over the inner N (default=5.5) pixels of the non-oversampled
         image. Will re-normalize the data to the value calculated.
         """
-        if self._img_norm is None:
-            if np.sum(self._data) == 0:
-                self._img_norm = 1
+        if normalize:
+            if self._img_norm is None:
+                if np.sum(self._data) == 0:
+                    self._img_norm = 1
+                else:
+                    self._img_norm = self._compute_raw_image_norm()
+
+            if self._img_norm != 0.0 and np.isfinite(self._img_norm):
+                self._data /= (self._img_norm * self._normalization_correction)
+                self._normalization_status = 0
             else:
-                self._img_norm = self._compute_raw_image_norm()
-
-        if self._img_norm != 0.0 and np.isfinite(self._img_norm):
-            self._data /= (self._img_norm * self._normalization_correction)
-            self._normalization_status = 0
+                self._normalization_status = 1
+                self._img_norm = 1
+                warnings.warn('Overflow encountered while computing '
+                              'normalization constant. Normalization '
+                              'constant will be set to 1.', NonNormalizable)
         else:
-            self._normalization_status = 1
-            self._img_norm = 1
-            warnings.warn("Overflow encountered while computing "
-                          "normalization constant. Normalization "
-                          "constant will be set to 1.", NonNormalizable)
+            self._normalization_status = 2
 
+    @property
     def normalized_data(self):
         """
         Overloaded dummy function that also returns self._data, as the
@@ -643,10 +648,7 @@ class EPSFModel(FittableImageModel):
             degx = 3
             degy = 3
 
-        if 's' in kwargs:
-            smoothness = kwargs['s']
-        else:
-            smoothness = 0
+        smoothness = kwargs.get('s', 0)
 
         # Interpolator must be set to interpolate on the undersampled
         # pixel grid, going from 0 to len(undersampled_grid)
@@ -671,9 +673,9 @@ class EPSFModel(FittableImageModel):
             # find indices of pixels that are outside the input pixel
             # grid and set these pixels to the 'fill_value':
             invalid = (((xi < 0) | (xi > (self._nx - 1)
-                                    / self.oversampling[1])) |
-                       ((yi < 0) | (yi > (self._ny - 1)
-                                    / self.oversampling[0])))
+                                    / self.oversampling[1]))
+                       | ((yi < 0) | (yi > (self._ny - 1)
+                                      / self.oversampling[0])))
             evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
@@ -740,19 +742,22 @@ class GriddedPSFModel(Fittable2DModel):
         self.meta = data.meta
         self.grid_xypos = data.meta['grid_xypos']
         self.oversampling = data.meta['oversampling']
+        self._fill_value = fill_value
 
         self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
         self._xgrid = np.unique(self._grid_xpos)  # also sorts values
         self._ygrid = np.unique(self._grid_ypos)  # also sorts values
 
-        if (len(list(itertools.product(self._xgrid, self._ygrid))) !=
-                len(self.grid_xypos)):
+        if (len(list(itertools.product(self._xgrid, self._ygrid)))
+                != len(self.grid_xypos)):
             raise ValueError('"grid_xypos" must form a regular grid.')
 
         self._xgrid_min = self._xgrid[0]
         self._xgrid_max = self._xgrid[-1]
         self._ygrid_min = self._ygrid[0]
         self._ygrid_max = self._ygrid[-1]
+        self._ref_indices = None
+        self._psf_interp = None
 
         super().__init__(flux, x_0, y_0)
 
@@ -806,8 +811,10 @@ class GriddedPSFModel(Fittable2DModel):
         if not np.isscalar(x) or not np.isscalar(y):  # pragma: no cover
             raise TypeError('x and y must be scalars')
 
-        if (x < self._xgrid_min or x > self._xgrid_max or
-                y < self._ygrid_min or y > self._ygrid_max):  # pragma: no cover
+        if (x < self._xgrid_min
+                or x > self._xgrid_max
+                or y < self._ygrid_min
+                or y > self._ygrid_max):  # pragma: no cover
             raise ValueError('(x, y) position is outside of the region '
                              'defined by grid of PSF positions')
 
@@ -892,8 +899,8 @@ class GriddedPSFModel(Fittable2DModel):
         if not np.isscalar(y_0):
             y_0 = y_0[0]
 
-        if (x_0 < self._xgrid_min or x_0 > self._xgrid_max or
-                y_0 < self._ygrid_min or y_0 > self._ygrid_max):
+        if (x_0 < self._xgrid_min or x_0 > self._xgrid_max
+                or y_0 < self._ygrid_min or y_0 > self._ygrid_max):
 
             # position is outside of the grid, so simply use the
             # closest reference PSF
@@ -1002,11 +1009,11 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
     def evaluate(self, x, y, flux, x_0, y_0, sigma):
         """Model function Gaussian PSF model."""
-        return (flux / 4 *
-                ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma)) -
-                  self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma))) *
-                 (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma)) -
-                  self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
+        return (flux / 4
+                * ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma))
+                    - self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma)))
+                   * (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma))
+                      - self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
 
 
 class PRFAdapter(Fittable2DModel):
@@ -1091,8 +1098,8 @@ class PRFAdapter(Fittable2DModel):
             setattr(self.psfmodel, self.yname, y_0)
 
         if self.fluxname is None:
-            return (flux * self._psf_scale_factor *
-                    self._integrated_psfmodel(dx, dy))
+            return (flux * self._psf_scale_factor
+                    * self._integrated_psfmodel(dx, dy))
         else:
             setattr(self.psfmodel, self.yname, flux * self._psf_scale_factor)
             return self._integrated_psfmodel(dx, dy)
@@ -1106,7 +1113,7 @@ class PRFAdapter(Fittable2DModel):
         outravel = out.ravel()
         for i, (xi, yi) in enumerate(zip(dx.ravel(), dy.ravel())):
             outravel[i] = dblquad(self.psfmodel,
-                                  xi-0.5, xi+0.5,
-                                  lambda x: yi-0.5, lambda x: yi+0.5,
+                                  xi - 0.5, xi + 0.5,
+                                  lambda x: yi - 0.5, lambda x: yi + 0.5,
                                   **self._dblquadkwargs)[0]
         return out

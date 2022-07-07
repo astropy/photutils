@@ -390,10 +390,10 @@ class EPSFBuilder:
             # Stars class should have odd-sized dimensions, and thus we
             # get the oversampled shape as oversampling * len + 1; if
             # len=25, then newlen=101, for example.
-            x_shape = (np.ceil(stars._max_shape[0]) * oversampling[1] +
-                       1).astype(int)
-            y_shape = (np.ceil(stars._max_shape[1]) * oversampling[0] +
-                       1).astype(int)
+            x_shape = (np.ceil(stars._max_shape[0]) * oversampling[1]
+                       + 1).astype(int)
+            y_shape = (np.ceil(stars._max_shape[1]) * oversampling[0]
+                       + 1).astype(int)
 
             shape = np.array((y_shape, x_shape))
 
@@ -447,25 +447,21 @@ class EPSFBuilder:
         x = star._xidx_centered
         y = star._yidx_centered
 
-        stardata = (star._data_values_normalized -
-                    epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0))
+        stardata = (star._data_values_normalized
+                    - epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0))
 
         x = epsf.oversampling[1] * star._xidx_centered
         y = epsf.oversampling[0] * star._yidx_centered
 
-        epsf_xcenter, epsf_ycenter = (int((epsf.data.shape[1] -
-                                           1) / 2),
-                                      int((epsf.data.shape[0] -
-                                           1) / 2))
+        epsf_xcenter, epsf_ycenter = (int((epsf.data.shape[1] - 1) / 2),
+                                      int((epsf.data.shape[0] - 1) / 2))
         xidx = _py2intround(x + epsf_xcenter)
         yidx = _py2intround(y + epsf_ycenter)
 
         resampled_img = np.full(epsf.shape, np.nan)
 
-        mask = np.logical_and(np.logical_and(xidx >= 0,
-                                             xidx < epsf.shape[1]),
-                              np.logical_and(yidx >= 0,
-                                             yidx < epsf.shape[0]))
+        mask = np.logical_and(np.logical_and(xidx >= 0, xidx < epsf.shape[1]),
+                              np.logical_and(yidx >= 0, yidx < epsf.shape[0]))
         xidx_ = xidx[mask]
         yidx_ = yidx[mask]
 
@@ -616,17 +612,14 @@ class EPSFBuilder:
         center_accuracy_sq = center_accuracy ** 2
         center_dist_sq = center_accuracy_sq + 1.e6
         center_dist_sq_prev = center_dist_sq + 1
-        while (iter_num < maxiters and
-               center_dist_sq >= center_accuracy_sq):
+        while (iter_num < maxiters and center_dist_sq >= center_accuracy_sq):
             iter_num += 1
 
             # Anderson & King (2000) recentering function depends
             # on specific pixels, and thus does not need a cutout
             slices_large, _ = overlap_slices(epsf_data.shape, box_size,
-                                             (ycenter *
-                                              self.oversampling[0],
-                                              xcenter *
-                                              self.oversampling[1]))
+                                             (ycenter * self.oversampling[0],
+                                              xcenter * self.oversampling[1]))
             epsf_cutout = epsf_data[slices_large]
             mask = ~np.isfinite(epsf_cutout)
 
@@ -636,8 +629,8 @@ class EPSFBuilder:
             xcenter_new /= self.oversampling[1]
             ycenter_new /= self.oversampling[0]
 
-            xcenter_new += slices_large[1].start/self.oversampling[1]
-            ycenter_new += slices_large[0].start/self.oversampling[0]
+            xcenter_new += slices_large[1].start / self.oversampling[1]
+            ycenter_new += slices_large[0].start / self.oversampling[0]
 
             # Calculate the shift; dx = i - x_star so if dx was positively
             # incremented then x_star was negatively incremented for a given i.
@@ -774,8 +767,8 @@ class EPSFBuilder:
         else:
             pbar = None
 
-        while (iter_num < self.maxiters and not np.all(fit_failed) and
-               np.max(center_dist_sq) >= self.center_accuracy_sq):
+        while (iter_num < self.maxiters and not np.all(fit_failed)
+               and np.max(center_dist_sq) >= self.center_accuracy_sq):
 
             iter_num += 1
 
@@ -801,7 +794,7 @@ class EPSFBuilder:
             # after 3 iterations
             if iter_num > 3 and np.any(fit_failed):
                 idx = fit_failed.nonzero()[0]
-                for i in idx:
+                for i in idx:  # pylint: disable=not-an-iterable
                     stars.all_stars[i]._excluded_from_fit = True
 
             # if no star centers have moved by more than pixel accuracy,

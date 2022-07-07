@@ -383,8 +383,7 @@ class EPSFStars:
         for star in self.all_stars:
             if star._excluded_from_fit:
                 continue
-            else:
-                stars.append(star)
+            stars.append(star)
 
         return stars
 
@@ -468,13 +467,13 @@ class LinkedEPSFStar(EPSFStars):
             return
 
         idx = np.logical_not(self._excluded_from_fit).nonzero()[0]
-        if idx.size == 0:
+        if idx.shape == (0,):  # pylint: disable=no-member
             warnings.warn('Cannot constrain centers of linked stars because '
                           'all the stars have been excluded during the ePSF '
                           'build process.', AstropyUserWarning)
             return
 
-        good_stars = [self._data[i] for i in idx]
+        good_stars = [self._data[i] for i in idx]  # pylint: disable=not-an-iterable
 
         coords = []
         for star in good_stars:
@@ -588,7 +587,7 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
                              'NDData objects, the catalog must have a '
                              '"skycoord" column.')
 
-        if any([img.wcs is None for img in data]):
+        if any(img.wcs is None for img in data):
             raise ValueError('When inputting a single catalog with multiple '
                              'NDData objects, each NDData object must have '
                              'a wcs attribute.')
@@ -599,12 +598,11 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
                     raise ValueError('When inputting multiple catalogs, '
                                      'each one must have a "x" and "y" '
                                      'column or a "skycoord" column.')
-                else:
-                    if any([img.wcs is None for img in data]):
-                        raise ValueError('When inputting catalog(s) with '
-                                         'only skycoord positions, each '
-                                         'NDData object must have a wcs '
-                                         'attribute.')
+
+                if any(img.wcs is None for img in data):
+                    raise ValueError('When inputting catalog(s) with only '
+                                     'skycoord positions, each NDData object '
+                                     'must have a wcs attribute.')
 
         if len(data) != len(catalogs):
             raise ValueError('When inputting multiple catalogs, the number '
@@ -637,7 +635,8 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
             n_extracted += len(good_stars)
             if not good_stars:
                 continue  # no overlap in any image
-            elif len(good_stars) == 1:
+
+            if len(good_stars) == 1:
                 good_stars = good_stars[0]  # only one star, cannot be linked
             else:
                 good_stars = LinkedEPSFStar(good_stars)

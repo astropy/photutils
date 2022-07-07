@@ -102,7 +102,7 @@ class TestEPSFBuild:
         assert_allclose(z, x, rtol=1e-2, atol=1e-5)
 
         resid_star = fitted_stars[0].compute_residual_image(epsf)
-        assert_almost_equal(np.sum(resid_star)/fitted_stars[0].flux, 0,
+        assert_almost_equal(np.sum(resid_star) / fitted_stars[0].flux, 0,
                             decimal=3)
 
     def test_epsf_fitting_bounds(self):
@@ -186,7 +186,7 @@ def test_epsfmodel_inputs():
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize('oversamp', [3, 4])
 def test_epsf_build_oversampling(oversamp):
-    offsets = np.arange(oversamp) * 1./oversamp - 0.5 + 1./(2. * oversamp)
+    offsets = np.arange(oversamp) * 1. / oversamp - 0.5 + 1. / (2. * oversamp)
     xydithers = np.array(list(itertools.product(offsets, offsets)))
     xdithers = np.transpose(xydithers)[0]
     ydithers = np.transpose(xydithers)[1]
@@ -210,7 +210,7 @@ def test_epsf_build_oversampling(oversamp):
     stars = extract_stars(nddata, stars_tbl, size=25)
     epsf_builder = EPSFBuilder(oversampling=oversamp, maxiters=15,
                                progress_bar=False, recentering_maxiters=20)
-    epsf, fitted_stars = epsf_builder(stars)
+    epsf, _ = epsf_builder(stars)
 
     # input PSF shape
     size = epsf.data.shape[0]
@@ -220,4 +220,4 @@ def test_epsf_build_oversampling(oversamp):
     yy, xx = np.mgrid[0:size, 0:size]
     psf = m(xx, yy)
 
-    assert_allclose(epsf.data, psf*epsf.data.sum(), atol=2.5e-4)
+    assert_allclose(epsf.data, psf * epsf.data.sum(), atol=2.5e-4)

@@ -105,7 +105,7 @@ def prepare_psf_model(psfmodel, *, xname=None, yname=None, fluxname=None,
 
         integrand = integrate.dblquad(psfmodel, -np.inf, np.inf,
                                       lambda x: -np.inf, lambda x: np.inf)[0]
-        normmod = Const2D(1./integrand, name='renormalize_scaling')
+        normmod = Const2D(1. / integrand, name='renormalize_scaling')
         outmod = outmod * normmod
 
     # final setup of the output model - fix all the non-offset/scale
