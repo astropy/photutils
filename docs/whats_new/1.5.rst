@@ -1,0 +1,116 @@
+.. doctest-skip-all
+
+.. _whatsnew-1.5:
+
+****************************
+What's New in Photutils 1.5?
+****************************
+
+Smoothing data prior to source detection and deblending
+=======================================================
+
+The ``kernel`` keyword was deprecated from the
+`~photutils.segmentation.detect_sources` and
+`~photutils.segmentation.deblend_sources` functions. Instead the user
+should create a (background-subtracted) convolved image and input it
+directly into these functions. Doing so improves the overall performance
+by omitting extra convolution steps within each function or class. Both
+the (background subtracted) unconvolved and convolved images should be
+input into the `~photutils.segmentation.SourceCatalog` class.
+
+A `~photutils.segmentation.make_2dgaussian_kernel` convenience function
+was added for creating 2D Gaussian kernels.
+
+
+New SourceFinder class
+======================
+
+A new :class:`~photutils.segmentation.SourceFinder`
+convenience class was added, combining source detection and
+deblending. The `~photutils.segmentation.detect_sources` and
+`~photutils.segmentation.deblend_sources` functions also still remain
+available. The separate tools can be used, for example, to effienciently
+explore the various deblending parameters.
+
+
+Source Deblending Performance Improvements
+==========================================
+
+The performance of the `~photutils.segmentation.deblend_sources`
+has been significantly improved. Also,
+`~photutils.segmentation.deblend_sources` and
+`~photutils.segmentation.SourceFinder` now have a ``nproc`` keyword to
+enable multiprocessing during source deblending. Please note that due
+to overheads, multiprocessing may be slower than serial processing.
+This is especially true if one only has a small number of sources to
+deblend. The benefits of multiprocessing require ~1000 or more sources
+to deblend, with larger gains as the number of sources increase.
+
+Also, a new ``sinh`` multi-thresholding mode was added to
+`~photutils.segmentation.deblend_sources` (also available in
+the new `~photutils.segmentation.SourceFinder`).
+
+
+New `~photutils.segmentation.SegmentationImage` methods
+=======================================================
+
+`~photutils.segmentation.SegmentationImage` has a new
+`~photutils.segmentation.SegmentationImage.make_source_mask` method
+to create a source mask by dilating the segmentation image with a
+user-defined footprint. A new `~photutils.utils.circular_footprint`
+convenience function was added to create circular footprints.
+
+There is also a new `~photutils.segmentation.SegmentationImage.imshow`
+convenience method for plotting the segmentation image.
+
+
+`~photutils.segmentation.SourceCatalog` minimum Kron radius
+===========================================================
+
+A minimum value for the unscaled Kron radius can now be specified
+as the second element of the ``kron_params`` keyword input to
+`~photutils.segmentation.SourceCatalog`. The ``kron_params`` keyword now
+has an optional third item representing the minimum circular radius.
+
+
+Custom cutouts from `~photutils.segmentation.SourceCatalog`
+===========================================================
+
+The `~photutils.segmentation.SourceCatalog` has a new
+`~photutils.segmentation.SourceCatalog.make_cutouts` method
+for making custom-sized image cutouts for each labeled source
+centered at their centroid. The cutouts are instances of a new
+`~photutils.utils.CutoutImage` class.
+
+
+PSF-Fitting Masks
+=================
+
+The `~photutils.psf.BasicPSFPhotometry`,
+`~photutils.psf.IterativelySubtractedPSFPhotometry` and
+`~photutils.psf.DAOPhotPSFPhotometry` PSF-fitting instances now accept
+a ``mask`` keyword when called with the input data to mask bad pixels.
+Invalid data values (i.e., NaN or inf) are now automatically masked
+when performing PSF fitting. The Astropy/Scipy fitters do not actually
+perform a fit if such invalid values are in the data.
+
+
+Keyword-only arguments are now required for PSF tools
+=====================================================
+
+Keyword arguments used in the PSF tools must now be explicitly input
+using the keyword name.
+
+
+Progress Bars
+=============
+
+The `~photutils.segmentation.deblend_sources` function and the
+`~photutils.psf.EPSFBuilder` class now have options to use a progress
+bar using the new `tqdm <https://tqdm.github.io/>`_ optional dependency.
+
+
+Other changes
+=============
+
+Please see the :ref:`changelog` for the complete list of changes.
