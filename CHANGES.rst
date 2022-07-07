@@ -101,6 +101,9 @@ API Changes
   - The ``EPSFBuilder`` progress bar now requires that the optional
     ``tqdm`` package be installed. [#1379]
 
+  - The tools in the PSF package now require keyword-only arguments.
+    [#1386]
+
 - ``photutils.segmentation``
 
   - Removed the deprecated ``circular_aperture`` method from

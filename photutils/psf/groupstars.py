@@ -214,7 +214,7 @@ class DBSCANGroup(GroupStarsBase):
       may be faster than `photutils.psf.DAOGroup`.
     """
 
-    def __init__(self, crit_separation, min_samples=1, metric='euclidean',
+    def __init__(self, crit_separation, *, min_samples=1, metric='euclidean',
                  algorithm='auto', leaf_size=30):
         self.crit_separation = crit_separation
         self.min_samples = min_samples

@@ -52,7 +52,7 @@ class EPSFFitter:
         of the input ``fitter``.
     """
 
-    def __init__(self, fitter=LevMarLSQFitter(), fit_boxsize=5,
+    def __init__(self, *, fitter=LevMarLSQFitter(), fit_boxsize=5,
                  **fitter_kwargs):
 
         self.fitter = fitter
@@ -307,7 +307,7 @@ class EPSFBuilder:
     """
 
     @deprecated_renamed_argument('flux_residual_sigclip', 'sigma_clip', '1.5')
-    def __init__(self, oversampling=4, shape=None,
+    def __init__(self, *, oversampling=4, shape=None,
                  smoothing_kernel='quartic', recentering_func=centroid_com,
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
                  progress_bar=True, norm_radius=5.5,
@@ -738,7 +738,7 @@ class EPSFBuilder:
                          oversampling=epsf.oversampling,
                          norm_radius=epsf._norm_radius)
 
-    def build_epsf(self, stars, init_epsf=None):
+    def build_epsf(self, stars, *, init_epsf=None):
         """
         Build iteratively an ePSF from star cutouts.
 
