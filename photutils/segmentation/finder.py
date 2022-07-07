@@ -56,10 +56,20 @@ class SourceFinder:
         deblend sources with a 7.5 magnitude difference. This keyword is
         ignored unless ``deblend=True``.
 
-    mode : {'exponential', 'linear'}, optional
+    mode : {'exponential', 'linear', 'sinh'}, optional
         The mode used in defining the spacing between the
         multi-thresholding levels (see the ``nlevels`` keyword) during
-        deblending. This keyword is ignored unless ``deblend=True``.
+        deblending. The ``'exponential'`` and ``'sinh'`` modes have
+        more threshold levels near the source minimum and less near
+        the source maximum. The ``'linear'`` mode evenly spaces the
+        threshold levels between the source minimum and maximum.
+        The ``'exponential'`` and ``'sinh'`` modes differ in that
+        the ``'exponential'`` levels are dependent on the source
+        maximum/minimum ratio (smaller ratios are more linear; larger
+        ratios are more exponential), while the ``'sinh'`` levels
+        are not. Also, the ``'exponential'`` mode will be changed to
+        ``'linear'`` for sources with non-positive minimum data values.
+        This keyword is ignored unless ``deblend=True``.
 
     relabel : bool, optional
         If `True` (default), then the segmentation image will be
@@ -76,15 +86,18 @@ class SourceFinder:
         be slower than serial processing. This is especially true if one
         only has a small number of sources to deblend. The benefits of
         multiprocessing require ~1000 or more sources to deblend, with
-        large gains as the number of sources increase. This keyword is
+        larger gains as the number of sources increase. This keyword is
         ignored unless ``deblend=True``.
 
     progress_bar : bool, optional
-       Whether to display a progress bar during source deblending. The
-       progress bar requires that the `tqdm <https://tqdm.github.io/>`_
-       optional dependency be installed. Note that the progress bar does
-       not currently work in the Jupyter console due to limitations in
-       ``tqdm``. This keyword is ignored unless ``deblend=True``.
+        Whether to display a progress bar. Note that if multiprocessing
+        is used (``nproc > 1``), the estimation times (e.g., time per
+        iteration and time remaining, etc) may be unreliable. The
+        progress bar requires that the `tqdm <https://tqdm.github.io/>`_
+        optional dependency be installed. Note that the progress
+        bar does not currently work in the Jupyter console due to
+        limitations in ``tqdm``. This keyword is ignored unless
+        ``deblend=True``.
 
     See Also
     --------

@@ -121,9 +121,9 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         be slower than serial processing. This is especially true if one
         only has a small number of sources to deblend. The benefits of
         multiprocessing require ~1000 or more sources to deblend, with
-        large gains as the number of sources increase.
+        larger gains as the number of sources increase.
 
-     progress_bar : bool, optional
+    progress_bar : bool, optional
         Whether to display a progress bar. Note that if multiprocessing
         is used (``nproc > 1``), the estimation times (e.g., time per
         iteration and time remaining, etc) may be unreliable. The
