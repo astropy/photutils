@@ -7,19 +7,6 @@ on:
 
 jobs:
 
-  test_wheel_building:
-    # This ensures that a couple of target wheels build fine in pull
-    # requests and pushes
-    uses: OpenAstronomy/github-actions-workflows/.github/workflows/publish.yml@v1
-    if: (github.event_name == 'push' || github.event_name == 'pull_request')
-    with:
-      upload_to_pypi: false
-      test_extras: test
-      test_command: pytest -p no:warnings --pyargs photutils
-      targets: |
-        - cp310-manylinux_x86_64
-        - cp310*macosx_x86_64
-
   build_and_publish:
     # This job builds the wheels and publishes them to PyPI for all
     # tags, except those ending in ".dev". For PRs with the "Build all
@@ -32,33 +19,7 @@ jobs:
       test_command: pytest -p no:warnings --pyargs photutils
       targets: |
         # Linux wheels
-        - cp38-manylinux_i686
-        - cp39-manylinux_i686
-        - cp310-manylinux_i686
-        - cp38-manylinux_x86_64
-        - cp39-manylinux_x86_64
         - cp310-manylinux_x86_64
-        - cp38-musllinux_x86_64
-        - cp39-musllinux_x86_64
-        - cp310-musllinux_x86_64
-
-        # MacOS X wheels
-        # Note that the arm64 wheels are not actually tested so we rely
-        # on local manual testing of these to make sure they are ok.
-        - cp38*macosx_x86_64
-        - cp39*macosx_x86_64
-        - cp310*macosx_x86_64
-        - cp38*macosx_arm64
-        - cp39*macosx_arm64
-        - cp310*macosx_arm64
-
-        # Windows wheels
-        - cp38*win32
-        - cp39*win32
-        - cp310*win32
-        - cp38*win_amd64
-        - cp39*win_amd64
-        - cp310*win_amd64
 
       # We upload to PyPI for all tags, except those ending in .dev
       upload_to_pypi: ${{ startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref, '.dev') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
