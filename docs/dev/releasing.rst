@@ -63,7 +63,7 @@ called ``upstream``.
 
         pip install build --upgrade
 
-   then creating the source distribution with::
+   then create the source distribution with::
 
         python -m build --sdist .
 
