@@ -1,0 +1,29 @@
+name: Wheel building
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+jobs:
+
+  build_and_publish:
+    # This job builds the wheels and publishes them to PyPI for all
+    # tags, except those ending in ".dev". For PRs with the "Build all
+    # wheels" label, wheels are built, but are not uploaded to PyPI.
+    uses: OpenAstronomy/github-actions-workflows/.github/workflows/publish.yml@v1
+
+    if: (github.repository == 'astropy/photutils' && (github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Build all wheels')))
+    with:
+      test_extras: test
+      test_command: pytest -p no:warnings --pyargs photutils
+      targets: |
+        # Linux wheels
+        - cp310-manylinux_x86_64
+
+      # We upload to PyPI for all tags, except those ending in .dev
+      upload_to_pypi: ${{ startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref, '.dev') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+      repository_url: https://test.pypi.org/legacy/  # temporary
+
+    secrets:
+      pypi_token: ${{ secrets.pypi_test_token }}
