@@ -330,7 +330,7 @@ def test_nmarkers_fallback():
     data[50:60, 50:60] = 10.
 
     segm = detect_sources(data, 0.01, 10)
-    with pytest.raises(AstropyUserWarning):
+    with pytest.warns(AstropyUserWarning, match='The deblending mode'):
         segm2 = deblend_sources(data, segm, 1, mode='exponential')
         assert segm2.info['warnings']['nmarkers']['input_labels'][0] == 1
         mesg = segm2.info['warnings']['nmarkers']['message']
