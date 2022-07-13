@@ -21,7 +21,7 @@ jobs:
     # wheels" label, wheels are built, but are not uploaded to PyPI.
     uses: OpenAstronomy/github-actions-workflows/.github/workflows/publish.yml@v1
 
-    if: (github.repository == 'larrybradley/photutils' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Build all wheels')))
+    if: (github.repository == 'astropy/photutils' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Build all wheels')))
     with:
       test_extras: test
       test_command: pytest -p no:warnings --pyargs photutils
