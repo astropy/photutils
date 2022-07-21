@@ -1,4 +1,4 @@
-Copyright (c) 2011-2021, Photutils developers
+Copyright (c) 2011-2022, Photutils developers
 
 All rights reserved.
 
