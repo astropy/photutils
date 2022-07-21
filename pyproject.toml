@@ -6,8 +6,3 @@ requires = ['setuptools',
             'oldest-supported-numpy',
             'extension-helpers']
 build-backend = 'setuptools.build_meta'
-
-[tool.astropy-bot]
-
-[tool.astropy-bot.changelog_checker]
-filename = "CHANGES.rst"
