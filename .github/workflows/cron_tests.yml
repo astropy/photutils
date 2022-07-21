@@ -8,6 +8,9 @@ on:
 env:
   TOXARGS: '-v'
 
+permissions:
+  contents: read
+
 jobs:
   cron-test:
     name: ${{ matrix.os }}, ${{ matrix.tox_env }}
