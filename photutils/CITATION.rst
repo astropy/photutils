@@ -18,47 +18,47 @@ appropriate.
 
 All Photutils versions and citation formats can be found at
 https://doi.org/10.5281/zenodo.596036. For example, for Photutils
-v1.0.0 one would cite Bradley et al. 2020 with the BibTeX entry
-(https://zenodo.org/record/4044744/export/hx):
+v1.5.0 one would cite Bradley et al. 2022 with the BibTeX entry
+(https://zenodo.org/record/6825092/export/hx):
 
 .. code-block:: text
 
-    @software{larry_bradley_2020_4044744,
+    @software{larry_bradley_2022_6825092,
     author       = {Larry Bradley and
-                    Brigitta Sip{\H o}cz and
+                    Brigitta Sipőcz and
                     Thomas Robitaille and
                     Erik Tollerud and
-                    Z\`e Vin{\'{\i}}cius and
+                    Zé Vinícius and
                     Christoph Deil and
                     Kyle Barbary and
                     Tom J Wilson and
                     Ivo Busko and
-                    Hans Moritz G{\"u}nther and
+                    Axel Donath and
+                    Hans Moritz Günther and
                     Mihai Cara and
+                    P. L. Lim and
+                    Sebastian Meßlinger and
                     Simon Conseil and
                     Azalee Bostroem and
                     Michael Droettboom and
                     E. M. Bray and
                     Lars Andersen Bratholm and
-                    P. L. Lim and
                     Geert Barentsen and
                     Matt Craig and
+                    Shivangee Rathi and
                     Sergio Pascual and
                     Gabriel Perren and
-                    Johnny Greco and
-                    Axel Donath and
+                    Iskren Y. Georgiev and
                     Miguel de Val-Borro and
                     Wolfgang Kerzendorf and
                     Yoonsoo P. Bach and
-                    Benjamin Alan Weaver and
-                    Francesco D'Eugenio and
-                    Harrison Souchereau and
-                    Leonardo Ferreira},
-    title        = {astropy/photutils: 1.0.0},
-    month        = sep,
-    year         = 2020,
+                    Bruno Quint and
+                    Harrison Souchereau},
+    title        = {astropy/photutils: 1.5.0},
+    month        = jul,
+    year         = 2022,
     publisher    = {Zenodo},
-    version      = {1.0.0},
-    doi          = {10.5281/zenodo.4044744},
-    url          = {https://doi.org/10.5281/zenodo.4044744}
+    version      = {1.5.0},
+    doi          = {10.5281/zenodo.6825092},
+    url          = {https://doi.org/10.5281/zenodo.6825092}
     }
