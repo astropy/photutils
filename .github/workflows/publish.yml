@@ -14,11 +14,18 @@ on:
   # allow manual wheel building from the Actions UI
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build_and_publish:
     # This job builds the wheels and publishes them to PyPI for all
     # tags, except those ending in ".dev". For PRs with the "Build all
     # wheels" label, wheels are built, but are not uploaded to PyPI.
+
+    permissions:
+      contents: none
+
     uses: OpenAstronomy/github-actions-workflows/.github/workflows/publish.yml@v1
 
     if: (github.repository == 'astropy/photutils' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Build all wheels')))
