@@ -21,9 +21,8 @@ Photutils also optionally depends on other packages for some features:
 * `matplotlib <https://matplotlib.org/>`_ 3.1 or later:  To power a
   variety of plotting features (e.g., plotting apertures).
 
-* `scikit-image <https://scikit-image.org/>`_ 0.15.0 or later:  Used in
-  `~photutils.segmentation.deblend_sources` for deblending segmented
-  sources.
+* `scikit-image <https://scikit-image.org/>`_ 0.15.0 or later: Used for
+  deblending segmented sources.
 
 * `scikit-learn <https://scikit-learn.org/>`_ 0.19 or later:  Used in
   `~photutils.psf.DBSCANGroup` to create star groups.
@@ -57,13 +56,18 @@ To install Photutils with `pip`_, run::
 
     pip install photutils
 
-If you want to make sure that none of your existing dependencies get
-upgraded, instead you can do::
+If you want to install Photutils along with all of its optional
+dependencies, you can instead do::
 
-    pip install photutils --no-deps
+    pip install "photutils[all]"
 
-Note that you may need a C compiler (e.g., ``gcc`` or ``clang``) to be
-installed for the installation to succeed.
+In most cases, this will install a pre-compiled version (called a wheel)
+of Photutils, but if you are using a very recent version of Python,
+if a new version of Photutils has just been released, or if you are
+building Photutils for a platform that is not common, Photutils will be
+installed from a source file. In this case you will need a C compiler
+(e.g., ``gcc`` or ``clang``) to be installed for the installation to
+succeed (see :ref:`building_source` prerequisites).
 
 If you get a ``PermissionError``, this means that you do not have the
 required administrative access to install new packages to your Python
@@ -87,17 +91,22 @@ install Photutils using the `conda-forge Anaconda channel
     conda install -c conda-forge photutils
 
 
-Installing the latest development version from Source
-=====================================================
+.. _building_source:
+
+Building from Source
+====================
 
 Prerequisites
 -------------
 
-You will need `Cython <https://cython.org/>`_ (0.28 or later), a
-compiler suite, and the development headers for Python and Numpy in
-order to build Photutils from the source distribution.  On Linux,
-using the package manager for your distribution will usually be the
-easiest route.
+You will need a compiler suite and the development headers for Python
+and Numpy in order to build Photutils from the source distribution. You
+do not need to install any other specific build dependencies (such as
+Cython) since these will be automatically installed into a temporary
+build environment by `pip`_.
+
+On Linux, using the package manager for your distribution will usually be
+the easiest route.
 
 On MacOS X you will need the `XCode`_ command-line tools, which can be
 installed using::
@@ -109,37 +118,29 @@ required.  Note that you do not need to install the full `XCode`_
 distribution (assuming you are using MacOS X 10.9 or later).
 
 
-Building and installing manually
---------------------------------
+Installing the development version
+----------------------------------
 
 Photutils is being developed on `GitHub`_.  The latest development
 version of the Photutils source code can be retrieved using git::
 
     git clone https://github.com/astropy/photutils.git
 
-Then to build and install Photutils, run::
+Then to build and install Photutils (with all of its optional
+dependencies), run::
 
     cd photutils
-    pip install .[all]
+    pip install ".[all]"
 
 If you wish to install the package in "editable" mode, instead include
 the "-e" option::
 
-    pip install -e .[all]
-
-
-Building and installing using pip
----------------------------------
+    pip install -e ".[all]"
 
 Alternatively, `pip`_ can be used to retrieve, build, and install the
 latest development version from `GitHub`_::
 
-    pip install git+https://github.com/astropy/photutils.git
-
-Again, if you want to make sure that none of your existing
-dependencies get upgraded, instead you can do::
-
-    pip install git+https://github.com/astropy/photutils.git --no-deps
+    pip install "git+https://github.com/astropy/photutils.git#egg=photutils[all]"
 
 
 Testing an installed Photutils
