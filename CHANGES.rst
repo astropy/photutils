@@ -13,6 +13,38 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Inputting ``PixelAperture`` positions as an Astropy ``Quantity`` in
+    pixel units is no longer allowed. [#1398]
+
+  - Inputting ``SkyAperture`` shape parameters as an Astropy
+    ``Quantity`` in pixel units is no longer allowed. [#1398]
+
+- ``photutils.centroids``
+
+  - Removed the deprecated ``oversampling`` keyword in ``centroid_com``.
+    [#1398]
+
+- ``photutils.psf``
+
+  - Removed the deprecated ``flux_residual_sigclip`` keyword in
+    ``EPSFBuilder``. Use ``sigma_clip`` instead. [#1398]
+
+- ``photutils.segmentation``
+
+  - Removed the deprecated ``sigclip_sigma`` and ``sigclip_iters``
+    keywords in ``detect_threshold``. Use the ``sigma_clip`` keyword
+    instead. [#1398]
+
+  - Removed the ``mask_value``, ``sigclip_sigma``, and ``sigclip_iters``
+    keywords in ``detect_threshold``. Use the ``mask`` or ``sigma_clip``
+    keywords instead. [#1398]
+
+  - Removed the deprecated the ``filter_fwhm`` and ``filter_size``
+    keywords in ``make_source_mask``. Use the ``kernel`` keyword instead.
+    [#1398]
+
 
 1.5.0 (2022-07-12)
 ------------------
