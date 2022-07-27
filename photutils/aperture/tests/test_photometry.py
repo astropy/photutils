@@ -13,7 +13,6 @@ from astropy.io import fits
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import Table
 import astropy.units as u
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from astropy.wcs import WCS
 
 from ..photometry import aperture_photometry
@@ -274,7 +273,7 @@ class TestInputNDData(BaseTestDifferentData):
 
 
 @pytest.mark.remote_data
-def test_wcs_based_photometry_to_catalogue():
+def test_wcs_based_photometry_to_catalog():
     pathcat = get_path('spitzer_example_catalog.xml', location='remote')
     pathhdu = get_path('spitzer_example_image.fits', location='remote')
     hdu = fits.open(pathhdu)
@@ -288,7 +287,7 @@ def test_wcs_based_photometry_to_catalogue():
     photometry_skycoord = aperture_photometry(
         data, SkyCircularAperture(pos_skycoord, 4 * u.arcsec), wcs=wcs)
 
-    # Photometric unit conversion is needed to match the catalogue
+    # Photometric unit conversion is needed to match the catalog
     factor = (1.2 * u.arcsec) ** 2 / u.pixel
     converted_aperture_sum = (photometry_skycoord['aperture_sum']
                               * factor).to(u.mJy / u.pixel)
@@ -747,28 +746,6 @@ def test_to_sky_pixel(wcs_type):
     assert_allclose(ap.w_out, ap2.w_out)
     assert_allclose(ap.h_out, ap2.h_out)
     assert_allclose(ap.theta, ap2.theta)
-
-
-def test_position_units():
-    """Regression test for unit check."""
-    pos = (10, 10) * u.pix
-    pos = np.sqrt(pos**2)
-    with pytest.warns(AstropyDeprecationWarning,
-                      match='Inputing positions as a Quantity'):
-        ap = CircularAperture(pos, r=3.)
-        assert_allclose(ap.positions, np.array([10, 10]))
-
-
-def test_radius_units():
-    """Regression test for unit check."""
-    pos = SkyCoord(10, 10, unit='deg')
-    r = 3. * u.pix
-    r = np.sqrt(r**2)
-    with pytest.warns(AstropyDeprecationWarning, match='Inputing sky '
-                      'aperture quantities in pixel units'):
-        ap = SkyCircularAperture(pos, r=r)
-        assert ap.r.value == 3.0
-        assert ap.r.unit == u.pix
 
 
 def test_scalar_aperture():
