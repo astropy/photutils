@@ -3,8 +3,7 @@
 Tests for the detect module.
 """
 
-from astropy.convolution import Gaussian2DKernel
-from astropy.stats import gaussian_fwhm_to_sigma, SigmaClip
+from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
@@ -81,13 +80,6 @@ class TestDetectThreshold:
         ref = 12. * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
-    def test_mask_value(self):
-        """Test detection with mask_value."""
-        with pytest.warns(AstropyDeprecationWarning):
-            threshold = detect_threshold(DATA, nsigma=1.0, mask_value=0.0)
-        ref = 2. * np.ones((3, 3))
-        assert_array_equal(threshold, ref)
-
     def test_image_mask(self):
         """
         Test detection with image_mask.
@@ -100,17 +92,6 @@ class TestDetectThreshold:
                                      sigma_clip=sigma_clip)
         ref = (1. / 8.) * np.ones((3, 3))
         assert_array_equal(threshold, ref)
-
-    def test_image_mask_override(self):
-        """Test that image_mask overrides mask_value."""
-        mask = REF1.astype(bool)
-        sigma_clip = SigmaClip(sigma=10, maxiters=1)
-        with pytest.warns(AstropyDeprecationWarning):
-            threshold = detect_threshold(DATA, nsigma=0.1, error=0,
-                                         mask_value=0.0,
-                                         mask=mask, sigma_clip=sigma_clip)
-            ref = np.ones((3, 3))
-            assert_array_equal(threshold, ref)
 
     def test_invalid_sigma_clip(self):
         with pytest.raises(TypeError):
@@ -260,16 +241,6 @@ class TestMakeSourceMask:
         with pytest.warns(AstropyDeprecationWarning):
             mask2 = make_source_mask(self.data, 5, 10, dilate_size=20)
         assert np.count_nonzero(mask2) > np.count_nonzero(mask1)
-
-    def test_kernel(self):
-        with pytest.warns(AstropyDeprecationWarning):
-            mask1 = make_source_mask(self.data, 5, 10, filter_fwhm=2,
-                                     filter_size=3)
-        sigma = 2 * gaussian_fwhm_to_sigma
-        kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
-        with pytest.warns(AstropyDeprecationWarning):
-            mask2 = make_source_mask(self.data, 5, 10, kernel=kernel)
-        assert_allclose(mask1, mask2)
 
     def test_no_detections(self):
         with pytest.warns(AstropyDeprecationWarning):
