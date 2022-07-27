@@ -3,11 +3,10 @@
 This module provides tools for detecting sources in an image.
 """
 
-from copy import deepcopy
 import warnings
 
-from astropy.convolution import convolve, Gaussian2DKernel
-from astropy.stats import gaussian_fwhm_to_sigma, SigmaClip
+from astropy.convolution import convolve
+from astropy.stats import SigmaClip
 from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
@@ -20,14 +19,7 @@ from ..utils.exceptions import NoDetectionsWarning
 __all__ = ['detect_threshold', 'detect_sources', 'make_source_mask']
 
 
-@deprecated_renamed_argument('mask_value', None, '1.4',
-                             alternative='mask')
-@deprecated_renamed_argument('sigclip_sigma', None, '1.5',
-                             alternative='sigma_clip')
-@deprecated_renamed_argument('sigclip_iters', None, '1.5',
-                             alternative='sigma_clip')
 def detect_threshold(data, nsigma, background=None, error=None, mask=None,
-                     mask_value=None, sigclip_sigma=3.0, sigclip_iters=10,
                      sigma_clip=SigmaClip(sigma=3.0, maxiters=10)):
     """
     Calculate a pixel-wise threshold image that can be used to detect
@@ -71,24 +63,6 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
         Masked pixels are ignored when computing the image background
         statistics.
 
-    mask_value : float, optional
-        Deprecated.
-        An image data value (e.g., ``0.0``) that is ignored when
-        computing the image background statistics.  ``mask_value`` will
-        be ignored if ``mask`` is input.
-
-    sigclip_sigma : float, optional
-        Deprecated (use the ``sigma_clip`` keyword).
-        The number of standard deviations to use as the clipping limit
-        when calculating the image background statistics.
-
-    sigclip_iters : int, optional
-        Deprecated (use the ``sigma_clip`` keyword).
-        The maximum number of iterations to perform sigma clipping, or
-        `None` to clip until convergence is achieved (i.e., continue
-        until the last iteration clips nothing) when calculating the
-        image background statistics.
-
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.
@@ -107,33 +81,17 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
 
     Notes
     -----
-    The ``mask``, ``mask_value`` (deprecated), ``sigclip_sigma``
-    (deprecated), ``sigclip_iters`` (deprecated), and ``sigma_clip``
-    inputs are used only if it is necessary to estimate ``background``
-    or ``error`` using sigma-clipped background statistics. If
-    ``background`` and ``error`` are both input, then ``mask``,
-    ``mask_value``, ``sigclip_sigma``, ``sigclip_iters``, and
-    ``sigma_clip`` are ignored.
-
-    The deprecated ``sigclip_sigma`` and ``sigclip_iters`` keywords
-    should not be used with the ``sigma_clip`` keyword. If they are,
-    then their values will override the corresponding ``sigma_clip``
-    values.
+    The ``mask`` and ``sigma_clip`` inputs are used only if it
+    is necessary to estimate ``background`` or ``error`` using
+    sigma-clipped background statistics. If ``background`` and ``error``
+    are both input, then ``mask`` and ``sigma_clip`` are ignored.
     """
     if not isinstance(sigma_clip, SigmaClip):
         raise TypeError('sigma_clip must be a SigmaClip object')
 
-    if (sigclip_sigma != sigma_clip.sigma
-            or sigclip_iters != sigma_clip.maxiters):
-        sigma_clip = deepcopy(sigma_clip)
-        sigma_clip.sigma = sigclip_sigma
-        sigma_clip.maxiters = sigclip_iters
-
     if background is None or error is None:
         if mask is not None:
             data = np.ma.MaskedArray(data, mask)
-        if mask_value is not None:
-            data = np.ma.masked_values(data, mask_value)
 
         clipped_data = sigma_clip(data, masked=False, return_bounds=False,
                                   copy=True)
@@ -432,13 +390,8 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
 
 
 @deprecated('1.5.0', alternative='SegmentationImage.make_source_mask')
-@deprecated_renamed_argument('filter_fwhm', None, '1.4', message='Use the '
-                             'kernel keyword')
-@deprecated_renamed_argument('filter_size', None, '1.4', message='Use the '
-                             'kernel keyword')
-def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
-                     filter_size=3, kernel=None, sigclip_sigma=3.0,
-                     sigclip_iters=5, dilate_size=11):
+def make_source_mask(data, nsigma, npixels, mask=None, kernel=None,
+                     sigclip_sigma=3.0, sigclip_iters=5, dilate_size=11):
     """
     Make a source mask using source segmentation and binary dilation.
 
@@ -450,9 +403,8 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
         .. note::
            It is recommended that the user convolve the data with
            ``kernel`` and input the convolved data directly into the
-           ``data`` parameter. In this case do not input a ``kernel``
-           (or ``filter_fwhm``, ``filter_size``; deprecated), otherwise
-           the data will be convolved twice.
+           ``data`` parameter. In this case do not input a ``kernel``,
+           otherwise the data will be convolved twice.
 
     nsigma : float
         The number of standard deviations per pixel above the
@@ -470,28 +422,12 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
         Masked pixels are ignored when computing the image background
         statistics.
 
-    filter_fwhm : float, optional
-        Deprecated (use the ``kernel`` keyword).
-        The full-width at half-maximum (FWHM) of the Gaussian kernel
-        to filter the image before thresholding. ``filter_fwhm``
-        and ``filter_size`` are ignored if ``kernel`` is defined.
-        ``filter_fwhm`` must be `None` if the input ``data`` are already
-        convolved.
-
-    filter_size : float, optional
-        Deprecated (use the ``kernel`` keyword).
-        The size of the square Gaussian kernel image. Used only if
-        ``filter_fwhm`` is defined. ``filter_fwhm`` and ``filter_size``
-        are ignored if ``kernel`` is defined. ``filter_size`` must be
-        `None` if the input ``data`` are already convolved.
-
     kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the image before
-        thresholding. Filtering the image will smooth the noise
-        and maximize detectability of objects with a shape similar
-        to the kernel. ``kernel`` overrides ``filter_fwhm`` and
-        ``filter_size``. ``kernel`` must be `None` if the input ``data``
-        are already convolved.
+        thresholding. Filtering the image will smooth the noise and
+        maximize detectability of objects with a shape similar to the
+        kernel. ``kernel`` must be `None` if the input ``data`` are
+        already convolved.
 
     sigclip_sigma : float, optional
         The number of standard deviations to use as the clipping limit
@@ -518,10 +454,6 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
     threshold = detect_threshold(data, nsigma, background=None, error=None,
                                  mask=mask, sigma_clip=sigma_clip)
 
-    if kernel is None and filter_fwhm is not None:
-        kernel_sigma = filter_fwhm * gaussian_fwhm_to_sigma
-        kernel = Gaussian2DKernel(kernel_sigma, x_size=filter_size,
-                                  y_size=filter_size)
     if kernel is not None:
         kernel.normalize()
 

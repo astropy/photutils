@@ -10,8 +10,8 @@ import astropy.units as u
 import numpy as np
 
 from .attributes import (ScalarAngle, PixelPositions, PositiveScalar,
-                         SkyCoordPositions, ScalarAngleOrPixel,
-                         ScalarAngleOrValue)
+                         SkyCoordPositions, ScalarAngleOrValue,
+                         PositiveScalarAngle)
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
@@ -159,9 +159,6 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
-            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units (this is Deprecated and will be removed in a
-              future version)
 
     w : float
         The full width of the rectangle in pixels.  For ``theta=0`` the
@@ -300,9 +297,6 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
-            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units (this is Deprecated and will be removed in a
-              future version)
 
     w_in : float
         The inner full width of the rectangular annulus in pixels.  For
@@ -480,14 +474,12 @@ class SkyRectangularAperture(SkyAperture):
         either scalar coordinates or an array of coordinates.
 
     w : scalar `~astropy.units.Quantity`
-        The full width of the rectangle in angular units. Pixel units
-        are now deprecated. For ``theta=0`` the width side is along the
-        North-South axis.
+        The full width of the rectangle in angular units. For
+        ``theta=0`` the width side is along the North-South axis.
 
     h :  scalar `~astropy.units.Quantity`
-        The full height of the rectangle in angular units. Pixel units
-        are now deprecated. For ``theta=0`` the height side is along the
-        East-West axis.
+        The full height of the rectangle in angular units. For
+        ``theta=0`` the height side is along the East-West axis.
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the rectangle "width"
@@ -505,16 +497,12 @@ class SkyRectangularAperture(SkyAperture):
 
     _params = ('positions', 'w', 'h', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    w = ScalarAngleOrPixel('The full width in angular units.')
-    h = ScalarAngleOrPixel('The full height in angular units.')
+    w = PositiveScalarAngle('The full width in angular units.')
+    h = PositiveScalarAngle('The full height in angular units.')
     theta = ScalarAngle('The position angle (in angular units) of the '
                         'rectangle "width" side.')
 
     def __init__(self, positions, w, h, theta=0. * u.deg):
-        if w.unit.physical_type != h.unit.physical_type:
-            raise ValueError('"w" and "h" should either both be angles or '
-                             'in pixels')
-
         self.positions = positions
         self.w = w
         self.h = h
@@ -556,22 +544,21 @@ class SkyRectangularAnnulus(SkyAperture):
 
     w_in : scalar `~astropy.units.Quantity`
         The inner full width of the rectangular annulus in angular
-        units. Pixel units are now deprecated. For ``theta=0`` the width
-        side is along the North-South axis.
+        units. For ``theta=0`` the width side is along the North-South
+        axis.
 
     w_out : scalar `~astropy.units.Quantity`
         The outer full width of the rectangular annulus in angular
-        units. Pixel units are now deprecated. For ``theta=0`` the width
-        side is along the North-South axis.
+        units. For ``theta=0`` the width side is along the North-South
+        axis.
 
     h_out : scalar `~astropy.units.Quantity`
         The outer full height of the rectangular annulus in angular
-        units. Pixel units are now deprecated.
+        units.
 
     h_in : `None` or scalar `~astropy.units.Quantity`
         The outer full height of the rectangular annulus in angular
-        units. Pixel units are now deprecated. If `None`, then the inner
-        full height is calculated as:
+        units. If `None`, then the inner full height is calculated as:
 
             .. math:: h_{in} = h_{out}
                 \left(\frac{w_{in}}{w_{out}}\right)
@@ -595,21 +582,15 @@ class SkyRectangularAnnulus(SkyAperture):
 
     _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    w_in = ScalarAngleOrPixel('The inner full width in angular units.')
-    w_out = ScalarAngleOrPixel('The outer full width in angular units.')
-    h_in = ScalarAngleOrPixel('The inner full height in angular units.')
-    h_out = ScalarAngleOrPixel('The outer full height in angular units.')
+    w_in = PositiveScalarAngle('The inner full width in angular units.')
+    w_out = PositiveScalarAngle('The outer full width in angular units.')
+    h_in = PositiveScalarAngle('The inner full height in angular units.')
+    h_out = PositiveScalarAngle('The outer full height in angular units.')
     theta = ScalarAngle('The position angle (in angular units) of the '
                         'rectangle "width" side.')
 
     def __init__(self, positions, w_in, w_out, h_out, h_in=None,
                  theta=0. * u.deg):
-        if w_in.unit.physical_type != w_out.unit.physical_type:
-            raise ValueError('w_in and w_out should either both be angles or '
-                             'in pixels')
-        if w_out.unit.physical_type != h_out.unit.physical_type:
-            raise ValueError('w_out and h_out should either both be angles '
-                             'or in pixels')
         if not w_out > w_in:
             raise ValueError('"w_out" must be greater than "w_in".')
 
@@ -621,9 +602,6 @@ class SkyRectangularAnnulus(SkyAperture):
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
         else:
-            if h_in.unit.physical_type != h_out.unit.physical_type:
-                raise ValueError('h_in and h_out should either both be '
-                                 'angles or in pixels')
             if not h_out > h_in:
                 raise ValueError('"h_out" must be greater than "h_in".')
         self.h_in = h_in

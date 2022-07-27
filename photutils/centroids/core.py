@@ -7,7 +7,6 @@ import inspect
 import warnings
 
 from astropy.nddata.utils import overlap_slices
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -17,8 +16,7 @@ from ..utils._parameters import as_pair
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
 
-@deprecated_renamed_argument('oversampling', None, '1.5')
-def centroid_com(data, mask=None, oversampling=1):
+def centroid_com(data, mask=None):
     """
     Calculate the centroid of an n-dimensional array as its "center of
     mass" determined from moments.
@@ -35,12 +33,6 @@ def centroid_com(data, mask=None, oversampling=1):
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
-    oversampling : int or array_like (int)
-        Deprecated.
-        The integer oversampling factor(s). If ``oversampling`` is a
-        scalar then it will be used for both axes. If ``oversampling``
-        has two elements, they must be in ``(y, x)`` order.
-
     Returns
     -------
     centroid : `~numpy.ndarray`
@@ -54,8 +46,6 @@ def centroid_com(data, mask=None, oversampling=1):
         if data.shape != mask.shape:
             raise ValueError('data and mask must have the same shape.')
         data[mask] = 0.
-
-    oversampling = as_pair('oversampling', oversampling, lower_bound=(0, 1))
 
     badmask = ~np.isfinite(data)
     if np.any(badmask):
@@ -71,7 +61,7 @@ def centroid_com(data, mask=None, oversampling=1):
     indices = np.ogrid[tuple(slice(0, i) for i in data.shape)]
 
     # note the output array is reversed to give (x, y) order
-    return np.array([np.sum(indices[axis] * data) / total / oversampling[axis]
+    return np.array([np.sum(indices[axis] * data) / total
                      for axis in range(data.ndim)])[::-1]
 
 

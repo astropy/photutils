@@ -9,8 +9,7 @@ from astropy.modeling.fitting import LevMarLSQFitter, SimplexLSQFitter
 from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Table
-from astropy.utils.exceptions import (AstropyUserWarning,
-                                      AstropyDeprecationWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 import pytest
@@ -19,7 +18,6 @@ from ..groupstars import DAOGroup
 from ..models import IntegratedGaussianPRF, FittableImageModel
 from ..photometry import (BasicPSFPhotometry, DAOPhotPSFPhotometry,
                           IterativelySubtractedPSFPhotometry)
-from ..sandbox import DiscretePRF
 from ..utils import prepare_psf_model
 from ...background import MMMBackground, StdBackgroundRMS
 from ...datasets import make_gaussian_prf_sources_image, make_noise_image
@@ -428,64 +426,6 @@ for x, y, flux in WIDE_INTAB:
                        x, y, WIDE_GAUSSIAN_WIDTH, WIDE_GAUSSIAN_WIDTH)
     wide_image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
                                    mode='oversample')
-
-
-@pytest.mark.skipif('not HAS_SCIPY')
-def test_psf_photometry_discrete():
-    """ Test psf_photometry with discrete PRF model. """
-    with pytest.warns(AstropyDeprecationWarning):
-        prf = DiscretePRF(test_psf, subsampling=1)
-    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
-                                    bkg_estimator=None, psf_model=prf,
-                                    fitshape=7)
-    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
-                      'could not be determined by psf_model'):
-        f = basic_phot(image=image, init_guesses=INTAB)
-
-    for n in ['x', 'y', 'flux']:
-        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-6)
-
-
-@pytest.mark.skipif('not HAS_SCIPY')
-def test_tune_coordinates():
-    """
-    Test psf_photometry with discrete PRF model and coordinates that need
-    to be adjusted in the fit.
-    """
-    with pytest.warns(AstropyDeprecationWarning):
-        prf = DiscretePRF(test_psf, subsampling=1)
-    prf.x_0.fixed = False
-    prf.y_0.fixed = False
-    # Shift all sources by 0.3 pixels
-    intab = INTAB.copy()
-    intab['x_0'] += 0.3
-
-    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
-                                    bkg_estimator=None, psf_model=prf,
-                                    fitshape=7)
-
-    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
-                      'could not be determined by psf_model'):
-        f = basic_phot(image=image, init_guesses=intab)
-    for n in ['x', 'y', 'flux']:
-        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
-
-
-@pytest.mark.skipif('not HAS_SCIPY')
-def test_psf_boundary():
-    """
-    Test psf_photometry with discrete PRF model at the boundary of the data.
-    """
-    with pytest.warns(AstropyDeprecationWarning):
-        prf = DiscretePRF(test_psf, subsampling=1)
-
-    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
-                                    bkg_estimator=None, psf_model=prf,
-                                    fitshape=7, aperture_radius=5.5)
-
-    intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
-    f = basic_phot(image=image, init_guesses=intab)
-    assert_allclose(f['flux_fit'], 0, atol=1e-8)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

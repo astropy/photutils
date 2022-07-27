@@ -12,7 +12,6 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
 from astropy.stats import SigmaClip
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -307,7 +306,6 @@ class EPSFBuilder:
     .. _bottleneck:  https://github.com/pydata/bottleneck
     """
 
-    @deprecated_renamed_argument('flux_residual_sigclip', 'sigma_clip', '1.5')
     def __init__(self, *, oversampling=4, shape=None,
                  smoothing_kernel='quartic', recentering_func=centroid_com,
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
