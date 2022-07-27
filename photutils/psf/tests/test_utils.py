@@ -6,7 +6,6 @@ Tests for the utils module.
 from astropy.convolution.utils import discretize_model
 from astropy.modeling.models import Gaussian2D
 from astropy.table import Table
-from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -14,7 +13,6 @@ import pytest
 from ..groupstars import DAOGroup
 from ..models import IntegratedGaussianPRF
 from ..photometry import BasicPSFPhotometry
-from ..sandbox import DiscretePRF
 from ..utils import get_grouped_psf_model, prepare_psf_model, subtract_psf
 from ...utils._optional_deps import HAS_SCIPY  # noqa
 
@@ -251,10 +249,9 @@ def test_get_grouped_psf_model_submodel_names(prf_model):
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_subtract_psf():
     """Test subtract_psf."""
-    with pytest.warns(AstropyDeprecationWarning):
-        prf = DiscretePRF(test_psf, subsampling=1)
+    psf = IntegratedGaussianPRF(sigma=1.0)
     posflux = INTAB.copy()
     for n in posflux.colnames:
         posflux.rename_column(n, n.split('_')[0] + '_fit')
-    residuals = subtract_psf(image, prf, posflux)
-    assert_allclose(residuals, np.zeros_like(image), atol=1E-4)
+    residuals = subtract_psf(image, psf, posflux)
+    assert np.max(np.abs(residuals)) < 0.0052

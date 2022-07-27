@@ -59,14 +59,13 @@ class BasicPSFPhotometry:
         background subtraction is performed.
     psf_model : `astropy.modeling.Fittable2DModel` instance
         PSF or PRF model to fit the data. Could be one of the models in
-        this package like `~photutils.psf.sandbox.DiscretePRF`,
-        `~photutils.psf.IntegratedGaussianPRF`, or any other suitable 2D
-        model.  This object needs to identify three parameters (position
-        of center in x and y coordinates and the flux) in order to set
-        them to suitable starting values for each fit. The names of
-        these parameters should be given as ``x_0``, ``y_0`` and
-        ``flux``.  `~photutils.psf.prepare_psf_model` can be used to
-        prepare any 2D model to match this assumption.
+        this package like `~photutils.psf.IntegratedGaussianPRF` or any
+        other suitable 2D model. This object needs to identify three
+        parameters (position of center in x and y coordinates and the
+        flux) in order to set them to suitable starting values for each
+        fit. The names of these parameters should be given as ``x_0``,
+        ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
+        used to prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
         Rectangular shape around the center of a star which will be
         used to collect the data to do the fitting. Can be an integer
@@ -559,9 +558,8 @@ class BasicPSFPhotometry:
         ----------
         fit_model : `astropy.modeling.Fittable2DModel` instance
             PSF or PRF model to fit the data. Could be one of the models
-            in this package like `~photutils.psf.sandbox.DiscretePRF`,
-            `~photutils.psf.IntegratedGaussianPRF`, or any other
-            suitable 2D model.
+            in this package like `~photutils.psf.IntegratedGaussianPRF`
+            or any other suitable 2D model.
 
         star_group : `~astropy.table.Table`
             the star group instance.
@@ -631,14 +629,13 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         background subtraction is performed.
     psf_model : `astropy.modeling.Fittable2DModel` instance
         PSF or PRF model to fit the data. Could be one of the models in
-        this package like `~photutils.psf.sandbox.DiscretePRF`,
-        `~photutils.psf.IntegratedGaussianPRF`, or any other suitable 2D
-        model.  This object needs to identify three parameters (position
-        of center in x and y coordinates and the flux) in order to set
-        them to suitable starting values for each fit. The names of
-        these parameters should be given as ``x_0``, ``y_0`` and
-        ``flux``.  `~photutils.psf.prepare_psf_model` can be used to
-        prepare any 2D model to match this assumption.
+        this package like `~photutils.psf.IntegratedGaussianPRF` or any
+        other suitable 2D model. This object needs to identify three
+        parameters (position of center in x and y coordinates and the
+        flux) in order to set them to suitable starting values for each
+        fit. The names of these parameters should be given as ``x_0``,
+        ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
+        used to prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
         Rectangular shape around the center of a star which will be
         used to collect the data to do the fitting. Can be an integer
@@ -918,14 +915,13 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         Gaussian kernel in units of pixels.
     psf_model : `astropy.modeling.Fittable2DModel` instance
         PSF or PRF model to fit the data. Could be one of the models in
-        this package like `~photutils.psf.sandbox.DiscretePRF`,
-        `~photutils.psf.IntegratedGaussianPRF`, or any other suitable 2D
-        model.  This object needs to identify three parameters (position
-        of center in x and y coordinates and the flux) in order to set
-        them to suitable starting values for each fit. The names of
-        these parameters should be given as ``x_0``, ``y_0`` and
-        ``flux``.  `~photutils.psf.prepare_psf_model` can be used to
-        prepare any 2D model to match this assumption.
+        this package like `~photutils.psf.IntegratedGaussianPRF` or any
+        other suitable 2D model. This object needs to identify three
+        parameters (position of center in x and y coordinates and the
+        flux) in order to set them to suitable starting values for each
+        fit. The names of these parameters should be given as ``x_0``,
+        ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
+        used to prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
         Rectangular shape around the center of a star which will be
         used to collect the data to do the fitting. Can be an integer
