@@ -10,8 +10,8 @@ import astropy.units as u
 import numpy as np
 
 from .attributes import (ScalarAngle, PixelPositions, PositiveScalar,
-                         SkyCoordPositions, ScalarAngleOrPixel,
-                         ScalarAngleOrValue)
+                         SkyCoordPositions, ScalarAngleOrValue,
+                         PositiveScalarAngle)
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
@@ -138,9 +138,6 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
-            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units (this is Deprecated and will be removed in a
-              future version)
 
     a : float
         The semimajor axis of the ellipse in pixels.
@@ -276,9 +273,6 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
             * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
-            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
-              pixel units (this is Deprecated and will be removed in a
-              future version)
 
     a_in : float
         The inner semimajor axis of the elliptical annulus in pixels.
@@ -445,12 +439,10 @@ class SkyEllipticalAperture(SkyAperture):
         either scalar coordinates or an array of coordinates.
 
     a : scalar `~astropy.units.Quantity`
-        The semimajor axis of the ellipse in angular units. Pixel units
-        are now deprecated.
+        The semimajor axis of the ellipse in angular units.
 
     b : scalar `~astropy.units.Quantity`
-        The semiminor axis of the ellipse in angular units. Pixel units
-        are now deprecated.
+        The semiminor axis of the ellipse in angular units.
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the ellipse semimajor
@@ -468,16 +460,12 @@ class SkyEllipticalAperture(SkyAperture):
 
     _params = ('positions', 'a', 'b', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    a = ScalarAngleOrPixel('The semimajor axis in angular units.')
-    b = ScalarAngleOrPixel('The semiminor axis in angular units.')
+    a = PositiveScalarAngle('The semimajor axis in angular units.')
+    b = PositiveScalarAngle('The semiminor axis in angular units.')
     theta = ScalarAngle('The position angle in angular units of the ellipse '
                         'semimajor axis.')
 
     def __init__(self, positions, a, b, theta=0. * u.deg):
-        if a.unit.physical_type != b.unit.physical_type:
-            raise ValueError('a and b should either both be angles '
-                             'or in pixels')
-
         self.positions = positions
         self.a = a
         self.b = b
@@ -518,21 +506,17 @@ class SkyEllipticalAnnulus(SkyAperture):
         either scalar coordinates or an array of coordinates.
 
     a_in : scalar `~astropy.units.Quantity`
-        The inner semimajor axis in angular units. Pixel units are now
-        deprecated.
+        The inner semimajor axis in angular units.
 
     a_out : scalar `~astropy.units.Quantity`
-        The outer semimajor axis in angular units. Pixel units are now
-        deprecated.
+        The outer semimajor axis in angular units.
 
     b_out : scalar `~astropy.units.Quantity`
-        The outer semiminor axis in angular units. Pixel units are now
-        deprecated.
+        The outer semiminor axis in angular units.
 
     b_in : `None` or scalar `~astropy.units.Quantity`
-        The inner semiminor axis in angular units. Pixel units are
-        now deprecated. If `None`, then the inner semiminor axis is
-        calculated as:
+        The inner semiminor axis in angular units. If `None`, then the
+        inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
                 \left(\frac{a_{in}}{a_{out}}\right)
@@ -554,21 +538,15 @@ class SkyEllipticalAnnulus(SkyAperture):
 
     _params = ('positions', 'a_in', 'a_out', 'b_in', 'b_out', 'theta')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
-    a_in = ScalarAngleOrPixel('The inner semimajor axis in angular units.')
-    a_out = ScalarAngleOrPixel('The outer semimajor axis in angular units.')
-    b_in = ScalarAngleOrPixel('The inner semiminor axis in angular units.')
-    b_out = ScalarAngleOrPixel('The outer semiminor axis in angular units.')
+    a_in = PositiveScalarAngle('The inner semimajor axis in angular units.')
+    a_out = PositiveScalarAngle('The outer semimajor axis in angular units.')
+    b_in = PositiveScalarAngle('The inner semiminor axis in angular units.')
+    b_out = PositiveScalarAngle('The outer semiminor axis in angular units.')
     theta = ScalarAngle('The position angle in angular units of the ellipse '
                         'semimajor axis.')
 
     def __init__(self, positions, a_in, a_out, b_out, b_in=None,
                  theta=0. * u.deg):
-        if a_in.unit.physical_type != a_out.unit.physical_type:
-            raise ValueError('a_in and a_out should either both be angles '
-                             'or in pixels')
-        if a_out.unit.physical_type != b_out.unit.physical_type:
-            raise ValueError('a_out and b_out should either both be angles '
-                             'or in pixels')
         if not a_out > a_in:
             raise ValueError('"a_out" must be greater than "a_in".')
 
@@ -580,9 +558,6 @@ class SkyEllipticalAnnulus(SkyAperture):
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
         else:
-            if b_in.unit.physical_type != b_out.unit.physical_type:
-                raise ValueError('b_in and b_out should either both be '
-                                 'angles or in pixels')
             if not b_out > b_in:
                 raise ValueError('"b_out" must be greater than "b_in".')
         self.b_in = b_in
