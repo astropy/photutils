@@ -647,12 +647,12 @@ def test_psf_extra_output_cols(sigma_psf, sources):
         # checks to verify that half-passing init_guesses results in NaN output
         # for extra_output_cols not passed as initial guesses
         if i == 2:  # init_guess3
-            assert(np.all(np.all(np.isnan(phot_results[o])) for o in
-                   ['sharpness', 'roundness1', 'roundness2']))
+            assert np.all(np.all(np.isnan(phot_results[o])) for o in
+                          ['sharpness', 'roundness1', 'roundness2'])
         if i == 3:  # init_guess4
-            assert(np.all(np.all(np.isnan(phot_results[o])) for o in
-                   ['roundness1', 'roundness2']))
-            assert(np.all(~np.isnan(phot_results['sharpness'])))
+            assert np.all(np.all(np.isnan(phot_results[o])) for o in
+                          ['roundness1', 'roundness2'])
+            assert np.all(~np.isnan(phot_results['sharpness']))
 
 
 @pytest.fixture(params=[2, 3])

@@ -298,8 +298,8 @@ def test_wcs_based_photometry_to_catalog():
     # fluxes_catalog is based on PSF photometry, etc.
     assert_allclose(fluxes_catalog, converted_aperture_sum.value, rtol=1e0)
 
-    assert(np.mean(np.fabs((fluxes_catalog - converted_aperture_sum.value)
-                           / fluxes_catalog)) < 0.1)
+    assert np.mean(np.fabs((fluxes_catalog - converted_aperture_sum.value)
+                           / fluxes_catalog)) < 0.1
 
     # close the file
     hdu.close()
