@@ -1942,9 +1942,9 @@ class SourceCatalog:
     def ellipticity(self):
         r"""
         1.0 minus the ratio of the lengths of the semimajor and
-        semiminor axes (or 1.0 minus the `elongation`).
+        semiminor axes.
 
-        .. math:: \mathrm{ellipticity} = 1 - \frac{b}{a}
+        .. math:: \mathrm{ellipticity} = \frac{a - b}{a} = 1 - \frac{b}{a}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
