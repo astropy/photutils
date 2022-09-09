@@ -312,9 +312,11 @@ class PixelAperture(Aperture):
 
     def area_overlap(self, data, *, mask=None, method='exact', subpixels=5):
         """
-        Return the areas of the aperture masks that overlap with the
-        data, i.e., how many pixels are actually used to calculate each
-        sum.
+        Return the pixel areas of the aperture masks that overlap with
+        the data.
+
+        In other words, this method returns the pixel area(s) within the
+        aperture(s) that are used to calculate the aperture sum(s).
 
         Parameters
         ----------
@@ -361,7 +363,8 @@ class PixelAperture(Aperture):
         Returns
         -------
         areas : float or array_like
-            The overlapping areas between the aperture masks and the data.
+            The overlapping areas (in pixels**2) between the aperture
+            masks and the data.
         """
         apermasks = self.to_mask(method=method, subpixels=subpixels)
         if self.isscalar:
@@ -372,7 +375,7 @@ class PixelAperture(Aperture):
             if mask.shape != data.shape:
                 raise ValueError('mask and data must have the same shape')
 
-        data = np.ones_like(data)
+        data = np.ones(data.shape)  # pixels
         vals = [apermask.get_values(data, mask=mask) for apermask in apermasks]
         # if the aperture does not overlap the data return np.nan
         areas = [val.sum() if val.shape != (0,) else np.nan for val in vals]
