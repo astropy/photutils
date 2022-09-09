@@ -10,6 +10,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Fixed a bug in the ``PixelAperture`` ``area_overlap`` method so that
+    the returned value does not inherit the data units. [#1408]
+
 API Changes
 ^^^^^^^^^^^
 
