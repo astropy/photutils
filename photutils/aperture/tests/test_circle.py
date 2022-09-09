@@ -148,8 +148,17 @@ def test_area_overlap():
     areas = aper.area_overlap(data)
     assert_allclose(areas, [10.304636, np.pi * 9., np.nan])
 
+    data2 = np.ones((11, 11)) * u.Jy
+    areas = aper.area_overlap(data2)
+    assert not isinstance(areas[0], u.Quantity)
+    assert_allclose(areas, [10.304636, np.pi * 9., np.nan])
+
     aper2 = CircularAperture(xypos[1], r=3)
     area2 = aper2.area_overlap(data)
+    assert_allclose(area2, np.pi * 9.)
+
+    area2 = aper2.area_overlap(data2)
+    assert not isinstance(area2, u.Quantity)
     assert_allclose(area2, np.pi * 9.)
 
 
