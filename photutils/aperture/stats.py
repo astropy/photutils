@@ -9,11 +9,13 @@ import functools
 import inspect
 import warnings
 
+from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import (SigmaClip, mad_std, biweight_location,
                            biweight_midvariance)
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from . import Aperture, SkyAperture
@@ -55,7 +57,7 @@ class ApertureStats:
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+    data : 2D `~numpy.ndarray`, `~astropy.units.Quantity`, `~astropy.nddata.NDData`
         The 2D array from which to calculate the source properties.
         For accurate source properties, ``data`` should be
         background-subtracted. Non-finite ``data`` values (NaN and inf)
@@ -200,6 +202,9 @@ class ApertureStats:
                  sigma_clip=None, sum_method='exact', subpixels=5,
                  local_bkg=None):
 
+        if isinstance(data, NDData):
+            data, error, mask, wcs = self.unpack_nddata(data, error, mask, wcs)
+
         (data, error, local_bkg), unit = process_quantities(
             (data, error, local_bkg), ('data', 'error', 'local_bkg'))
         self._data = self._validate_array(data, 'data', shape=False)
@@ -238,6 +243,31 @@ class ApertureStats:
         self._ids = np.arange(self.n_apertures) + 1
         self.default_columns = DEFAULT_COLUMNS
         self.meta = _get_meta()
+
+    @staticmethod
+    def unpack_nddata(data, error, mask, wcs):
+        nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
+        for key, value in nddata_attr.items():
+            if value is not None:
+                warnings.warn(f'The {key!r} keyword is be ignored. Its '
+                              'value is obtained from the input NDData '
+                              'object.', AstropyUserWarning)
+
+        mask = data.mask
+        wcs = data.wcs
+
+        if isinstance(data.uncertainty, StdDevUncertainty):
+            if data.uncertainty.unit is None:
+                error = data.uncertainty.array
+            else:
+                error = data.uncertainty.array * data.uncertainty.unit
+
+        if data.unit is not None:
+            data = u.Quantity(data.data, unit=data.unit)
+        else:
+            data = data.data
+
+        return data, error, mask, wcs
 
     @staticmethod
     def _validate_aperture(aperture):

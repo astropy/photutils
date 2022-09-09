@@ -6,6 +6,10 @@ General
 
 New Features
 ^^^^^^^^^^^^
+- ``photutils.aperture``
+
+  - The ``ApertureStats`` class now accepts astropy ``NDData`` objects
+    as input. [#1409]
 
 Bug Fixes
 ^^^^^^^^^
