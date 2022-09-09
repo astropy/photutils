@@ -3,6 +3,7 @@
 Tests for the stats module.
 """
 
+from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import SigmaClip
 import astropy.units as u
 import numpy as np
@@ -299,3 +300,32 @@ class TestApertureStats:
         assert apstats.mean == 1.0
         assert apstats.xcentroid == 12.0
         assert apstats.ycentroid == 12.0
+
+    @pytest.mark.parametrize('with_units', (True, False))
+    def test_nddata_input(self, with_units):
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[225:240, 80:90] = True  # partially mask id=2
+
+        data = self.data
+        error = self.error
+        if with_units:
+            unit = u.Jy
+            data <<= unit
+            error <<= unit
+        else:
+            unit = None
+
+        apstats1 = ApertureStats(data, self.aperture, error=error,
+                                 mask=mask, wcs=self.wcs, sigma_clip=None)
+
+        uncertainty = StdDevUncertainty(self.error)
+        nddata = NDData(self.data, uncertainty=uncertainty, mask=mask,
+                        wcs=self.wcs, unit=unit)
+        apstats2 = ApertureStats(nddata, self.aperture, sigma_clip=None)
+
+        assert_allclose(apstats1.xcentroid, apstats2.xcentroid)
+        assert_allclose(apstats1.ycentroid, apstats2.ycentroid)
+        assert_allclose(apstats1.sum, apstats2.sum)
+
+        if with_units:
+            assert apstats1.sum.unit == unit
