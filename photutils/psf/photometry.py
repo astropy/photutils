@@ -34,7 +34,7 @@ class BasicPSFPhotometry:
     GROUP, NSTAR, and SUBTRACT.  This implementation allows a flexible
     and customizable interface to perform photometry. For instance, one
     is able to use different implementations for grouping and finding
-    sources by using ``group_maker`` and ``finder`` respectivelly. In
+    sources by using ``group_maker`` and ``finder`` respectively. In
     addition, sky background estimation is performed by
     ``bkg_estimator``.
 
