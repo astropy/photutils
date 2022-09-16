@@ -250,7 +250,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         theta_deg = self._theta_radians * 180. / np.pi
         for xy_position in xy_positions:
             patches.append(mpatches.Rectangle(xy_position, self.w, self.h,
-                                              theta_deg, **patch_kwargs))
+                                              angle=theta_deg, **patch_kwargs))
 
         if self.isscalar:
             return patches[0]
@@ -424,9 +424,9 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         theta_deg = self._theta_radians * 180. / np.pi
         for xy_in, xy_out in zip(inner_xy_positions, outer_xy_positions):
             patch_inner = mpatches.Rectangle(xy_in, self.w_in, self.h_in,
-                                             theta_deg)
+                                             angle=theta_deg)
             patch_outer = mpatches.Rectangle(xy_out, self.w_out, self.h_out,
-                                             theta_deg)
+                                             angle=theta_deg)
             path = self._make_annulus_path(patch_inner, patch_outer)
             patches.append(mpatches.PathPatch(path, **patch_kwargs))
 
