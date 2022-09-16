@@ -225,7 +225,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         theta_deg = self._theta_radians * 180. / np.pi
         for xy_position in xy_positions:
             patches.append(mpatches.Ellipse(xy_position, 2. * self.a,
-                                            2. * self.b, theta_deg,
+                                            2. * self.b, angle=theta_deg,
                                             **patch_kwargs))
 
         if self.isscalar:
@@ -389,9 +389,9 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         theta_deg = self._theta_radians * 180. / np.pi
         for xy_position in xy_positions:
             patch_inner = mpatches.Ellipse(xy_position, 2. * self.a_in,
-                                           2. * self.b_in, theta_deg)
+                                           2. * self.b_in, angle=theta_deg)
             patch_outer = mpatches.Ellipse(xy_position, 2. * self.a_out,
-                                           2. * self.b_out, theta_deg)
+                                           2. * self.b_out, angle=theta_deg)
             path = self._make_annulus_path(patch_inner, patch_outer)
             patches.append(mpatches.PathPatch(path, **patch_kwargs))
 
