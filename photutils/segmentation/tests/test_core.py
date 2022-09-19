@@ -242,6 +242,12 @@ class TestSegmentationImage:
         assert_allclose(segm.data, ref_data)
         assert segm.nlabels == len(segm.slices) - segm.slices.count(None)
 
+        # test slices caching
+        segm = SegmentationImage(self.data.copy())
+        slc1 = segm.slices
+        segm.relabel_consecutive()
+        assert slc1 == segm.slices
+
     @pytest.mark.parametrize('start_label', [0, -1])
     def test_relabel_consecutive_start_invalid(self, start_label):
         with pytest.raises(ValueError):
