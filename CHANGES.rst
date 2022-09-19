@@ -11,6 +11,10 @@ New Features
   - The ``ApertureStats`` class now accepts astropy ``NDData`` objects
     as input. [#1409]
 
+- ``photutils.segmentation``
+
+  - Added the ability to slice ``SegmentationImage`` objects. [#1413]
+
 Bug Fixes
 ^^^^^^^^^
 
