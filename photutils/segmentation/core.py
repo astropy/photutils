@@ -55,6 +55,18 @@ class SegmentationImage:
     def __repr__(self):
         return self.__str__()
 
+    def __getitem__(self, key):
+        """
+        Slice the segmentation image, returning a new SegmentationImage
+        object.
+        """
+        if (isinstance(key, tuple) and len(key) == 2
+                and all(isinstance(key[i], slice)
+                        and (key[i].start != key[i].stop) for i in (0, 1))):
+            return SegmentationImage(self.data[key])
+        else:
+            raise TypeError(f'{key!r} is not a valid 2D slice object')
+
     def __array__(self):
         """
         Array representation of the segmentation array (e.g., for
