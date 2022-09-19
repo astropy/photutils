@@ -32,6 +32,14 @@ class SegmentationImage:
         different positive integer values. A value of zero is reserved
         for the background. The segmentation image must have integer
         type.
+
+    Notes
+    -----
+    The `SegmentationImage` instance may be sliced, but note that the
+    sliced `SegmentationImage` data array will be a view into the
+    original `SegmentationImage` array (this is the same behavior as
+    `numpy.ndarray`). Explicitly use the :meth:`SegmentationImage.copy`
+    method to create a copy of the sliced `SegmentationImage`.
     """
 
     def __init__(self, data):
