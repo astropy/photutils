@@ -36,6 +36,19 @@ class TestSegmentationImage:
         segm.data[0, 0] = 100.
         assert segm.data[0, 0] != segm2.data[0, 0]
 
+    def test_slicing(self):
+        segm2 = self.segm[1:5, 2:5]
+        assert segm2.shape == (4, 3)
+        assert_equal(segm2.labels, [3, 5])
+        assert segm2.data.sum() == 16
+
+        with pytest.raises(TypeError):
+            self.segm[1]
+        with pytest.raises(TypeError):
+            self.segm[1:10]
+        with pytest.raises(TypeError):
+            self.segm[1:1, 2:4]
+
     def test_data_all_zeros(self):
         data = np.zeros((5, 5), dtype=int)
         segm = SegmentationImage(data)
@@ -228,6 +241,12 @@ class TestSegmentationImage:
         segm.relabel_consecutive(start_label=start_label)
         assert_allclose(segm.data, ref_data)
         assert segm.nlabels == len(segm.slices) - segm.slices.count(None)
+
+        # test slices caching
+        segm = SegmentationImage(self.data.copy())
+        slc1 = segm.slices
+        segm.relabel_consecutive()
+        assert slc1 == segm.slices
 
     @pytest.mark.parametrize('start_label', [0, -1])
     def test_relabel_consecutive_start_invalid(self, start_label):
