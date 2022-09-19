@@ -62,12 +62,11 @@ dependencies, you can instead do::
     pip install "photutils[all]"
 
 In most cases, this will install a pre-compiled version (called a wheel)
-of Photutils, but if you are using a very recent version of Python,
-if a new version of Photutils has just been released, or if you are
-building Photutils for a platform that is not common, Photutils will be
-installed from a source file. In this case you will need a C compiler
-(e.g., ``gcc`` or ``clang``) to be installed for the installation to
-succeed (see :ref:`building_source` prerequisites).
+of Photutils, but if you are using a very recent version of Python
+or if you are installing Photutils on a platform that is not common,
+Photutils will be installed from a source file. In this case you will
+need a C compiler (e.g., ``gcc`` or ``clang``) to be installed for the
+installation to succeed (see :ref:`building_source` prerequisites).
 
 If you get a ``PermissionError``, this means that you do not have the
 required administrative access to install new packages to your Python
