@@ -80,16 +80,25 @@ class CutoutImage:
     """
     def __init__(self, data, position, shape, mode='trim', fill_value=np.nan,
                  copy=False):
+        self.position = position
+        self.input_shape = shape
+        self.mode = mode
+        self.fill_value = fill_value
+        self.copy = copy
 
         data = np.asanyarray(data)
-        cutout_data = extract_array(data, shape, position, mode=mode,
-                                    fill_value=fill_value,
-                                    return_position=False)
-        if copy:
-            cutout_data = np.copy(cutout_data)
-        self.data = cutout_data
         self._overlap_slices = overlap_slices(data.shape, shape, position,
                                               mode=mode)
+        self.data = self._make_cutout(data)
+        self.shape = self.data.shape
+
+    def _make_cutout(self, data):
+        cutout_data = extract_array(data, self.input_shape, self.position,
+                                    mode=self.mode, fill_value=self.fill_value,
+                                    return_position=False)
+        if self.copy:
+            cutout_data = np.copy(cutout_data)
+        return cutout_data
 
     def __array__(self, dtype=None):
         """
@@ -109,19 +118,22 @@ class CutoutImage:
     @lazyproperty
     def slices_original(self):
         """
-        A tuple of slice objects for the minimal bounding box
-        of the cutout with respect to the original array. For
-        ``mode='partial'``, the slices are for the valid (non-filled)
-        cutout values.
+        A tuple of slice objects in axis order for the minimal bounding
+        box of the cutout with respect to the original array.
+
+        For ``mode='partial'``, the slices are for the valid
+        (non-filled) cutout values.
         """
         return self._overlap_slices[0]
 
     @lazyproperty
     def slices_cutout(self):
         """
-        A tuple of slice objects for the minimal bounding box of the
-        cutout with respect to the cutout array. For ``mode='partial'``,
-        the slices are for the valid (non-filled) cutout values.
+        A tuple of slice objects in axis order for the minimal bounding
+        box of the cutout with respect to the cutout array.
+
+        For ``mode='partial'``, the slices are for the valid
+        (non-filled) cutout values.
         """
         return self._overlap_slices[1]
 
@@ -138,6 +150,7 @@ class CutoutImage:
         """
         The `~photutils.aperture.BoundingBox` of the minimal rectangular
         region of the cutout array with respect to the original array.
+
         For ``mode='partial'``, the bounding box indices are for the
         valid (non-filled) cutout values.
         """
@@ -147,8 +160,46 @@ class CutoutImage:
     def bbox_cutout(self):
         """
         The `~photutils.aperture.BoundingBox` of the minimal rectangular
-        region of the cutout array with respect to the cutout array. For
-        ``mode='partial'``, the bounding box indices are for the valid
-        (non-filled) cutout values.
+        region of the cutout array with respect to the cutout array.
+
+        For ``mode='partial'``, the bounding box indices are for the
+        valid (non-filled) cutout values.
         """
         return self._calc_bbox(self.slices_cutout)
+
+    def _calc_origin_offset(self):
+        """
+        For ``mode='partial'``, calculate the origin offset for cases of
+        partial overlap.
+        """
+        yshape = self.slices_original[0].stop - self.slices_original[0].start
+        xshape = self.slices_original[1].stop - self.slices_original[1].start
+        yoffset, xoffset = 0, 0
+        if self.shape != (yshape, xshape):
+            yoffset = yshape - self.shape[0]
+            xoffset = xshape - self.shape[1]
+        return yoffset, xoffset
+
+    def _calc_xyorigin(self, slices):
+        """
+        """
+        xorigin, yorigin = (slices[1].start, slices[0].start)
+
+        if self.mode == 'partial':
+            yoffset, xoffset = self._calc_origin_offset()
+            xorigin += xoffset
+            yorigin += yoffset
+
+        return np.array((xorigin, yorigin))
+
+    @lazyproperty
+    def xyorigin(self):
+        """
+        A `~numpy.ndarray` containing the ``(x, y)`` integer index of
+        the origin pixel of the cutout with respect to the original
+        array.
+
+        The origin index will be negative for cutouts with partial
+        overlaps.
+        """
+        return self._calc_xyorigin(self.slices_original)
