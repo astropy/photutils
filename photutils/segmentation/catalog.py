@@ -2570,12 +2570,14 @@ class SourceCatalog:
 
         return np.array(kron_radius)
 
+    @as_scalar
     def _calc_kron_radius(self, kron_params):
         """
         Calculate the *unscaled* first-moment Kron radius, applying any
         minimum Kron or circular radius to the measured Kron radius.
 
-        Returned as a Quantity array with pixel units.
+        Returned as a Quantity array or scalar (if self isscalar) with
+        pixel units.
         """
         kron_radius = self._measured_kron_radius.copy()
         # set minimum (unscaled) kron radius
@@ -2654,55 +2656,12 @@ class SourceCatalog:
 
     def _make_kron_apertures(self, kron_params):
         """
-        Make Kron apertures for each source.
-
-        The aperture for each source will be centered at its centroid
-        position. If a ``detection_cat`` was input to `SourceCatalog`,
-        it will be used for the source centroids.
-
-        Note that changing ``kron_params`` from the values
-        input into `SourceCatalog` does not change the Kron
-        apertures (`kron_aperture`) and photometry (`kron_flux` and
-        `kron_fluxerr`) in the source catalog. This method should
-        be used only to explore alternative ``kron_params`` with a
-        detection image.
-
-        Parameters
-        ----------
-        kron_params : list of 2 or 3 floats, optional
-            A list of parameters used to determine the Kron aperture.
-            The first item is the scaling parameter of the unscaled
-            Kron radius and the second item represents the minimum
-            value for the unscaled Kron radius in pixels. The optional
-            third item is the minimum circular radius in pixels. If
-            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma`
-            * `semiminor_sigma`) is less than or equal to this radius,
-            then the Kron aperture will be a circle with this minimum
-            radius.
-
-        Returns
-        -------
-        result : list of `~photutils.aperture.PixelAperture`
-            The Kron apertures for each source. Each aperture will
-            either be a `~photutils.aperture.EllipticalAperture`,
-            `~photutils.aperture.CircularAperture`, or `None`. The
-            aperture will be `None` where the source centroid position
-            or elliptical shape parameters are not finite or where the
-            source is completely masked.
+        Make Kron apertures for each source, always returned as a list.
         """
-        if self._detection_cat is not None:
-            # use detection catalog for centroids and elliptical shape
-            # parameters
-            detcat = self._detection_cat
-        else:
-            detcat = self
-
-        kron_radius = detcat.kron_radius.value
-        scale = kron_radius * kron_params[0]
-
         # NOTE: if kron_radius = NaN, scale = NaN and kron_aperture = None
+        kron_radius = self._calc_kron_radius(kron_params)
+        scale = kron_radius.value * kron_params[0]
         kron_apertures = self._make_elliptical_apertures(scale=scale)
-
         return kron_apertures
 
     @lazyproperty
