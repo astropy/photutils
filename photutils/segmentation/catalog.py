@@ -3147,7 +3147,7 @@ class SourceCatalog:
         return result
 
     @as_scalar
-    def make_cutouts(self, shape):
+    def make_cutouts(self, shape, mode='partial', fill_value=np.nan):
         """
         Make cutout arrays for each source.
 
@@ -3160,6 +3160,23 @@ class SourceCatalog:
         shape : 2-tuple
             The cutout shape along each axis in ``(ny, nx)`` order.
 
+        mode : {'partial', 'trim'}, optional
+            The mode used for extracting the cutout array. In
+            ``'partial'`` mode, positions in the cutout array that
+            do not overlap with the large array will be filled with
+            ``fill_value``. In ``'trim'`` mode, only the overlapping
+            elements are returned, thus the resulting small array may be
+            smaller than the requested ``shape``.
+
+        fill_value : number, optional
+            If ``mode='partial'``, the value to fill pixels in the
+            extracted cutout array that do not overlap with the input
+            ``array_large``. ``fill_value`` will be changed to have
+            the same ``dtype`` as the ``array_large`` array, with
+            one exception. If ``array_large`` has integer type and
+            ``fill_value`` is ``np.nan``, then a `ValueError` will be
+            raised.
+
         Returns
         -------
         cutouts : `~photutils.utils.CutoutImage` \
@@ -3168,6 +3185,9 @@ class SourceCatalog:
             cutout will be `None` where the source centroid position is
             not finite or where the source is completely masked.
         """
+        if mode not in ('partial', 'trim'):
+            raise ValueError('mode must be "partial" or "trim"')
+
         if self._detection_cat is not None:
             # use detection catalog for centroids
             detcat = self._detection_cat
@@ -3184,6 +3204,6 @@ class SourceCatalog:
                 continue
 
             cutouts.append(CutoutImage(self._data, (ycen, xcen), shape,
-                                       mode='partial', fill_value=np.nan))
+                                       mode=mode, fill_value=fill_value))
 
         return cutouts

@@ -16,7 +16,7 @@ from ..core import SegmentationImage
 from ..detect import detect_sources
 from ..finder import SourceFinder
 from ..utils import make_2dgaussian_kernel
-from ...aperture import CircularAperture, EllipticalAperture
+from ...aperture import BoundingBox, CircularAperture, EllipticalAperture
 from ...background import Background2D, MedianBackground
 from ...datasets import (make_gwcs, make_wcs, make_noise_image,
                          make_100gaussians_image)
@@ -752,16 +752,46 @@ class TestSourceCatalog:
         assert isinstance(aper, EllipticalAperture)
 
     def test_make_cutouts(self):
-        shape = (10, 11)
-        cut = self.cat.make_cutouts(shape)
-        assert len(cut) == len(self.cat)
-        assert isinstance(cut[1], CutoutImage)
-        assert cut[1].data.shape == shape
+        data = make_100gaussians_image()
+        bkg_estimator = MedianBackground()
+        bkg = Background2D(data, (50, 50), filter_size=(3, 3),
+                           bkg_estimator=bkg_estimator)
+        data -= bkg.background  # subtract the background
+        threshold = 1.5 * bkg.background_rms
+        kernel = make_2dgaussian_kernel(3.0, size=5)
+        convolved_data = convolve(data, kernel)
+        npixels = 10
+        finder = SourceFinder(npixels=npixels, progress_bar=False)
+        segment_map = finder(convolved_data, threshold)
+        cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
 
-        obj = self.cat[1]
+        shape = (100, 100)
+
+        with pytest.raises(ValueError):
+            cat.make_cutouts(shape, mode='strict')
+
+        cutouts = cat.make_cutouts(shape, mode='trim')
+        assert cutouts[0].data.shape != shape
+        assert_equal(cutouts[0].xyorigin, np.array((186, 0)))
+        assert (cutouts[0].bbox_original
+                == BoundingBox(ixmin=186, ixmax=286, iymin=0, iymax=52))
+
+        cutouts = cat.make_cutouts(shape, mode='partial')
+        assert_equal(cutouts[0].xyorigin, np.array((186, -48)))
+        assert (cutouts[0].bbox_original
+                == BoundingBox(ixmin=186, ixmax=286, iymin=0, iymax=52))
+
+        assert len(cutouts) == len(cat)
+        assert isinstance(cutouts[1], CutoutImage)
+        assert cutouts[1].data.shape == shape
+
+        obj = cat[1]
         cut = obj.make_cutouts(shape)
         assert isinstance(cut, CutoutImage)
         assert cut.data.shape == shape
+
+        cutouts = cat.make_cutouts(shape, mode='partial', fill_value=-100)
+        assert cutouts[0].data[0, 0] == -100
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
