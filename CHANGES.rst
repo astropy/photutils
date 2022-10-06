@@ -15,6 +15,9 @@ New Features
 
   - Added the ability to slice ``SegmentationImage`` objects. [#1413]
 
+  - Added ``mode`` and ``fill_value`` keywords to ``SourceCatalog``
+    ``make_cutouts`` method. [#1420]
+
 - ``photutils.utils``
 
   - Added ``xyorigin`` attribute to ``CutoutImage``. [#1419]
