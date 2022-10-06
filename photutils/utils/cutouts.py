@@ -110,9 +110,10 @@ class CutoutImage:
     def slices_original(self):
         """
         A tuple of slice objects for the minimal bounding box
-        of the cutout with respect to the original array. For
-        ``mode='partial'``, the slices are for the valid (non-filled)
-        cutout values.
+        of the cutout with respect to the original array.
+
+        For ``mode='partial'``, the slices are for the valid
+        (non-filled) cutout values.
         """
         return self._overlap_slices[0]
 
@@ -120,8 +121,10 @@ class CutoutImage:
     def slices_cutout(self):
         """
         A tuple of slice objects for the minimal bounding box of the
-        cutout with respect to the cutout array. For ``mode='partial'``,
-        the slices are for the valid (non-filled) cutout values.
+        cutout with respect to the cutout array.
+
+        For ``mode='partial'``, the slices are for the valid
+        (non-filled) cutout values.
         """
         return self._overlap_slices[1]
 
@@ -138,6 +141,7 @@ class CutoutImage:
         """
         The `~photutils.aperture.BoundingBox` of the minimal rectangular
         region of the cutout array with respect to the original array.
+
         For ``mode='partial'``, the bounding box indices are for the
         valid (non-filled) cutout values.
         """
@@ -147,9 +151,10 @@ class CutoutImage:
     def bbox_cutout(self):
         """
         The `~photutils.aperture.BoundingBox` of the minimal rectangular
-        region of the cutout array with respect to the cutout array. For
-        ``mode='partial'``, the bounding box indices are for the valid
-        (non-filled) cutout values.
+        region of the cutout array with respect to the cutout array.
+
+        For ``mode='partial'``, the bounding box indices are for the
+        valid (non-filled) cutout values.
         """
         return self._calc_bbox(self.slices_cutout)
 
