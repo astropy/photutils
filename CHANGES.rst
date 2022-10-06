@@ -15,6 +15,10 @@ New Features
 
   - Added the ability to slice ``SegmentationImage`` objects. [#1413]
 
+- ``photutils.utils``
+
+  - Added ``xyorigin`` attribute to ``CutoutImage``. [#1419]
+
 Bug Fixes
 ^^^^^^^^^
 
