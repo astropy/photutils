@@ -80,16 +80,25 @@ class CutoutImage:
     """
     def __init__(self, data, position, shape, mode='trim', fill_value=np.nan,
                  copy=False):
+        self.position = position
+        self.input_shape = shape
+        self.mode = mode
+        self.fill_value = fill_value
+        self.copy = copy
 
         data = np.asanyarray(data)
-        cutout_data = extract_array(data, shape, position, mode=mode,
-                                    fill_value=fill_value,
-                                    return_position=False)
-        if copy:
-            cutout_data = np.copy(cutout_data)
-        self.data = cutout_data
         self._overlap_slices = overlap_slices(data.shape, shape, position,
                                               mode=mode)
+        self.data = self._make_cutout(data)
+        self.shape = self.data.shape
+
+    def _make_cutout(self, data):
+        cutout_data = extract_array(data, self.input_shape, self.position,
+                                    mode=self.mode, fill_value=self.fill_value,
+                                    return_position=False)
+        if self.copy:
+            cutout_data = np.copy(cutout_data)
+        return cutout_data
 
     def __array__(self, dtype=None):
         """
@@ -109,8 +118,8 @@ class CutoutImage:
     @lazyproperty
     def slices_original(self):
         """
-        A tuple of slice objects for the minimal bounding box
-        of the cutout with respect to the original array.
+        A tuple of slice objects in axis order for the minimal bounding
+        box of the cutout with respect to the original array.
 
         For ``mode='partial'``, the slices are for the valid
         (non-filled) cutout values.
@@ -120,8 +129,8 @@ class CutoutImage:
     @lazyproperty
     def slices_cutout(self):
         """
-        A tuple of slice objects for the minimal bounding box of the
-        cutout with respect to the cutout array.
+        A tuple of slice objects in axis order for the minimal bounding
+        box of the cutout with respect to the cutout array.
 
         For ``mode='partial'``, the slices are for the valid
         (non-filled) cutout values.
