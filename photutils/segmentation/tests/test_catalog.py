@@ -27,39 +27,44 @@ from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourceCatalog:
-    xcen = 51.
-    ycen = 52.7
-    major_sigma = 8.
-    minor_sigma = 3.
-    theta = np.pi / 6.
-    g1 = Gaussian2D(111., xcen, ycen, major_sigma, minor_sigma,
-                    theta=theta)
-    g2 = Gaussian2D(50, 20, 80, 5.1, 4.5)
-    g3 = Gaussian2D(70, 75, 18, 9.2, 4.5)
-    g4 = Gaussian2D(111., 11.1, 12.2, major_sigma, minor_sigma,
-                    theta=theta)
-    g5 = Gaussian2D(81., 61, 42.7, major_sigma, minor_sigma, theta=theta)
-    g6 = Gaussian2D(107., 75, 61, major_sigma, minor_sigma, theta=-theta)
-    g7 = Gaussian2D(107., 90, 90, 4, 2, theta=-theta)
+    def setup_class(self):
+        xcen = 51.
+        ycen = 52.7
+        major_sigma = 8.
+        minor_sigma = 3.
+        theta = np.pi / 6.
+        g1 = Gaussian2D(111., xcen, ycen, major_sigma, minor_sigma,
+                        theta=theta)
+        g2 = Gaussian2D(50, 20, 80, 5.1, 4.5)
+        g3 = Gaussian2D(70, 75, 18, 9.2, 4.5)
+        g4 = Gaussian2D(111., 11.1, 12.2, major_sigma, minor_sigma,
+                        theta=theta)
+        g5 = Gaussian2D(81., 61, 42.7, major_sigma, minor_sigma, theta=theta)
+        g6 = Gaussian2D(107., 75, 61, major_sigma, minor_sigma, theta=-theta)
+        g7 = Gaussian2D(107., 90, 90, 4, 2, theta=-theta)
 
-    yy, xx = np.mgrid[0:101, 0:101]
-    data = (g1(xx, yy) + g2(xx, yy) + g3(xx, yy) + g4(xx, yy) + g5(xx, yy)
-            + g6(xx, yy) + g7(xx, yy))
-    threshold = 27.
-    segm = detect_sources(data, threshold, npixels=5)
-    error = make_noise_image(data.shape, mean=0, stddev=2., seed=123)
-    background = np.ones(data.shape) * 5.1
-    mask = np.zeros(data.shape, dtype=bool)
-    mask[0:30, 0:30] = True
+        yy, xx = np.mgrid[0:101, 0:101]
+        self.data = (g1(xx, yy) + g2(xx, yy) + g3(xx, yy) + g4(xx, yy)
+                     + g5(xx, yy) + g6(xx, yy) + g7(xx, yy))
+        threshold = 27.
+        self.segm = detect_sources(self.data, threshold, npixels=5)
+        self.error = make_noise_image(self.data.shape, mean=0, stddev=2.,
+                                      seed=123)
+        self.background = np.ones(self.data.shape) * 5.1
+        self.mask = np.zeros(self.data.shape, dtype=bool)
+        self.mask[0:30, 0:30] = True
 
-    wcs = make_wcs(data.shape)
-    cat = SourceCatalog(data, segm, error=error, background=background,
-                        mask=mask, wcs=wcs, localbkg_width=24)
-    unit = u.nJy
-    unit = unit
-    cat_units = SourceCatalog(data << unit, segm, error=error << unit,
-                              background=background << unit, mask=mask,
-                              wcs=wcs, localbkg_width=24)
+        self.wcs = make_wcs(self.data.shape)
+        self.cat = SourceCatalog(self.data, self.segm, error=self.error,
+                                 background=self.background, mask=self.mask,
+                                 wcs=self.wcs, localbkg_width=24)
+        unit = u.nJy
+        self.unit = unit
+        self.cat_units = SourceCatalog(self.data << unit, self.segm,
+                                       error=self.error << unit,
+                                       background=self.background << unit,
+                                       mask=self.mask, wcs=self.wcs,
+                                       localbkg_width=24)
 
     @pytest.mark.parametrize('with_units', (True, False))
     def test_catalog(self, with_units):
