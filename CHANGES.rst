@@ -30,6 +30,16 @@ Bug Fixes
   - Fixed a bug in the ``PixelAperture`` ``area_overlap`` method so that
     the returned value does not inherit the data units. [#1408]
 
+- ``photutils.segmentation``
+
+  - Fixed an issue in the ``SourceCatalog`` ``kron_photometry``,
+    ``make_kron_apertures``, and ``plot_kron_apertures`` methods where
+    the input minimum Kron and circular radii would not be applied.
+    Instead the instance-level minima would always be used. [#1421]
+
+  - Fixed an issue where the ``SourceCatalog`` ``plot_kron_apertures``
+    method would raise an error for a scalar ``SourceCatalog``. [#1421]
+
 API Changes
 ^^^^^^^^^^^
 

@@ -2507,6 +2507,93 @@ class SourceCatalog:
         return aperture
 
     @lazyproperty
+    def _measured_kron_radius(self):
+        r"""
+        The *unscaled* first-moment Kron radius, always as an array
+        (without units).
+
+        The returned value is the measured Kron radius without applying
+        any minimum Kron or circular radius.
+        """
+        if self._detection_cat is not None:
+            return self._detection_cat._measured_kron_radius
+
+        labels = self._label_iter
+        apertures = self._make_elliptical_apertures(scale=6.0)
+        xcen = self._xcentroid
+        ycen = self._ycentroid
+        cxx = self.cxx.value
+        cxy = self.cxy.value
+        cyy = self.cyy.value
+        if self.isscalar:
+            cxx = (cxx,)
+            cxy = (cxy,)
+            cyy = (cyy,)
+
+        kron_radius = []
+        for (label, aperture, xcen_, ycen_, cxx_, cxy_, cyy_) in zip(
+                labels, apertures, xcen, ycen, cxx, cxy, cyy):
+
+            if aperture is None:
+                kron_radius.append(np.nan)
+                continue
+
+            # use 'center' (whole pixels) to compute Kron radius
+            aperture_mask = aperture.to_mask(method='center')
+
+            # prepare cutouts of the data based on the aperture size
+            # local background explicitly set to zero for SE agreement
+            data, _, mask, xycen, slc_sm = self._make_aperture_data(
+                label, xcen_, ycen_, aperture_mask.bbox, 0.0, make_error=False)
+
+            xval = np.arange(data.shape[1]) - xycen[0]
+            yval = np.arange(data.shape[0]) - xycen[1]
+            xx, yy = np.meshgrid(xval, yval)
+            rr = np.sqrt(cxx_ * xx**2 + cxy_ * xx * yy + cyy_ * yy**2)
+
+            aperture_weights = aperture_mask.data[slc_sm]
+            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
+
+            # ignore RuntimeWarning for invalid data values
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                flux_numer = np.sum((aperture_weights * data * rr)[pixel_mask])
+                flux_denom = np.sum((aperture_weights * data)[pixel_mask])
+
+            # set Kron radius to the minimum Kron radius if numerator or
+            # denominator is negative
+            if flux_numer <= 0 or flux_denom <= 0:
+                kron_radius.append(self._kron_params[1])
+                continue
+
+            kron_radius.append(flux_numer / flux_denom)
+
+        return np.array(kron_radius)
+
+    @as_scalar
+    def _calc_kron_radius(self, kron_params):
+        """
+        Calculate the *unscaled* first-moment Kron radius, applying any
+        minimum Kron or circular radius to the measured Kron radius.
+
+        Returned as a Quantity array or scalar (if self isscalar) with
+        pixel units.
+        """
+        kron_radius = self._measured_kron_radius.copy()
+        # set minimum (unscaled) kron radius
+        kron_radius[kron_radius < kron_params[1]] = kron_params[1]
+
+        # check for minimum circular radius
+        if len(kron_params) == 3:
+            major_sigma = self.semimajor_sigma.value
+            minor_sigma = self.semiminor_sigma.value
+            circ_radius = (kron_params[0] * kron_radius
+                           * np.sqrt(major_sigma * minor_sigma))
+            kron_radius[circ_radius <= kron_params[2]] = 0.0
+
+        return kron_radius << u.pix
+
+    @lazyproperty
     @as_scalar
     def kron_radius(self):
         r"""
@@ -2565,121 +2652,16 @@ class SourceCatalog:
         """
         if self._detection_cat is not None:
             return self._detection_cat.kron_radius
-
-        labels = self._label_iter
-        apertures = self._make_elliptical_apertures(scale=6.0)
-        xcen = self._xcentroid
-        ycen = self._ycentroid
-        cxx = self.cxx.value
-        cxy = self.cxy.value
-        cyy = self.cyy.value
-        if self.isscalar:
-            cxx = (cxx,)
-            cxy = (cxy,)
-            cyy = (cyy,)
-
-        kron_radius = []
-        for (label, aperture, xcen_, ycen_, cxx_, cxy_, cyy_) in zip(
-                labels, apertures, xcen, ycen, cxx, cxy, cyy):
-
-            if aperture is None:
-                kron_radius.append(np.nan)
-                continue
-
-            # use 'center' (whole pixels) to compute Kron radius
-            aperture_mask = aperture.to_mask(method='center')
-
-            # prepare cutouts of the data based on the aperture size
-            # local background explicitly set to zero for SE agreement
-            data, _, mask, xycen, slc_sm = self._make_aperture_data(
-                label, xcen_, ycen_, aperture_mask.bbox, 0.0, make_error=False)
-
-            xval = np.arange(data.shape[1]) - xycen[0]
-            yval = np.arange(data.shape[0]) - xycen[1]
-            xx, yy = np.meshgrid(xval, yval)
-            rr = np.sqrt(cxx_ * xx**2 + cxy_ * xx * yy + cyy_ * yy**2)
-
-            aperture_weights = aperture_mask.data[slc_sm]
-            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
-
-            # ignore RuntimeWarning for invalid data values
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                flux_numer = np.sum((aperture_weights * data * rr)[pixel_mask])
-                flux_denom = np.sum((aperture_weights * data)[pixel_mask])
-
-            # set Kron radius to the minimum Kron radius if numerator or
-            # denominator is negative
-            if flux_numer <= 0 or flux_denom <= 0:
-                kron_radius.append(self._kron_params[1])
-                continue
-
-            kron_radius.append(flux_numer / flux_denom)
-
-        # set minimum (unscaled) kron radius
-        kron_radius = np.array(kron_radius)
-        kron_radius[kron_radius < self._kron_params[1]] = self._kron_params[1]
-
-        # check for minimum circular radius
-        if len(self._kron_params) == 3:
-            major_sigma = self.semimajor_sigma.value
-            minor_sigma = self.semiminor_sigma.value
-            circ_radius = (self._kron_params[0] * kron_radius
-                           * np.sqrt(major_sigma * minor_sigma))
-            kron_radius[circ_radius <= self._kron_params[2]] = 0.0
-
-        return kron_radius << u.pix
+        return self._calc_kron_radius(self._kron_params)
 
     def _make_kron_apertures(self, kron_params):
         """
-        Make Kron apertures for each source.
-
-        The aperture for each source will be centered at its centroid
-        position. If a ``detection_cat`` was input to `SourceCatalog`,
-        it will be used for the source centroids.
-
-        Note that changing ``kron_params`` from the values
-        input into `SourceCatalog` does not change the Kron
-        apertures (`kron_aperture`) and photometry (`kron_flux` and
-        `kron_fluxerr`) in the source catalog. This method should
-        be used only to explore alternative ``kron_params`` with a
-        detection image.
-
-        Parameters
-        ----------
-        kron_params : list of 2 or 3 floats, optional
-            A list of parameters used to determine the Kron aperture.
-            The first item is the scaling parameter of the unscaled
-            Kron radius and the second item represents the minimum
-            value for the unscaled Kron radius in pixels. The optional
-            third item is the minimum circular radius in pixels. If
-            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma`
-            * `semiminor_sigma`) is less than or equal to this radius,
-            then the Kron aperture will be a circle with this minimum
-            radius.
-
-        Returns
-        -------
-        result : list of `~photutils.aperture.PixelAperture`
-            The Kron apertures for each source. Each aperture will
-            either be a `~photutils.aperture.EllipticalAperture`,
-            `~photutils.aperture.CircularAperture`, or `None`. The
-            aperture will be `None` where the source centroid position
-            or elliptical shape parameters are not finite or where the
-            source is completely masked.
+        Make Kron apertures for each source, always returned as a list.
         """
-        if self._detection_cat is not None:
-            # use detection catalog for centroids and elliptical shape
-            # parameters
-            detcat = self._detection_cat
-        else:
-            detcat = self
-
-        kron_radius = detcat.kron_radius.value
-        scale = kron_radius * kron_params[0]
         # NOTE: if kron_radius = NaN, scale = NaN and kron_aperture = None
+        kron_radius = self._calc_kron_radius(kron_params)
+        scale = kron_radius.value * kron_params[0]
         kron_apertures = self._make_elliptical_apertures(scale=scale)
-
         return kron_apertures
 
     @lazyproperty
@@ -2809,6 +2791,8 @@ class SourceCatalog:
         """
         if kron_params is None:
             apertures = self.kron_aperture
+            if self.isscalar:
+                apertures = (apertures,)
         else:
             apertures = self._make_kron_apertures(kron_params)
 

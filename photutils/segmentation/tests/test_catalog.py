@@ -96,7 +96,7 @@ class TestSourceCatalog:
 
         # test extra properties
         cat1.circular_photometry(5.0, name='circ5')
-        cat1.kron_photometry((2.0, 1.0), name='kron2')
+        cat1.kron_photometry((2.5, 1.4), name='kron2')
         cat1.fluxfrac_radius(0.5, name='r_hl')
         segment_snr = cat1.segment_flux / cat1.segment_fluxerr
         cat1.add_extra_property('segment_snr', segment_snr)
@@ -113,7 +113,7 @@ class TestSourceCatalog:
         # slice catalog before evaluating catalog properties
         obj = cat2[idx]
         obj.circular_photometry(5.0, name='circ5')
-        obj.kron_photometry((2.0, 1.0), name='kron2')
+        obj.kron_photometry((2.5, 1.4), name='kron2')
         obj.fluxfrac_radius(0.5, name='r_hl')
         segment_snr = obj.segment_flux / obj.segment_fluxerr
         obj.add_extra_property('segment_snr', segment_snr)
@@ -177,9 +177,9 @@ class TestSourceCatalog:
         with assert_raises(AssertionError):
             assert_equal(fluxerr1, fluxerr2)
 
-        flux1, fluxerr1 = cat1.kron_photometry((2.0, 1.0))
-        flux2, fluxerr2 = cat2.kron_photometry((2.0, 1.0))
-        flux3, fluxerr3 = cat3.kron_photometry((2.0, 1.0))
+        flux1, fluxerr1 = cat1.kron_photometry((2.5, 1.4))
+        flux2, fluxerr2 = cat2.kron_photometry((2.5, 1.4))
+        flux3, fluxerr3 = cat3.kron_photometry((2.5, 1.4))
         with assert_raises(AssertionError):
             assert_equal(flux2, flux3)
         with assert_raises(AssertionError):
@@ -505,12 +505,12 @@ class TestSourceCatalog:
         assert_allclose(cat.kron_radius.value, cat._kron_params[1])
 
     def test_kron_photometry(self):
-        flux1, fluxerr1 = self.cat.kron_photometry((2.5, 1.0))
-        assert_allclose(flux1, self.cat.kron_flux)
-        assert_allclose(fluxerr1, self.cat.kron_fluxerr)
+        flux0, fluxerr0 = self.cat.kron_photometry((2.5, 1.4))
+        assert_allclose(flux0, self.cat.kron_flux)
+        assert_allclose(fluxerr0, self.cat.kron_fluxerr)
 
-        flux1, fluxerr1 = self.cat.kron_photometry((1.0, 1.0), name='kron1')
-        flux2, fluxerr2 = self.cat.kron_photometry((2.0, 1.0), name='kron2')
+        flux1, fluxerr1 = self.cat.kron_photometry((1.0, 1.4), name='kron1')
+        flux2, fluxerr2 = self.cat.kron_photometry((2.0, 1.4), name='kron2')
         assert_allclose(flux1, self.cat.kron1_flux)
         assert_allclose(fluxerr1, self.cat.kron1_fluxerr)
         assert_allclose(flux2, self.cat.kron2_flux)
@@ -520,25 +520,31 @@ class TestSourceCatalog:
         assert np.all((fluxerr2 > fluxerr1)
                       | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
 
+        # test different min Kron radius
+        flux3, fluxerr3 = self.cat.kron_photometry((2.5, 2.5))
+        assert np.all((flux3 > flux0) | (np.isnan(flux3) & np.isnan(flux0)))
+        assert np.all((fluxerr3 > fluxerr0)
+                      | (np.isnan(fluxerr3) & np.isnan(fluxerr0)))
+
         obj = self.cat[1]
-        flux1, fluxerr1 = obj.kron_photometry((1.0, 1.0), name='kron0')
+        flux1, fluxerr1 = obj.kron_photometry((1.0, 1.4), name='kron0')
         assert np.isscalar(flux1)
         assert np.isscalar(fluxerr1)
         assert_allclose(flux1, obj.kron0_flux)
         assert_allclose(fluxerr1, obj.kron0_fluxerr)
 
         cat = SourceCatalog(self.data, self.segm)
-        _, fluxerr = cat.kron_photometry((2.0, 1.0))
+        _, fluxerr = cat.kron_photometry((2.0, 1.4))
         assert np.all(np.isnan(fluxerr))
 
         with pytest.raises(ValueError):
-            self.cat.kron_photometry(2.0)
+            self.cat.kron_photometry(2.5)
         with pytest.raises(ValueError):
-            self.cat.kron_photometry((2.0, 0.0))
+            self.cat.kron_photometry((2.5, 0.0))
         with pytest.raises(ValueError):
-            self.cat.kron_photometry((0.0, 2.0))
+            self.cat.kron_photometry((0.0, 1.4))
         with pytest.raises(ValueError):
-            self.cat.kron_photometry((2.0, 0.0, 1.5))
+            self.cat.kron_photometry((2.5, 0.0, 1.5))
 
     def test_circular_photometry(self):
         flux1, fluxerr1 = self.cat.circular_photometry(1.0, name='circ1')
@@ -587,10 +593,17 @@ class TestSourceCatalog:
         for patch in patches:
             assert isinstance(patch, Patch)
 
-        patches2 = self.cat.plot_kron_apertures((2.5, 1.0))
+        patches2 = self.cat.plot_kron_apertures((2.0, 1.2))
         assert isinstance(patches2, list)
         for patch in patches2:
             assert isinstance(patch, Patch)
+
+        # test scalar
+        obj = self.cat[1]
+        patch1 = obj.plot_kron_apertures()
+        assert isinstance(patch1, Patch)
+        patch2 = obj.plot_kron_apertures((2.0, 1.2))
+        assert isinstance(patch2, Patch)
 
     def test_fluxfrac_radius(self):
         radius1 = self.cat.fluxfrac_radius(0.1, name='fluxfrac_r1')
@@ -744,7 +757,7 @@ class TestSourceCatalog:
         assert len(aper) == len(self.cat)
         assert isinstance(aper[1], EllipticalAperture)
 
-        aper2 = self.cat.make_kron_apertures((2.5, 1))
+        aper2 = self.cat.make_kron_apertures((2.0, 1.4))
         assert len(aper2) == len(self.cat)
 
         obj = self.cat[1]
