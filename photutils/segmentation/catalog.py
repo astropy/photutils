@@ -2791,6 +2791,8 @@ class SourceCatalog:
         """
         if kron_params is None:
             apertures = self.kron_aperture
+            if self.isscalar:
+                apertures = (apertures,)
         else:
             apertures = self._make_kron_apertures(kron_params)
 
