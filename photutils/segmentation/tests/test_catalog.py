@@ -593,6 +593,13 @@ class TestSourceCatalog:
         for patch in patches2:
             assert isinstance(patch, Patch)
 
+        # test scalar
+        obj = self.cat[1]
+        patch1 = obj.plot_kron_apertures()
+        assert isinstance(patch1, Patch)
+        patch2 = obj.plot_kron_apertures((2.0, 1.2))
+        assert isinstance(patch2, Patch)
+
     def test_fluxfrac_radius(self):
         radius1 = self.cat.fluxfrac_radius(0.1, name='fluxfrac_r1')
         radius2 = self.cat.fluxfrac_radius(0.5, name='fluxfrac_r5')
