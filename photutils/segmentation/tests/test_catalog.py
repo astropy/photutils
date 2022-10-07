@@ -27,44 +27,39 @@ from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourceCatalog:
-    def setup_class(self):
-        xcen = 51.
-        ycen = 52.7
-        major_sigma = 8.
-        minor_sigma = 3.
-        theta = np.pi / 6.
-        g1 = Gaussian2D(111., xcen, ycen, major_sigma, minor_sigma,
-                        theta=theta)
-        g2 = Gaussian2D(50, 20, 80, 5.1, 4.5)
-        g3 = Gaussian2D(70, 75, 18, 9.2, 4.5)
-        g4 = Gaussian2D(111., 11.1, 12.2, major_sigma, minor_sigma,
-                        theta=theta)
-        g5 = Gaussian2D(81., 61, 42.7, major_sigma, minor_sigma, theta=theta)
-        g6 = Gaussian2D(107., 75, 61, major_sigma, minor_sigma, theta=-theta)
-        g7 = Gaussian2D(107., 90, 90, 4, 2, theta=-theta)
+    xcen = 51.
+    ycen = 52.7
+    major_sigma = 8.
+    minor_sigma = 3.
+    theta = np.pi / 6.
+    g1 = Gaussian2D(111., xcen, ycen, major_sigma, minor_sigma,
+                    theta=theta)
+    g2 = Gaussian2D(50, 20, 80, 5.1, 4.5)
+    g3 = Gaussian2D(70, 75, 18, 9.2, 4.5)
+    g4 = Gaussian2D(111., 11.1, 12.2, major_sigma, minor_sigma,
+                    theta=theta)
+    g5 = Gaussian2D(81., 61, 42.7, major_sigma, minor_sigma, theta=theta)
+    g6 = Gaussian2D(107., 75, 61, major_sigma, minor_sigma, theta=-theta)
+    g7 = Gaussian2D(107., 90, 90, 4, 2, theta=-theta)
 
-        yy, xx = np.mgrid[0:101, 0:101]
-        self.data = (g1(xx, yy) + g2(xx, yy) + g3(xx, yy) + g4(xx, yy)
-                     + g5(xx, yy) + g6(xx, yy) + g7(xx, yy))
-        threshold = 27.
-        self.segm = detect_sources(self.data, threshold, npixels=5)
-        self.error = make_noise_image(self.data.shape, mean=0, stddev=2.,
-                                      seed=123)
-        self.background = np.ones(self.data.shape) * 5.1
-        self.mask = np.zeros(self.data.shape, dtype=bool)
-        self.mask[0:30, 0:30] = True
+    yy, xx = np.mgrid[0:101, 0:101]
+    data = (g1(xx, yy) + g2(xx, yy) + g3(xx, yy) + g4(xx, yy) + g5(xx, yy)
+            + g6(xx, yy) + g7(xx, yy))
+    threshold = 27.
+    segm = detect_sources(data, threshold, npixels=5)
+    error = make_noise_image(data.shape, mean=0, stddev=2., seed=123)
+    background = np.ones(data.shape) * 5.1
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[0:30, 0:30] = True
 
-        self.wcs = make_wcs(self.data.shape)
-        self.cat = SourceCatalog(self.data, self.segm, error=self.error,
-                                 background=self.background, mask=self.mask,
-                                 wcs=self.wcs, localbkg_width=24)
-        unit = u.nJy
-        self.unit = unit
-        self.cat_units = SourceCatalog(self.data << unit, self.segm,
-                                       error=self.error << unit,
-                                       background=self.background << unit,
-                                       mask=self.mask, wcs=self.wcs,
-                                       localbkg_width=24)
+    wcs = make_wcs(data.shape)
+    cat = SourceCatalog(data, segm, error=error, background=background,
+                        mask=mask, wcs=wcs, localbkg_width=24)
+    unit = u.nJy
+    unit = unit
+    cat_units = SourceCatalog(data << unit, segm, error=error << unit,
+                              background=background << unit, mask=mask,
+                              wcs=wcs, localbkg_width=24)
 
     @pytest.mark.parametrize('with_units', (True, False))
     def test_catalog(self, with_units):
@@ -96,7 +91,7 @@ class TestSourceCatalog:
 
         # test extra properties
         cat1.circular_photometry(5.0, name='circ5')
-        cat1.kron_photometry((2.0, 1.0), name='kron2')
+        cat1.kron_photometry((2.5, 1.4), name='kron2')
         cat1.fluxfrac_radius(0.5, name='r_hl')
         segment_snr = cat1.segment_flux / cat1.segment_fluxerr
         cat1.add_extra_property('segment_snr', segment_snr)
@@ -113,7 +108,7 @@ class TestSourceCatalog:
         # slice catalog before evaluating catalog properties
         obj = cat2[idx]
         obj.circular_photometry(5.0, name='circ5')
-        obj.kron_photometry((2.0, 1.0), name='kron2')
+        obj.kron_photometry((2.5, 1.4), name='kron2')
         obj.fluxfrac_radius(0.5, name='r_hl')
         segment_snr = obj.segment_flux / obj.segment_fluxerr
         obj.add_extra_property('segment_snr', segment_snr)
@@ -177,9 +172,9 @@ class TestSourceCatalog:
         with assert_raises(AssertionError):
             assert_equal(fluxerr1, fluxerr2)
 
-        flux1, fluxerr1 = cat1.kron_photometry((2.0, 1.0))
-        flux2, fluxerr2 = cat2.kron_photometry((2.0, 1.0))
-        flux3, fluxerr3 = cat3.kron_photometry((2.0, 1.0))
+        flux1, fluxerr1 = cat1.kron_photometry((2.5, 1.4))
+        flux2, fluxerr2 = cat2.kron_photometry((2.5, 1.4))
+        flux3, fluxerr3 = cat3.kron_photometry((2.5, 1.4))
         with assert_raises(AssertionError):
             assert_equal(flux2, flux3)
         with assert_raises(AssertionError):
@@ -505,12 +500,12 @@ class TestSourceCatalog:
         assert_allclose(cat.kron_radius.value, cat._kron_params[1])
 
     def test_kron_photometry(self):
-        flux1, fluxerr1 = self.cat.kron_photometry((2.5, 1.0))
-        assert_allclose(flux1, self.cat.kron_flux)
-        assert_allclose(fluxerr1, self.cat.kron_fluxerr)
+        flux0, fluxerr0 = self.cat.kron_photometry((2.5, 1.4))
+        assert_allclose(flux0, self.cat.kron_flux)
+        assert_allclose(fluxerr0, self.cat.kron_fluxerr)
 
-        flux1, fluxerr1 = self.cat.kron_photometry((1.0, 1.0), name='kron1')
-        flux2, fluxerr2 = self.cat.kron_photometry((2.0, 1.0), name='kron2')
+        flux1, fluxerr1 = self.cat.kron_photometry((1.0, 1.4), name='kron1')
+        flux2, fluxerr2 = self.cat.kron_photometry((2.0, 1.4), name='kron2')
         assert_allclose(flux1, self.cat.kron1_flux)
         assert_allclose(fluxerr1, self.cat.kron1_fluxerr)
         assert_allclose(flux2, self.cat.kron2_flux)
@@ -520,25 +515,31 @@ class TestSourceCatalog:
         assert np.all((fluxerr2 > fluxerr1)
                       | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
 
+        # test different min Kron radius
+        flux3, fluxerr3 = self.cat.kron_photometry((2.5, 2.5))
+        assert np.all((flux3 > flux0) | (np.isnan(flux3) & np.isnan(flux0)))
+        assert np.all((fluxerr3 > fluxerr0)
+                      | (np.isnan(fluxerr3) & np.isnan(fluxerr0)))
+
         obj = self.cat[1]
-        flux1, fluxerr1 = obj.kron_photometry((1.0, 1.0), name='kron0')
+        flux1, fluxerr1 = obj.kron_photometry((1.0, 1.4), name='kron0')
         assert np.isscalar(flux1)
         assert np.isscalar(fluxerr1)
         assert_allclose(flux1, obj.kron0_flux)
         assert_allclose(fluxerr1, obj.kron0_fluxerr)
 
         cat = SourceCatalog(self.data, self.segm)
-        _, fluxerr = cat.kron_photometry((2.0, 1.0))
+        _, fluxerr = cat.kron_photometry((2.0, 1.4))
         assert np.all(np.isnan(fluxerr))
 
         with pytest.raises(ValueError):
-            self.cat.kron_photometry(2.0)
+            self.cat.kron_photometry(2.5)
         with pytest.raises(ValueError):
-            self.cat.kron_photometry((2.0, 0.0))
+            self.cat.kron_photometry((2.5, 0.0))
         with pytest.raises(ValueError):
-            self.cat.kron_photometry((0.0, 2.0))
+            self.cat.kron_photometry((0.0, 1.4))
         with pytest.raises(ValueError):
-            self.cat.kron_photometry((2.0, 0.0, 1.5))
+            self.cat.kron_photometry((2.5, 0.0, 1.5))
 
     def test_circular_photometry(self):
         flux1, fluxerr1 = self.cat.circular_photometry(1.0, name='circ1')
@@ -587,7 +588,7 @@ class TestSourceCatalog:
         for patch in patches:
             assert isinstance(patch, Patch)
 
-        patches2 = self.cat.plot_kron_apertures((2.5, 1.0))
+        patches2 = self.cat.plot_kron_apertures((2.0, 1.2))
         assert isinstance(patches2, list)
         for patch in patches2:
             assert isinstance(patch, Patch)
@@ -744,7 +745,7 @@ class TestSourceCatalog:
         assert len(aper) == len(self.cat)
         assert isinstance(aper[1], EllipticalAperture)
 
-        aper2 = self.cat.make_kron_apertures((2.5, 1))
+        aper2 = self.cat.make_kron_apertures((2.0, 1.4))
         assert len(aper2) == len(self.cat)
 
         obj = self.cat[1]
