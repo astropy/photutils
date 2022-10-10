@@ -1141,6 +1141,7 @@ class SourceCatalog:
         return self._get_values(self.background_ma)
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def moments(self):
         """
@@ -1150,6 +1151,7 @@ class SourceCatalog:
                          self._moment_data_cutouts])
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def moments_central(self):
         """
@@ -1165,6 +1167,7 @@ class SourceCatalog:
                              cutout_centroid[:, 1])])
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def cutout_centroid(self):
         """
@@ -1183,6 +1186,7 @@ class SourceCatalog:
         return np.transpose((xcentroid, ycentroid))
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def centroid(self):
         """
@@ -1193,6 +1197,7 @@ class SourceCatalog:
         return self.cutout_centroid + origin
 
     @lazyproperty
+    @use_detcat
     def _xcentroid(self):
         """
         The ``x`` coordinate of the centroid within the source segment,
@@ -1204,6 +1209,7 @@ class SourceCatalog:
         return xcentroid
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def xcentroid(self):
         """
@@ -1212,6 +1218,7 @@ class SourceCatalog:
         return self._xcentroid
 
     @lazyproperty
+    @use_detcat
     def _ycentroid(self):
         """
         The ``y`` coordinate of the centroid within the source segment,
@@ -1223,6 +1230,7 @@ class SourceCatalog:
         return ycentroid
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def ycentroid(self):
         """
@@ -1231,6 +1239,7 @@ class SourceCatalog:
         return self._ycentroid
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def sky_centroid(self):
         """
@@ -1246,6 +1255,7 @@ class SourceCatalog:
         return self._wcs.pixel_to_world(self.xcentroid, self.ycentroid)
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def sky_centroid_icrs(self):
         """
@@ -1260,6 +1270,7 @@ class SourceCatalog:
         return self.sky_centroid.icrs
 
     @lazyproperty
+    @use_detcat
     def _bbox(self):
         """
         The `~photutils.aperture.BoundingBox` of the minimal rectangular
@@ -1270,6 +1281,7 @@ class SourceCatalog:
                 for slc in self._slices_iter]
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def bbox(self):
         """
@@ -1279,6 +1291,7 @@ class SourceCatalog:
         return self._bbox
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def bbox_xmin(self):
         """
@@ -1288,6 +1301,7 @@ class SourceCatalog:
         return np.array([slc[1].start for slc in self._slices_iter])
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def bbox_xmax(self):
         """
@@ -1299,6 +1313,7 @@ class SourceCatalog:
         return np.array([slc[1].stop - 1 for slc in self._slices_iter])
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def bbox_ymin(self):
         """
@@ -1308,6 +1323,7 @@ class SourceCatalog:
         return np.array([slc[0].start for slc in self._slices_iter])
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def bbox_ymax(self):
         """
@@ -1319,6 +1335,7 @@ class SourceCatalog:
         return np.array([slc[0].stop - 1 for slc in self._slices_iter])
 
     @lazyproperty
+    @use_detcat
     def _bbox_corner_ll(self):
         """
         Lower-left *outside* pixel corner location (not index).
@@ -1329,6 +1346,7 @@ class SourceCatalog:
         return np.array(xypos)
 
     @lazyproperty
+    @use_detcat
     def _bbox_corner_ul(self):
         """
         Upper-left *outside* pixel corner location (not index).
@@ -1339,6 +1357,7 @@ class SourceCatalog:
         return np.array(xypos)
 
     @lazyproperty
+    @use_detcat
     def _bbox_corner_lr(self):
         """
         Lower-right *outside* pixel corner location (not index).
@@ -1349,6 +1368,7 @@ class SourceCatalog:
         return np.array(xypos)
 
     @lazyproperty
+    @use_detcat
     def _bbox_corner_ur(self):
         """
         Upper-right *outside* pixel corner location (not index).
@@ -1359,6 +1379,7 @@ class SourceCatalog:
         return np.array(xypos)
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def sky_bbox_ll(self):
         """
@@ -1377,6 +1398,7 @@ class SourceCatalog:
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ll))
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def sky_bbox_ul(self):
         """
@@ -1395,6 +1417,7 @@ class SourceCatalog:
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ul))
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def sky_bbox_lr(self):
         """
@@ -1413,6 +1436,7 @@ class SourceCatalog:
         return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_lr))
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def sky_bbox_ur(self):
         """
@@ -1706,6 +1730,7 @@ class SourceCatalog:
         return bkg
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def area(self):
         """
@@ -1721,6 +1746,7 @@ class SourceCatalog:
         return areas << (u.pix ** 2)
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def equivalent_radius(self):
         """
@@ -1730,6 +1756,7 @@ class SourceCatalog:
         return np.sqrt(self.area / np.pi)
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def perimeter(self):
         """
@@ -1776,6 +1803,7 @@ class SourceCatalog:
         return np.array(perimeter) * u.pix
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def inertia_tensor(self):
         """
@@ -1792,6 +1820,7 @@ class SourceCatalog:
         return tensor.reshape((tensor.shape[0], 2, 2)) * u.pix**2
 
     @lazyproperty
+    @use_detcat
     def _covariance(self):
         """
         The covariance matrix of the 2D Gaussian function that has the
@@ -1827,6 +1856,7 @@ class SourceCatalog:
         return covar
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def covariance(self):
         """
@@ -1836,6 +1866,7 @@ class SourceCatalog:
         return self._covariance * (u.pix**2)
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def covariance_eigvals(self):
         """
@@ -1860,6 +1891,7 @@ class SourceCatalog:
         return eigvals * u.pix**2
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def semimajor_sigma(self):
         """
@@ -1874,6 +1906,7 @@ class SourceCatalog:
         return np.sqrt(eigvals[:, 0])
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def semiminor_sigma(self):
         """
@@ -1888,6 +1921,7 @@ class SourceCatalog:
         return np.sqrt(eigvals[:, 1])
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def fwhm(self):
         r"""
@@ -1909,6 +1943,7 @@ class SourceCatalog:
                                             + self.semiminor_sigma**2))
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def orientation(self):
         """
@@ -1922,6 +1957,7 @@ class SourceCatalog:
         return orient_radians * 180. / np.pi * u.deg
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def eccentricity(self):
         r"""
@@ -1940,6 +1976,7 @@ class SourceCatalog:
         return np.sqrt(1. - (semiminor_var / semimajor_var))
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def elongation(self):
         r"""
@@ -1953,6 +1990,7 @@ class SourceCatalog:
         return self.semimajor_sigma / self.semiminor_sigma
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def ellipticity(self):
         r"""
@@ -1967,6 +2005,7 @@ class SourceCatalog:
         return 1.0 - (self.semiminor_sigma / self.semimajor_sigma)
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def covar_sigx2(self):
         r"""
@@ -1976,6 +2015,7 @@ class SourceCatalog:
         return self._covariance[:, 0, 0] * u.pix**2
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def covar_sigy2(self):
         r"""
@@ -1985,6 +2025,7 @@ class SourceCatalog:
         return self._covariance[:, 1, 1] * u.pix**2
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def covar_sigxy(self):
         r"""
@@ -1995,6 +2036,7 @@ class SourceCatalog:
         return self._covariance[:, 0, 1] * u.pix**2
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def cxx(self):
         r"""
@@ -2016,6 +2058,7 @@ class SourceCatalog:
                 + (np.sin(self.orientation) / self.semiminor_sigma)**2)
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def cyy(self):
         r"""
@@ -2037,6 +2080,7 @@ class SourceCatalog:
                 + (np.cos(self.orientation) / self.semiminor_sigma)**2)
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def cxy(self):
         r"""
@@ -2059,6 +2103,7 @@ class SourceCatalog:
                    - (1. / self.semiminor_sigma**2)))
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def gini(self):
         r"""
@@ -2099,6 +2144,7 @@ class SourceCatalog:
         return np.array(gini)
 
     @lazyproperty
+    @use_detcat
     def _local_background_apertures(self):
         """
         The `~photutils.aperture.RectangularAnnulus` aperture used to
@@ -2129,6 +2175,7 @@ class SourceCatalog:
         return apertures
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def local_background_aperture(self):
         """
@@ -2522,6 +2569,7 @@ class SourceCatalog:
         return aperture
 
     @lazyproperty
+    @use_detcat
     def _measured_kron_radius(self):
         r"""
         The *unscaled* first-moment Kron radius, always as an array
@@ -2609,6 +2657,7 @@ class SourceCatalog:
         return kron_radius << u.pix
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def kron_radius(self):
         r"""
@@ -2680,6 +2729,7 @@ class SourceCatalog:
         return kron_apertures
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def kron_aperture(self):
         r"""
