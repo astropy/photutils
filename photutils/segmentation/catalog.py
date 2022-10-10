@@ -43,14 +43,28 @@ def as_scalar(method):
     Return a scalar value from a method if the class is scalar.
     """
     @functools.wraps(method)
-    def _decorator(*args, **kwargs):
+    def _as_scalar(*args, **kwargs):
         result = method(*args, **kwargs)
         try:
             return (result[0] if args[0].isscalar and len(result) == 1
                     else result)
         except TypeError:  # if result has no len
             return result
-    return _decorator
+    return _as_scalar
+
+
+def use_detcat(method):
+    """
+    Return the value from the detection image catalog instead of
+    using the method to calculate it.
+    """
+    @functools.wraps(method)
+    def _use_detcat(self, *args, **kwargs):
+        if self._detection_cat is None:
+            return method(self, *args, **kwargs)
+        else:
+            return getattr(self._detection_cat, method.__name__)
+    return _use_detcat
 
 
 class SourceCatalog:
