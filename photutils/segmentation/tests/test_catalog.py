@@ -249,6 +249,12 @@ class TestSourceCatalog:
         assert len(obj5) == 3
         assert_equal(obj5.label, labels)
 
+        # test get_labels when labels are not sorted
+        obj5 = self.cat[[3, 2, 1]]
+        labels2 = (3, 4)
+        obj5b = obj5.get_labels(labels2)
+        assert_equal(obj5b.label, labels2)
+
         obj6 = obj5[0]
         assert obj6.label == labels[0]
 
