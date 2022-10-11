@@ -1748,14 +1748,30 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
+    def segment_area(self):
+        """
+        The total area of the source segment in units of pixels**2.
+
+        This area is simply the area of the source segment from the
+        input ``segment_img``. It does not take into account any data
+        masking (i.e., a ``mask`` input to `SourceCatalog` or invalid
+        ``data`` values).
+        """
+        areas = []
+        for label, slices in zip(self.labels, self._slices_iter):
+            areas.append(np.count_nonzero(self._segment_img[slices] == label))
+        return np.array(areas) << (u.pix ** 2)
+
+    @lazyproperty
+    @use_detcat
+    @as_scalar
     def area(self):
         """
-        The total unmasked area of the source segment in units of
-        pixels**2.
+        The total unmasked area of the source in units of pixels**2.
 
-        Note that the source area may be smaller than its segment area
-        if a mask is input to `SourceCatalog` or if the ``data``
-        within the segment contains invalid values (NaN and inf).
+        Note that the source area may be smaller than its `segment_area`
+        if a mask is input to `SourceCatalog` or if the ``data`` within
+        the segment contains invalid values (NaN and inf).
         """
         areas = np.array([arr.size for arr in self._data_values]).astype(float)
         areas[self._all_masked] = np.nan
