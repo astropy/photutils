@@ -40,6 +40,10 @@ Bug Fixes
   - Fixed an issue where the ``SourceCatalog`` ``plot_kron_apertures``
     method would raise an error for a scalar ``SourceCatalog``. [#1421]
 
+  - Fixed an issue in ``SegmentationImage`` ``get_ids`` and
+    ``SourceCatalog`` ``get_labels`` for the case when the ID numbers or
+    labels are not sorted (due to slicing). [#1423]
+
 API Changes
 ^^^^^^^^^^^
 
