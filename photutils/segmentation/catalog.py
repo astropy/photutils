@@ -265,10 +265,10 @@ class SourceCatalog:
         self._mask = self._validate_array(mask, 'mask')
         self._kernel = kernel
         self._background = self._validate_array(background, 'background')
-        self._wcs = wcs
-        self._localbkg_width = self._validate_localbkg_width(localbkg_width)
-        self._apermask_method = self._validate_apermask_method(apermask_method)
-        self._kron_params = self._validate_kron_params(kron_params)
+        self.wcs = wcs
+        self.localbkg_width = self._validate_localbkg_width(localbkg_width)
+        self.apermask_method = self._validate_apermask_method(apermask_method)
+        self.kron_params = self._validate_kron_params(kron_params)
 
         # needed for ordering and isscalar
         # NOTE: calculate slices before labels for performance.
@@ -293,6 +293,7 @@ class SourceCatalog:
         self.default_columns = DEFAULT_COLUMNS
         self._extra_properties = []
         self.meta = _get_meta()
+        self._update_meta()
 
     def _validate_segment_img(self, segment_img):
         if not isinstance(segment_img, SegmentationImage):
@@ -353,6 +354,11 @@ class SourceCatalog:
                                  'as the input segment_img')
         return detection_cat
 
+    def _update_meta(self):
+        attrs = ('localbkg_width', 'apermask_method', 'kron_params')
+        for attr in attrs:
+            self.meta[attr] = getattr(self, attr)
+
     @property
     def _properties(self):
         """
@@ -399,8 +405,8 @@ class SourceCatalog:
         # attributes defined in __init__ that are copied directly to the
         # new class
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
-                     '_background', '_wcs', '_data_unit', '_convolved_data',
-                     '_localbkg_width', '_apermask_method', '_kron_params',
+                     '_background', 'wcs', '_data_unit', '_convolved_data',
+                     'localbkg_width', 'apermask_method', 'kron_params',
                      'default_columns', '_extra_properties', 'meta')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
@@ -1243,9 +1249,9 @@ class SourceCatalog:
 
         `None` if ``wcs`` is not input.
         """
-        if self._wcs is None:
+        if self.wcs is None:
             return self._null_objects
-        return self._wcs.pixel_to_world(self.xcentroid, self.ycentroid)
+        return self.wcs.pixel_to_world(self.xcentroid, self.ycentroid)
 
     @lazyproperty
     @use_detcat
@@ -1258,7 +1264,7 @@ class SourceCatalog:
 
         `None` if ``wcs`` is not input.
         """
-        if self._wcs is None:
+        if self.wcs is None:
             return self._null_objects
         return self.sky_centroid.icrs
 
@@ -1386,9 +1392,9 @@ class SourceCatalog:
 
         `None` if ``wcs`` is not input.
         """
-        if self._wcs is None:
+        if self.wcs is None:
             return self._null_objects
-        return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ll))
+        return self.wcs.pixel_to_world(*np.transpose(self._bbox_corner_ll))
 
     @lazyproperty
     @use_detcat
@@ -1405,9 +1411,9 @@ class SourceCatalog:
 
         `None` if ``wcs`` is not input.
         """
-        if self._wcs is None:
+        if self.wcs is None:
             return self._null_objects
-        return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ul))
+        return self.wcs.pixel_to_world(*np.transpose(self._bbox_corner_ul))
 
     @lazyproperty
     @use_detcat
@@ -1424,9 +1430,9 @@ class SourceCatalog:
 
         `None` if ``wcs`` is not input.
         """
-        if self._wcs is None:
+        if self.wcs is None:
             return self._null_objects
-        return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_lr))
+        return self.wcs.pixel_to_world(*np.transpose(self._bbox_corner_lr))
 
     @lazyproperty
     @use_detcat
@@ -1443,9 +1449,9 @@ class SourceCatalog:
 
         `None` if ``wcs`` is not input.
         """
-        if self._wcs is None:
+        if self.wcs is None:
             return self._null_objects
-        return self._wcs.pixel_to_world(*np.transpose(self._bbox_corner_ur))
+        return self.wcs.pixel_to_world(*np.transpose(self._bbox_corner_ur))
 
     @lazyproperty
     @as_scalar
@@ -2148,7 +2154,7 @@ class SourceCatalog:
             # centroid and bbox defined by detection image
             return self._detection_cat.local_background_aperture
 
-        if self._localbkg_width == 0:
+        if self.localbkg_width == 0:
             return self._null_objects
 
         apertures = []
@@ -2158,10 +2164,10 @@ class SourceCatalog:
             scale = 1.5
             width_bbox = bbox_.ixmax - bbox_.ixmin
             width_in = width_bbox * scale
-            width_out = width_in + 2 * self._localbkg_width
+            width_out = width_in + 2 * self.localbkg_width
             height_bbox = bbox_.iymax - bbox_.iymin
             height_in = height_bbox * scale
-            height_out = height_in + 2 * self._localbkg_width
+            height_out = height_in + 2 * self.localbkg_width
             apertures.append(RectangularAnnulus((xpos, ypos), width_in,
                                                 width_out, height_out,
                                                 height_in, theta=0.))
@@ -2189,7 +2195,7 @@ class SourceCatalog:
 
         This property is always an `~numpy.ndarray` without units.
         """
-        if self._localbkg_width == 0:
+        if self.localbkg_width == 0:
             local_bkgs = np.zeros(self.nlabels)
         else:
             sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
@@ -2270,16 +2276,16 @@ class SourceCatalog:
                         ycentroid - max(0, aperture_bbox.iymin))
 
         # mask or correct neighboring sources
-        if self._apermask_method != 'none':
+        if self.apermask_method != 'none':
             segment_img = self._segment_img.data[slc_lg]
             segm_mask = np.logical_and(segment_img != label,
                                        segment_img != 0)
-        if self._apermask_method == 'mask':
+        if self.apermask_method == 'mask':
             mask = data_mask | segm_mask
         else:
             mask = data_mask
 
-        if self._apermask_method == 'correct':
+        if self.apermask_method == 'correct':
             from .utils import _mask_to_mirrored_value
             data = _mask_to_mirrored_value(data, segm_mask, cutout_xycen,
                                            mask=mask)
@@ -2552,7 +2558,7 @@ class SourceCatalog:
             # kron_radius = 0 -> scale = 0 -> major/minor_size = 0
             if values[2] == 0 and values[3] == 0:
                 aperture.append(CircularAperture((values[0], values[1]),
-                                                 r=self._kron_params[2]))
+                                                 r=self.kron_params[2]))
                 continue
 
             (xcen_, ycen_, major_, minor_, theta_) = values[:-1]
@@ -2619,7 +2625,7 @@ class SourceCatalog:
             # set Kron radius to the minimum Kron radius if numerator or
             # denominator is negative
             if flux_numer <= 0 or flux_denom <= 0:
-                kron_radius.append(self._kron_params[1])
+                kron_radius.append(self.kron_params[1])
                 continue
 
             kron_radius.append(flux_numer / flux_denom)
@@ -2709,7 +2715,7 @@ class SourceCatalog:
         """
         if self._detection_cat is not None:
             return self._detection_cat.kron_radius
-        return self._calc_kron_radius(self._kron_params)
+        return self._calc_kron_radius(self.kron_params)
 
     def _make_kron_apertures(self, kron_params):
         """
@@ -2744,7 +2750,7 @@ class SourceCatalog:
         """
         if self._detection_cat is not None:
             return self._detection_cat.kron_aperture
-        return self._make_kron_apertures(self._kron_params)
+        return self._make_kron_apertures(self.kron_params)
 
     @as_scalar
     def make_kron_apertures(self, kron_params=None):
@@ -3052,10 +3058,10 @@ class SourceCatalog:
 
         semimajor_sig = detcat.semimajor_sigma.value
         kron_radius = detcat.kron_radius.value
-        radius = semimajor_sig * kron_radius * self._kron_params[0]
+        radius = semimajor_sig * kron_radius * self.kron_params[0]
         mask = radius == 0
         if np.any(mask):
-            radius[mask] = self._kron_params[2]
+            radius[mask] = self.kron_params[2]
         if self.isscalar:
             radius = np.array([radius])
         return radius

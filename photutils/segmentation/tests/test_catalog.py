@@ -508,7 +508,7 @@ class TestSourceCatalog:
 
     def test_kron_negative(self):
         cat = SourceCatalog(self.data - 10, self.segm)
-        assert_allclose(cat.kron_radius.value, cat._kron_params[1])
+        assert_allclose(cat.kron_radius.value, cat.kron_params[1])
 
     def test_kron_photometry(self):
         flux0, fluxerr0 = self.cat.kron_photometry((2.5, 1.4))
@@ -811,6 +811,12 @@ class TestSourceCatalog:
 
         cutouts = cat.make_cutouts(shape, mode='partial', fill_value=-100)
         assert cutouts[0].data[0, 0] == -100
+
+    def test_meta(self):
+        meta = self.cat.meta
+        attrs = ('localbkg_width', 'apermask_method', 'kron_params')
+        for attr in attrs:
+            assert attr in meta
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
