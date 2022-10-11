@@ -154,7 +154,7 @@ class SourceCatalog:
 
     localbkg_width : int, optional
         The width of the rectangular annulus used to compute a
-        local background around each source. If 0.0, then no local
+        local background around each source. If zero, then no local
         background subtraction is performed. The local background
         affects the ``min_value``, ``max_value``, ``segment_flux``, and
         ``kron_flux`` properties. It does not affect the moment-based
@@ -283,6 +283,10 @@ class SourceCatalog:
 
         # detection_cat validation needs self._labels
         self._detection_cat = self._validate_detection_cat(detection_cat)
+        attrs = ('wcs', 'apermask_method', 'kron_params')
+        if self._detection_cat is not None:
+            for attr in attrs:
+                setattr(self, attr, getattr(self._detection_cat, attr))
 
         if convolved_data is None:
             if kernel is None:
@@ -1708,6 +1712,8 @@ class SourceCatalog:
         The value of the per-pixel ``background`` at the position of the
         source centroid.
 
+        If ``detection_cat`` is input, then its centroid will be used.
+
         The background value at fractional position values are
         determined using bilinear interpolation.
         """
@@ -2143,17 +2149,11 @@ class SourceCatalog:
         return np.array(gini)
 
     @lazyproperty
-    @use_detcat
     def _local_background_apertures(self):
         """
         The `~photutils.aperture.RectangularAnnulus` aperture used to
         estimate the local background.
         """
-        if self._detection_cat is not None:
-            # local background aperture defined using the source
-            # centroid and bbox defined by detection image
-            return self._detection_cat.local_background_aperture
-
         if self.localbkg_width == 0:
             return self._null_objects
 
@@ -2319,15 +2319,9 @@ class SourceCatalog:
         if radius <= 0:
             raise ValueError('radius must be > 0')
 
-        if self._detection_cat is not None:
-            # use detection catalog for centroids
-            detcat = self._detection_cat
-        else:
-            detcat = self
-
         apertures = []
-        for (xcen, ycen, all_masked) in zip(detcat._xcentroid,
-                                            detcat._ycentroid,
+        for (xcen, ycen, all_masked) in zip(self._xcentroid,
+                                            self._ycentroid,
                                             self._all_masked):
             if all_masked or np.any(~np.isfinite((xcen, ycen))):
                 apertures.append(None)
@@ -2446,18 +2440,12 @@ class SourceCatalog:
         if radius <= 0:
             raise ValueError('radius must be > 0')
 
-        if self._detection_cat is not None:
-            # use source centroid defined by detection image
-            detcat = self._detection_cat
-        else:
-            detcat = self
-
         apertures = self._make_circular_apertures(radius)
 
         flux = []
         fluxerr = []
         for (label, aperture, xcen, ycen, bkg) in zip(
-                self.labels, apertures, detcat._xcentroid, detcat._ycentroid,
+                self.labels, apertures, self._xcentroid, self._ycentroid,
                 self._local_background):
 
             # return NaN for completely masked sources or sources where
@@ -2508,8 +2496,8 @@ class SourceCatalog:
         Return a list of elliptical apertures based on the scaled
         isophotal shape of the sources.
 
-        If a ``detection_cat`` was input to `SourceCatalog`, it will be
-        used for the source centroids.
+        If a ``detection_cat`` was input to `SourceCatalog`, then its
+        source centroids and shape parameters will be used.
 
         If scale is zero (due to a minimum circular radius set in
         ``kron_params``) then a circular aperture will be returned with
@@ -2531,18 +2519,11 @@ class SourceCatalog:
             centroid position or elliptical shape parameters are not
             finite or where the source is completely masked.
         """
-        if self._detection_cat is not None:
-            # use detection catalog for centroids and elliptical shape
-            # parameters
-            detcat = self._detection_cat
-        else:
-            detcat = self
-
-        xcen = detcat._xcentroid
-        ycen = detcat._ycentroid
-        major_size = detcat.semimajor_sigma.value * scale
-        minor_size = detcat.semiminor_sigma.value * scale
-        theta = detcat.orientation.to(u.radian).value
+        xcen = self._xcentroid
+        ycen = self._ycentroid
+        major_size = self.semimajor_sigma.value * scale
+        minor_size = self.semiminor_sigma.value * scale
+        theta = self.orientation.to(u.radian).value
         if self.isscalar:
             major_size = (major_size,)
             minor_size = (minor_size,)
@@ -2577,9 +2558,6 @@ class SourceCatalog:
         The returned value is the measured Kron radius without applying
         any minimum Kron or circular radius.
         """
-        if self._detection_cat is not None:
-            return self._detection_cat._measured_kron_radius
-
         labels = self.labels
         apertures = self._make_elliptical_apertures(scale=6.0)
         xcen = self._xcentroid
@@ -2713,8 +2691,6 @@ class SourceCatalog:
         See the `SourceCatalog` ``apermask_method`` keyword for options
         to mask neighboring sources.
         """
-        if self._detection_cat is not None:
-            return self._detection_cat.kron_radius
         return self._calc_kron_radius(self.kron_params)
 
     def _make_kron_apertures(self, kron_params):
@@ -2747,9 +2723,10 @@ class SourceCatalog:
         The aperture will be `None` where the source centroid position
         or elliptical shape parameters are not finite or where the
         source is completely masked.
+
+        If a ``detection_cat`` was input to `SourceCatalog`, then its
+        ``kron_aperture`` will be returned.
         """
-        if self._detection_cat is not None:
-            return self._detection_cat.kron_aperture
         return self._make_kron_apertures(self.kron_params)
 
     @as_scalar
@@ -2878,6 +2855,8 @@ class SourceCatalog:
         If the Kron aperture is `None`, then ``np.nan`` will be
         returned.
 
+        If ``detection_cat`` is input, then its centroids are used.
+
         Returns
         -------
         kron_flux, kron_fluxerr : tuple of `~numpy.ndarray`
@@ -2891,16 +2870,11 @@ class SourceCatalog:
             kron_params = self._validate_kron_params(kron_params)
             kron_aperture = self._make_kron_apertures(kron_params)
 
-        if self._detection_cat is not None:
-            detcat = self._detection_cat
-        else:
-            detcat = self
-
         kron_flux = []
         kron_fluxerr = []
-        for label, xcen, ycen, aperture, bkg in zip(detcat.labels,
-                                                    detcat._xcentroid,
-                                                    detcat._ycentroid,
+        for label, xcen, ycen, aperture, bkg in zip(self.labels,
+                                                    self._xcentroid,
+                                                    self._ycentroid,
                                                     kron_aperture,
                                                     self._local_background):
 
@@ -3046,18 +3020,14 @@ class SourceCatalog:
         return kron_fluxerr
 
     @lazyproperty
+    @use_detcat
     def _max_circular_kron_radius(self):
         """
         The maximum circular Kron radius used as the upper limit of
         fluxfrac_radius.
         """
-        if self._detection_cat is not None:
-            detcat = self._detection_cat
-        else:
-            detcat = self
-
-        semimajor_sig = detcat.semimajor_sigma.value
-        kron_radius = detcat.kron_radius.value
+        semimajor_sig = self.semimajor_sigma.value
+        kron_radius = self.kron_radius.value
         radius = semimajor_sig * kron_radius * self.kron_params[0]
         mask = radius == 0
         if np.any(mask):
@@ -3076,18 +3046,14 @@ class SourceCatalog:
         return 1.0 - (flux[0] / normflux)
 
     @lazyproperty
+    @use_detcat
     def _fluxfrac_optimizer_args(self):
-        if self._detection_cat is not None:
-            detcat = self._detection_cat
-        else:
-            detcat = self
-
         kron_flux = self._kron_photometry[:, 0]  # unitless
         max_radius = self._max_circular_kron_radius
 
         args = []
         for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
-                self.labels, detcat._xcentroid, detcat._ycentroid,
+                self.labels, self._xcentroid, self._ycentroid,
                 kron_flux, self._local_background, max_radius):
 
             if (np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_)))
@@ -3236,15 +3202,9 @@ class SourceCatalog:
         if mode not in ('partial', 'trim'):
             raise ValueError('mode must be "partial" or "trim"')
 
-        if self._detection_cat is not None:
-            # use detection catalog for centroids
-            detcat = self._detection_cat
-        else:
-            detcat = self
-
         cutouts = []
-        for (xcen, ycen, all_masked) in zip(detcat._xcentroid,
-                                            detcat._ycentroid,
+        for (xcen, ycen, all_masked) in zip(self._xcentroid,
+                                            self._ycentroid,
                                             self._all_masked):
 
             if all_masked or np.any(~np.isfinite((xcen, ycen))):
