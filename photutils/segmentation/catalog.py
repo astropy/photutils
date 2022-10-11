@@ -271,7 +271,9 @@ class SourceCatalog:
         self._kron_params = self._validate_kron_params(kron_params)
 
         # needed for ordering and isscalar
-        # NOTE: calculate slices before labels for performance
+        # NOTE: calculate slices before labels for performance.
+        #       _labels is initially always a non-scalar array, but
+        #       it can become a numpy scalar after indexing/slicing.
         self._slices = self._segment_img.slices
         self._labels = self._segment_img.labels
 
@@ -745,7 +747,7 @@ class SourceCatalog:
         source segments) outside of the source segment.
         """
         return [segm != label
-                for label, segm in zip(self._label_iter,
+                for label, segm in zip(self.labels,
                                        self._segment_img_cutouts)]
 
     @lazyproperty
@@ -906,9 +908,7 @@ class SourceCatalog:
         """
         The number of source labels.
         """
-        if self.isscalar:
-            return 1
-        return len(self._labels)
+        return len(self.labels)
 
     @property
     @as_scalar
@@ -930,17 +930,10 @@ class SourceCatalog:
         This label number corresponds to the assigned pixel value in the
         `~photutils.segmentation.SegmentationImage`.
         """
-        return self._label_iter
-
-    @property
-    def _label_iter(self):
-        """
-        The source label, always as a iterable.
-        """
-        _label = self.label
+        labels = self.label
         if self.isscalar:
-            _label = np.array((_label,))
-        return _label
+            labels = np.array((labels,))
+        return labels
 
     @property
     @as_scalar
@@ -2581,7 +2574,7 @@ class SourceCatalog:
         if self._detection_cat is not None:
             return self._detection_cat._measured_kron_radius
 
-        labels = self._label_iter
+        labels = self.labels
         apertures = self._make_elliptical_apertures(scale=6.0)
         xcen = self._xcentroid
         ycen = self._ycentroid
@@ -2899,7 +2892,7 @@ class SourceCatalog:
 
         kron_flux = []
         kron_fluxerr = []
-        for label, xcen, ycen, aperture, bkg in zip(detcat._label_iter,
+        for label, xcen, ycen, aperture, bkg in zip(detcat.labels,
                                                     detcat._xcentroid,
                                                     detcat._ycentroid,
                                                     kron_aperture,
