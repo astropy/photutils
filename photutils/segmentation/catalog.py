@@ -2162,11 +2162,9 @@ class SourceCatalog:
             xpos = 0.5 * (bbox_.ixmin + bbox_.ixmax - 1)
             ypos = 0.5 * (bbox_.iymin + bbox_.iymax - 1)
             scale = 1.5
-            width_bbox = bbox_.ixmax - bbox_.ixmin
-            width_in = width_bbox * scale
+            width_in = (bbox_.ixmax - bbox_.ixmin) * scale
             width_out = width_in + 2 * self.localbkg_width
-            height_bbox = bbox_.iymax - bbox_.iymin
-            height_in = height_bbox * scale
+            height_in = (bbox_.iymax - bbox_.iymin) * scale
             height_out = height_in + 2 * self.localbkg_width
             apertures.append(RectangularAnnulus((xpos, ypos), width_in,
                                                 width_out, height_out,
