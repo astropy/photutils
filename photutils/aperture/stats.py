@@ -466,8 +466,10 @@ class ApertureStats:
         for id_num in np.atleast_1d(id_nums):
             if id_num not in self.ids:
                 raise ValueError(f'{id_num} is not a valid source ID number')
-        idx = np.searchsorted(self.id, id_nums)
-        return self[idx]
+
+        sorter = np.argsort(self.id)
+        indices = sorter[np.searchsorted(self.id, id_nums, sorter=sorter)]
+        return self[indices]
 
     def to_table(self, columns=None):
         """
