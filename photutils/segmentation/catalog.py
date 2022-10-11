@@ -130,7 +130,7 @@ class SourceCatalog:
         the unfiltered ``data`` will be used instead. This keyword is
         ignored if ``convolved_data`` is input (recommended).
 
-    background : float, 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+    background : float, 2D `~numpy.ndarray`, or `~astropy.units.Quantity`, optional
         The background level that was *previously* present in the input
         ``data``. ``background`` may either be a scalar value or a 2D
         image with the same shape as the input ``data``. If ``data``
@@ -150,51 +150,61 @@ class SourceCatalog:
         supports the `astropy shared interface for WCS
         <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`). If `None`, then all
-        sky-based properties will be set to `None`.
+        sky-based properties will be set to `None`. This keyword will be
+        ignored if ``detection_cat`` is input.
 
     localbkg_width : int, optional
-        The width of the rectangular annulus used to compute a
-        local background around each source. If zero, then no local
-        background subtraction is performed. The local background
-        affects the ``min_value``, ``max_value``, ``segment_flux``, and
-        ``kron_flux`` properties. It does not affect the moment-based
-        morphological properties of the source.
+        The width of the rectangular annulus used to compute a local
+        background around each source. If zero, then no local background
+        subtraction is performed. The local background affects the
+        ``min_value``, ``max_value``, ``segment_flux``, ``kron_flux``,
+        and ``fluxfrac_radius`` properties. It is also used when
+        calculating circular and Kron aperture photometry (i.e.,
+        `circular_photometry` and `kron_photometry`). It does not affect
+        the moment-based morphological properties of the source.
 
     apermask_method : {'correct', 'mask', 'none'}, optional
         The method used to handle neighboring sources when performing
         aperture photometry (e.g., circular apertures or elliptical Kron
-        apertures).  This parameter also affects the Kron radius.
+        apertures). This parameter also affects the Kron radius. The
+        options are:
 
           * 'correct': replace pixels assigned to neighboring sources by
             replacing them with pixels on the opposite side of the source
             center (equivalent to MASK_TYPE=CORRECT in SourceExtractor).
-
           * 'mask': mask pixels assigned to neighboring sources
             (equivalent to MASK_TYPE=BLANK in SourceExtractor).
-
           * 'none': do not mask any pixels (equivalent to MASK_TYPE=NONE
             in SourceExtractor).
+
+        This keyword will be ignored if ``detection_cat`` is input.
 
     kron_params : list of 2 or 3 floats, optional
         A list of parameters used to determine the Kron aperture.
         The first item is the scaling parameter of the unscaled Kron
         radius and the second item represents the minimum value for
         the unscaled Kron radius in pixels. The optional third item is
-        the minimum circular radius in pixels. If ``kron_params[0]`` *
-        `kron_radius` * sqrt(`semimajor_sigma` * `semiminor_sigma`) is
-        less than or equal to this radius, then the Kron aperture will
-        be a circle with this minimum radius.
+        the minimum circular radius in pixels. If ``kron_params[0]``
+        * `kron_radius` * sqrt(`semimajor_sigma` * `semiminor_sigma`)
+        is less than or equal to this radius, then the Kron aperture
+        will be a circle with this minimum radius. This keyword will be
+        ignored if ``detection_cat`` is input.
 
     detection_cat : `SourceCatalog`, optional
-        A `SourceCatalog` object for the detection image. The source
-        labels in ``detection_cat`` must correspond to the labels in the
-        input ``segment_img``. If input, this detection catalog will
-        be used to define the source centroids for all aperture-based
-        photometry (e.g., local background aperture, circular aperture,
-        Kron aperture). It will also be used to define the object
-        elliptical shape parameters when calculating the Kron radius.
-        This keyword affects the local-background value, circular
-        aperture photometry, Kron radius, and Kron photometry.
+        A `SourceCatalog` object for the detection image. The
+        segmentation image used to create the detection catalog must
+        be the same one input to ``segment_img``. If input, then the
+        detection catalog source centroids and morphological/shape
+        properties will be returned instead of calculating them
+        from the input ``data``. The detection catalog centroids
+        and shape properties will also be used to perform aperture
+        photometry (i.e., circular and Kron). If ``detection_cat``
+        is input, then the input ``wcs``, ``apermask_method``, and
+        ``kron_params`` keywords will be ignored. This keyword affects
+        `circular_photometry` (including returned apertures), all Kron
+        parameters (Kron radius, flux, flux errors, apertures, and
+        custom `kron_photometry`), and `fluxfrac_radius` (which is based
+        on the Kron flux).
 
     Notes
     -----
@@ -281,7 +291,6 @@ class SourceCatalog:
             raise ValueError('segment_img must have at least one non-zero '
                              'label.')
 
-        # detection_cat validation needs self._labels
         self._detection_cat = self._validate_detection_cat(detection_cat)
         attrs = ('wcs', 'apermask_method', 'kron_params')
         if self._detection_cat is not None:
@@ -349,13 +358,15 @@ class SourceCatalog:
         return kron_params
 
     def _validate_detection_cat(self, detection_cat):
-        if detection_cat is not None:
-            if not isinstance(detection_cat, SourceCatalog):
-                raise TypeError('detection_cat must be a SourceCatalog '
-                                'instance')
-            if not np.array_equal(detection_cat.labels, self.labels):
-                raise ValueError('detection_cat must have same source labels '
-                                 'as the input segment_img')
+        if detection_cat is None:
+            return None
+
+        if not isinstance(detection_cat, SourceCatalog):
+            raise TypeError('detection_cat must be a SourceCatalog '
+                            'instance')
+        if not np.array_equal(detection_cat._segment_img, self._segment_img):
+            raise ValueError('detection_cat must have same segment_img as '
+                             'the input segment_img')
         return detection_cat
 
     def _update_meta(self):
@@ -2184,8 +2195,8 @@ class SourceCatalog:
     @lazyproperty
     def _local_background(self):
         """
-        The local background value estimated using a rectangular annulus
-        aperture around the source.
+        The local background value (per pixel) estimated using a
+        rectangular annulus aperture around the source.
 
         Pixels are masked where the input ``mask`` is `True`, where the
         input ``data`` is non-finite, and within any non-zero pixel
@@ -2237,8 +2248,8 @@ class SourceCatalog:
     @as_scalar
     def local_background(self):
         """
-        The local background value estimated using a rectangular annulus
-        aperture around the source.
+        The local background value (per pixel) estimated using a
+        rectangular annulus aperture around the source.
         """
         bkg = self._local_background
         if self._data_unit is not None:
