@@ -848,8 +848,9 @@ class SourceCatalog:
             A new `SourceCatalog` object containing only the sources with
             the input ``labels``.
         """
-        idx = np.searchsorted(self.label, labels)
-        return self[idx]
+        sorter = np.argsort(self.labels)
+        indices = sorter[np.searchsorted(self.labels, labels, sorter=sorter)]
+        return self[indices]
 
     def to_table(self, columns=None):
         """

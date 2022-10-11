@@ -233,11 +233,20 @@ class TestApertureStats:
         apstat1 = apstats.get_ids([1, 2])
         assert len(apstat0) == len(apstat1) == 2
 
+        apstat0 = apstats[1:]
+        apstat1 = apstats.get_ids([1, 2])
+        assert len(apstat0) == len(apstat1) == 2
+
         apstat0 = apstats[[2, 1, 0]]
         apstat1 = apstats.get_ids([3, 2, 1])
         assert len(apstat0) == len(apstat1) == 3
         assert_equal(apstat0.ids, [3, 2, 1])
         assert_equal(apstat1.ids, [3, 2, 1])
+
+        # test get_ids when ids are not sorted
+        apstat0 = apstats[[2, 1, 0]]
+        apstat1 = apstat0.get_ids(2)
+        assert apstat1.ids == 2
 
         mask = apstats.id >= 2
         apstat0 = apstats[mask]

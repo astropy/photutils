@@ -225,6 +225,7 @@ class SegmentationImage:
             If ``label`` is invalid.
         """
         self.check_labels(label)
+        # self.labels is always sorted
         return np.searchsorted(self.labels, label)
 
     def get_indices(self, labels):
@@ -249,6 +250,7 @@ class SegmentationImage:
             If any input ``labels`` are invalid.
         """
         self.check_labels(labels)
+        # self.labels is always sorted
         return np.searchsorted(self.labels, labels)
 
     @lazyproperty
