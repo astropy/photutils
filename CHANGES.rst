@@ -18,6 +18,10 @@ New Features
   - Added ``mode`` and ``fill_value`` keywords to ``SourceCatalog``
     ``make_cutouts`` method. [#1420]
 
+  - Added ``segment_area`` source property and ``wcs``,
+    ``localbkg_width``, ``apermask_method``, and ``kron_params``
+    attributes to ``SourceCatalog``. [#1425]
+
 - ``photutils.utils``
 
   - Added ``xyorigin`` attribute to ``CutoutImage``. [#1419]
@@ -78,6 +82,13 @@ API Changes
   - Removed the deprecated the ``filter_fwhm`` and ``filter_size``
     keywords in ``make_source_mask``. Use the ``kernel`` keyword instead.
     [#1398]
+
+  - If ``detection_cat`` is input to ``SourceCatalog``, then the
+    detection catalog source centroids and morphological/shape
+    properties will be returned instead of calculating them from the
+    input data. Also, if ``detection_cat`` is input, then the input
+    ``wcs``, ``apermask_method``, and ``kron_params`` keywords will be
+    ignored. [#1425]
 
 
 1.5.0 (2022-07-12)
