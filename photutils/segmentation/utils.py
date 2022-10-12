@@ -34,16 +34,16 @@ def make_2dgaussian_kernel(fwhm, size, mode='oversample', oversampling=10):
 
     mode : {'oversample', 'center', 'linear_interp', 'integrate'}, optional
         The mode to use for discretizing the 2D Gaussian model:
-            * 'oversample' (default)
+            * 'oversample' (default):
               Discretize model by taking the average on an oversampled
               grid.
-            * 'center'
+            * 'center':
               Discretize model by taking the value at the center of the
               bin.
-            * 'linear_interp'
+            * 'linear_interp':
               Discretize model by performing a bilinear interpolation
               between the values at the corners of the bin.
-            * 'integrate'
+            * 'integrate':
               Discretize model by integrating the model over the bin.
 
     oversampling : int, optional

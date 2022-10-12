@@ -68,25 +68,6 @@ class TestSourceCatalog:
 
     @pytest.mark.parametrize('with_units', (True, False))
     def test_catalog(self, with_units):
-        props1 = ('background_centroid', 'background_mean', 'background_sum',
-                  'bbox', 'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx',
-                  'cxy', 'cyy', 'ellipticity', 'elongation', 'fwhm',
-                  'equivalent_radius', 'gini', 'kron_radius', 'maxval_xindex',
-                  'maxval_yindex', 'minval_xindex', 'minval_yindex',
-                  'perimeter', 'sky_bbox_ll', 'sky_bbox_lr', 'sky_bbox_ul',
-                  'sky_bbox_ur', 'sky_centroid_icrs', 'local_background',
-                  'segment_flux', 'segment_fluxerr', 'kron_flux',
-                  'kron_fluxerr')
-
-        props2 = ('centroid', 'covariance', 'covariance_eigvals',
-                  'cutout_centroid', 'cutout_maxval_index',
-                  'cutout_minval_index', 'inertia_tensor', 'maxval_index',
-                  'minval_index', 'moments', 'moments_central', 'background',
-                  'background_ma', 'convdata', 'convdata_ma', 'data',
-                  'data_ma', 'error', 'error_ma', 'segment', 'segment_ma')
-
-        props = tuple(self.cat.default_columns) + props1 + props2
-
         if with_units:
             cat1 = self.cat_units.copy()
             cat2 = self.cat_units.copy()
@@ -94,7 +75,9 @@ class TestSourceCatalog:
             cat1 = self.cat.copy()
             cat2 = self.cat.copy()
 
-        # test extra properties
+        props = self.cat.properties
+
+        # add extra properties
         cat1.circular_photometry(5.0, name='circ5')
         cat1.kron_photometry((2.5, 1.4), name='kron2')
         cat1.fluxfrac_radius(0.5, name='r_hl')
@@ -103,7 +86,7 @@ class TestSourceCatalog:
         props = list(props)
         props.extend(cat1.extra_properties)
 
-        idx = 1
+        idx = 1  # no NaN values
 
         # evaluate (cache) catalog properties before slice
         obj = cat1[idx]
@@ -508,7 +491,7 @@ class TestSourceCatalog:
 
     def test_kron_negative(self):
         cat = SourceCatalog(self.data - 10, self.segm)
-        assert_allclose(cat.kron_radius.value, cat._kron_params[1])
+        assert_allclose(cat.kron_radius.value, cat.kron_params[1])
 
     def test_kron_photometry(self):
         flux0, fluxerr0 = self.cat.kron_photometry((2.5, 1.4))
@@ -811,6 +794,12 @@ class TestSourceCatalog:
 
         cutouts = cat.make_cutouts(shape, mode='partial', fill_value=-100)
         assert cutouts[0].data[0, 0] == -100
+
+    def test_meta(self):
+        meta = self.cat.meta
+        attrs = ('localbkg_width', 'apermask_method', 'kron_params')
+        for attr in attrs:
+            assert attr in meta
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
