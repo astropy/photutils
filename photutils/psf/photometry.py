@@ -243,12 +243,12 @@ class BasicPSFPhotometry:
                               'automatically ignored.', AstropyUserWarning)
         return mask
 
-    def __call__(self, image, *, mask=None, init_guesses=None):
+    def __call__(self, image, *, mask=None, init_guesses=None, **kwargs):
         """
         Perform PSF photometry. See `do_photometry` for more details
         including the `__call__` signature.
         """
-        return self.do_photometry(image, mask=mask, init_guesses=init_guesses)
+        return self.do_photometry(image, mask=mask, init_guesses=init_guesses, **kwargs)
 
     def do_photometry(self, image, *, mask=None, init_guesses=None, **kwargs):
         """
