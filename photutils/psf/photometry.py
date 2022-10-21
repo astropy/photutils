@@ -250,7 +250,7 @@ class BasicPSFPhotometry:
         """
         return self.do_photometry(image, mask=mask, init_guesses=init_guesses)
 
-    def do_photometry(self, image, *, mask=None, init_guesses=None):
+    def do_photometry(self, image, *, mask=None, init_guesses=None, **kwargs):
         """
         Perform PSF photometry in ``image``.
 
@@ -287,6 +287,9 @@ class BasicPSFPhotometry:
             A boolean mask with the same shape as ``image``, where
             a `True` value indicates the corresponding element of
             ``image`` is masked.
+        kwargs : dict
+            Passed to `self.nstar`, which performs the fitting loop over the
+            star groups.
 
         Returns
         -------
@@ -383,7 +386,7 @@ class BasicPSFPhotometry:
             star_groups = self.group_maker(init_guesses)
 
         output_tab, self._residual_image = self.nstar(image, star_groups,
-                                                      mask=mask)
+                                                      mask=mask, **kwargs)
         star_groups = star_groups.group_by('group_id')
 
         if hasattr(output_tab, 'update'):  # requires Astropy >= 5.0
