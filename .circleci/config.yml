@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: quay.io/pypa/manylinux1_i686
+      - image: quay.io/pypa/manylinux2014_i686:2022-04-03-da6ecb3
     steps:
       - checkout
       - run:
