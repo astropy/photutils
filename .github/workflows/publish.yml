@@ -1,6 +1,9 @@
 name: Wheel building
 
 on:
+  schedule:
+    # run every Monday at 5am UTC
+    - cron: '0 5 * * 1'
   push:
     branches:
       - '*'
@@ -28,8 +31,11 @@ jobs:
 
     uses: OpenAstronomy/github-actions-workflows/.github/workflows/publish.yml@v1
 
-    if: (github.repository == 'astropy/photutils' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Build all wheels')))
+    if: (github.repository == 'astropy/photutils' && (github.event_name == 'push' ||  github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Build all wheels')))
     with:
+      # We upload to PyPI for all tag pushes, except tags ending in .dev
+      upload_to_pypi: ${{ startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref, '.dev') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+
       test_extras: test
       test_command: pytest -p no:warnings --pyargs photutils
       targets: |
@@ -55,9 +61,6 @@ jobs:
         - cp38*win_amd64
         - cp39*win_amd64
         - cp310*win_amd64
-
-      # We upload to PyPI for all tags, except those ending in .dev
-      upload_to_pypi: ${{ startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref, '.dev') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
 
     secrets:
       pypi_token: ${{ secrets.pypi_token }}
