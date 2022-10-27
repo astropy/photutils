@@ -2,6 +2,10 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
+    tags:
+      - '*'
   pull_request:
   schedule:
     # run every Monday at 6am UTC
@@ -43,6 +47,14 @@ jobs:
             toxposargs: --remote-data=any
             allow_failure: false
             prefix: ''
+
+          # Python 3.11 wheels are not yet available for scikit-image and
+          # scikit-learn releases
+          # - os: ubuntu-latest
+          #   python: '3.11'
+          #   tox_env: 'py311-test-alldeps'
+          #   allow_failure: false
+          #   prefix: ''
 
           - os: macos-latest
             python: '3.10'
@@ -93,6 +105,15 @@ jobs:
             allow_failure: true
             prefix: '(Allowed failure)'
 
+          # Python 3.11 wheels are not yet available for scikit-image dev
+          # version
+          # - os: ubuntu-latest
+          #   python: '3.11'
+          #   tox_env: 'py311-test-devdeps'
+          #   toxposargs: --remote-data=any
+          #   allow_failure: true
+          #   prefix: '(Allowed failure)'
+
     steps:
     - name: Check out repository
       uses: actions/checkout@v3
@@ -115,7 +136,7 @@ jobs:
     - name: Run tests
       run: tox -e ${{ matrix.tox_env }} -- ${{ matrix.toxposargs }}
     - name: Upload coverage to codecov
-      if: "contains(matrix.tox_env, '-cov')"
+      if: ${{ contains(matrix.tox_env, '-cov') }}
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
