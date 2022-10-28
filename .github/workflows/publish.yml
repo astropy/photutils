@@ -43,6 +43,7 @@ jobs:
         - cp38-manylinux_x86_64
         - cp39-manylinux_x86_64
         - cp310-manylinux_x86_64
+        - cp311-manylinux_x86_64
 
         # MacOS X wheels
         # Note that the arm64 wheels are not actually tested so we rely
@@ -50,17 +51,23 @@ jobs:
         - cp38*macosx_x86_64
         - cp39*macosx_x86_64
         - cp310*macosx_x86_64
+        - cp311*macosx_x86_64
+
         - cp38*macosx_arm64
         - cp39*macosx_arm64
         - cp310*macosx_arm64
+        - cp311*macosx_arm64
 
         # Windows wheels
         - cp38*win32
         - cp39*win32
         - cp310*win32
+        - cp311*win32
+
         - cp38*win_amd64
         - cp39*win_amd64
         - cp310*win_amd64
+        - cp311*win_amd64
 
     secrets:
       pypi_token: ${{ secrets.pypi_token }}
