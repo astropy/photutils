@@ -25,8 +25,8 @@ jobs:
             allow_failure: false
 
           - os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'py310-test-alldeps-devdeps'
+            python: '3.11'
+            tox_env: 'py311-test-alldeps-devdeps'
             toxposargs: --remote-data=any
             allow_failure: false
 
