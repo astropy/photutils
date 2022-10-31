@@ -13,6 +13,7 @@ from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 import numpy as np
 
 from .core import SegmentationImage
@@ -2381,7 +2382,8 @@ class SourceCatalog:
         return self._make_circular_apertures(radius)
 
     @as_scalar
-    def plot_circular_apertures(self, radius, axes=None, origin=(0, 0),
+    @deprecated_renamed_argument('axes', 'ax', '1.6.0')
+    def plot_circular_apertures(self, radius, ax=None, origin=(0, 0),
                                 **kwargs):
         """
         Plot circular apertures for each source on a matplotlib
@@ -2400,7 +2402,7 @@ class SourceCatalog:
         radius : float
             The radius of the circle in pixels.
 
-        axes : `matplotlib.axes.Axes` or `None`, optional
+        ax : `matplotlib.axes.Axes` or `None`, optional
             The matplotlib axes on which to plot.  If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
@@ -2423,7 +2425,7 @@ class SourceCatalog:
         patches = []
         for aperture in apertures:
             if aperture is not None:
-                aperture.plot(axes=axes, origin=origin, **kwargs)
+                aperture.plot(ax=ax, origin=origin, **kwargs)
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return patches
 
@@ -2801,7 +2803,8 @@ class SourceCatalog:
         return self._make_kron_apertures(kron_params)
 
     @as_scalar
-    def plot_kron_apertures(self, kron_params=None, axes=None, origin=(0, 0),
+    @deprecated_renamed_argument('axes', 'ax', '1.6.0')
+    def plot_kron_apertures(self, kron_params=None, ax=None, origin=(0, 0),
                             **kwargs):
         """
         Plot Kron apertures for each source on a matplotlib
@@ -2837,7 +2840,7 @@ class SourceCatalog:
             `SourceCatalog` will be used (the apertures will be the same
             as those in `kron_aperture`).
 
-        axes : `matplotlib.axes.Axes` or `None`, optional
+        ax : `matplotlib.axes.Axes` or `None`, optional
             The matplotlib axes on which to plot.  If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
@@ -2865,7 +2868,7 @@ class SourceCatalog:
         patches = []
         for aperture in apertures:
             if aperture is not None:
-                aperture.plot(axes=axes, origin=origin, **kwargs)
+                aperture.plot(ax=ax, origin=origin, **kwargs)
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return patches
 

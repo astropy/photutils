@@ -9,6 +9,7 @@ from copy import deepcopy
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+from astropy.utils.decorators import deprecated_renamed_argument
 
 from .bounding_box import BoundingBox
 from ._photometry_utils import (_handle_units, _prepare_photometry_data,
@@ -588,14 +589,15 @@ class PixelAperture(Aperture):
         """
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
-    def plot(self, axes=None, origin=(0, 0), **kwargs):
+    @deprecated_renamed_argument('axes', 'ax', '1.6.0')
+    def plot(self, ax=None, origin=(0, 0), **kwargs):
         """
         Plot the aperture on a matplotlib `~matplotlib.axes.Axes`
         instance.
 
         Parameters
         ----------
-        axes : `matplotlib.axes.Axes` or `None`, optional
+        ax : `matplotlib.axes.Axes` or `None`, optional
             The matplotlib axes on which to plot.  If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
@@ -615,15 +617,15 @@ class PixelAperture(Aperture):
         """
         import matplotlib.pyplot as plt
 
-        if axes is None:
-            axes = plt.gca()
+        if ax is None:
+            ax = plt.gca()
 
         patches = self._to_patch(origin=origin, **kwargs)
         if self.isscalar:
             patches = (patches,)
 
         for patch in patches:
-            axes.add_patch(patch)
+            ax.add_patch(patch)
 
         return patches
 

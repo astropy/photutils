@@ -10,7 +10,9 @@ from astropy.nddata import NDData
 from astropy.stats import SigmaClip
 import astropy.units as u
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
+
 import numpy as np
 from numpy.lib.index_tricks import index_exp
 
@@ -653,7 +655,8 @@ class Background2D:
             bkg_rms <<= self.unit
         return bkg_rms
 
-    def plot_meshes(self, *, axes=None, marker='+', markersize=None,
+    @deprecated_renamed_argument('axes', 'ax', '1.6.0')
+    def plot_meshes(self, *, ax=None, marker='+', markersize=None,
                     color='blue', alpha=None, outlines=False, **kwargs):
         """
         Plot the low-resolution mesh boxes on a matplotlib Axes
@@ -661,7 +664,7 @@ class Background2D:
 
         Parameters
         ----------
-        axes : `matplotlib.axes.Axes` or `None`, optional
+        ax : `matplotlib.axes.Axes` or `None`, optional
             The matplotlib axes on which to plot.  If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
@@ -695,15 +698,15 @@ class Background2D:
         import matplotlib.pyplot as plt
 
         kwargs['color'] = color
-        if axes is None:
-            axes = plt.gca()
+        if ax is None:
+            ax = plt.gca()
 
-        axes.scatter(*self._mesh_xypos, s=markersize, marker=marker,
-                     color=color, alpha=alpha)
+        ax.scatter(*self._mesh_xypos, s=markersize, marker=marker,
+                   color=color, alpha=alpha)
 
         if outlines:
             from ..aperture import RectangularAperture
             xypos = np.column_stack(self._mesh_xypos)
             apers = RectangularAperture(xypos, self.box_size[1],
                                         self.box_size[0], 0.)
-            apers.plot(axes=axes, alpha=alpha, **kwargs)
+            apers.plot(ax=ax, alpha=alpha, **kwargs)

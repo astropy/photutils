@@ -9,6 +9,7 @@ import inspect
 import warnings
 
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
@@ -1145,7 +1146,8 @@ class SegmentationImage:
 
         return outlines
 
-    def imshow(self, axes=None, figsize=None, dpi=None, cmap=None, alpha=None):
+    @deprecated_renamed_argument('axes', 'ax', '1.6.0')
+    def imshow(self, ax=None, figsize=None, dpi=None, cmap=None, alpha=None):
         """
         Display the segmentation image in a matplotlib
         `~matplotlib.axes.Axes` instance.
@@ -1155,7 +1157,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        axes : `matplotlib.axes.Axes` or `None`, optional
+        ax : `matplotlib.axes.Axes` or `None`, optional
             The matplotlib axes on which to plot. If `None`, then a new
             `~matplotlib.axes.Axes` instance will be created.
 
@@ -1202,13 +1204,13 @@ class SegmentationImage:
         """
         import matplotlib.pyplot as plt
 
-        if axes is None:
-            _, axes = plt.subplots(figsize=figsize, dpi=dpi)
+        if ax is None:
+            _, ax = plt.subplots(figsize=figsize, dpi=dpi)
         if cmap is None:
             cmap = self.cmap
 
-        return axes.imshow(self.data, cmap=cmap, interpolation='none',
-                           origin='lower', alpha=alpha)
+        return ax.imshow(self.data, cmap=cmap, interpolation='none',
+                         origin='lower', alpha=alpha)
 
 
 class Segment:
