@@ -1065,7 +1065,7 @@ class SegmentationImage:
         Examples
         --------
         >>> import numpy as np
-        >>> from photutils import SegmentationImage
+        >>> from photutils.segmentation import SegmentationImage
         >>> from photutils.utils import circular_footprint
         >>> data = np.zeros((7, 7), dtype=int)
         >>> data[3, 3] = 1
