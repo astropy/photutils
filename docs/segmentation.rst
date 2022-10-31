@@ -384,8 +384,8 @@ of each source) on the data:
     >>> ax2.imshow(segm_deblend, origin='lower', cmap=segm_deblend.cmap,
     ...            interpolation='nearest')
     >>> ax2.set_title('Segmentation Image')
-    >>> cat.plot_kron_apertures(axes=ax1, color='white', lw=1.5)
-    >>> cat.plot_kron_apertures(axes=ax2, color='white', lw=1.5)
+    >>> cat.plot_kron_apertures(ax=ax1, color='white', lw=1.5)
+    >>> cat.plot_kron_apertures(ax=ax2, color='white', lw=1.5)
 
 .. plot::
 
@@ -421,8 +421,8 @@ of each source) on the data:
     ax2.imshow(segment_map, origin='lower', cmap=segment_map.cmap,
                interpolation='nearest')
     ax2.set_title('Segmentation Image with Kron apertures')
-    cat.plot_kron_apertures(axes=ax1, color='white', lw=1.5)
-    cat.plot_kron_apertures(axes=ax2, color='white', lw=1.5)
+    cat.plot_kron_apertures(ax=ax1, color='white', lw=1.5)
+    cat.plot_kron_apertures(ax=ax2, color='white', lw=1.5)
     plt.tight_layout()
 
 
