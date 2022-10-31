@@ -4,6 +4,10 @@
 General
 ^^^^^^^
 
+- Deprecated ``axes`` keyword in favor of ``ax`` for consistency with
+  other packages. [#1432]
+
+
 New Features
 ^^^^^^^^^^^^
 - ``photutils.aperture``
