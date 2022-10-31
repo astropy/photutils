@@ -4,10 +4,6 @@
 General
 ^^^^^^^
 
-- Deprecated ``axes`` keyword in favor of ``ax`` for consistency with
-  other packages. [#1432]
-
-
 New Features
 ^^^^^^^^^^^^
 - ``photutils.aperture``
@@ -54,6 +50,12 @@ Bug Fixes
 
 API Changes
 ^^^^^^^^^^^
+
+- Deprecated ``axes`` keyword in favor of ``ax`` for consistency with
+  other packages. [#1432]
+
+- Importing tools from all subpackages now requires including the
+  subpackage name.
 
 - ``photutils.aperture``
 
