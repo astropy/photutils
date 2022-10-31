@@ -38,11 +38,11 @@ def test_make_2dgaussian_kernel_modes():
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_make_binary_structure():
-    selem = _make_binary_structure(1, 4)
-    assert_allclose(selem, np.array([1, 1, 1]))
+    footprint = _make_binary_structure(1, 4)
+    assert_allclose(footprint, np.array([1, 1, 1]))
 
-    selem = _make_binary_structure(3, 4)
-    assert_equal(selem[0, 0], np.array([False, False, False]))
+    footprint = _make_binary_structure(3, 4)
+    assert_equal(footprint[0, 0], np.array([False, False, False]))
     expected = np.array([[[0, 0, 0],
                           [0, 1, 0],
                           [0, 0, 0]],
@@ -52,7 +52,7 @@ def test_make_binary_structure():
                          [[0, 0, 0],
                           [0, 1, 0],
                           [0, 0, 0]]])
-    assert_equal(selem.astype(int), expected)
+    assert_equal(footprint.astype(int), expected)
 
 
 def test_mask_to_mirrored_value():

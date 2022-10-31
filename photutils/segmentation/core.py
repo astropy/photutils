@@ -1131,12 +1131,14 @@ class SegmentationImage:
         from scipy.ndimage import (generate_binary_structure, grey_dilation,
                                    grey_erosion)
 
+        # edge connectivity
+        footprint = generate_binary_structure(self._ndim, 1)
+
         # mode='constant' ensures outline is included on the array borders
-        selem = generate_binary_structure(self._ndim, 1)  # edge connectivity
-        eroded = grey_erosion(self.data, footprint=selem, mode='constant',
+        eroded = grey_erosion(self.data, footprint=footprint, mode='constant',
                               cval=0.)
-        dilated = grey_dilation(self.data, footprint=selem, mode='constant',
-                                cval=0.)
+        dilated = grey_dilation(self.data, footprint=footprint,
+                                mode='constant', cval=0.)
 
         outlines = ((dilated != eroded) & (self.data != 0)).astype(int)
         outlines *= self.data

@@ -112,7 +112,7 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
             + np.broadcast_to(error * nsigma, data.shape))
 
 
-def _detect_sources(data, thresholds, npixels, selem, inverse_mask,
+def _detect_sources(data, thresholds, npixels, footprint, inverse_mask,
                     deblend_mode=False):
     """
     Detect sources above a specified threshold value in an image.
@@ -149,11 +149,10 @@ def _detect_sources(data, thresholds, npixels, selem, inverse_mask,
         ``threshold``, that an object must have to be detected.
         ``npixels`` must be a positive integer.
 
-    selem : array_like
-        A structuring element that defines feature connections. As
-        an example, for connectivity along pixel edges only, the
-        structuring element is ``np.array([[0, 1, 0]], [1, 1, 1],
-        [0, 1, 0]])``.
+    footprint : array_like
+        A footprint that defines feature connections. As an example,
+        for connectivity along pixel edges only, the footprint is
+        ``np.array([[0, 1, 0]], [1, 1, 1], [0, 1, 0]])``.
 
     inverse_mask : 2D bool `~numpy.ndarray`
         A boolean mask, with the same shape as the input ``data``, where
@@ -198,7 +197,7 @@ def _detect_sources(data, thresholds, npixels, selem, inverse_mask,
 
         # recasting segment_img to int and using output=segment_img
         # gives similar performance
-        segment_img, nlabels = ndi_label(segment_img, structure=selem)
+        segment_img, nlabels = ndi_label(segment_img, structure=footprint)
         labels = np.arange(nlabels) + 1
 
         # remove objects with less than npixels
@@ -381,11 +380,11 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
             warnings.simplefilter('ignore', AstropyUserWarning)
             data = convolve(data, kernel, mask=mask, normalize_kernel=True)
 
-    selem = _make_binary_structure(data.ndim, connectivity)
+    footprint = _make_binary_structure(data.ndim, connectivity)
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=RuntimeWarning)
-        return _detect_sources(data, (threshold,), npixels, selem,
+        return _detect_sources(data, (threshold,), npixels, footprint,
                                inverse_mask, deblend_mode=False)[0]
 
 
@@ -461,5 +460,5 @@ def make_source_mask(data, nsigma, npixels, mask=None, kernel=None,
     if segm is None:
         return np.zeros(data.shape, dtype=bool)
 
-    selem = np.ones((dilate_size, dilate_size))
-    return ndimage.binary_dilation(segm.data.astype(bool), selem)
+    footprint = np.ones((dilate_size, dilate_size))
+    return ndimage.binary_dilation(segm.data.astype(bool), footprint)

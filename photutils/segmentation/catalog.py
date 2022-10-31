@@ -1811,7 +1811,7 @@ class SourceCatalog:
         """
         from scipy.ndimage import binary_erosion, convolve
 
-        selem = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
+        footprint = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
         kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
         size = 34
         weights = np.zeros(size, dtype=float)
@@ -1826,7 +1826,7 @@ class SourceCatalog:
                 continue
 
             data = ~mask
-            data_eroded = binary_erosion(data, selem, border_value=0)
+            data_eroded = binary_erosion(data, footprint, border_value=0)
             border = np.logical_xor(data, data_eroded).astype(int)
             perimeter_data = convolve(border, kernel, mode='constant', cval=0)
             perimeter_hist = np.bincount(perimeter_data.ravel(),

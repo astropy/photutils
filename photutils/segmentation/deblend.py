@@ -172,7 +172,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
             >= (npixels * 2))
     labels = labels[mask]
 
-    selem = _make_binary_structure(data.ndim, connectivity)
+    footprint = _make_binary_structure(data.ndim, connectivity)
 
     if kernel is not None:
         data = _filter_data(data, kernel, mode='constant',
@@ -210,14 +210,14 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         for source_data, source_segment in zip(all_source_data,
                                                all_source_segments):
             deblender = _Deblender(source_data, source_segment, npixels,
-                                   selem, nlevels, contrast, mode)
+                                   footprint, nlevels, contrast, mode)
             source_deblended = deblender.deblend_source()
             all_source_deblends.append(source_deblended)
 
     else:
         nlabels = len(labels)
         args_all = zip(all_source_data, all_source_segments,
-                       (npixels,) * nlabels, (selem,) * nlabels,
+                       (npixels,) * nlabels, (footprint,) * nlabels,
                        (nlevels,) * nlabels, (contrast,) * nlabels,
                        (mode,) * nlabels)
         if progress_bar and HAS_TQDM:
@@ -272,13 +272,13 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     return segm_deblended
 
 
-def _deblend_source(source_data, source_segment, npixels, selem, nlevels,
+def _deblend_source(source_data, source_segment, npixels, footprint, nlevels,
                     contrast, mode):
     """
     Convenience function to deblend a single labeled source with
     multiprocessing.
     """
-    deblender = _Deblender(source_data, source_segment, npixels, selem,
+    deblender = _Deblender(source_data, source_segment, npixels, footprint,
                            nlevels, contrast, mode)
     return deblender.deblend_source()
 
@@ -335,13 +335,13 @@ class _Deblender:
         starting with 1.
     """
 
-    def __init__(self, source_data, source_segment, npixels, selem, nlevels,
-                 contrast, mode):
+    def __init__(self, source_data, source_segment, npixels, footprint,
+                 nlevels, contrast, mode):
 
         self.source_data = source_data
         self.source_segment = source_segment
         self.npixels = npixels
-        self.selem = selem
+        self.footprint = footprint
         self.nlevels = nlevels
         self.contrast = contrast
         self.mode = mode
@@ -398,7 +398,7 @@ class _Deblender:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             segments = _detect_sources(self.source_data, thresholds,
-                                       self.npixels, self.selem,
+                                       self.npixels, self.footprint,
                                        self.segment_mask, deblend_mode=True)
         return segments
 
@@ -439,7 +439,8 @@ class _Deblender:
                     markers[mask] = segm_upper[mask].astype(bool)
 
             if relabel:
-                segm_data, nlabels = ndi_label(markers, structure=self.selem)
+                segm_data, nlabels = ndi_label(markers,
+                                               structure=self.footprint)
                 segm_new = object.__new__(SegmentationImage)
                 segm_new._data = segm_data
                 segm_new.__dict__['labels'] = np.arange(nlabels) + 1
@@ -479,7 +480,7 @@ class _Deblender:
         while remove_marker:
             markers = watershed(-self.source_data, markers,
                                 mask=self.segment_mask,
-                                connectivity=self.selem)
+                                connectivity=self.footprint)
 
             labels = np.unique(markers[markers != 0])
             flux_frac = (sum_labels(self.source_data, markers, index=labels)

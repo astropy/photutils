@@ -87,20 +87,20 @@ def _make_binary_structure(ndim, connectivity):
         is returned, otherwise an array of bool is returned.
     """
     if ndim == 1:
-        selem = np.array((1, 1, 1))
+        footprint = np.array((1, 1, 1))
     elif ndim == 2:
         if connectivity == 4:
-            selem = np.array(((0, 1, 0), (1, 1, 1), (0, 1, 0)))
+            footprint = np.array(((0, 1, 0), (1, 1, 1), (0, 1, 0)))
         elif connectivity == 8:
-            selem = np.ones((3, 3), dtype=int)
+            footprint = np.ones((3, 3), dtype=int)
         else:
             raise ValueError(f'Invalid connectivity={connectivity}.  '
                              'Options are 4 or 8.')
     else:
         from scipy.ndimage import generate_binary_structure
-        selem = generate_binary_structure(ndim, 1)
+        footprint = generate_binary_structure(ndim, 1)
 
-    return selem
+    return footprint
 
 
 def _mask_to_mirrored_value(data, replace_mask, xycenter, mask=None):
