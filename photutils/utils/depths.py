@@ -209,10 +209,18 @@ class ImageDepth:
                           'overlap=True', AstropyUserWarning)
 
         self.flux_limits = np.array(flux_limits)
-        self.mag_limits = -2.5 * np.log10(self.flux_limits) + self.zeropoint
-
         flux_limit = np.mean(self.flux_limits)
-        mag_limit = -2.5 * np.log10(flux_limit) + self.zeropoint
+        if np.any(self.flux_limits == 0):
+            warnings.warn('One or more flux_limit values was zero. This is '
+                          'likely due to constant image values. Check the '
+                          'input mask.', AstropyUserWarning)
+
+        # ignore divide-by-zero RuntimeWarning in log10
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            self.mag_limits = (-2.5 * np.log10(self.flux_limits)
+                               + self.zeropoint)
+            mag_limit = -2.5 * np.log10(flux_limit) + self.zeropoint
 
         return flux_limit, mag_limit
 
