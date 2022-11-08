@@ -13,6 +13,7 @@ import numpy as np
 
 from .core import SegmentationImage
 from .utils import _make_binary_structure
+from ..utils._quantity_helpers import process_quantities
 from ..utils._stats import nanmean, nanstd
 from ..utils.exceptions import NoDetectionsWarning
 
@@ -280,7 +281,7 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
     threshold : float or 2D `~numpy.ndarray`
         The data value or pixel-wise data values to be used for the
         detection threshold. A 2D ``threshold`` array must have the same
-        shape as ``data``.
+        shape and units as ``data``.
 
     npixels : int
         The minimum number of connected pixels, each greater than
@@ -359,6 +360,8 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
                    cmap=segm.make_cmap(seed=1234))
         plt.tight_layout()
     """
+    _ = process_quantities((data, threshold), ('data', 'threshold'))
+
     if (npixels <= 0) or (int(npixels) != npixels):
         raise ValueError('npixels must be a positive integer, got '
                          f'"{npixels}"')
