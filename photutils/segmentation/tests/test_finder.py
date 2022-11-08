@@ -4,6 +4,8 @@ Tests for the finder module.
 """
 
 from astropy.convolution import convolve
+import astropy.units as u
+import numpy as np
 import pytest
 
 from ..finder import SourceFinder
@@ -24,8 +26,21 @@ class TestSourceFinder:
     @pytest.mark.skipif('not HAS_SKIMAGE')
     def test_deblend(self):
         finder = SourceFinder(npixels=self.npixels, progress_bar=False)
-        segm = finder(self.convolved_data, self.threshold)
-        assert segm.nlabels == 94
+        segm1 = finder(self.convolved_data, self.threshold)
+        assert segm1.nlabels == 94
+
+        segm2 = finder(self.convolved_data << u.uJy, self.threshold * u.uJy)
+        assert segm2.nlabels == 94
+        assert np.all(segm1.data == segm2.data)
+
+    def test_invalid_units(self):
+        finder = SourceFinder(npixels=self.npixels, progress_bar=False)
+        with pytest.raises(ValueError):
+            finder(self.convolved_data << u.uJy, self.threshold)
+        with pytest.raises(ValueError):
+            finder(self.convolved_data, self.threshold * u.uJy)
+        with pytest.raises(ValueError):
+            finder(self.convolved_data << u.uJy, self.threshold * u.m)
 
     def test_no_deblend(self):
         finder = SourceFinder(npixels=self.npixels, deblend=False,
