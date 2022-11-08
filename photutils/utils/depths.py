@@ -9,12 +9,12 @@ import numpy as np
 from astropy.stats import SigmaClip
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
-from scipy.spatial import KDTree
 
 from ._optional_deps import HAS_TQDM  # pylint: disable=E0611  # noqa: F401
 from .footprints import circular_footprint
 
 __all__ = ['ImageDepth']
+__doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['scipy']}
 
 
 class ImageDepth:
@@ -527,6 +527,8 @@ class ImageDepth:
         xycoords : 2xN `~numpy.ndarray`
             The (x, y) coordinates.
         """
+        from scipy.spatial import KDTree
+
         minsep = self.aper_radius * 2.0
         xycoords = np.zeros((0, 2))  # placeholder for while loop
 
