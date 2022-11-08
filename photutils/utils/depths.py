@@ -118,6 +118,69 @@ class ImageDepth:
 
     .. math:: m_{\mathrm{lim}} = -2.5 \log_{10} f_{\mathrm{lim}}
               + \mathrm{zeropoint}
+
+    Examples
+    --------
+    >>> from astropy.convolution import convolve
+    >>> from astropy.visualization import simple_norm
+    >>> from photutils.datasets import make_100gaussians_image
+    >>> from photutils.segmentation import SourceFinder, make_2dgaussian_kernel
+    >>> from photutils.utils import ImageDepth
+    >>> bkg = 5.0
+    >>> data = make_100gaussians_image() - bkg
+    >>> kernel = make_2dgaussian_kernel(3.0, size=5)
+    >>> convolved_data = convolve(data, kernel)
+    >>> npixels = 10
+    >>> threshold = 3.2
+    >>> finder = SourceFinder(npixels=npixels, progress_bar=False)
+    >>> segment_map = finder(convolved_data, threshold)
+    >>> mask = segment_map.make_source_mask()
+    >>> radius = 4
+    >>> depth = ImageDepth(radius, nsigma=5.0, napers=500, niters=2,
+    ...                    overlap=False, seed=123, zeropoint=23.9,
+    ...                    progress_bar=False)
+    >>> limits = depth(data, mask)
+    >>> print(limits)  # doctest: +FLOAT_CMP
+    (67.24989263150033, 19.330771011755676)
+
+    .. plot::
+        :include-source:
+
+        # plot the random apertures for the first iteration
+
+        from astropy.convolution import convolve
+        from astropy.visualization import simple_norm
+        import matplotlib.pyplot as plt
+        from photutils.datasets import make_100gaussians_image
+        from photutils.segmentation import SourceFinder, make_2dgaussian_kernel
+        from photutils.utils import ImageDepth
+
+        bkg = 5.0
+        data = make_100gaussians_image() - bkg
+        kernel = make_2dgaussian_kernel(3.0, size=5)
+        convolved_data = convolve(data, kernel)
+        npixels = 10
+        threshold = 3.2
+        finder = SourceFinder(npixels=npixels, progress_bar=False)
+        segment_map = finder(convolved_data, threshold)
+        mask = segment_map.make_source_mask()
+        radius = 4
+        depth = ImageDepth(radius, nsigma=5.0, napers=500, niters=2,
+                        overlap=False, seed=123, progress_bar=False)
+        limits = depth(data, mask)
+
+        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(9, 4))
+        plt.subplots_adjust(0,0,1,1,0,0)
+        norm = simple_norm(data, 'sqrt', percent=99.)
+        ax[0].imshow(data, norm=norm)
+        color = 'orange'
+        depth.apertures[0].plot(ax[0], color=color)
+        ax[0].set_title('Data with blank apertures')
+        ax[1].imshow(mask, interpolation='none')
+        depth.apertures[0].plot(ax[1], color=color)
+        ax[1].set_title('Mask with blank apertures');
+
+        plt.subplots_adjust(bottom=0.15, wspace=0.05)
     """
 
     def __init__(self, aper_radius, *, nsigma=5., mask_pad=5, napers=1000,
