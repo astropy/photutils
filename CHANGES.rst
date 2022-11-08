@@ -26,6 +26,8 @@ New Features
 
   - Added ``xyorigin`` attribute to ``CutoutImage``. [#1419]
 
+  - Added ``ImageDepth`` class. [#1434]
+
 Bug Fixes
 ^^^^^^^^^
 
