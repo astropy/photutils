@@ -247,12 +247,16 @@ class ImageDepth:
         if self.progress_bar and HAS_TQDM:
             from tqdm.auto import tqdm  # pragma: no cover
 
-            iter_range = tqdm(iter_range, desc='Image Depths')
+            iter_range = tqdm(iter_range, desc='Image Depths')  # pragma: no cover
 
         if mask is None or not np.any(mask):
             all_xycoords = self._make_all_coords_no_mask(data.shape)
         else:
             all_xycoords = self._make_all_coords(mask)
+
+        if len(all_xycoords) == 0:
+            raise ValueError('There are no unmasked pixel values (including '
+                             'the masked image borders).')
 
         napers = self.napers
         if not self.overlap:
@@ -334,11 +338,6 @@ class ImageDepth:
             the input axis are all `False`, then the slice object will
             include the entire axis range.
         """
-        if data.ndim != 2:
-            raise ValueError('data must be 2D')
-        if axis not in (0, 1):
-            raise ValueError('axis must be 0 or 1')
-
         xx = np.any(data, axis=axis)
         if np.all(~xx):
             idx = 0 if axis else 1
