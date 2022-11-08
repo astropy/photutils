@@ -7,6 +7,7 @@ import warnings
 
 import numpy as np
 from astropy.stats import SigmaClip
+import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.spatial import KDTree
 
@@ -288,7 +289,12 @@ class ImageDepth:
                           '`overlap_maxiters`. Alternatively, you may set '
                           'overlap=True', AstropyUserWarning)
 
-        self.flux_limits = np.array(flux_limits)
+        if isinstance(flux_limits[0], u.Quantity):
+            units = True
+            self.flux_limits = u.Quantity(flux_limits)
+        else:
+            units = False
+            self.flux_limits = np.array(flux_limits)
         flux_limit = np.mean(self.flux_limits)
         if np.any(self.flux_limits == 0):
             warnings.warn('One or more flux_limit values was zero. This is '
@@ -298,9 +304,13 @@ class ImageDepth:
         # ignore divide-by-zero RuntimeWarning in log10
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            self.mag_limits = (-2.5 * np.log10(self.flux_limits)
-                               + self.zeropoint)
-            mag_limit = -2.5 * np.log10(flux_limit) + self.zeropoint
+            flux_limits = self.flux_limits
+            flux_limit_ = flux_limit
+            if units:
+                flux_limits = flux_limits.value
+                flux_limit_ = flux_limit.value
+            self.mag_limits = -2.5 * np.log10(flux_limits) + self.zeropoint
+            mag_limit = -2.5 * np.log10(flux_limit_) + self.zeropoint
 
         return flux_limit, mag_limit
 
