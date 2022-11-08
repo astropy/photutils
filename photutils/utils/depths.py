@@ -17,6 +17,91 @@ __all__ = ['ImageDepth']
 
 
 class ImageDepth:
+    r"""
+    Class to calculate the limiting flux and magnitude of an image.
+
+    Parameters
+    ----------
+    aper_radius : float
+        The radius (in pixels) of the circular apertures used to compute
+        the image depth.
+
+    nsigma : float, optional
+        The number of standard deviations at which to compute the image
+        depths.
+
+    mask_pad : float, optional
+        An additional padding (in pixels) to apply when dilating the
+        input mask.
+
+    napers : int, optional
+        The number of circular apertures used to compute the image
+        depth.
+
+    niters : int, optional
+        The number of iterations, each with randomly-generated
+        apertures, for which the image depth will be calculated.
+
+    overlap : bool, optional
+        Whether to allow the aperture to overlap.
+
+    overlap_maxiters : int, optional
+        The maximum number of iterations that will be used when
+        attempting to find additional non-overlapping apertures. This
+        keyword has no effect unless ``overlap=False``. While increasing
+        this number may generate more non-overlapping apertures in
+        crowded cases, it will also run slower.
+
+    seed : int, optional
+        A seed to initialize the `numpy.random.BitGenerator`. If `None`,
+        then fresh, unpredictable entropy will be pulled from the OS.
+        Separate function calls with the same ``seed`` will generate the
+        same results.
+
+    zeropoint : float, optional
+        The zeropoint used to calculate the magnitude limit from the
+        flux limit:
+
+        .. math:: m_{\mathrm{lim}} = -2.5 \log_{10} f_{\mathrm{lim}}
+                  + \mathrm{zeropoint}
+
+    sigma_clip : `astropy.stats.SigmaClip` instance, optional
+        A `~astropy.stats.SigmaClip` object that defines the sigma
+        clipping parameters to use when computing the limiting flux. If
+        `None` then no sigma clipping will be performed.
+
+    progress_bar : bool, optional
+        Whether to display a progress bar. The progress bar requires
+        that the `tqdm <https://tqdm.github.io/>`_ optional dependency
+        be installed. Note that the progress bar does not currently work
+        in the Jupyter console due to limitations in ``tqdm``.
+
+    Notes
+    -----
+    The image depth is calculated by placing random circular apertures
+    with the specified radius on blank regions of the image. The number
+    of apertures is specified by the ``napers`` keyword. The blank
+    regions are calculated from an input mask, which should mask both
+    sources in the image and areas without image coverage. The input
+    mask will be dilated with a circular footprint with a radius equal
+    to the input ``aper_radius`` plus ``mask_pad``. The image border
+    is also masked with the same radius.
+
+    The flux limit is calculated as the standard deviation of the
+    aperture fluxes times the input ``nsigma`` significance level. The
+    aperture flux values can be sigma clipped prior to computing the
+    standard deviation using the ``sigma_clip`` keyword.
+
+    The flux limit is calculated ``niters`` times, each with a
+    randomly-generated set of circular apertures. The returned flux
+    limit is the average of these flux limits.
+
+    The magnitude limit is calculated from flux limit using the input
+    ``zeropoint`` keyword as:
+
+    .. math:: m_{\mathrm{lim}} = -2.5 \log_{10} f_{\mathrm{lim}}
+              + \mathrm{zeropoint}
+    """
 
     def __init__(self, aper_radius, *, nsigma=5., mask_pad=5, napers=1000,
                  niters=10, overlap=True, overlap_maxiters=100, seed=None,
@@ -51,6 +136,29 @@ class ImageDepth:
         self.mag_limits = np.array([])
 
     def __call__(self, data, mask):
+        """
+        Calculate the limiting flux and magnitude of an image.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D array, which should be in flux units (not surface
+            brightness units).
+
+        mask : 2D bool `~numpy.ndarray`
+            A 2D mask array with the same shape as ``data`` where
+            a `True` value indicates the corresponding element of
+            ``data`` is masked. The input array should mask both sources
+            (e.g., from a segmentation image) and regions without image
+            coverage. If `None`, then the entire image will be used.
+
+        Returns
+        -------
+        flux_limit, mag_limit : float
+            The flux and magnitude limits. The flux limit is returned in
+            the same units as the input ``data``. The magnitude limit is
+            calculated from the flux limit and the input ``zeropoint``.
+        """
         # prevent circular import
         from ..aperture import CircularAperture
 
