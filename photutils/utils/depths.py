@@ -43,7 +43,7 @@ class ImageDepth:
         apertures, for which the image depth will be calculated.
 
     overlap : bool, optional
-        Whether to allow the aperture to overlap.
+        Whether to allow the apertures to overlap.
 
     overlap_maxiters : int, optional
         The maximum number of iterations that will be used when
@@ -75,6 +75,23 @@ class ImageDepth:
         that the `tqdm <https://tqdm.github.io/>`_ optional dependency
         be installed. Note that the progress bar does not currently work
         in the Jupyter console due to limitations in ``tqdm``.
+
+    Attributes
+    ----------
+    apertures : list of `~photutils.aperture.CircularAperture`
+        A list of circular apertures for each iteration.
+
+    napers_used : int
+        A list of the number of apertures used for each iteration.
+
+    fluxes : list of `~numpy.ndarray`
+        A list of the flux measurements for each iteration.
+
+    flux_limits : list
+        A list of the flux limits for each iteration.
+
+    mag_limits : list
+        A list of the magnitude limits for each iteration.
 
     Notes
     -----
