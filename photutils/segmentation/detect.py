@@ -87,6 +87,10 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
     sigma-clipped background statistics. If ``background`` and ``error``
     are both input, then ``mask`` and ``sigma_clip`` are ignored.
     """
+    arrays, unit = process_quantities((data, background, error),
+                                      ('data', 'background', 'error'))
+    data, background, error = arrays
+
     if not isinstance(sigma_clip, SigmaClip):
         raise TypeError('sigma_clip must be a SigmaClip object')
 
@@ -99,6 +103,7 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
 
     if background is None:
         background = nanmean(clipped_data)
+
     if not np.isscalar(background) and background.shape != data.shape:
         raise ValueError('If input background is 2D, then it must have the '
                          'same shape as the input data.')
@@ -109,8 +114,13 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
         raise ValueError('If input error is 2D, then it must have the same '
                          'shape as the input data.')
 
-    return (np.broadcast_to(background, data.shape)
-            + np.broadcast_to(error * nsigma, data.shape))
+    threshold = (np.broadcast_to(background, data.shape)
+                 + np.broadcast_to(error * nsigma, data.shape))
+
+    if unit:
+        threshold <<= unit
+
+    return threshold
 
 
 def _detect_sources(data, thresholds, npixels, footprint, inverse_mask,
