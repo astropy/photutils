@@ -170,8 +170,7 @@ class ImageDepth:
                         overlap=False, seed=123, progress_bar=False)
         limits = depth(data, mask)
 
-        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(9, 4))
-        plt.subplots_adjust(0,0,1,1,0,0)
+        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(9, 3))
         norm = simple_norm(data, 'sqrt', percent=99.)
         ax[0].imshow(data, norm=norm)
         color = 'orange'
@@ -181,7 +180,8 @@ class ImageDepth:
         depth.apertures[0].plot(ax[1], color=color)
         ax[1].set_title('Mask with blank apertures');
 
-        plt.subplots_adjust(bottom=0.15, wspace=0.05)
+        plt.subplots_adjust(left=0.05, right=0.98, bottom=0.05, top=0.95,
+                            wspace=0.15)
     """
 
     def __init__(self, aper_radius, *, nsigma=5., mask_pad=5, napers=1000,
