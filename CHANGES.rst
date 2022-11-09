@@ -29,6 +29,9 @@ New Features
     ``detect_threshold``, ``detect_sources``, ``deblend_sources``, and
     ``SourceFinder``. [#1436]
 
+  - The progress bar used when deblending sources now is prepended with
+    "Deblending". [#1439]
+
 - ``photutils.utils``
 
   - Added ``xyorigin`` attribute to ``CutoutImage``. [#1419]
