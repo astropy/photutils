@@ -11,6 +11,9 @@ New Features
   - The ``ApertureStats`` class now accepts astropy ``NDData`` objects
     as input. [#1409]
 
+  - Improved the performance of aperture photometry by 10-25% (depending
+    on the number of aperture positions). [#1438]
+
 - ``photutils.segmentation``
 
   - Added the ability to slice ``SegmentationImage`` objects. [#1413]
