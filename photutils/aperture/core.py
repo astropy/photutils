@@ -5,10 +5,12 @@ This module defines the base aperture classes.
 
 import abc
 from copy import deepcopy
+import inspect
 
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 
 from .bounding_box import BoundingBox
@@ -124,6 +126,17 @@ class Aperture(metaclass=abc.ABCMeta):
         """
         return not (self == other)
 
+    @property
+    def _lazyproperties(self):
+        """
+        A list of all class lazyproperties (even in superclasses).
+        """
+        def islazyproperty(obj):
+            return isinstance(obj, lazyproperty)
+
+        return [i[0] for i in inspect.getmembers(self.__class__,
+                                                 predicate=islazyproperty)]
+
     def copy(self):
         """
         Make an independent (deep) copy.
@@ -133,7 +146,7 @@ class Aperture(metaclass=abc.ABCMeta):
             params_copy[param] = deepcopy(getattr(self, param))
         return self.__class__(**params_copy)
 
-    @property
+    @lazyproperty
     def shape(self):
         """
         The shape of the instance.
@@ -143,7 +156,7 @@ class Aperture(metaclass=abc.ABCMeta):
         else:
             return self.positions.shape[:-1]
 
-    @property
+    @lazyproperty
     def isscalar(self):
         """
         Whether the instance is scalar (i.e., a single position).
@@ -156,7 +169,7 @@ class PixelAperture(Aperture):
     Abstract base class for apertures defined in pixel coordinates.
     """
 
-    @property
+    @lazyproperty
     def _default_patch_properties(self):
         """
         A dictionary of default matplotlib.patches.Patch properties.
@@ -193,7 +206,7 @@ class PixelAperture(Aperture):
 
         return use_exact, subpixels
 
-    @property
+    @lazyproperty
     @abc.abstractmethod
     def _xy_extents(self):
         """
@@ -205,7 +218,7 @@ class PixelAperture(Aperture):
         """
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
-    @property
+    @lazyproperty
     def bbox(self):
         """
         The minimal bounding box for the aperture.
@@ -229,7 +242,7 @@ class PixelAperture(Aperture):
         else:
             return bboxes
 
-    @property
+    @lazyproperty
     def _centered_edges(self):
         """
         A list of ``(xmin, xmax, ymin, ymax)`` tuples, one for each
@@ -250,7 +263,7 @@ class PixelAperture(Aperture):
 
         return edges
 
-    @property
+    @lazyproperty
     def area(self):
         """
         The exact analytical area of the aperture shape.

@@ -38,7 +38,19 @@ class ApertureAttribute:
         self._validate(value)
         if not isinstance(value, (u.Quantity, SkyCoord)):
             value = float(value)
+        # no need to reset if not already in the instance dict
+        if self.name in instance.__dict__:
+            self._reset_lazyproperties(instance)
         instance.__dict__[self.name] = value
+
+    def _reset_lazyproperties(self, instance):
+        # reset lazyproperties (if they exist) for aperture
+        # parameter changes
+        try:
+            for key in instance._lazyproperties:
+                instance.__dict__.pop(key, None)
+        except AttributeError:
+            pass
 
     def __delete__(self, instance):
         del instance.__dict__[self.name]  # pragma: no cover
@@ -66,6 +78,9 @@ class PixelPositions(ApertureAttribute):
 
         value = np.asanyarray(value).astype(float)  # np.ndarray
         self._validate(value)
+        # no need to reset if not already in the instance dict
+        if self.name in instance.__dict__:
+            self._reset_lazyproperties(instance)
         instance.__dict__[self.name] = value
 
     def _validate(self, value):
@@ -151,6 +166,9 @@ class ScalarAngleOrValue(ApertureAttribute):
 
     def __set__(self, instance, value):
         self._validate(value)
+        # no need to reset if not already in the instance dict
+        if self.name in instance.__dict__:
+            self._reset_lazyproperties(instance)
         instance.__dict__[self.name] = value
 
         # also store the angle in radians as a float
