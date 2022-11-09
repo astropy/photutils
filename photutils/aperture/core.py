@@ -219,13 +219,10 @@ class PixelAperture(Aperture):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @lazyproperty
-    def bbox(self):
+    def _bbox(self):
         """
-        The minimal bounding box for the aperture.
-
-        If the aperture is scalar then a single
-        `~photutils.aperture.BoundingBox` is returned, otherwise a list
-        of `~photutils.aperture.BoundingBox` is returned.
+        The minimal bounding box for the aperture, always as a list of
+        `~photutils.aperture.BoundingBox` instances.
         """
         positions = np.atleast_2d(self.positions)
         x_delta, y_delta = self._xy_extents
@@ -234,13 +231,22 @@ class PixelAperture(Aperture):
         ymin = positions[:, 1] - y_delta
         ymax = positions[:, 1] + y_delta
 
-        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
-                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+        return [BoundingBox.from_float(x0, x1, y0, y1)
+                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
+    @lazyproperty
+    def bbox(self):
+        """
+        The minimal bounding box for the aperture.
+
+        If the aperture is scalar then a single
+        `~photutils.aperture.BoundingBox` is returned, otherwise a list
+        of `~photutils.aperture.BoundingBox` is returned.
+        """
         if self.isscalar:
-            return bboxes[0]
+            return self._bbox[0]
         else:
-            return bboxes
+            return self._bbox
 
     @lazyproperty
     def _centered_edges(self):
@@ -253,8 +259,7 @@ class PixelAperture(Aperture):
         functions.
         """
         edges = []
-        for position, bbox in zip(np.atleast_2d(self.positions),
-                                  np.atleast_1d(self.bbox)):
+        for position, bbox in zip(np.atleast_2d(self.positions), self._bbox):
             xmin = bbox.ixmin - 0.5 - position[0]
             xmax = bbox.ixmax - 0.5 - position[0]
             ymin = bbox.iymin - 0.5 - position[1]
