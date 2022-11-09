@@ -6,6 +6,7 @@ pixel and sky coordinates.
 
 import math
 
+from astropy.utils import lazyproperty
 import numpy as np
 
 from .attributes import (PixelPositions, PositiveScalar, SkyCoordPositions,
@@ -146,11 +147,11 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         self.positions = positions
         self.r = r
 
-    @property
+    @lazyproperty
     def _xy_extents(self):
         return self.r, self.r
 
-    @property
+    @lazyproperty
     def area(self):
         return math.pi * self.r ** 2
 
@@ -271,11 +272,11 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         self.r_in = r_in
         self.r_out = r_out
 
-    @property
+    @lazyproperty
     def _xy_extents(self):
         return self.r_out, self.r_out
 
-    @property
+    @lazyproperty
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
