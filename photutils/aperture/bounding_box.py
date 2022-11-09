@@ -2,8 +2,8 @@
 """
 This module defines a class for a rectangular bounding box.
 """
+import math
 
-from astropy.io.fits.util import _is_int
 from astropy.utils import deprecated
 from astropy.utils.decorators import deprecated_renamed_argument
 
@@ -55,14 +55,10 @@ class BoundingBox:
     """
 
     def __init__(self, ixmin, ixmax, iymin, iymax):
-        if not _is_int(ixmin):
-            raise TypeError('ixmin must be an integer')
-        if not _is_int(ixmax):
-            raise TypeError('ixmax must be an integer')
-        if not _is_int(iymin):
-            raise TypeError('iymin must be an integer')
-        if not _is_int(iymax):
-            raise TypeError('iymax must be an integer')
+        for value in (ixmin, ixmax, iymin, iymax):
+            if not isinstance(value, (int, np.integer)):
+                raise TypeError('ixmin, ixmax, iymin, and iymax must all be '
+                                'integers')
 
         if ixmin > ixmax:
             raise ValueError('ixmin must be <= ixmax')
@@ -115,10 +111,10 @@ class BoundingBox:
         >>> BoundingBox.from_float(xmin=1.4, xmax=10.4, ymin=1.6, ymax=10.6)
         BoundingBox(ixmin=1, ixmax=11, iymin=2, iymax=12)
         """
-        ixmin = int(np.floor(xmin + 0.5))
-        ixmax = int(np.ceil(xmax + 0.5))
-        iymin = int(np.floor(ymin + 0.5))
-        iymax = int(np.ceil(ymax + 0.5))
+        ixmin = math.floor(xmin + 0.5)
+        ixmax = math.ceil(xmax + 0.5)
+        iymin = math.floor(ymin + 0.5)
+        iymax = math.ceil(ymax + 0.5)
 
         return cls(ixmin, ixmax, iymin, iymax)
 
