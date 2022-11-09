@@ -219,17 +219,23 @@ class PixelAperture(Aperture):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @lazyproperty
+    def _positions(self):
+        """
+        The aperture positions, always as a 2D ndarray.
+        """
+        return np.atleast_2d(self.positions)
+
+    @lazyproperty
     def _bbox(self):
         """
         The minimal bounding box for the aperture, always as a list of
         `~photutils.aperture.BoundingBox` instances.
         """
-        positions = np.atleast_2d(self.positions)
         x_delta, y_delta = self._xy_extents
-        xmin = positions[:, 0] - x_delta
-        xmax = positions[:, 0] + x_delta
-        ymin = positions[:, 1] - y_delta
-        ymax = positions[:, 1] + y_delta
+        xmin = self._positions[:, 0] - x_delta
+        xmax = self._positions[:, 0] + x_delta
+        ymin = self._positions[:, 1] - y_delta
+        ymax = self._positions[:, 1] + y_delta
 
         return [BoundingBox.from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
@@ -259,7 +265,7 @@ class PixelAperture(Aperture):
         functions.
         """
         edges = []
-        for position, bbox in zip(np.atleast_2d(self.positions), self._bbox):
+        for position, bbox in zip(self._positions, self._bbox):
             xmin = bbox.ixmin - 0.5 - position[0]
             xmax = bbox.ixmax - 0.5 - position[0]
             ymin = bbox.iymin - 0.5 - position[1]
@@ -574,7 +580,7 @@ class PixelAperture(Aperture):
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
         """
-        xy_positions = deepcopy(np.atleast_2d(self.positions))
+        xy_positions = deepcopy(self._positions)
         xy_positions[:, 0] -= origin[0]
         xy_positions[:, 1] -= origin[1]
 

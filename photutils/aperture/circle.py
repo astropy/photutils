@@ -7,7 +7,6 @@ pixel and sky coordinates.
 import math
 
 from astropy.utils import lazyproperty
-import numpy as np
 
 from .attributes import (PixelPositions, PositiveScalar, SkyCoordPositions,
                          PositiveScalarAngle)
