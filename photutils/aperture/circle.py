@@ -6,7 +6,7 @@ pixel and sky coordinates.
 
 import math
 
-import numpy as np
+from astropy.utils import lazyproperty
 
 from .attributes import (PixelPositions, PositiveScalar, SkyCoordPositions,
                          PositiveScalarAngle)
@@ -80,8 +80,7 @@ class CircularMaskMixin:
             raise ValueError('Cannot determine the aperture radius.')
 
         masks = []
-        for bbox, edges in zip(np.atleast_1d(self.bbox),
-                               self._centered_edges):
+        for bbox, edges in zip(self._bbox, self._centered_edges):
             ny, nx = bbox.shape
             mask = circular_overlap_grid(edges[0], edges[1], edges[2],
                                          edges[3], nx, ny, radius, use_exact,
@@ -146,11 +145,11 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         self.positions = positions
         self.r = r
 
-    @property
+    @lazyproperty
     def _xy_extents(self):
         return self.r, self.r
 
-    @property
+    @lazyproperty
     def area(self):
         return math.pi * self.r ** 2
 
@@ -271,11 +270,11 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         self.r_in = r_in
         self.r_out = r_out
 
-    @property
+    @lazyproperty
     def _xy_extents(self):
         return self.r_out, self.r_out
 
-    @property
+    @lazyproperty
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
