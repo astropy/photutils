@@ -1188,6 +1188,9 @@ class SourceCatalog:
         """
         The ``(x, y)`` coordinate, relative to the cutout data, of
         the centroid within the source segment.
+
+        The centroid is computed as the center of mass of the unmasked
+        pixels within the source segment.
         """
         moments = self.moments
         if self.isscalar:
@@ -1207,6 +1210,9 @@ class SourceCatalog:
         """
         The ``(x, y)`` coordinate of the centroid within the source
         segment.
+
+        The centroid is computed as the center of mass of the unmasked
+        pixels within the source segment.
         """
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.cutout_centroid + origin
@@ -1229,6 +1235,9 @@ class SourceCatalog:
     def xcentroid(self):
         """
         The ``x`` coordinate of the centroid within the source segment.
+
+        The centroid is computed as the center of mass of the unmasked
+        pixels within the source segment.
         """
         return self._xcentroid
 
@@ -1250,6 +1259,9 @@ class SourceCatalog:
     def ycentroid(self):
         """
         The ``y`` coordinate of the centroid within the source segment.
+
+        The centroid is computed as the center of mass of the unmasked
+        pixels within the source segment.
         """
         return self._ycentroid
 

@@ -944,6 +944,9 @@ class ApertureStats:
         """
         The ``(x, y)`` coordinate, relative to the cutout data, of
         the centroid within the aperture.
+
+        The centroid is computed as the center of mass of the unmasked
+        pixels within the aperture.
         """
         moments = self.moments
         if self.isscalar:
@@ -960,8 +963,10 @@ class ApertureStats:
     @as_scalar
     def centroid(self):
         """
-        The ``(x, y)`` coordinate of the centroid of the unmasked pixels
-        within the aperture.
+        The ``(x, y)`` coordinate of the centroid.
+
+        The centroid is computed as the center of mass of the unmasked
+        pixels within the aperture.
         """
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.cutout_centroid + origin
@@ -969,8 +974,7 @@ class ApertureStats:
     @lazyproperty
     def _xcentroid(self):
         """
-        The ``x`` coordinate of the centroid of the unmasked pixels
-        within the aperture, always as an iterable.
+        The ``x`` coordinate of the centroid, always as an iterable.
         """
         xcentroid = np.transpose(self.centroid)[0]
         if self.isscalar:
@@ -981,16 +985,17 @@ class ApertureStats:
     @as_scalar
     def xcentroid(self):
         """
-        The ``x`` coordinate of the centroid of the unmasked pixels
-        within the aperture.
+        The ``x`` coordinate of the centroid.
+
+        The centroid is computed as the center of mass of the unmasked
+        pixels within the aperture.
         """
         return self._xcentroid
 
     @lazyproperty
     def _ycentroid(self):
         """
-        The ``y`` coordinate of the centroid of the unmasked pixels
-        within the aperture, always as an iterable.
+        The ``y`` coordinate of the centroid, always as an iterable.
         """
         ycentroid = np.transpose(self.centroid)[1]
         if self.isscalar:
@@ -1001,8 +1006,10 @@ class ApertureStats:
     @as_scalar
     def ycentroid(self):
         """
-        The ``y`` coordinate of the centroid of the unmasked pixels
-        within the aperture.
+        The ``y`` coordinate of the centroid.
+
+        The centroid is computed as the center of mass of the unmasked
+        pixels within the aperture.
         """
         return self._ycentroid
 
