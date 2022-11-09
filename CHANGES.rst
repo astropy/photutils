@@ -22,6 +22,10 @@ New Features
     ``localbkg_width``, ``apermask_method``, and ``kron_params``
     attributes to ``SourceCatalog``. [#1425]
 
+  - Added the ability to use ``Quantity`` arrays with
+    ``detect_threshold``, ``detect_sources``, ``deblend_sources``, and
+    ``SourceFinder``. [#1436]
+
 - ``photutils.utils``
 
   - Added ``xyorigin`` attribute to ``CutoutImage``. [#1419]

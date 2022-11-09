@@ -4,6 +4,7 @@ Tests for the detect module.
 """
 
 from astropy.stats import SigmaClip
+import astropy.units as u
 from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
@@ -28,6 +29,10 @@ class TestDetectThreshold:
         ref = 0.4 * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
+        threshold = detect_threshold(DATA << u.uJy, nsigma=0.1)
+        assert isinstance(threshold, u.Quantity)
+        assert_allclose(threshold.value, ref)
+
     def test_nsigma_zero(self):
         """Test nsigma=0."""
         threshold = detect_threshold(DATA, nsigma=0.0)
@@ -45,6 +50,11 @@ class TestDetectThreshold:
         ref = (5. / 3.) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
+        threshold = detect_threshold(DATA << u.Jy, nsigma=1.0,
+                                     background=background << u.Jy)
+        assert isinstance(threshold, u.Quantity)
+        assert_allclose(threshold.value, ref)
+
     def test_background_badshape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
@@ -61,6 +71,11 @@ class TestDetectThreshold:
         ref = (4. / 3.) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
+        threshold = detect_threshold(DATA << u.Jy, nsigma=1.0,
+                                     error=error << u.Jy)
+        assert isinstance(threshold, u.Quantity)
+        assert_allclose(threshold.value, ref)
+
     def test_error_badshape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
@@ -71,6 +86,19 @@ class TestDetectThreshold:
                                      error=1.)
         ref = 12. * np.ones((3, 3))
         assert_allclose(threshold, ref)
+
+        threshold = detect_threshold(DATA << u.Jy, nsigma=2.0,
+                                     background=10. * u.Jy,
+                                     error=1. * u.Jy)
+        assert isinstance(threshold, u.Quantity)
+        assert_allclose(threshold.value, ref)
+
+        with pytest.raises(ValueError):
+            detect_threshold(DATA << u.Jy, nsigma=2.0, background=10.,
+                             error=1. * u.Jy)
+        with pytest.raises(ValueError):
+            detect_threshold(DATA << u.Jy, nsigma=2.0, background=10. * u.m,
+                             error=1. * u.Jy)
 
     def test_background_error_images(self):
         background = np.ones((3, 3)) * 10.
@@ -112,6 +140,17 @@ class TestDetectSources:
         """Test basic detection."""
         segm = detect_sources(self.data, threshold=0.9, npixels=2)
         assert_array_equal(segm.data, self.refdata)
+
+        segm = detect_sources(self.data << u.uJy, threshold=0.9 * u.uJy,
+                              npixels=2)
+        assert_array_equal(segm.data, self.refdata)
+
+        with pytest.raises(ValueError):
+            detect_sources(self.data << u.uJy, threshold=0.9, npixels=2)
+        with pytest.raises(ValueError):
+            detect_sources(self.data, threshold=0.9 * u.Jy, npixels=2)
+        with pytest.raises(ValueError):
+            detect_sources(self.data << u.uJy, threshold=0.9 * u.m, npixels=2)
 
     def test_small_sources(self):
         """Test detection where sources are smaller than npixels size."""

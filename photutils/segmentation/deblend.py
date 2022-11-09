@@ -7,6 +7,7 @@ a segmentation image.
 from multiprocessing import cpu_count, get_context
 import warnings
 
+from astropy.units import Quantity
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
@@ -144,6 +145,9 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     :func:`photutils.segmentation.detect_sources`
     :class:`photutils.segmentation.SourceFinder`
     """
+    if isinstance(data, Quantity):
+        data = data.value
+
     if not isinstance(segment_img, SegmentationImage):
         raise ValueError('segment_img must be a SegmentationImage')
 
