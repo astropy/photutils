@@ -208,7 +208,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
 
     if nproc == 1:
         if progress_bar and HAS_TQDM:
-            all_source_data = tqdm(all_source_data)  # pragma: no cover
+            all_source_data = tqdm(all_source_data,
+                                   desc='Deblending')  # pragma: no cover
 
         all_source_deblends = []
         for source_data, source_segment in zip(all_source_data,
@@ -225,7 +226,8 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
                        (nlevels,) * nlabels, (contrast,) * nlabels,
                        (mode,) * nlabels)
         if progress_bar and HAS_TQDM:
-            args_all = tqdm(args_all, total=nlabels)  # pragma: no cover
+            args_all = tqdm(args_all, total=nlabels,
+                            desc='Deblending')  # pragma: no cover
 
         with get_context('spawn').Pool(processes=nproc) as executor:
             all_source_deblends = executor.starmap(_deblend_source, args_all)
