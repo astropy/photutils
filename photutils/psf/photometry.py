@@ -243,12 +243,12 @@ class BasicPSFPhotometry:
                               'automatically ignored.', AstropyUserWarning)
         return mask
 
-    def __call__(self, image, *, mask=None, init_guesses=None, **kwargs):
+    def __call__(self, image, *, mask=None, init_guesses=None, progress_bar=progress_bar):
         """
         Perform PSF photometry. See `do_photometry` for more details
         including the `__call__` signature.
         """
-        return self.do_photometry(image, mask=mask, init_guesses=init_guesses, **kwargs)
+        return self.do_photometry(image, mask=mask, init_guesses=init_guesses, progress_bar=progress_bar)
 
     def do_photometry(self, image, *, mask=None, init_guesses=None, **kwargs):
         """
@@ -404,7 +404,7 @@ class BasicPSFPhotometry:
 
         return star_groups
 
-    def nstar(self, image, star_groups, *, mask=None, progressbar=None):
+    def nstar(self, image, star_groups, *, mask=None, progress_bar=False):
         """
         Fit, as appropriate, a compound or single model to the given
         ``star_groups``. Groups are fitted sequentially from the
@@ -431,10 +431,9 @@ class BasicPSFPhotometry:
             a `True` value indicates the corresponding element of
             ``image`` is masked.
 
-        progressbar : progressbar
-            A progressbar (optional) to show progress over the star groups.
-            Could be an `astropy.utils.console.ProgressBar` or a `tqdm`
-            progressbar.
+        progress_bar : boolean
+            Use a progressbar to show progress over the star groups.
+            Requires `tqdm`.
 
         Returns
         -------
@@ -455,11 +454,13 @@ class BasicPSFPhotometry:
 
         y, x = np.indices(image.shape)
 
-        if progressbar is None:
-            progressbar = lambda x: x
+        if progress_bar:
+            from tqdm.auto import tqdm as progress_bar
+        else:
+            progress_bar = lambda x: x  # noqa: E731
 
         star_groups = star_groups.group_by('group_id')
-        for group in progressbar(star_groups.groups):
+        for group in progress_bar(star_groups.groups):
             group_psf = get_grouped_psf_model(self.psf_model, group,
                                               self._pars_to_set)
             usepixel = np.zeros_like(image, dtype=bool)
