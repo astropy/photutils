@@ -14,6 +14,10 @@ New Features
   - Improved the performance of aperture photometry by 10-25% (depending
     on the number of aperture positions). [#1438]
 
+- ``photutils.psf``
+
+  - Added a progress bar for fitting PSF photometry [#1426]
+
 - ``photutils.segmentation``
 
   - Added the ability to slice ``SegmentationImage`` objects. [#1413]

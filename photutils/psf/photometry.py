@@ -20,6 +20,7 @@ from ..background import MMMBackground
 from ..detection import DAOStarFinder
 from ..utils.exceptions import NoDetectionsWarning
 from ..utils._misc import _get_version_info
+from ..utils._optional_deps import HAS_TQDM  # noqa
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']
@@ -243,14 +244,17 @@ class BasicPSFPhotometry:
                               'automatically ignored.', AstropyUserWarning)
         return mask
 
-    def __call__(self, image, *, mask=None, init_guesses=None):
+    def __call__(self, image, *, mask=None, init_guesses=None,
+                 progress_bar=False):
         """
         Perform PSF photometry. See `do_photometry` for more details
         including the `__call__` signature.
         """
-        return self.do_photometry(image, mask=mask, init_guesses=init_guesses)
+        return self.do_photometry(image, mask=mask, init_guesses=init_guesses,
+                                  progress_bar=progress_bar)
 
-    def do_photometry(self, image, *, mask=None, init_guesses=None):
+    def do_photometry(self, image, *, mask=None, init_guesses=None,
+                      progress_bar=False):
         """
         Perform PSF photometry in ``image``.
 
@@ -287,6 +291,12 @@ class BasicPSFPhotometry:
             A boolean mask with the same shape as ``image``, where
             a `True` value indicates the corresponding element of
             ``image`` is masked.
+        progress_bar : bool, optional
+            Use a progress bar to show progress over the star groups.
+            The progress bar requires that the `tqdm
+            <https://tqdm.github.io/>`_ optional dependency be
+            installed. Note that the progress bar does not currently
+            work in the Jupyter console due to limitations in ``tqdm``.
 
         Returns
         -------
@@ -382,8 +392,8 @@ class BasicPSFPhotometry:
         else:
             star_groups = self.group_maker(init_guesses)
 
-        output_tab, self._residual_image = self.nstar(image, star_groups,
-                                                      mask=mask)
+        output_tab, self._residual_image = self.nstar(
+            image, star_groups, mask=mask, progress_bar=progress_bar)
         star_groups = star_groups.group_by('group_id')
 
         if hasattr(output_tab, 'update'):  # requires Astropy >= 5.0
@@ -401,7 +411,7 @@ class BasicPSFPhotometry:
 
         return star_groups
 
-    def nstar(self, image, star_groups, *, mask=None):
+    def nstar(self, image, star_groups, *, mask=None, progress_bar=False):
         """
         Fit, as appropriate, a compound or single model to the given
         ``star_groups``. Groups are fitted sequentially from the
@@ -428,6 +438,13 @@ class BasicPSFPhotometry:
             a `True` value indicates the corresponding element of
             ``image`` is masked.
 
+        progress_bar : bool, optional
+            Use a progress bar to show progress over the star groups.
+            The progress bar requires that the `tqdm
+            <https://tqdm.github.io/>`_ optional dependency be
+            installed. Note that the progress bar does not currently
+            work in the Jupyter console due to limitations in ``tqdm``.
+
         Returns
         -------
         result_tab : `~astropy.table.QTable`
@@ -447,8 +464,13 @@ class BasicPSFPhotometry:
 
         y, x = np.indices(image.shape)
 
+        if progress_bar and HAS_TQDM:
+            from tqdm.auto import tqdm as progress_bar  # pragma: no cover
+        else:
+            progress_bar = lambda x: x  # noqa: E731
+
         star_groups = star_groups.group_by('group_id')
-        for group in star_groups.groups:
+        for group in progress_bar(star_groups.groups):
             group_psf = get_grouped_psf_model(self.psf_model, group,
                                               self._pars_to_set)
             usepixel = np.zeros_like(image, dtype=bool)
@@ -730,7 +752,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                              "Detection section on photutils documentation.")
         self._finder = value
 
-    def do_photometry(self, image, *, mask=None, init_guesses=None):
+    def do_photometry(self, image, *, mask=None, init_guesses=None,
+                      progress_bar=False):
         """
         Perform PSF photometry in ``image``.
 
@@ -783,7 +806,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
         if init_guesses is not None:
             table = super().do_photometry(image, mask=mask,
-                                          init_guesses=init_guesses)
+                                          init_guesses=init_guesses,
+                                          progress_bar=progress_bar)
             table['iter_detected'] = np.ones(table['x_fit'].shape, dtype=int)
 
             # n_start = 2 because it starts in the second iteration
