@@ -304,6 +304,10 @@ class SourceCatalog:
             else:
                 self._convolved_data = self._convolve_data()
 
+        self._circaper_method = 'exact'
+        self._kronaper_method = 'exact'
+        self._fluxfrac_method = 'exact'
+
         self.default_columns = DEFAULT_COLUMNS
         self._extra_properties = []
         self.meta = _get_meta()
@@ -375,6 +379,12 @@ class SourceCatalog:
         for attr in attrs:
             self.meta[attr] = getattr(self, attr)
 
+    def _set_semode(self):
+        # SE emulation
+        self._circaper_method = 'subpixel'
+        self._kronaper_method = 'center'
+        self._fluxfrac_method = 'subpixel'
+
     @property
     def _properties(self):
         """
@@ -423,7 +433,9 @@ class SourceCatalog:
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
                      '_background', 'wcs', '_data_unit', '_convolved_data',
                      'localbkg_width', 'apermask_method', 'kron_params',
-                     'default_columns', '_extra_properties', 'meta')
+                     'default_columns', '_extra_properties', 'meta',
+                     '_circaper_method', '_kronaper_method',
+                     '_fluxfrac_method')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -2494,7 +2506,7 @@ class SourceCatalog:
                 fluxerr.append(np.nan)
                 continue
 
-            aperture_mask = aperture.to_mask(method='exact')
+            aperture_mask = aperture.to_mask(method=self._circaper_method)
             data, error, mask, _, slc_sm = self._make_aperture_data(
                 label, xcen, ycen, aperture_mask.bbox, bkg)
 
@@ -2923,7 +2935,7 @@ class SourceCatalog:
                 kron_fluxerr.append(np.nan)
                 continue
 
-            aperture_mask = aperture.to_mask(method='exact')
+            aperture_mask = aperture.to_mask(method=self._kronaper_method)
 
             # prepare cutouts of the data based on the aperture size
             data, error, mask, _, slc_sm = self._make_aperture_data(
@@ -3077,12 +3089,12 @@ class SourceCatalog:
         return radius
 
     @staticmethod
-    def _fluxfrac_radius_fcn(radius, data, mask, aperture, normflux):
+    def _fluxfrac_radius_fcn(radius, data, mask, aperture, method, normflux):
         """
         Function whose root is found to compute the fluxfrac_radius.
         """
         aperture.r = radius
-        flux, _ = aperture.do_photometry(data, mask=mask, method='exact')
+        flux, _ = aperture.do_photometry(data, mask=mask, method=method)
         return 1.0 - (flux[0] / normflux)
 
     @lazyproperty
@@ -3102,7 +3114,7 @@ class SourceCatalog:
                 continue
 
             aperture = CircularAperture((xcen, ycen), r=max_radius_)
-            aperture_mask = aperture.to_mask(method='exact')
+            aperture_mask = aperture.to_mask(method=self._fluxfrac_method)
 
             # prepare cutouts of the data based on the maximum aperture size
             data, _, mask, xycen, _ = self._make_aperture_data(
@@ -3110,7 +3122,8 @@ class SourceCatalog:
                 make_error=False)
 
             aperture.positions = xycen
-            args.append([data, mask, aperture, kronflux, max_radius_])
+            args.append([data, mask, aperture, self._fluxfrac_method,
+                         kronflux, max_radius_])
 
         return args
 
