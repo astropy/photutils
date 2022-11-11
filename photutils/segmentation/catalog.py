@@ -3082,7 +3082,7 @@ class SourceCatalog:
         Function whose root is found to compute the fluxfrac_radius.
         """
         aperture.r = radius
-        flux, _ = aperture.do_photometry(data, mask=mask)
+        flux, _ = aperture.do_photometry(data, mask=mask, method='exact')
         return 1.0 - (flux[0] / normflux)
 
     @lazyproperty
