@@ -4,7 +4,13 @@
 General
 ^^^^^^^
 
-- Following NEP 29, the minimum required Numpy is now 1.20. [#xxxx]
+- Following NEP 29, the minimum required Numpy is now 1.20. [#1442]
+
+- The minimum required Matplotlib is now 3.3.0. [#1442]
+
+- The minimum required scikit-image is now 0.18.0. [#1442]
+
+- The minimum required scikit-learn is now 1.0. [#1442]
 
 New Features
 ^^^^^^^^^^^^
