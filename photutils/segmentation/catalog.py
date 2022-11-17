@@ -1233,9 +1233,10 @@ class SourceCatalog:
         The ``x`` coordinate of the centroid within the source segment,
         always as an iterable.
         """
-        xcentroid = np.transpose(self.centroid)[0]
         if self.isscalar:
-            xcentroid = (xcentroid,)
+            xcentroid = self.centroid[0:1]  # scalar array
+        else:
+            xcentroid = self.centroid[:, 0]
         return xcentroid
 
     @lazyproperty
@@ -1257,9 +1258,10 @@ class SourceCatalog:
         The ``y`` coordinate of the centroid within the source segment,
         always as an iterable.
         """
-        ycentroid = np.transpose(self.centroid)[1]
         if self.isscalar:
-            ycentroid = (ycentroid,)
+            ycentroid = self.centroid[1:2]  # scalar array
+        else:
+            ycentroid = self.centroid[:, 1]
         return ycentroid
 
     @lazyproperty
@@ -1604,7 +1606,11 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        return np.transpose(self.minval_index)[1]
+        if self.isscalar:
+            xidx = self.minval_index[1]
+        else:
+            xidx = self.minval_index[:, 1]
+        return xidx
 
     @lazyproperty
     @as_scalar
@@ -1616,7 +1622,11 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        return np.transpose(self.minval_index)[0]
+        if self.isscalar:
+            yidx = self.minval_index[0]
+        else:
+            yidx = self.minval_index[:, 0]
+        return yidx
 
     @lazyproperty
     @as_scalar
@@ -1628,7 +1638,11 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        return np.transpose(self.maxval_index)[1]
+        if self.isscalar:
+            xidx = self.maxval_index[1]
+        else:
+            xidx = self.maxval_index[:, 1]
+        return xidx
 
     @lazyproperty
     @as_scalar
@@ -1640,7 +1654,11 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        return np.transpose(self.maxval_index)[0]
+        if self.isscalar:
+            yidx = self.maxval_index[0]
+        else:
+            yidx = self.maxval_index[:, 0]
+        return yidx
 
     @lazyproperty
     @as_scalar
