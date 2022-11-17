@@ -2370,7 +2370,7 @@ class SourceCatalog:
 
         Parameters
         ----------
-        radius : float
+        radius : float, 1D `~numpy.ndarray`
             The radius of the circle in pixels.
 
         Returns
@@ -2381,18 +2381,20 @@ class SourceCatalog:
             position is not finite or where the source is completely
             masked.
         """
-        if radius <= 0:
+        radius = np.broadcast_to(radius, len(self._xcentroid))
+        if np.any(radius <= 0):
             raise ValueError('radius must be > 0')
 
         apertures = []
-        for (xcen, ycen, all_masked) in zip(self._xcentroid,
-                                            self._ycentroid,
-                                            self._all_masked):
-            if all_masked or np.any(~np.isfinite((xcen, ycen))):
+        for (xcen, ycen, radius_, all_masked) in zip(self._xcentroid,
+                                                     self._ycentroid,
+                                                     radius,
+                                                     self._all_masked):
+            if all_masked or np.any(~np.isfinite((xcen, ycen, radius_))):
                 apertures.append(None)
                 continue
 
-            apertures.append(CircularAperture((xcen, ycen), r=radius))
+            apertures.append(CircularAperture((xcen, ycen), r=radius_))
 
         return apertures
 
