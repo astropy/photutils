@@ -9,7 +9,7 @@ import functools
 import inspect
 import warnings
 
-from astropy.stats import SigmaClip
+from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
@@ -1281,6 +1281,72 @@ class SourceCatalog:
         pixels within the source segment.
         """
         return self._ycentroid
+
+    @lazyproperty
+    @as_scalar
+    def centroid_win(self):
+        radius_hl = self.fluxfrac_radius(0.5).value
+        if self.isscalar:
+            radius_hl = (radius_hl,)
+
+        xcen_win = []
+        ycen_win = []
+        for label, xcen, ycen, rad_hl in zip(self.labels, self._xcentroid,
+                                             self._ycentroid, radius_hl):
+
+            if np.any(~np.isfinite((xcen, ycen, rad_hl))):
+                xcen_win.append(np.nan)
+                ycen_win.append(np.nan)
+                continue
+
+            sigma = 2.0 * rad_hl * gaussian_fwhm_to_sigma
+            sigma2 = sigma**2
+            radius = 4.0 * sigma
+
+            iter_ = 0
+            dcen = 1
+            max_iters = 16
+            centroid_threshold = 0.0001
+            while iter_ < max_iters and dcen > centroid_threshold:
+                aperture = CircularAperture((xcen, ycen), radius)
+                method = 'subpixel'
+                subpixels = 11
+                aperture_mask = aperture.to_mask(method=method,
+                                                 subpixels=subpixels)
+
+                # for consistency with the isophotal centroid, a local
+                # background is not subtracted here
+                data, _, mask, cutout_xycen, slc_sm = self._make_aperture_data(
+                    label, xcen, ycen, aperture_mask.bbox, 0.0,
+                    make_error=False)
+
+                aperture_weights = aperture_mask.data[slc_sm]
+
+                # define a 2D Gaussian weight array
+                xvals = np.arange(data.shape[1]) - cutout_xycen[0]
+                yvals = np.arange(data.shape[0]) - cutout_xycen[1]
+                xx, yy = np.meshgrid(xvals, yvals)
+                rr2 = xx**2 + yy**2
+                gweight = np.exp(-rr2 / (2.0 * sigma2))
+
+                # ignore multiplication with non-finite values
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', RuntimeWarning)
+                    data = data * aperture_weights * gweight
+                    data[mask] = 0.0
+
+                moments = _moments_central(data, center=cutout_xycen, order=1)
+                dy = moments[1, 0] / moments[0, 0]
+                dx = moments[0, 1] / moments[0, 0]
+                dcen = np.sqrt(dx**2 + dy**2)
+                xcen += dx * 2.0
+                ycen += dy * 2.0
+                iter_ += 1
+
+            xcen_win.append(xcen)
+            ycen_win.append(ycen)
+
+        return np.transpose((xcen_win, ycen_win))
 
     @lazyproperty
     @use_detcat
