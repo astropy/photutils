@@ -2512,10 +2512,8 @@ class SourceCatalog:
 
         flux = []
         fluxerr = []
-        for (label, aperture, xcen, ycen, bkg) in zip(
-                self.labels, apertures, self._xcentroid, self._ycentroid,
-                self._local_background):
-
+        for (label, aperture, bkg) in zip(self.labels, apertures,
+                                          self._local_background):
             # return NaN for completely masked sources or sources where
             # the centroid is not finite
             if aperture is None:
@@ -2523,6 +2521,7 @@ class SourceCatalog:
                 fluxerr.append(np.nan)
                 continue
 
+            xcen, ycen = aperture.positions
             method = self._aper_method['circ']
             aperture_mask = aperture.to_mask(method=method)
             data, error, mask, _, slc_sm = self._make_aperture_data(
@@ -2629,8 +2628,6 @@ class SourceCatalog:
         """
         labels = self.labels
         apertures = self._make_elliptical_apertures(scale=6.0)
-        xcen = self._xcentroid
-        ycen = self._ycentroid
         cxx = self.cxx.value
         cxy = self.cxy.value
         cyy = self.cyy.value
@@ -2640,20 +2637,20 @@ class SourceCatalog:
             cyy = (cyy,)
 
         kron_radius = []
-        for (label, aperture, xcen_, ycen_, cxx_, cxy_, cyy_) in zip(
-                labels, apertures, xcen, ycen, cxx, cxy, cyy):
-
+        for (label, aperture, cxx_, cxy_, cyy_) in zip(labels, apertures,
+                                                       cxx, cxy, cyy):
             if aperture is None:
                 kron_radius.append(np.nan)
                 continue
 
+            xcen, ycen = aperture.positions
             # use 'center' (whole pixels) to compute Kron radius
             aperture_mask = aperture.to_mask(method='center')
 
             # prepare cutouts of the data based on the aperture size
             # local background explicitly set to zero for SE agreement
             data, _, mask, xycen, slc_sm = self._make_aperture_data(
-                label, xcen_, ycen_, aperture_mask.bbox, 0.0, make_error=False)
+                label, xcen, ycen, aperture_mask.bbox, 0.0, make_error=False)
 
             xval = np.arange(data.shape[1]) - xycen[0]
             yval = np.arange(data.shape[0]) - xycen[1]
@@ -2942,17 +2939,14 @@ class SourceCatalog:
 
         kron_flux = []
         kron_fluxerr = []
-        for label, xcen, ycen, aperture, bkg in zip(self.labels,
-                                                    self._xcentroid,
-                                                    self._ycentroid,
-                                                    kron_aperture,
-                                                    self._local_background):
-
+        for label, aperture, bkg in zip(self.labels, kron_aperture,
+                                        self._local_background):
             if aperture is None:
                 kron_flux.append(np.nan)
                 kron_fluxerr.append(np.nan)
                 continue
 
+            xcen, ycen = aperture.positions
             method = self._aper_method['kron']
             aperture_mask = aperture.to_mask(method=method)
 
