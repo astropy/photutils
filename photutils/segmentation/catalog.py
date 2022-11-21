@@ -2959,13 +2959,22 @@ class SourceCatalog:
             # ignore RuntimeWarning for invalid data or error values
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', RuntimeWarning)
-                kron_flux.append(np.sum((aperture_weights * data)[pixel_mask]))
+                values = (aperture_weights * data)[pixel_mask]
+                if values.shape == (0,):
+                    flux = np.nan
+                else:
+                    flux = np.sum(values)
+                kron_flux.append(flux)
+
                 if error is None:
                     kron_fluxerr.append(np.nan)
                 else:
-                    kron_fluxerr.append(
-                        np.sqrt(np.sum((aperture_weights
-                                        * error**2)[pixel_mask])))
+                    values = (aperture_weights * error**2)[pixel_mask]
+                    if values.shape == (0,):
+                        err = np.nan
+                    else:
+                        err = np.sqrt(np.sum(values))
+                    kron_fluxerr.append(err)
 
         return kron_flux, kron_fluxerr
 
