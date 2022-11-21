@@ -1346,6 +1346,25 @@ class SourceCatalog:
             xcen_win.append(xcen)
             ycen_win.append(ycen)
 
+        xcen_win = np.array(xcen_win)
+        ycen_win = np.array(ycen_win)
+
+        # reset to the isophotal centroid if the windowed centroid is
+        # outside of the 1-sigma ellipse
+        dx = self._xcentroid - xcen_win
+        dy = self._ycentroid - ycen_win
+        cxx = self.cxx.value
+        cxy = self.cxy.value
+        cyy = self.cyy.value
+        if self.isscalar:
+            cxx = (cxx,)
+            cxy = (cxy,)
+            cyy = (cyy,)
+        idx = np.where((cxx * dx**2 + cxy * dx * dy + cyy * dy**2) > 1)[0]
+        if len(idx) > 0:
+            xcen_win[idx] = self._xcentroid[idx]
+            ycen_win[idx] = self._ycentroid[idx]
+
         return np.transpose((xcen_win, ycen_win))
 
     @lazyproperty
