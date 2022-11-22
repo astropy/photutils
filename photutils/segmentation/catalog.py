@@ -1287,14 +1287,17 @@ class SourceCatalog:
     def centroid_win(self):
         radius_hl = self.fluxfrac_radius(0.5).value
         if self.isscalar:
-            radius_hl = (radius_hl,)
+            radius_hl = np.array([radius_hl])
+        min_radius = 0.5  # define minimum half-light radius
+        mask = (radius_hl < min_radius) | ~np.isfinite(radius_hl)
+        radius_hl[mask] = min_radius
 
         xcen_win = []
         ycen_win = []
         for label, xcen, ycen, rad_hl in zip(self.labels, self._xcentroid,
                                              self._ycentroid, radius_hl):
 
-            if np.any(~np.isfinite((xcen, ycen, rad_hl))):
+            if np.any(~np.isfinite((xcen, ycen))):
                 xcen_win.append(np.nan)
                 ycen_win.append(np.nan)
                 continue
