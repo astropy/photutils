@@ -7,7 +7,7 @@ from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
 import astropy.units as u
-from numpy.testing import assert_allclose, assert_equal, assert_raises
+from numpy.testing import assert_allclose, assert_equal
 import numpy as np
 import pytest
 
@@ -140,48 +140,48 @@ class TestSourceCatalog:
 
         assert_equal(cat1.kron_radius, cat3.kron_radius)
         # assert not equal
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(cat1.kron_radius, cat2.kron_radius)
 
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(cat2.kron_flux, cat3.kron_flux)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(cat2.kron_fluxerr, cat3.kron_fluxerr)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(cat1.kron_flux, cat3.kron_flux)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(cat1.kron_fluxerr, cat3.kron_fluxerr)
 
         flux1, fluxerr1 = cat1.circular_photometry(1.0)
         flux2, fluxerr2 = cat2.circular_photometry(1.0)
         flux3, fluxerr3 = cat3.circular_photometry(1.0)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(flux2, flux3)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(fluxerr2, fluxerr3)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(flux1, flux2)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(fluxerr1, fluxerr2)
 
         flux1, fluxerr1 = cat1.kron_photometry((2.5, 1.4))
         flux2, fluxerr2 = cat2.kron_photometry((2.5, 1.4))
         flux3, fluxerr3 = cat3.kron_photometry((2.5, 1.4))
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(flux2, flux3)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(fluxerr2, fluxerr3)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(flux1, flux2)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(fluxerr1, fluxerr2)
 
         radius1 = cat1.fluxfrac_radius(0.5)
         radius2 = cat2.fluxfrac_radius(0.5)
         radius3 = cat3.fluxfrac_radius(0.5)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(radius2, radius3)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(radius1, radius2)
 
         cat4 = cat3[0:1]
