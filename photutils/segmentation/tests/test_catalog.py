@@ -698,7 +698,6 @@ class TestSourceCatalog:
         assert cat._has_len([1, 2, 3])
         assert not cat._has_len('test_string')
 
-
     def test_extra_properties_invalid(self):
         cat = SourceCatalog(self.data, self.segm)
         with pytest.raises(ValueError):
@@ -810,6 +809,10 @@ class TestSourceCatalog:
 
         cutouts = cat.make_cutouts(shape, mode='partial', fill_value=-100)
         assert cutouts[0].data[0, 0] == -100
+
+        # cutout will be None if source is completely masked
+        cutouts = self.cat.make_cutouts(shape)
+        assert cutouts[0] is None
 
     def test_meta(self):
         meta = self.cat.meta
