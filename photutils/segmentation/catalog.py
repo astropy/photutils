@@ -2911,6 +2911,68 @@ class SourceCatalog:
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return patches
 
+    def _aperture_photometry(self, apertures, **kwargs):
+        """
+        Perform aperture photometry on cutouts of the data and optional
+        error arrays.
+
+        The appropriate ``apermask_method`` is applied to the cutouts to
+        handle neighboring sources.
+
+        Parameters
+        ----------
+        apertures : list of `PixelAperture`
+            A list of the apertures.
+
+        **kwargs : dict
+            Additional keyword arguments passed to the aperture
+            ``to_mask`` method.
+
+        Returns
+        -------
+        flux, fluxerr : 1D `~numpy.ndaray`
+            The flux and flux error arrays.
+        """
+        flux = []
+        fluxerr = []
+        for label, aperture, bkg in zip(self.labels, apertures,
+                                        self._local_background):
+            if aperture is None:
+                flux.append(np.nan)
+                fluxerr.append(np.nan)
+                continue
+
+            xcen, ycen = aperture.positions
+            aperture_mask = aperture.to_mask(**kwargs)
+
+            # prepare cutouts of the data based on the aperture size
+            data, error, mask, _, slc_sm = self._make_aperture_data(
+                label, xcen, ycen, aperture_mask.bbox, bkg)
+
+            aperture_weights = aperture_mask.data[slc_sm]
+            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
+            # ignore RuntimeWarning for invalid data or error values
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                values = (aperture_weights * data)[pixel_mask]
+                if values.shape == (0,):
+                    flux_ = np.nan
+                else:
+                    flux_ = np.sum(values)
+                flux.append(flux_)
+
+                if error is None:
+                    fluxerr_ = np.nan
+                else:
+                    values = (aperture_weights * error**2)[pixel_mask]
+                    if values.shape == (0,):
+                        fluxerr_ = np.nan
+                    else:
+                        fluxerr_ = np.sqrt(np.sum(values))
+                fluxerr.append(fluxerr_)
+
+        return flux, fluxerr
+
     def _calc_kron_photometry(self, kron_params=None):
         """
         Calculate the flux and flux error in the Kron aperture (without
@@ -2937,46 +2999,10 @@ class SourceCatalog:
             kron_params = self._validate_kron_params(kron_params)
             kron_aperture = self._make_kron_apertures(kron_params)
 
-        kron_flux = []
-        kron_fluxerr = []
-        for label, aperture, bkg in zip(self.labels, kron_aperture,
-                                        self._local_background):
-            if aperture is None:
-                kron_flux.append(np.nan)
-                kron_fluxerr.append(np.nan)
-                continue
+        kwargs = {'method': self._aper_method['kron']}
+        flux, fluxerr = self._aperture_photometry(kron_aperture, **kwargs)
 
-            xcen, ycen = aperture.positions
-            method = self._aper_method['kron']
-            aperture_mask = aperture.to_mask(method=method)
-
-            # prepare cutouts of the data based on the aperture size
-            data, error, mask, _, slc_sm = self._make_aperture_data(
-                label, xcen, ycen, aperture_mask.bbox, bkg)
-
-            aperture_weights = aperture_mask.data[slc_sm]
-            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
-            # ignore RuntimeWarning for invalid data or error values
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                values = (aperture_weights * data)[pixel_mask]
-                if values.shape == (0,):
-                    flux = np.nan
-                else:
-                    flux = np.sum(values)
-                kron_flux.append(flux)
-
-                if error is None:
-                    kron_fluxerr.append(np.nan)
-                else:
-                    values = (aperture_weights * error**2)[pixel_mask]
-                    if values.shape == (0,):
-                        err = np.nan
-                    else:
-                        err = np.sqrt(np.sum(values))
-                    kron_fluxerr.append(err)
-
-        return kron_flux, kron_fluxerr
+        return flux, fluxerr
 
     def kron_photometry(self, kron_params, name=None, overwrite=False):
         """
