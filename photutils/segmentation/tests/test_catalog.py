@@ -351,6 +351,7 @@ class TestSourceCatalog:
         obj = cat[0]
         assert obj.sky_centroid is not None
         assert obj.sky_centroid_icrs is not None
+        assert obj.sky_centroid_win is not None
         assert obj.sky_bbox_ll is not None
         assert obj.sky_bbox_ul is not None
         assert obj.sky_bbox_lr is not None
@@ -363,6 +364,7 @@ class TestSourceCatalog:
         obj = cat[1]
         assert obj.sky_centroid is not None
         assert obj.sky_centroid_icrs is not None
+        assert obj.sky_centroid_win is not None
         assert obj.sky_bbox_ll is not None
         assert obj.sky_bbox_ul is not None
         assert obj.sky_bbox_lr is not None
@@ -373,6 +375,7 @@ class TestSourceCatalog:
         obj = cat[2]
         assert obj.sky_centroid is None
         assert obj.sky_centroid_icrs is None
+        assert obj.sky_centroid_win is None
         assert obj.sky_bbox_ll is None
         assert obj.sky_bbox_ul is None
         assert obj.sky_bbox_lr is None
