@@ -307,7 +307,8 @@ class SourceCatalog:
         self._apermask_kwargs = {
             'circ': {'method': 'exact'},
             'kron': {'method': 'exact'},
-            'fluxfrac': {'method': 'exact'}
+            'fluxfrac': {'method': 'exact'},
+            'cen_win': {'method': 'center'}
         }
 
         self.default_columns = DEFAULT_COLUMNS
@@ -386,7 +387,8 @@ class SourceCatalog:
         self._apermask_kwargs = {
             'circ': {'method': 'subpixel', 'subpixels': 5},
             'kron': {'method': 'center'},
-            'fluxfrac': {'method': 'subpixel', 'subpixels': 5}
+            'fluxfrac': {'method': 'subpixel', 'subpixels': 5},
+            'cen_win': {'method': 'subpixel', 'subpixels': 11}
         }
 
     @property
@@ -1291,6 +1293,7 @@ class SourceCatalog:
         min_radius = 0.5  # define minimum half-light radius
         mask = (radius_hl < min_radius) | ~np.isfinite(radius_hl)
         radius_hl[mask] = min_radius
+        kwargs = self._apermask_kwargs['cen_win']
 
         xcen_win = []
         ycen_win = []
@@ -1312,10 +1315,7 @@ class SourceCatalog:
             centroid_threshold = 0.0001
             while iter_ < max_iters and dcen > centroid_threshold:
                 aperture = CircularAperture((xcen, ycen), radius)
-                method = 'subpixel'
-                subpixels = 11
-                aperture_mask = aperture.to_mask(method=method,
-                                                 subpixels=subpixels)
+                aperture_mask = aperture.to_mask(**kwargs)
 
                 # for consistency with the isophotal centroid, a local
                 # background is not subtracted here
