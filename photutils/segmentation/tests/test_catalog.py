@@ -7,7 +7,7 @@ from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
 import astropy.units as u
-from numpy.testing import assert_allclose, assert_equal, assert_raises
+from numpy.testing import assert_allclose, assert_equal
 import numpy as np
 import pytest
 
@@ -103,6 +103,10 @@ class TestSourceCatalog:
         for prop in props:
             assert_equal(getattr(obj, prop), getattr(cat1, prop)[idx])
 
+        with pytest.raises(ValueError):
+            cat1._prepare_cutouts(cat1._segment_img_cutouts, units=True,
+                                  masked=True)
+
     @pytest.mark.parametrize('with_units', (True, False))
     def test_catalog_detection_cat(self, with_units):
         """
@@ -136,48 +140,48 @@ class TestSourceCatalog:
 
         assert_equal(cat1.kron_radius, cat3.kron_radius)
         # assert not equal
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(cat1.kron_radius, cat2.kron_radius)
 
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(cat2.kron_flux, cat3.kron_flux)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(cat2.kron_fluxerr, cat3.kron_fluxerr)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(cat1.kron_flux, cat3.kron_flux)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(cat1.kron_fluxerr, cat3.kron_fluxerr)
 
         flux1, fluxerr1 = cat1.circular_photometry(1.0)
         flux2, fluxerr2 = cat2.circular_photometry(1.0)
         flux3, fluxerr3 = cat3.circular_photometry(1.0)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(flux2, flux3)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(fluxerr2, fluxerr3)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(flux1, flux2)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(fluxerr1, fluxerr2)
 
         flux1, fluxerr1 = cat1.kron_photometry((2.5, 1.4))
         flux2, fluxerr2 = cat2.kron_photometry((2.5, 1.4))
         flux3, fluxerr3 = cat3.kron_photometry((2.5, 1.4))
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(flux2, flux3)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(fluxerr2, fluxerr3)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(flux1, flux2)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(fluxerr1, fluxerr2)
 
         radius1 = cat1.fluxfrac_radius(0.5)
         radius2 = cat2.fluxfrac_radius(0.5)
         radius3 = cat3.fluxfrac_radius(0.5)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(radius2, radius3)
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             assert_equal(radius1, radius2)
 
         cat4 = cat3[0:1]
@@ -559,6 +563,14 @@ class TestSourceCatalog:
         _, fluxerr = cat.circular_photometry(1.0)
         assert np.all(np.isnan(fluxerr))
 
+        # with "center" mode, tiny apertures that do not overlap any
+        # center should return NaN
+        cat2 = self.cat.copy()
+        cat2._set_semode()  # sets "center" mode
+        flux1, fluxerr1 = cat2.circular_photometry(0.1)
+        assert np.all(np.isnan(flux1[2:4]))
+        assert np.all(np.isnan(fluxerr1[2:4]))
+
         with pytest.raises(ValueError):
             self.cat.circular_photometry(0.0)
         with pytest.raises(ValueError):
@@ -683,6 +695,9 @@ class TestSourceCatalog:
             cat.add_extra_property('invalid', segment_snr)
         cat._extra_properties.remove('invalid')
 
+        assert cat._has_len([1, 2, 3])
+        assert not cat._has_len('test_string')
+
     def test_extra_properties_invalid(self):
         cat = SourceCatalog(self.data, self.segm)
         with pytest.raises(ValueError):
@@ -795,11 +810,20 @@ class TestSourceCatalog:
         cutouts = cat.make_cutouts(shape, mode='partial', fill_value=-100)
         assert cutouts[0].data[0, 0] == -100
 
+        # cutout will be None if source is completely masked
+        cutouts = self.cat.make_cutouts(shape)
+        assert cutouts[0] is None
+
     def test_meta(self):
         meta = self.cat.meta
         attrs = ('localbkg_width', 'apermask_method', 'kron_params')
         for attr in attrs:
             assert attr in meta
+
+    def test_semode(self):
+        self.cat._set_semode()
+        tbl = self.cat.to_table()
+        assert len(tbl) == 7
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

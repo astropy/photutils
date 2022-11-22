@@ -7,7 +7,7 @@ from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import SigmaClip
 import astropy.units as u
 import numpy as np
-from numpy.testing import assert_allclose, assert_equal, assert_raises
+from numpy.testing import assert_allclose, assert_equal
 import pytest
 
 from ...datasets import make_100gaussians_image, make_wcs
@@ -114,7 +114,7 @@ class TestApertureStats:
                 continue
             if 'sum' in prop:
                 # test that these properties are not equal
-                with assert_raises(AssertionError):
+                with pytest.raises(AssertionError):
                     assert_equal(getattr(apstats1, prop),
                                  getattr(apstats2, prop))
             else:
