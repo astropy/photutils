@@ -1204,7 +1204,7 @@ class SourceCatalog:
     def cutout_centroid(self):
         """
         The ``(x, y)`` coordinate, relative to the cutout data, of
-        the centroid within the source segment.
+        the centroid within the isophotal source segment.
 
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
@@ -1225,8 +1225,8 @@ class SourceCatalog:
     @as_scalar
     def centroid(self):
         """
-        The ``(x, y)`` coordinate of the centroid within the source
-        segment.
+        The ``(x, y)`` coordinate of the centroid within the isophotal
+        source segment.
 
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
@@ -1238,8 +1238,8 @@ class SourceCatalog:
     @use_detcat
     def _xcentroid(self):
         """
-        The ``x`` coordinate of the centroid within the source segment,
-        always as an iterable.
+        The ``x`` coordinate of the `centroid` within the source
+        segment, always as an iterable.
         """
         if self.isscalar:
             xcentroid = self.centroid[0:1]  # scalar array
@@ -1252,7 +1252,8 @@ class SourceCatalog:
     @as_scalar
     def xcentroid(self):
         """
-        The ``x`` coordinate of the centroid within the source segment.
+        The ``x`` coordinate of the `centroid` within the source
+        segment.
 
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
@@ -1263,8 +1264,8 @@ class SourceCatalog:
     @use_detcat
     def _ycentroid(self):
         """
-        The ``y`` coordinate of the centroid within the source segment,
-        always as an iterable.
+        The ``y`` coordinate of the `centroid` within the source
+        segment, always as an iterable.
         """
         if self.isscalar:
             ycentroid = self.centroid[1:2]  # scalar array
@@ -1277,7 +1278,8 @@ class SourceCatalog:
     @as_scalar
     def ycentroid(self):
         """
-        The ``y`` coordinate of the centroid within the source segment.
+        The ``y`` coordinate of the `centroid` within the source
+        segment.
 
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
@@ -1398,7 +1400,8 @@ class SourceCatalog:
     @as_scalar
     def xcentroid_win(self):
         """
-        The ``x`` coordinate of the "windowed" centroid.
+        The ``x`` coordinate of the "windowed" centroid
+        (`centroid_win`).
 
         The window centroid is computed using an iterative algorithm
         to derive a more accurate centroid. It is equivalent to
@@ -1415,7 +1418,8 @@ class SourceCatalog:
     @as_scalar
     def ycentroid_win(self):
         """
-        The ``y`` coordinate of the "windowed" centroid.
+        The ``y`` coordinate of the "windowed" centroid
+        (`centroid_win`).
 
         The window centroid is computed using an iterative algorithm
         to derive a more accurate centroid. It is equivalent to
@@ -1463,8 +1467,9 @@ class SourceCatalog:
     @as_scalar
     def sky_centroid_win(self):
         """
-        The sky coordinate of the "windowed" centroid within the source
-        segment, returned as a `~astropy.coordinates.SkyCoord` object.
+        The sky coordinate of the "windowed" centroid
+        (`centroid_win`) within the source segment, returned as a
+        `~astropy.coordinates.SkyCoord` object.
 
         The output coordinate frame is the same as the input ``wcs``.
 
@@ -1928,9 +1933,9 @@ class SourceCatalog:
     def background_centroid(self):
         """
         The value of the per-pixel ``background`` at the position of the
-        isophotal (center-of-mass) centroid.
+        isophotal (center-of-mass) `centroid`.
 
-        If ``detection_cat`` is input, then its centroid will be used.
+        If ``detection_cat`` is input, then its `centroid` will be used.
 
         The background value at fractional position values are
         determined using bilinear interpolation.
@@ -2531,7 +2536,7 @@ class SourceCatalog:
         """
         Make circular aperture for each source.
 
-        The aperture for each source will be centered at its centroid
+        The aperture for each source will be centered at its `centroid`
         position. If a ``detection_cat`` was input to `SourceCatalog`,
         it will be used for the source centroids.
 
@@ -2544,7 +2549,7 @@ class SourceCatalog:
         -------
         result : list of `~photutils.aperture.CircularAperture`
             A list of `~photutils.aperture.CircularAperture` instances.
-            The aperture will be `None` where the source centroid
+            The aperture will be `None` where the source `centroid`
             position is not finite or where the source is completely
             masked.
         """
@@ -2570,9 +2575,9 @@ class SourceCatalog:
         """
         Make circular aperture for each source.
 
-        The aperture for each source will be centered at its centroid
+        The aperture for each source will be centered at its `centroid`
         position. If a ``detection_cat`` was input to `SourceCatalog`,
-        it will be used for the source centroids.
+        then its `centroid` values will be used.
 
         Parameters
         ----------
@@ -2584,7 +2589,7 @@ class SourceCatalog:
         result : `~photutils.aperture.CircularAperture` or \
                  list of `~photutils.aperture.CircularAperture`
             The circular aperture for each source. The aperture will be
-            `None` where the source centroid position is not finite or
+            `None` where the source `centroid` position is not finite or
             where the source is completely masked.
         """
         return self._make_circular_apertures(radius)
@@ -2597,12 +2602,12 @@ class SourceCatalog:
         Plot circular apertures for each source on a matplotlib
         `~matplotlib.axes.Axes` instance.
 
-        The aperture for each source will be centered at its centroid
+        The aperture for each source will be centered at its `centroid`
         position. If a ``detection_cat`` was input to `SourceCatalog`,
-        it will be used for the source centroids.
+        then its `centroid` values will be used.
 
         An aperture will not be plotted for sources where the source
-        centroid position is not finite or where the source is
+        `centroid` position is not finite or where the source is
         completely masked.
 
         Parameters
@@ -2642,8 +2647,8 @@ class SourceCatalog:
         Perform circular aperture photometry for each source.
 
         The circular aperture for each source will be centered at
-        its centroid position. If a ``detection_cat`` was input to
-        `SourceCatalog`, it will be used for the source centroids.
+        its `centroid` position. If a ``detection_cat`` was input to
+        `SourceCatalog`, then its `centroid` values will be used.
 
         See the `SourceCatalog` ``apermask_method`` keyword for options
         to mask neighboring sources.
@@ -2669,8 +2674,8 @@ class SourceCatalog:
         flux, fluxerr : float or `~numpy.ndarray` of floats
             The aperture fluxes and flux errors. NaN will be returned
             where the aperture is `None` (e.g., where the source
-            centroid position is not finite or the source is completely
-            masked).
+            `centroid` position is not finite or the source is
+            completely masked).
         """
         if radius <= 0:
             raise ValueError('radius must be > 0')
@@ -2702,7 +2707,7 @@ class SourceCatalog:
         isophotal shape of the sources.
 
         If a ``detection_cat`` was input to `SourceCatalog`, then its
-        source centroids and shape parameters will be used.
+        source `centroid` and shape parameters will be used.
 
         If scale is zero (due to a minimum circular radius set in
         ``kron_params``) then a circular aperture will be returned with
@@ -2721,7 +2726,7 @@ class SourceCatalog:
         result : list of `~photutils.aperture.EllipticalAperture`
             A list of `~photutils.aperture.EllipticalAperture`
             instances. The aperture will be `None` where the source
-            centroid position or elliptical shape parameters are not
+            `centroid` position or elliptical shape parameters are not
             finite or where the source is completely masked.
         """
         xcen = self._xcentroid
@@ -2862,8 +2867,8 @@ class SourceCatalog:
                 cyy (y_i - \bar{y})^2
 
         where :math:`\bar{x}` and :math:`\bar{y}` represent the source
-        centroid and the coefficients are based on image moments (`cxx`,
-        `cxy`, and `cyy`).
+        `centroid` and the coefficients are based on image moments
+        (`cxx`, `cxy`, and `cyy`).
 
         The `kron_radius` value is the unscaled moment value. The
         minimum unscaled radius can be set using the second element of
@@ -2923,7 +2928,7 @@ class SourceCatalog:
         radius (``kron_params[2]``), then the Kron aperture will be a
         circle with this minimum radius.
 
-        The aperture will be `None` where the source centroid position
+        The aperture will be `None` where the source `centroid` position
         or elliptical shape parameters are not finite or where the
         source is completely masked.
 
@@ -2937,9 +2942,9 @@ class SourceCatalog:
         """
         Make Kron apertures for each source.
 
-        The aperture for each source will be centered at its centroid
+        The aperture for each source will be centered at its `centroid`
         position. If a ``detection_cat`` was input to `SourceCatalog`,
-        it will be used for the source centroids.
+        then its `centroid` values will be used.
 
         Note that changing ``kron_params`` from the values
         input into `SourceCatalog` does not change the Kron
@@ -2970,7 +2975,7 @@ class SourceCatalog:
             The Kron apertures for each source. Each aperture will
             either be a `~photutils.aperture.EllipticalAperture`,
             `~photutils.aperture.CircularAperture`, or `None`. The
-            aperture will be `None` where the source centroid position
+            aperture will be `None` where the source `centroid` position
             or elliptical shape parameters are not finite or where the
             source is completely masked.
         """
@@ -2986,13 +2991,13 @@ class SourceCatalog:
         Plot Kron apertures for each source on a matplotlib
         `~matplotlib.axes.Axes` instance.
 
-        The aperture for each source will be centered at its centroid
+        The aperture for each source will be centered at its `centroid`
         position. If a ``detection_cat`` was input to `SourceCatalog`,
-        it will be used for the source centroids.
+        then its `centroid` values will be used.
 
         An aperture will not be plotted for sources where the source
-        centroid position or elliptical shape parameters are not finite
-        or where the source is completely masked.
+        `centroid` position or elliptical shape parameters are not
+        finite or where the source is completely masked.
 
         Note that changing ``kron_params`` from the values
         input into `SourceCatalog` does not change the Kron
@@ -3126,7 +3131,8 @@ class SourceCatalog:
         If the Kron aperture is `None`, then ``np.nan`` will be
         returned.
 
-        If ``detection_cat`` is input, then its centroids are used.
+        If ``detection_cat`` is input, then its `centroid` values will
+        be used.
 
         Returns
         -------
@@ -3187,7 +3193,7 @@ class SourceCatalog:
         flux, fluxerr : float or `~numpy.ndarray` of floats
             The aperture fluxes and flux errors. NaN will be returned
             where the aperture is `None` (e.g., where the source
-            centroid position or elliptical shape parameters are not
+            `centroid` position or elliptical shape parameters are not
             finite or where the source is completely masked).
         """
         kron_flux, kron_fluxerr = self._calc_kron_photometry(kron_params)
@@ -3217,9 +3223,9 @@ class SourceCatalog:
         to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
-        returned. This will occur where the source centroid position or
-        elliptical shape parameters are not finite or where the source
-        is completely masked
+        returned. This will occur where the source `centroid` position
+        or elliptical shape parameters are not finite or where the
+        source is completely masked.
         """
         return np.transpose(self._calc_kron_photometry(kron_params=None))
 
@@ -3233,9 +3239,9 @@ class SourceCatalog:
         to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
-        returned. This will occur where the source centroid position or
-        elliptical shape parameters are not finite or where the source
-        is completely masked
+        returned. This will occur where the source `centroid` position
+        or elliptical shape parameters are not finite or where the
+        source is completely masked.
         """
         kron_flux = self._kron_photometry[:, 0]
         if self._data_unit is not None:
@@ -3252,9 +3258,9 @@ class SourceCatalog:
         to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
-        returned. This will occur where the source centroid position or
-        elliptical shape parameters are not finite or where the source
-        is completely masked
+        returned. This will occur where the source `centroid` position
+        or elliptical shape parameters are not finite or where the
+        source is completely masked.
         """
         kron_fluxerr = self._kron_photometry[:, 1]
         if self._data_unit is not None:
@@ -3408,9 +3414,9 @@ class SourceCatalog:
         """
         Make cutout arrays for each source.
 
-        The cutout for each source will be centered at its centroid
+        The cutout for each source will be centered at its `centroid`
         position. If a ``detection_cat`` was input to `SourceCatalog`,
-        it will be used for the source centroids.
+        then its `centroid` values will be used.
 
         Parameters
         ----------
@@ -3439,8 +3445,8 @@ class SourceCatalog:
         cutouts : `~photutils.utils.CutoutImage` \
                   or list of `~photutils.utils.CutoutImage`
             The `~photutils.utils.CutoutImage` for each source. The
-            cutout will be `None` where the source centroid position is
-            not finite or where the source is completely masked.
+            cutout will be `None` where the source `centroid` position
+            is not finite or where the source is completely masked.
         """
         if mode not in ('partial', 'trim'):
             raise ValueError('mode must be "partial" or "trim"')
