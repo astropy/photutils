@@ -103,6 +103,10 @@ class TestSourceCatalog:
         for prop in props:
             assert_equal(getattr(obj, prop), getattr(cat1, prop)[idx])
 
+        with pytest.raises(ValueError):
+            cat1._prepare_cutouts(cat1._segment_img_cutouts, units=True,
+                                  masked=True)
+
     @pytest.mark.parametrize('with_units', (True, False))
     def test_catalog_detection_cat(self, with_units):
         """
@@ -559,6 +563,14 @@ class TestSourceCatalog:
         _, fluxerr = cat.circular_photometry(1.0)
         assert np.all(np.isnan(fluxerr))
 
+        # with "center" mode, tiny apertures that do not overlap any
+        # center should return NaN
+        cat2 = self.cat.copy()
+        cat2._set_semode()  # sets "center" mode
+        flux1, fluxerr1 = cat2.circular_photometry(0.1)
+        assert np.all(np.isnan(flux1[2:4]))
+        assert np.all(np.isnan(fluxerr1[2:4]))
+
         with pytest.raises(ValueError):
             self.cat.circular_photometry(0.0)
         with pytest.raises(ValueError):
@@ -683,6 +695,10 @@ class TestSourceCatalog:
             cat.add_extra_property('invalid', segment_snr)
         cat._extra_properties.remove('invalid')
 
+        assert cat._has_len([1, 2, 3])
+        assert not cat._has_len('test_string')
+
+
     def test_extra_properties_invalid(self):
         cat = SourceCatalog(self.data, self.segm)
         with pytest.raises(ValueError):
@@ -800,6 +816,11 @@ class TestSourceCatalog:
         attrs = ('localbkg_width', 'apermask_method', 'kron_params')
         for attr in attrs:
             assert attr in meta
+
+    def test_semode(self):
+        self.cat._set_semode()
+        tbl = self.cat.to_table()
+        assert len(tbl) == 7
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
