@@ -2509,38 +2509,8 @@ class SourceCatalog:
             raise ValueError('radius must be > 0')
 
         apertures = self._make_circular_apertures(radius)
-
-        flux = []
-        fluxerr = []
-        for (label, aperture, bkg) in zip(self.labels, apertures,
-                                          self._local_background):
-            # return NaN for completely masked sources or sources where
-            # the centroid is not finite
-            if aperture is None:
-                flux.append(np.nan)
-                fluxerr.append(np.nan)
-                continue
-
-            xcen, ycen = aperture.positions
-            method = self._aper_method['circ']
-            aperture_mask = aperture.to_mask(method=method)
-            data, error, mask, _, slc_sm = self._make_aperture_data(
-                label, xcen, ycen, aperture_mask.bbox, bkg)
-
-            aperture_weights = aperture_mask.data[slc_sm]
-            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
-            # ignore RuntimeWarning for invalid data or error values
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                flux.append(np.sum((aperture_weights * data)[pixel_mask]))
-                if error is None:
-                    fluxerr.append(np.nan)
-                else:
-                    fluxerr.append(np.sqrt(np.sum(
-                        (aperture_weights * error**2)[pixel_mask])))
-
-        flux = np.array(flux)
-        fluxerr = np.array(fluxerr)
+        kwargs = {'method': self._aper_method['circ']}
+        flux, fluxerr = self._aperture_photometry(apertures, **kwargs)
 
         if self._data_unit is not None:
             flux <<= self._data_unit
@@ -2937,6 +2907,8 @@ class SourceCatalog:
         fluxerr = []
         for label, aperture, bkg in zip(self.labels, apertures,
                                         self._local_background):
+            # return NaN for completely masked sources or sources where
+            # the centroid is not finite
             if aperture is None:
                 flux.append(np.nan)
                 fluxerr.append(np.nan)
@@ -2970,6 +2942,9 @@ class SourceCatalog:
                     else:
                         fluxerr_ = np.sqrt(np.sum(values))
                 fluxerr.append(fluxerr_)
+
+        flux = np.array(flux)
+        fluxerr = np.array(fluxerr)
 
         return flux, fluxerr
 
