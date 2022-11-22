@@ -1285,8 +1285,31 @@ class SourceCatalog:
         return self._ycentroid
 
     @lazyproperty
+    @use_detcat
     @as_scalar
     def centroid_win(self):
+        """
+        The ``(x, y)`` coordinate of the "windowed" centroid.
+
+        The window centroid is computed using an iterative algorithm
+        to derive a more accurate centroid. It is equivalent to
+        `SourceExtractor`_'s XWIN_IMAGE and YWIN_IMAGE parameters.
+
+        Notes
+        -----
+        On each iteration, the centroid is calculated using all pixels
+        within a circular aperture of ``4 * sigma`` from the current
+        position, weighting pixel values with a 2D Gaussian with a
+        standard deviation of ``sigma``. ``sigma`` is the half-light
+        radius (i.e., ``flucfrac_radius(0.5)``) times (2.0 / 2.35). A
+        minimum half-light radius of 0.5 pixels is used. Iteration stops
+        when the change in centroid position falls below a pre-defined
+        threshold or a maximum number of iterations is reached.
+
+        If the windowed centroid falls outside of the 1-sigma ellipse
+        shape based on the image moments, then the isophotal `centroid`
+        will be used instead.
+        """
         radius_hl = self.fluxfrac_radius(0.5).value
         if self.isscalar:
             radius_hl = np.array([radius_hl])
@@ -1373,9 +1396,43 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
+    def xcentroid_win(self):
+        """
+        The ``x`` coordinate of the "windowed" centroid.
+
+        The window centroid is computed using an iterative algorithm
+        to derive a more accurate centroid. It is equivalent to
+        `SourceExtractor`_'s XWIN_IMAGE parameters.
+        """
+        if self.isscalar:
+            xcentroid = self.centroid_win[0]  # scalar array
+        else:
+            xcentroid = self.centroid_win[:, 0]
+        return xcentroid
+
+    @lazyproperty
+    @use_detcat
+    @as_scalar
+    def ycentroid_win(self):
+        """
+        The ``y`` coordinate of the "windowed" centroid.
+
+        The window centroid is computed using an iterative algorithm
+        to derive a more accurate centroid. It is equivalent to
+        `SourceExtractor`_'s YWIN_IMAGE parameters.
+        """
+        if self.isscalar:
+            ycentroid = self.centroid_win[1]  # scalar array
+        else:
+            ycentroid = self.centroid_win[:, 1]
+        return ycentroid
+
+    @lazyproperty
+    @use_detcat
+    @as_scalar
     def sky_centroid(self):
         """
-        The sky coordinate of the centroid within the source segment,
+        The sky coordinate of the `centroid` within the source segment,
         returned as a `~astropy.coordinates.SkyCoord` object.
 
         The output coordinate frame is the same as the input ``wcs``.
@@ -1392,7 +1449,7 @@ class SourceCatalog:
     def sky_centroid_icrs(self):
         """
         The sky coordinate in the International Celestial Reference
-        System (ICRS) frame of the centroid within the source segment,
+        System (ICRS) frame of the `centroid` within the source segment,
         returned as a `~astropy.coordinates.SkyCoord` object.
 
         `None` if ``wcs`` is not input.
@@ -1400,6 +1457,22 @@ class SourceCatalog:
         if self.wcs is None:
             return self._null_objects
         return self.sky_centroid.icrs
+
+    @lazyproperty
+    @use_detcat
+    @as_scalar
+    def sky_centroid_win(self):
+        """
+        The sky coordinate of the "windowed" centroid within the source
+        segment, returned as a `~astropy.coordinates.SkyCoord` object.
+
+        The output coordinate frame is the same as the input ``wcs``.
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self.wcs.pixel_to_world(self.xcentroid_win, self.ycentroid_win)
 
     @lazyproperty
     @use_detcat
@@ -1855,7 +1928,7 @@ class SourceCatalog:
     def background_centroid(self):
         """
         The value of the per-pixel ``background`` at the position of the
-        source centroid.
+        isophotal (center-of-mass) centroid.
 
         If ``detection_cat`` is input, then its centroid will be used.
 
