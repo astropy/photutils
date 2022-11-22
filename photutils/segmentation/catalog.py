@@ -304,8 +304,11 @@ class SourceCatalog:
             else:
                 self._convolved_data = self._convolve_data()
 
-        self._aper_method = {'circ': 'exact', 'kron': 'exact',
-                             'fluxfrac': 'exact'}
+        self._apermask_kwargs = {
+            'circ': {'method': 'exact'},
+            'kron': {'method': 'exact'},
+            'fluxfrac': {'method': 'exact'}
+        }
 
         self.default_columns = DEFAULT_COLUMNS
         self._extra_properties = []
@@ -380,8 +383,11 @@ class SourceCatalog:
 
     def _set_semode(self):
         # SE emulation
-        self._aper_method = {'circ': 'subpixel', 'kron': 'center',
-                             'fluxfrac': 'subpixel'}
+        self._apermask_kwargs = {
+            'circ': {'method': 'subpixel', 'subpixels': 5},
+            'kron': {'method': 'center'},
+            'fluxfrac': {'method': 'subpixel', 'subpixels': 5}
+        }
 
     @property
     def _properties(self):
@@ -432,7 +438,7 @@ class SourceCatalog:
                      '_background', 'wcs', '_data_unit', '_convolved_data',
                      'localbkg_width', 'apermask_method', 'kron_params',
                      'default_columns', '_extra_properties', 'meta',
-                     '_aper_method')
+                     '_apermask_kwargs')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -2509,7 +2515,7 @@ class SourceCatalog:
             raise ValueError('radius must be > 0')
 
         apertures = self._make_circular_apertures(radius)
-        kwargs = {'method': self._aper_method['circ']}
+        kwargs = self._apermask_kwargs['circ']
         flux, fluxerr = self._aperture_photometry(apertures, **kwargs)
 
         if self._data_unit is not None:
@@ -2974,7 +2980,7 @@ class SourceCatalog:
             kron_params = self._validate_kron_params(kron_params)
             kron_aperture = self._make_kron_apertures(kron_params)
 
-        kwargs = {'method': self._aper_method['kron']}
+        kwargs = self._apermask_kwargs['kron']
         flux, fluxerr = self._aperture_photometry(kron_aperture, **kwargs)
 
         return flux, fluxerr
@@ -3112,12 +3118,12 @@ class SourceCatalog:
         return radius
 
     @staticmethod
-    def _fluxfrac_radius_fcn(radius, data, mask, aperture, method, normflux):
+    def _fluxfrac_radius_fcn(radius, data, mask, aperture, normflux, kwargs):
         """
         Function whose root is found to compute the fluxfrac_radius.
         """
         aperture.r = radius
-        flux, _ = aperture.do_photometry(data, mask=mask, method=method)
+        flux, _ = aperture.do_photometry(data, mask=mask, **kwargs)
         return 1.0 - (flux[0] / normflux)
 
     @lazyproperty
@@ -3125,7 +3131,7 @@ class SourceCatalog:
     def _fluxfrac_optimizer_args(self):
         kron_flux = self._kron_photometry[:, 0]  # unitless
         max_radius = self._max_circular_kron_radius
-        aper_method = self._aper_method['fluxfrac']
+        kwargs = self._apermask_kwargs['fluxfrac']
 
         args = []
         for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
@@ -3138,7 +3144,7 @@ class SourceCatalog:
                 continue
 
             aperture = CircularAperture((xcen, ycen), r=max_radius_)
-            aperture_mask = aperture.to_mask(method=aper_method)
+            aperture_mask = aperture.to_mask(**kwargs)
 
             # prepare cutouts of the data based on the maximum aperture size
             data, _, mask, xycen, _ = self._make_aperture_data(
@@ -3146,8 +3152,7 @@ class SourceCatalog:
                 make_error=False)
 
             aperture.positions = xycen
-            args.append([data, mask, aperture, aper_method, kronflux,
-                         max_radius_])
+            args.append([data, mask, aperture, kronflux, kwargs, max_radius_])
 
         return args
 
@@ -3194,7 +3199,7 @@ class SourceCatalog:
 
             max_radius = fluxfrac_args[-1]
             args = fluxfrac_args[:-1]
-            args[-1] *= fluxfrac
+            args[3] *= fluxfrac
             args = tuple(args)
 
             # Try to find the root of self._fluxfrac_radius_fnc, which
