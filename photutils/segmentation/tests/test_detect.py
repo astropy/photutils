@@ -21,7 +21,7 @@ DATA = np.array([[0, 1, 0], [0, 2, 0], [0, 0, 0]]).astype(float)
 REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestDetectThreshold:
     def test_nsigma(self):
         """Test basic nsigma."""
@@ -126,7 +126,7 @@ class TestDetectThreshold:
             detect_threshold(DATA, 1.0, sigma_clip=10)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestDetectSources:
     def setup_class(self):
         self.data = np.array([[0, 1, 0], [0, 2, 0],
@@ -269,7 +269,7 @@ class TestDetectSources:
             detect_sources(self.data, 1., 1., mask=np.ones((5, 5)))
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestMakeSourceMask:
     def setup_class(self):
         self.data = make_4gaussians_image()

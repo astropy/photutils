@@ -33,7 +33,7 @@ CENTROID_FUNCS = (centroid_com, centroid_quadratic, centroid_1dg,
 
 
 # NOTE: the fitting routines in astropy use scipy.optimize
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize(('x_std', 'y_std', 'theta'),
                          list(itertools.product(XSTDS, YSTDS, THETAS)))
 def test_centroid_com(x_std, y_std, theta):
@@ -58,7 +58,7 @@ def test_centroid_com(x_std, y_std, theta):
     assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=0.015)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('use_mask', [True, False])
 def test_centroid_com_nan_withmask(use_mask):
     xc_ref = 24.7
@@ -93,7 +93,7 @@ def test_centroid_com_nan_withmask(use_mask):
         assert len(warnlist) == 1
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_com_invalid_inputs():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
@@ -101,7 +101,7 @@ def test_centroid_com_invalid_inputs():
         centroid_com(data, mask=mask)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_quadratic_xypeak():
     data = np.zeros((11, 11))
     data[5, 5] = 100
@@ -126,7 +126,7 @@ def test_centroid_quadratic_xypeak():
         centroid_quadratic(data, xpeak=15, ypeak=15)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_quadratic_npts():
     data = np.zeros((3, 3))
     data[1, 1] = 1
@@ -138,7 +138,7 @@ def test_centroid_quadratic_npts():
         centroid_quadratic(data, mask=mask)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_quadratic_invalid_inputs():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
@@ -156,7 +156,7 @@ def test_centroid_quadratic_invalid_inputs():
         centroid_quadratic(data, mask=mask)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_quadratic_edge():
     data = np.zeros((11, 11))
     data[1, 1] = 100
@@ -176,7 +176,7 @@ def test_centroid_quadratic_edge():
     assert_allclose(xycen, (0, 0))
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestCentroidSources:
     def setup_class(self):
         ysize = 50

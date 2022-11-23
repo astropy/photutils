@@ -90,7 +90,7 @@ def test_make_gaussian_sources_image():
     assert_allclose(image.sum(), SOURCE_TABLE['flux'].sum())
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_gaussian_prf_sources_image():
     shape = (100, 100)
     image = make_gaussian_prf_sources_image(shape, SOURCE_TABLE_PRF)
@@ -176,7 +176,7 @@ def test_make_wcs():
     assert wcs.wcs.ctype[1] == 'GLAT-CAR'
 
 
-@pytest.mark.skipif('not HAS_GWCS')
+@pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
 def test_make_gwcs():
     shape = (100, 200)
 
@@ -193,7 +193,7 @@ def test_make_gwcs():
     assert wcs.output_frame.axes_names == ('lon', 'lat')
 
 
-@pytest.mark.skipif('not HAS_GWCS')
+@pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
 def test_make_wcs_compare():
     shape = (200, 300)
     wcs = make_wcs(shape)

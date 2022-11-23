@@ -21,7 +21,7 @@ from photutils.utils.depths import ImageDepth
 bool_vals = (True, False)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestImageDepth:
     def setup_class(self):
         bkg = 5.0

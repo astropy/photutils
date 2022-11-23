@@ -22,7 +22,7 @@ def test_make_2dgaussian_kernel():
     assert_allclose(kernel.array.sum(), 1.)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_2dgaussian_kernel_modes():
     kernel = make_2dgaussian_kernel(3.0, 5)
     assert_allclose(kernel.array.sum(), 1.)
@@ -37,7 +37,7 @@ def test_make_2dgaussian_kernel_modes():
     assert_allclose(kernel.array.sum(), 1.)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_binary_structure():
     footprint = _make_binary_structure(1, 4)
     assert_allclose(footprint, np.array([1, 1, 1]))

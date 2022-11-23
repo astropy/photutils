@@ -99,7 +99,7 @@ def test_bounding_box_extent():
     assert_allclose(bbox.extent, (0.5, 9.5, 1.5, 19.5))
 
 
-@pytest.mark.skipif('not HAS_MATPLOTLIB')
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 def test_bounding_box_as_artist():
     bbox = BoundingBox(1, 10, 2, 20)
     patch = bbox.as_artist()
@@ -109,7 +109,7 @@ def test_bounding_box_as_artist():
     assert_allclose(patch.get_height(), 18)
 
 
-@pytest.mark.skipif('not HAS_MATPLOTLIB')
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 def test_bounding_box_plot():
     from matplotlib.patches import Rectangle
     bbox = BoundingBox(1, 10, 2, 20)
@@ -117,7 +117,7 @@ def test_bounding_box_plot():
     assert isinstance(patch, Rectangle)
 
 
-@pytest.mark.skipif('not HAS_MATPLOTLIB')
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 def test_bounding_box_to_aperture():
     bbox = BoundingBox(1, 10, 2, 20)
     aper = RectangularAperture((5.0, 10.5), w=9., h=18., theta=0.)

@@ -33,7 +33,7 @@ DATA3 = NDData(DATA, unit=u.ct)
 DATA4 = CCDData(DATA, unit=u.ct)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestBackground2D:
     @pytest.mark.parametrize(('filter_size', 'interpolator'),
                              list(itertools.product(FILTER_SIZES,
@@ -330,7 +330,7 @@ class TestBackground2D:
             bkg = Background2D(DATA, (25, 25), filter_size=(1, 1))
             bkg._make_2d_array(np.arange(3))
 
-    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_meshes(self):
         """
         This test should run without any errors, but there is no return
@@ -347,7 +347,7 @@ class TestBackground2D:
         assert_allclose(bkg.background_mesh.shape, (4, 5))
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_bkgzoominterp_clip():
     bkg = Background2D(np.ones((300, 300)), 100)
     mesh = np.array([[0.01, 0.01, 0.02],

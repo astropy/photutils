@@ -15,7 +15,7 @@ from photutils.utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestSourceFinder:
     data = make_100gaussians_image() - 5.0  # subtract background
     kernel = make_2dgaussian_kernel(3., size=5)
@@ -23,7 +23,7 @@ class TestSourceFinder:
     threshold = 1.5 * 2.0
     npixels = 10
 
-    @pytest.mark.skipif('not HAS_SKIMAGE')
+    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_deblend(self):
         finder = SourceFinder(npixels=self.npixels, progress_bar=False)
         segm1 = finder(self.convolved_data, self.threshold)

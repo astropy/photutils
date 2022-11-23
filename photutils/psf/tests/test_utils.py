@@ -66,7 +66,7 @@ def moffimg():
     return mof, (xg, yg, mof(xg, yg))
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_moffat_fitting(moffimg):
     """
     Test that the Moffat to be fit in test_psf_adapter is behaving correctly
@@ -98,7 +98,7 @@ def test_moffat_fitting(moffimg):
                          (dict(xname='x_0', yname='y_0', fluxname='amplitude',
                                renormalize_psf=False), (1e-3, None)),
                          ])
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_prepare_psf_model(moffimg, prepkwargs, tols):
     """
     Test that prepare_psf_model behaves as expected for fitting (don't worry
@@ -144,7 +144,7 @@ def test_prepare_psf_model(moffimg, prepkwargs, tols):
 
 @pytest.mark.filterwarnings('ignore:aperture_radius is None and could not '
                             'be determined by psf_model')
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_prepare_psf_model_offset():
     """
     Regression test to ensure the offset is in the correct direction.
@@ -205,7 +205,7 @@ def test_prepare_psf_model_offset():
                     (xval, yval, flux))
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_get_grouped_psf_model():
     igp = IntegratedGaussianPRF(sigma=1.2)
     tab = Table(names=['x_0', 'y_0', 'flux_0'],
@@ -231,7 +231,7 @@ def prf_model(request):
     return prfs[request.param]
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_get_grouped_psf_model_submodel_names(prf_model):
     """Verify that submodel tagging works"""
     tab = Table(names=['x_0', 'y_0', 'flux_0'],
@@ -246,7 +246,7 @@ def test_get_grouped_psf_model_submodel_names(prf_model):
                 if submodel.name == 1]) == 1
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_subtract_psf():
     """Test subtract_psf."""
     psf = IntegratedGaussianPRF(sigma=1.0)
