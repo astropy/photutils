@@ -13,16 +13,16 @@ from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
-
-from ...background import MMMBackground, StdBackgroundRMS
-from ...datasets import make_gaussian_prf_sources_image, make_noise_image
-from ...detection import DAOStarFinder
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..groupstars import DAOGroup
-from ..models import FittableImageModel, IntegratedGaussianPRF
-from ..photometry import (BasicPSFPhotometry, DAOPhotPSFPhotometry,
-                          IterativelySubtractedPSFPhotometry)
-from ..utils import prepare_psf_model
+from photutils.background import MMMBackground, StdBackgroundRMS
+from photutils.datasets import (make_gaussian_prf_sources_image,
+                                make_noise_image)
+from photutils.detection import DAOStarFinder
+from photutils.psf.groupstars import DAOGroup
+from photutils.psf.models import FittableImageModel, IntegratedGaussianPRF
+from photutils.psf.photometry import (BasicPSFPhotometry, DAOPhotPSFPhotometry,
+                                      IterativelySubtractedPSFPhotometry)
+from photutils.psf.utils import prepare_psf_model
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
 def make_psf_photometry_objs(std=1, sigma_psf=1):

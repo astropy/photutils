@@ -11,8 +11,7 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import extract_array, subpixel_indices
 from astropy.table import Table
 from astropy.utils.decorators import deprecated
-
-from ..segmentation.utils import _mask_to_mirrored_value
+from photutils.segmentation.utils import _mask_to_mirrored_value
 
 __all__ = ['DiscretePRF', 'Reproject']
 

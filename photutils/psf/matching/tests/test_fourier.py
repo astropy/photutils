@@ -8,10 +8,9 @@ import pytest
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose
-
-from ....utils._optional_deps import HAS_SCIPY  # noqa
-from ..fourier import create_matching_kernel, resize_psf
-from ..windows import SplitCosineBellWindow
+from photutils.psf.matching.fourier import create_matching_kernel, resize_psf
+from photutils.psf.matching.windows import SplitCosineBellWindow
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

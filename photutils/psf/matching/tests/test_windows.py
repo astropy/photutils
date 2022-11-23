@@ -6,10 +6,10 @@ Tests for the windows module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-
-from ....utils._optional_deps import HAS_SCIPY  # noqa
-from ..windows import (CosineBellWindow, HanningWindow, SplitCosineBellWindow,
-                       TopHatWindow, TukeyWindow)
+from photutils.psf.matching.windows import (CosineBellWindow, HanningWindow,
+                                            SplitCosineBellWindow,
+                                            TopHatWindow, TukeyWindow)
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
 def test_hanning():

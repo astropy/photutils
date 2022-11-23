@@ -11,9 +11,8 @@ import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData
 from astropy.utils.exceptions import AstropyWarning
-
-from ..aperture import CircularAperture
-from ..utils._parameters import as_pair
+from photutils.aperture import CircularAperture
+from photutils.utils._parameters import as_pair
 
 __all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
            'GriddedPSFModel', 'IntegratedGaussianPRF', 'PRFAdapter']

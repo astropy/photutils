@@ -13,12 +13,11 @@ from astropy.stats import SigmaClip
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_almost_equal
-
-from ...datasets import make_gaussian_prf_sources_image
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..epsf import EPSFBuilder, EPSFFitter
-from ..epsf_stars import EPSFStars, extract_stars
-from ..models import EPSFModel, IntegratedGaussianPRF
+from photutils.datasets import make_gaussian_prf_sources_image
+from photutils.psf.epsf import EPSFBuilder, EPSFFitter
+from photutils.psf.epsf_stars import EPSFStars, extract_stars
+from photutils.psf.models import EPSFModel, IntegratedGaussianPRF
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
