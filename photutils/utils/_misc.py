@@ -3,6 +3,7 @@
 This module provides tools to return the installed astropy and photutils
 versions.
 """
+
 import sys
 from datetime import datetime, timezone
 

@@ -6,8 +6,7 @@ Tests for the moments module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal
-
-from .._moments import _moments, _moments_central
+from photutils.utils._moments import _moments, _moments_central
 
 
 def test_moments():

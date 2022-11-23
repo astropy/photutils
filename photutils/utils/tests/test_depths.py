@@ -2,6 +2,7 @@
 """
 Tests for the depths module.
 """
+
 import itertools
 
 import astropy.units as u
@@ -11,11 +12,10 @@ from astropy.convolution import convolve
 from astropy.tests.helper import assert_quantity_allclose
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
-
-from ...datasets import make_100gaussians_image
-from ...segmentation import SourceFinder, make_2dgaussian_kernel
-from .._optional_deps import HAS_SCIPY  # noqa
-from ..depths import ImageDepth
+from photutils.datasets import make_100gaussians_image
+from photutils.segmentation import SourceFinder, make_2dgaussian_kernel
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils.depths import ImageDepth
 
 bool_vals = (True, False)
 

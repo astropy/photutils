@@ -9,9 +9,9 @@ import astropy.units as u
 import numpy as np
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
-
-from ._optional_deps import HAS_TQDM  # pylint: disable=E0611  # noqa: F401
-from .footprints import circular_footprint
+from photutils.utils._optional_deps import (
+    HAS_TQDM)  # pylint: disable=E0611  # noqa: F401
+from photutils.utils.footprints import circular_footprint
 
 __all__ = ['ImageDepth']
 __doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['scipy']}
@@ -241,7 +241,7 @@ class ImageDepth:
             calculated from the flux limit and the input ``zeropoint``.
         """
         # prevent circular import
-        from ..aperture import CircularAperture
+        from photutils.aperture import CircularAperture
 
         iter_range = range(self.niters)
         if self.progress_bar and HAS_TQDM:
