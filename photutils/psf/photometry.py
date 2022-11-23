@@ -292,8 +292,8 @@ class BasicPSFPhotometry:
             a `True` value indicates the corresponding element of
             ``image`` is masked.
         progress_bar : bool, optional
-            Use a progress bar to show progress over the star groups.
-            The progress bar requires that the `tqdm
+            Whether to display a progress bar when fitting the
+            star groups. The progress bar requires that the `tqdm
             <https://tqdm.github.io/>`_ optional dependency be
             installed. Note that the progress bar does not currently
             work in the Jupyter console due to limitations in ``tqdm``.
@@ -464,13 +464,14 @@ class BasicPSFPhotometry:
 
         y, x = np.indices(image.shape)
 
-        if progress_bar and HAS_TQDM:
-            from tqdm.auto import tqdm as progress_bar  # pragma: no cover
-        else:
-            progress_bar = lambda x: x  # noqa: E731
-
         star_groups = star_groups.group_by('group_id')
-        for group in progress_bar(star_groups.groups):
+        group_iter = star_groups.groups
+        if progress_bar and HAS_TQDM:
+            from tqdm.auto import tqdm  # pragma: no cover
+
+            group_iter = tqdm(group_iter, desc='Star Group')  # pragma: no cover
+
+        for group in group_iter:
             group_psf = get_grouped_psf_model(self.psf_model, group,
                                               self._pars_to_set)
             usepixel = np.zeros_like(image, dtype=bool)
