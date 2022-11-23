@@ -2,6 +2,7 @@
 """
 Tests for the catalog module.
 """
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -10,19 +11,20 @@ from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
 from numpy.testing import assert_allclose, assert_equal
-
-from ...aperture import BoundingBox, CircularAperture, EllipticalAperture
-from ...background import Background2D, MedianBackground
-from ...datasets import (make_100gaussians_image, make_gwcs, make_noise_image,
-                         make_wcs)
-from ...utils._convolution import _filter_data
-from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY  # noqa
-from ...utils.cutouts import CutoutImage
-from ..catalog import SourceCatalog
-from ..core import SegmentationImage
-from ..detect import detect_sources
-from ..finder import SourceFinder
-from ..utils import make_2dgaussian_kernel
+from photutils.aperture import (BoundingBox, CircularAperture,
+                                EllipticalAperture)
+from photutils.background import Background2D, MedianBackground
+from photutils.datasets import (make_100gaussians_image, make_gwcs,
+                                make_noise_image, make_wcs)
+from photutils.segmentation.catalog import SourceCatalog
+from photutils.segmentation.core import SegmentationImage
+from photutils.segmentation.detect import detect_sources
+from photutils.segmentation.finder import SourceFinder
+from photutils.segmentation.utils import make_2dgaussian_kernel
+from photutils.utils._convolution import _filter_data
+from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,  # noqa
+                                            HAS_SCIPY)
+from photutils.utils.cutouts import CutoutImage
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

@@ -15,16 +15,15 @@ from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
-
-from ..aperture import (BoundingBox, CircularAperture, EllipticalAperture,
-                        RectangularAnnulus)
-from ..background import SExtractorBackground
-from ..utils._convolution import _filter_data
-from ..utils._misc import _get_meta
-from ..utils._moments import _moments, _moments_central
-from ..utils._quantity_helpers import process_quantities
-from ..utils.cutouts import CutoutImage
-from .core import SegmentationImage
+from photutils.aperture import (BoundingBox, CircularAperture,
+                                EllipticalAperture, RectangularAnnulus)
+from photutils.background import SExtractorBackground
+from photutils.segmentation.core import SegmentationImage
+from photutils.utils._convolution import _filter_data
+from photutils.utils._misc import _get_meta
+from photutils.utils._moments import _moments, _moments_central
+from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils.cutouts import CutoutImage
 
 __all__ = ['SourceCatalog']
 __doctest_requires__ = {('SourceCatalog', 'SourceCatalog.*'): ['scipy']}
@@ -2534,7 +2533,7 @@ class SourceCatalog:
             mask = data_mask
 
         if self.apermask_method == 'correct':
-            from .utils import _mask_to_mirrored_value
+            from photutils.segmentation.utils import _mask_to_mirrored_value
             data = _mask_to_mirrored_value(data, segm_mask, cutout_xycen,
                                            mask=mask)
             if error is not None:

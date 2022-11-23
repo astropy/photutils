@@ -6,10 +6,10 @@ Tests for the _utils module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal
-
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..utils import (_make_binary_structure, _mask_to_mirrored_value,
-                     make_2dgaussian_kernel)
+from photutils.segmentation.utils import (_make_binary_structure,
+                                          _mask_to_mirrored_value,
+                                          make_2dgaussian_kernel)
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
 def test_make_2dgaussian_kernel():
