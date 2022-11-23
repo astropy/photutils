@@ -5,9 +5,9 @@ This module provides tools for calculating limiting fluxes.
 
 import warnings
 
+import astropy.units as u
 import numpy as np
 from astropy.stats import SigmaClip
-import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 
 from ._optional_deps import HAS_TQDM  # pylint: disable=E0611  # noqa: F401

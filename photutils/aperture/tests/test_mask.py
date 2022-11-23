@@ -5,11 +5,11 @@ Tests for the mask module.
 
 import astropy.units as u
 import numpy as np
-from numpy.testing import assert_allclose, assert_almost_equal
 import pytest
+from numpy.testing import assert_allclose, assert_almost_equal
 
 from ..bounding_box import BoundingBox
-from ..circle import CircularAperture, CircularAnnulus
+from ..circle import CircularAnnulus, CircularAperture
 from ..mask import ApertureMask
 from ..rectangle import RectangularAnnulus
 

@@ -4,27 +4,27 @@ This module provides tools for calculating the properties of sources
 defined by a segmentation image.
 """
 
-from copy import deepcopy
 import functools
 import inspect
 import warnings
+from copy import deepcopy
 
+import astropy.units as u
+import numpy as np
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.table import QTable
-import astropy.units as u
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
-import numpy as np
 
-from .core import SegmentationImage
 from ..aperture import (BoundingBox, CircularAperture, EllipticalAperture,
                         RectangularAnnulus)
 from ..background import SExtractorBackground
 from ..utils._convolution import _filter_data
-from ..utils.cutouts import CutoutImage
 from ..utils._misc import _get_meta
 from ..utils._moments import _moments, _moments_central
 from ..utils._quantity_helpers import process_quantities
+from ..utils.cutouts import CutoutImage
+from .core import SegmentationImage
 
 __all__ = ['SourceCatalog']
 __doctest_requires__ = {('SourceCatalog', 'SourceCatalog.*'): ['scipy']}

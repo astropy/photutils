@@ -3,17 +3,17 @@
 Tests for the core module.
 """
 
-from astropy.stats import SigmaClip
 import astropy.units as u
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from astropy.stats import SigmaClip
+from numpy.testing import assert_allclose
 
+from ...datasets import make_noise_image
 from ..core import (BiweightLocationBackground, BiweightScaleBackgroundRMS,
                     MADStdBackgroundRMS, MeanBackground, MedianBackground,
                     MMMBackground, ModeEstimatorBackground,
                     SExtractorBackground, StdBackgroundRMS)
-from ...datasets import make_noise_image
 
 BKG = 0.0
 STD = 0.5

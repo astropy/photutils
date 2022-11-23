@@ -3,8 +3,8 @@
 This module provides tools for detecting sources in an image.
 """
 
-from .detect import detect_sources
 from .deblend import deblend_sources
+from .detect import detect_sources
 
 __all__ = ['SourceFinder']
 

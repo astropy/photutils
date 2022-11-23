@@ -4,19 +4,19 @@ This module defines the base aperture classes.
 """
 
 import abc
-from copy import deepcopy
 import inspect
+from copy import deepcopy
 
+import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
-import astropy.units as u
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 
-from .bounding_box import BoundingBox
+from ..utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 from ._photometry_utils import (_handle_units, _prepare_photometry_data,
                                 _validate_inputs)
-from ..utils._wcs_helpers import _pixel_scale_angle_at_skycoord
+from .bounding_box import BoundingBox
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture']
 

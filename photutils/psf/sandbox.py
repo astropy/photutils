@@ -5,12 +5,12 @@ for prime-time (i.e., is not considered a stable public API), but is
 included either for experimentation or as legacy code.
 """
 
+import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import extract_array, subpixel_indices
 from astropy.table import Table
 from astropy.utils.decorators import deprecated
-import numpy as np
 
 from ..segmentation.utils import _mask_to_mirrored_value
 

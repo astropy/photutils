@@ -9,6 +9,7 @@ intersection of a triangle with a unit circle.
 """
 
 import numpy as np
+
 cimport numpy as np
 
 __all__ = ['elliptical_overlap_grid']
@@ -31,7 +32,7 @@ cimport cython
 # NOTE: Here we need to make sure we use cimport to import the C functions from
 # core (since these were defined with cdef). This also requires the core.pxd
 # file to exist with the function signatures.
-from .core cimport distance, area_triangle, overlap_area_triangle_unit_circle
+from .core cimport area_triangle, distance, overlap_area_triangle_unit_circle
 
 
 def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,

@@ -8,11 +8,11 @@ import math
 
 from astropy.utils import lazyproperty
 
-from .attributes import (PixelPositions, PositiveScalar, SkyCoordPositions,
-                         PositiveScalarAngle)
+from ..geometry import circular_overlap_grid
+from .attributes import (PixelPositions, PositiveScalar, PositiveScalarAngle,
+                         SkyCoordPositions)
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
-from ..geometry import circular_overlap_grid
 
 __all__ = ['CircularMaskMixin', 'CircularAperture', 'CircularAnnulus',
            'SkyCircularAperture', 'SkyCircularAnnulus']

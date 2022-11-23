@@ -5,20 +5,20 @@ Tests for the epsf module.
 
 import itertools
 
+import numpy as np
+import pytest
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import NDData
-from astropy.table import Table
 from astropy.stats import SigmaClip
+from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 from numpy.testing import assert_allclose, assert_almost_equal
-import pytest
 
-from ..epsf import EPSFBuilder, EPSFFitter
-from ..epsf_stars import extract_stars, EPSFStars
-from ..models import IntegratedGaussianPRF, EPSFModel
 from ...datasets import make_gaussian_prf_sources_image
 from ...utils._optional_deps import HAS_SCIPY  # noqa
+from ..epsf import EPSFBuilder, EPSFFitter
+from ..epsf_stars import EPSFStars, extract_stars
+from ..models import EPSFModel, IntegratedGaussianPRF
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

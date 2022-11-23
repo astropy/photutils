@@ -4,14 +4,14 @@ This module provides classes for a segmentation image and a single
 segment within a segmentation image.
 """
 
-from copy import deepcopy
 import inspect
 import warnings
+from copy import deepcopy
 
+import numpy as np
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 
 from ..aperture import BoundingBox
 from ..utils.colormaps import make_random_cmap

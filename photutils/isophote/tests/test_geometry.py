@@ -4,8 +4,8 @@ Tests for the geometry module.
 """
 
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
 
 from ..geometry import EllipseGeometry
 

@@ -4,19 +4,19 @@ This module provides tools for deblending overlapping sources labeled in
 a segmentation image.
 """
 
-from multiprocessing import cpu_count, get_context
 import warnings
+from multiprocessing import cpu_count, get_context
 
+import numpy as np
 from astropy.units import Quantity
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 
+from ..utils._convolution import _filter_data
+from ..utils._optional_deps import HAS_TQDM  # noqa
 from .core import SegmentationImage
 from .detect import _detect_sources
 from .utils import _make_binary_structure
-from ..utils._convolution import _filter_data
-from ..utils._optional_deps import HAS_TQDM  # noqa
 
 __all__ = ['deblend_sources']
 

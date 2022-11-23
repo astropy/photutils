@@ -4,15 +4,15 @@ Tests for the harmonics module.
 """
 
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
 
-from .make_test_data import make_test_image
+from ...utils._optional_deps import HAS_SCIPY  # noqa
+from ..fitter import EllipseFitter
 from ..harmonics import (first_and_second_harmonic_function,
                          fit_first_and_second_harmonics, fit_upper_harmonic)
 from ..sample import EllipseSample
-from ..fitter import EllipseFitter
-from ...utils._optional_deps import HAS_SCIPY  # noqa
+from .make_test_data import make_test_image
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

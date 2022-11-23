@@ -3,19 +3,18 @@
 Tests for the detect module.
 """
 
-from astropy.stats import SigmaClip
 import astropy.units as u
-from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
-from numpy.testing import assert_allclose, assert_array_equal
 import pytest
+from astropy.stats import SigmaClip
+from astropy.utils.exceptions import AstropyDeprecationWarning
+from numpy.testing import assert_allclose, assert_array_equal
 
-from ..detect import detect_threshold, detect_sources, make_source_mask
-from ..utils import make_2dgaussian_kernel
 from ...datasets import make_4gaussians_image
-from ...utils.exceptions import NoDetectionsWarning
 from ...utils._optional_deps import HAS_SCIPY  # noqa
-
+from ...utils.exceptions import NoDetectionsWarning
+from ..detect import detect_sources, detect_threshold, make_source_mask
+from ..utils import make_2dgaussian_kernel
 
 DATA = np.array([[0, 1, 0], [0, 2, 0], [0, 0, 0]]).astype(float)
 REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])

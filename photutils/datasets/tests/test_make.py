@@ -3,20 +3,19 @@
 Tests for the make module.
 """
 
+import numpy as np
+import pytest
 from astropy.modeling.models import Moffat2D
 from astropy.table import Table
-import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 
+from ...utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
 from .. import (apply_poisson_noise, make_4gaussians_image,
                 make_100gaussians_image, make_gaussian_prf_sources_image,
                 make_gaussian_sources_image, make_gwcs,
                 make_model_sources_image, make_noise_image,
                 make_random_gaussians_table, make_random_models_table,
                 make_wcs)
-from ...utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
-
 
 SOURCE_TABLE = Table()
 SOURCE_TABLE['flux'] = [1, 2, 3]

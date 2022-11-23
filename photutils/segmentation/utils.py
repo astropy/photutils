@@ -4,7 +4,6 @@ This module provides utility functions for image segmentation.
 """
 
 import numpy as np
-
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
 

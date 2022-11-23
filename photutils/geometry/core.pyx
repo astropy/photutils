@@ -5,6 +5,7 @@ The functions here are the core geometry functions.
 """
 
 import numpy as np
+
 cimport numpy as np
 
 
@@ -22,7 +23,6 @@ DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
 
 cimport cython
-
 
 ctypedef struct point:
     double x

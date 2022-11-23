@@ -5,16 +5,16 @@ Tests for the models module.
 
 from itertools import product
 
+import numpy as np
+import pytest
 from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.nddata import NDData
-import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 
+from ...segmentation import SourceCatalog, detect_sources
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 from ..models import (FittableImageModel, GriddedPSFModel,
                       IntegratedGaussianPRF, PRFAdapter)
-from ...segmentation import detect_sources, SourceCatalog
-from ...utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

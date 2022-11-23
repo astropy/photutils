@@ -49,15 +49,15 @@ reference for the regression.
 import math
 import os.path as op
 
-from astropy.io import fits
-from astropy.table import Table
 import numpy as np
 import pytest
+from astropy.io import fits
+from astropy.table import Table
 
-from ..ellipse import Ellipse
-from ..integrator import BILINEAR
 from ...datasets import get_path
 from ...utils._optional_deps import HAS_SCIPY  # noqa
+from ..ellipse import Ellipse
+from ..integrator import BILINEAR
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

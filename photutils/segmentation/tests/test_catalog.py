@@ -2,27 +2,27 @@
 """
 Tests for the catalog module.
 """
+import astropy.units as u
+import numpy as np
+import pytest
 from astropy.convolution import convolve
 from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
-import astropy.units as u
 from numpy.testing import assert_allclose, assert_equal
-import numpy as np
-import pytest
 
+from ...aperture import BoundingBox, CircularAperture, EllipticalAperture
+from ...background import Background2D, MedianBackground
+from ...datasets import (make_100gaussians_image, make_gwcs, make_noise_image,
+                         make_wcs)
+from ...utils._convolution import _filter_data
+from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY  # noqa
+from ...utils.cutouts import CutoutImage
 from ..catalog import SourceCatalog
 from ..core import SegmentationImage
 from ..detect import detect_sources
 from ..finder import SourceFinder
 from ..utils import make_2dgaussian_kernel
-from ...aperture import BoundingBox, CircularAperture, EllipticalAperture
-from ...background import Background2D, MedianBackground
-from ...datasets import (make_gwcs, make_wcs, make_noise_image,
-                         make_100gaussians_image)
-from ...utils._convolution import _filter_data
-from ...utils.cutouts import CutoutImage
-from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

@@ -3,13 +3,13 @@
 This module provides classes to store the results of isophote fits.
 """
 
-from astropy.table import QTable
 import astropy.units as u
 import numpy as np
+from astropy.table import QTable
 
+from ..utils._misc import _get_version_info
 from .harmonics import (first_and_second_harmonic_function,
                         fit_first_and_second_harmonics, fit_upper_harmonic)
-from ..utils._misc import _get_version_info
 
 __all__ = ['Isophote', 'IsophoteList']
 

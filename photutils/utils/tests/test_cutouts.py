@@ -3,10 +3,10 @@
 Tests for the cutouts module.
 """
 
-from astropy.nddata.utils import PartialOverlapError
 import numpy as np
-from numpy.testing import assert_equal
 import pytest
+from astropy.nddata.utils import PartialOverlapError
+from numpy.testing import assert_equal
 
 from ...aperture import BoundingBox
 from ...datasets import make_100gaussians_image

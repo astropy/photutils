@@ -4,16 +4,16 @@ Tests for the deblend module.
 """
 import warnings
 
+import numpy as np
+import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 from numpy.testing import assert_allclose, assert_equal
-import pytest
 
+from ...utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
 from ..core import SegmentationImage
 from ..deblend import deblend_sources
 from ..detect import detect_sources
-from ...utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

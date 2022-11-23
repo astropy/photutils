@@ -3,15 +3,15 @@
 Tests for the fourier module.
 """
 
+import numpy as np
+import pytest
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling.models import Gaussian2D
-import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 
+from ....utils._optional_deps import HAS_SCIPY  # noqa
 from ..fourier import create_matching_kernel, resize_psf
 from ..windows import SplitCosineBellWindow
-from ....utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

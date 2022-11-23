@@ -5,8 +5,8 @@ This module provides a class to fit ellipses.
 
 import math
 
-from astropy import log
 import numpy as np
+from astropy import log
 
 from .harmonics import (first_and_second_harmonic_function,
                         fit_first_and_second_harmonics)

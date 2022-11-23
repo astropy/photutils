@@ -7,9 +7,8 @@ RMS in an array of any dimension.
 import abc
 import warnings
 
-from astropy.stats import (biweight_location, biweight_scale, mad_std,
-                           SigmaClip)
 import numpy as np
+from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
 
 from ..utils._stats import nanmean, nanmedian, nanstd
 

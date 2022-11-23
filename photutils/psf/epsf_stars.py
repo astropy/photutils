@@ -6,17 +6,17 @@ structures to hold the cutouts for fitting and building ePSFs.
 
 import warnings
 
+import numpy as np
 from astropy.nddata import NDData
-from astropy.nddata.utils import (overlap_slices, NoOverlapError,
-                                  PartialOverlapError)
+from astropy.nddata.utils import (NoOverlapError, PartialOverlapError,
+                                  overlap_slices)
 from astropy.table import Table
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 
-from .utils import _interpolate_missing_data
 from ..aperture import BoundingBox
 from ..utils._parameters import as_pair
+from .utils import _interpolate_missing_data
 
 __all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars']
 

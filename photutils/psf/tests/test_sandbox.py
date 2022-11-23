@@ -3,16 +3,15 @@
 Tests for the sandbox module.
 """
 
+import numpy as np
+import pytest
 from astropy.convolution.utils import discretize_model
 from astropy.modeling.models import Gaussian2D
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyDeprecationWarning
-import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 
 from ..sandbox import DiscretePRF
-
 
 PSF_SIZE = 11
 GAUSSIAN_WIDTH = 1.

@@ -3,14 +3,14 @@
 Tests for the convolution module.
 """
 
-from astropy.convolution import Gaussian2DKernel
 import astropy.units as u
-from numpy.testing import assert_allclose
 import pytest
+from astropy.convolution import Gaussian2DKernel
+from numpy.testing import assert_allclose
 
+from ...datasets import make_100gaussians_image
 from .._convolution import _filter_data
 from .._optional_deps import HAS_SCIPY  # noqa
-from ...datasets import make_100gaussians_image
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

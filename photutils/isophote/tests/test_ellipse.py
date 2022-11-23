@@ -4,18 +4,18 @@ Tests for the ellipse module.
 """
 
 import math
-from astropy.io import fits
-from astropy.modeling.models import Gaussian2D
+
 import numpy as np
 import pytest
+from astropy.io import fits
+from astropy.modeling.models import Gaussian2D
 
-from .make_test_data import make_test_image
+from ...datasets import get_path, make_noise_image
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 from ..ellipse import Ellipse
 from ..geometry import EllipseGeometry
 from ..isophote import Isophote, IsophoteList
-from ...datasets import get_path, make_noise_image
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-
+from .make_test_data import make_test_image
 
 # define an off-center position and a tilted sma
 POS = 384

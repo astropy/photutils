@@ -5,18 +5,17 @@ Tests for the background_2d module.
 
 import itertools
 
-from astropy.nddata import NDData, CCDData
 import astropy.units as u
-from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
-from numpy.testing import assert_allclose, assert_equal
 import pytest
+from astropy.nddata import CCDData, NDData
+from astropy.utils.exceptions import AstropyUserWarning
+from numpy.testing import assert_allclose, assert_equal
 
-from ..core import MeanBackground
-from ..background_2d import Background2D
-from ..interpolators import BkgZoomInterpolator, BkgIDWInterpolator
 from ...utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
-
+from ..background_2d import Background2D
+from ..core import MeanBackground
+from ..interpolators import BkgIDWInterpolator, BkgZoomInterpolator
 
 DATA = np.ones((100, 100))
 BKG_RMS = np.zeros((100, 100))

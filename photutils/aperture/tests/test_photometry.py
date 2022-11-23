@@ -3,28 +3,26 @@
 Tests for the photometry module.
 """
 
-import pytest
+import astropy.units as u
 import numpy as np
-from numpy.testing import (assert_allclose, assert_array_equal,
-                           assert_array_less)
-
+import pytest
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import Table
-import astropy.units as u
 from astropy.wcs import WCS
+from numpy.testing import (assert_allclose, assert_array_equal,
+                           assert_array_less)
 
-from ..photometry import aperture_photometry
-from ..circle import (CircularAperture, CircularAnnulus, SkyCircularAperture,
-                      SkyCircularAnnulus)
-from ..ellipse import (EllipticalAperture, EllipticalAnnulus,
-                       SkyEllipticalAperture, SkyEllipticalAnnulus)
-from ..rectangle import (RectangularAperture, RectangularAnnulus,
-                         SkyRectangularAperture, SkyRectangularAnnulus)
-from ...datasets import get_path, make_4gaussians_image, make_wcs, make_gwcs
+from ...datasets import get_path, make_4gaussians_image, make_gwcs, make_wcs
 from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB  # noqa
-
+from ..circle import (CircularAnnulus, CircularAperture, SkyCircularAnnulus,
+                      SkyCircularAperture)
+from ..ellipse import (EllipticalAnnulus, EllipticalAperture,
+                       SkyEllipticalAnnulus, SkyEllipticalAperture)
+from ..photometry import aperture_photometry
+from ..rectangle import (RectangularAnnulus, RectangularAperture,
+                         SkyRectangularAnnulus, SkyRectangularAperture)
 
 APERTURE_CL = [CircularAperture,
                CircularAnnulus,

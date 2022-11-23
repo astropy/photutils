@@ -4,9 +4,9 @@ This module defines descriptor classes for aperture attribute
 validation.
 """
 
-from astropy.coordinates import SkyCoord
 import astropy.units as u
 import numpy as np
+from astropy.coordinates import SkyCoord
 
 __all__ = ['ApertureAttribute', 'PixelPositions', 'SkyCoordPositions',
            'PositiveScalar', 'ScalarAngle', 'ScalarAngleOrValue']

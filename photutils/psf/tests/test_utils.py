@@ -3,19 +3,18 @@
 Tests for the utils module.
 """
 
+import numpy as np
+import pytest
 from astropy.convolution.utils import discretize_model
 from astropy.modeling.models import Gaussian2D
 from astropy.table import Table
-import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 from ..groupstars import DAOGroup
 from ..models import IntegratedGaussianPRF
 from ..photometry import BasicPSFPhotometry
 from ..utils import get_grouped_psf_model, prepare_psf_model, subtract_psf
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-
 
 PSF_SIZE = 11
 GAUSSIAN_WIDTH = 1.
@@ -48,8 +47,8 @@ def moffimg():
     """
     This fixture requires scipy so don't call it from non-scipy tests
     """
-    from scipy import integrate
     from astropy.modeling.models import Moffat2D
+    from scipy import integrate
 
     mof = Moffat2D(alpha=4.8)
 

@@ -3,16 +3,16 @@
 Tests for the finder module.
 """
 
-from astropy.convolution import convolve
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.convolution import convolve
 
+from ...datasets import make_100gaussians_image
+from ...utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
+from ...utils.exceptions import NoDetectionsWarning
 from ..finder import SourceFinder
 from ..utils import make_2dgaussian_kernel
-from ...datasets import make_100gaussians_image
-from ...utils.exceptions import NoDetectionsWarning
-from ...utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

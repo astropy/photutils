@@ -5,8 +5,8 @@ This module provides a class to fit elliptical isophotes.
 
 import warnings
 
-from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
+from astropy.utils.exceptions import AstropyUserWarning
 
 from .fitter import (DEFAULT_CONVERGENCE, DEFAULT_FFLAG, DEFAULT_MAXGERR,
                      DEFAULT_MAXIT, DEFAULT_MINIT, CentralEllipseFitter,

@@ -6,8 +6,8 @@ geometry of an ellipse.
 
 import math
 
-from astropy import log
 import numpy as np
+from astropy import log
 
 __all__ = ['EllipseGeometry']
 

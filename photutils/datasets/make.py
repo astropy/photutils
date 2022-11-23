@@ -4,14 +4,14 @@ This module provides tools for making example datasets for examples and
 tests.
 """
 
+import astropy.units as u
+import numpy as np
 from astropy import coordinates as coord
 from astropy.convolution import discretize_model
 from astropy.io import fits
 from astropy.modeling import models
 from astropy.table import QTable
-import astropy.units as u
 from astropy.wcs import WCS
-import numpy as np
 
 from ..psf import IntegratedGaussianPRF
 from ..utils._misc import _get_version_info
@@ -859,8 +859,8 @@ def make_gwcs(shape, galactic=False):
     detector linear_transform
         icrs             None
     """
-    from gwcs import wcs as gwcs_wcs
     from gwcs import coordinate_frames as cf
+    from gwcs import wcs as gwcs_wcs
 
     rho = np.pi / 3.
     scale = 0.1 / 3600.  # 0.1 arcsec/pixel in deg/pix

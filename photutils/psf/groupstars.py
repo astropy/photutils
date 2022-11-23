@@ -5,8 +5,8 @@ This module provides classes to perform grouping of stars.
 
 import abc
 
-from astropy.table import Column
 import numpy as np
+from astropy.table import Column
 
 __all__ = ['DAOGroup', 'DBSCANGroup', 'GroupStarsBase']
 

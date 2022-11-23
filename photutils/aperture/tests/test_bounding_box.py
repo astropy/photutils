@@ -3,12 +3,12 @@
 Tests for the bounding_box module.
 """
 
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
 
+from ...utils._optional_deps import HAS_MATPLOTLIB  # noqa
 from ..bounding_box import BoundingBox
 from ..rectangle import RectangularAperture
-from ...utils._optional_deps import HAS_MATPLOTLIB  # noqa
 
 
 def test_bounding_box_init():

@@ -5,17 +5,17 @@ This module provides tools for detecting sources in an image.
 
 import warnings
 
+import numpy as np
 from astropy.convolution import convolve
 from astropy.stats import SigmaClip
 from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 
-from .core import SegmentationImage
-from .utils import _make_binary_structure
 from ..utils._quantity_helpers import process_quantities
 from ..utils._stats import nanmean, nanstd
 from ..utils.exceptions import NoDetectionsWarning
+from .core import SegmentationImage
+from .utils import _make_binary_structure
 
 __all__ = ['detect_threshold', 'detect_sources', 'make_source_mask']
 
@@ -187,8 +187,8 @@ def _detect_sources(data, thresholds, npixels, footprint, inverse_mask,
         threshold, then the output list will contain `None` for that
         threshold. Also see the ``deblend_mode`` keyword.
     """
-    from scipy.ndimage import label as ndi_label
     from scipy.ndimage import find_objects
+    from scipy.ndimage import label as ndi_label
 
     segms = []
     for threshold in thresholds:

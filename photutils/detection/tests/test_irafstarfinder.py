@@ -6,16 +6,15 @@ Tests for IRAFStarFinder.
 import itertools
 import os.path as op
 
-from astropy.table import Table
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from astropy.table import Table
+from numpy.testing import assert_allclose
 
-from ..irafstarfinder import IRAFStarFinder
 from ...datasets import make_100gaussians_image
-from ...utils.exceptions import NoDetectionsWarning
 from ...utils._optional_deps import HAS_SCIPY  # noqa
-
+from ...utils.exceptions import NoDetectionsWarning
+from ..irafstarfinder import IRAFStarFinder
 
 DATA = make_100gaussians_image()
 THRESHOLDS = [8.0, 10.0]

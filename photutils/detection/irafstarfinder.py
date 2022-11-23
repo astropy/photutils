@@ -5,16 +5,16 @@ This module implements the IRAFStarFinder class.
 import inspect
 import warnings
 
+import numpy as np
 from astropy.nddata import extract_array
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-import numpy as np
 
-from .core import StarFinderBase, _StarFinderKernel
 from ..utils._convolution import _filter_data
 from ..utils._misc import _get_version_info
 from ..utils._moments import _moments, _moments_central
 from ..utils.exceptions import NoDetectionsWarning
+from .core import StarFinderBase, _StarFinderKernel
 
 __all__ = ['IRAFStarFinder']
 

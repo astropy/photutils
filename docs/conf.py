@@ -12,10 +12,10 @@
 # the global Astropy configuration which is loaded here before anything
 # else. See astropy.sphinx.conf for which values are set there.
 
-from configparser import ConfigParser
-from datetime import datetime
 import os
 import sys
+from configparser import ConfigParser
+from datetime import datetime
 
 try:
     from sphinx_astropy.conf.v1 import *  # noqa

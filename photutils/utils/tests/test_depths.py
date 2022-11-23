@@ -4,19 +4,18 @@ Tests for the depths module.
 """
 import itertools
 
+import astropy.units as u
+import numpy as np
+import pytest
 from astropy.convolution import convolve
 from astropy.tests.helper import assert_quantity_allclose
-import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 
 from ...datasets import make_100gaussians_image
 from ...segmentation import SourceFinder, make_2dgaussian_kernel
-from ..depths import ImageDepth
 from .._optional_deps import HAS_SCIPY  # noqa
-
+from ..depths import ImageDepth
 
 bool_vals = (True, False)
 

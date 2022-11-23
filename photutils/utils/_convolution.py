@@ -5,10 +5,10 @@ This module provides tools for convolving images with a kernel.
 
 import warnings
 
+import numpy as np
 from astropy.convolution import Kernel2D
 from astropy.units import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 
 
 def _filter_data(data, kernel, mode='constant', fill_value=0.0,

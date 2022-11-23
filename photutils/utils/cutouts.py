@@ -4,7 +4,6 @@ This module provides tools for generating 2D image cutouts.
 """
 
 import numpy as np
-
 from astropy.nddata import extract_array, overlap_slices
 from astropy.utils import lazyproperty
 

@@ -4,10 +4,9 @@ This module defines a class for a rectangular bounding box.
 """
 import math
 
+import numpy as np
 from astropy.utils import deprecated
 from astropy.utils.decorators import deprecated_renamed_argument
-
-import numpy as np
 
 __all__ = ['BoundingBox']
 

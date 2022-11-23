@@ -3,16 +3,16 @@
 Tests for the epsf_stars module.
 """
 
+import numpy as np
+import pytest
 from astropy.modeling.models import Moffat2D
 from astropy.nddata import NDData
 from astropy.table import Table
-import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 
-from ..epsf_stars import extract_stars, EPSFStars
-from ..models import EPSFModel, IntegratedGaussianPRF
 from ...utils._optional_deps import HAS_SCIPY  # noqa
+from ..epsf_stars import EPSFStars, extract_stars
+from ..models import EPSFModel, IntegratedGaussianPRF
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -88,6 +88,7 @@ def test_stars_pickleable():
     pickled/unpickled for use multiprocessing
     """
     from multiprocessing.reduction import ForkingPickler
+
     # Doesn't need to actually contain anything useful
     stars = EPSFStars([1])
     # This should not blow up

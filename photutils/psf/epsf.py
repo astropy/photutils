@@ -8,21 +8,20 @@ ISR WFC3 2016-12.
 import copy
 import warnings
 
+import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
-                                  NoOverlapError)
+from astropy.nddata.utils import (NoOverlapError, PartialOverlapError,
+                                  overlap_slices)
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 
-from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
-from .models import EPSFModel
-from .utils import _interpolate_missing_data
 from ..centroids import centroid_com
 from ..utils._optional_deps import HAS_BOTTLENECK, HAS_TQDM  # noqa
 from ..utils._parameters import as_pair
 from ..utils._round import _py2intround
-
+from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
+from .models import EPSFModel
+from .utils import _interpolate_missing_data
 
 __all__ = ['EPSFFitter', 'EPSFBuilder']
 

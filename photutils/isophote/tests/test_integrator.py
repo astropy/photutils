@@ -3,14 +3,14 @@
 Tests for the integrator module.
 """
 
-from astropy.io import fits
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from astropy.io import fits
+from numpy.testing import assert_allclose
 
+from ...datasets import get_path
 from ..integrator import BILINEAR, MEAN, MEDIAN, NEAREST_NEIGHBOR
 from ..sample import EllipseSample
-from ...datasets import get_path
 
 
 @pytest.mark.remote_data

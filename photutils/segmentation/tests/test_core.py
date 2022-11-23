@@ -3,15 +3,15 @@
 Tests for the core module.
 """
 
+import numpy as np
+import pytest
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 from numpy.testing import assert_allclose, assert_equal
-import pytest
 
-from ..core import Segment, SegmentationImage
 from ...utils import circular_footprint
 from ...utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
+from ..core import Segment, SegmentationImage
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

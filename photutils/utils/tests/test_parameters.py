@@ -4,8 +4,8 @@ Tests for the parameters module.
 """
 
 import numpy as np
-from numpy.testing import assert_equal
 import pytest
+from numpy.testing import assert_equal
 
 from .._parameters import as_pair
 

@@ -6,16 +6,15 @@ Tests for the core module.
 import itertools
 from contextlib import nullcontext
 
+import numpy as np
+import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 from ..core import centroid_com, centroid_quadratic, centroid_sources
 from ..gaussian import centroid_1dg, centroid_2dg
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-
 
 XCEN = 25.7
 YCEN = 26.2

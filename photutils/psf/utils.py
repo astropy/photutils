@@ -3,10 +3,10 @@
 This module provides utilities for PSF-fitting photometry.
 """
 
-from astropy.table import QTable
+import numpy as np
 from astropy.modeling.models import Const2D, Identity, Shift
 from astropy.nddata.utils import add_array, extract_array
-import numpy as np
+from astropy.table import QTable
 
 __all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf']
 

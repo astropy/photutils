@@ -4,12 +4,11 @@ Tests for the interpolation module.
 """
 
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
 
 from .. import ShepardIDWInterpolator as idw
 from .._optional_deps import HAS_SCIPY  # noqa
-
 
 SHAPE = (5, 5)
 DATA = np.ones(SHAPE) * 2.0

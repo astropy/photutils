@@ -4,8 +4,8 @@ Tests for the moments module.
 """
 
 import numpy as np
-from numpy.testing import assert_equal, assert_allclose
 import pytest
+from numpy.testing import assert_allclose, assert_equal
 
 from .._moments import _moments, _moments_central
 
