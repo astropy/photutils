@@ -23,7 +23,7 @@ class TestSourceFinder:
     threshold = 1.5 * 2.0
     npixels = 10
 
-    @pytest.mark.skipif('not HAS_SKIMAGE')
+    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_deblend(self):
         finder = SourceFinder(npixels=self.npixels, progress_bar=False)
         segm1 = finder(self.convolved_data, self.threshold)

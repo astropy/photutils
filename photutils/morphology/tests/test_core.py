@@ -21,7 +21,7 @@ DATA[1, 0:2] = 1.
 DATA[1, 1] = 2.
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_data_properties():
     data = np.ones((2, 2)).astype(float)
     mask = np.array([[False, False], [True, True]])
@@ -36,7 +36,7 @@ def test_data_properties():
     assert props2.area.value == 2.0
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_data_properties_bkg():
     data = np.ones((3, 3)).astype(float)
     props = data_properties(data, background=1.0)

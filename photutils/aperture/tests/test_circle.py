@@ -24,11 +24,11 @@ RADII = (0.0, -1.0, -np.inf)
 class TestCircularAperture(BaseTestAperture):
     aperture = CircularAperture(POSITIONS, r=3.)
 
-    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot(self):
         self.aperture.plot()
 
-    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_returns_patches(self):
         from matplotlib import pyplot as plt
         from matplotlib.patches import Patch
@@ -57,11 +57,11 @@ class TestCircularAperture(BaseTestAperture):
 class TestCircularAnnulus(BaseTestAperture):
     aperture = CircularAnnulus(POSITIONS, r_in=3., r_out=7.)
 
-    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot(self):
         self.aperture.plot()
 
-    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_returns_patches(self):
         from matplotlib import pyplot as plt
         from matplotlib.patches import Patch

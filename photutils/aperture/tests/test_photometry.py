@@ -70,7 +70,7 @@ def test_inside_array_simple(aperture_class, params):
                         atol=0.1)
 
 
-@pytest.mark.skipif('not HAS_MATPLOTLIB')
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_aperture_plots(aperture_class, params):
     # This test should run without any errors, and there is no return
@@ -693,7 +693,7 @@ def test_elliptical_bbox():
     assert ap.bbox.shape == (2 * a, 2 * b)
 
 
-@pytest.mark.skipif('not HAS_GWCS')
+@pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
 @pytest.mark.parametrize('wcs_type', ('wcs', 'gwcs'))
 def test_to_sky_pixel(wcs_type):
     data = make_4gaussians_image()

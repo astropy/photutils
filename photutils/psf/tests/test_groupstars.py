@@ -273,7 +273,7 @@ class TestDAOGROUP:
             daogroup(starlist['x_0', 'y_0', 'id'])
 
 
-@pytest.mark.skipif('not HAS_SKLEARN')
+@pytest.mark.skipif(not HAS_SKLEARN, reason='sklearn is required')
 class TestDBSCANGroup:
     def test_group_stars_one(self):
         x_0 = np.array([0, np.sqrt(2) / 4, np.sqrt(2) / 4, -np.sqrt(2) / 4,

@@ -18,7 +18,7 @@ from photutils.utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.skipif('not HAS_SKIMAGE')
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 class TestDeblendSources:
     def setup_class(self):
         g1 = Gaussian2D(100, 50, 50, 5, 5)
@@ -312,7 +312,7 @@ class TestDeblendSources:
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.skipif('not HAS_SKIMAGE')
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_nmarkers_fallback():
     """
     If there are too many markers, a warning is raised.

@@ -192,7 +192,7 @@ class TestSegmentationImage:
         with pytest.raises(ValueError):
             _ = segm.bbox
 
-    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_make_cmap(self):
         cmap = self.segm.make_cmap()
         assert len(cmap.colors) == (self.segm.max_label + 1)
@@ -202,7 +202,7 @@ class TestSegmentationImage:
                         self.segm.make_cmap(background_color='#000000ff',
                                             seed=0).colors)
 
-    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     @pytest.mark.parametrize('color, alpha', (('#00000000', 0.),
                                               ('#00000040', 64 / 255),
                                               ('#00000080', 128 / 255),
@@ -390,7 +390,7 @@ class TestSegmentationImage:
         assert np.ma.count(segm_outlines) == 8
         assert np.ma.count_masked(segm_outlines) == 17
 
-    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_imshow(self):
         axim = self.segm.imshow(figsize=(5, 5))
         from matplotlib.image import AxesImage

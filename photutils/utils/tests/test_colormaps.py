@@ -10,7 +10,7 @@ from photutils.utils._optional_deps import HAS_MATPLOTLIB  # noqa
 from photutils.utils.colormaps import make_random_cmap
 
 
-@pytest.mark.skipif('not HAS_MATPLOTLIB')
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 def test_colormap():
     ncolors = 100
     cmap = make_random_cmap(ncolors, seed=0)

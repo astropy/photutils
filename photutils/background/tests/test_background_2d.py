@@ -330,7 +330,7 @@ class TestBackground2D:
             bkg = Background2D(DATA, (25, 25), filter_size=(1, 1))
             bkg._make_2d_array(np.arange(3))
 
-    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_meshes(self):
         """
         This test should run without any errors, but there is no return

@@ -360,7 +360,7 @@ class TestSourceCatalog:
         assert obj.sky_bbox_lr is not None
         assert obj.sky_bbox_ur is not None
 
-    @pytest.mark.skipif('not HAS_GWCS')
+    @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
     def test_gwcs(self):
         mywcs = make_gwcs(self.data.shape)
         cat = SourceCatalog(self.data, self.segm, wcs=mywcs)
@@ -586,7 +586,7 @@ class TestSourceCatalog:
         with pytest.raises(ValueError):
             self.cat.make_circular_apertures(-1.0)
 
-    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plots(self):
         from matplotlib.patches import Patch
 
