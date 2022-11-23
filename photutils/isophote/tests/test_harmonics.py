@@ -6,6 +6,7 @@ Tests for the harmonics module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+
 from photutils.isophote.fitter import EllipseFitter
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics,

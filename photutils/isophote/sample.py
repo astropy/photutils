@@ -6,6 +6,7 @@ This module provides a class to sample data along an elliptical path.
 import copy
 
 import numpy as np
+
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import INTEGRATORS
 

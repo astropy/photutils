@@ -8,6 +8,7 @@ import math
 
 import astropy.units as u
 import numpy as np
+
 from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            PositiveScalarAngle, ScalarAngle,
                                            ScalarAngleOrValue,

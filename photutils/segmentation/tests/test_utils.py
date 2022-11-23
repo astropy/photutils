@@ -6,6 +6,7 @@ Tests for the _utils module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal
+
 from photutils.segmentation.utils import (_make_binary_structure,
                                           _mask_to_mirrored_value,
                                           make_2dgaussian_kernel)

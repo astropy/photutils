@@ -10,6 +10,7 @@ import numpy as np
 from astropy.nddata import overlap_slices
 from astropy.table import QTable
 from astropy.utils import lazyproperty
+
 from photutils.detection.core import StarFinderBase
 from photutils.utils._convolution import _filter_data
 from photutils.utils._misc import _get_version_info

@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from numpy.testing import assert_allclose
+
 from photutils.datasets import get_path
 from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
                                            NEAREST_NEIGHBOR)

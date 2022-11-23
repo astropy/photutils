@@ -7,6 +7,7 @@ import warnings
 
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
+
 from photutils.isophote.fitter import (DEFAULT_CONVERGENCE, DEFAULT_FFLAG,
                                        DEFAULT_MAXGERR, DEFAULT_MAXIT,
                                        DEFAULT_MINIT, CentralEllipseFitter,

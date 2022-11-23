@@ -9,6 +9,7 @@ import warnings
 
 import numpy as np
 from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
+
 from photutils.utils._stats import nanmean, nanmedian, nanstd
 
 SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)

@@ -53,6 +53,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from astropy.table import Table
+
 from photutils.datasets import get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.integrator import BILINEAR

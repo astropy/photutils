@@ -11,6 +11,7 @@ from astropy.nddata.utils import NoOverlapError, overlap_slices
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Column, QTable, hstack, vstack
 from astropy.utils.exceptions import AstropyUserWarning
+
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import MMMBackground
 from photutils.detection import DAOStarFinder

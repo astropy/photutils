@@ -4,6 +4,7 @@ Tests for the _misc module.
 """
 
 import pytest
+
 from photutils.utils._misc import _get_meta
 
 

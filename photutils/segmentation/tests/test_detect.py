@@ -9,6 +9,7 @@ import pytest
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_array_equal
+
 from photutils.datasets import make_4gaussians_image
 from photutils.segmentation.detect import (detect_sources, detect_threshold,
                                            make_source_mask)

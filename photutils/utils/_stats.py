@@ -6,6 +6,7 @@ for performance if available.
 
 import astropy.units as u
 import numpy as np
+
 from photutils.utils._optional_deps import HAS_BOTTLENECK
 
 if HAS_BOTTLENECK:

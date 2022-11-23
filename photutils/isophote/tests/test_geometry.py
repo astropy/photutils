@@ -6,6 +6,7 @@ Tests for the geometry module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+
 from photutils.isophote.geometry import EllipseGeometry
 
 

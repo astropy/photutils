@@ -11,6 +11,7 @@ import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
+
 from photutils.centroids.core import (centroid_com, centroid_quadratic,
                                       centroid_sources)
 from photutils.centroids.gaussian import centroid_1dg, centroid_2dg

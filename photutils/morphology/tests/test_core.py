@@ -6,6 +6,7 @@ Tests for the core module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+
 from photutils.morphology.core import data_properties
 from photutils.utils._optional_deps import HAS_SKIMAGE  # noqa
 

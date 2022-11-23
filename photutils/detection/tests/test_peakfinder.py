@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 from astropy.tests.helper import assert_quantity_allclose
 from numpy.testing import assert_array_equal
+
 from photutils.centroids import centroid_com
 from photutils.datasets import make_4gaussians_image, make_gwcs, make_wcs
 from photutils.detection.peakfinder import find_peaks

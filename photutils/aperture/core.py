@@ -12,6 +12,7 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
+
 from photutils.aperture._photometry_utils import (_handle_units,
                                                   _prepare_photometry_data,
                                                   _validate_inputs)

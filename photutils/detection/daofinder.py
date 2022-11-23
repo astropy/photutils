@@ -10,6 +10,7 @@ import numpy as np
 from astropy.nddata import extract_array
 from astropy.table import QTable
 from astropy.utils import lazyproperty
+
 from photutils.detection.core import StarFinderBase, _StarFinderKernel
 from photutils.utils._convolution import _filter_data
 from photutils.utils._misc import _get_version_info

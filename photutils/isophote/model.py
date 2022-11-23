@@ -5,6 +5,7 @@ from a list of isophotes.
 """
 
 import numpy as np
+
 from photutils.isophote.geometry import EllipseGeometry
 
 __all__ = ['build_ellipse_model']

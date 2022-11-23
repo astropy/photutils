@@ -6,6 +6,7 @@ Tests for the windows module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+
 from photutils.psf.matching.windows import (CosineBellWindow, HanningWindow,
                                             SplitCosineBellWindow,
                                             TopHatWindow, TukeyWindow)

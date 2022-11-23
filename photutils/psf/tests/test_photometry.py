@@ -13,6 +13,7 @@ from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
+
 from photutils.background import MMMBackground, StdBackgroundRMS
 from photutils.datasets import (make_gaussian_prf_sources_image,
                                 make_noise_image)

@@ -9,6 +9,7 @@ import warnings
 import numpy as np
 from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
+
 from photutils.utils._parameters import as_pair
 from photutils.utils._round import _py2intround
 

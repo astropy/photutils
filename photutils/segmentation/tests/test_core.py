@@ -8,6 +8,7 @@ import pytest
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
+
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.utils import circular_footprint
 from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa

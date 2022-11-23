@@ -7,6 +7,7 @@ import math
 
 import numpy as np
 from astropy import log
+
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics)
 from photutils.isophote.isophote import CentralPixel, Isophote

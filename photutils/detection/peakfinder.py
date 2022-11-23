@@ -8,6 +8,7 @@ import warnings
 
 import numpy as np
 from astropy.table import QTable
+
 from photutils.utils._misc import _get_version_info
 from photutils.utils.exceptions import NoDetectionsWarning
 

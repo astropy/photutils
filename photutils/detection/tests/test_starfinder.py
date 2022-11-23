@@ -6,6 +6,7 @@ Tests for StarFinder.
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
+
 from photutils.datasets import make_100gaussians_image
 from photutils.detection.starfinder import StarFinder
 from photutils.utils._optional_deps import HAS_SCIPY  # noqa

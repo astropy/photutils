@@ -9,6 +9,7 @@ from astropy.modeling.models import Moffat2D
 from astropy.nddata import NDData
 from astropy.table import Table
 from numpy.testing import assert_allclose
+
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
 from photutils.psf.models import EPSFModel, IntegratedGaussianPRF
 from photutils.utils._optional_deps import HAS_SCIPY  # noqa

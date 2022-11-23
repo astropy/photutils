@@ -8,6 +8,7 @@ import pytest
 from astropy.modeling.models import Moffat2D
 from astropy.table import Table
 from numpy.testing import assert_allclose
+
 from photutils.datasets import (apply_poisson_noise, make_4gaussians_image,
                                 make_100gaussians_image,
                                 make_gaussian_prf_sources_image,

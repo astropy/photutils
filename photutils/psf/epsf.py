@@ -14,6 +14,7 @@ from astropy.nddata.utils import (NoOverlapError, PartialOverlapError,
                                   overlap_slices)
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
+
 from photutils.centroids import centroid_com
 from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from photutils.psf.models import EPSFModel

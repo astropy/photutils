@@ -10,6 +10,7 @@ import numpy as np
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable
 from astropy.utils.exceptions import AstropyUserWarning
+
 from photutils.aperture._photometry_utils import (_handle_units,
                                                   _prepare_photometry_data,
                                                   _validate_inputs)

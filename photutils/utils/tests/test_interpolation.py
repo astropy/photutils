@@ -6,6 +6,7 @@ Tests for the interpolation module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+
 from photutils.utils import ShepardIDWInterpolator as idw
 from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 

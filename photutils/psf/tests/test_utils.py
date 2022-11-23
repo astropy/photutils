@@ -9,6 +9,7 @@ from astropy.convolution.utils import discretize_model
 from astropy.modeling.models import Gaussian2D
 from astropy.table import Table
 from numpy.testing import assert_allclose
+
 from photutils.psf.groupstars import DAOGroup
 from photutils.psf.models import IntegratedGaussianPRF
 from photutils.psf.photometry import BasicPSFPhotometry

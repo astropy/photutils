@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
 from numpy.testing import assert_allclose
+
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAnnulus, SkyCircularAperture)
 from photutils.aperture.tests.test_aperture_common import BaseTestAperture

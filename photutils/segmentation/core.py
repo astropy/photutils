@@ -12,6 +12,7 @@ import numpy as np
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
+
 from photutils.aperture import BoundingBox
 from photutils.utils.colormaps import make_random_cmap
 

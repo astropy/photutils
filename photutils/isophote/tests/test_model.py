@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from astropy.utils.data import get_pkg_data_filename
+
 from photutils.datasets import get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry

@@ -5,6 +5,7 @@ Tests for the colormaps module.
 
 import pytest
 from numpy.testing import assert_allclose
+
 from photutils.utils._optional_deps import HAS_MATPLOTLIB  # noqa
 from photutils.utils.colormaps import make_random_cmap
 

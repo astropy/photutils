@@ -7,6 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from numpy.testing import assert_equal
+
 from photutils.utils._quantity_helpers import process_quantities
 
 

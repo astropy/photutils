@@ -6,6 +6,7 @@ This module provides utility functions for image segmentation.
 import numpy as np
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
+
 from photutils.utils._parameters import as_pair
 
 __all__ = ['make_2dgaussian_kernel']

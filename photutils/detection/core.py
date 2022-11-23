@@ -11,6 +11,7 @@ import warnings
 
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
+
 from photutils.detection.peakfinder import find_peaks
 from photutils.utils.exceptions import NoDetectionsWarning
 

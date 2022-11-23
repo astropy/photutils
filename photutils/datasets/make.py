@@ -12,6 +12,7 @@ from astropy.io import fits
 from astropy.modeling import models
 from astropy.table import QTable
 from astropy.wcs import WCS
+
 from photutils.psf import IntegratedGaussianPRF
 from photutils.utils._misc import _get_version_info
 

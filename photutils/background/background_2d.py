@@ -14,6 +14,7 @@ from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.lib.index_tricks import index_exp
+
 from photutils.aperture import RectangularAperture
 from photutils.background.core import SExtractorBackground, StdBackgroundRMS
 from photutils.background.interpolators import BkgZoomInterpolator

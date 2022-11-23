@@ -13,6 +13,7 @@ from astropy.table import Table
 from astropy.wcs import WCS
 from numpy.testing import (assert_allclose, assert_array_equal,
                            assert_array_less)
+
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAnnulus, SkyCircularAperture)
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,

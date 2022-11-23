@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from astropy.stats import SigmaClip
 from numpy.testing import assert_allclose
+
 from photutils.background.core import (BiweightLocationBackground,
                                        BiweightScaleBackgroundRMS,
                                        MADStdBackgroundRMS, MeanBackground,

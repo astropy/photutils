@@ -17,6 +17,7 @@ from astropy.stats import (SigmaClip, biweight_location, biweight_midvariance,
 from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
+
 from photutils.aperture import Aperture, SkyAperture
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _moments, _moments_central

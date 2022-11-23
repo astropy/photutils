@@ -5,6 +5,7 @@ Tests for the sample module.
 
 import numpy as np
 import pytest
+
 from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
                                            NEAREST_NEIGHBOR)
 from photutils.isophote.isophote import Isophote

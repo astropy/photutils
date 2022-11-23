@@ -7,6 +7,7 @@ pixel and sky coordinates.
 import math
 
 from astropy.utils import lazyproperty
+
 from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            PositiveScalarAngle,
                                            SkyCoordPositions)

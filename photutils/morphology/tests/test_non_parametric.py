@@ -4,6 +4,7 @@ Tests for the non_parametric module.
 """
 
 import numpy as np
+
 from photutils.morphology.non_parametric import gini
 
 

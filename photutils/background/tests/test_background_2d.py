@@ -11,6 +11,7 @@ import pytest
 from astropy.nddata import CCDData, NDData
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
+
 from photutils.background.background_2d import Background2D
 from photutils.background.core import MeanBackground
 from photutils.background.interpolators import (BkgIDWInterpolator,

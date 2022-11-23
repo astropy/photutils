@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 from astropy.table import Table
 from numpy.testing import assert_allclose
+
 from photutils.datasets import make_100gaussians_image
 from photutils.detection.irafstarfinder import IRAFStarFinder
 from photutils.utils._optional_deps import HAS_SCIPY  # noqa

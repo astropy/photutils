@@ -10,6 +10,7 @@ from astropy.convolution import convolve
 from astropy.stats import SigmaClip
 from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
+
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._quantity_helpers import process_quantities

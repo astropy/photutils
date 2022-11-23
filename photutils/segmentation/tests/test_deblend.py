@@ -10,6 +10,7 @@ import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
+
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.deblend import deblend_sources
 from photutils.segmentation.detect import detect_sources
