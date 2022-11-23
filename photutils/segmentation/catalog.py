@@ -1348,6 +1348,13 @@ class SourceCatalog:
                     label, xcen, ycen, aperture_mask.bbox, 0.0,
                     make_error=False)
 
+                if data is None:
+                    # return NaN if centroid moves the aperture
+                    # completely off the image
+                    xcen = np.nan
+                    ycen = np.nan
+                    break
+
                 aperture_weights = aperture_mask.data[slc_sm]
 
                 # define a 2D Gaussian weight array
@@ -1388,10 +1395,11 @@ class SourceCatalog:
             cxx = (cxx,)
             cxy = (cxy,)
             cyy = (cyy,)
-        idx = np.where((cxx * dx**2 + cxy * dx * dy + cyy * dy**2) > 1)[0]
-        if len(idx) > 0:
-            xcen_win[idx] = self._xcentroid[idx]
-            ycen_win[idx] = self._ycentroid[idx]
+        mask = ((cxx * dx**2 + cxy * dx * dy + cyy * dy**2) > 1)
+        mask |= (np.isnan(xcen_win) | np.isnan(ycen_win))
+        if np.any(mask):
+            xcen_win[mask] = self._xcentroid[mask]
+            ycen_win[mask] = self._ycentroid[mask]
 
         return np.transpose((xcen_win, ycen_win))
 
@@ -2495,6 +2503,9 @@ class SourceCatalog:
         """
         # make cutouts of the data based on the aperture bbox
         slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
+        if slc_lg is None:
+            return (None,) * 5
+
         data = self._data[slc_lg].astype(float) - local_background
 
         if self._mask is None:
