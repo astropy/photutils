@@ -4,8 +4,7 @@ Tests for the load module.
 """
 
 import pytest
-
-from .. import get_path, load
+from photutils.datasets import get_path, load
 
 
 def test_get_path():
