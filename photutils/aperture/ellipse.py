@@ -9,11 +9,13 @@ import math
 import astropy.units as u
 import numpy as np
 
-from ..geometry import elliptical_overlap_grid
-from .attributes import (PixelPositions, PositiveScalar, PositiveScalarAngle,
-                         ScalarAngle, ScalarAngleOrValue, SkyCoordPositions)
-from .core import PixelAperture, SkyAperture
-from .mask import ApertureMask
+from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
+                                           PositiveScalarAngle, ScalarAngle,
+                                           ScalarAngleOrValue,
+                                           SkyCoordPositions)
+from photutils.aperture.core import PixelAperture, SkyAperture
+from photutils.aperture.mask import ApertureMask
+from photutils.geometry import elliptical_overlap_grid
 
 __all__ = ['EllipticalMaskMixin', 'EllipticalAperture', 'EllipticalAnnulus',
            'SkyEllipticalAperture', 'SkyEllipticalAnnulus']

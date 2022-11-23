@@ -12,15 +12,15 @@ from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Column, QTable, hstack, vstack
 from astropy.utils.exceptions import AstropyUserWarning
 
-from ..aperture import CircularAperture, aperture_photometry
-from ..background import MMMBackground
-from ..detection import DAOStarFinder
-from ..utils._misc import _get_version_info
-from ..utils._optional_deps import HAS_TQDM  # noqa
-from ..utils.exceptions import NoDetectionsWarning
-from .groupstars import DAOGroup
-from .utils import (_extract_psf_fitting_names, get_grouped_psf_model,
-                    subtract_psf)
+from photutils.aperture import CircularAperture, aperture_photometry
+from photutils.background import MMMBackground
+from photutils.detection import DAOStarFinder
+from photutils.psf.groupstars import DAOGroup
+from photutils.psf.utils import (_extract_psf_fitting_names,
+                                 get_grouped_psf_model, subtract_psf)
+from photutils.utils._misc import _get_version_info
+from photutils.utils._optional_deps import HAS_TQDM  # noqa
+from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']

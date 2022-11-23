@@ -12,11 +12,11 @@ from astropy.units import Quantity
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
-from ..utils._convolution import _filter_data
-from ..utils._optional_deps import HAS_TQDM  # noqa
-from .core import SegmentationImage
-from .detect import _detect_sources
-from .utils import _make_binary_structure
+from photutils.segmentation.core import SegmentationImage
+from photutils.segmentation.detect import _detect_sources
+from photutils.segmentation.utils import _make_binary_structure
+from photutils.utils._convolution import _filter_data
+from photutils.utils._optional_deps import HAS_TQDM  # noqa
 
 __all__ = ['deblend_sources']
 

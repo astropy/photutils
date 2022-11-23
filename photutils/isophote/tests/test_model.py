@@ -2,6 +2,7 @@
 """
 Tests for the model module.
 """
+
 import warnings
 
 import numpy as np
@@ -9,12 +10,12 @@ import pytest
 from astropy.io import fits
 from astropy.utils.data import get_pkg_data_filename
 
-from ...datasets import get_path
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..ellipse import Ellipse
-from ..geometry import EllipseGeometry
-from ..model import build_ellipse_model
-from .make_test_data import make_test_image
+from photutils.datasets import get_path
+from photutils.isophote.ellipse import Ellipse
+from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.model import build_ellipse_model
+from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.remote_data

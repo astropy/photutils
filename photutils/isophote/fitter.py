@@ -8,10 +8,10 @@ import math
 import numpy as np
 from astropy import log
 
-from .harmonics import (first_and_second_harmonic_function,
-                        fit_first_and_second_harmonics)
-from .isophote import CentralPixel, Isophote
-from .sample import EllipseSample
+from photutils.isophote.harmonics import (first_and_second_harmonic_function,
+                                          fit_first_and_second_harmonics)
+from photutils.isophote.isophote import CentralPixel, Isophote
+from photutils.isophote.sample import EllipseSample
 
 __all__ = ['EllipseFitter']
 

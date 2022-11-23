@@ -10,12 +10,12 @@ import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 
-from ...datasets import get_path, make_noise_image
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..ellipse import Ellipse
-from ..geometry import EllipseGeometry
-from ..isophote import Isophote, IsophoteList
-from .make_test_data import make_test_image
+from photutils.datasets import get_path, make_noise_image
+from photutils.isophote.ellipse import Ellipse
+from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.isophote import Isophote, IsophoteList
+from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 # define an off-center position and a tilted sma
 POS = 384

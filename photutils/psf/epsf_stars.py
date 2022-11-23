@@ -14,9 +14,9 @@ from astropy.table import Table
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
-from ..aperture import BoundingBox
-from ..utils._parameters import as_pair
-from .utils import _interpolate_missing_data
+from photutils.aperture import BoundingBox
+from photutils.psf.utils import _interpolate_missing_data
+from photutils.utils._parameters import as_pair
 
 __all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars']
 

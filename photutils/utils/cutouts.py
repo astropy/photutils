@@ -7,7 +7,7 @@ import numpy as np
 from astropy.nddata import extract_array, overlap_slices
 from astropy.utils import lazyproperty
 
-from ..aperture import BoundingBox
+from photutils.aperture import BoundingBox
 
 __all__ = ['CutoutImage']
 

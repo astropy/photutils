@@ -11,11 +11,11 @@ from astropy.stats import SigmaClip
 from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
-from ..utils._quantity_helpers import process_quantities
-from ..utils._stats import nanmean, nanstd
-from ..utils.exceptions import NoDetectionsWarning
-from .core import SegmentationImage
-from .utils import _make_binary_structure
+from photutils.segmentation.core import SegmentationImage
+from photutils.segmentation.utils import _make_binary_structure
+from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._stats import nanmean, nanstd
+from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['detect_threshold', 'detect_sources', 'make_source_mask']
 

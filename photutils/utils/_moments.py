@@ -35,7 +35,7 @@ def _moments_central(data, center=None, order=1):
         raise ValueError('data must be a 2D array.')
 
     if center is None:
-        from ..centroids import centroid_com
+        from photutils.centroids import centroid_com
         center = centroid_com(data)
 
     indices = np.ogrid[tuple(slice(0, i) for i in data.shape)]

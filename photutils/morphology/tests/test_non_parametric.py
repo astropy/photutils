@@ -5,7 +5,7 @@ Tests for the non_parametric module.
 
 import numpy as np
 
-from ..non_parametric import gini
+from photutils.morphology.non_parametric import gini
 
 
 def test_gini():

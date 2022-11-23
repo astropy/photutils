@@ -12,10 +12,11 @@ from astropy.nddata import CCDData, NDData
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
-from ...utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
-from ..background_2d import Background2D
-from ..core import MeanBackground
-from ..interpolators import BkgIDWInterpolator, BkgZoomInterpolator
+from photutils.background.background_2d import Background2D
+from photutils.background.core import MeanBackground
+from photutils.background.interpolators import (BkgIDWInterpolator,
+                                                BkgZoomInterpolator)
+from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 DATA = np.ones((100, 100))
 BKG_RMS = np.zeros((100, 100))

@@ -8,11 +8,11 @@ import numpy as np
 import pytest
 from astropy.convolution import convolve
 
-from ...datasets import make_100gaussians_image
-from ...utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
-from ...utils.exceptions import NoDetectionsWarning
-from ..finder import SourceFinder
-from ..utils import make_2dgaussian_kernel
+from photutils.datasets import make_100gaussians_image
+from photutils.segmentation.finder import SourceFinder
+from photutils.segmentation.utils import make_2dgaussian_kernel
+from photutils.utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
+from photutils.utils.exceptions import NoDetectionsWarning
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

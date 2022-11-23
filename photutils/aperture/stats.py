@@ -18,10 +18,10 @@ from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
-from ..utils._misc import _get_meta
-from ..utils._moments import _moments, _moments_central
-from ..utils._quantity_helpers import process_quantities
-from . import Aperture, SkyAperture
+from photutils.aperture import Aperture, SkyAperture
+from photutils.utils._misc import _get_meta
+from photutils.utils._moments import _moments, _moments_central
+from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['ApertureStats']
 

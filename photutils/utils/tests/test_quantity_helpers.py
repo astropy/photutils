@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_equal
 
-from .._quantity_helpers import process_quantities
+from photutils.utils._quantity_helpers import process_quantities
 
 
 @pytest.mark.parametrize('all_units', (False, True))

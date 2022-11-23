@@ -15,11 +15,12 @@ from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.lib.index_tricks import index_exp
 
-from ..utils import ShepardIDWInterpolator
-from ..utils._parameters import as_pair
-from ..utils._stats import nanmedian
-from .core import SExtractorBackground, StdBackgroundRMS
-from .interpolators import BkgZoomInterpolator
+from photutils.aperture import RectangularAperture
+from photutils.background.core import SExtractorBackground, StdBackgroundRMS
+from photutils.background.interpolators import BkgZoomInterpolator
+from photutils.utils import ShepardIDWInterpolator
+from photutils.utils._parameters import as_pair
+from photutils.utils._stats import nanmedian
 
 __all__ = ['Background2D']
 
@@ -704,7 +705,6 @@ class Background2D:
                    color=color, alpha=alpha)
 
         if outlines:
-            from ..aperture import RectangularAperture
             xypos = np.column_stack(self._mesh_xypos)
             apers = RectangularAperture(xypos, self.box_size[1],
                                         self.box_size[0], 0.)

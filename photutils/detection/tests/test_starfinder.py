@@ -7,10 +7,10 @@ import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
 
-from ...datasets import make_100gaussians_image
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ...utils.exceptions import NoDetectionsWarning
-from ..starfinder import StarFinder
+from photutils.datasets import make_100gaussians_image
+from photutils.detection.starfinder import StarFinder
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils.exceptions import NoDetectionsWarning
 
 DATA = make_100gaussians_image()
 y, x = np.mgrid[0:25, 0:25]

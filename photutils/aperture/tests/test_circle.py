@@ -9,10 +9,10 @@ import pytest
 from astropy.coordinates import SkyCoord
 from numpy.testing import assert_allclose
 
-from ...utils._optional_deps import HAS_MATPLOTLIB  # noqa
-from ..circle import (CircularAnnulus, CircularAperture, SkyCircularAnnulus,
-                      SkyCircularAperture)
-from .test_aperture_common import BaseTestAperture
+from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
+                                       SkyCircularAnnulus, SkyCircularAperture)
+from photutils.aperture.tests.test_aperture_common import BaseTestAperture
+from photutils.utils._optional_deps import HAS_MATPLOTLIB  # noqa
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)

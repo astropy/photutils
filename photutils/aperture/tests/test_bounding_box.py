@@ -6,9 +6,9 @@ Tests for the bounding_box module.
 import pytest
 from numpy.testing import assert_allclose
 
-from ...utils._optional_deps import HAS_MATPLOTLIB  # noqa
-from ..bounding_box import BoundingBox
-from ..rectangle import RectangularAperture
+from photutils.aperture.bounding_box import BoundingBox
+from photutils.aperture.rectangle import RectangularAperture
+from photutils.utils._optional_deps import HAS_MATPLOTLIB  # noqa
 
 
 def test_bounding_box_init():

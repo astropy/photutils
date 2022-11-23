@@ -12,8 +12,9 @@ from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..gaussian import _gaussian1d_moments, centroid_1dg, centroid_2dg
+from photutils.centroids.gaussian import (_gaussian1d_moments, centroid_1dg,
+                                          centroid_2dg)
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 XCEN = 25.7
 YCEN = 26.2

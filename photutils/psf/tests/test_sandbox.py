@@ -11,7 +11,7 @@ from astropy.table import Table
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
-from ..sandbox import DiscretePRF
+from photutils.psf.sandbox import DiscretePRF
 
 PSF_SIZE = 11
 GAUSSIAN_WIDTH = 1.

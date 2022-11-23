@@ -15,13 +15,13 @@ from astropy.nddata.utils import (NoOverlapError, PartialOverlapError,
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 
-from ..centroids import centroid_com
-from ..utils._optional_deps import HAS_BOTTLENECK, HAS_TQDM  # noqa
-from ..utils._parameters import as_pair
-from ..utils._round import _py2intround
-from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
-from .models import EPSFModel
-from .utils import _interpolate_missing_data
+from photutils.centroids import centroid_com
+from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
+from photutils.psf.models import EPSFModel
+from photutils.psf.utils import _interpolate_missing_data
+from photutils.utils._optional_deps import HAS_BOTTLENECK, HAS_TQDM  # noqa
+from photutils.utils._parameters import as_pair
+from photutils.utils._round import _py2intround
 
 __all__ = ['EPSFFitter', 'EPSFBuilder']
 

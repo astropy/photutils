@@ -156,7 +156,8 @@ def centroid_2dg(data, error=None, mask=None):
     centroid : `~numpy.ndarray`
         The ``x, y`` coordinates of the centroid.
     """
-    from ..morphology import data_properties  # prevent circular imports
+    # prevent circular import
+    from photutils.morphology import data_properties
 
     data = np.ma.asanyarray(data)
 

@@ -5,7 +5,7 @@ Tests for the _misc module.
 
 import pytest
 
-from .._misc import _get_meta
+from photutils.utils._misc import _get_meta
 
 
 @pytest.mark.parametrize('utc', (False, True))

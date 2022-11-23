@@ -10,11 +10,12 @@ from astropy.modeling.models import Gaussian2D
 from astropy.table import Table
 from numpy.testing import assert_allclose
 
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..groupstars import DAOGroup
-from ..models import IntegratedGaussianPRF
-from ..photometry import BasicPSFPhotometry
-from ..utils import get_grouped_psf_model, prepare_psf_model, subtract_psf
+from photutils.psf.groupstars import DAOGroup
+from photutils.psf.models import IntegratedGaussianPRF
+from photutils.psf.photometry import BasicPSFPhotometry
+from photutils.psf.utils import (get_grouped_psf_model, prepare_psf_model,
+                                 subtract_psf)
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 PSF_SIZE = 11
 GAUSSIAN_WIDTH = 1.

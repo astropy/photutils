@@ -9,11 +9,13 @@ import math
 import astropy.units as u
 import numpy as np
 
-from ..geometry import rectangular_overlap_grid
-from .attributes import (PixelPositions, PositiveScalar, PositiveScalarAngle,
-                         ScalarAngle, ScalarAngleOrValue, SkyCoordPositions)
-from .core import PixelAperture, SkyAperture
-from .mask import ApertureMask
+from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
+                                           PositiveScalarAngle, ScalarAngle,
+                                           ScalarAngleOrValue,
+                                           SkyCoordPositions)
+from photutils.aperture.core import PixelAperture, SkyAperture
+from photutils.aperture.mask import ApertureMask
+from photutils.geometry import rectangular_overlap_grid
 
 __all__ = ['RectangularMaskMixin', 'RectangularAperture',
            'RectangularAnnulus', 'SkyRectangularAperture',

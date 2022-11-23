@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from ..errors import calc_total_error
+from photutils.utils.errors import calc_total_error
 
 SHAPE = (5, 5)
 DATAVAL = 2.

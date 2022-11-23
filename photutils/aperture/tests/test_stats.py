@@ -10,9 +10,9 @@ from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import SigmaClip
 from numpy.testing import assert_allclose, assert_equal
 
-from ...datasets import make_100gaussians_image, make_wcs
-from ..circle import CircularAperture
-from ..stats import ApertureStats
+from photutils.aperture.circle import CircularAperture
+from photutils.aperture.stats import ApertureStats
+from photutils.datasets import make_100gaussians_image, make_wcs
 
 
 class TestApertureStats:

@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from .. import ShepardIDWInterpolator as idw
-from .._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils import ShepardIDWInterpolator as idw
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 SHAPE = (5, 5)
 DATA = np.ones(SHAPE) * 2.0

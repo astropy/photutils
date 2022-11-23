@@ -2,6 +2,7 @@
 """
 Tests for the deblend module.
 """
+
 import warnings
 
 import numpy as np
@@ -10,10 +11,10 @@ from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
-from ...utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
-from ..core import SegmentationImage
-from ..deblend import deblend_sources
-from ..detect import detect_sources
+from photutils.segmentation.core import SegmentationImage
+from photutils.segmentation.deblend import deblend_sources
+from photutils.segmentation.detect import detect_sources
+from photutils.utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

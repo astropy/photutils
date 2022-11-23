@@ -13,8 +13,8 @@ from astropy.modeling import models
 from astropy.table import QTable
 from astropy.wcs import WCS
 
-from ..psf import IntegratedGaussianPRF
-from ..utils._misc import _get_version_info
+from photutils.psf import IntegratedGaussianPRF
+from photutils.utils._misc import _get_version_info
 
 __all__ = ['apply_poisson_noise', 'make_noise_image',
            'make_random_models_table', 'make_random_gaussians_table',

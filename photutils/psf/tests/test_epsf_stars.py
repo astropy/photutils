@@ -10,9 +10,9 @@ from astropy.nddata import NDData
 from astropy.table import Table
 from numpy.testing import assert_allclose
 
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..epsf_stars import EPSFStars, extract_stars
-from ..models import EPSFModel, IntegratedGaussianPRF
+from photutils.psf.epsf_stars import EPSFStars, extract_stars
+from photutils.psf.models import EPSFModel, IntegratedGaussianPRF
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

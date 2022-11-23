@@ -12,8 +12,8 @@ import warnings
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
 
-from ..utils.exceptions import NoDetectionsWarning
-from .peakfinder import find_peaks
+from photutils.detection.peakfinder import find_peaks
+from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinderBase']
 

@@ -10,11 +10,12 @@ from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_array_equal
 
-from ...datasets import make_4gaussians_image
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ...utils.exceptions import NoDetectionsWarning
-from ..detect import detect_sources, detect_threshold, make_source_mask
-from ..utils import make_2dgaussian_kernel
+from photutils.datasets import make_4gaussians_image
+from photutils.segmentation.detect import (detect_sources, detect_threshold,
+                                           make_source_mask)
+from photutils.segmentation.utils import make_2dgaussian_kernel
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils.exceptions import NoDetectionsWarning
 
 DATA = np.array([[0, 1, 0], [0, 2, 0], [0, 0, 0]]).astype(float)
 REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])

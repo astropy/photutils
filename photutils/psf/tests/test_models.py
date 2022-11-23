@@ -11,10 +11,10 @@ from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.nddata import NDData
 from numpy.testing import assert_allclose
 
-from ...segmentation import SourceCatalog, detect_sources
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..models import (FittableImageModel, GriddedPSFModel,
-                      IntegratedGaussianPRF, PRFAdapter)
+from photutils.psf.models import (FittableImageModel, GriddedPSFModel,
+                                  IntegratedGaussianPRF, PRFAdapter)
+from photutils.segmentation import SourceCatalog, detect_sources
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

@@ -5,7 +5,7 @@ This module defines interpolator classes for Background2D.
 
 import numpy as np
 
-from ..utils import ShepardIDWInterpolator
+from photutils.utils import ShepardIDWInterpolator
 
 __all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator']
 

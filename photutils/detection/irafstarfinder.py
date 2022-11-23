@@ -2,6 +2,7 @@
 """
 This module implements the IRAFStarFinder class.
 """
+
 import inspect
 import warnings
 
@@ -10,11 +11,11 @@ from astropy.nddata import extract_array
 from astropy.table import QTable
 from astropy.utils import lazyproperty
 
-from ..utils._convolution import _filter_data
-from ..utils._misc import _get_version_info
-from ..utils._moments import _moments, _moments_central
-from ..utils.exceptions import NoDetectionsWarning
-from .core import StarFinderBase, _StarFinderKernel
+from photutils.detection.core import StarFinderBase, _StarFinderKernel
+from photutils.utils._convolution import _filter_data
+from photutils.utils._misc import _get_version_info
+from photutils.utils._moments import _moments, _moments_central
+from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['IRAFStarFinder']
 

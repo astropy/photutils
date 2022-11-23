@@ -11,10 +11,10 @@ import pytest
 from astropy.table import Table
 from numpy.testing import assert_allclose
 
-from ...datasets import make_100gaussians_image
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ...utils.exceptions import NoDetectionsWarning
-from ..irafstarfinder import IRAFStarFinder
+from photutils.datasets import make_100gaussians_image
+from photutils.detection.irafstarfinder import IRAFStarFinder
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils.exceptions import NoDetectionsWarning
 
 DATA = make_100gaussians_image()
 THRESHOLDS = [8.0, 10.0]
