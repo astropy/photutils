@@ -8,7 +8,7 @@ import itertools
 import pytest
 from numpy.testing import assert_allclose
 
-from .. import rectangular_overlap_grid
+from photutils.geometry import rectangular_overlap_grid
 
 grid_sizes = [50, 500, 1000]
 rect_sizes = [0.2, 0.4, 0.8]

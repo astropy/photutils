@@ -8,7 +8,7 @@ import itertools
 import pytest
 from numpy.testing import assert_allclose
 
-from .. import elliptical_overlap_grid
+from photutils.geometry import elliptical_overlap_grid
 
 grid_sizes = [50, 500, 1000]
 maj_sizes = [0.2, 0.4, 0.8]
