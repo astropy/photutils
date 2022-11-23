@@ -13,7 +13,7 @@ from photutils.utils._convolution import _filter_data
 from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestFilterData:
     def setup_class(self):
         self.data = make_100gaussians_image()

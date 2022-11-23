@@ -39,7 +39,7 @@ def test_tukey():
     assert_allclose(data[1, :], ref)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_tukey_scipy():
     """Test Tukey window against 1D scipy version."""
 

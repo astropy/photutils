@@ -28,7 +28,7 @@ from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,  # noqa
 from photutils.utils.cutouts import CutoutImage
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestSourceCatalog:
     def setup_class(self):
         xcen = 51.
@@ -832,7 +832,7 @@ class TestSourceCatalog:
         assert len(tbl) == 7
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_kron_params():
     data = make_100gaussians_image()
     bkg_estimator = MedianBackground()
@@ -886,7 +886,7 @@ def test_kron_params():
     assert isinstance(cat.kron_aperture[0], CircularAperture)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_win():
     g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
     g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
@@ -913,7 +913,7 @@ def test_centroid_win():
     assert cat.ycentroid[1] == cat.ycentroid_win[1]
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_win_migrate():
     """
     Test that when the windowed centroid moves the aperture completely

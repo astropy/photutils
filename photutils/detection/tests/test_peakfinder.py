@@ -21,7 +21,7 @@ IMAGE = make_4gaussians_image()
 FITSWCS = make_wcs(IMAGE.shape)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestFindPeaks:
     def test_box_size(self):
         """Test with box_size."""

@@ -108,7 +108,7 @@ sources3['group_id'] = [1] * 2
 sources3['iter_detected'] = [1, 2]
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
 def test_psf_photometry_niters(sigma_psf, sources):
     img_shape = (32, 32)
@@ -154,7 +154,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
 @pytest.mark.filterwarnings('ignore:Both init_guesses and finder are '
                             'different than None')
 @pytest.mark.filterwarnings('ignore:No sources were found')
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2),
@@ -233,7 +233,7 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
         phot_proc.psf_model.y_0.fixed = False
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_niters_errors():
     iter_phot_obj = make_psf_photometry_objs()[1]
 
@@ -250,7 +250,7 @@ def test_niters_errors():
     iter_phot_obj.niters = None
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fitshape_errors():
     basic_phot_obj = make_psf_photometry_objs()[0]
 
@@ -276,7 +276,7 @@ def test_fitshape_errors():
         basic_phot_obj.fitshape = (3, 3, 3)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_aperture_radius_errors():
     basic_phot_obj = make_psf_photometry_objs()[0]
 
@@ -288,7 +288,7 @@ def test_aperture_radius_errors():
         basic_phot_obj.aperture_radius = -3
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_finder_errors():
     iter_phot_obj = make_psf_photometry_objs()[1]
 
@@ -302,7 +302,7 @@ def test_finder_errors():
             psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_finder_positions_warning():
     basic_phot_obj = make_psf_photometry_objs(sigma_psf=2)[0]
     positions = Table()
@@ -327,7 +327,7 @@ def test_finder_positions_warning():
 
 
 @pytest.mark.filterwarnings('ignore:The fit may be unsuccessful')
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_aperture_radius():
     img_shape = (32, 32)
 
@@ -374,7 +374,7 @@ PARS_TO_OUTPUT_1['sigma_fit'] = 'sigma'
                                              True),
                                             (PARS_TO_SET_1, PARS_TO_OUTPUT_1,
                                              False)])
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_define_fit_param_names(actual_pars_to_set, actual_pars_to_output,
                                 is_sigma_fixed):
     psf_model = IntegratedGaussianPRF()
@@ -429,7 +429,7 @@ for x, y, flux in WIDE_INTAB:
                                    mode='oversample')
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_default_aperture_radius():
     """
     Test psf_photometry with non-Gaussian model, such that it raises a
@@ -508,7 +508,7 @@ def test_default_aperture_radius():
     assert_allclose(results['flux_fit'], f0, rtol=0.05)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_boundary_gaussian():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
@@ -524,7 +524,7 @@ def test_psf_boundary_gaussian():
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_gaussian():
     """
     Test psf_photometry with Gaussian PSF model.
@@ -539,7 +539,7 @@ def test_psf_photometry_gaussian():
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize("renormalize_psf", (True, False))
 def test_psf_photometry_gaussian2(renormalize_psf):
     """
@@ -562,7 +562,7 @@ def test_psf_photometry_gaussian2(renormalize_psf):
     assert_allclose(f['flux_0'], f['flux_fit'], rtol=1e-1)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_moffat():
     """
     Test psf_photometry with Moffat PSF model from Astropy.
@@ -586,7 +586,7 @@ def test_psf_photometry_moffat():
     assert_allclose(f['flux_0'], f['flux_fit'], rtol=1e-1)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_fitting_data_on_edge():
     """
     No mask is input explicitly here, but source 2 is so close to the
@@ -607,7 +607,7 @@ def test_psf_fitting_data_on_edge():
 
 @pytest.mark.filterwarnings('ignore:Both init_guesses and finder '
                             'are different than None')
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
 def test_psf_extra_output_cols(sigma_psf, sources):
     """
@@ -677,7 +677,7 @@ def overlap_image(request):
     return close_image
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_fitting_group(overlap_image):
     """
     Test psf_photometry when two input stars are close and need to be
@@ -708,7 +708,7 @@ def test_psf_fitting_group(overlap_image):
     basic_phot(image=overlap_image)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_finder_return_none():
     """
     Test psf_photometry with finder that does not return None if no
@@ -755,7 +755,7 @@ def test_finder_return_none():
     assert_allclose(results['flux_fit'], f0, rtol=0.05)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_uncertainties():
     """
     Test an Astropy fitter that does not return a parameter
@@ -775,7 +775,7 @@ def test_psf_photometry_uncertainties():
         assert column not in phot_tbl.colnames
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_re_use_result_as_initial_guess():
     img_shape = (32, 32)
     # generate image with read-out noise (Gaussian) and
@@ -799,7 +799,7 @@ def test_re_use_result_as_initial_guess():
     assert second_result
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_photometry_mask_nan():
     size = 64
     sources1 = Table()

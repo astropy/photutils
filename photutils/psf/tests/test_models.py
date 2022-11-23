@@ -17,7 +17,7 @@ from photutils.segmentation import SourceCatalog, detect_sources
 from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestFittableImageModel:
     def setup_class(self):
         self.gm = Gaussian2D(x_stddev=3, y_stddev=3)
@@ -142,13 +142,13 @@ class TestGriddedPSFModel:
                 == self.psfmodel.oversampling)
         assert self.psfmodel.data.shape == (16, 101, 101)
 
-    @pytest.mark.skipif('not HAS_SCIPY')
+    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_basic_eval(self):
         y, x = np.mgrid[0:100, 0:100]
         psf = self.psfmodel.evaluate(x=x, y=y, flux=100, x_0=40, y_0=60)
         assert psf.shape == (100, 100)
 
-    @pytest.mark.skipif('not HAS_SCIPY')
+    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_eval_outside_grid(self):
         y, x = np.mgrid[-50:50, -50:50]
         psf1 = self.psfmodel.evaluate(x=x, y=y, flux=100, x_0=0, y_0=0)
@@ -162,7 +162,7 @@ class TestGriddedPSFModel:
         psf4 = self.psfmodel.evaluate(x=x, y=y, flux=100, x_0=220, y_0=220)
         assert_allclose(psf3, psf4)
 
-    @pytest.mark.skipif('not HAS_SCIPY')
+    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_interp(self):
         # test xyref length
         with pytest.raises(ValueError):
@@ -240,7 +240,7 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError):
             GriddedPSFModel(nddata)
 
-    @pytest.mark.skipif('not HAS_SCIPY')
+    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_eval(self):
         """
         Create a simulated image using GriddedPSFModel and test
@@ -281,7 +281,7 @@ class TestGriddedPSFModel:
         assert 64. < orients[3] < 64.2
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestIntegratedGaussianPRF:
     widths = [0.001, 0.01, 0.1, 1]
     sigmas = [0.5, 1., 2., 10., 12.34]
@@ -309,7 +309,7 @@ class TestIntegratedGaussianPRF:
         assert_allclose(psf(y, x).sum(), 1)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestPRFAdapter:
     def normalize_moffat(self, mof):
         # this is the analytic value needed to get a total flux of 1

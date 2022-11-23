@@ -29,7 +29,7 @@ OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.e-12,
                                 seed=0)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestEllipse:
     def setup_class(self):
         # centered, tilted galaxy
@@ -141,7 +141,7 @@ class TestEllipse:
 
 
 @pytest.mark.remote_data
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestEllipseOnRealData:
     def test_basic(self):
         path = get_path('isophote/M105-S001-RGB.fits',

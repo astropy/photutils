@@ -14,14 +14,14 @@ from photutils.psf.matching.windows import SplitCosineBellWindow
 from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_resize_psf():
     psf1 = np.ones((5, 5))
     psf2 = resize_psf(psf1, 0.1, 0.05)
     assert psf2.shape == (10, 10)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_create_matching_kernel():
     """Test with noiseless 2D Gaussians."""
 

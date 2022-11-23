@@ -19,7 +19,7 @@ from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.remote_data
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_model():
     path = get_path('isophote/M105-S001-RGB.fits',
                     location='photutils-datasets', cache=True)
@@ -46,7 +46,7 @@ def test_model():
     assert np.mean(residual) >= -5.0
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_model_simulated_data():
     data = make_test_image(nx=200, ny=200, i0=10., sma=5., eps=0.5,
                            pa=np.pi / 3., noise=0.05, seed=0)
@@ -64,7 +64,7 @@ def test_model_simulated_data():
     assert np.mean(residual) >= -5.0
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_model_minimum_radius():
     # This test requires a "defective" image that drives the
     # model building algorithm into a corner, where it fails.

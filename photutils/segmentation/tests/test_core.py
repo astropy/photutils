@@ -14,7 +14,7 @@ from photutils.utils import circular_footprint
 from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestSegmentationImage:
     def setup_class(self):
         self.data = np.array([[1, 1, 0, 0, 4, 4],
@@ -403,7 +403,7 @@ class CustomSegm(SegmentationImage):
         return np.median(self.data)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_subclass():
     """
     Test that cached properties are reset in SegmentationImage

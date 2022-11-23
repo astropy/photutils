@@ -21,7 +21,7 @@ THRESHOLDS = [8.0, 10.0]
 FWHMS = [1.0, 1.5, 2.0]
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestDAOStarFinder:
     @pytest.mark.parametrize(('threshold', 'fwhm'),
                              list(itertools.product(THRESHOLDS, FWHMS)))

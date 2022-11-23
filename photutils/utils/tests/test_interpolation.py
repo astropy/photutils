@@ -19,7 +19,7 @@ BACKGROUND = np.ones(SHAPE)
 WRONG_SHAPE = np.ones((2, 2))
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestShepardIDWInterpolator:
     def setup_class(self):
         self.rng = np.random.default_rng(0)

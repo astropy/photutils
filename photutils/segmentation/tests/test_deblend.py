@@ -17,7 +17,7 @@ from photutils.segmentation.detect import detect_sources
 from photutils.utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE  # noqa
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.skipif('not HAS_SKIMAGE')
 class TestDeblendSources:
     def setup_class(self):
@@ -311,7 +311,7 @@ class TestDeblendSources:
         assert result.nlabels == 2
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.skipif('not HAS_SKIMAGE')
 def test_nmarkers_fallback():
     """

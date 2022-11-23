@@ -21,7 +21,7 @@ DEFAULT_FIX = np.array([False, False, False, False])
 
 
 @pytest.mark.remote_data
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestIsophote:
     def setup_class(self):
         path = get_path('isophote/M51.fits', location='photutils-datasets',
@@ -278,7 +278,7 @@ class TestIsophoteList:
         result.sort()
         assert result[-1].sma > result[0].sma
 
-    @pytest.mark.skipif('not HAS_SCIPY')
+    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_to_table(self):
         test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
                                    background=100., noise=1.e-6, i0=100.,

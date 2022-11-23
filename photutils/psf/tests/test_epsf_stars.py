@@ -15,7 +15,7 @@ from photutils.psf.models import EPSFModel, IntegratedGaussianPRF
 from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestExtractStars:
     def setup_class(self):
         stars_tbl = Table()
@@ -56,7 +56,7 @@ class TestExtractStars:
             extract_stars([self.nddata, self.nddata], self.stars_tbl)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_epsf_star_residual_image():
     """
     Test to ensure ``compute_residual_image`` gives correct residuals.

@@ -21,7 +21,7 @@ from photutils.psf.models import EPSFModel, IntegratedGaussianPRF
 from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestEPSFBuild:
     def setup_class(self):
         """
@@ -183,7 +183,7 @@ def test_epsfmodel_inputs():
         EPSFModel(data, origin=origin)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('oversamp', [3, 4])
 def test_epsf_build_oversampling(oversamp):
     offsets = np.arange(oversamp) * 1. / oversamp - 0.5 + 1. / (2. * oversamp)

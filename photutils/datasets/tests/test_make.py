@@ -90,7 +90,7 @@ def test_make_gaussian_sources_image():
     assert_allclose(image.sum(), SOURCE_TABLE['flux'].sum())
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_gaussian_prf_sources_image():
     shape = (100, 100)
     image = make_gaussian_prf_sources_image(shape, SOURCE_TABLE_PRF)

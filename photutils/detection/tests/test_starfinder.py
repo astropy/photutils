@@ -18,7 +18,7 @@ g = Gaussian2D(1, 12, 12, 3, 2, theta=np.pi / 6.)
 PSF = g(x, y)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestStarFinder:
     def test_starfind(self):
         finder1 = StarFinder(10, PSF)

@@ -29,7 +29,7 @@ DATA[1, 1] = 2.
 
 
 # NOTE: the fitting routines in astropy use scipy.optimize
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize(('x_std', 'y_std', 'theta'),
                          list(itertools.product(XSTDS, YSTDS, THETAS)))
 def test_centroids(x_std, y_std, theta):
@@ -59,7 +59,7 @@ def test_centroids(x_std, y_std, theta):
     assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('use_mask', [True, False])
 def test_centroids_nan_withmask(use_mask):
     xc_ref = 24.7
@@ -92,7 +92,7 @@ def test_centroids_nan_withmask(use_mask):
             assert len(warnlist) == nwarn
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_invalid_mask_shape():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
@@ -105,7 +105,7 @@ def test_invalid_mask_shape():
         _gaussian1d_moments(data, mask=mask)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_invalid_error_shape():
     error = np.zeros((2, 2), dtype=bool)
     with pytest.raises(ValueError):
@@ -114,7 +114,7 @@ def test_invalid_error_shape():
         centroid_2dg(np.zeros((4, 4)), error=error)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_2dg_dof():
     data = np.ones((2, 2))
     with pytest.raises(ValueError):
