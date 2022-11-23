@@ -4,8 +4,8 @@ Tests for the footprints module.
 """
 
 import numpy as np
-from numpy.testing import assert_equal
 import pytest
+from numpy.testing import assert_equal
 
 from ..footprints import circular_footprint
 

@@ -4,17 +4,17 @@ Tests for the model module.
 """
 import warnings
 
-from astropy.io import fits
-from astropy.utils.data import get_pkg_data_filename
 import numpy as np
 import pytest
+from astropy.io import fits
+from astropy.utils.data import get_pkg_data_filename
 
-from .make_test_data import make_test_image
+from ...datasets import get_path
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 from ..ellipse import Ellipse
 from ..geometry import EllipseGeometry
 from ..model import build_ellipse_model
-from ...datasets import get_path
-from ...utils._optional_deps import HAS_SCIPY  # noqa
+from .make_test_data import make_test_image
 
 
 @pytest.mark.remote_data

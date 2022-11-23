@@ -3,16 +3,16 @@
 Tests for the peakfinder module.
 """
 
-from astropy.tests.helper import assert_quantity_allclose
 import numpy as np
-from numpy.testing import assert_array_equal
 import pytest
+from astropy.tests.helper import assert_quantity_allclose
+from numpy.testing import assert_array_equal
 
-from ..peakfinder import find_peaks
 from ...centroids import centroid_com
 from ...datasets import make_4gaussians_image, make_gwcs, make_wcs
-from ...utils.exceptions import NoDetectionsWarning
 from ...utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
+from ...utils.exceptions import NoDetectionsWarning
+from ..peakfinder import find_peaks
 
 PEAKDATA = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]).astype(float)
 PEAKREF1 = np.array([[0, 0], [2, 2]])

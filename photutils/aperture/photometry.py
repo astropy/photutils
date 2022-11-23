@@ -5,16 +5,16 @@ This module defines tools to perform aperture photometry.
 
 import warnings
 
+import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable
-import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 
-from .core import Aperture, SkyAperture
+from ..utils._misc import _get_version_info
 from ._photometry_utils import (_handle_units, _prepare_photometry_data,
                                 _validate_inputs)
-from ..utils._misc import _get_version_info
+from .core import Aperture, SkyAperture
 
 __all__ = ['aperture_photometry']
 

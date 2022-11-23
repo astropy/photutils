@@ -74,8 +74,9 @@ except Exception:
 # Import these after the above checks to ensure they are printed even if
 # extensions_helpers is not installed
 import os  # noqa
-from setuptools import setup  # noqa
+
 from extension_helpers import get_extensions  # noqa
+from setuptools import setup  # noqa
 
 setup(use_scm_version={'write_to': os.path.join('photutils', 'version.py'),
                        'write_to_template': VERSION_TEMPLATE},

@@ -4,18 +4,13 @@ This subpackage contains tools to perform point-spread-function (PSF)
 photometry.
 """
 
-from . import epsf
+from . import epsf, epsf_stars, groupstars, models, photometry, utils
 from .epsf import *  # noqa
-from . import epsf_stars
 from .epsf_stars import *  # noqa
-from . import groupstars
 from .groupstars import *  # noqa
 from .matching import *  # noqa
-from . import models
 from .models import *  # noqa
-from . import photometry
 from .photometry import *  # noqa
-from . import utils
 from .utils import *  # noqa
 
 __all__ = []

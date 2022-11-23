@@ -9,12 +9,11 @@ import abc
 import math
 import warnings
 
-from astropy.stats import gaussian_fwhm_to_sigma
 import numpy as np
+from astropy.stats import gaussian_fwhm_to_sigma
 
-from .peakfinder import find_peaks
 from ..utils.exceptions import NoDetectionsWarning
-
+from .peakfinder import find_peaks
 
 __all__ = ['StarFinderBase']
 

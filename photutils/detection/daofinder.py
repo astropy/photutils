@@ -5,15 +5,15 @@ This module implements the DAOStarFinder class.
 import inspect
 import warnings
 
+import numpy as np
 from astropy.nddata import extract_array
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-import numpy as np
 
-from .core import StarFinderBase, _StarFinderKernel
 from ..utils._convolution import _filter_data
-from ..utils.exceptions import NoDetectionsWarning
 from ..utils._misc import _get_version_info
+from ..utils.exceptions import NoDetectionsWarning
+from .core import StarFinderBase, _StarFinderKernel
 
 __all__ = ['DAOStarFinder']
 

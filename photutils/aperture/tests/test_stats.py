@@ -3,12 +3,12 @@
 Tests for the stats module.
 """
 
-from astropy.nddata import NDData, StdDevUncertainty
-from astropy.stats import SigmaClip
 import astropy.units as u
 import numpy as np
-from numpy.testing import assert_allclose, assert_equal
 import pytest
+from astropy.nddata import NDData, StdDevUncertainty
+from astropy.stats import SigmaClip
+from numpy.testing import assert_allclose, assert_equal
 
 from ...datasets import make_100gaussians_image, make_wcs
 from ..circle import CircularAperture

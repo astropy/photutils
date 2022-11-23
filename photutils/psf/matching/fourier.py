@@ -4,7 +4,7 @@ This module provides tools for matching PSFs using Fourier methods.
 """
 
 import numpy as np
-from numpy.fft import fft2, ifft2, fftshift, ifftshift
+from numpy.fft import fft2, fftshift, ifft2, ifftshift
 
 __all__ = ['resize_psf', 'create_matching_kernel']
 

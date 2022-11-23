@@ -6,11 +6,11 @@ image.
 
 import warnings
 
-from astropy.table import QTable
 import numpy as np
+from astropy.table import QTable
 
-from ..utils.exceptions import NoDetectionsWarning
 from ..utils._misc import _get_version_info
+from ..utils.exceptions import NoDetectionsWarning
 
 __all__ = ['find_peaks']
 

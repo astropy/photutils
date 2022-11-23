@@ -3,13 +3,13 @@
 Tests for the groupstars module.
 """
 
-from astropy.table import Table, vstack
 import numpy as np
-from numpy.testing import assert_almost_equal
 import pytest
+from astropy.table import Table, vstack
+from numpy.testing import assert_almost_equal
 
-from ..groupstars import DAOGroup, DBSCANGroup
 from ...utils._optional_deps import HAS_SKLEARN  # noqa
+from ..groupstars import DAOGroup, DBSCANGroup
 
 
 def assert_table_almost_equal(table1, table2):

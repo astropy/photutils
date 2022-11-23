@@ -5,11 +5,10 @@ Tests for the errors module.
 
 import astropy.units as u
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
 
 from ..errors import calc_total_error
-
 
 SHAPE = (5, 5)
 DATAVAL = 2.

@@ -4,12 +4,11 @@ Tests for the core module.
 """
 
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
 
-from ..core import data_properties
 from ...utils._optional_deps import HAS_SKIMAGE  # noqa
-
+from ..core import data_properties
 
 XCS = [25.7]
 YCS = [26.2]

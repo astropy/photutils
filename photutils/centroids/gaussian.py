@@ -5,10 +5,10 @@ The module contains tools for centroiding sources using Gaussians.
 
 import warnings
 
+import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling.models import Const1D, Const2D, Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 
 __all__ = ['centroid_1dg', 'centroid_2dg']
 

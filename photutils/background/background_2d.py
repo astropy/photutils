@@ -6,21 +6,20 @@ RMS in an image.
 
 import warnings
 
+import astropy.units as u
+import numpy as np
 from astropy.nddata import NDData
 from astropy.stats import SigmaClip
-import astropy.units as u
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
-
-import numpy as np
 from numpy.lib.index_tricks import index_exp
 
-from .core import SExtractorBackground, StdBackgroundRMS
-from .interpolators import BkgZoomInterpolator
 from ..utils import ShepardIDWInterpolator
 from ..utils._parameters import as_pair
 from ..utils._stats import nanmedian
+from .core import SExtractorBackground, StdBackgroundRMS
+from .interpolators import BkgZoomInterpolator
 
 __all__ = ['Background2D']
 

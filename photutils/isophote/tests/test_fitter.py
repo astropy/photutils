@@ -3,21 +3,20 @@
 Tests for the fitter module.
 """
 
-from astropy.io import fits
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from astropy.io import fits
+from numpy.testing import assert_allclose
 
-from .make_test_data import make_test_image
+from ...datasets import get_path
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 from ..fitter import CentralEllipseFitter, EllipseFitter
 from ..geometry import EllipseGeometry
 from ..harmonics import fit_first_and_second_harmonics
 from ..integrator import MEAN
 from ..isophote import Isophote
 from ..sample import CentralEllipseSample, EllipseSample
-from ...datasets import get_path
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-
+from .make_test_data import make_test_image
 
 DATA = make_test_image(seed=0)
 DEFAULT_POS = 256

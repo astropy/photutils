@@ -4,12 +4,12 @@ Tests for the _utils module.
 """
 
 import numpy as np
-from numpy.testing import assert_allclose, assert_equal
 import pytest
+from numpy.testing import assert_allclose, assert_equal
 
-from ..utils import (make_2dgaussian_kernel, _make_binary_structure,
-                     _mask_to_mirrored_value)
 from ...utils._optional_deps import HAS_SCIPY  # noqa
+from ..utils import (_make_binary_structure, _mask_to_mirrored_value,
+                     make_2dgaussian_kernel)
 
 
 def test_make_2dgaussian_kernel():

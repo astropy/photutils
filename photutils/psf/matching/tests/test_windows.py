@@ -4,12 +4,12 @@ Tests for the windows module.
 """
 
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
 
+from ....utils._optional_deps import HAS_SCIPY  # noqa
 from ..windows import (CosineBellWindow, HanningWindow, SplitCosineBellWindow,
                        TopHatWindow, TukeyWindow)
-from ....utils._optional_deps import HAS_SCIPY  # noqa
 
 
 def test_hanning():

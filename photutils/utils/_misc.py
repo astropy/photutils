@@ -3,8 +3,8 @@
 This module provides tools to return the installed astropy and photutils
 versions.
 """
-from datetime import datetime, timezone
 import sys
+from datetime import datetime, timezone
 
 
 def _get_version_info():

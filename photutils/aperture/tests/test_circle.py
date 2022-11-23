@@ -3,17 +3,16 @@
 Tests for the circle module.
 """
 
-from astropy.coordinates import SkyCoord
 import astropy.units as u
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from astropy.coordinates import SkyCoord
+from numpy.testing import assert_allclose
 
-from .test_aperture_common import BaseTestAperture
-from ..circle import (CircularAperture, CircularAnnulus, SkyCircularAperture,
-                      SkyCircularAnnulus)
 from ...utils._optional_deps import HAS_MATPLOTLIB  # noqa
-
+from ..circle import (CircularAnnulus, CircularAperture, SkyCircularAnnulus,
+                      SkyCircularAperture)
+from .test_aperture_common import BaseTestAperture
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)

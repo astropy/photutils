@@ -7,10 +7,10 @@ import copy
 import itertools
 import warnings
 
+import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData
 from astropy.utils.exceptions import AstropyWarning
-import numpy as np
 
 from ..aperture import CircularAperture
 from ..utils._parameters import as_pair

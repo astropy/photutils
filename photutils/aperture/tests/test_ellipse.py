@@ -3,15 +3,14 @@
 Tests for the ellipse module.
 """
 
-from astropy.coordinates import Angle, SkyCoord
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.coordinates import Angle, SkyCoord
 
+from ..ellipse import (EllipticalAnnulus, EllipticalAperture,
+                       SkyEllipticalAnnulus, SkyEllipticalAperture)
 from .test_aperture_common import BaseTestAperture
-from ..ellipse import (EllipticalAperture, EllipticalAnnulus,
-                       SkyEllipticalAperture, SkyEllipticalAnnulus)
-
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)

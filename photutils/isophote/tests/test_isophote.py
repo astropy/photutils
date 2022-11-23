@@ -3,20 +3,19 @@
 Tests for the isophote module.
 """
 
-from astropy.io import fits
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from astropy.io import fits
+from numpy.testing import assert_allclose
 
-from .make_test_data import make_test_image
+from ...datasets import get_path
+from ...utils._optional_deps import HAS_SCIPY  # noqa
 from ..ellipse import Ellipse
 from ..fitter import EllipseFitter
 from ..geometry import EllipseGeometry
 from ..isophote import Isophote, IsophoteList
 from ..sample import EllipseSample
-from ...datasets import get_path
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-
+from .make_test_data import make_test_image
 
 DEFAULT_FIX = np.array([False, False, False, False])
 

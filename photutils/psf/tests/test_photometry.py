@@ -3,6 +3,8 @@
 Tests for the photometry module.
 """
 
+import numpy as np
+import pytest
 from astropy.convolution.utils import discretize_model
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.fitting import LevMarLSQFitter, SimplexLSQFitter
@@ -10,19 +12,17 @@ from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
-import pytest
 
-from ..groupstars import DAOGroup
-from ..models import IntegratedGaussianPRF, FittableImageModel
-from ..photometry import (BasicPSFPhotometry, DAOPhotPSFPhotometry,
-                          IterativelySubtractedPSFPhotometry)
-from ..utils import prepare_psf_model
 from ...background import MMMBackground, StdBackgroundRMS
 from ...datasets import make_gaussian_prf_sources_image, make_noise_image
 from ...detection import DAOStarFinder
 from ...utils._optional_deps import HAS_SCIPY  # noqa
+from ..groupstars import DAOGroup
+from ..models import FittableImageModel, IntegratedGaussianPRF
+from ..photometry import (BasicPSFPhotometry, DAOPhotPSFPhotometry,
+                          IterativelySubtractedPSFPhotometry)
+from ..utils import prepare_psf_model
 
 
 def make_psf_photometry_objs(std=1, sigma_psf=1):

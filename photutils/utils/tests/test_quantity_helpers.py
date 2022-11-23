@@ -5,8 +5,8 @@ Tests for the _quantity_helpers module.
 
 import astropy.units as u
 import numpy as np
-from numpy.testing import assert_equal
 import pytest
+from numpy.testing import assert_equal
 
 from .._quantity_helpers import process_quantities
 

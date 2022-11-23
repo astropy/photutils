@@ -6,12 +6,12 @@ The module contains tools for centroiding sources.
 import inspect
 import warnings
 
+import numpy as np
 from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 
-from ..utils._round import _py2intround
 from ..utils._parameters import as_pair
+from ..utils._round import _py2intround
 
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 

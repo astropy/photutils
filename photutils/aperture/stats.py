@@ -4,24 +4,24 @@ This module provides tools for calculating the properties of sources
 defined by an Aperture.
 """
 
-from copy import deepcopy
 import functools
 import inspect
 import warnings
+from copy import deepcopy
 
-from astropy.nddata import NDData, StdDevUncertainty
-from astropy.stats import (SigmaClip, mad_std, biweight_location,
-                           biweight_midvariance)
-from astropy.table import QTable
 import astropy.units as u
+import numpy as np
+from astropy.nddata import NDData, StdDevUncertainty
+from astropy.stats import (SigmaClip, biweight_location, biweight_midvariance,
+                           mad_std)
+from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 
-from . import Aperture, SkyAperture
 from ..utils._misc import _get_meta
 from ..utils._moments import _moments, _moments_central
 from ..utils._quantity_helpers import process_quantities
+from . import Aperture, SkyAperture
 
 __all__ = ['ApertureStats']
 

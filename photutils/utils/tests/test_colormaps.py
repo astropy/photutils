@@ -3,11 +3,11 @@
 Tests for the colormaps module.
 """
 
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
 
-from ..colormaps import make_random_cmap
 from .._optional_deps import HAS_MATPLOTLIB  # noqa
+from ..colormaps import make_random_cmap
 
 
 @pytest.mark.skipif('not HAS_MATPLOTLIB')

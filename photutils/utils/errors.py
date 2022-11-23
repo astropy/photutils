@@ -4,8 +4,8 @@ This module provides tools for calculating total error arrays.
 """
 
 import astropy.units as u
-from astropy.utils.misc import isiterable
 import numpy as np
+from astropy.utils.misc import isiterable
 
 __all__ = ['calc_total_error']
 

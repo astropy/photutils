@@ -5,11 +5,10 @@ Tests for the circular_overlap_grid module.
 
 import itertools
 
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
 
 from .. import circular_overlap_grid
-
 
 grid_sizes = [50, 500, 1000]
 circ_sizes = [0.2, 0.4, 0.8]

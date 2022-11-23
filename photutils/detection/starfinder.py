@@ -6,16 +6,16 @@ This module implements the StarFinder class.
 import inspect
 import warnings
 
+import numpy as np
 from astropy.nddata import overlap_slices
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-import numpy as np
 
-from .core import StarFinderBase
 from ..utils._convolution import _filter_data
 from ..utils._misc import _get_version_info
 from ..utils._moments import _moments, _moments_central
 from ..utils.exceptions import NoDetectionsWarning
+from .core import StarFinderBase
 
 __all__ = ['StarFinder']
 
