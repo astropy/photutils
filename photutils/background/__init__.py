@@ -4,6 +4,6 @@ This subpackage contains tools to estimate the background and background
 RMS in an image.
 """
 
-from .background_2d import *  # noqa
-from .core import *  # noqa
-from .interpolators import *  # noqa
+from .background_2d import *  # noqa: F401, F403
+from .core import *  # noqa: F401, F403
+from .interpolators import *  # noqa: F401, F403

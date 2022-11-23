@@ -73,10 +73,10 @@ except Exception:
 
 # Import these after the above checks to ensure they are printed even if
 # extensions_helpers is not installed
-import os  # noqa
+import os  # noqa: E402
 
-from extension_helpers import get_extensions  # noqa
-from setuptools import setup  # noqa
+from extension_helpers import get_extensions  # noqa: E402
+from setuptools import setup  # noqa: E402
 
 setup(use_scm_version={'write_to': os.path.join('photutils', 'version.py'),
                        'write_to_template': VERSION_TEMPLATE},

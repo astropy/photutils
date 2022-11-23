@@ -5,9 +5,9 @@ segmentation and measuring their centroids, photometry, and
 morphological properties.
 """
 
-from .catalog import *  # noqa
-from .core import *  # noqa
-from .deblend import *  # noqa
-from .detect import *  # noqa
-from .finder import *  # noqa
-from .utils import *  # noqa
+from .catalog import *  # noqa: F401, F403
+from .core import *  # noqa: F401, F403
+from .deblend import *  # noqa: F401, F403
+from .detect import *  # noqa: F401, F403
+from .finder import *  # noqa: F401, F403
+from .utils import *  # noqa: F401, F403

@@ -4,5 +4,5 @@ This subpackage contains tools for making or loading datasets for
 examples and tests.
 """
 
-from .load import *  # noqa
-from .make import *  # noqa
+from .load import *  # noqa: F401, F403
+from .make import *  # noqa: F401, F403

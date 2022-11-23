@@ -10,7 +10,7 @@ import warnings
 
 # Affiliated packages may add whatever they like to this file, but
 # should keep this content at the top.
-from ._astropy_init import *  # noqa
+from ._astropy_init import *  # noqa: F401, F403
 
 from . import aperture
 from . import background
