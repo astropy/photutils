@@ -908,3 +908,24 @@ def test_centroid_win():
     # isophotal centroid
     assert cat.xcentroid[1] == cat.xcentroid_win[1]
     assert cat.ycentroid[1] == cat.ycentroid_win[1]
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_centroid_win_migrate():
+    """
+    Test that when the windowed centroid moves the aperture completely
+    off the image the isophotal centroid is returned.
+    """
+    g1 = Gaussian2D(1621, 76.29, 185.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 83.81, 182.29, 1.44, 1.27, 0.628319)
+    m = g1 + g2
+    yy, xx = np.mgrid[0:256, 0:256]
+    data = m(xx, yy)
+    noise = make_noise_image(data.shape, mean=0, stddev=65.0, seed=123)
+    data += noise
+    segm = detect_sources(data, 98.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+
+    indices = (0, 3, 14, 30)
+    for idx in indices:
+        assert_equal(cat.centroid_win[idx], cat.centroid[idx])
