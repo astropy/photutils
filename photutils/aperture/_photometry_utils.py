@@ -3,7 +3,6 @@
 This module contains tools to validate and handle photometry inputs.
 """
 
-
 import numpy as np
 
 

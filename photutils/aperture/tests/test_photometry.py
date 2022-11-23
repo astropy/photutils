@@ -13,16 +13,19 @@ from astropy.table import Table
 from astropy.wcs import WCS
 from numpy.testing import (assert_allclose, assert_array_equal,
                            assert_array_less)
-
-from ...datasets import get_path, make_4gaussians_image, make_gwcs, make_wcs
-from ...utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB  # noqa
-from ..circle import (CircularAnnulus, CircularAperture, SkyCircularAnnulus,
-                      SkyCircularAperture)
-from ..ellipse import (EllipticalAnnulus, EllipticalAperture,
-                       SkyEllipticalAnnulus, SkyEllipticalAperture)
-from ..photometry import aperture_photometry
-from ..rectangle import (RectangularAnnulus, RectangularAperture,
-                         SkyRectangularAnnulus, SkyRectangularAperture)
+from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
+                                       SkyCircularAnnulus, SkyCircularAperture)
+from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
+                                        SkyEllipticalAnnulus,
+                                        SkyEllipticalAperture)
+from photutils.aperture.photometry import aperture_photometry
+from photutils.aperture.rectangle import (RectangularAnnulus,
+                                          RectangularAperture,
+                                          SkyRectangularAnnulus,
+                                          SkyRectangularAperture)
+from photutils.datasets import (get_path, make_4gaussians_image, make_gwcs,
+                                make_wcs)
+from photutils.utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB  # noqa
 
 APERTURE_CL = [CircularAperture,
                CircularAnnulus,

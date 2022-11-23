@@ -12,11 +12,11 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
-
-from ..utils._wcs_helpers import _pixel_scale_angle_at_skycoord
-from ._photometry_utils import (_handle_units, _prepare_photometry_data,
-                                _validate_inputs)
-from .bounding_box import BoundingBox
+from photutils.aperture._photometry_utils import (_handle_units,
+                                                  _prepare_photometry_data,
+                                                  _validate_inputs)
+from photutils.aperture.bounding_box import BoundingBox
+from photutils.utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture']
 

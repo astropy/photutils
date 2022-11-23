@@ -7,11 +7,10 @@ import astropy.units as u
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_almost_equal
-
-from ..bounding_box import BoundingBox
-from ..circle import CircularAnnulus, CircularAperture
-from ..mask import ApertureMask
-from ..rectangle import RectangularAnnulus
+from photutils.aperture.bounding_box import BoundingBox
+from photutils.aperture.circle import CircularAnnulus, CircularAperture
+from photutils.aperture.mask import ApertureMask
+from photutils.aperture.rectangle import RectangularAnnulus
 
 POSITIONS = [(-20, -20), (-20, 20), (20, -20), (60, 60)]
 

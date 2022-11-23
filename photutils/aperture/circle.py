@@ -7,12 +7,12 @@ pixel and sky coordinates.
 import math
 
 from astropy.utils import lazyproperty
-
-from ..geometry import circular_overlap_grid
-from .attributes import (PixelPositions, PositiveScalar, PositiveScalarAngle,
-                         SkyCoordPositions)
-from .core import PixelAperture, SkyAperture
-from .mask import ApertureMask
+from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
+                                           PositiveScalarAngle,
+                                           SkyCoordPositions)
+from photutils.aperture.core import PixelAperture, SkyAperture
+from photutils.aperture.mask import ApertureMask
+from photutils.geometry import circular_overlap_grid
 
 __all__ = ['CircularMaskMixin', 'CircularAperture', 'CircularAnnulus',
            'SkyCircularAperture', 'SkyCircularAnnulus']

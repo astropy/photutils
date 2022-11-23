@@ -2,6 +2,7 @@
 """
 This module defines a class for aperture masks.
 """
+
 import warnings
 
 import astropy.units as u

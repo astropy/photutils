@@ -10,11 +10,11 @@ import numpy as np
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable
 from astropy.utils.exceptions import AstropyUserWarning
-
-from ..utils._misc import _get_version_info
-from ._photometry_utils import (_handle_units, _prepare_photometry_data,
-                                _validate_inputs)
-from .core import Aperture, SkyAperture
+from photutils.aperture._photometry_utils import (_handle_units,
+                                                  _prepare_photometry_data,
+                                                  _validate_inputs)
+from photutils.aperture.core import Aperture, SkyAperture
+from photutils.utils._misc import _get_version_info
 
 __all__ = ['aperture_photometry']
 

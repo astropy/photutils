@@ -2,6 +2,7 @@
 """
 This module defines a class for a rectangular bounding box.
 """
+
 import math
 
 import numpy as np
@@ -278,7 +279,8 @@ class BoundingBox:
         Return a `~photutils.aperture.RectangularAperture` that
         represents the bounding box.
         """
-        from .rectangle import RectangularAperture  # prevent circular import
+        # prevent circular import
+        from photutils.aperture.rectangle import RectangularAperture
 
         xypos = self.center[::-1]  # xy order
         height, width = self.shape

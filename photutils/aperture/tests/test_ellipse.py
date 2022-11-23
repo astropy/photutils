@@ -7,10 +7,10 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import Angle, SkyCoord
-
-from ..ellipse import (EllipticalAnnulus, EllipticalAperture,
-                       SkyEllipticalAnnulus, SkyEllipticalAperture)
-from .test_aperture_common import BaseTestAperture
+from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
+                                        SkyEllipticalAnnulus,
+                                        SkyEllipticalAperture)
+from photutils.aperture.tests.test_aperture_common import BaseTestAperture
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)

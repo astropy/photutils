@@ -7,10 +7,11 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import Angle, SkyCoord
-
-from ..rectangle import (RectangularAnnulus, RectangularAperture,
-                         SkyRectangularAnnulus, SkyRectangularAperture)
-from .test_aperture_common import BaseTestAperture
+from photutils.aperture.rectangle import (RectangularAnnulus,
+                                          RectangularAperture,
+                                          SkyRectangularAnnulus,
+                                          SkyRectangularAperture)
+from photutils.aperture.tests.test_aperture_common import BaseTestAperture
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)
