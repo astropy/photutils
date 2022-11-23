@@ -881,3 +881,30 @@ def test_kron_params():
     rh = cat.fluxfrac_radius(0.5)
     assert_allclose(rh.value.min(), 1.3649418211298536)
     assert isinstance(cat.kron_aperture[0], CircularAperture)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_centroid_win():
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    m = g1 + g2
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = m(xx, yy)
+    noise = make_noise_image(data.shape, mean=0, stddev=65.0, seed=123)
+    data += noise
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    npixels = 10
+    finder = SourceFinder(npixels=npixels, progress_bar=False)
+    threshold = 107.9
+    segment_map = finder(convolved_data, threshold)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        apermask_method='none')
+
+    assert cat.xcentroid[0] != cat.xcentroid_win[0]
+    assert cat.ycentroid[0] != cat.ycentroid_win[0]
+    # centroid_win moved beyond 1-sigma ellipse and was reset to
+    # isophotal centroid
+    assert cat.xcentroid[1] == cat.xcentroid_win[1]
+    assert cat.ycentroid[1] == cat.ycentroid_win[1]
