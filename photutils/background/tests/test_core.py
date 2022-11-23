@@ -8,12 +8,13 @@ import numpy as np
 import pytest
 from astropy.stats import SigmaClip
 from numpy.testing import assert_allclose
-
-from ...datasets import make_noise_image
-from ..core import (BiweightLocationBackground, BiweightScaleBackgroundRMS,
-                    MADStdBackgroundRMS, MeanBackground, MedianBackground,
-                    MMMBackground, ModeEstimatorBackground,
-                    SExtractorBackground, StdBackgroundRMS)
+from photutils.background.core import (BiweightLocationBackground,
+                                       BiweightScaleBackgroundRMS,
+                                       MADStdBackgroundRMS, MeanBackground,
+                                       MedianBackground, MMMBackground,
+                                       ModeEstimatorBackground,
+                                       SExtractorBackground, StdBackgroundRMS)
+from photutils.datasets import make_noise_image
 
 BKG = 0.0
 STD = 0.5
