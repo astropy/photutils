@@ -14,7 +14,7 @@ from numpy.testing import assert_allclose
 
 from photutils.centroids.gaussian import (_gaussian1d_moments, centroid_1dg,
                                           centroid_2dg)
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 
 XCEN = 25.7
 YCEN = 26.2

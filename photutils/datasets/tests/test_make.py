@@ -16,7 +16,7 @@ from photutils.datasets import (apply_poisson_noise, make_4gaussians_image,
                                 make_model_sources_image, make_noise_image,
                                 make_random_gaussians_table,
                                 make_random_models_table, make_wcs)
-from photutils.utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_GWCS, HAS_SCIPY
 
 SOURCE_TABLE = Table()
 SOURCE_TABLE['flux'] = [1, 2, 3]

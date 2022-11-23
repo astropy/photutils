@@ -8,7 +8,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from photutils.morphology.core import data_properties
-from photutils.utils._optional_deps import HAS_SKIMAGE  # noqa
+from photutils.utils._optional_deps import HAS_SKIMAGE
 
 XCS = [25.7]
 YCS = [26.2]

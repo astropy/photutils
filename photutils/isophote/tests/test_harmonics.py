@@ -13,12 +13,12 @@ from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_upper_harmonic)
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_harmonics_1():
-    from scipy.optimize import leastsq  # noqa
+    from scipy.optimize import leastsq
 
     # this is an almost as-is example taken from stackoverflow
     N = 100  # number of data points

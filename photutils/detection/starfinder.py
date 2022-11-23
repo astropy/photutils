@@ -213,7 +213,7 @@ class _StarFinderCatalog:
                 # apply fancy indices to list properties
                 value = np.array(value + [None], dtype=object)[:-1][index]
                 if isscalar:
-                    value = [value]  # noqa
+                    value = [value]
                 else:
                     value = value.tolist()
             else:

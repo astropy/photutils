@@ -11,7 +11,7 @@ from numpy.testing import assert_array_equal
 from photutils.centroids import centroid_com
 from photutils.datasets import make_4gaussians_image, make_gwcs, make_wcs
 from photutils.detection.peakfinder import find_peaks
-from photutils.utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_GWCS, HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
 PEAKDATA = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]).astype(float)

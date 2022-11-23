@@ -9,7 +9,7 @@ from astropy.modeling.models import Gaussian2D
 
 from photutils.datasets import make_100gaussians_image
 from photutils.detection.starfinder import StarFinder
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
 DATA = make_100gaussians_image()

@@ -15,7 +15,7 @@ from photutils.psf.models import IntegratedGaussianPRF
 from photutils.psf.photometry import BasicPSFPhotometry
 from photutils.psf.utils import (get_grouped_psf_model, prepare_psf_model,
                                  subtract_psf)
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 
 PSF_SIZE = 11
 GAUSSIAN_WIDTH = 1.

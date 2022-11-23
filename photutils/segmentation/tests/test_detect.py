@@ -14,7 +14,7 @@ from photutils.datasets import make_4gaussians_image
 from photutils.segmentation.detect import (detect_sources, detect_threshold,
                                            make_source_mask)
 from photutils.segmentation.utils import make_2dgaussian_kernel
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
 DATA = np.array([[0, 1, 0], [0, 2, 0], [0, 0, 0]]).astype(float)

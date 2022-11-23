@@ -13,7 +13,7 @@ from numpy.testing import assert_allclose
 
 from photutils.datasets import make_100gaussians_image
 from photutils.detection.daofinder import DAOStarFinder
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
 DATA = make_100gaussians_image()
