@@ -10,7 +10,7 @@ from numpy.testing import assert_allclose
 from photutils.psf.matching.windows import (CosineBellWindow, HanningWindow,
                                             SplitCosineBellWindow,
                                             TopHatWindow, TukeyWindow)
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 
 
 def test_hanning():

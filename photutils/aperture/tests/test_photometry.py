@@ -26,7 +26,7 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
                                           SkyRectangularAperture)
 from photutils.datasets import (get_path, make_4gaussians_image, make_gwcs,
                                 make_wcs)
-from photutils.utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB  # noqa
+from photutils.utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB
 
 APERTURE_CL = [CircularAperture,
                CircularAnnulus,

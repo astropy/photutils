@@ -16,7 +16,7 @@ from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.detect import _detect_sources
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._convolution import _filter_data
-from photutils.utils._optional_deps import HAS_TQDM  # noqa
+from photutils.utils._optional_deps import HAS_TQDM
 
 __all__ = ['deblend_sources']
 

@@ -4,5 +4,5 @@ This subpackage contains tools to generate kernels for matching point
 spread functions.
 """
 
-from .fourier import *  # noqa
-from .windows import *  # noqa
+from .fourier import *  # noqa: F401, F403
+from .windows import *  # noqa: F401, F403

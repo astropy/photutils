@@ -15,7 +15,7 @@ from numpy.testing import assert_allclose
 
 from photutils.datasets import make_100gaussians_image
 from photutils.segmentation import SourceFinder, make_2dgaussian_kernel
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.depths import ImageDepth
 
 bool_vals = (True, False)

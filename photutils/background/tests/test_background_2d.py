@@ -16,7 +16,7 @@ from photutils.background.background_2d import Background2D
 from photutils.background.core import MeanBackground
 from photutils.background.interpolators import (BkgIDWInterpolator,
                                                 BkgZoomInterpolator)
-from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY
 
 DATA = np.ones((100, 100))
 BKG_RMS = np.zeros((100, 100))

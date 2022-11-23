@@ -23,7 +23,7 @@ from photutils.psf.models import FittableImageModel, IntegratedGaussianPRF
 from photutils.psf.photometry import (BasicPSFPhotometry, DAOPhotPSFPhotometry,
                                       IterativelySubtractedPSFPhotometry)
 from photutils.psf.utils import prepare_psf_model
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 
 
 def make_psf_photometry_objs(std=1, sigma_psf=1):

@@ -9,7 +9,7 @@ from astropy.table import Table, vstack
 from numpy.testing import assert_almost_equal
 
 from photutils.psf.groupstars import DAOGroup, DBSCANGroup
-from photutils.utils._optional_deps import HAS_SKLEARN  # noqa
+from photutils.utils._optional_deps import HAS_SKLEARN
 
 
 def assert_table_almost_equal(table1, table2):

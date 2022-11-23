@@ -10,7 +10,7 @@ import warnings
 
 # Affiliated packages may add whatever they like to this file, but
 # should keep this content at the top.
-from ._astropy_init import *  # noqa
+from ._astropy_init import *  # noqa: F401, F403
 
 from . import aperture
 from . import background
@@ -98,4 +98,4 @@ def _get_bibtex():
 
 __citation__ = __bibtex__ = _get_bibtex()
 
-del _get_bibtex  # noqa
+del _get_bibtex

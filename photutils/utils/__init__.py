@@ -3,10 +3,10 @@
 This subpackage provides general-purpose utility functions.
 """
 
-from .colormaps import *  # noqa
-from .cutouts import *  # noqa
-from .depths import *  # noqa
-from .errors import *  # noqa
-from .exceptions import *  # noqa
-from .footprints import *  # noqa
-from .interpolation import *  # noqa
+from .colormaps import *  # noqa: F401, F403
+from .cutouts import *  # noqa: F401, F403
+from .depths import *  # noqa: F401, F403
+from .errors import *  # noqa: F401, F403
+from .exceptions import *  # noqa: F401, F403
+from .footprints import *  # noqa: F401, F403
+from .interpolation import *  # noqa: F401, F403

@@ -11,7 +11,7 @@ from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 
 # pylint: disable-next=E0611
-from photutils.utils._optional_deps import HAS_TQDM  # noqa: F401
+from photutils.utils._optional_deps import HAS_TQDM
 from photutils.utils.footprints import circular_footprint
 
 __all__ = ['ImageDepth']

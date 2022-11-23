@@ -3,11 +3,11 @@
 This subpackage contains tools to perform aperture photometry.
 """
 
-from .bounding_box import *  # noqa
-from .circle import *  # noqa
-from .core import *  # noqa
-from .ellipse import *  # noqa
-from .mask import *  # noqa
-from .photometry import *  # noqa
-from .rectangle import *  # noqa
-from .stats import *  # noqa
+from .bounding_box import *  # noqa: F401, F403
+from .circle import *  # noqa: F401, F403
+from .core import *  # noqa: F401, F403
+from .ellipse import *  # noqa: F401, F403
+from .mask import *  # noqa: F401, F403
+from .photometry import *  # noqa: F401, F403
+from .rectangle import *  # noqa: F401, F403
+from .stats import *  # noqa: F401, F403

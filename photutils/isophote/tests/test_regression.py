@@ -57,7 +57,7 @@ from astropy.table import Table
 from photutils.datasets import get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.integrator import BILINEAR
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')

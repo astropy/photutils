@@ -19,7 +19,7 @@ from photutils.psf.groupstars import DAOGroup
 from photutils.psf.utils import (_extract_psf_fitting_names,
                                  get_grouped_psf_model, subtract_psf)
 from photutils.utils._misc import _get_version_info
-from photutils.utils._optional_deps import HAS_TQDM  # noqa
+from photutils.utils._optional_deps import HAS_TQDM
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',

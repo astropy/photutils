@@ -48,7 +48,7 @@ repos:
         # Detect mistake of inline code touching normal text in rst.
       - id: text-unicode-replacement-char
         # Forbid files which have a UTF-8 Unicode replacement character.
-        #- id: python-check-blanket-noqa
+      - id: python-check-blanket-noqa
         # Enforce that all noqa annotations always occur with specific codes.
 
   - repo: https://github.com/asottile/pyupgrade
@@ -74,6 +74,11 @@ repos:
     hooks:
       - id: flake8
         args: ["--ignore", "E501,W503"]
+
+  - repo: https://github.com/asottile/yesqa
+    rev: v1.4.0
+    hooks:
+      - id: yesqa
 
   # - repo: https://github.com/MarcoGorelli/absolufy-imports
   #   rev: v0.3.1

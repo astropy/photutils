@@ -8,7 +8,7 @@ from numpy.testing import assert_allclose
 
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.rectangle import RectangularAperture
-from photutils.utils._optional_deps import HAS_MATPLOTLIB  # noqa
+from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 
 def test_bounding_box_init():

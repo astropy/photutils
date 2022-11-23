@@ -11,7 +11,7 @@ from numpy.testing import assert_allclose
 
 from photutils.psf.matching.fourier import create_matching_kernel, resize_psf
 from photutils.psf.matching.windows import SplitCosineBellWindow
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')

@@ -11,7 +11,7 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.utils import circular_footprint
-from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')

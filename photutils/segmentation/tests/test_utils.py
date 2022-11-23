@@ -10,7 +10,7 @@ from numpy.testing import assert_allclose, assert_equal
 from photutils.segmentation.utils import (_make_binary_structure,
                                           _mask_to_mirrored_value,
                                           make_2dgaussian_kernel)
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 
 
 def test_make_2dgaussian_kernel():

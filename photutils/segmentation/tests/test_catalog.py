@@ -23,8 +23,7 @@ from photutils.segmentation.detect import detect_sources
 from photutils.segmentation.finder import SourceFinder
 from photutils.segmentation.utils import make_2dgaussian_kernel
 from photutils.utils._convolution import _filter_data
-from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,  # noqa
-                                            HAS_SCIPY)
+from photutils.utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY
 from photutils.utils.cutouts import CutoutImage
 
 

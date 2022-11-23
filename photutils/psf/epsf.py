@@ -19,7 +19,7 @@ from photutils.centroids import centroid_com
 from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from photutils.psf.models import EPSFModel
 from photutils.psf.utils import _interpolate_missing_data
-from photutils.utils._optional_deps import HAS_BOTTLENECK, HAS_TQDM  # noqa
+from photutils.utils._optional_deps import HAS_BOTTLENECK, HAS_TQDM
 from photutils.utils._parameters import as_pair
 from photutils.utils._round import _py2intround
 

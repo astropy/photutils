@@ -16,7 +16,7 @@ from photutils.isophote.integrator import MEAN
 from photutils.isophote.isophote import Isophote
 from photutils.isophote.sample import CentralEllipseSample, EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
-from photutils.utils._optional_deps import HAS_SCIPY  # noqa
+from photutils.utils._optional_deps import HAS_SCIPY
 
 DATA = make_test_image(seed=0)
 DEFAULT_POS = 256

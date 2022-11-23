@@ -4,8 +4,8 @@ This subpackage contains tools for detecting sources in an astronomical
 image.
 """
 
-from .core import *  # noqa
-from .daofinder import *  # noqa
-from .irafstarfinder import *  # noqa
-from .peakfinder import *  # noqa
-from .starfinder import *  # noqa
+from .core import *  # noqa: F401, F403
+from .daofinder import *  # noqa: F401, F403
+from .irafstarfinder import *  # noqa: F401, F403
+from .peakfinder import *  # noqa: F401, F403
+from .starfinder import *  # noqa: F401, F403
