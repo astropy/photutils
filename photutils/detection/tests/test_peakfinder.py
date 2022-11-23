@@ -7,12 +7,11 @@ import numpy as np
 import pytest
 from astropy.tests.helper import assert_quantity_allclose
 from numpy.testing import assert_array_equal
-
-from ...centroids import centroid_com
-from ...datasets import make_4gaussians_image, make_gwcs, make_wcs
-from ...utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
-from ...utils.exceptions import NoDetectionsWarning
-from ..peakfinder import find_peaks
+from photutils.centroids import centroid_com
+from photutils.datasets import make_4gaussians_image, make_gwcs, make_wcs
+from photutils.detection.peakfinder import find_peaks
+from photutils.utils._optional_deps import HAS_GWCS, HAS_SCIPY  # noqa
+from photutils.utils.exceptions import NoDetectionsWarning
 
 PEAKDATA = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]).astype(float)
 PEAKREF1 = np.array([[0, 0], [2, 2]])

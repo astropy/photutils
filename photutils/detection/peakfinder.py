@@ -8,9 +8,8 @@ import warnings
 
 import numpy as np
 from astropy.table import QTable
-
-from ..utils._misc import _get_version_info
-from ..utils.exceptions import NoDetectionsWarning
+from photutils.utils._misc import _get_version_info
+from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['find_peaks']
 
@@ -177,7 +176,8 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
 
     # perform centroiding
     if centroid_func is not None:
-        from ..centroids import centroid_sources  # prevents circular import
+        # prevent circular import
+        from photutils.centroids import centroid_sources
 
         if not callable(centroid_func):
             raise TypeError('centroid_func must be a callable object')

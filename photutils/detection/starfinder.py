@@ -10,12 +10,11 @@ import numpy as np
 from astropy.nddata import overlap_slices
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-
-from ..utils._convolution import _filter_data
-from ..utils._misc import _get_version_info
-from ..utils._moments import _moments, _moments_central
-from ..utils.exceptions import NoDetectionsWarning
-from .core import StarFinderBase
+from photutils.detection.core import StarFinderBase
+from photutils.utils._convolution import _filter_data
+from photutils.utils._misc import _get_version_info
+from photutils.utils._moments import _moments, _moments_central
+from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinder']
 
