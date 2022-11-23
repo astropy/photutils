@@ -38,8 +38,8 @@ def data_properties(data, mask=None, background=None):
     result : `~photutils.segmentation.SourceCatalog` instance
         A `~photutils.segmentation.SourceCatalog` object.
     """
-    # prevent circular imports
-    from ..segmentation import SegmentationImage, SourceCatalog
+    # prevent circular import
+    from photutils.segmentation import SegmentationImage, SourceCatalog
 
     segment_image = SegmentationImage(np.ones(data.shape, dtype=int))
 
