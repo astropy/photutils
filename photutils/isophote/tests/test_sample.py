@@ -5,11 +5,11 @@ Tests for the sample module.
 
 import numpy as np
 import pytest
-
-from ..integrator import BILINEAR, MEAN, MEDIAN, NEAREST_NEIGHBOR
-from ..isophote import Isophote
-from ..sample import EllipseSample
-from .make_test_data import make_test_image
+from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
+                                           NEAREST_NEIGHBOR)
+from photutils.isophote.isophote import Isophote
+from photutils.isophote.sample import EllipseSample
+from photutils.isophote.tests.make_test_data import make_test_image
 
 DEFAULT_FIX = np.array([False, False, False, False])
 

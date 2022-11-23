@@ -7,14 +7,14 @@ import warnings
 
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
-
-from .fitter import (DEFAULT_CONVERGENCE, DEFAULT_FFLAG, DEFAULT_MAXGERR,
-                     DEFAULT_MAXIT, DEFAULT_MINIT, CentralEllipseFitter,
-                     EllipseFitter)
-from .geometry import EllipseGeometry
-from .integrator import BILINEAR
-from .isophote import Isophote, IsophoteList
-from .sample import CentralEllipseSample, EllipseSample
+from photutils.isophote.fitter import (DEFAULT_CONVERGENCE, DEFAULT_FFLAG,
+                                       DEFAULT_MAXGERR, DEFAULT_MAXIT,
+                                       DEFAULT_MINIT, CentralEllipseFitter,
+                                       EllipseFitter)
+from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.integrator import BILINEAR
+from photutils.isophote.isophote import Isophote, IsophoteList
+from photutils.isophote.sample import CentralEllipseSample, EllipseSample
 
 __all__ = ['Ellipse']
 

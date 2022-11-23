@@ -6,8 +6,7 @@ Tests for the geometry module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-
-from ..geometry import EllipseGeometry
+from photutils.isophote.geometry import EllipseGeometry
 
 
 @pytest.mark.parametrize('astep, linear_growth', [(0.2, False), (20., True)])

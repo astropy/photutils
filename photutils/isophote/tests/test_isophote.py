@@ -7,15 +7,14 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from numpy.testing import assert_allclose
-
-from ...datasets import get_path
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..ellipse import Ellipse
-from ..fitter import EllipseFitter
-from ..geometry import EllipseGeometry
-from ..isophote import Isophote, IsophoteList
-from ..sample import EllipseSample
-from .make_test_data import make_test_image
+from photutils.datasets import get_path
+from photutils.isophote.ellipse import Ellipse
+from photutils.isophote.fitter import EllipseFitter
+from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.isophote import Isophote, IsophoteList
+from photutils.isophote.sample import EllipseSample
+from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 DEFAULT_FIX = np.array([False, False, False, False])
 

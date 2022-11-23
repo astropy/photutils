@@ -4,10 +4,8 @@ This module profiles tools for building a model elliptical galaxy image
 from a list of isophotes.
 """
 
-
 import numpy as np
-
-from .geometry import EllipseGeometry
+from photutils.isophote.geometry import EllipseGeometry
 
 __all__ = ['build_ellipse_model']
 

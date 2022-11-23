@@ -7,16 +7,15 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from numpy.testing import assert_allclose
-
-from ...datasets import get_path
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..fitter import CentralEllipseFitter, EllipseFitter
-from ..geometry import EllipseGeometry
-from ..harmonics import fit_first_and_second_harmonics
-from ..integrator import MEAN
-from ..isophote import Isophote
-from ..sample import CentralEllipseSample, EllipseSample
-from .make_test_data import make_test_image
+from photutils.datasets import get_path
+from photutils.isophote.fitter import CentralEllipseFitter, EllipseFitter
+from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.harmonics import fit_first_and_second_harmonics
+from photutils.isophote.integrator import MEAN
+from photutils.isophote.isophote import Isophote
+from photutils.isophote.sample import CentralEllipseSample, EllipseSample
+from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 DATA = make_test_image(seed=0)
 DEFAULT_POS = 256

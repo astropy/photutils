@@ -6,13 +6,13 @@ Tests for the harmonics module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-
-from ...utils._optional_deps import HAS_SCIPY  # noqa
-from ..fitter import EllipseFitter
-from ..harmonics import (first_and_second_harmonic_function,
-                         fit_first_and_second_harmonics, fit_upper_harmonic)
-from ..sample import EllipseSample
-from .make_test_data import make_test_image
+from photutils.isophote.fitter import EllipseFitter
+from photutils.isophote.harmonics import (first_and_second_harmonic_function,
+                                          fit_first_and_second_harmonics,
+                                          fit_upper_harmonic)
+from photutils.isophote.sample import EllipseSample
+from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils._optional_deps import HAS_SCIPY  # noqa
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
