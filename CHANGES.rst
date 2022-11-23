@@ -44,6 +44,8 @@ New Features
   - The progress bar used when deblending sources now is prepended with
     "Deblending". [#1439]
 
+  - Added "windowed" centroids to ``SourceCatalog``. [#1447]
+
 - ``photutils.utils``
 
   - Added ``xyorigin`` attribute to ``CutoutImage``. [#1419]
