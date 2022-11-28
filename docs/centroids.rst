@@ -70,10 +70,10 @@ similar, we also include an inset plot zoomed in near the centroid:
     :include-source:
 
     import matplotlib.pyplot as plt
-    from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
-    from mpl_toolkits.axes_grid1.inset_locator import mark_inset
-    from photutils.centroids import centroid_com, centroid_quadratic
-    from photutils.centroids import centroid_1dg, centroid_2dg
+    from mpl_toolkits.axes_grid1.inset_locator import (mark_inset,
+                                                       zoomed_inset_axes)
+    from photutils.centroids import (centroid_1dg, centroid_2dg,
+                                     centroid_com, centroid_quadratic)
     from photutils.datasets import make_4gaussians_image
 
     data = make_4gaussians_image()[43:79, 76:104]  # extract single object
@@ -138,7 +138,7 @@ Let's plot the results:
     :include-source:
 
     import matplotlib.pyplot as plt
-    from photutils.centroids import centroid_sources, centroid_com
+    from photutils.centroids import centroid_com, centroid_sources
     from photutils.datasets import make_4gaussians_image
 
     data = make_4gaussians_image()

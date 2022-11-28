@@ -76,8 +76,8 @@ approximate isophotal ellipse for the source:
     import astropy.units as u
     import matplotlib.pyplot as plt
     from photutils.aperture import EllipticalAperture
-    from photutils.morphology import data_properties
     from photutils.datasets import make_4gaussians_image
+    from photutils.morphology import data_properties
 
     data = make_4gaussians_image()[43:79, 76:104]  # extract single object
     cat = data_properties(data)

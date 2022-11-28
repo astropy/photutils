@@ -183,7 +183,6 @@ The basic usage of, e.g.,
 
 .. doctest-skip::
 
-    >>> # create an IterativelySubtractedPSFPhotometry object
     >>> from photutils.psf import IterativelySubtractedPSFPhotometry
     >>> my_photometry = IterativelySubtractedPSFPhotometry(
     ...     finder=my_finder, group_maker=my_group_maker,
@@ -214,8 +213,8 @@ First let's create an image with four overlapping stars::
 
     >>> import numpy as np
     >>> from astropy.table import Table
-    >>> from photutils.datasets import (make_noise_image,
-    ...                                 make_gaussian_sources_image)
+    >>> from photutils.datasets import (make_gaussian_sources_image,
+    ...                                 make_noise_image)
     >>> sigma_psf = 2.0
     >>> sources = Table()
     >>> sources['flux'] = [700, 800, 700, 800]
@@ -244,12 +243,12 @@ First let's create an image with four overlapping stars::
 
 .. plot::
 
-    from astropy.table import Table
-    from matplotlib import rcParams
     import matplotlib.pyplot as plt
     import numpy as np
-    from photutils.datasets import (make_noise_image,
-                                    make_gaussian_sources_image)
+    from astropy.table import Table
+    from matplotlib import rcParams
+    from photutils.datasets import (make_gaussian_sources_image,
+                                    make_noise_image)
 
     sigma_psf = 2.0
     sources = Table()
@@ -278,8 +277,8 @@ Then let's import the required classes to set up a
 `~photutils.psf.IterativelySubtractedPSFPhotometry` object::
 
     >>> from photutils.detection import IRAFStarFinder
-    >>> from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    >>> from photutils.background import MMMBackground, MADStdBackgroundRMS
+    >>> from photutils.psf import DAOGroup, IntegratedGaussianPRF
+    >>> from photutils.background import MADStdBackgroundRMS, MMMBackground
     >>> from astropy.modeling.fitting import LevMarLSQFitter
     >>> from astropy.stats import gaussian_sigma_to_fwhm
 
@@ -336,18 +335,18 @@ Now, let's compare the simulated and the residual images:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
+    import numpy as np
     from astropy.modeling.fitting import LevMarLSQFitter
     from astropy.stats import gaussian_sigma_to_fwhm
     from astropy.table import Table
     from matplotlib import rcParams
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from photutils.background import MMMBackground, MADStdBackgroundRMS
-    from photutils.datasets import (make_noise_image,
-                                    make_gaussian_sources_image)
+    from photutils.background import MADStdBackgroundRMS, MMMBackground
+    from photutils.datasets import (make_gaussian_sources_image,
+                                    make_noise_image)
     from photutils.detection import IRAFStarFinder
-    from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    from photutils.psf import IterativelySubtractedPSFPhotometry
+    from photutils.psf import (DAOGroup, IntegratedGaussianPRF,
+                               IterativelySubtractedPSFPhotometry)
 
     sigma_psf = 2.0
     sources = Table()
@@ -441,17 +440,17 @@ IntegratedGaussianPRF(sigma=sigma_psf)``:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
+    import numpy as np
     from astropy.modeling.fitting import LevMarLSQFitter
     from astropy.stats import gaussian_sigma_to_fwhm
     from astropy.table import Table
     from matplotlib import rcParams
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from photutils.background import MMMBackground, MADStdBackgroundRMS
-    from photutils.datasets import (make_noise_image,
-                                    make_gaussian_sources_image)
-    from photutils.psf import BasicPSFPhotometry
-    from photutils.psf import IntegratedGaussianPRF, DAOGroup
+    from photutils.background import MADStdBackgroundRMS, MMMBackground
+    from photutils.datasets import (make_gaussian_sources_image,
+                                    make_noise_image)
+    from photutils.psf import (BasicPSFPhotometry, DAOGroup,
+                               IntegratedGaussianPRF)
 
     sigma_psf = 2.0
     sources = Table()
@@ -549,12 +548,12 @@ the fainter star as well. Also, note that both of the stars have
 .. plot::
     :include-source:
 
-    from astropy.table import Table
-    import numpy as np
-    from matplotlib.colors import LogNorm
     import matplotlib.pyplot as plt
-    from photutils.datasets import (make_noise_image,
-                                    make_gaussian_sources_image)
+    import numpy as np
+    from astropy.table import Table
+    from matplotlib.colors import LogNorm
+    from photutils.datasets import (make_gaussian_sources_image,
+                                    make_noise_image)
 
     sources = Table()
     sources['flux'] = [10000, 1000]
@@ -624,11 +623,11 @@ Let's take a look at the residual image::
     from astropy.modeling.fitting import LevMarLSQFitter
     from astropy.table import Table
     from photutils.background import MMMBackground
-    from photutils.datasets import (make_noise_image,
-                                    make_gaussian_sources_image)
+    from photutils.datasets import (make_gaussian_sources_image,
+                                    make_noise_image)
     from photutils.detection import IRAFStarFinder
-    from photutils.psf import IterativelySubtractedPSFPhotometry
-    from photutils.psf import IntegratedGaussianPRF, DAOGroup
+    from photutils.psf import (DAOGroup, IntegratedGaussianPRF,
+                               IterativelySubtractedPSFPhotometry)
 
     sources = Table()
     sources['flux'] = [10000, 1000]

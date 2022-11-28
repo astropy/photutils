@@ -99,10 +99,10 @@ Finally, we plot the image and the defined apertures:
 
 .. plot::
 
-    from astropy.stats import mad_std
     import matplotlib.pyplot as plt
     import numpy as np
-    from photutils.aperture import aperture_photometry, CircularAperture
+    from astropy.stats import mad_std
+    from photutils.aperture import CircularAperture, aperture_photometry
     from photutils.datasets import load_star_image
     from photutils.detection import DAOStarFinder
 

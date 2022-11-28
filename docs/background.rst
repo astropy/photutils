@@ -64,9 +64,9 @@ Let's plot the image:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pyplot as plt
     from photutils.datasets import make_100gaussians_image
 
     data = make_100gaussians_image()
@@ -241,10 +241,10 @@ background gradient to the image defined above::
 
 .. plot::
 
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
 
     data = make_100gaussians_image()
@@ -297,9 +297,9 @@ Let's plot the background image:
 
 .. plot::
 
-    from astropy.stats import SigmaClip
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.stats import SigmaClip
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
 
@@ -325,11 +325,11 @@ and the background-subtracted image:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
+    import numpy as np
     from astropy.stats import SigmaClip
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pyplot as plt
-    import numpy as np
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
 
@@ -377,10 +377,10 @@ this example requires `scipy`_):
 
 .. plot::
 
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage.interpolation import rotate
 
@@ -422,10 +422,10 @@ image (values assigned to ``fill_value``):
 
 .. plot::
 
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.background import Background2D
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage.interpolation import rotate
@@ -456,10 +456,10 @@ Finally, let's subtract the background from the image and plot it:
 
 .. plot::
 
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.background import Background2D
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage.interpolation import rotate
@@ -502,10 +502,10 @@ zoom in on a small portion of the image to show the background meshes:
 
 .. plot::
 
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.background import Background2D
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage.interpolation import rotate

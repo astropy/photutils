@@ -103,11 +103,11 @@ Let's plot the image and mark the location of detected sources:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
+    import numpy as np
     from astropy.stats import sigma_clipped_stats
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pyplot as plt
-    import numpy as np
     from photutils.aperture import CircularAperture
     from photutils.datasets import load_star_image
     from photutils.detection import DAOStarFinder
@@ -149,11 +149,11 @@ regions:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
+    import numpy as np
     from astropy.stats import sigma_clipped_stats
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pyplot as plt
-    import numpy as np
     from photutils.aperture import CircularAperture, RectangularAperture
     from photutils.datasets import load_star_image
     from photutils.detection import DAOStarFinder
@@ -246,10 +246,10 @@ And let's plot the location of the detected peaks in the image:
 
 .. plot::
 
-    from astropy.stats import sigma_clipped_stats
-    from astropy.visualization import simple_norm
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.stats import sigma_clipped_stats
+    from astropy.visualization import simple_norm
     from photutils.aperture import CircularAperture
     from photutils.datasets import make_100gaussians_image
     from photutils.detection import find_peaks

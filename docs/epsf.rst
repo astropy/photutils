@@ -57,10 +57,10 @@ Let's show the image:
 .. plot::
     :include-source:
 
-    from astropy.visualization import simple_norm
     import matplotlib.pyplot as plt
-    from photutils.datasets import load_simulated_hst_star_image
-    from photutils.datasets import make_noise_image
+    from astropy.visualization import simple_norm
+    from photutils.datasets import (load_simulated_hst_star_image,
+                                    make_noise_image)
 
     hdu = load_simulated_hst_star_image()
     data = hdu.data
@@ -189,13 +189,13 @@ from which we'll build our ePSF.  Let's show the first 25 of them:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
     from astropy.nddata import NDData
     from astropy.stats import sigma_clipped_stats
     from astropy.table import Table
     from astropy.visualization import simple_norm
-    import matplotlib.pyplot as plt
-    from photutils.datasets import load_simulated_hst_star_image
-    from photutils.datasets import make_noise_image
+    from photutils.datasets import (load_simulated_hst_star_image,
+                                    make_noise_image)
     from photutils.detection import find_peaks
     from photutils.psf import extract_stars
 
@@ -272,15 +272,15 @@ Finally, let's show the constructed ePSF:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
     from astropy.nddata import NDData
     from astropy.stats import sigma_clipped_stats
     from astropy.table import Table
     from astropy.visualization import simple_norm
-    import matplotlib.pyplot as plt
-    from photutils.datasets import load_simulated_hst_star_image
-    from photutils.datasets import make_noise_image
+    from photutils.datasets import (load_simulated_hst_star_image,
+                                    make_noise_image)
     from photutils.detection import find_peaks
-    from photutils.psf import extract_stars, EPSFBuilder
+    from photutils.psf import EPSFBuilder, extract_stars
 
     hdu = load_simulated_hst_star_image()
     data = hdu.data

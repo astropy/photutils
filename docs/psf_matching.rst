@@ -46,10 +46,10 @@ Let's plot the result:
 .. plot::
     :include-source:
 
+    import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from photutils.psf import create_matching_kernel
-    import matplotlib.pyplot as plt
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -88,9 +88,11 @@ functions:
 .. plot::
     :include-source:
 
-    from photutils.psf import (HanningWindow, TukeyWindow, CosineBellWindow,
-                               SplitCosineBellWindow, TopHatWindow)
     import matplotlib.pyplot as plt
+    from photutils.psf import (CosineBellWindow, HanningWindow,
+                               SplitCosineBellWindow, TopHatWindow,
+                               TukeyWindow)
+
     w1 = HanningWindow()
     w2 = TukeyWindow(alpha=0.5)
     w3 = CosineBellWindow(alpha=0.5)
@@ -154,10 +156,10 @@ Let's display the new matching kernel:
 .. plot::
     :include-source:
 
+    import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.psf import create_matching_kernel, TopHatWindow
-    import matplotlib.pyplot as plt
+    from photutils.psf import TopHatWindow, create_matching_kernel
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -179,10 +181,10 @@ kernel images:
 .. plot::
     :include-source:
 
+    import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.psf import create_matching_kernel, TopHatWindow
-    import matplotlib.pyplot as plt
+    from photutils.psf import TopHatWindow, create_matching_kernel
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)

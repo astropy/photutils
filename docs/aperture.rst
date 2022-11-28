@@ -413,9 +413,9 @@ apertures (red) on a cutout from the image containing the three sources:
 
 .. plot::
 
-    from astropy.visualization import simple_norm
     import matplotlib.pyplot as plt
-    from photutils.aperture import CircularAperture, CircularAnnulus
+    from astropy.visualization import simple_norm
+    from photutils.aperture import CircularAnnulus, CircularAperture
     from photutils.datasets import make_100gaussians_image
 
     data = make_100gaussians_image()
@@ -657,7 +657,7 @@ Galactic plane::
 
     >>> import astropy.units as u
     >>> from astropy.wcs import WCS
-    >>> from photutils.datasets import load_spitzer_image, load_spitzer_catalog
+    >>> from photutils.datasets import load_spitzer_catalog, load_spitzer_image
     >>> hdu = load_spitzer_image()  # doctest: +REMOTE_DATA
     >>> data = u.Quantity(hdu.data, unit=hdu.header['BUNIT'])  # doctest: +REMOTE_DATA
     >>> wcs = WCS(hdu.header)  # doctest: +REMOTE_DATA
@@ -704,12 +704,12 @@ Finally, we can plot the comparison of the photometry:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
     from astropy import units as u
     from astropy.coordinates import SkyCoord
     from astropy.wcs import WCS
-    import matplotlib.pyplot as plt
-    from photutils.aperture import aperture_photometry, SkyCircularAperture
-    from photutils.datasets import load_spitzer_image, load_spitzer_catalog
+    from photutils.aperture import SkyCircularAperture, aperture_photometry
+    from photutils.datasets import load_spitzer_catalog, load_spitzer_image
 
     # Load dataset
     hdu = load_spitzer_image()
@@ -777,8 +777,9 @@ Let's plot the first aperture mask:
 .. plot::
 
     import matplotlib.pyplot as plt
+    from photutils.aperture import CircularAnnulus, CircularAperture
     from photutils.datasets import make_100gaussians_image
-    from photutils.aperture import CircularAperture, CircularAnnulus
+
     data = make_100gaussians_image()
     positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
     aperture = CircularAperture(positions, r=5)
@@ -797,8 +798,9 @@ aperture mask:
 .. plot::
 
     import matplotlib.pyplot as plt
+    from photutils.aperture import CircularAnnulus, CircularAperture
     from photutils.datasets import make_100gaussians_image
-    from photutils.aperture import CircularAperture, CircularAnnulus
+
     data = make_100gaussians_image()
     positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
     aperture = CircularAperture(positions, r=5)
@@ -819,8 +821,9 @@ generated above with the "exact" method) multiplied with the data:
 .. plot::
 
     import matplotlib.pyplot as plt
+    from photutils.aperture import CircularAnnulus, CircularAperture
     from photutils.datasets import make_100gaussians_image
-    from photutils.aperture import CircularAperture, CircularAnnulus
+
     data = make_100gaussians_image()
     positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
     aperture = CircularAperture(positions, r=5)
