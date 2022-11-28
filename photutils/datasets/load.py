@@ -17,7 +17,7 @@ __all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
 
 def get_path(filename, location='local', cache=True, show_progress=False):
     """
-    Get path (location on your disk) for a given file.
+    Get the local path for a given file.
 
     Parameters
     ----------
@@ -25,30 +25,31 @@ def get_path(filename, location='local', cache=True, show_progress=False):
         File name in the local or remote data folder.
 
     location : {'local', 'remote', 'photutils-datasets'}
-        File location.  ``'local'`` means bundled with ``photutils``.
+        File location. ``'local'`` means bundled with ``photutils``.
         ``'remote'`` means the astropy data server (or the
-        photutils-datasets repo as a backup) or the Astropy cache on
-        your machine. ``'photutils-datasets'`` means the
+        photutils-datasets repo as a backup) or the Astropy cache
+        on your machine. ``'photutils-datasets'`` means the
         photutils-datasets repo or the Astropy cache on your machine.
 
     cache : bool, optional
-        Whether to cache the contents of remote URLs.  Default is
-        `True`.
+        Whether to cache the contents of remote URLs. Default is `True`.
 
     show_progress : bool, optional
         Whether to display a progress bar during the download (default
-        is `False`).
+        is `False`). The progress bar is displayed only when outputting
+        to a terminal.
 
     Returns
     -------
     path : str
-        Path (location on your disk) of the file.
+        The local path of the file.
 
     Examples
     --------
     >>> from astropy.io import fits
     >>> from photutils.datasets import get_path
     >>> hdulist = fits.open(get_path('fermi_counts.fits.gz'))
+    >>> hdulist.close()
     """
     datasets_url = ('https://github.com/astropy/photutils-datasets/raw/'
                     f'main/data/{filename}')
