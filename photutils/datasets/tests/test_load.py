@@ -22,5 +22,5 @@ def test_load_fermi_image():
 @pytest.mark.remote_data
 def test_load_star_image():
     hdu = load.load_star_image()
-    assert len(hdu.header) == 104
+    assert len(hdu.header) == 106
     assert hdu.data.shape == (1059, 1059)
