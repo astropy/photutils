@@ -18,8 +18,8 @@ Getting Started
 
 For this example, let's create a simple simulated galaxy image::
 
-    >>> from astropy.modeling.models import Gaussian2D
     >>> import numpy as np
+    >>> from astropy.modeling.models import Gaussian2D
     >>> from photutils.datasets import make_noise_image
 
     >>> g = Gaussian2D(100., 75, 75, 20, 12, theta=40. * np.pi / 180.)
@@ -31,9 +31,9 @@ For this example, let's create a simple simulated galaxy image::
 
 .. plot::
 
-    from astropy.modeling.models import Gaussian2D
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.modeling.models import Gaussian2D
     from photutils.datasets import make_noise_image
 
     g = Gaussian2D(100., 75, 75, 20, 12, theta=40. * np.pi / 180.)
@@ -67,9 +67,9 @@ Let's show this initial ellipse guess:
 
 .. plot::
 
-    from astropy.modeling.models import Gaussian2D
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.modeling.models import Gaussian2D
     from photutils.aperture import EllipticalAperture
     from photutils.datasets import make_noise_image
     from photutils.isophote import EllipseGeometry
@@ -152,7 +152,7 @@ position as a function of the semimajor axis length:
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from photutils.datasets import make_noise_image
-    from photutils.isophote import EllipseGeometry, Ellipse
+    from photutils.isophote import Ellipse, EllipseGeometry
 
     g = Gaussian2D(100., 75, 75, 20, 12, theta=40. * np.pi / 180.)
     ny = nx = 150
@@ -212,8 +212,8 @@ isophotes, the elliptical model image, and the residual image:
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from photutils.datasets import make_noise_image
-    from photutils.isophote import EllipseGeometry, Ellipse
-    from photutils.isophote import build_ellipse_model
+    from photutils.isophote import (Ellipse, EllipseGeometry,
+                                    build_ellipse_model)
 
     g = Gaussian2D(100., 75, 75, 20, 12, theta=40. * np.pi / 180.)
     ny = nx = 150

@@ -185,7 +185,7 @@ def load_irac_psf(channel, show_progress=False):  # pragma: no cover
         :include-source:
 
         import matplotlib.pyplot as plt
-        from astropy.visualization import LogStretch, ImageNormalize
+        from astropy.visualization import ImageNormalize, LogStretch
         from photutils.datasets import load_irac_psf
 
         hdu1 = load_irac_psf(1)

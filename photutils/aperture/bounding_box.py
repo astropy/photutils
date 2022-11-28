@@ -27,30 +27,33 @@ class BoundingBox:
 
     Examples
     --------
+    When constructing a BoundingBox, it's better to use keyword
+    arguments for readability:
+
     >>> from photutils.aperture import BoundingBox
-
-    >>> # constructing a BoundingBox like this is cryptic:
-    >>> bbox = BoundingBox(1, 10, 2, 20)
-
-    >>> # it's better to use keyword arguments for readability:
     >>> bbox = BoundingBox(ixmin=1, ixmax=10, iymin=2, iymax=20)
-    >>> bbox  # nice repr, useful for interactive work
+    >>> bbox
     BoundingBox(ixmin=1, ixmax=10, iymin=2, iymax=20)
 
-    >>> # sometimes it's useful to check if two bounding boxes are the same
+    Sometimes it's useful to check if two bounding boxes are the same:
+
     >>> bbox == BoundingBox(ixmin=1, ixmax=10, iymin=2, iymax=20)
     True
     >>> bbox == BoundingBox(ixmin=7, ixmax=10, iymin=2, iymax=20)
     False
 
-    >>> # "center" and "shape" can be useful when working with numpy arrays
+    The "center" and "shape" attributes can be useful when working with
+    numpy arrays:
+
     >>> bbox.center  # numpy order: (y, x)
     (10.5, 5.0)
     >>> bbox.shape  # numpy order: (y, x)
     (18, 9)
 
-    >>> # "extent" is useful when plotting the BoundingBox with matplotlib
-    >>> bbox.extent  # matplotlib order: (x, y)
+    The "extent" is useful when plotting the BoundingBox with
+    matplotlib:
+
+    >>> bbox.extent  # matplotlib order: (xmin, xmax, ymin, ymax)
     (0.5, 9.5, 1.5, 19.5)
     """
 
@@ -257,9 +260,10 @@ class BoundingBox:
         .. plot::
             :include-source:
 
-            import numpy as np
             import matplotlib.pyplot as plt
+            import numpy as np
             from photutils.aperture import BoundingBox
+
             bbox = BoundingBox(2, 7, 3, 8)
             fig = plt.figure()
             ax = fig.add_subplot(1, 1, 1)

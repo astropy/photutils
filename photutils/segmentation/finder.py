@@ -109,9 +109,9 @@ class SourceFinder:
     .. plot::
         :include-source:
 
+        import matplotlib.pyplot as plt
         from astropy.convolution import convolve
         from astropy.visualization import simple_norm
-        import matplotlib.pyplot as plt
         from photutils.background import Background2D, MedianBackground
         from photutils.datasets import make_100gaussians_image
         from photutils.segmentation import (SourceFinder,

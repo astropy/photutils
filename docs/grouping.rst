@@ -50,8 +50,8 @@ sources and the latter will make an actual image using that table.
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from photutils.datasets import (make_random_gaussians_table,
-                                    make_gaussian_sources_image)
+    from photutils.datasets import (make_gaussian_sources_image,
+                                    make_random_gaussians_table)
 
     n_sources = 350
     sigma_psf = 2.0
@@ -155,13 +155,13 @@ in the same group have the same aperture color:
 
 .. plot::
 
-    from astropy.stats import gaussian_sigma_to_fwhm
-    from matplotlib import rcParams
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.stats import gaussian_sigma_to_fwhm
+    from matplotlib import rcParams
     from photutils.aperture import CircularAperture
-    from photutils.datasets import (make_random_gaussians_table,
-                                    make_gaussian_sources_image)
+    from photutils.datasets import (make_gaussian_sources_image,
+                                    make_random_gaussians_table)
     from photutils.psf.groupstars import DAOGroup
     from photutils.utils import make_random_cmap
 
@@ -217,13 +217,13 @@ to use :class:`~photutils.psf.DBSCANGroup`.
 
 .. plot::
 
-    from astropy.stats import gaussian_sigma_to_fwhm
-    from matplotlib import rcParams
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.stats import gaussian_sigma_to_fwhm
+    from matplotlib import rcParams
     from photutils.aperture import CircularAperture
-    from photutils.datasets import (make_random_gaussians_table,
-                                    make_gaussian_sources_image)
+    from photutils.datasets import (make_gaussian_sources_image,
+                                    make_random_gaussians_table)
     from photutils.psf.groupstars import DBSCANGroup
     from photutils.utils import make_random_cmap
 

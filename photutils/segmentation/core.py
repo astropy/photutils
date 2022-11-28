@@ -702,14 +702,12 @@ class SegmentationImage:
         Examples
         --------
         >>> from photutils.segmentation import SegmentationImage
-
         >>> data = np.array([[1, 1, 0, 0, 4, 4],
         ...                  [0, 0, 0, 0, 0, 4],
         ...                  [0, 0, 3, 3, 0, 0],
         ...                  [7, 0, 0, 0, 0, 5],
         ...                  [7, 7, 0, 5, 5, 5],
         ...                  [7, 7, 0, 0, 5, 5]])
-
         >>> segm = SegmentationImage(data)
         >>> segm.keep_label(label=3)
         >>> segm.data
@@ -1195,12 +1193,13 @@ class SegmentationImage:
 
             import numpy as np
             from photutils.segmentation import SegmentationImage
+
             data = np.array([[1, 1, 0, 0, 4, 4],
-                            [0, 0, 0, 0, 0, 4],
-                            [0, 0, 3, 3, 0, 0],
-                            [7, 0, 0, 0, 0, 5],
-                            [7, 7, 0, 5, 5, 5],
-                            [7, 7, 0, 0, 5, 5]])
+                             [0, 0, 0, 0, 0, 4],
+                             [0, 0, 3, 3, 0, 0],
+                             [7, 0, 0, 0, 0, 5],
+                             [7, 7, 0, 5, 5, 5],
+                             [7, 7, 0, 0, 5, 5]])
             segm = SegmentationImage(data)
             segm.imshow(figsize=(5, 5))
         """

@@ -150,9 +150,9 @@ class ImageDepth:
 
         # plot the random apertures for the first iteration
 
+        import matplotlib.pyplot as plt
         from astropy.convolution import convolve
         from astropy.visualization import simple_norm
-        import matplotlib.pyplot as plt
         from photutils.datasets import make_100gaussians_image
         from photutils.segmentation import SourceFinder, make_2dgaussian_kernel
         from photutils.utils import ImageDepth
@@ -168,7 +168,7 @@ class ImageDepth:
         mask = segment_map.make_source_mask()
         radius = 4
         depth = ImageDepth(radius, nsigma=5.0, napers=500, niters=2,
-                        overlap=False, seed=123, progress_bar=False)
+                           overlap=False, seed=123, progress_bar=False)
         limits = depth(data, mask)
 
         fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(9, 3))
@@ -179,7 +179,7 @@ class ImageDepth:
         ax[0].set_title('Data with blank apertures')
         ax[1].imshow(mask, interpolation='none')
         depth.apertures[0].plot(ax[1], color=color)
-        ax[1].set_title('Mask with blank apertures');
+        ax[1].set_title('Mask with blank apertures')
 
         plt.subplots_adjust(left=0.05, right=0.98, bottom=0.05, top=0.95,
                             wspace=0.15)

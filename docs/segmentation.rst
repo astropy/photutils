@@ -105,10 +105,10 @@ image showing the detected sources:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
     from astropy.convolution import convolve
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pyplot as plt
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
     from photutils.segmentation import detect_sources, make_2dgaussian_kernel
@@ -175,13 +175,13 @@ deblended segmentation image:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
     from astropy.convolution import convolve
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pyplot as plt
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import (detect_sources, deblend_sources,
+    from photutils.segmentation import (deblend_sources, detect_sources,
                                         make_2dgaussian_kernel)
 
     data = make_100gaussians_image()
@@ -212,13 +212,13 @@ Let's plot one of the deblended sources:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
     from astropy.convolution import convolve
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pyplot as plt
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import (detect_sources, deblend_sources,
+    from photutils.segmentation import (deblend_sources, detect_sources,
                                         make_2dgaussian_kernel)
 
     data = make_100gaussians_image()
@@ -389,12 +389,12 @@ of each source) on the data:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
     from astropy.convolution import convolve
     from astropy.visualization import simple_norm
-    import matplotlib.pyplot as plt
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import (SourceFinder, SourceCatalog,
+    from photutils.segmentation import (SourceCatalog, SourceFinder,
                                         make_2dgaussian_kernel)
 
     data = make_100gaussians_image()
