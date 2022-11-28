@@ -157,13 +157,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
-                          (sigma_psfs[1], sources2),
-                          # these ensure that the test *fails* if the model
-                          # PSFs are the wrong shape
-                          pytest.param(sigma_psfs[0] / 1.2, sources1,
-                                       marks=pytest.mark.xfail()),
-                          pytest.param(sigma_psfs[1] * 1.2, sources2,
-                                       marks=pytest.mark.xfail())])
+                          (sigma_psfs[1], sources2)])
 def test_psf_photometry_oneiter(sigma_psf, sources):
     """
     Tests in an image with a group of two overlapped stars and an
