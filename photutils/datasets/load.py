@@ -9,6 +9,7 @@ from urllib.error import HTTPError, URLError
 from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.data import download_file, get_pkg_data_filename
+from astropy.utils.decorators import deprecated
 
 __all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
            'load_irac_psf', 'load_fermi_image', 'load_star_image',
@@ -43,13 +44,6 @@ def get_path(filename, location='local', cache=True, show_progress=False):
     -------
     path : str
         The local path of the file.
-
-    Examples
-    --------
-    >>> from astropy.io import fits
-    >>> from photutils.datasets import get_path
-    >>> hdulist = fits.open(get_path('fermi_counts.fits.gz'))
-    >>> hdulist.close()
     """
     datasets_url = ('https://github.com/astropy/photutils-datasets/raw/'
                     f'main/data/{filename}')
@@ -228,6 +222,7 @@ def load_irac_psf(channel, show_progress=False):  # pragma: no cover
     return fits.ImageHDU(data, header)
 
 
+@deprecated('1.6.0')
 def load_fermi_image(show_progress=False):
     """
     Load a Fermi counts image for the Galactic center region.
