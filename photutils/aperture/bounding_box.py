@@ -257,9 +257,10 @@ class BoundingBox:
         .. plot::
             :include-source:
 
-            import numpy as np
             import matplotlib.pyplot as plt
+            import numpy as np
             from photutils.aperture import BoundingBox
+
             bbox = BoundingBox(2, 7, 3, 8)
             fig = plt.figure()
             ax = fig.add_subplot(1, 1, 1)

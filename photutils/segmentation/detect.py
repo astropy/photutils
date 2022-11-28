@@ -337,10 +337,10 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
     .. plot::
         :include-source:
 
+        import matplotlib.pyplot as plt
         from astropy.convolution import convolve
         from astropy.stats import sigma_clipped_stats
         from astropy.visualization import simple_norm
-        import matplotlib.pyplot as plt
         from photutils.datasets import make_100gaussians_image
         from photutils.segmentation import (detect_sources,
                                             make_2dgaussian_kernel)

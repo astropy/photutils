@@ -60,8 +60,8 @@ def apply_poisson_noise(data, seed=None):
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils.datasets import make_4gaussians_image
-        from photutils.datasets import apply_poisson_noise
+        from photutils.datasets import (apply_poisson_noise,
+                                        make_4gaussians_image)
 
         data1 = make_4gaussians_image(noise=False)
         data2 = apply_poisson_noise(data1, seed=0)
@@ -406,10 +406,10 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
     .. plot::
         :include-source:
 
-        from astropy.modeling.models import Moffat2D
         import matplotlib.pyplot as plt
-        from photutils.datasets import (make_random_models_table,
-                                        make_model_sources_image)
+        from astropy.modeling.models import Moffat2D
+        from photutils.datasets import (make_model_sources_image,
+                                        make_random_models_table)
 
         model = Moffat2D()
         n_sources = 10
@@ -499,11 +499,11 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
     .. plot::
         :include-source:
 
+        import matplotlib.pyplot as plt
         import numpy as np
         from astropy.table import QTable
-        import matplotlib.pyplot as plt
-        from photutils.datasets import make_gaussian_sources_image
-        from photutils.datasets import make_noise_image
+        from photutils.datasets import (make_gaussian_sources_image,
+                                        make_noise_image)
 
         # make a table of Gaussian sources
         table = QTable()
@@ -589,8 +589,8 @@ def make_gaussian_prf_sources_image(shape, source_table):
 
         import matplotlib.pyplot as plt
         from astropy.table import QTable
-        from photutils.datasets import make_gaussian_prf_sources_image
-        from photutils.datasets import make_noise_image
+        from photutils.datasets import (make_gaussian_prf_sources_image,
+                                        make_noise_image)
 
         # make a table of Gaussian sources
         table = QTable()
@@ -667,6 +667,7 @@ def make_4gaussians_image(noise=True):
 
         import matplotlib.pyplot as plt
         from photutils.datasets import make_4gaussians_image
+
         image = make_4gaussians_image()
         plt.imshow(image, origin='lower', interpolation='nearest')
     """
@@ -720,6 +721,7 @@ def make_100gaussians_image(noise=True):
 
         import matplotlib.pyplot as plt
         from photutils.datasets import make_100gaussians_image
+
         image = make_100gaussians_image()
         plt.imshow(image, origin='lower', interpolation='nearest')
     """

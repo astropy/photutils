@@ -150,9 +150,9 @@ class ImageDepth:
 
         # plot the random apertures for the first iteration
 
+        import matplotlib.pyplot as plt
         from astropy.convolution import convolve
         from astropy.visualization import simple_norm
-        import matplotlib.pyplot as plt
         from photutils.datasets import make_100gaussians_image
         from photutils.segmentation import SourceFinder, make_2dgaussian_kernel
         from photutils.utils import ImageDepth
