@@ -39,8 +39,9 @@ not subtract the background from the data (but in practice, one should
 subtract the background)::
 
     >>> from photutils.datasets import make_4gaussians_image
-    >>> from photutils.centroids import centroid_com, centroid_quadratic
-    >>> from photutils.centroids import centroid_1dg, centroid_2dg
+    >>> from photutils.centroids import (centroid_1dg, centroid_2dg,
+    ...                                  centroid_com, centroid_quadratic)
+
     >>> data = make_4gaussians_image()[43:79, 76:104]
 
     >>> x1, y1 = centroid_com(data)

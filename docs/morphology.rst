@@ -28,8 +28,8 @@ subtract the background using simple sigma-clipped statistics.
 
 First, we create the source image and subtract its background::
 
-    >>> from photutils.datasets import make_4gaussians_image
     >>> from astropy.stats import sigma_clipped_stats
+    >>> from photutils.datasets import make_4gaussians_image
     >>> data = make_4gaussians_image()[43:79, 76:104]
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> data -= median  # subtract background

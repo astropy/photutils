@@ -18,8 +18,8 @@ Getting Started
 
 For this example, let's create a simple simulated galaxy image::
 
-    >>> from astropy.modeling.models import Gaussian2D
     >>> import numpy as np
+    >>> from astropy.modeling.models import Gaussian2D
     >>> from photutils.datasets import make_noise_image
 
     >>> g = Gaussian2D(100., 75, 75, 20, 12, theta=40. * np.pi / 180.)

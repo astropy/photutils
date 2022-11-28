@@ -276,11 +276,12 @@ First let's create an image with four overlapping stars::
 Then let's import the required classes to set up a
 `~photutils.psf.IterativelySubtractedPSFPhotometry` object::
 
-    >>> from photutils.detection import IRAFStarFinder
-    >>> from photutils.psf import DAOGroup, IntegratedGaussianPRF
-    >>> from photutils.background import MADStdBackgroundRMS, MMMBackground
     >>> from astropy.modeling.fitting import LevMarLSQFitter
     >>> from astropy.stats import gaussian_sigma_to_fwhm
+    >>> from photutils.background import MADStdBackgroundRMS, MMMBackground
+    >>> from photutils.detection import IRAFStarFinder
+    >>> from photutils.psf import (DAOGroup, IntegratedGaussianPRF,
+    ...                            IterativelySubtractedPSFPhotometry)
 
 Let's then instantiate and use the objects:
 
@@ -296,7 +297,6 @@ Let's then instantiate and use the objects:
     >>> mmm_bkg = MMMBackground()
     >>> fitter = LevMarLSQFitter()
     >>> psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
-    >>> from photutils.psf import IterativelySubtractedPSFPhotometry
     >>> photometry = IterativelySubtractedPSFPhotometry(finder=iraffind,
     ...                                                 group_maker=daogroup,
     ...                                                 bkg_estimator=mmm_bkg,
