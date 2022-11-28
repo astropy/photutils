@@ -1,5 +1,5 @@
 [build-system]
-requires = ['setuptools<65.6.0',
+requires = ['setuptools',
             'setuptools_scm',
             'wheel',
             'cython>=0.29.30',
