@@ -174,6 +174,10 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
             else:
                 assert abs(intens_d) <= 5.
 
+            # prevent "converting a masked element to nan" warning
+            if ellip_d is np.ma.masked:
+                continue
+
             if not math.isnan(ellip_d):
                 if sma_i > 3.:
                     assert abs(ellip_d) <= 1.  # 1%
