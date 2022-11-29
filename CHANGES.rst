@@ -14,6 +14,7 @@ General
 
 New Features
 ^^^^^^^^^^^^
+
 - ``photutils.aperture``
 
   - The ``ApertureStats`` class now accepts astropy ``NDData`` objects
@@ -109,6 +110,9 @@ API Changes
 
   - Removed the deprecated ``flux_residual_sigclip`` keyword in
     ``EPSFBuilder``. Use ``sigma_clip`` instead. [#1398]
+
+  - PSF photometry classes will no longer emit a RuntimeWarning if the
+    fitted parameter variance is negative. [#1458]
 
 - ``photutils.segmentation``
 

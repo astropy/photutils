@@ -567,9 +567,14 @@ class BasicPSFPhotometry:
         k = 0
         n_fit_params = len(unc_tab.colnames)
         param_cov = self.fitter.fit_info.get('param_cov', None)
-        for i in range(star_group_size):
-            unc_tab[i] = np.sqrt(np.diag(param_cov))[k: k + n_fit_params]
-            k = k + n_fit_params
+
+        # variance is sometimes returned as a negative value
+        # ignore sqrt(negative value) RuntimeWarnings
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            for i in range(star_group_size):
+                unc_tab[i] = np.sqrt(np.diag(param_cov))[k: k + n_fit_params]
+                k = k + n_fit_params
 
         return unc_tab
 
