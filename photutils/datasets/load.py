@@ -17,7 +17,7 @@ __all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
 
 def get_path(filename, location='local', cache=True, show_progress=False):
     """
-    Get path (location on your disk) for a given file.
+    Get the local path for a given file.
 
     Parameters
     ----------
@@ -25,30 +25,31 @@ def get_path(filename, location='local', cache=True, show_progress=False):
         File name in the local or remote data folder.
 
     location : {'local', 'remote', 'photutils-datasets'}
-        File location.  ``'local'`` means bundled with ``photutils``.
+        File location. ``'local'`` means bundled with ``photutils``.
         ``'remote'`` means the astropy data server (or the
-        photutils-datasets repo as a backup) or the Astropy cache on
-        your machine. ``'photutils-datasets'`` means the
+        photutils-datasets repo as a backup) or the Astropy cache
+        on your machine. ``'photutils-datasets'`` means the
         photutils-datasets repo or the Astropy cache on your machine.
 
     cache : bool, optional
-        Whether to cache the contents of remote URLs.  Default is
-        `True`.
+        Whether to cache the contents of remote URLs. Default is `True`.
 
     show_progress : bool, optional
         Whether to display a progress bar during the download (default
-        is `False`).
+        is `False`). The progress bar is displayed only when outputting
+        to a terminal.
 
     Returns
     -------
     path : str
-        Path (location on your disk) of the file.
+        The local path of the file.
 
     Examples
     --------
     >>> from astropy.io import fits
     >>> from photutils.datasets import get_path
     >>> hdulist = fits.open(get_path('fermi_counts.fits.gz'))
+    >>> hdulist.close()
     """
     datasets_url = ('https://github.com/astropy/photutils-datasets/raw/'
                     f'main/data/{filename}')
@@ -107,9 +108,12 @@ def load_spitzer_image(show_progress=False):  # pragma: no cover
     """
     path = get_path('spitzer_example_image.fits', location='remote',
                     show_progress=show_progress)
-    hdu = fits.open(path)[0]
 
-    return hdu
+    with fits.open(path) as hdulist:
+        data = hdulist[0].data
+        header = hdulist[0].header
+
+    return fits.ImageHDU(data, header)
 
 
 def load_spitzer_catalog(show_progress=False):  # pragma: no cover
@@ -217,9 +221,11 @@ def load_irac_psf(channel, show_progress=False):  # pragma: no cover
 
     filepath = f'irac_ch{channel}_flight.fits'
     path = get_path(filepath, location='remote', show_progress=show_progress)
-    hdu = fits.open(path)[0]
+    with fits.open(path) as hdulist:
+        data = hdulist[0].data
+        header = hdulist[0].header
 
-    return hdu
+    return fits.ImageHDU(data, header)
 
 
 def load_fermi_image(show_progress=False):
@@ -250,9 +256,11 @@ def load_fermi_image(show_progress=False):
     """
     path = get_path('fermi_counts.fits.gz', location='local',
                     show_progress=show_progress)
-    hdu = fits.open(path)[1]
+    with fits.open(path) as hdulist:
+        data = hdulist[1].data
+        header = hdulist[1].header
 
-    return hdu
+    return fits.ImageHDU(data, header)
 
 
 def load_star_image(show_progress=False):  # pragma: no cover
@@ -289,9 +297,11 @@ def load_star_image(show_progress=False):  # pragma: no cover
     """
     path = get_path('M6707HH.fits', location='remote',
                     show_progress=show_progress)
-    hdu = fits.open(path)[0]
+    with fits.open(path) as hdulist:
+        data = hdulist[0].data
+        header = hdulist[0].header
 
-    return hdu
+    return fits.ImageHDU(data, header)
 
 
 def load_simulated_hst_star_image(show_progress=False):  # pragma: no cover
@@ -325,6 +335,8 @@ def load_simulated_hst_star_image(show_progress=False):  # pragma: no cover
     path = get_path('hst_wfc3ir_f160w_simulated_starfield.fits',
                     location='photutils-datasets',
                     show_progress=show_progress)
-    hdu = fits.open(path)[0]
+    with fits.open(path) as hdulist:
+        data = hdulist[0].data
+        header = hdulist[0].header
 
-    return hdu
+    return fits.ImageHDU(data, header)

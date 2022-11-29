@@ -60,6 +60,11 @@ Bug Fixes
   - Fixed a bug in the ``PixelAperture`` ``area_overlap`` method so that
     the returned value does not inherit the data units. [#1408]
 
+- ``photutils.datasets``
+
+  - Fixed a bug in the various ``load`` functions where FITS files were
+    not closed. [#1455]
+
 - ``photutils.segmentation``
 
   - Fixed an issue in the ``SourceCatalog`` ``kron_photometry``,
