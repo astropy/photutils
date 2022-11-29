@@ -17,7 +17,7 @@ from photutils.datasets import make_100gaussians_image, make_wcs
 
 class TestApertureStats:
     data = make_100gaussians_image()
-    error = np.sqrt(data)
+    error = np.sqrt(np.abs(data))
     wcs = make_wcs(data.shape)
     positions = [(145.1, 168.3), (84.7, 224.1), (48.3, 200.3)]
     aperture = CircularAperture(positions, r=5)
