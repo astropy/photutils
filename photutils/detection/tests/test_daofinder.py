@@ -17,7 +17,7 @@ from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
 DATA = make_100gaussians_image()
-THRESHOLDS = [8.0, 10.0]
+THRESHOLDS = [8.0, 10.0, 8.*np.ones_like(DATA)]
 FWHMS = [1.0, 1.5, 2.0]
 
 
@@ -28,6 +28,8 @@ class TestDAOStarFinder:
     def test_daofind(self, threshold, fwhm):
         starfinder = DAOStarFinder(threshold, fwhm, sigma_radius=1.5)
         tbl = starfinder(DATA)
+        if not np.isscalar(threshold):
+            threshold = threshold.flatten()[0]
         datafn = f'daofind_test_thresh{threshold:04.1f}_fwhm{fwhm:04.1f}.txt'
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         tbl_ref = Table.read(datafn, format='ascii')
@@ -36,10 +38,7 @@ class TestDAOStarFinder:
         for col in tbl.colnames:
             assert_allclose(tbl[col], tbl_ref[col])
 
-    def test_daofind_threshold_fwhm_inputs(self):
-        with pytest.raises(TypeError):
-            DAOStarFinder(threshold=np.ones((2, 2)), fwhm=3.)
-
+    def test_daofind_fwhm_input(self):
         with pytest.raises(TypeError):
             DAOStarFinder(threshold=3., fwhm=np.ones((2, 2)))
 

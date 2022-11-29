@@ -40,7 +40,7 @@ class StarFinderBase(metaclass=abc.ABCMeta):
         kernel : `_StarFinderKernel`
             The convolution kernel.
 
-        threshold : float
+        threshold : float or 2D array-like
             The absolute image value above which to select sources.  This
             threshold should be the threshold input to the star finder class
             multiplied by the kernel relerr.
@@ -95,6 +95,9 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             pad_mode = 'constant'
             convolved_data = np.pad(convolved_data, pad, mode=pad_mode,
                                     constant_values=0.0)
+            if not np.isscalar(threshold):
+                threshold = np.pad(threshold, pad, mode=pad_mode,
+                                   constant_values=0.0)
             if mask is not None:
                 mask = np.pad(mask, pad, mode=pad_mode, constant_values=False)
 
