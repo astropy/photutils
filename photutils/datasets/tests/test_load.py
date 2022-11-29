@@ -4,6 +4,7 @@ Tests for the load module.
 """
 
 import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.datasets import get_path, load
 
@@ -14,9 +15,10 @@ def test_get_path():
 
 
 def test_load_fermi_image():
-    hdu = load.load_fermi_image()
-    assert len(hdu.header) == 81
-    assert hdu.data.shape == (201, 401)
+    with pytest.warns(AstropyDeprecationWarning):
+        hdu = load.load_fermi_image()
+        assert len(hdu.header) == 81
+        assert hdu.data.shape == (201, 401)
 
 
 @pytest.mark.remote_data
