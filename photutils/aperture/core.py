@@ -106,8 +106,8 @@ class Aperture(metaclass=abc.ABCMeta):
             return False
 
         # now check the parameter values
-        # Note that Quantity comparisons allow for different units
-        # if they directly convertible (e.g., 1. * u.deg == 60. * u.arcmin)
+        # Note that Quantity comparisons allow for different units if they
+        # are directly convertible (e.g., 1.0 * u.deg == 60.0 * u.arcmin)
         try:
             for param in self_params:
                 # np.any is used for SkyCoord array comparisons
