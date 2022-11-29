@@ -101,6 +101,10 @@ API Changes
   - Removed the deprecated ``oversampling`` keyword in ``centroid_com``.
     [#1398]
 
+- ``photutils.datasets``
+
+  - Deprecated the ``load_fermi_image`` function. [#1455]
+
 - ``photutils.psf``
 
   - Removed the deprecated ``flux_residual_sigclip`` keyword in
