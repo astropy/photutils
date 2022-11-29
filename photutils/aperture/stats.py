@@ -1218,7 +1218,10 @@ class ApertureStats:
                 variance = self._variance_cutout_center
             else:
                 variance = self._variance_cutout
-            err = np.sqrt([np.sum(arr) for arr in variance])
+
+            var_values = [arr.compressed() if len(arr.compressed()) > 0
+                          else np.array([np.nan]) for arr in variance]
+            err = np.sqrt([np.sum(arr) for arr in var_values])
 
         if self._data_unit is not None:
             err <<= self._data_unit
