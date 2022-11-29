@@ -27,7 +27,7 @@ BKG_CLASS = [MeanBackground, MedianBackground, ModeEstimatorBackground,
 RMS_CLASS = [StdBackgroundRMS, MADStdBackgroundRMS,
              BiweightScaleBackgroundRMS]
 
-SIGMA_CLIP = SigmaClip(sigma=3.)
+SIGMA_CLIP = SigmaClip(sigma=3.0)
 
 
 @pytest.mark.parametrize('bkg_class', BKG_CLASS)
@@ -102,7 +102,7 @@ def test_sourceextrator_background_zero_std():
 
 def test_sourceextrator_background_skew():
     data = np.arange(100)
-    data[70:] = 1.e7
+    data[70:] = 1.0e7
     bkg = SExtractorBackground(sigma_clip=None)
     assert_allclose(bkg.calc_background(data), np.median(data))
 
@@ -110,7 +110,7 @@ def test_sourceextrator_background_skew():
 @pytest.mark.parametrize('rms_class', RMS_CLASS)
 def test_background_rms(rms_class):
     bkgrms = rms_class(sigma_clip=SIGMA_CLIP)
-    assert_allclose(bkgrms.calc_background_rms(DATA), STD, atol=1.e-2)
+    assert_allclose(bkgrms.calc_background_rms(DATA), STD, atol=1.0e-2)
     assert_allclose(bkgrms(DATA), bkgrms.calc_background_rms(DATA))
 
 
@@ -136,7 +136,7 @@ def test_background_rms_axis(rms_class):
 @pytest.mark.parametrize('rms_class', RMS_CLASS)
 def test_background_rms_nosigmaclip(rms_class):
     bkgrms = rms_class(sigma_clip=None)
-    assert_allclose(bkgrms.calc_background_rms(DATA), STD, atol=1.e-2)
+    assert_allclose(bkgrms.calc_background_rms(DATA), STD, atol=1.0e-2)
     assert_allclose(bkgrms(DATA), bkgrms.calc_background_rms(DATA))
 
     # test with masked array

@@ -23,9 +23,9 @@ class TestData:
         self.data = hdu[0].data
         hdu.close()
 
-    def make_sample(self, masked=False, sma=40., integrmode=BILINEAR):
+    def make_sample(self, masked=False, sma=40.0, integrmode=BILINEAR):
         if masked:
-            data = np.ma.masked_values(self.data, 200., atol=10.0, rtol=0.)
+            data = np.ma.masked_values(self.data, 200.0, atol=10.0, rtol=0.0)
         else:
             data = self.data
         sample = EllipseSample(data, sma, integrmode=integrmode)
@@ -56,7 +56,7 @@ class TestUnmasked(TestData):
 
     def test_bilinear_small(self):
         # small radius forces sub-pixel sampling
-        s, sample = self.make_sample(sma=10.)
+        s, sample = self.make_sample(sma=10.0)
 
         # intensities
         assert_allclose(np.mean(s[2]), 1045.4, atol=0.1)
@@ -98,7 +98,7 @@ class TestUnmasked(TestData):
         assert sample.actual_points == 64
 
     def test_mean_small(self):
-        s, sample = self.make_sample(sma=5., integrmode=MEAN)
+        s, sample = self.make_sample(sma=5.0, integrmode=MEAN)
 
         assert len(s[0]) == 29
         # intensities

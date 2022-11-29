@@ -254,7 +254,7 @@ class _StarFinderKernel:
             | (self.circular_radius <= 2.0), 1, 0).astype(int)
         self.npixels = self.mask.sum()
 
-        # NOTE: the central (peak) pixel of gaussian_kernel has a value of 1.
+        # NOTE: the central (peak) pixel of gaussian_kernel has a value of 1.0
         self.gaussian_kernel_unmasked = np.exp(-self.elliptical_radius)
         self.gaussian_kernel = self.gaussian_kernel_unmasked * self.mask
 

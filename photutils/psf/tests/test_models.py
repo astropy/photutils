@@ -86,14 +86,14 @@ class TestFittableImageModel:
         val36 = gm(0.66, 0.66)
 
         assert_allclose(valcen, model_oversampled(0, 0))
-        assert_allclose(val36, model_oversampled(0.66, 0.66), rtol=1.e-6)
+        assert_allclose(val36, model_oversampled(0.66, 0.66), rtol=1.0e-6)
 
         model_oversampled.x_0 = 2.5
         model_oversampled.y_0 = -3.5
 
         assert_allclose(valcen, model_oversampled(2.5, -3.5))
         assert_allclose(val36, model_oversampled(2.5 + 0.66, -3.5 + 0.66),
-                        rtol=1.e-6)
+                        rtol=1.0e-6)
 
     def test_oversampling_inputs(self):
         data = np.arange(30).reshape(5, 6)
@@ -116,7 +116,7 @@ class TestGriddedPSFModel:
         psfs = []
         y, x = np.mgrid[0:101, 0:101]
         for i in range(16):
-            theta = i * 10. * np.pi / 180.
+            theta = i * 10.0 * np.pi / 180.0
             g = Gaussian2D(1, 50, 50, 10, 5, theta=theta)
             m = g(x, y)
             psfs.append(m)
@@ -258,8 +258,8 @@ class TestGriddedPSFModel:
         yy = [60, 150, 50, 140]
         zz = [100, 100, 100, 100]
         for xxi, yyi, zzi in zip(xx, yy, zz):
-            x0 = np.floor(xxi - (eval_xshape - 1) / 2.).astype(int)
-            y0 = np.floor(yyi - (eval_yshape - 1) / 2.).astype(int)
+            x0 = np.floor(xxi - (eval_xshape - 1) / 2.0).astype(int)
+            y0 = np.floor(yyi - (eval_yshape - 1) / 2.0).astype(int)
             x1 = x0 + eval_xshape
             y1 = y0 + eval_yshape
 
@@ -272,19 +272,19 @@ class TestGriddedPSFModel:
             data[y, x] += self.psfmodel.evaluate(x=x, y=y, flux=zzi, x_0=xxi,
                                                  y_0=yyi)
 
-        segm = detect_sources(data, 0., 5)
+        segm = detect_sources(data, 0.0, 5)
         cat = SourceCatalog(data, segm)
         orients = cat.orientation.value
-        assert_allclose(orients[1], 50., rtol=1.e-5)
-        assert_allclose(orients[2], -80., rtol=1.e-5)
+        assert_allclose(orients[1], 50.0, rtol=1.0e-5)
+        assert_allclose(orients[2], -80.0, rtol=1.0e-5)
         assert 88.3 < orients[0] < 88.4
-        assert 64. < orients[3] < 64.2
+        assert 64.0 < orients[3] < 64.2
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestIntegratedGaussianPRF:
     widths = [0.001, 0.01, 0.1, 1]
-    sigmas = [0.5, 1., 2., 10., 12.34]
+    sigmas = [0.5, 1.0, 2.0, 10.0, 12.34]
 
     @pytest.mark.parametrize('width', widths)
     def test_subpixel_gauss_psf(self, width):

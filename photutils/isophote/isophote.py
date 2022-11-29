@@ -252,8 +252,8 @@ class Isophote:
             tflux_e = np.ma.sum(values)
             npix_e = np.ma.count(values)
         else:
-            tflux_e = 0.
-            tflux_c = 0.
+            tflux_e = 0.0
+            tflux_c = 0.0
             npix_e = 0
             npix_c = 0
 
@@ -302,7 +302,7 @@ class Isophote:
         """
         Compute parameter errors based on the diagonal of the covariance
         matrix of the four harmonic coefficients for harmonics n=1 and
-        n=2.
+        n=2.0
         """
         try:
             coeffs, covariance = fit_first_and_second_harmonics(
@@ -321,18 +321,18 @@ class Isophote:
             # that best convey the errors measured in Monte Carlo
             # experiments (see Busko 1996; ASPC 101, 139).
             ea = abs(errors[2] / self.grad)
-            eb = abs(errors[1] * (1. - eps) / self.grad)
+            eb = abs(errors[1] * (1.0 - eps) / self.grad)
             self.x0_err = np.sqrt((ea * np.cos(pa))**2 + (eb * np.sin(pa))**2)
             self.y0_err = np.sqrt((ea * np.sin(pa))**2 + (eb * np.cos(pa))**2)
-            self.ellip_err = (abs(2. * errors[4] * (1. - eps) / self.sma
+            self.ellip_err = (abs(2.0 * errors[4] * (1.0 - eps) / self.sma
                                   / self.grad))
             if abs(eps) > np.finfo(float).resolution:
-                self.pa_err = (abs(2. * errors[3] * (1. - eps) / self.sma
-                                   / self.grad / (1. - (1. - eps)**2)))
+                self.pa_err = (abs(2.0 * errors[3] * (1.0 - eps) / self.sma
+                                   / self.grad / (1.0 - (1.0 - eps)**2)))
             else:
-                self.pa_err = 0.
+                self.pa_err = 0.0
         except Exception:  # we want to catch everything
-            self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.
+            self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.0
 
     def fix_geometry(self, isophote):
         """
@@ -420,10 +420,10 @@ class CentralPixel(Isophote):
         self.a3_err = self.b3_err = 0.0
         self.a4_err = self.b4_err = 0.0
 
-        self.ellip_err = 0.
-        self.pa_err = 0.
-        self.x0_err = 0.
-        self.y0_err = 0.
+        self.ellip_err = 0.0
+        self.pa_err = 0.0
+        self.x0_err = 0.0
+        self.y0_err = 0.0
 
     def __eq__(self, other):
         try:
@@ -434,11 +434,11 @@ class CentralPixel(Isophote):
 
     @property
     def eps(self):
-        return 0.
+        return 0.0
 
     @property
     def pa(self):
-        return 0.
+        return 0.0
 
     @property
     def x0(self):
@@ -880,6 +880,6 @@ def _isophote_list_to_table(isophote_list, columns='main'):
         isotable[v] = np.array([getattr(iso, k) for iso in isophote_list])
 
         if k in ('pa', 'pa_err'):
-            isotable[v] = isotable[v] * 180. / np.pi * u.deg
+            isotable[v] = isotable[v] * 180.0 / np.pi * u.deg
 
     return isotable

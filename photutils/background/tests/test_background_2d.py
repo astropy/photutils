@@ -84,9 +84,9 @@ class TestBackground2D:
     @pytest.mark.parametrize('interpolator', INTERPOLATORS)
     def test_background_nonconstant(self, interpolator):
         data = np.copy(DATA)
-        data[25:50, 50:75] = 10.
+        data[25:50, 50:75] = 10.0
         bkg_low_res = np.copy(BKG_MESH)
-        bkg_low_res[1, 2] = 10.
+        bkg_low_res[1, 2] = 10.0
         bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
                             interpolator=interpolator)
         assert_allclose(bkg1.background_mesh, bkg_low_res)
@@ -98,7 +98,7 @@ class TestBackground2D:
 
     def test_no_sigma_clipping(self):
         data = np.copy(DATA)
-        data[10, 10] = 100.
+        data[10, 10] = 100.0
         bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
                             bkg_estimator=MeanBackground())
         bkg2 = Background2D(data, (25, 25), filter_size=(1, 1),
@@ -134,22 +134,22 @@ class TestBackground2D:
         resizing of the image and mask.
         """
         data = np.copy(DATA)
-        data[25:50, 25:50] = 100.
+        data[25:50, 25:50] = 100.0
         mask = np.zeros(DATA.shape, dtype=bool)
         mask[25:50, 25:50] = True
         bkg = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
                            bkg_estimator=MeanBackground())
-        assert_allclose(bkg.background, DATA, rtol=2.e-5)
+        assert_allclose(bkg.background, DATA, rtol=2.0e-5)
         assert_allclose(bkg.background_rms, BKG_RMS)
 
         # test edge crop with mask
         bkg2 = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
                             bkg_estimator=MeanBackground(), edge_method='crop')
-        assert_allclose(bkg2.background, DATA, rtol=2.e-5)
+        assert_allclose(bkg2.background, DATA, rtol=2.0e-5)
 
     def test_mask(self):
         data = np.copy(DATA)
-        data[25:50, 25:50] = 100.
+        data[25:50, 25:50] = 100.0
         mask = np.zeros(DATA.shape, dtype=bool)
         mask[25:50, 25:50] = True
         bkg1 = Background2D(data, (25, 25), filter_size=(1, 1), mask=None,
@@ -168,7 +168,7 @@ class TestBackground2D:
                 < bkg2.nboxes_tot)
         assert np.count_nonzero(np.isnan(bkg2.mesh_nmasked)) == 1
 
-    @pytest.mark.parametrize('fill_value', [0., np.nan, -1.])
+    @pytest.mark.parametrize('fill_value', [0.0, np.nan, -1.0])
     def test_coverage_mask(self, fill_value):
         data = np.copy(DATA)
         data[:50, :50] = np.nan
@@ -237,39 +237,39 @@ class TestBackground2D:
         with pytest.warns(AstropyUserWarning,
                           match='Input data contains invalid values'):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1),
-                               exclude_percentile=100.)
+                               exclude_percentile=100.0)
         assert len(bkg._box_idx) == 12
 
     def test_filter_threshold(self):
         """Only meshes greater than filter_threshold are filtered."""
         data = np.copy(DATA)
-        data[25:50, 50:75] = 10.
+        data[25:50, 50:75] = 10.0
         bkg = Background2D(data, (25, 25), filter_size=(3, 3),
-                           filter_threshold=9.)
+                           filter_threshold=9.0)
         assert_allclose(bkg.background, DATA)
         assert_allclose(bkg.background_mesh, BKG_MESH)
         bkg2 = Background2D(data, (25, 25), filter_size=(3, 3),
-                            filter_threshold=11.)  # no filtering
+                            filter_threshold=11.0)  # no filtering
         assert bkg2.background_mesh[1, 2] == 10
 
     def test_filter_threshold_high(self):
         """No filtering because filter_threshold is too large."""
         data = np.copy(DATA)
-        data[25:50, 50:75] = 10.
+        data[25:50, 50:75] = 10.0
         ref_data = np.copy(BKG_MESH)
-        ref_data[1, 2] = 10.
+        ref_data[1, 2] = 10.0
         b = Background2D(data, (25, 25), filter_size=(3, 3),
-                         filter_threshold=100.)
+                         filter_threshold=100.0)
         assert_allclose(b.background_mesh, ref_data)
 
     def test_filter_threshold_nofilter(self):
         """No filtering because filter_size is (1, 1)."""
         data = np.copy(DATA)
-        data[25:50, 50:75] = 10.
+        data[25:50, 50:75] = 10.0
         ref_data = np.copy(BKG_MESH)
-        ref_data[1, 2] = 10.
+        ref_data[1, 2] = 10.0
         b = Background2D(data, (25, 25), filter_size=(1, 1),
-                         filter_threshold=1.)
+                         filter_threshold=1.0)
         assert_allclose(b.background_mesh, ref_data)
 
     def test_scalar_sizes(self):

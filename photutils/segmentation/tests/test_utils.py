@@ -18,23 +18,23 @@ def test_make_2dgaussian_kernel():
     expected = np.array([[0.01411809, 0.0905834, 0.01411809],
                          [0.0905834, 0.58119403, 0.0905834],
                          [0.01411809, 0.0905834, 0.01411809]])
-    assert_allclose(kernel.array, expected, atol=1.e-6)
-    assert_allclose(kernel.array.sum(), 1.)
+    assert_allclose(kernel.array, expected, atol=1.0e-6)
+    assert_allclose(kernel.array.sum(), 1.0)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_2dgaussian_kernel_modes():
     kernel = make_2dgaussian_kernel(3.0, 5)
-    assert_allclose(kernel.array.sum(), 1.)
+    assert_allclose(kernel.array.sum(), 1.0)
 
     kernel = make_2dgaussian_kernel(3.0, 5, mode='center')
-    assert_allclose(kernel.array.sum(), 1.)
+    assert_allclose(kernel.array.sum(), 1.0)
 
     kernel = make_2dgaussian_kernel(3.0, 5, mode='linear_interp')
-    assert_allclose(kernel.array.sum(), 1.)
+    assert_allclose(kernel.array.sum(), 1.0)
 
     kernel = make_2dgaussian_kernel(3.0, 5, mode='integrate')
-    assert_allclose(kernel.array.sum(), 1.)
+    assert_allclose(kernel.array.sum(), 1.0)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -66,7 +66,7 @@ def test_mask_to_mirrored_value():
     data_ref[0, 0] = data[4, 4]
     data_ref[1, 1] = data[3, 3]
     mirror_data = _mask_to_mirrored_value(data, mask, center)
-    assert_allclose(mirror_data, data_ref, rtol=0, atol=1.e-6)
+    assert_allclose(mirror_data, data_ref, rtol=0, atol=1.0e-6)
 
 
 def test_mask_to_mirrored_value_range():
@@ -81,11 +81,11 @@ def test_mask_to_mirrored_value_range():
     mask[1, 1] = True
     mask[2, 2] = True
     data_ref = data.copy()
-    data_ref[0, 0] = 0.
-    data_ref[1, 1] = 0.
+    data_ref[0, 0] = 0.0
+    data_ref[1, 1] = 0.0
     data_ref[2, 2] = data[4, 4]
     mirror_data = _mask_to_mirrored_value(data, mask, center)
-    assert_allclose(mirror_data, data_ref, rtol=0, atol=1.e-6)
+    assert_allclose(mirror_data, data_ref, rtol=0, atol=1.0e-6)
 
 
 def test_mask_to_mirrored_value_masked():
@@ -101,13 +101,13 @@ def test_mask_to_mirrored_value_masked():
     mask[3, 3] = True
     mask[4, 4] = True
     data_ref = data.copy()
-    data_ref[0, 0] = 0.
-    data_ref[1, 1] = 0.
-    data_ref[3, 3] = 0.
-    data_ref[4, 4] = 0.
+    data_ref[0, 0] = 0.0
+    data_ref[1, 1] = 0.0
+    data_ref[3, 3] = 0.0
+    data_ref[4, 4] = 0.0
     mirror_data = _mask_to_mirrored_value(data, mask, center)
     mirror_data = _mask_to_mirrored_value(data, mask, center)
-    assert_allclose(mirror_data, data_ref, rtol=0, atol=1.e-6)
+    assert_allclose(mirror_data, data_ref, rtol=0, atol=1.0e-6)
 
 
 def test_mask_to_mirrored_value_mask_keyword():
@@ -116,7 +116,7 @@ def test_mask_to_mirrored_value_mask_keyword():
     mask keyword).
     """
     center = (2.0, 2.0)
-    data = np.arange(25.).reshape(5, 5)
+    data = np.arange(25.0).reshape(5, 5)
     replace_mask = np.zeros(data.shape, dtype=bool)
     mask = np.zeros(data.shape, dtype=bool)
     replace_mask[0, 2] = True

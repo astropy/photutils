@@ -405,8 +405,8 @@ class EPSFBuilder:
         # the center of the pixel, so the center should be at (v.5, w.5)
         # detector pixels) value is simply the average of the two values
         # at the extremes.
-        xcenter = stars._max_shape[0] / 2.
-        ycenter = stars._max_shape[1] / 2.
+        xcenter = stars._max_shape[0] / 2.0
+        ycenter = stars._max_shape[1] / 2.0
 
         epsf = EPSFModel(data=data, origin=(xcenter, ycenter),
                          oversampling=oversampling, norm_radius=norm_radius)
@@ -516,13 +516,13 @@ class EPSFBuilder:
 
         elif self.smoothing_kernel == 'quartic':
             # from Polynomial2D fit with degree=4 to 5x5 array of
-            # zeros with 1. at the center
+            # zeros with 1.0 at the center
             # Polynomial2D(4, c0_0=0.04163265, c1_0=-0.76326531,
             #              c2_0=0.99081633, c3_0=-0.4, c4_0=0.05,
             #              c0_1=-0.76326531, c0_2=0.99081633, c0_3=-0.4,
             #              c0_4=0.05, c1_1=0.32653061, c1_2=-0.08163265,
-            #              c1_3=0., c2_1=-0.08163265, c2_2=0.02040816,
-            #              c3_1=-0.)>
+            #              c1_3=0.0, c2_1=-0.08163265, c2_2=0.02040816,
+            #              c3_1=-0.0)>
             kernel = np.array(
                 [[+0.041632, -0.080816, 0.078368, -0.080816, +0.041632],
                  [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
@@ -532,10 +532,10 @@ class EPSFBuilder:
 
         elif self.smoothing_kernel == 'quadratic':
             # from Polynomial2D fit with degree=2 to 5x5 array of
-            # zeros with 1. at the center
+            # zeros with 1.0 at the center
             # Polynomial2D(2, c0_0=-0.07428571, c1_0=0.11428571,
             #              c2_0=-0.02857143, c0_1=0.11428571,
-            #              c0_2=-0.02857143, c1_1=-0.)
+            #              c0_2=-0.02857143, c1_1=-0.0)
             kernel = np.array(
                 [[-0.07428311, 0.01142786, 0.03999952, 0.01142786,
                   -0.07428311],
@@ -608,7 +608,7 @@ class EPSFBuilder:
         dx_total, dy_total = 0, 0
         iter_num = 0
         center_accuracy_sq = center_accuracy ** 2
-        center_dist_sq = center_accuracy_sq + 1.e6
+        center_dist_sq = center_accuracy_sq + 1.0e6
         center_dist_sq_prev = center_dist_sq + 1
         while (iter_num < maxiters and center_dist_sq >= center_accuracy_sq):
             iter_num += 1
@@ -703,7 +703,7 @@ class EPSFBuilder:
                                                   method='cubic')
 
             # fill any remaining nans (outer points) with zeros
-            residuals[~np.isfinite(residuals)] = 0.
+            residuals[~np.isfinite(residuals)] = 0.0
 
         # add the residuals to the previous ePSF image
         new_epsf = epsf._data + residuals
@@ -722,8 +722,8 @@ class EPSFBuilder:
 
         # Return the new ePSF object, but with undersampled grid pixel
         # coordinates.
-        xcenter = (epsf._data.shape[1] - 1) / 2. / epsf.oversampling[1]
-        ycenter = (epsf._data.shape[0] - 1) / 2. / epsf.oversampling[0]
+        xcenter = (epsf._data.shape[1] - 1) / 2.0 / epsf.oversampling[1]
+        ycenter = (epsf._data.shape[0] - 1) / 2.0 / epsf.oversampling[0]
 
         return EPSFModel(data=epsf._data, origin=(xcenter, ycenter),
                          oversampling=epsf.oversampling,
@@ -755,7 +755,7 @@ class EPSFBuilder:
         n_stars = stars.n_stars
         fit_failed = np.zeros(n_stars, dtype=bool)
         epsf = init_epsf
-        center_dist_sq = self.center_accuracy_sq + 1.
+        center_dist_sq = self.center_accuracy_sq + 1.0
         centers = stars.cutout_center_flat
 
         if self.progress_bar and HAS_TQDM:

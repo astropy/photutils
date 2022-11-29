@@ -38,10 +38,10 @@ class TestDAOStarFinder:
 
     def test_daofind_threshold_fwhm_inputs(self):
         with pytest.raises(TypeError):
-            DAOStarFinder(threshold=np.ones((2, 2)), fwhm=3.)
+            DAOStarFinder(threshold=np.ones((2, 2)), fwhm=3.0)
 
         with pytest.raises(TypeError):
-            DAOStarFinder(threshold=3., fwhm=np.ones((2, 2)))
+            DAOStarFinder(threshold=3.0, fwhm=np.ones((2, 2)))
 
     def test_daofind_include_border(self):
         starfinder = DAOStarFinder(threshold=10, fwhm=2, sigma_radius=1.5,
@@ -66,7 +66,7 @@ class TestDAOStarFinder:
         """Sources found, but none pass the sharpness criteria."""
         with pytest.warns(NoDetectionsWarning,
                           match='Sources were found, but none pass'):
-            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, sharplo=1.)
+            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, sharplo=1.0)
             tbl = starfinder(DATA)
             assert tbl is None
 
@@ -74,7 +74,7 @@ class TestDAOStarFinder:
         """Sources found, but none pass the roundness criteria."""
         with pytest.warns(NoDetectionsWarning,
                           match='Sources were found, but none pass'):
-            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
+            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, roundlo=1.0)
             tbl = starfinder(DATA)
             assert tbl is None
 
@@ -89,7 +89,7 @@ class TestDAOStarFinder:
     def test_daofind_flux_negative(self):
         """Test handling of negative flux (here created by large sky)."""
         data = np.ones((5, 5))
-        data[2, 2] = 10.
+        data[2, 2] = 10.0
         starfinder = DAOStarFinder(threshold=0.1, fwhm=1.0, sky=10)
         tbl = starfinder(data)
         assert not np.isfinite(tbl['mag'])
@@ -99,7 +99,7 @@ class TestDAOStarFinder:
         Regression test that sources with negative fit peaks (i.e.,
         hx/hy<=0) are excluded.
         """
-        starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
+        starfinder = DAOStarFinder(threshold=7.0, fwhm=1.5, roundlo=-np.inf,
                                    roundhi=np.inf, sharplo=-np.inf,
                                    sharphi=np.inf)
         tbl = starfinder(DATA)
@@ -111,7 +111,7 @@ class TestDAOStarFinder:
         filtered out.
         """
         peakmax = 20
-        starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
+        starfinder = DAOStarFinder(threshold=7.0, fwhm=1.5, roundlo=-np.inf,
                                    roundhi=np.inf, sharplo=-np.inf,
                                    sharphi=np.inf, peakmax=peakmax)
         tbl = starfinder(DATA)
@@ -125,13 +125,13 @@ class TestDAOStarFinder:
         """
         brightest = 40
         peakmax = 20
-        starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
+        starfinder = DAOStarFinder(threshold=7.0, fwhm=1.5, roundlo=-np.inf,
                                    roundhi=np.inf, sharplo=-np.inf,
                                    sharphi=np.inf, brightest=brightest)
         tbl = starfinder(DATA)
         # combined with peakmax
         assert len(tbl) == brightest
-        starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
+        starfinder = DAOStarFinder(threshold=7.0, fwhm=1.5, roundlo=-np.inf,
                                    roundhi=np.inf, sharplo=-np.inf,
                                    sharphi=np.inf, brightest=brightest,
                                    peakmax=peakmax)

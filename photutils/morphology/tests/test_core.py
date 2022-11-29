@@ -14,11 +14,11 @@ XCS = [25.7]
 YCS = [26.2]
 XSTDDEVS = [3.2, 4.0]
 YSTDDEVS = [5.7, 4.1]
-THETAS = np.array([30., 45.]) * np.pi / 180.
+THETAS = np.array([30.0, 45.0]) * np.pi / 180.0
 DATA = np.zeros((3, 3))
-DATA[0:2, 1] = 1.
-DATA[1, 0:2] = 1.
-DATA[1, 1] = 2.
+DATA[0:2, 1] = 1.0
+DATA[1, 0:2] = 1.0
+DATA[1, 1] = 2.0
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
@@ -30,8 +30,8 @@ def test_data_properties():
     properties = ['xcentroid', 'ycentroid']
     result = [getattr(props, i) for i in properties]
     result2 = [getattr(props2, i) for i in properties]
-    assert_allclose([0.5, 0.5], result, rtol=0, atol=1.e-6)
-    assert_allclose([0.5, 0.0], result2, rtol=0, atol=1.e-6)
+    assert_allclose([0.5, 0.5], result, rtol=0, atol=1.0e-6)
+    assert_allclose([0.5, 0.0], result2, rtol=0, atol=1.0e-6)
     assert props.area.value == 4.0
     assert props2.area.value == 2.0
 

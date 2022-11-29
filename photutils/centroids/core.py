@@ -45,14 +45,14 @@ def centroid_com(data, mask=None):
         mask = np.asarray(mask, dtype=bool)
         if data.shape != mask.shape:
             raise ValueError('data and mask must have the same shape.')
-        data[mask] = 0.
+        data[mask] = 0.0
 
     badmask = ~np.isfinite(data)
     if np.any(badmask):
         warnings.warn('Input data contains non-finite values (e.g., NaN or '
                       'inf) that were automatically masked.',
                       AstropyUserWarning)
-        data[badmask] = 0.
+        data[badmask] = 0.0
 
     total = np.sum(data)
     if total == 0:

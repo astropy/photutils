@@ -18,16 +18,16 @@ from photutils.psf.utils import (get_grouped_psf_model, prepare_psf_model,
 from photutils.utils._optional_deps import HAS_SCIPY
 
 PSF_SIZE = 11
-GAUSSIAN_WIDTH = 1.
+GAUSSIAN_WIDTH = 1.0
 IMAGE_SIZE = 101
 
 # Position and FLUXES of test sources
-INTAB = Table([[50., 23, 12, 86], [50., 83, 80, 84],
-               [np.pi * 10, 3.654, 20., 80 / np.sqrt(3)]],
+INTAB = Table([[50.0, 23, 12, 86], [50.0, 83, 80, 84],
+               [np.pi * 10, 3.654, 20.0, 80 / np.sqrt(3)]],
               names=['x_0', 'y_0', 'flux_0'])
 
 # Create test psf
-psf_model = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
+psf_model = Gaussian2D(1.0 / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
                        PSF_SIZE // 2, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
 test_psf = discretize_model(psf_model, (0, PSF_SIZE), (0, PSF_SIZE),
                             mode='oversample')
@@ -117,7 +117,7 @@ def test_prepare_psf_model(moffimg, prepkwargs, tols):
     if prepkwargs['renormalize_psf']:
         # definitely very wrong, so this ensures the re-normalization
         # stuff works
-        guess_moffat.amplitude = 5.
+        guess_moffat.amplitude = 5.0
 
     if prepkwargs['xname'] is None:
         guess_moffat.x_0 = 0
@@ -151,8 +151,8 @@ def test_prepare_psf_model_offset():
     """
     norm = False
     sigma = 3.0
-    amplitude = 1. / (2 * np.pi * sigma ** 2)
-    xcen = ycen = 0.
+    amplitude = 1.0 / (2 * np.pi * sigma ** 2)
+    xcen = ycen = 0.0
     psf0 = Gaussian2D(amplitude, xcen, ycen, sigma, sigma)
     psf1 = prepare_psf_model(psf0, xname='x_mean', yname='y_mean',
                              renormalize_psf=norm)

@@ -16,7 +16,7 @@ from photutils.utils._optional_deps import HAS_SCIPY
 def test_hanning():
     win = HanningWindow()
     data = win((5, 5))
-    ref = [0., 0.19715007, 0.5, 0.19715007, 0.]
+    ref = [0.0, 0.19715007, 0.5, 0.19715007, 0.0]
     assert_allclose(data[1, :], ref)
 
 
@@ -35,7 +35,7 @@ def test_hanning_numpy():
 def test_tukey():
     win = TukeyWindow(0.5)
     data = win((5, 5))
-    ref = [0., 0.63312767, 1., 0.63312767, 0.]
+    ref = [0.0, 0.63312767, 1.0, 0.63312767, 0.0]
     assert_allclose(data[1, :], ref)
 
 
@@ -58,21 +58,21 @@ def test_tukey_scipy():
 def test_cosine_bell():
     win = CosineBellWindow(alpha=0.8)
     data = win((7, 7))
-    ref = [0., 0., 0.19715007, 0.5, 0.19715007, 0., 0.]
+    ref = [0.0, 0.0, 0.19715007, 0.5, 0.19715007, 0.0, 0.0]
     assert_allclose(data[2, :], ref)
 
 
 def test_split_cosine_bell():
     win = SplitCosineBellWindow(alpha=0.8, beta=0.2)
     data = win((5, 5))
-    ref = [0., 0.3454915, 1., 0.3454915, 0.]
+    ref = [0.0, 0.3454915, 1.0, 0.3454915, 0.0]
     assert_allclose(data[2, :], ref)
 
 
 def test_tophat():
     win = TopHatWindow(beta=0.5)
     data = win((5, 5))
-    ref = [0., 1., 1., 1., 0.]
+    ref = [0.0, 1.0, 1.0, 1.0, 0.0]
     assert_allclose(data[2, :], ref)
 
 

@@ -64,7 +64,7 @@ class CutoutImage:
     --------
     >>> import numpy as np
     >>> from photutils.utils import CutoutImage
-    >>> data = np.arange(20.).reshape(5, 4)
+    >>> data = np.arange(20.0).reshape(5, 4)
     >>> cutout = CutoutImage(data, (2, 2), (3, 3))
     >>> print(cutout.data)  # doctest: +FLOAT_CMP
     [[ 5.  6.  7.]

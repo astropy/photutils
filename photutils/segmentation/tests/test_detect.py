@@ -36,18 +36,18 @@ class TestDetectThreshold:
     def test_nsigma_zero(self):
         """Test nsigma=0."""
         threshold = detect_threshold(DATA, nsigma=0.0)
-        ref = (1. / 3.) * np.ones((3, 3))
+        ref = (1.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_background(self):
         threshold = detect_threshold(DATA, nsigma=1.0, background=1)
-        ref = (5. / 3.) * np.ones((3, 3))
+        ref = (5.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_background_image(self):
         background = np.ones((3, 3))
         threshold = detect_threshold(DATA, nsigma=1.0, background=background)
-        ref = (5. / 3.) * np.ones((3, 3))
+        ref = (5.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
         threshold = detect_threshold(DATA << u.Jy, nsigma=1.0,
@@ -58,17 +58,17 @@ class TestDetectThreshold:
     def test_background_badshape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            detect_threshold(DATA, nsigma=2., background=wrong_shape)
+            detect_threshold(DATA, nsigma=2.0, background=wrong_shape)
 
     def test_error(self):
         threshold = detect_threshold(DATA, nsigma=1.0, error=1)
-        ref = (4. / 3.) * np.ones((3, 3))
+        ref = (4.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_error_image(self):
         error = np.ones((3, 3))
         threshold = detect_threshold(DATA, nsigma=1.0, error=error)
-        ref = (4. / 3.) * np.ones((3, 3))
+        ref = (4.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
         threshold = detect_threshold(DATA << u.Jy, nsigma=1.0,
@@ -79,33 +79,33 @@ class TestDetectThreshold:
     def test_error_badshape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            detect_threshold(DATA, nsigma=2., error=wrong_shape)
+            detect_threshold(DATA, nsigma=2.0, error=wrong_shape)
 
     def test_background_error(self):
-        threshold = detect_threshold(DATA, nsigma=2.0, background=10.,
-                                     error=1.)
-        ref = 12. * np.ones((3, 3))
+        threshold = detect_threshold(DATA, nsigma=2.0, background=10.0,
+                                     error=1.0)
+        ref = 12.0 * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
         threshold = detect_threshold(DATA << u.Jy, nsigma=2.0,
-                                     background=10. * u.Jy,
-                                     error=1. * u.Jy)
+                                     background=10.0 * u.Jy,
+                                     error=1.0 * u.Jy)
         assert isinstance(threshold, u.Quantity)
         assert_allclose(threshold.value, ref)
 
         with pytest.raises(ValueError):
-            detect_threshold(DATA << u.Jy, nsigma=2.0, background=10.,
-                             error=1. * u.Jy)
+            detect_threshold(DATA << u.Jy, nsigma=2.0, background=10.0,
+                             error=1.0 * u.Jy)
         with pytest.raises(ValueError):
-            detect_threshold(DATA << u.Jy, nsigma=2.0, background=10. * u.m,
-                             error=1. * u.Jy)
+            detect_threshold(DATA << u.Jy, nsigma=2.0, background=10.0 * u.m,
+                             error=1.0 * u.Jy)
 
     def test_background_error_images(self):
-        background = np.ones((3, 3)) * 10.
+        background = np.ones((3, 3)) * 10.0
         error = np.ones((3, 3))
         threshold = detect_threshold(DATA, nsigma=2.0, background=background,
                                      error=error)
-        ref = 12. * np.ones((3, 3))
+        ref = 12.0 * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_image_mask(self):
@@ -116,9 +116,9 @@ class TestDetectThreshold:
         """
         mask = REF1.astype(bool)
         sigma_clip = SigmaClip(sigma=10, maxiters=1)
-        threshold = detect_threshold(DATA, nsigma=1., error=0, mask=mask,
+        threshold = detect_threshold(DATA, nsigma=1.0, error=0, mask=mask,
                                      sigma_clip=sigma_clip)
-        ref = (1. / 8.) * np.ones((3, 3))
+        ref = (1.0 / 8.0) * np.ones((3, 3))
         assert_array_equal(threshold, ref)
 
     def test_invalid_sigma_clip(self):
@@ -191,7 +191,7 @@ class TestDetectSources:
 
     def test_zerothresh(self):
         """Test detection with zero threshold."""
-        segm = detect_sources(self.data, threshold=0., npixels=2)
+        segm = detect_sources(self.data, threshold=0.0, npixels=2)
         assert_array_equal(segm.data, self.refdata)
 
     def test_zerodet(self):
@@ -214,7 +214,7 @@ class TestDetectSources:
 
     def test_basic_kernel(self):
         """Test detection with kernel."""
-        kernel = np.ones((3, 3)) / 9.
+        kernel = np.ones((3, 3)) / 9.0
         threshold = 0.3
         expected = np.ones((3, 3))
         expected[2] = 0
@@ -252,21 +252,21 @@ class TestDetectSources:
 
     def test_mask(self):
         data = np.zeros((11, 11))
-        data[3:8, 3:8] = 5.
+        data[3:8, 3:8] = 5.0
         mask = np.zeros(data.shape, dtype=bool)
         mask[4:6, 4:6] = True
-        segm1 = detect_sources(data, 1., 1.)
-        segm2 = detect_sources(data, 1., 1., mask=mask)
+        segm1 = detect_sources(data, 1.0, 1.0)
+        segm2 = detect_sources(data, 1.0, 1.0, mask=mask)
         assert segm2.areas[0] == segm1.areas[0] - mask.sum()
 
         # mask with all True
         with pytest.raises(ValueError):
             mask = np.ones(data.shape, dtype=bool)
-            detect_sources(data, 1., 1., mask=mask)
+            detect_sources(data, 1.0, 1.0, mask=mask)
 
     def test_mask_shape(self):
         with pytest.raises(ValueError):
-            detect_sources(self.data, 1., 1., mask=np.ones((5, 5)))
+            detect_sources(self.data, 1.0, 1.0, mask=np.ones((5, 5)))
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')

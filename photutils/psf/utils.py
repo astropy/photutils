@@ -105,7 +105,7 @@ def prepare_psf_model(psfmodel, *, xname=None, yname=None, fluxname=None,
 
         integrand = integrate.dblquad(psfmodel, -np.inf, np.inf,
                                       lambda x: -np.inf, lambda x: np.inf)[0]
-        normmod = Const2D(1. / integrand, name='renormalize_scaling')
+        normmod = Const2D(1.0 / integrand, name='renormalize_scaling')
         outmod = outmod * normmod
 
     # final setup of the output model - fix all the non-offset/scale
@@ -209,7 +209,7 @@ def _call_fitter(fitter, psf, x, y, data, weights):
     Not all fitters have to support a weight array. This function
     includes the weight in the fitter call only if really needed.
     """
-    if np.all(weights == 1.):
+    if np.all(weights == 1.0):
         return fitter(psf, x, y, data)
     else:
         return fitter(psf, x, y, data, weights=weights)

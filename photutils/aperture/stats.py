@@ -643,7 +643,7 @@ class ApertureStats:
                     weight_cutout *= ~sigclip_mask
 
                     mask_cutout = data_sigclip.mask
-                    data_cutout = data_sigclip.filled(0.)
+                    data_cutout = data_sigclip.filled(0.0)
 
                 # need to apply the aperture weights
                 data_cutout *= aperweight_cutout
@@ -871,7 +871,7 @@ class ApertureStats:
                 arr_.fill(np.nan)
             else:
                 arr_ = arr.data
-                arr_[arr.mask] = 0.
+                arr_[arr.mask] = 0.0
             cutouts.append(arr_)
 
         return cutouts
@@ -1148,7 +1148,7 @@ class ApertureStats:
         The total area of the unmasked pixels within the aperture using
         the "center" aperture mask method.
         """
-        areas = np.array([np.sum(weight.filled(0.))
+        areas = np.array([np.sum(weight.filled(0.0))
                           for weight in self._weight_cutout_center])
         areas[self._all_masked] = np.nan
         return areas << (u.pix ** 2)
@@ -1160,7 +1160,7 @@ class ApertureStats:
         The total area of the unmasked pixels within the aperture using
         the input ``sum_method`` aperture mask method.
         """
-        areas = np.array([np.sum(weight.filled(0.))
+        areas = np.array([np.sum(weight.filled(0.0))
                           for weight in self._weight_cutout])
         areas[self._all_masked] = np.nan
         return areas << (u.pix ** 2)
@@ -1267,7 +1267,7 @@ class ApertureStats:
 
         The mode is estimated as ``(3 * median) - (2 * mean)``.
         """
-        return 3. * self.median - 2. * self.mean
+        return 3.0 * self.median - 2.0 * self.mean
 
     @lazyproperty
     @as_scalar
@@ -1371,7 +1371,7 @@ class ApertureStats:
         # Modify the covariance matrix in the case of "infinitely" thin
         # detections. This follows SourceExtractor's prescription of
         # incrementally increasing the diagonal elements by 1/12.
-        delta = 1. / 12
+        delta = 1.0 / 12
         delta2 = delta**2
         # ignore RuntimeWarning from NaN values in covar
         with warnings.catch_warnings():
@@ -1478,9 +1478,9 @@ class ApertureStats:
         The angle increases in the counter-clockwise direction.
         """
         covar = self._covariance
-        orient_radians = 0.5 * np.arctan2(2. * covar[:, 0, 1],
+        orient_radians = 0.5 * np.arctan2(2.0 * covar[:, 0, 1],
                                           (covar[:, 0, 0] - covar[:, 1, 1]))
-        return orient_radians * 180. / np.pi * u.deg
+        return orient_radians * 180.0 / np.pi * u.deg
 
     @lazyproperty
     @as_scalar
@@ -1498,7 +1498,7 @@ class ApertureStats:
         and semiminor axes, respectively.
         """
         semimajor_var, semiminor_var = np.transpose(self.covariance_eigvals)
-        return np.sqrt(1. - (semiminor_var / semimajor_var))
+        return np.sqrt(1.0 - (semiminor_var / semimajor_var))
 
     @lazyproperty
     @as_scalar
@@ -1615,9 +1615,9 @@ class ApertureStats:
         isophotal limit of a source is well represented by :math:`R
         \approx 3`.
         """
-        return (2. * np.cos(self.orientation) * np.sin(self.orientation)
-                * ((1. / self.semimajor_sigma**2)
-                   - (1. / self.semiminor_sigma**2)))
+        return (2.0 * np.cos(self.orientation) * np.sin(self.orientation)
+                * ((1.0 / self.semimajor_sigma**2)
+                   - (1.0 / self.semiminor_sigma**2)))
 
     @lazyproperty
     @as_scalar
@@ -1654,7 +1654,7 @@ class ApertureStats:
                 continue
             npix = np.size(arr)
             normalization = np.abs(np.mean(arr)) * npix * (npix - 1)
-            kernel = ((2. * np.arange(1, npix + 1) - npix - 1)
+            kernel = ((2.0 * np.arange(1, npix + 1) - npix - 1)
                       * np.abs(np.sort(arr)))
             gini.append(np.sum(kernel) / normalization)
         return np.array(gini)

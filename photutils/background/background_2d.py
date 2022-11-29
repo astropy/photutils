@@ -332,7 +332,7 @@ class Background2D:
         #       be included
         #     - for exclude_percentile=100, all boxes will be included
         #       *unless* they are completely masked
-        threshold = self.exclude_percentile / 100. * self.box_npixels
+        threshold = self.exclude_percentile / 100.0 * self.box_npixels
 
         # always exclude completely masked boxes
         if self.exclude_percentile == 100:
@@ -593,7 +593,7 @@ class Background2D:
 
     @lazyproperty
     def _mesh_yxpos(self):
-        box_cen = (self.box_size - 1) / 2.
+        box_cen = (self.box_size - 1) / 2.0
         return (self._mesh_idx * self.box_size[:, None]) + box_cen[:, None]
 
     @lazyproperty
@@ -707,5 +707,5 @@ class Background2D:
         if outlines:
             xypos = np.column_stack(self._mesh_xypos)
             apers = RectangularAperture(xypos, self.box_size[1],
-                                        self.box_size[0], 0.)
+                                        self.box_size[0], 0.0)
             apers.plot(ax=ax, alpha=alpha, **kwargs)

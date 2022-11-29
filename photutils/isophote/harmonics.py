@@ -82,7 +82,7 @@ def fit_first_and_second_harmonics(phi, intensities):
     y0, a1, b1, a2, b2 : float
         The fitted harmonic coefficient values.
     """
-    a1 = b1 = a2 = b2 = 1.
+    a1 = b1 = a2 = b2 = 1.0
 
     def optimize_func(x):
         return first_and_second_harmonic_function(
@@ -123,7 +123,7 @@ def fit_upper_harmonic(phi, intensities, order):
     y0, An, Bn : float
         The fitted harmonic values.
     """
-    an = bn = 1.
+    an = bn = 1.0
 
     def optimize_func(x):
         return (x[0] + x[1] * np.sin(order * phi)

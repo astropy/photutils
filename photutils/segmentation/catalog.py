@@ -843,7 +843,7 @@ class SourceCatalog:
                 convdata_mask |= mask_cutout
 
             cutout = convdata_cutout.copy()
-            cutout[convdata_mask] = 0.
+            cutout[convdata_mask] = 0.0
             cutouts.append(cutout)
         return cutouts
 
@@ -2034,9 +2034,9 @@ class SourceCatalog:
         kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
         size = 34
         weights = np.zeros(size, dtype=float)
-        weights[[5, 7, 15, 17, 25, 27]] = 1.
-        weights[[21, 33]] = np.sqrt(2.)
-        weights[[13, 23]] = (1 + np.sqrt(2.)) / 2.
+        weights[[5, 7, 15, 17, 25, 27]] = 1.0
+        weights[[21, 33]] = np.sqrt(2.0)
+        weights[[13, 23]] = (1 + np.sqrt(2.0)) / 2.0
 
         perimeter = []
         for mask in self._cutout_total_masks:
@@ -2093,7 +2093,7 @@ class SourceCatalog:
         # Modify the covariance matrix in the case of "infinitely" thin
         # detections. This follows SourceExtractor's prescription of
         # incrementally increasing the diagonal elements by 1/12.
-        delta = 1. / 12
+        delta = 1.0 / 12
         delta2 = delta**2
         # ignore RuntimeWarning from NaN values in covar
         with warnings.catch_warnings():
@@ -2204,9 +2204,9 @@ class SourceCatalog:
         source.  The angle increases in the counter-clockwise direction.
         """
         covar = self._covariance
-        orient_radians = 0.5 * np.arctan2(2. * covar[:, 0, 1],
+        orient_radians = 0.5 * np.arctan2(2.0 * covar[:, 0, 1],
                                           (covar[:, 0, 0] - covar[:, 1, 1]))
-        return orient_radians * 180. / np.pi * u.deg
+        return orient_radians * 180.0 / np.pi * u.deg
 
     @lazyproperty
     @use_detcat
@@ -2225,7 +2225,7 @@ class SourceCatalog:
         and semiminor axes, respectively.
         """
         semimajor_var, semiminor_var = np.transpose(self.covariance_eigvals)
-        return np.sqrt(1. - (semiminor_var / semimajor_var))
+        return np.sqrt(1.0 - (semiminor_var / semimajor_var))
 
     @lazyproperty
     @use_detcat
@@ -2350,9 +2350,9 @@ class SourceCatalog:
         isophotal limit of a source is well represented by :math:`R
         \approx 3`.
         """
-        return (2. * np.cos(self.orientation) * np.sin(self.orientation)
-                * ((1. / self.semimajor_sigma**2)
-                   - (1. / self.semiminor_sigma**2)))
+        return (2.0 * np.cos(self.orientation) * np.sin(self.orientation)
+                * ((1.0 / self.semimajor_sigma**2)
+                   - (1.0 / self.semiminor_sigma**2)))
 
     @lazyproperty
     @use_detcat
@@ -2390,7 +2390,7 @@ class SourceCatalog:
                 continue
             npix = np.size(arr)
             normalization = np.abs(np.mean(arr)) * npix * (npix - 1)
-            kernel = ((2. * np.arange(1, npix + 1) - npix - 1)
+            kernel = ((2.0 * np.arange(1, npix + 1) - npix - 1)
                       * np.abs(np.sort(arr)))
             gini.append(np.sum(kernel) / normalization)
         return np.array(gini)
@@ -2415,7 +2415,7 @@ class SourceCatalog:
             height_out = height_in + 2 * self.localbkg_width
             apertures.append(RectangularAnnulus((xpos, ypos), width_in,
                                                 width_out, height_out,
-                                                height_in, theta=0.))
+                                                height_in, theta=0.0))
         return apertures
 
     @lazyproperty
@@ -2472,7 +2472,7 @@ class SourceCatalog:
 
                 # check not enough unmasked pixels
                 if len(data_values) < 10:  # pragma: no cover
-                    local_bkgs.append(0.)
+                    local_bkgs.append(0.0)
                     continue
                 local_bkgs.append(bkg_func(data_values))
             local_bkgs = np.array(local_bkgs)
@@ -2712,7 +2712,7 @@ class SourceCatalog:
 
         return flux, fluxerr
 
-    def _make_elliptical_apertures(self, scale=6.):
+    def _make_elliptical_apertures(self, scale=6.0):
         """
         Return a list of elliptical apertures based on the scaled
         isophotal shape of the sources.

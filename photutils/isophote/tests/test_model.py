@@ -27,8 +27,8 @@ def test_model():
     data = hdu[0].data[0]
     hdu.close()
 
-    g = EllipseGeometry(530., 511, 10., 0.1, 10. / 180. * np.pi)
-    ellipse = Ellipse(data, geometry=g, threshold=1.e5)
+    g = EllipseGeometry(530.0, 511, 10.0, 0.1, 10.0 / 180.0 * np.pi)
+    ellipse = Ellipse(data, geometry=g, threshold=1.0e5)
 
     # NOTE: this sometimes emits warnings (e.g., py38, ubuntu), but
     # sometimes not. Here we simply ignore any RuntimeWarning, whether
@@ -48,11 +48,11 @@ def test_model():
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_model_simulated_data():
-    data = make_test_image(nx=200, ny=200, i0=10., sma=5., eps=0.5,
-                           pa=np.pi / 3., noise=0.05, seed=0)
+    data = make_test_image(nx=200, ny=200, i0=10.0, sma=5.0, eps=0.5,
+                           pa=np.pi / 3.0, noise=0.05, seed=0)
 
-    g = EllipseGeometry(100., 100., 5., 0.5, np.pi / 3.)
-    ellipse = Ellipse(data, geometry=g, threshold=1.e5)
+    g = EllipseGeometry(100.0, 100.0, 5.0, 0.5, np.pi / 3.0)
+    ellipse = Ellipse(data, geometry=g, threshold=1.0e5)
     isophote_list = ellipse.fit_image()
     model = build_ellipse_model(data.shape, isophote_list,
                                 fill=np.mean(data[0:50, 0:50]))
@@ -74,11 +74,11 @@ def test_model_minimum_radius():
     with fits.open(filepath) as hdu:
         data = hdu[0].data
 
-        g = EllipseGeometry(50., 45, 530., 0.1, 10. / 180. * np.pi)
+        g = EllipseGeometry(50.0, 45, 530.0, 0.1, 10.0 / 180.0 * np.pi)
         g.find_center(data)
         ellipse = Ellipse(data, geometry=g)
         with pytest.warns(RuntimeWarning, match='Degrees of freedom'):
-            isophote_list = ellipse.fit_image(sma0=40, minsma=0, maxsma=350.,
+            isophote_list = ellipse.fit_image(sma0=40, minsma=0, maxsma=350.0,
                                               step=0.4, nclip=3)
 
         model = build_ellipse_model(data.shape, isophote_list,

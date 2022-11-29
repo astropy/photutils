@@ -25,13 +25,13 @@ DEFAULT_FIX = np.array([False, False, False, False])
 
 
 def test_gradient():
-    sample = EllipseSample(DATA, 40.)
+    sample = EllipseSample(DATA, 40.0)
     sample.update(DEFAULT_FIX)
 
     assert_allclose(sample.mean, 200.02, atol=0.01)
     assert_allclose(sample.gradient, -4.222, atol=0.001)
     assert_allclose(sample.gradient_error, 0.0003, atol=0.0001)
-    assert_allclose(sample.gradient_relative_error, 7.45e-05, atol=1.e-5)
+    assert_allclose(sample.gradient_relative_error, 7.45e-05, atol=1.0e-5)
     assert_allclose(sample.sector_area, 2.00, atol=0.01)
 
 
@@ -44,7 +44,7 @@ def test_fitting_raw():
 
     # pick first guess ellipse that is off in just
     # one of the parameters (eps).
-    sample = EllipseSample(DATA, 40., eps=2 * 0.2)
+    sample = EllipseSample(DATA, 40.0, eps=2 * 0.2)
     sample.update(DEFAULT_FIX)
     s = sample.extract()
 
@@ -56,7 +56,7 @@ def test_fitting_raw():
     assert abs(b2) > abs(b1)
     assert abs(b2) > abs(a2)
 
-    correction = (b2 * 2. * (1. - sample.geometry.eps)
+    correction = (b2 * 2.0 * (1.0 - sample.geometry.eps)
                   / sample.geometry.sma / sample.gradient)
     new_eps = sample.geometry.eps - correction
 
@@ -66,7 +66,7 @@ def test_fitting_raw():
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fitting_small_radii():
-    sample = EllipseSample(DATA, 2.)
+    sample = EllipseSample(DATA, 2.0)
     fitter = EllipseFitter(sample)
     isophote = fitter.fit()
 
@@ -77,7 +77,7 @@ def test_fitting_small_radii():
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fitting_eps():
     # initial guess is off in the eps parameter
-    sample = EllipseSample(DATA, 40., eps=2 * 0.2)
+    sample = EllipseSample(DATA, 40.0, eps=2 * 0.2)
     fitter = EllipseFitter(sample)
     isophote = fitter.fit()
 
@@ -126,7 +126,7 @@ def test_fitting_all():
     angle = np.pi / 4
     eps = 2 * 0.2
     data = make_test_image(x0=pos, y0=pos, eps=eps, pa=angle, seed=0)
-    sma = 60.
+    sma = 60.0
 
     # initial guess is off in all parameters. We find that the initial
     # guesses, especially for position angle, must be kinda close to the
@@ -180,7 +180,7 @@ class TestM51:
 
         # sample taken in high SNR region
         sample = EllipseSample(self.data, 21.44, eps=0.18,
-                               position_angle=(36. / 180. * np.pi))
+                               position_angle=(36.0 / 180.0 * np.pi))
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()
 
@@ -200,7 +200,7 @@ class TestM51:
         # sample taken at the outskirts of the image, so many
         # data points lay outside the image frame. This checks
         # for the presence of gaps in the sample arrays.
-        sample = EllipseSample(self.data, 330., eps=0.2,
+        sample = EllipseSample(self.data, 330.0, eps=0.2,
                                position_angle=((90) / 180 * np.pi),
                                integrmode='median')
         fitter = EllipseFitter(sample)
@@ -220,5 +220,5 @@ class TestM51:
         # the central pixel intensity is about 3% larger than
         # found by the spp code.
         assert isophote.ndata == 1
-        assert isophote.intens <= 7560.
-        assert isophote.intens >= 7550.
+        assert isophote.intens <= 7560.0
+        assert isophote.intens >= 7550.0

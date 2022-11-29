@@ -17,7 +17,7 @@ from photutils.utils._optional_deps import HAS_SCIPY
 class TestFilterData:
     def setup_class(self):
         self.data = make_100gaussians_image()
-        self.kernel = Gaussian2DKernel(3., x_size=3, y_size=3)
+        self.kernel = Gaussian2DKernel(3.0, x_size=3, y_size=3)
 
     def test_filter_data(self):
         filt_data1 = _filter_data(self.data, self.kernel)

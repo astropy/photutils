@@ -39,10 +39,10 @@ class TestIRAFStarFinder:
 
     def test_irafstarfind_threshold_fwhm_inputs(self):
         with pytest.raises(TypeError):
-            IRAFStarFinder(threshold=np.ones((2, 2)), fwhm=3.)
+            IRAFStarFinder(threshold=np.ones((2, 2)), fwhm=3.0)
 
         with pytest.raises(TypeError):
-            IRAFStarFinder(threshold=3., fwhm=np.ones((2, 2)))
+            IRAFStarFinder(threshold=3.0, fwhm=np.ones((2, 2)))
 
     def test_irafstarfind_nosources(self):
         data = np.ones((3, 3))
@@ -55,7 +55,7 @@ class TestIRAFStarFinder:
         """Sources found, but none pass the sharpness criteria."""
         with pytest.warns(NoDetectionsWarning,
                           match='Sources were found, but none pass'):
-            starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, sharplo=2.)
+            starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, sharplo=2.0)
             tbl = starfinder(DATA)
             assert tbl is None
 
@@ -63,7 +63,7 @@ class TestIRAFStarFinder:
         """Sources found, but none pass the roundness criteria."""
         with pytest.warns(NoDetectionsWarning,
                           match='Sources were found, but none pass'):
-            starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
+            starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, roundlo=1.0)
             tbl = starfinder(DATA)
             assert tbl is None
 
@@ -71,19 +71,19 @@ class TestIRAFStarFinder:
         """Sources found, but none pass the peakmax criteria."""
         with pytest.warns(NoDetectionsWarning,
                           match='Sources were found, but none pass'):
-            starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, peakmax=1.)
+            starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, peakmax=1.0)
             tbl = starfinder(DATA)
             assert tbl is None
 
     def test_irafstarfind_sky(self):
-        starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=10.)
+        starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=10.0)
         tbl = starfinder(DATA)
         assert len(tbl) == 4
 
     def test_irafstarfind_largesky(self):
         with pytest.warns(NoDetectionsWarning,
                           match='Sources were found, but none pass'):
-            starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.)
+            starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.0)
             tbl = starfinder(DATA)
             assert tbl is None
 
@@ -93,7 +93,7 @@ class TestIRAFStarFinder:
         filtered out.
         """
         peakmax = 20
-        starfinder = IRAFStarFinder(threshold=7., fwhm=2, roundlo=-np.inf,
+        starfinder = IRAFStarFinder(threshold=7.0, fwhm=2, roundlo=-np.inf,
                                     roundhi=np.inf, sharplo=-np.inf,
                                     sharphi=np.inf, peakmax=peakmax)
         tbl = starfinder(DATA)
@@ -105,7 +105,7 @@ class TestIRAFStarFinder:
         Regression test that only top ``brightest`` objects are selected.
         """
         brightest = 40
-        starfinder = IRAFStarFinder(threshold=7., fwhm=2, roundlo=-np.inf,
+        starfinder = IRAFStarFinder(threshold=7.0, fwhm=2, roundlo=-np.inf,
                                     roundhi=np.inf, sharplo=-np.inf,
                                     sharphi=np.inf, brightest=brightest)
         tbl = starfinder(DATA)

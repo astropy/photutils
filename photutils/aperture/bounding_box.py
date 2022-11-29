@@ -268,7 +268,7 @@ class BoundingBox:
 
         xypos = self.center[::-1]  # xy order
         height, width = self.shape
-        return RectangularAperture(xypos, w=width, h=height, theta=0.)
+        return RectangularAperture(xypos, w=width, h=height, theta=0.0)
 
     @deprecated_renamed_argument('axes', 'ax', '1.6.0')
     def plot(self, ax=None, origin=(0, 0), **kwargs):

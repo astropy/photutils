@@ -144,8 +144,8 @@ class TestDAOGROUP:
               -1       -0.5        0        0.5        1
         """
 
-        x = np.linspace(-1., 1., 5)
-        y = np.sqrt(1. - x**2)
+        x = np.linspace(-1.0, 1.0, 5)
+        y = np.sqrt(1.0 - x**2)
         xx = np.hstack((x, x))
         yy = np.hstack((y, -y))
         starlist = Table([xx, yy, np.arange(10) + 1,

@@ -11,7 +11,7 @@ from numpy.testing import assert_allclose
 from photutils.utils.errors import calc_total_error
 
 SHAPE = (5, 5)
-DATAVAL = 2.
+DATAVAL = 2.0
 DATA = np.ones(SHAPE) * DATAVAL
 BKG_ERROR = np.ones(SHAPE)
 EFFGAIN = np.ones(SHAPE) * DATAVAL
@@ -36,17 +36,17 @@ def test_gain_negative(effective_gain):
 
 
 def test_gain_scalar():
-    error_tot = calc_total_error(DATA, BKG_ERROR, 2.)
-    assert_allclose(error_tot, np.sqrt(2.) * BKG_ERROR)
+    error_tot = calc_total_error(DATA, BKG_ERROR, 2.0)
+    assert_allclose(error_tot, np.sqrt(2.0) * BKG_ERROR)
 
 
 def test_gain_array():
     error_tot = calc_total_error(DATA, BKG_ERROR, EFFGAIN)
-    assert_allclose(error_tot, np.sqrt(2.) * BKG_ERROR)
+    assert_allclose(error_tot, np.sqrt(2.0) * BKG_ERROR)
 
 
 def test_gain_zero():
-    error_tot = calc_total_error(DATA, BKG_ERROR, 0.)
+    error_tot = calc_total_error(DATA, BKG_ERROR, 0.0)
     assert_allclose(error_tot, BKG_ERROR)
 
     effgain = np.copy(EFFGAIN)

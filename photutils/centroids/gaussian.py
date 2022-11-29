@@ -60,7 +60,7 @@ def centroid_1dg(data, error=None, mask=None):
         error.mask = data.mask
 
         xy_error = [np.sqrt(np.ma.sum(error**2, axis=i)) for i in (0, 1)]
-        xy_weights = [(1.0 / xy_error[i].clip(min=1.e-30)) for i in (0, 1)]
+        xy_weights = [(1.0 / xy_error[i].clip(min=1.0e-30)) for i in (0, 1)]
     else:
         xy_weights = [np.ones(data.shape[i]) for i in (1, 0)]
 
@@ -68,7 +68,7 @@ def centroid_1dg(data, error=None, mask=None):
     if np.any(data.mask):
         bad_idx = [np.all(data.mask, axis=i) for i in (0, 1)]
         for i in (0, 1):
-            xy_weights[i][bad_idx[i]] = 0.
+            xy_weights[i][bad_idx[i]] = 0.0
 
     xy_data = [np.ma.sum(data, axis=i).data for i in (0, 1)]
 
@@ -120,7 +120,7 @@ def _gaussian1d_moments(data, mask=None):
             raise ValueError('data and mask must have the same shape.')
         data.mask |= mask
 
-    data.fill_value = 0.
+    data.fill_value = 0.0
     data = data.filled()
 
     x = np.arange(data.size)
@@ -178,7 +178,7 @@ def centroid_2dg(data, error=None, mask=None):
         if data.shape != error.shape:
             raise ValueError('data and error must have the same shape.')
         data.mask |= error.mask
-        weights = 1.0 / error.clip(min=1.e-30)
+        weights = 1.0 / error.clip(min=1.0e-30)
     else:
         weights = np.ones(data.shape)
 
@@ -188,10 +188,10 @@ def centroid_2dg(data, error=None, mask=None):
 
     # assign zero weight to masked pixels
     if data.mask is not np.ma.nomask:
-        weights[data.mask] = 0.
+        weights[data.mask] = 0.0
 
     mask = data.mask
-    data.fill_value = 0.
+    data.fill_value = 0.0
     data = data.filled()
 
     # Subtract the minimum of the data as a rough background estimate.
@@ -200,7 +200,7 @@ def centroid_2dg(data, error=None, mask=None):
     # values can yield undefined Gaussian parameters, e.g., x/y_stddev.
     props = data_properties(data - np.min(data), mask=mask)
 
-    constant_init = 0.  # subtracted data minimum above
+    constant_init = 0.0  # subtracted data minimum above
     g_init = (Const2D(constant_init)
               + Gaussian2D(amplitude=np.ptp(data),
                            x_mean=props.xcentroid,

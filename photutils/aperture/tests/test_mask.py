@@ -32,7 +32,7 @@ def test_mask_array():
 
 
 def test_mask_get_overlap_slices():
-    aper = CircularAperture((5, 5), r=10.)
+    aper = CircularAperture((5, 5), r=10.0)
     mask = aper.to_mask()
     slc = ((slice(0, 16, None), slice(0, 16, None)),
            (slice(5, 21, None), slice(5, 21, None)))
@@ -53,24 +53,24 @@ def test_mask_cutout_shape():
 
 def test_mask_cutout_copy():
     data = np.ones((50, 50))
-    aper = CircularAperture((25, 25), r=10.)
+    aper = CircularAperture((25, 25), r=10.0)
     mask = aper.to_mask()
     cutout = mask.cutout(data, copy=True)
-    data[25, 25] = 100.
-    assert cutout[10, 10] == 1.
+    data[25, 25] = 100.0
+    assert cutout[10, 10] == 1.0
 
     # test quantity data
     data2 = np.ones((50, 50)) * u.adu
     cutout2 = mask.cutout(data2, copy=True)
     assert cutout2.unit == data2.unit
-    data2[25, 25] = 100. * u.adu
-    assert cutout2[10, 10].value == 1.
+    data2[25, 25] = 100.0 * u.adu
+    assert cutout2[10, 10].value == 1.0
 
 
 @pytest.mark.parametrize('position', POSITIONS)
 def test_mask_cutout_no_overlap(position):
     data = np.ones((50, 50))
-    aper = CircularAperture(position, r=10.)
+    aper = CircularAperture(position, r=10.0)
     mask = aper.to_mask()
 
     cutout = mask.cutout(data)
@@ -86,7 +86,7 @@ def test_mask_cutout_no_overlap(position):
 @pytest.mark.parametrize('position', POSITIONS)
 def test_mask_cutout_partial_overlap(position):
     data = np.ones((50, 50))
-    aper = CircularAperture(position, r=30.)
+    aper = CircularAperture(position, r=30.0)
     mask = aper.to_mask()
 
     cutout = mask.cutout(data)
@@ -100,7 +100,7 @@ def test_mask_cutout_partial_overlap(position):
 
 
 def test_mask_multiply():
-    radius = 10.
+    radius = 10.0
     data = np.ones((50, 50))
     aper = CircularAperture((25, 25), r=radius)
     mask = aper.to_mask()
@@ -108,12 +108,12 @@ def test_mask_multiply():
     assert_almost_equal(np.sum(data_weighted), np.pi * radius**2)
 
     # test that multiply() returns a copy
-    data[25, 25] = 100.
-    assert data_weighted[10, 10] == 1.
+    data[25, 25] = 100.0
+    assert data_weighted[10, 10] == 1.0
 
 
 def test_mask_multiply_quantity():
-    radius = 10.
+    radius = 10.0
     data = np.ones((50, 50)) * u.adu
     aper = CircularAperture((25, 25), r=radius)
     mask = aper.to_mask()
@@ -122,8 +122,8 @@ def test_mask_multiply_quantity():
     assert_almost_equal(np.sum(data_weighted.value), np.pi * radius**2)
 
     # test that multiply() returns a copy
-    data[25, 25] = 100. * u.adu
-    assert data_weighted[10, 10].value == 1.
+    data[25, 25] = 100.0 * u.adu
+    assert data_weighted[10, 10].value == 1.0
 
 
 @pytest.mark.parametrize('value', (np.nan, np.inf))
@@ -155,7 +155,7 @@ def test_mask_nonfinite_in_bbox():
     data[22, 22] = np.nan
     data[22, 23] = np.inf
 
-    radius = 20.
+    radius = 20.0
     aper1 = CircularAperture((50, 50), r=radius)
     aper2 = CircularAperture((5, 5), r=radius)
 
@@ -187,19 +187,19 @@ def test_mask_get_values_no_overlap():
 
 
 def test_mask_get_values_mask():
-    aper = CircularAperture((24.5, 24.5), r=10.)
+    aper = CircularAperture((24.5, 24.5), r=10.0)
     data = np.ones((51, 51))
     mask = aper.to_mask()
     with pytest.raises(ValueError):
         mask.get_values(data, mask=np.ones(3))
 
     arr = mask.get_values(data, mask=None)
-    assert_allclose(np.sum(arr), 100. * np.pi)
+    assert_allclose(np.sum(arr), 100.0 * np.pi)
 
     data_mask = np.zeros(data.shape, dtype=bool)
     data_mask[25:] = True
     arr2 = mask.get_values(data, mask=data_mask)
-    assert_allclose(np.sum(arr2), 100. * np.pi / 2.)
+    assert_allclose(np.sum(arr2), 100.0 * np.pi / 2.0)
 
 
 def test_rectangular_annulus_hin():

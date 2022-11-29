@@ -25,7 +25,7 @@ def test_harmonics_1():
     t = np.linspace(0, 4 * np.pi, N)
 
     # create artificial data with noise:
-    # mean = 0.5, amplitude = 3., phase = 0.1, noise-std = 0.01
+    # mean = 0.5, amplitude = 3.0, phase = 0.1, noise-std = 0.01
     rng = np.random.default_rng(0)
     data = 3.0 * np.sin(t + 0.1) + 0.5 + 0.01 * rng.standard_normal(N)
 
@@ -47,7 +47,7 @@ def test_harmonics_1():
     data_fit = est_std * np.sin(t + est_phase) + est_mean
     residual = data - data_fit
 
-    assert_allclose(np.mean(residual), 0., atol=0.001)
+    assert_allclose(np.mean(residual), 0.0, atol=0.001)
     assert_allclose(np.std(residual), 0.01, atol=0.01)
 
 
@@ -57,11 +57,11 @@ def test_harmonics_2():
     N = 100
     E = np.linspace(0, 4 * np.pi, N)
 
-    y0_0 = 100.
-    a1_0 = 10.
-    b1_0 = 5.
-    a2_0 = 8.
-    b2_0 = 2.
+    y0_0 = 100.0
+    a1_0 = 10.0
+    b1_0 = 5.0
+    a2_0 = 8.0
+    b2_0 = 2.0
     rng = np.random.default_rng(0)
     data = (y0_0 + a1_0 * np.sin(E) + b1_0 * np.cos(E) + a2_0 * np.sin(2 * E)
             + b2_0 * np.cos(2 * E) + 0.01 * rng.standard_normal(N))
@@ -72,7 +72,7 @@ def test_harmonics_2():
                 + b2 * np.cos(2 * E) + 0.01 * rng.standard_normal(N))
     residual = data - data_fit
 
-    assert_allclose(np.mean(residual), 0., atol=0.01)
+    assert_allclose(np.mean(residual), 0.0, atol=0.01)
     assert_allclose(np.std(residual), 0.015, atol=0.01)
 
 
@@ -82,9 +82,9 @@ def test_harmonics_3():
 
     N = 100
     E = np.linspace(0, 4 * np.pi, N)
-    y0_0 = 100.
-    a1_0 = 10.
-    b1_0 = 5.
+    y0_0 = 100.0
+    a1_0 = 10.0
+    b1_0 = 5.0
     order = 3
     rng = np.random.default_rng(0)
     data = (y0_0 + a1_0 * np.sin(order * E) + b1_0 * np.cos(order * E)
@@ -97,7 +97,7 @@ def test_harmonics_3():
                 + 0.01 * rng.standard_normal(N))
     residual = data - data_fit
 
-    assert_allclose(np.mean(residual), 0., atol=0.01)
+    assert_allclose(np.mean(residual), 0.0, atol=0.01)
     assert_allclose(np.std(residual), 0.015, atol=0.014)
 
 
@@ -111,7 +111,7 @@ class TestFitEllipseSamples:
         self.data2 = make_test_image(pa=np.pi / 4, seed=0)
 
     def test_fit_ellipsesample_1(self):
-        sample = EllipseSample(self.data1, 40.)
+        sample = EllipseSample(self.data1, 40.0)
         s = sample.extract()
 
         harmonics = fit_first_and_second_harmonics(s[0], s[2])
@@ -128,12 +128,12 @@ class TestFitEllipseSamples:
             s[0], np.array([y0, a1, b1, a2, b2]))
         residual = s[2] - model
 
-        assert_allclose(np.mean(residual), 0., atol=0.001)
+        assert_allclose(np.mean(residual), 0.0, atol=0.001)
         assert_allclose(np.std(residual), 0.015, atol=0.01)
 
     def test_fit_ellipsesample_2(self):
         # initial guess is rounder than actual image
-        sample = EllipseSample(self.data1, 40., eps=0.1)
+        sample = EllipseSample(self.data1, 40.0, eps=0.1)
         s = sample.extract()
 
         harmonics = fit_first_and_second_harmonics(s[0], s[2])
@@ -147,7 +147,7 @@ class TestFitEllipseSamples:
 
     def test_fit_ellipsesample_3(self):
         # initial guess for center is offset
-        sample = EllipseSample(self.data1, x0=220., y0=210., sma=40.)
+        sample = EllipseSample(self.data1, x0=220.0, y0=210.0, sma=40.0)
         s = sample.extract()
 
         harmonics = fit_first_and_second_harmonics(s[0], s[2])
@@ -160,7 +160,7 @@ class TestFitEllipseSamples:
         assert_allclose(np.mean(b2), -14.306, atol=0.001)
 
     def test_fit_ellipsesample_4(self):
-        sample = EllipseSample(self.data2, 40., eps=0.4)
+        sample = EllipseSample(self.data2, 40.0, eps=0.4)
         s = sample.extract()
 
         harmonics = fit_first_and_second_harmonics(s[0], s[2])
@@ -173,17 +173,17 @@ class TestFitEllipseSamples:
         assert_allclose(np.mean(b2), -63.184, atol=0.001)
 
     def test_fit_upper_harmonics(self):
-        data = make_test_image(noise=1.e-10, seed=0)
+        data = make_test_image(noise=1.0e-10, seed=0)
         sample = EllipseSample(data, 40)
         fitter = EllipseFitter(sample)
         iso = fitter.fit(maxit=400)
 
-        assert_allclose(iso.a3, -6.825e-7, atol=1.e-9)
-        assert_allclose(iso.b3, 1.68e-6, atol=1.e-8)
-        assert_allclose(iso.a4, -4.36e-6, atol=1.e-8)
-        assert_allclose(iso.b4, 4.73e-5, atol=1.e-7)
+        assert_allclose(iso.a3, -6.825e-7, atol=1.0e-9)
+        assert_allclose(iso.b3, 1.68e-6, atol=1.0e-8)
+        assert_allclose(iso.a4, -4.36e-6, atol=1.0e-8)
+        assert_allclose(iso.b4, 4.73e-5, atol=1.0e-7)
 
-        assert_allclose(iso.a3_err, 8.152e-6, atol=1.e-7)
-        assert_allclose(iso.b3_err, 8.115e-6, atol=1.e-7)
-        assert_allclose(iso.a4_err, 7.501e-6, atol=1.e-7)
-        assert_allclose(iso.b4_err, 7.473e-6, atol=1.e-7)
+        assert_allclose(iso.a3_err, 8.152e-6, atol=1.0e-7)
+        assert_allclose(iso.b3_err, 8.115e-6, atol=1.0e-7)
+        assert_allclose(iso.a4_err, 7.501e-6, atol=1.0e-7)
+        assert_allclose(iso.b4_err, 7.473e-6, atol=1.0e-7)

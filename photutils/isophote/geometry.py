@@ -57,9 +57,9 @@ def _area(sma, eps, phi, r):
     """
     aux = r * math.cos(phi) / sma
     signal = aux / abs(aux)
-    if abs(aux) >= 1.:
+    if abs(aux) >= 1.0:
         aux = signal
-    return abs(sma**2 * (1. - eps) / 2. * math.acos(aux))
+    return abs(sma**2 * (1.0 - eps) / 2.0 * math.acos(aux))
 
 
 class EllipseGeometry:
@@ -136,14 +136,14 @@ class EllipseGeometry:
 
         # variables used in the calculation of the sector angular width
         sma1, sma2 = self.bounding_ellipses()
-        inner_sma = min((sma2 - sma1), 3.)
+        inner_sma = min((sma2 - sma1), 3.0)
         self._area_factor = (sma2 - sma1) * inner_sma
 
         # sma can eventually be zero!
-        if self.sma > 0.:
+        if self.sma > 0.0:
             self.sector_angular_width = max(min((inner_sma / self.sma),
                                                 self._phi_max), self._phi_min)
-            self.initial_polar_angle = self.sector_angular_width / 2.
+            self.initial_polar_angle = self.sector_angular_width / 2.0
             self.initial_polar_radius = self.radius(self.initial_polar_angle)
 
     def find_center(self, image, threshold=0.1, verbose=True):
@@ -220,7 +220,7 @@ class EllipseGeometry:
             _x0 = shape[1] / 2
             _y0 = shape[0] / 2
 
-        max_fom = 0.
+        max_fom = 0.0
         max_i = 0
         max_j = 0
 
@@ -284,8 +284,8 @@ class EllipseGeometry:
         radius : float
             The polar radius (pixels).
         """
-        return (self.sma * (1. - self.eps)
-                / np.sqrt(((1. - self.eps) * np.cos(angle))**2
+        return (self.sma * (1.0 - self.eps)
+                / np.sqrt(((1.0 - self.eps) * np.cos(angle))**2
                           + (np.sin(angle))**2))
 
     def initialize_sector_geometry(self, phi):
@@ -314,17 +314,17 @@ class EllipseGeometry:
         # These polar radii bound the region between the inner
         # and outer ellipses that define the sector.
         sma1, sma2 = self.bounding_ellipses()
-        eps_ = 1. - self.eps
+        eps_ = 1.0 - self.eps
 
         # polar vector at one side of the elliptical sector
-        self._phi1 = phi - self.sector_angular_width / 2.
+        self._phi1 = phi - self.sector_angular_width / 2.0
         r1 = (sma1 * eps_ / math.sqrt((eps_ * math.cos(self._phi1))**2
                                       + (math.sin(self._phi1))**2))
         r2 = (sma2 * eps_ / math.sqrt((eps_ * math.cos(self._phi1))**2
                                       + (math.sin(self._phi1))**2))
 
         # polar vector at the other side of the elliptical sector
-        self._phi2 = phi + self.sector_angular_width / 2.
+        self._phi2 = phi + self.sector_angular_width / 2.0
         r3 = (sma2 * eps_ / math.sqrt((eps_ * math.cos(self._phi2))**2
                                       + (math.sin(self._phi2))**2))
 
@@ -370,11 +370,11 @@ class EllipseGeometry:
             define the annulus bounding ellipses.
         """
         if self.linear_growth:
-            a1 = self.sma - self.astep / 2.
-            a2 = self.sma + self.astep / 2.
+            a1 = self.sma - self.astep / 2.0
+            a2 = self.sma + self.astep / 2.0
         else:
-            a1 = self.sma * (1. - self.astep / 2.)
-            a2 = self.sma * (1. + self.astep / 2.)
+            a1 = self.sma * (1.0 - self.astep / 2.0)
+            a2 = self.sma * (1.0 + self.astep / 2.0)
 
         return a1, a2
 
@@ -445,21 +445,21 @@ class EllipseGeometry:
             radius = math.sqrt(radius)
             angle = math.asin(abs(y1) / radius)
         else:
-            radius = 0.
-            angle = 1.
+            radius = 0.0
+            angle = 1.0
 
-        if x1 >= 0. and y1 < 0.:
+        if x1 >= 0.0 and y1 < 0.0:
             angle = 2 * np.pi - angle
-        elif x1 < 0. and y1 >= 0.:
+        elif x1 < 0.0 and y1 >= 0.0:
             angle = np.pi - angle
-        elif x1 < 0. and y1 < 0.:
+        elif x1 < 0.0 and y1 < 0.0:
             angle = np.pi + angle
 
         pa1 = self.pa
-        if self.pa < 0.:
+        if self.pa < 0.0:
             pa1 = self.pa + 2 * np.pi
         angle = angle - pa1
-        if angle < 0.:
+        if angle < 0.0:
             angle = angle + 2 * np.pi
 
         return radius, angle
@@ -474,18 +474,18 @@ class EllipseGeometry:
         imask = (radius > 0.0)
         radius[imask] = np.sqrt(radius[imask])
         angle[imask] = np.arcsin(np.abs(y1[imask]) / radius[imask])
-        radius[~imask] = 0.
-        angle[~imask] = 1.
+        radius[~imask] = 0.0
+        angle[~imask] = 1.0
 
-        idx = (x1 >= 0.) & (y1 < 0)
+        idx = (x1 >= 0.0) & (y1 < 0.0)
         angle[idx] = 2 * np.pi - angle[idx]
-        idx = (x1 < 0.) & (y1 >= 0.)
+        idx = (x1 < 0.0) & (y1 >= 0.0)
         angle[idx] = np.pi - angle[idx]
-        idx = (x1 < 0.) & (y1 < 0.)
+        idx = (x1 < 0.0) & (y1 < 0.0)
         angle[idx] = np.pi + angle[idx]
 
         pa1 = self.pa
-        if self.pa < 0.:
+        if self.pa < 0.0:
             pa1 = self.pa + 2 * np.pi
         angle = angle - pa1
         angle[angle < 0] += 2 * np.pi
@@ -513,7 +513,7 @@ class EllipseGeometry:
         if self.linear_growth:
             sma = self.sma + step
         else:
-            sma = self.sma * (1. + step)
+            sma = self.sma * (1.0 + step)
         return sma
 
     def reset_sma(self, step):
@@ -539,8 +539,8 @@ class EllipseGeometry:
             sma = self.sma - step
             step = -step
         else:
-            aux = 1. / (1. + step)
+            aux = 1.0 / (1.0 + step)
             sma = self.sma * aux
-            step = aux - 1.
+            step = aux - 1.0
 
         return sma, step

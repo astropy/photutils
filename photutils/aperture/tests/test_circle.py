@@ -22,7 +22,7 @@ RADII = (0.0, -1.0, -np.inf)
 
 
 class TestCircularAperture(BaseTestAperture):
-    aperture = CircularAperture(POSITIONS, r=3.)
+    aperture = CircularAperture(POSITIONS, r=3.0)
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot(self):
@@ -50,12 +50,12 @@ class TestCircularAperture(BaseTestAperture):
     def test_copy_eq(self):
         aper = self.aperture.copy()
         assert aper == self.aperture
-        aper.r = 2.
+        aper.r = 2.0
         assert aper != self.aperture
 
 
 class TestCircularAnnulus(BaseTestAperture):
-    aperture = CircularAnnulus(POSITIONS, r_in=3., r_out=7.)
+    aperture = CircularAnnulus(POSITIONS, r_in=3.0, r_out=7.0)
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot(self):
@@ -80,19 +80,19 @@ class TestCircularAnnulus(BaseTestAperture):
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
         with pytest.raises(ValueError):
-            CircularAnnulus(POSITIONS, r_in=radius, r_out=7.)
+            CircularAnnulus(POSITIONS, r_in=radius, r_out=7.0)
         with pytest.raises(ValueError):
-            CircularAnnulus(POSITIONS, r_in=3., r_out=radius)
+            CircularAnnulus(POSITIONS, r_in=3.0, r_out=radius)
 
     def test_copy_eq(self):
         aper = self.aperture.copy()
         assert aper == self.aperture
-        aper.r_in = 2.
+        aper.r_in = 2.0
         assert aper != self.aperture
 
 
 class TestSkyCircularAperture(BaseTestAperture):
-    aperture = SkyCircularAperture(SKYCOORD, r=3. * UNIT)
+    aperture = SkyCircularAperture(SKYCOORD, r=3.0 * UNIT)
 
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
@@ -103,25 +103,25 @@ class TestSkyCircularAperture(BaseTestAperture):
     def test_copy_eq(self):
         aper = self.aperture.copy()
         assert aper == self.aperture
-        aper.r = 2. * UNIT
+        aper.r = 2.0 * UNIT
         assert aper != self.aperture
 
 
 class TestSkyCircularAnnulus(BaseTestAperture):
-    aperture = SkyCircularAnnulus(SKYCOORD, r_in=3. * UNIT, r_out=7. * UNIT)
+    aperture = SkyCircularAnnulus(SKYCOORD, r_in=3.0 * UNIT, r_out=7.0 * UNIT)
 
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
         with pytest.raises(ValueError):
-            SkyCircularAnnulus(SKYCOORD, r_in=radius * UNIT, r_out=7. * UNIT)
+            SkyCircularAnnulus(SKYCOORD, r_in=radius * UNIT, r_out=7.0 * UNIT)
         with pytest.raises(ValueError):
-            SkyCircularAnnulus(SKYCOORD, r_in=3. * UNIT, r_out=radius * UNIT)
+            SkyCircularAnnulus(SKYCOORD, r_in=3.0 * UNIT, r_out=radius * UNIT)
 
     def test_copy_eq(self):
         aper = self.aperture.copy()
         assert aper == self.aperture
-        aper.r_in = 2. * UNIT
+        aper.r_in = 2.0 * UNIT
         assert aper != self.aperture
 
 
@@ -145,20 +145,20 @@ def test_area_overlap():
     xypos = [(0, 0), (5, 5), (50, 50)]
     aper = CircularAperture(xypos, r=3)
     areas = aper.area_overlap(data)
-    assert_allclose(areas, [10.304636, np.pi * 9., np.nan])
+    assert_allclose(areas, [10.304636, np.pi * 9.0, np.nan])
 
     data2 = np.ones((11, 11)) * u.Jy
     areas = aper.area_overlap(data2)
     assert not isinstance(areas[0], u.Quantity)
-    assert_allclose(areas, [10.304636, np.pi * 9., np.nan])
+    assert_allclose(areas, [10.304636, np.pi * 9.0, np.nan])
 
     aper2 = CircularAperture(xypos[1], r=3)
     area2 = aper2.area_overlap(data)
-    assert_allclose(area2, np.pi * 9.)
+    assert_allclose(area2, np.pi * 9.0)
 
     area2 = aper2.area_overlap(data2)
     assert not isinstance(area2, u.Quantity)
-    assert_allclose(area2, np.pi * 9.)
+    assert_allclose(area2, np.pi * 9.0)
 
 
 def test_area_overlap_mask():
@@ -169,7 +169,7 @@ def test_area_overlap_mask():
     xypos = [(0, 0), (5, 5), (50, 50)]
     aper = CircularAperture(xypos, r=3)
     areas = aper.area_overlap(data, mask=mask)
-    areas_exp = np.array([10.304636, np.pi * 9., np.nan]) - 2.
+    areas_exp = np.array([10.304636, np.pi * 9.0, np.nan]) - 2.0
     assert_allclose(areas, areas_exp)
 
     with pytest.raises(ValueError):

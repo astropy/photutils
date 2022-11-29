@@ -96,7 +96,7 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                     # If pixel center is "well within" circle, count full
                     # pixel.
                     if d < r - pixel_radius:
-                        frac[j, i] = 1.
+                        frac[j, i] = 1.0
 
                     # If pixel center is "close" to circle border, find
                     # overlap.
@@ -131,7 +131,7 @@ cdef double circular_overlap_single_subpixel(double x0, double y0,
 
     cdef unsigned int i, j
     cdef double x, y, dx, dy, r_squared
-    cdef double frac = 0.  # Accumulator.
+    cdef double frac = 0.0  # Accumulator.
 
     dx = (x1 - x0) / subpixels
     dy = (y1 - y0) / subpixels
@@ -144,7 +144,7 @@ cdef double circular_overlap_single_subpixel(double x0, double y0,
         for j in range(subpixels):
             y += dy
             if x * x + y * y < r_squared:
-                frac += 1.
+                frac += 1.0
 
     return frac / (subpixels * subpixels)
 
@@ -155,34 +155,34 @@ cdef double circular_overlap_single_exact(double xmin, double ymin,
     """
     Area of overlap of a rectangle and a circle
     """
-    if 0. <= xmin:
-        if 0. <= ymin:
+    if 0.0 <= xmin:
+        if 0.0 <= ymin:
             return circular_overlap_core(xmin, ymin, xmax, ymax, r)
-        elif 0. >= ymax:
+        elif 0.0 >= ymax:
             return circular_overlap_core(-ymax, xmin, -ymin, xmax, r)
         else:
-            return circular_overlap_single_exact(xmin, ymin, xmax, 0., r) \
-                + circular_overlap_single_exact(xmin, 0., xmax, ymax, r)
-    elif 0. >= xmax:
-        if 0. <= ymin:
+            return circular_overlap_single_exact(xmin, ymin, xmax, 0.0, r) \
+                + circular_overlap_single_exact(xmin, 0.0, xmax, ymax, r)
+    elif 0.0 >= xmax:
+        if 0.0 <= ymin:
             return circular_overlap_core(-xmax, ymin, -xmin, ymax, r)
-        elif 0. >= ymax:
+        elif 0.0 >= ymax:
             return circular_overlap_core(-xmax, -ymax, -xmin, -ymin, r)
         else:
-            return circular_overlap_single_exact(xmin, ymin, xmax, 0., r) \
-                + circular_overlap_single_exact(xmin, 0., xmax, ymax, r)
+            return circular_overlap_single_exact(xmin, ymin, xmax, 0.0, r) \
+                + circular_overlap_single_exact(xmin, 0.0, xmax, ymax, r)
     else:
-        if 0. <= ymin:
-            return circular_overlap_single_exact(xmin, ymin, 0., ymax, r) \
-                + circular_overlap_single_exact(0., ymin, xmax, ymax, r)
-        if 0. >= ymax:
-            return circular_overlap_single_exact(xmin, ymin, 0., ymax, r) \
-                + circular_overlap_single_exact(0., ymin, xmax, ymax, r)
+        if 0.0 <= ymin:
+            return circular_overlap_single_exact(xmin, ymin, 0.0, ymax, r) \
+                + circular_overlap_single_exact(0.0, ymin, xmax, ymax, r)
+        if 0.0 >= ymax:
+            return circular_overlap_single_exact(xmin, ymin, 0.0, ymax, r) \
+                + circular_overlap_single_exact(0.0, ymin, xmax, ymax, r)
         else:
-            return circular_overlap_single_exact(xmin, ymin, 0., 0., r) \
-                + circular_overlap_single_exact(0., ymin, xmax, 0., r) \
-                + circular_overlap_single_exact(xmin, 0., 0., ymax, r) \
-                + circular_overlap_single_exact(0., 0., xmax, ymax, r)
+            return circular_overlap_single_exact(xmin, ymin, 0.0, 0.0, r) \
+                + circular_overlap_single_exact(0.0, ymin, xmax, 0.0, r) \
+                + circular_overlap_single_exact(xmin, 0.0, 0.0, ymax, r) \
+                + circular_overlap_single_exact(0.0, 0.0, xmax, ymax, r)
 
 
 cdef double circular_overlap_core(double xmin, double ymin, double xmax, double ymax,
@@ -195,11 +195,11 @@ cdef double circular_overlap_core(double xmin, double ymin, double xmax, double 
     cdef double area, d1, d2, x1, x2, y1, y2
 
     if xmin * xmin + ymin * ymin > r * r:
-        area = 0.
+        area = 0.0
     elif xmax * xmax + ymax * ymax < r * r:
         area = (xmax - xmin) * (ymax - ymin)
     else:
-        area = 0.
+        area = 0.0
         d1 = floor_sqrt(xmax * xmax + ymin * ymin)
         d2 = floor_sqrt(xmin * xmin + ymax * ymax)
         if d1 < r and d2 < r:

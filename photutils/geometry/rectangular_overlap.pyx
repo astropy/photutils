@@ -106,13 +106,13 @@ cdef double rectangular_overlap_single_subpixel(double x0, double y0,
 
     cdef unsigned int i, j
     cdef double x, y
-    cdef double frac = 0.  # Accumulator.
+    cdef double frac = 0.0  # Accumulator.
     cdef double cos_theta = cos(theta)
     cdef double sin_theta = sin(theta)
     cdef double half_width, half_height
 
-    half_width = width / 2.
-    half_height = height / 2.
+    half_width = width / 2.0
+    half_height = height / 2.0
 
     dx = (x1 - x0) / subpixels
     dy = (y1 - y0) / subpixels
@@ -129,6 +129,6 @@ cdef double rectangular_overlap_single_subpixel(double x0, double y0,
             y_tr = y * cos_theta - x * sin_theta
 
             if fabs(x_tr) < half_width and fabs(y_tr) < half_height:
-                frac += 1.
+                frac += 1.0
 
     return frac / (subpixels * subpixels)

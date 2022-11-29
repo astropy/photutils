@@ -14,7 +14,7 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 DATA = make_100gaussians_image()
 y, x = np.mgrid[0:25, 0:25]
-g = Gaussian2D(1, 12, 12, 3, 2, theta=np.pi / 6.)
+g = Gaussian2D(1, 12, 12, 3, 2, theta=np.pi / 6.0)
 PSF = g(x, y)
 
 

@@ -47,16 +47,16 @@ class TestEPSFBuild:
             if np.min(dist) > min_dist:
                 coords.append(newcoord)
         yy, xx = np.transpose(coords)
-        zz = rng.uniform(low=0, high=200000., size=len(xx))
+        zz = rng.uniform(low=0, high=200000, size=len(xx))
 
         # define a table of model parameters
-        self.stddev = 2.
+        self.stddev = 2.0
         sources = Table()
         sources['amplitude'] = zz
         sources['x_0'] = xx
         sources['y_0'] = yy
         sources['sigma'] = np.zeros(len(xx)) + self.stddev
-        sources['theta'] = 0.
+        sources['theta'] = 0.0
 
         self.data = make_gaussian_prf_sources_image(shape, sources)
         self.nddata = NDData(self.data)
@@ -186,7 +186,8 @@ def test_epsfmodel_inputs():
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('oversamp', [3, 4])
 def test_epsf_build_oversampling(oversamp):
-    offsets = np.arange(oversamp) * 1. / oversamp - 0.5 + 1. / (2. * oversamp)
+    offsets = (np.arange(oversamp) * 1.0 / oversamp - 0.5 + 1.0
+               / (2.0 * oversamp))
     xydithers = np.array(list(itertools.product(offsets, offsets)))
     xdithers = np.transpose(xydithers)[0]
     ydithers = np.transpose(xydithers)[1]

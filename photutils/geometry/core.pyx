@@ -87,7 +87,7 @@ cdef double area_arc(double x1, double y1, double x2, double y2, double r):
 
     cdef double a, theta
     a = distance(x1, y1, x2, y2)
-    theta = 2. * asin(0.5 * a / r)
+    theta = 2.0 * asin(0.5 * a / r)
     return 0.5 * r * r * (theta - sin(theta))
 
 
@@ -109,7 +109,7 @@ cdef double area_arc_unit(double x1, double y1, double x2, double y2):
     """
     cdef double a, theta
     a = distance(x1, y1, x2, y2)
-    theta = 2. * asin(0.5 * a)
+    theta = 2.0 * asin(0.5 * a)
     return 0.5 * (theta - sin(theta))
 
 

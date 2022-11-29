@@ -150,7 +150,7 @@ def _mask_to_mirrored_value(data, replace_mask, xycenter, mask=None):
     # remove them from the set of replace_mask pixels and set them to
     # zero
     if np.any(badmask):
-        outdata[ymasked[badmask], xmasked[badmask]] = 0.
+        outdata[ymasked[badmask], xmasked[badmask]] = 0.0
         # remove the badmask pixels from pixels to be replaced
         goodmask = ~badmask
         ymasked = ymasked[goodmask]

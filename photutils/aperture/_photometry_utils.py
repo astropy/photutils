@@ -101,9 +101,9 @@ def _prepare_photometry_data(data, error, mask):
             raise ValueError('mask and data must have the same shape.')
 
         data = data.copy()  # do not modify input data
-        data[mask] = 0.
+        data[mask] = 0.0
 
         if variance is not None:
-            variance[mask] = 0.
+            variance[mask] = 0.0
 
     return data, variance

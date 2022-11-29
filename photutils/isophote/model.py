@@ -11,7 +11,7 @@ from photutils.isophote.geometry import EllipseGeometry
 __all__ = ['build_ellipse_model']
 
 
-def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
+def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False):
     """
     Build a model elliptical galaxy image from a list of isophotes.
 
@@ -89,12 +89,12 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
     b4_array = -b4_array * grad_array * finely_spaced_sma
 
     # correct deviations cased by fluctuations in spline solution
-    eps_array[np.where(eps_array < 0.)] = 0.
+    eps_array[np.where(eps_array < 0.0)] = 0.0
 
     result = np.zeros(shape=shape)
     weight = np.zeros(shape=shape)
 
-    eps_array[np.where(eps_array < 0.)] = 0.05
+    eps_array[np.where(eps_array < 0.0)] = 0.05
 
     # for each interpolated isophote, generate intensity values on the
     # output image array
@@ -112,16 +112,16 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
         # scan angles. Need to go a bit beyond full circle to ensure
         # full coverage.
         r = sma0
-        phi = 0.
+        phi = 0.0
         while phi <= 2 * np.pi + geometry._phi_min:
             # we might want to add the third and fourth harmonics
             # to the basic isophotal intensity.
-            harm = 0.
+            harm = 0.0
             if high_harmonics:
-                harm = (a3_array[index] * np.sin(3. * phi)
-                        + b3_array[index] * np.cos(3. * phi)
-                        + a4_array[index] * np.sin(4. * phi)
-                        + b4_array[index] * np.cos(4. * phi)) / 4.
+                harm = (a3_array[index] * np.sin(3.0 * phi)
+                        + b3_array[index] * np.cos(3.0 * phi)
+                        + a4_array[index] * np.sin(4.0 * phi)
+                        + b4_array[index] * np.cos(4.0 * phi)) / 4.0
 
             # get image coordinates of (r, phi) pixel
             x = r * np.cos(phi + pa) + x0
@@ -135,16 +135,16 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
                 fy = y - float(j)
 
                 # add up the isophote contribution to the overlapping pixels
-                result[j, i] += (intens + harm) * (1. - fy) * (1. - fx)
-                result[j, i + 1] += (intens + harm) * (1. - fy) * fx
-                result[j + 1, i] += (intens + harm) * fy * (1. - fx)
+                result[j, i] += (intens + harm) * (1.0 - fy) * (1.0 - fx)
+                result[j, i + 1] += (intens + harm) * (1.0 - fy) * fx
+                result[j + 1, i] += (intens + harm) * fy * (1.0 - fx)
                 result[j + 1, i + 1] += (intens + harm) * fy * fx
 
                 # add up the fractional area contribution to the
                 # overlapping pixels
-                weight[j, i] += (1. - fy) * (1. - fx)
-                weight[j, i + 1] += (1. - fy) * fx
-                weight[j + 1, i] += fy * (1. - fx)
+                weight[j, i] += (1.0 - fy) * (1.0 - fx)
+                weight[j, i + 1] += (1.0 - fy) * fx
+                weight[j + 1, i] += fy * (1.0 - fx)
                 weight[j + 1, i + 1] += fy * fx
 
                 # step towards next pixel on ellipse
@@ -154,13 +154,13 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
             else:
                 break
 
-    # zero weight values must be set to 1.
-    weight[np.where(weight <= 0.)] = 1.
+    # zero weight values must be set to 1.0
+    weight[np.where(weight <= 0.0)] = 1.0
 
     # normalize
     result /= weight
 
     # fill value
-    result[np.where(result == 0.)] = fill
+    result[np.where(result == 0.0)] = fill
 
     return result

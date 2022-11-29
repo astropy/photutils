@@ -23,14 +23,14 @@ def test_moments():
 def test_moments_central():
     data = np.array([[0, 1], [0, 1]])
     moments = _moments_central(data, order=2)
-    result = np.array([[2., 0., 0.], [0., 0., 0.], [0.5, 0., 0.]])
+    result = np.array([[2.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.5, 0.0, 0.0]])
     assert_allclose(moments, result)
 
 
 def test_moments_central_nonsquare():
     data = np.array([[0, 1], [0, 1], [0, 1]])
     moments = _moments_central(data, order=2)
-    result = np.array([[3., 0., 0.], [0., 0., 0.], [2., 0., 0.]])
+    result = np.array([[3.0, 0.0, 0.0], [0.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
     assert_allclose(moments, result)
 
 

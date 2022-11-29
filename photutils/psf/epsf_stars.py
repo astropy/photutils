@@ -75,12 +75,12 @@ class EPSFStar:
         else:
             self.weights = np.ones_like(self._data, dtype=float)
 
-        self.mask = (self.weights <= 0.)
+        self.mask = (self.weights <= 0.0)
 
         # mask out invalid image data
         invalid_data = np.logical_not(np.isfinite(self._data))
         if np.any(invalid_data):
-            self.weights[invalid_data] = 0.
+            self.weights[invalid_data] = 0.0
             self.mask[invalid_data] = True
 
         self._cutout_center = cutout_center
@@ -116,7 +116,7 @@ class EPSFStar:
     @cutout_center.setter
     def cutout_center(self, value):
         if value is None:
-            value = ((self.shape[1] - 1) / 2., (self.shape[0] - 1) / 2.)
+            value = ((self.shape[1] - 1) / 2.0, (self.shape[0] - 1) / 2.0)
         else:
             if len(value) != 2:
                 raise ValueError('The "cutout_center" attribute must have '
@@ -483,8 +483,8 @@ class LinkedEPSFStar(EPSFStars):
 
         # compute mean cartesian coordinates
         lon, lat = np.transpose(coords)
-        lon *= np.pi / 180.
-        lat *= np.pi / 180.
+        lon *= np.pi / 180.0
+        lat *= np.pi / 180.0
         x_mean = np.mean(np.cos(lat) * np.cos(lon))
         y_mean = np.mean(np.cos(lat) * np.sin(lon))
         z_mean = np.mean(np.sin(lat))
@@ -493,8 +493,8 @@ class LinkedEPSFStar(EPSFStars):
         hypot = np.hypot(x_mean, y_mean)
         mean_lon = np.arctan2(y_mean, x_mean)
         mean_lat = np.arctan2(z_mean, hypot)
-        mean_lon *= 180. / np.pi
-        mean_lat *= 180. / np.pi
+        mean_lon *= 180.0 / np.pi
+        mean_lat *= 180.0 / np.pi
 
         # convert mean sky coordinates back to center pixel coordinates
         # for each star
@@ -726,7 +726,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
             weights = np.ones_like(data.data)
 
     if data.mask is not None:
-        weights[data.mask] = 0.
+        weights[data.mask] = 0.0
 
     stars = []
     for xcenter, ycenter, obj_id in zip(xcenters, ycenters, ids):
