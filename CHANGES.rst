@@ -97,6 +97,8 @@ API Changes
   - Inputting ``SkyAperture`` shape parameters as an Astropy
     ``Quantity`` in pixel units is no longer allowed. [#1398]
 
+  - Removed the deprecated ``BoundingBox`` ``as_patch`` method. [#1462]
+
 - ``photutils.centroids``
 
   - Removed the deprecated ``oversampling`` keyword in ``centroid_com``.
