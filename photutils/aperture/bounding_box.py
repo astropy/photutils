@@ -6,7 +6,6 @@ This module defines a class for a rectangular bounding box.
 import math
 
 import numpy as np
-from astropy.utils import deprecated
 from astropy.utils.decorators import deprecated_renamed_argument
 
 __all__ = ['BoundingBox']
@@ -219,25 +218,6 @@ class BoundingBox:
         """
         return (self.ixmin - 0.5, self.ixmax - 0.5,
                 self.iymin - 0.5, self.iymax - 0.5)
-
-    @deprecated('0.7', alternative='as_artist')
-    def as_patch(self, **kwargs):  # pragma: no cover
-        """
-        Return a `matplotlib.patches.Rectangle` that represents the
-        bounding box.
-
-        Parameters
-        ----------
-        **kwargs : dict
-            Any keyword arguments accepted by
-            `matplotlib.patches.Patch`.
-
-        Returns
-        -------
-        result : `matplotlib.patches.Rectangle`
-            A matplotlib rectangular patch.
-        """
-        return self.as_artist(**kwargs)
 
     def as_artist(self, **kwargs):
         """
