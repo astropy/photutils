@@ -417,7 +417,7 @@ class Ellipse:
                                          isophote_list=isophote_list)
 
             # check for failed fit.
-            if (isophote.stop_code < 0 or isophote.stop_code == 1):
+            if isophote.stop_code < 0 or isophote.stop_code == 1:
                 # in case the fit failed right at the outset, return an
                 # empty list. This is the usual case when the user
                 # provides initial guesses that are too way off to enable
@@ -695,7 +695,7 @@ class Ellipse:
 
             # we take the opportunity to change an eventual
             # negative stop code to its' positive equivalent.
-            code = (5 if isophote.stop_code < 0 else isophote.stop_code)
+            code = 5 if isophote.stop_code < 0 else isophote.stop_code
 
             # build new instance so it can have its attributes
             # populated from the updated sample attributes.

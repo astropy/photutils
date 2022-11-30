@@ -293,13 +293,11 @@ class EllipseFitter:
 
 
 class _ParameterCorrector:
-
     def correct(self, sample, harmonic):
         raise NotImplementedError
 
 
 class _PositionCorrector(_ParameterCorrector):
-
     @staticmethod
     def finalize_correction(dx, dy, sample):
         new_x0 = sample.geometry.x0 + dx
@@ -315,7 +313,6 @@ class _PositionCorrector(_ParameterCorrector):
 
 
 class _PositionCorrector0(_PositionCorrector):
-
     def correct(self, sample, harmonic):
         aux = -harmonic * (1.0 - sample.geometry.eps) / sample.gradient
 
@@ -326,7 +323,6 @@ class _PositionCorrector0(_PositionCorrector):
 
 
 class _PositionCorrector1(_PositionCorrector):
-
     def correct(self, sample, harmonic):
         aux = -harmonic / sample.gradient
 
@@ -337,7 +333,6 @@ class _PositionCorrector1(_PositionCorrector):
 
 
 class _AngleCorrector(_ParameterCorrector):
-
     def correct(self, sample, harmonic):
         eps = sample.geometry.eps
         sma = sample.geometry.sma
@@ -359,7 +354,6 @@ class _AngleCorrector(_ParameterCorrector):
 
 
 class _EllipticityCorrector(_ParameterCorrector):
-
     def correct(self, sample, harmonic):
         eps = sample.geometry.eps
         sma = sample.geometry.sma

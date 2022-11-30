@@ -43,6 +43,7 @@ def as_scalar(method):
     """
     Return a scalar value from a method if the class is scalar.
     """
+
     @functools.wraps(method)
     def _as_scalar(*args, **kwargs):
         result = method(*args, **kwargs)
@@ -51,6 +52,7 @@ def as_scalar(method):
                     else result)
         except TypeError:  # if result has no len
             return result
+
     return _as_scalar
 
 
@@ -59,12 +61,14 @@ def use_detcat(method):
     Return the value from the detection image catalog instead of
     using the method to calculate it.
     """
+
     @functools.wraps(method)
     def _use_detcat(self, *args, **kwargs):
         if self._detection_cat is None:
             return method(self, *args, **kwargs)
         else:
             return getattr(self._detection_cat, method.__name__)
+
     return _use_detcat
 
 
@@ -421,6 +425,7 @@ class SourceCatalog:
         """
         A list of all class lazyproperties (even in superclasses).
         """
+
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
 
@@ -499,8 +504,7 @@ class SourceCatalog:
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
         with np.printoptions(threshold=25, edgeitems=5):
-            fmt = [f'Length: {self.nlabels}',
-                   f'labels: {self.labels}']
+            fmt = [f'Length: {self.nlabels}', f'labels: {self.labels}']
         return f'{cls_name}\n' + '\n'.join(fmt)
 
     def __repr__(self):
@@ -1889,7 +1893,7 @@ class SourceCatalog:
         if self._error is None:
             err = self._null_values
         else:
-            err = np.sqrt(np.array([np.sum(arr ** 2)
+            err = np.sqrt(np.array([np.sum(arr**2)
                                     for arr in self._error_values]))
 
         if self._data_unit is not None:
@@ -1980,7 +1984,7 @@ class SourceCatalog:
         areas = []
         for label, slices in zip(self.labels, self._slices_iter):
             areas.append(np.count_nonzero(self._segment_img[slices] == label))
-        return np.array(areas) << (u.pix ** 2)
+        return np.array(areas) << (u.pix**2)
 
     @lazyproperty
     @use_detcat
@@ -1995,7 +1999,7 @@ class SourceCatalog:
         """
         areas = np.array([arr.size for arr in self._data_values]).astype(float)
         areas[self._all_masked] = np.nan
-        return areas << (u.pix ** 2)
+        return areas << (u.pix**2)
 
     @lazyproperty
     @use_detcat

@@ -63,7 +63,7 @@ class FittableImageModel(Fittable2DModel):
         that should map to coordinate (``x_0``, ``y_0``) of the output
         coordinate system on which the model is evaluated.
 
-        Alternatively, when ``origin`` is set to ``(0,0)``, then model
+        Alternatively, when ``origin`` is set to ``(0, 0)``, then model
         parameters ``x_0`` and ``y_0`` are shifts by which model's image
         should be translated in order to match a target image.
 

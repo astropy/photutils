@@ -83,18 +83,18 @@ def test_moffat_fitting(moffimg):
     f = LevMarLSQFitter()
 
     fit_mof = f(guess_moffat, xg, yg, img)
-    assert_allclose(fit_mof.parameters, mof.parameters, rtol=.01, atol=.0005)
+    assert_allclose(fit_mof.parameters, mof.parameters, rtol=0.01, atol=0.0005)
 
 
 # we set the tolerances in flux to be 2-3% because the shape paraameters of
 # the guessed version are known to be wrong.
 @pytest.mark.parametrize("prepkwargs,tols", [
                          (dict(xname='x_0', yname='y_0', fluxname=None,
-                               renormalize_psf=True), (1e-3, .02)),
+                               renormalize_psf=True), (1e-3, 0.02)),
                          (dict(xname=None, yname=None, fluxname=None,
-                               renormalize_psf=True), (1e-3, .02)),
+                               renormalize_psf=True), (1e-3, 0.02)),
                          (dict(xname=None, yname=None, fluxname=None,
-                               renormalize_psf=False), (1e-3, .03)),
+                               renormalize_psf=False), (1e-3, 0.03)),
                          (dict(xname='x_0', yname='y_0', fluxname='amplitude',
                                renormalize_psf=False), (1e-3, None)),
                          ])
@@ -151,7 +151,7 @@ def test_prepare_psf_model_offset():
     """
     norm = False
     sigma = 3.0
-    amplitude = 1.0 / (2 * np.pi * sigma ** 2)
+    amplitude = 1.0 / (2 * np.pi * sigma**2)
     xcen = ycen = 0.0
     psf0 = Gaussian2D(amplitude, xcen, ycen, sigma, sigma)
     psf1 = prepare_psf_model(psf0, xname='x_mean', yname='y_mean',

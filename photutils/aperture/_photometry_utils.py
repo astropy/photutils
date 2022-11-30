@@ -91,7 +91,7 @@ def _prepare_photometry_data(data, error, mask):
         where masked values have been set to zero.
     """
     if error is not None:
-        variance = error ** 2
+        variance = error**2
     else:
         variance = None
 

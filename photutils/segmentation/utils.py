@@ -97,6 +97,7 @@ def _make_binary_structure(ndim, connectivity):
                              'Options are 4 or 8.')
     else:
         from scipy.ndimage import generate_binary_structure
+
         footprint = generate_binary_structure(ndim, 1)
 
     return footprint

@@ -45,6 +45,7 @@ def test_tukey_scipy():
 
     # scipy.signal.tukey was introduced in Scipy v0.16.0
     from scipy.signal import tukey
+
     size = 101
     cen = (size - 1) // 2
     shape = (size, size)

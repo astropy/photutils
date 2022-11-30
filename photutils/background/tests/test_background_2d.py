@@ -50,7 +50,7 @@ class TestBackground2D:
 
     @pytest.mark.parametrize('data', [DATA1, DATA3, DATA4])
     def test_background_nddata(self, data):
-        """ Test with NDData and CCDData, and also test units. """
+        """Test with NDData and CCDData, and also test units."""
         bkg = Background2D(data, (25, 25), filter_size=3)
         assert isinstance(bkg.background, u.Quantity)
         assert isinstance(bkg.background_rms, u.Quantity)

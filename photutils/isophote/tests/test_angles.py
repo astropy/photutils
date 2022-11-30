@@ -13,7 +13,7 @@ def sector_area(a, eps, phi, r):
     saux = aux / abs(aux)
     if abs(aux) >= 1.0:
         aux = saux
-    return abs(a ** 2 * (1.0 - eps) / 2.0 * math.acos(aux))
+    return abs(a**2 * (1.0 - eps) / 2.0 * math.acos(aux))
 
 
 def test_angles(phi_min=0.05, phi_max=0.2):

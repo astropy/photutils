@@ -607,7 +607,7 @@ class EPSFBuilder:
 
         dx_total, dy_total = 0, 0
         iter_num = 0
-        center_accuracy_sq = center_accuracy ** 2
+        center_accuracy_sq = center_accuracy**2
         center_dist_sq = center_accuracy_sq + 1.0e6
         center_dist_sq_prev = center_dist_sq + 1
         while (iter_num < maxiters and center_dist_sq >= center_accuracy_sq):

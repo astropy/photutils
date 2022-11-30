@@ -90,7 +90,6 @@ def test_aperture_pixel_positions():
 
 
 class BaseTestAperturePhotometry:
-
     def test_array_error(self):
         # Array error
         error = np.ones(self.data.shape, dtype=float)
@@ -129,7 +128,6 @@ class BaseTestAperturePhotometry:
 
 
 class TestCircular(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
         position = (20.0, 20.0)
@@ -140,19 +138,17 @@ class TestCircular(BaseTestAperturePhotometry):
 
 
 class TestCircularArray(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
         position = ((20.0, 20.0), (25.0, 25.0))
         r = 10.0
         self.aperture = CircularAperture(position, r)
         self.area = np.pi * r * r
-        self.area = np.array((self.area, ) * 2)
+        self.area = np.array((self.area,) * 2)
         self.true_flux = self.area
 
 
 class TestCircularAnnulus(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
         position = (20.0, 20.0)
@@ -164,7 +160,6 @@ class TestCircularAnnulus(BaseTestAperturePhotometry):
 
 
 class TestCircularAnnulusArray(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
         position = ((20.0, 20.0), (25.0, 25.0))
@@ -172,12 +167,11 @@ class TestCircularAnnulusArray(BaseTestAperturePhotometry):
         r_out = 10.0
         self.aperture = CircularAnnulus(position, r_in, r_out)
         self.area = np.pi * (r_out * r_out - r_in * r_in)
-        self.area = np.array((self.area, ) * 2)
+        self.area = np.array((self.area,) * 2)
         self.true_flux = self.area
 
 
 class TestElliptical(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
         position = (20.0, 20.0)
@@ -190,7 +184,6 @@ class TestElliptical(BaseTestAperturePhotometry):
 
 
 class TestEllipticalAnnulus(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
         position = (20.0, 20.0)
@@ -206,7 +199,6 @@ class TestEllipticalAnnulus(BaseTestAperturePhotometry):
 
 
 class TestRectangularAperture(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
         position = (20.0, 20.0)
@@ -219,7 +211,6 @@ class TestRectangularAperture(BaseTestAperturePhotometry):
 
 
 class TestRectangularAnnulus(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
         position = (20.0, 20.0)
@@ -235,7 +226,6 @@ class TestRectangularAnnulus(BaseTestAperturePhotometry):
 
 
 class TestMaskedSkipCircular(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
         self.mask = np.zeros((40, 40), dtype=bool)
@@ -248,7 +238,6 @@ class TestMaskedSkipCircular(BaseTestAperturePhotometry):
 
 
 class BaseTestDifferentData:
-
     def test_basic_circular_aperture_photometry(self):
         aperture = CircularAperture(self.position, self.radius)
         table = aperture_photometry(self.data, aperture,
@@ -264,7 +253,6 @@ class BaseTestDifferentData:
 
 
 class TestInputNDData(BaseTestDifferentData):
-
     def setup_class(self):
         data = np.ones((40, 40), dtype=float)
         self.data = NDData(data, unit=u.adu)
@@ -498,7 +486,7 @@ def test_ellipse_exact_grid(x, y, r):
 
     aperture = EllipticalAperture((x, y), r, r, 0.0)
     t = aperture_photometry(data, aperture, method='exact')
-    actual = t['aperture_sum'][0] / (np.pi * r ** 2)
+    actual = t['aperture_sum'][0] / (np.pi * r**2)
     assert_allclose(actual, 1)
 
 
@@ -524,14 +512,14 @@ def test_aperture_partial_overlap():
     r = 5.0
     aper = CircularAperture(xypos, r=r)
     tbl = aperture_photometry(data, aper, error=error)
-    assert_allclose(tbl['aperture_sum'][0], np.pi * r ** 2)
-    assert_array_less(tbl['aperture_sum'][1:], np.pi * r ** 2)
+    assert_allclose(tbl['aperture_sum'][0], np.pi * r**2)
+    assert_array_less(tbl['aperture_sum'][1:], np.pi * r**2)
 
     unit = u.MJy / u.sr
     tbl = aperture_photometry(data * unit, aper, error=error * unit)
-    assert_allclose(tbl['aperture_sum'][0].value, np.pi * r ** 2)
-    assert_array_less(tbl['aperture_sum'][1:].value, np.pi * r ** 2)
-    assert_array_less(tbl['aperture_sum_err'][1:].value, np.pi * r ** 2)
+    assert_allclose(tbl['aperture_sum'][0].value, np.pi * r**2)
+    assert_array_less(tbl['aperture_sum'][1:].value, np.pi * r**2)
+    assert_array_less(tbl['aperture_sum_err'][1:].value, np.pi * r**2)
     assert tbl['aperture_sum'].unit == unit
     assert tbl['aperture_sum_err'].unit == unit
 

@@ -28,7 +28,7 @@ def test_geometry(astep, linear_growth):
 
 
 def test_to_polar():
-    # trivial case of a circle centered in (0.0,0.0)
+    # trivial case of a circle centered in (0.0, 0.0)
     geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, 0.2, False)
 
     r, p = geometry.to_polar(100.0, 0.0)

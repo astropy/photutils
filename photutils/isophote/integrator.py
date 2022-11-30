@@ -143,7 +143,6 @@ class _Integrator:
 
 
 class _NearestNeighborIntegrator(_Integrator):
-
     def integrate(self, radius, phi):
         self._r = radius
 
@@ -171,7 +170,6 @@ class _NearestNeighborIntegrator(_Integrator):
 
 
 class _BiLinearIntegrator(_Integrator):
-
     def integrate(self, radius, phi):
         self._r = radius
 
@@ -212,7 +210,6 @@ class _BiLinearIntegrator(_Integrator):
 
 
 class _AreaIntegrator(_Integrator):
-
     def __init__(self, image, geometry, angles, radii, intensities):
         super().__init__(image, geometry, angles, radii, intensities)
 
@@ -318,7 +315,6 @@ class _AreaIntegrator(_Integrator):
 
 
 class _MeanIntegrator(_AreaIntegrator):
-
     def initialize_accumulator(self):
         accumulator = 0.0
         self._npix = 0
@@ -334,7 +330,6 @@ class _MeanIntegrator(_AreaIntegrator):
 
 
 class _MedianIntegrator(_AreaIntegrator):
-
     def initialize_accumulator(self):
         accumulator = []
         self._npix = 0

@@ -60,7 +60,7 @@ class CircularMaskMixin:
         subpixels : int, optional
             For the ``'subpixel'`` method, resample pixels by this
             factor in each dimension. That is, each pixel is divided
-            into ``subpixels ** 2`` subpixels. This keyword is ignored
+            into ``subpixels**2`` subpixels. This keyword is ignored
             unless ``method='subpixel'``.
 
         Returns
@@ -152,7 +152,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
     @lazyproperty
     def area(self):
-        return math.pi * self.r ** 2
+        return math.pi * self.r**2
 
     def _to_patch(self, origin=(0, 0), **kwargs):
         """
@@ -277,7 +277,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     @lazyproperty
     def area(self):
-        return math.pi * (self.r_out ** 2 - self.r_in ** 2)
+        return math.pi * (self.r_out**2 - self.r_in**2)
 
     def _to_patch(self, origin=(0, 0), **kwargs):
         """

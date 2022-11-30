@@ -125,7 +125,7 @@ def _gaussian1d_moments(data, mask=None):
 
     x = np.arange(data.size)
     x_mean = np.sum(x * data) / np.sum(data)
-    x_stddev = np.sqrt(abs(np.sum(data * (x - x_mean)**2) / np.sum(data)))
+    x_stddev = np.sqrt(abs(np.sum(data * (x - x_mean) ** 2) / np.sum(data)))
     amplitude = np.ptp(data)
 
     return amplitude, x_mean, x_stddev

@@ -429,8 +429,9 @@ def test_default_aperture_radius():
     Test psf_photometry with non-Gaussian model, such that it raises a
     warning about aperture_radius.
     """
+
     def tophatfinder(image, mask=None):
-        """ Simple top hat finder function for use with a top hat PRF"""
+        """Simple top hat finder function for use with a top hat PRF."""
         fluxes = np.unique(image[image > 1])
         table = Table(names=['id', 'xcentroid', 'ycentroid', 'flux'],
                       dtype=[int, float, float, float])
@@ -708,8 +709,9 @@ def test_finder_return_none():
     Test psf_photometry with finder that does not return None if no
     sources are detected, to test Iterative PSF fitting.
     """
+
     def tophatfinder(image, mask=None):
-        """ Simple top hat finder function for use with a top hat PRF"""
+        """Simple top hat finder function for use with a top hat PRF."""
         fluxes = np.unique(image[image > 1])
         table = Table(names=['id', 'xcentroid', 'ycentroid', 'flux'],
                       dtype=[int, float, float, float])

@@ -392,8 +392,9 @@ class TestSegmentationImage:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_imshow(self):
-        axim = self.segm.imshow(figsize=(5, 5))
         from matplotlib.image import AxesImage
+
+        axim = self.segm.imshow(figsize=(5, 5))
         assert isinstance(axim, AxesImage)
 
 

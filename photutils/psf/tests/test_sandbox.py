@@ -61,7 +61,7 @@ def test_create_prf_mean():
     with pytest.warns(AstropyDeprecationWarning):
         prf = DiscretePRF.create_from_image(image, sources, PSF_SIZE,
                                             subsampling=1, mode='mean')
-        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
+        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1.0e-8)
 
 
 def test_create_prf_median():
@@ -74,7 +74,7 @@ def test_create_prf_median():
                                             np.array(INTAB['x_0', 'y_0']),
                                             PSF_SIZE, subsampling=1,
                                             mode='median')
-        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
+        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1.0e-8)
 
 
 def test_create_prf_nan():
@@ -104,4 +104,4 @@ def test_create_prf_flux():
                                             mode='median',
                                             fluxes=INTAB['flux_0'])
         assert_allclose(prf._prf_array[0, 0].sum(), 1)
-        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
+        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1.0e-8)

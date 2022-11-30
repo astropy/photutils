@@ -39,6 +39,7 @@ def as_scalar(method):
     """
     Return a scalar value from a method if the class is scalar.
     """
+
     @functools.wraps(method)
     def _decorator(*args, **kwargs):
         result = method(*args, **kwargs)
@@ -47,6 +48,7 @@ def as_scalar(method):
                     else result)
         except TypeError:  # if result has no len
             return result
+
     return _decorator
 
 
@@ -132,7 +134,7 @@ class ApertureStats:
     subpixels : int, optional
         For the ``'subpixel'`` method, resample pixels by this factor
         in each dimension. That is, each pixel is divided into
-        ``subpixels ** 2`` subpixels. This keyword is ignored unless
+        ``subpixels**2`` subpixels. This keyword is ignored unless
         ``sum_method='subpixel'``.
 
     local_bkg : float, `~numpy.ndarray`,  `~astropy.units.Quantity`, or `None`
@@ -291,6 +293,7 @@ class ApertureStats:
         """
         A list of all class lazyproperties (even in superclasses).
         """
+
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
 
@@ -653,7 +656,7 @@ class ApertureStats:
                 else:
                     # apply the exact weights and total mask;
                     # error_cutout will have zeros where mask_cutout is True
-                    variance = self._error[slc_large] ** 2
+                    variance = self._error[slc_large]**2
                     variance_cutout = (variance * aperweight_cutout
                                        * ~mask_cutout)
 
@@ -1151,7 +1154,7 @@ class ApertureStats:
         areas = np.array([np.sum(weight.filled(0.0))
                           for weight in self._weight_cutout_center])
         areas[self._all_masked] = np.nan
-        return areas << (u.pix ** 2)
+        return areas << (u.pix**2)
 
     @lazyproperty
     @as_scalar
@@ -1163,7 +1166,7 @@ class ApertureStats:
         areas = np.array([np.sum(weight.filled(0.0))
                           for weight in self._weight_cutout])
         areas[self._all_masked] = np.nan
-        return areas << (u.pix ** 2)
+        return areas << (u.pix**2)
 
     @lazyproperty
     @as_scalar

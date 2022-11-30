@@ -1083,6 +1083,7 @@ class SegmentationImage:
             return self._data.astype(bool)
 
         from scipy.ndimage import binary_dilation
+
         return binary_dilation(self._data.astype(bool), structure=footprint)
 
     def outline_segments(self, mask_background=False):

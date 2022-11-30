@@ -379,8 +379,10 @@ class _DAOStarFinderCatalog:
         """
         Return all lazyproperties (even in superclasses).
         """
+
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
+
         return [i[0] for i in inspect.getmembers(self.__class__,
                                                  predicate=islazyproperty)]
 

@@ -227,6 +227,7 @@ class TestCentroidSources:
 
         def test_func(data):
             return data
+
         with pytest.raises(ValueError):
             centroid_sources(data, [25], 26, centroid_func=test_func)
 

@@ -63,7 +63,7 @@ class RectangularMaskMixin:
         subpixels : int, optional
             For the ``'subpixel'`` method, resample pixels by this
             factor in each dimension. That is, each pixel is divided
-            into ``subpixels ** 2`` subpixels. This keyword is ignored
+            into ``subpixels**2`` subpixels. This keyword is ignored
             unless ``method='subpixel'``.
 
         Returns

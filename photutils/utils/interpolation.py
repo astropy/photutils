@@ -269,7 +269,7 @@ class ShepardIDWInterpolator:
                     interp_values[k] = self.values[idk[confused][0]]
                     continue
 
-            w = 1.0 / ((dk ** power) + reg)
+            w = 1.0 / ((dk**power) + reg)
             if self.weights is not None:
                 w *= self.weights[idk]
 

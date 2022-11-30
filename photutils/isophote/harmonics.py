@@ -13,6 +13,7 @@ def _least_squares_fit(optimize_func, parameters):
     # call the least squares fitting
     # function and handle the result.
     from scipy.optimize import leastsq
+
     solution = leastsq(optimize_func, parameters, full_output=True)
 
     if solution[4] > 4:

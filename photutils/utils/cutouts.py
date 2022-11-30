@@ -108,7 +108,7 @@ class CutoutImage:
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
-        props = (f'Shape: {self.data.shape}')
+        props = f'Shape: {self.data.shape}'
         return f'{cls_name}\n' + props
 
     def __repr__(self):
@@ -181,6 +181,7 @@ class CutoutImage:
 
     def _calc_xyorigin(self, slices):
         """
+        Calculate the (x, y) origin.
         """
         xorigin, yorigin = (slices[1].start, slices[0].start)
 
