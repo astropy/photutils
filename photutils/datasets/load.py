@@ -15,6 +15,8 @@ __all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
            'load_irac_psf', 'load_fermi_image', 'load_star_image',
            'load_simulated_hst_star_image']
 
+__doctest_skip__ = ['load_fermi_image']  # deprecated
+
 
 def get_path(filename, location='local', cache=True, show_progress=False):
     """
@@ -240,14 +242,10 @@ def load_fermi_image(show_progress=False):
 
     Examples
     --------
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        from photutils.datasets import load_fermi_image
-
-        hdu = load_fermi_image()
-        plt.imshow(hdu.data, vmax=10, origin='lower', interpolation='nearest')
+    >>> import matplotlib.pyplot as plt
+    >>> from photutils.datasets import load_fermi_image
+    >>> hdu = load_fermi_image()
+    >>> plt.imshow(hdu.data, vmax=10, origin='lower', interpolation='nearest')
     """
     path = get_path('fermi_counts.fits.gz', location='local',
                     show_progress=show_progress)
