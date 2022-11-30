@@ -33,7 +33,7 @@ detected sources are returned as an Astropy `~astropy.table.Table`:
     >>> from photutils.detection import DAOStarFinder
     >>> from astropy.stats import mad_std
     >>> bkg_sigma = mad_std(image)  # doctest: +REMOTE_DATA
-    >>> daofind = DAOStarFinder(fwhm=4., threshold=3. * bkg_sigma)  # doctest: +REMOTE_DATA
+    >>> daofind = DAOStarFinder(fwhm=4.0, threshold=3.0 * bkg_sigma)  # doctest: +REMOTE_DATA
     >>> sources = daofind(image)  # doctest: +REMOTE_DATA
     >>> for col in sources.colnames:  # doctest: +REMOTE_DATA
     ...     sources[col].info.format = '%.8g'  # for consistent table output
@@ -65,7 +65,7 @@ Astropy `~astropy.table.QTable` with the results of the photometry:
 
     >>> from photutils.aperture import aperture_photometry, CircularAperture
     >>> positions = np.transpose((sources['xcentroid'], sources['ycentroid']))  # doctest: +REMOTE_DATA
-    >>> apertures = CircularAperture(positions, r=4.)  # doctest: +REMOTE_DATA
+    >>> apertures = CircularAperture(positions, r=4.0)  # doctest: +REMOTE_DATA
     >>> phot_table = aperture_photometry(image, apertures)  # doctest: +REMOTE_DATA
     >>> for col in phot_table.colnames:  # doctest: +REMOTE_DATA
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
@@ -110,10 +110,10 @@ Finally, we plot the image and the defined apertures:
     image = hdu.data[500:700, 500:700].astype(float)
     image -= np.median(image)
     bkg_sigma = mad_std(image)
-    daofind = DAOStarFinder(fwhm=4., threshold=3. * bkg_sigma)
+    daofind = DAOStarFinder(fwhm=4.0, threshold=3.0 * bkg_sigma)
     sources = daofind(image)
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
-    apertures = CircularAperture(positions, r=4.)
+    apertures = CircularAperture(positions, r=4.0)
     phot_table = aperture_photometry(image, apertures)
     brightest_source_id = phot_table['aperture_sum'].argmax()
     plt.imshow(image, cmap='gray_r', origin='lower')

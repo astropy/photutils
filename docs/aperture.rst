@@ -54,8 +54,8 @@ coordinates using the :class:`~photutils.aperture.CircularAperture`
 class::
 
     >>> from photutils.aperture import CircularAperture
-    >>> positions = [(30., 30.), (40., 40.)]
-    >>> aperture = CircularAperture(positions, r=3.)
+    >>> positions = [(30.0, 30.0), (40.0, 40.0)]
+    >>> aperture = CircularAperture(positions, r=3.0)
 
 The positions should be either a single tuple of ``(x, y)``, a list of
 ``(x, y)`` tuples, or an array with shape ``Nx2``, where ``N`` is the
@@ -74,7 +74,7 @@ aperture object::
     >>> from photutils.aperture import SkyCircularAperture
     >>> positions = SkyCoord(l=[1.2, 2.3] * u.deg, b=[0.1, 0.2] * u.deg,
     ...                      frame='galactic')
-    >>> aperture = SkyCircularAperture(positions, r=4. * u.arcsec)
+    >>> aperture = SkyCircularAperture(positions, r=4.0 * u.arcsec)
 
 .. note::
     Sky apertures are not defined completely in sky coordinates. They
@@ -98,7 +98,7 @@ apertures, e.g.,:
 
 .. doctest-skip::
 
-    >>> aperture = CircularAperture((10, 20), r=4.)
+    >>> aperture = CircularAperture((10, 20), r=4.0)
     >>> sky_aperture = aperture.to_sky(wcs)
 
 and the :meth:`~photutils.aperture.SkyAperture.to_pixel` method for
@@ -107,7 +107,7 @@ sky apertures, e.g.,:
 .. doctest-skip::
 
     >>> position = SkyCoord(1.2, 0.1, unit='deg', frame='icrs')
-    >>> aperture = SkyCircularAperture(position, r=4. * u.arcsec)
+    >>> aperture = SkyCircularAperture(position, r=4.0 * u.arcsec)
     >>> pix_aperture = aperture.to_pixel(wcs)
 
 
@@ -118,8 +118,8 @@ After the aperture object is created, we can then perform the photometry
 using the :func:`~photutils.aperture.aperture_photometry` function. We
 start by defining the aperture (at two positions) as described above::
 
-    >>> positions = [(30., 30.), (40., 40.)]
-    >>> aperture = CircularAperture(positions, r=3.)
+    >>> positions = [(30.0, 30.0), (40.0, 40.0)]
+    >>> aperture = CircularAperture(positions, r=3.0)
 
 We then call the :func:`~photutils.aperture.aperture_photometry`
 function with the data and the apertures. Note that
@@ -146,7 +146,7 @@ named ``'id'``, ``'xcenter'``, ``'ycenter'``, and ``'aperture_sum'``.
 Since all the data values are 1.0, the aperture sums are equal to the
 area of a circle with a radius of 3::
 
-    >>> print(np.pi * 3. ** 2)  # doctest: +FLOAT_CMP
+    >>> print(np.pi * 3.0 ** 2)  # doctest: +FLOAT_CMP
     28.2743338823
 
 
@@ -205,7 +205,7 @@ case, the apertures must all have identical position(s).
 Suppose that we wish to use three circular apertures, with radii of 3,
 4, and 5 pixels, on each source::
 
-    >>> radii = [3., 4., 5.]
+    >>> radii = [3.0, 4.0, 5.0]
     >>> apertures = [CircularAperture(positions, r=r) for r in radii]
     >>> phot_table = aperture_photometry(data, apertures)
     >>> for col in phot_table.colnames:
@@ -226,8 +226,8 @@ specify ``a``, ``b``, and ``theta``::
 
     >>> from astropy.coordinates import Angle
     >>> from photutils.aperture import EllipticalAperture
-    >>> a = 5.
-    >>> b = 3.
+    >>> a = 5.0
+    >>> b = 3.0
     >>> theta = Angle(45, 'deg')
     >>> apertures = EllipticalAperture(positions, a, b, theta)
     >>> phot_table = aperture_photometry(data, apertures)
@@ -243,8 +243,8 @@ specify ``a``, ``b``, and ``theta``::
 Again, for multiple apertures one should input a list of aperture
 objects, each with identical positions::
 
-    >>> a = [5., 6., 7.]
-    >>> b = [3., 4., 5.]
+    >>> a = [5.0, 6.0, 7.0]
+    >>> b = [3.0, 4.0, 5.0]
     >>> theta = Angle(45, 'deg')
     >>> apertures = [EllipticalAperture(positions, a=ai, b=bi, theta=theta)
     ...              for (ai, bi) in zip(a, b)]
@@ -573,8 +573,8 @@ uncertainty associated with ``'aperture_sum'``.
 For example, suppose we have previously calculated the error on each
 pixel value and saved it in the array ``error``::
 
-    >>> positions = [(30., 30.), (40., 40.)]
-    >>> aperture = CircularAperture(positions, r=3.)
+    >>> positions = [(30.0, 30.0), (40.0, 40.0)]
+    >>> aperture = CircularAperture(positions, r=3.0)
     >>> data = np.ones((100, 100))
     >>> error = 0.1 * data
 
@@ -621,9 +621,9 @@ Pixels can be ignored/excluded (e.g., bad pixels) from the aperture
 photometry by providing an image mask via the ``mask`` keyword::
 
     >>> data = np.ones((5, 5))
-    >>> aperture = CircularAperture((2, 2), 2.)
+    >>> aperture = CircularAperture((2, 2), 2.0)
     >>> mask = np.zeros(data.shape, dtype=bool)
-    >>> data[2, 2] = 100.  # bad pixel
+    >>> data[2, 2] = 100.0  # bad pixel
     >>> mask[2, 2] = True
     >>> t1 = aperture_photometry(data, aperture, mask=mask)
     >>> t1['aperture_sum'].info.format = '%.8g'  # for consistent table output

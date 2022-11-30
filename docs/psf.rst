@@ -226,10 +226,10 @@ First let's create an image with four overlapping stars::
     >>> sources['id'] = [1, 2, 3, 4]
     >>> tshape = (32, 32)
     >>> image = (make_gaussian_sources_image(tshape, sources) +
-    ...          make_noise_image(tshape, distribution='poisson', mean=6.,
+    ...          make_noise_image(tshape, distribution='poisson', mean=6.0,
     ...                           seed=123) +
-    ...          make_noise_image(tshape, distribution='gaussian', mean=0.,
-    ...                           stddev=2., seed=123))
+    ...          make_noise_image(tshape, distribution='gaussian', mean=0.0,
+    ...                           stddev=2.0, seed=123))
 
 .. doctest-requires:: matplotlib
 
@@ -261,10 +261,10 @@ First let's create an image with four overlapping stars::
     sources['id'] = [1, 2, 3, 4]
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources)
-             + make_noise_image(tshape, distribution='poisson', mean=6.,
+             + make_noise_image(tshape, distribution='poisson', mean=6.0,
                                 seed=123)
-             + make_noise_image(tshape, distribution='gaussian', mean=0.,
-                                stddev=2., seed=123))
+             + make_noise_image(tshape, distribution='gaussian', mean=0.0,
+                                stddev=2.0, seed=123))
 
     rcParams['font.size'] = 13
 
@@ -359,10 +359,10 @@ Now, let's compare the simulated and the residual images:
     sources['id'] = [1, 2, 3, 4]
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources)
-             + make_noise_image(tshape, distribution='poisson', mean=6.,
+             + make_noise_image(tshape, distribution='poisson', mean=6.0,
                                 seed=123)
-             + make_noise_image(tshape, distribution='gaussian', mean=0.,
-                                stddev=2., seed=123))
+             + make_noise_image(tshape, distribution='gaussian', mean=0.0,
+                                stddev=2.0, seed=123))
 
     bkgrms = MADStdBackgroundRMS()
     std = bkgrms(image)
@@ -463,10 +463,10 @@ IntegratedGaussianPRF(sigma=sigma_psf)``:
     sources['id'] = [1, 2, 3, 4]
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources)
-             + make_noise_image(tshape, distribution='poisson', mean=6.,
+             + make_noise_image(tshape, distribution='poisson', mean=6.0,
                                 seed=123)
-             + make_noise_image(tshape, distribution='gaussian', mean=0.,
-                                stddev=2., seed=123))
+             + make_noise_image(tshape, distribution='gaussian', mean=0.0,
+                                stddev=2.0, seed=123))
 
     bkgrms = MADStdBackgroundRMS()
     std = bkgrms(image)
@@ -564,10 +564,10 @@ the fainter star as well. Also, note that both of the stars have
     sources['theta'] = [0] * 2
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources)
-             + make_noise_image(tshape, distribution='poisson', mean=6.,
+             + make_noise_image(tshape, distribution='poisson', mean=6.0,
                                 seed=123)
-             + make_noise_image(tshape, distribution='gaussian', mean=0.,
-                                stddev=2., seed=123))
+             + make_noise_image(tshape, distribution='gaussian', mean=0.0,
+                                stddev=2.0, seed=123))
 
     vmin, vmax = np.percentile(image, [5, 95])
     plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
@@ -638,10 +638,10 @@ Let's take a look at the residual image::
     sources['theta'] = [0] * 2
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources)
-             + make_noise_image(tshape, distribution='poisson', mean=6.,
+             + make_noise_image(tshape, distribution='poisson', mean=6.0,
                                 seed=123)
-             + make_noise_image(tshape, distribution='gaussian', mean=0.,
-                                stddev=2., seed=123))
+             + make_noise_image(tshape, distribution='gaussian', mean=0.0,
+                                stddev=2.0, seed=123))
 
     daogroup = DAOGroup(crit_separation=8)
     mmm_bkg = MMMBackground()
