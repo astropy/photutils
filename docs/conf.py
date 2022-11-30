@@ -58,6 +58,9 @@ rst_epilog = """
 .. _Astropy: https://www.astropy.org/
 """
 
+# Turn off table of contents entries for functions and classes
+toc_object_entries = False
+
 
 # -- Project information ------------------------------------------------------
 project = setup_cfg['name']
