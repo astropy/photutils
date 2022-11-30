@@ -36,6 +36,7 @@ def _moments_central(data, center=None, order=1):
 
     if center is None:
         from photutils.centroids import centroid_com
+
         center = centroid_com(data)
 
     indices = np.ogrid[tuple(slice(0, i) for i in data.shape)]

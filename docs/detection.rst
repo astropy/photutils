@@ -95,7 +95,7 @@ Let's plot the image and mark the location of detected sources:
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> from photutils.aperture import CircularAperture
     >>> positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
-    >>> apertures = CircularAperture(positions, r=4.)
+    >>> apertures = CircularAperture(positions, r=4.0)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data, cmap='Greys', origin='lower', norm=norm,
     ...            interpolation='nearest')
@@ -115,10 +115,10 @@ Let's plot the image and mark the location of detected sources:
     hdu = load_star_image()
     data = hdu.data[0:401, 0:401]
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
-    daofind = DAOStarFinder(fwhm=3.0, threshold=5. * std)
+    daofind = DAOStarFinder(fwhm=3.0, threshold=5.0 * std)
     sources = daofind(data - median)
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
-    apertures = CircularAperture(positions, r=4.)
+    apertures = CircularAperture(positions, r=4.0)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, cmap='Greys', origin='lower', norm=norm,
                interpolation='nearest')
@@ -138,7 +138,7 @@ regions:
 .. doctest-skip::
 
    >>> from photutils.detection import DAOStarFinder
-   >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5. * std)
+   >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.0 * std)
    >>> mask = np.zeros(data.shape, dtype=bool)
    >>> mask[50:151, 50:351] = True
    >>> mask[250:351, 150:351] = True
@@ -161,20 +161,20 @@ regions:
     hdu = load_star_image()
     data = hdu.data[0:401, 0:401]
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
-    daofind = DAOStarFinder(fwhm=3.0, threshold=5. * std)
+    daofind = DAOStarFinder(fwhm=3.0, threshold=5.0 * std)
     mask = np.zeros(data.shape, dtype=bool)
     mask[50:151, 50:351] = True
     mask[250:351, 150:351] = True
     sources = daofind(data - median, mask=mask)
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
-    apertures = CircularAperture(positions, r=4.)
+    apertures = CircularAperture(positions, r=4.0)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, cmap='Greys', origin='lower', norm=norm,
                interpolation='nearest')
     plt.title('Star finder with a mask to exclude regions')
     apertures.plot(color='blue', lw=1.5, alpha=0.5)
-    rect1 = RectangularAperture((200, 100), 300, 100, theta=0.)
-    rect2 = RectangularAperture((250, 300), 200, 100, theta=0.)
+    rect1 = RectangularAperture((200, 100), 300, 100, theta=0)
+    rect2 = RectangularAperture((250, 300), 200, 100, theta=0)
     rect1.plot(color='salmon', ls='dashed')
     rect2.plot(color='salmon', ls='dashed')
 
@@ -209,7 +209,7 @@ sigma above the background and a separated by at least 5 pixels:
     >>> from photutils.detection import find_peaks
     >>> data = make_100gaussians_image()
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
-    >>> threshold = median + (5. * std)
+    >>> threshold = median + (5.0 * std)
     >>> tbl = find_peaks(data, threshold, box_size=11)
     >>> tbl['peak_value'].info.format = '%.8g'  # for consistent table output
     >>> print(tbl[:10])  # print only the first 10 peaks
@@ -236,7 +236,7 @@ And let's plot the location of the detected peaks in the image:
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> from photutils.aperture import CircularAperture
     >>> positions = np.transpose((tbl['x_peak'], tbl['y_peak']))
-    >>> apertures = CircularAperture(positions, r=5.)
+    >>> apertures = CircularAperture(positions, r=5.0)
     >>> norm = simple_norm(data, 'sqrt', percent=99.9)
     >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm,
     ...            interpolation='nearest')
@@ -260,7 +260,7 @@ And let's plot the location of the detected peaks in the image:
     tbl = find_peaks(data, threshold, box_size=11)
 
     positions = np.transpose((tbl['x_peak'], tbl['y_peak']))
-    apertures = CircularAperture(positions, r=5.)
+    apertures = CircularAperture(positions, r=5.0)
     norm = simple_norm(data, 'sqrt', percent=99.9)
     plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm,
                interpolation='nearest')

@@ -120,7 +120,7 @@ def test_bounding_box_plot():
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 def test_bounding_box_to_aperture():
     bbox = BoundingBox(1, 10, 2, 20)
-    aper = RectangularAperture((5.0, 10.5), w=9., h=18., theta=0.)
+    aper = RectangularAperture((5.0, 10.5), w=9.0, h=18.0, theta=0.0)
     bbox_aper = bbox.to_aperture()
 
     assert_allclose(bbox_aper.positions, aper.positions)

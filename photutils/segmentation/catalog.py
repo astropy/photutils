@@ -43,6 +43,7 @@ def as_scalar(method):
     """
     Return a scalar value from a method if the class is scalar.
     """
+
     @functools.wraps(method)
     def _as_scalar(*args, **kwargs):
         result = method(*args, **kwargs)
@@ -51,6 +52,7 @@ def as_scalar(method):
                     else result)
         except TypeError:  # if result has no len
             return result
+
     return _as_scalar
 
 
@@ -59,12 +61,14 @@ def use_detcat(method):
     Return the value from the detection image catalog instead of
     using the method to calculate it.
     """
+
     @functools.wraps(method)
     def _use_detcat(self, *args, **kwargs):
         if self._detection_cat is None:
             return method(self, *args, **kwargs)
         else:
             return getattr(self._detection_cat, method.__name__)
+
     return _use_detcat
 
 
@@ -421,6 +425,7 @@ class SourceCatalog:
         """
         A list of all class lazyproperties (even in superclasses).
         """
+
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
 
@@ -499,8 +504,7 @@ class SourceCatalog:
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
         with np.printoptions(threshold=25, edgeitems=5):
-            fmt = [f'Length: {self.nlabels}',
-                   f'labels: {self.labels}']
+            fmt = [f'Length: {self.nlabels}', f'labels: {self.labels}']
         return f'{cls_name}\n' + '\n'.join(fmt)
 
     def __repr__(self):
@@ -843,7 +847,7 @@ class SourceCatalog:
                 convdata_mask |= mask_cutout
 
             cutout = convdata_cutout.copy()
-            cutout[convdata_mask] = 0.
+            cutout[convdata_mask] = 0.0
             cutouts.append(cutout)
         return cutouts
 
@@ -1889,7 +1893,7 @@ class SourceCatalog:
         if self._error is None:
             err = self._null_values
         else:
-            err = np.sqrt(np.array([np.sum(arr ** 2)
+            err = np.sqrt(np.array([np.sum(arr**2)
                                     for arr in self._error_values]))
 
         if self._data_unit is not None:
@@ -1980,7 +1984,7 @@ class SourceCatalog:
         areas = []
         for label, slices in zip(self.labels, self._slices_iter):
             areas.append(np.count_nonzero(self._segment_img[slices] == label))
-        return np.array(areas) << (u.pix ** 2)
+        return np.array(areas) << (u.pix**2)
 
     @lazyproperty
     @use_detcat
@@ -1995,7 +1999,7 @@ class SourceCatalog:
         """
         areas = np.array([arr.size for arr in self._data_values]).astype(float)
         areas[self._all_masked] = np.nan
-        return areas << (u.pix ** 2)
+        return areas << (u.pix**2)
 
     @lazyproperty
     @use_detcat
@@ -2034,9 +2038,9 @@ class SourceCatalog:
         kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
         size = 34
         weights = np.zeros(size, dtype=float)
-        weights[[5, 7, 15, 17, 25, 27]] = 1.
-        weights[[21, 33]] = np.sqrt(2.)
-        weights[[13, 23]] = (1 + np.sqrt(2.)) / 2.
+        weights[[5, 7, 15, 17, 25, 27]] = 1.0
+        weights[[21, 33]] = np.sqrt(2.0)
+        weights[[13, 23]] = (1 + np.sqrt(2.0)) / 2.0
 
         perimeter = []
         for mask in self._cutout_total_masks:
@@ -2093,7 +2097,7 @@ class SourceCatalog:
         # Modify the covariance matrix in the case of "infinitely" thin
         # detections. This follows SourceExtractor's prescription of
         # incrementally increasing the diagonal elements by 1/12.
-        delta = 1. / 12
+        delta = 1.0 / 12
         delta2 = delta**2
         # ignore RuntimeWarning from NaN values in covar
         with warnings.catch_warnings():
@@ -2204,9 +2208,9 @@ class SourceCatalog:
         source.  The angle increases in the counter-clockwise direction.
         """
         covar = self._covariance
-        orient_radians = 0.5 * np.arctan2(2. * covar[:, 0, 1],
+        orient_radians = 0.5 * np.arctan2(2.0 * covar[:, 0, 1],
                                           (covar[:, 0, 0] - covar[:, 1, 1]))
-        return orient_radians * 180. / np.pi * u.deg
+        return orient_radians * 180.0 / np.pi * u.deg
 
     @lazyproperty
     @use_detcat
@@ -2225,7 +2229,7 @@ class SourceCatalog:
         and semiminor axes, respectively.
         """
         semimajor_var, semiminor_var = np.transpose(self.covariance_eigvals)
-        return np.sqrt(1. - (semiminor_var / semimajor_var))
+        return np.sqrt(1.0 - (semiminor_var / semimajor_var))
 
     @lazyproperty
     @use_detcat
@@ -2350,9 +2354,9 @@ class SourceCatalog:
         isophotal limit of a source is well represented by :math:`R
         \approx 3`.
         """
-        return (2. * np.cos(self.orientation) * np.sin(self.orientation)
-                * ((1. / self.semimajor_sigma**2)
-                   - (1. / self.semiminor_sigma**2)))
+        return (2.0 * np.cos(self.orientation) * np.sin(self.orientation)
+                * ((1.0 / self.semimajor_sigma**2)
+                   - (1.0 / self.semiminor_sigma**2)))
 
     @lazyproperty
     @use_detcat
@@ -2390,7 +2394,7 @@ class SourceCatalog:
                 continue
             npix = np.size(arr)
             normalization = np.abs(np.mean(arr)) * npix * (npix - 1)
-            kernel = ((2. * np.arange(1, npix + 1) - npix - 1)
+            kernel = ((2.0 * np.arange(1, npix + 1) - npix - 1)
                       * np.abs(np.sort(arr)))
             gini.append(np.sum(kernel) / normalization)
         return np.array(gini)
@@ -2415,7 +2419,7 @@ class SourceCatalog:
             height_out = height_in + 2 * self.localbkg_width
             apertures.append(RectangularAnnulus((xpos, ypos), width_in,
                                                 width_out, height_out,
-                                                height_in, theta=0.))
+                                                height_in, theta=0.0))
         return apertures
 
     @lazyproperty
@@ -2472,7 +2476,7 @@ class SourceCatalog:
 
                 # check not enough unmasked pixels
                 if len(data_values) < 10:  # pragma: no cover
-                    local_bkgs.append(0.)
+                    local_bkgs.append(0.0)
                     continue
                 local_bkgs.append(bkg_func(data_values))
             local_bkgs = np.array(local_bkgs)
@@ -2712,7 +2716,7 @@ class SourceCatalog:
 
         return flux, fluxerr
 
-    def _make_elliptical_apertures(self, scale=6.):
+    def _make_elliptical_apertures(self, scale=6.0):
         """
         Return a list of elliptical apertures based on the scaled
         isophotal shape of the sources.

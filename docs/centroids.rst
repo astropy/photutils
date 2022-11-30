@@ -86,7 +86,7 @@ similar, we also include an inset plot zoomed in near the centroid:
     fig, ax = plt.subplots(1, 1, figsize=(4, 5))
     ax.imshow(data, origin='lower', interpolation='nearest')
     marker = '+'
-    ms, mew = 15, 2.
+    ms, mew = 15, 2.0
     colors = ('white', 'black', 'red', 'blue')
     for xycen, color in zip(xycens, colors):
         plt.plot(*xycen, color=color, marker=marker, ms=ms, mew=mew)
@@ -94,7 +94,7 @@ similar, we also include an inset plot zoomed in near the centroid:
     ax2 = zoomed_inset_axes(ax, zoom=6, loc=9)
     ax2.imshow(data, vmin=190, vmax=220, origin='lower',
                interpolation='nearest')
-    ms, mew = 30, 2.
+    ms, mew = 30, 2.0
     for xycen, color in zip(xycens, colors):
         ax2.plot(*xycen, color=color, marker=marker, ms=ms, mew=mew)
     ax2.set_xlim(13, 15)

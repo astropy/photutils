@@ -123,15 +123,15 @@ class TestDeblendSources:
 
     def test_deblend_connectivity(self):
         data = np.zeros((51, 51))
-        data[15:36, 15:36] = 10.
-        data[14, 36] = 1.
+        data[15:36, 15:36] = 10.0
+        data[14, 36] = 1.0
         data[13, 37] = 10
-        data[14, 14] = 5.
-        data[13, 13] = 10.
-        data[36, 14] = 10.
-        data[37, 13] = 10.
-        data[36, 36] = 10.
-        data[37, 37] = 10.
+        data[14, 14] = 5.0
+        data[13, 13] = 10.0
+        data[36, 14] = 10.0
+        data[37, 13] = 10.0
+        data[36, 36] = 10.0
+        data[37, 37] = 10.0
 
         segm = detect_sources(data, 0.1, 1, connectivity=4)
         assert segm.nlabels == 9
@@ -224,7 +224,7 @@ class TestDeblendSources:
 
     def test_constant_source(self):
         data = self.data.copy()
-        data[data.nonzero()] = 1.
+        data[data.nonzero()] = 1.0
         result = deblend_sources(data, self.segm, self.npixels,
                                  progress_bar=False)
         assert_allclose(result, self.segm)
@@ -254,7 +254,7 @@ class TestDeblendSources:
         segm = np.zeros(data.shape, dtype=int)
         segm[data.nonzero()] = 1
         segm = SegmentationImage(segm)
-        data = data * 100.
+        data = data * 100.0
         segm_deblend = deblend_sources(data, segm, npixels=1, connectivity=8,
                                        progress_bar=False)
         assert segm_deblend.nlabels == 1
@@ -298,8 +298,8 @@ class TestDeblendSources:
         """
 
         data = np.copy(self.data3)
-        data[50, 50] = 1000.
-        data[50, 70] = 500.
+        data[50, 50] = 1000.0
+        data[50, 70] = 500.0
         self.segm = detect_sources(data, self.threshold, self.npixels)
         deblend_sources(data, self.segm, self.npixels, progress_bar=False)
 
@@ -328,7 +328,7 @@ def test_nmarkers_fallback():
 
     data = np.zeros((101, 101))
     data[25:25 + size, 25:25 + size] = data1
-    data[50:60, 50:60] = 10.
+    data[50:60, 50:60] = 10.0
 
     segm = detect_sources(data, 0.01, 10)
     with pytest.warns(AstropyUserWarning, match='The deblending mode'):

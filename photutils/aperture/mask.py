@@ -115,7 +115,7 @@ class ApertureMask:
         image[slices_large] = self.data[slices_small]
         return image
 
-    def cutout(self, data, fill_value=0., copy=False):
+    def cutout(self, data, fill_value=0.0, copy=False):
         """
         Create a cutout from the input data over the mask bounding box,
         taking any edge effects into account.
@@ -182,7 +182,7 @@ class ApertureMask:
 
         return cutout
 
-    def multiply(self, data, fill_value=0.):
+    def multiply(self, data, fill_value=0.0):
         """
         Multiply the aperture mask with the input data, taking any edge
         effects into account.

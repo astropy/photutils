@@ -35,7 +35,7 @@ def make_psf_photometry_objs(std=1, sigma_psf=1):
     daofind = DAOStarFinder(threshold=5.0 * std,
                             fwhm=sigma_psf * gaussian_sigma_to_fwhm)
     daogroup = DAOGroup(1.5 * sigma_psf * gaussian_sigma_to_fwhm)
-    threshold = 5. * std
+    threshold = 5.0 * std
     fwhm = sigma_psf * gaussian_sigma_to_fwhm
     crit_separation = 1.5 * sigma_psf * gaussian_sigma_to_fwhm
 
@@ -115,12 +115,12 @@ def test_psf_photometry_niters(sigma_psf, sources):
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
     image = (make_gaussian_prf_sources_image(img_shape, sources)
-             + make_noise_image(img_shape, distribution='poisson', mean=6.,
+             + make_noise_image(img_shape, distribution='poisson', mean=6.0,
                                 seed=0)
-             + make_noise_image(img_shape, distribution='gaussian', mean=0.,
-                                stddev=2., seed=0))
+             + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
+                                stddev=2.0, seed=0))
     cp_image = image.copy()
-    sigma_clip = SigmaClip(sigma=3.)
+    sigma_clip = SigmaClip(sigma=3.0)
     bkgrms = StdBackgroundRMS(sigma_clip)
     std = bkgrms(image)
 
@@ -168,13 +168,13 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
     image = (make_gaussian_prf_sources_image(img_shape, sources)
-             + make_noise_image(img_shape, distribution='poisson', mean=6.,
+             + make_noise_image(img_shape, distribution='poisson', mean=6.0,
                                 seed=0)
-             + make_noise_image(img_shape, distribution='gaussian', mean=0.,
-                                stddev=2., seed=0))
+             + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
+                                stddev=2.0, seed=0))
     cp_image = image.copy()
 
-    sigma_clip = SigmaClip(sigma=3.)
+    sigma_clip = SigmaClip(sigma=3.0)
     bkgrms = StdBackgroundRMS(sigma_clip)
     std = bkgrms(image)
     phot_objs = make_psf_photometry_objs(std, sigma_psf)
@@ -304,7 +304,7 @@ def test_finder_positions_warning():
     positions['y_0'] = [15.7, 16.5, 25.1]
 
     image = (make_gaussian_prf_sources_image((32, 32), sources1)
-             + make_noise_image((32, 32), distribution='poisson', mean=6.,
+             + make_noise_image((32, 32), distribution='poisson', mean=6.0,
                                 seed=0))
 
     with pytest.warns(AstropyUserWarning, match='Both init_guesses and '
@@ -328,10 +328,10 @@ def test_aperture_radius():
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
     image = (make_gaussian_prf_sources_image(img_shape, sources1)
-             + make_noise_image(img_shape, distribution='poisson', mean=6.,
+             + make_noise_image(img_shape, distribution='poisson', mean=6.0,
                                 seed=0)
-             + make_noise_image(img_shape, distribution='gaussian', mean=0.,
-                                stddev=2., seed=0))
+             + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
+                                stddev=2.0, seed=0))
 
     basic_phot_obj = make_psf_photometry_objs()[0]
 
@@ -385,16 +385,16 @@ def test_define_fit_param_names(actual_pars_to_set, actual_pars_to_output,
 # tests previously written to psf_photometry
 
 PSF_SIZE = 11
-GAUSSIAN_WIDTH = 1.
+GAUSSIAN_WIDTH = 1.0
 IMAGE_SIZE = 101
 
 # Position and FLUXES of test sources
-INTAB = Table([[50., 23, 12, 86], [50., 83, 80, 84],
-               [np.pi * 10, 3.654, 20., 80 / np.sqrt(3)]],
+INTAB = Table([[50.0, 23, 12, 86], [50.0, 83, 80, 84],
+               [np.pi * 10, 3.654, 20.0, 80 / np.sqrt(3)]],
               names=['x_0', 'y_0', 'flux_0'])
 
 # Create test psf
-psf_model = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
+psf_model = Gaussian2D(1.0 / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
                        PSF_SIZE // 2, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
 test_psf = discretize_model(psf_model, (0, PSF_SIZE), (0, PSF_SIZE),
                             mode='oversample')
@@ -410,7 +410,7 @@ for x, y, flux in INTAB:
                               mode='oversample')
 
 # Some tests require an image with wider sources.
-WIDE_GAUSSIAN_WIDTH = 3.
+WIDE_GAUSSIAN_WIDTH = 3.0
 WIDE_INTAB = Table([[50, 23.2], [50.5, 1], [10, 20]],
                    names=['x_0', 'y_0', 'flux_0'])
 wide_image = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
@@ -429,8 +429,9 @@ def test_default_aperture_radius():
     Test psf_photometry with non-Gaussian model, such that it raises a
     warning about aperture_radius.
     """
+
     def tophatfinder(image, mask=None):
-        """ Simple top hat finder function for use with a top hat PRF"""
+        """Simple top hat finder function for use with a top hat PRF."""
         fluxes = np.unique(image[image > 1])
         table = Table(names=['id', 'xcentroid', 'ycentroid', 'flux'],
                       dtype=[int, float, float, float])
@@ -539,7 +540,7 @@ def test_psf_photometry_gaussian2(renormalize_psf):
     """
     Test psf_photometry with Gaussian PSF model from Astropy.
     """
-    psf = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
+    psf = Gaussian2D(1.0 / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
                      PSF_SIZE // 2, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
     psf = prepare_psf_model(psf, xname='x_mean', yname='y_mean',
                             renormalize_psf=renormalize_psf)
@@ -561,7 +562,7 @@ def test_psf_photometry_moffat():
     """
     Test psf_photometry with Moffat PSF model from Astropy.
     """
-    psf = Moffat2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
+    psf = Moffat2D(1.0 / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
                    PSF_SIZE // 2, 1, 1)
     psf = prepare_psf_model(psf, xname='x_0', yname='y_0',
                             renormalize_psf=False)
@@ -610,10 +611,10 @@ def test_psf_extra_output_cols(sigma_psf, sources):
     psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
     tshape = (32, 32)
     image = (make_gaussian_prf_sources_image(tshape, sources)
-             + make_noise_image(tshape, distribution='poisson', mean=6.,
+             + make_noise_image(tshape, distribution='poisson', mean=6.0,
                                 seed=0)
-             + make_noise_image(tshape, distribution='gaussian', mean=0.,
-                                stddev=2., seed=0))
+             + make_noise_image(tshape, distribution='gaussian', mean=0.0,
+                                stddev=2.0, seed=0))
 
     init_guess1 = None
     init_guess2 = Table(names=['x_0', 'y_0', 'sharpness', 'roundness1',
@@ -653,11 +654,11 @@ def test_psf_extra_output_cols(sigma_psf, sources):
 @pytest.fixture(params=[2, 3])
 def overlap_image(request):
     if request.param == 2:
-        close_tab = Table([[50., 53.], [50., 50.], [25., 25.]],
+        close_tab = Table([[50.0, 53.0], [50.0, 50.0], [25.0, 25.0]],
                           names=['x_0', 'y_0', 'flux_0'])
     elif request.param == 3:
-        close_tab = Table([[50., 55., 50.], [50., 50., 55.], [25., 25., 25.]],
-                          names=['x_0', 'y_0', 'flux_0'])
+        close_tab = Table([[50.0, 55.0, 50.0], [50.0, 50.0, 55.0],
+                           [25.0, 25.0, 25.0]], names=['x_0', 'y_0', 'flux_0'])
     else:
         raise ValueError
 
@@ -708,8 +709,9 @@ def test_finder_return_none():
     Test psf_photometry with finder that does not return None if no
     sources are detected, to test Iterative PSF fitting.
     """
+
     def tophatfinder(image, mask=None):
-        """ Simple top hat finder function for use with a top hat PRF"""
+        """Simple top hat finder function for use with a top hat PRF."""
         fluxes = np.unique(image[image > 1])
         table = Table(names=['id', 'xcentroid', 'ycentroid', 'flux'],
                       dtype=[int, float, float, float])
@@ -775,10 +777,10 @@ def test_re_use_result_as_initial_guess():
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
     image = (make_gaussian_prf_sources_image(img_shape, sources1)
-             + make_noise_image(img_shape, distribution='poisson', mean=6.,
+             + make_noise_image(img_shape, distribution='poisson', mean=6.0,
                                 seed=0)
-             + make_noise_image(img_shape, distribution='gaussian', mean=0.,
-                                stddev=2., seed=0))
+             + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
+                                stddev=2.0, seed=0))
 
     _, _, dao_phot_obj = make_psf_photometry_objs()
 
@@ -807,8 +809,8 @@ def test_photometry_mask_nan():
     data = make_gaussian_prf_sources_image(img_shape, sources1)
     data[30, 20:40] = np.nan
 
-    daogroup = DAOGroup(3.)
-    psf_model = IntegratedGaussianPRF(sigma=2.)
+    daogroup = DAOGroup(3.0)
+    psf_model = IntegratedGaussianPRF(sigma=2.0)
     psfphot = BasicPSFPhotometry(group_maker=daogroup, finder=None,
                                  bkg_estimator=None, psf_model=psf_model,
                                  fitshape=(11, 11))
@@ -816,7 +818,7 @@ def test_photometry_mask_nan():
     init = Table()
     init['x_0'] = [30]
     init['y_0'] = [30]
-    init['flux_0'] = [200.]
+    init['flux_0'] = [200.0]
 
     mask = ~np.isfinite(data)
     tbl = psfphot(data, init_guesses=init, mask=mask)

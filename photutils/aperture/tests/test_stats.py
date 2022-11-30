@@ -160,7 +160,7 @@ class TestApertureStats:
         assert_equal(apstats1.centroid, apstats2.centroid)
 
     def test_local_bkg(self):
-        data = np.ones(self.data.shape) * 100.
+        data = np.ones(self.data.shape) * 100.0
         local_bkg = (10, 20, 30)
         apstats = ApertureStats(data, self.aperture, local_bkg=local_bkg)
 
@@ -281,11 +281,11 @@ class TestApertureStats:
 
     def test_invalid_inputs(self):
         with pytest.raises(TypeError):
-            ApertureStats(self.data, 10.)
+            ApertureStats(self.data, 10.0)
         with pytest.raises(TypeError):
             ApertureStats(self.data, self.aperture, sigma_clip=10)
         with pytest.raises(ValueError):
-            ApertureStats(self.data, self.aperture, error=10.)
+            ApertureStats(self.data, self.aperture, error=10.0)
         with pytest.raises(ValueError):
             ApertureStats(self.data, self.aperture, error=np.ones(3))
         with pytest.raises(ValueError):

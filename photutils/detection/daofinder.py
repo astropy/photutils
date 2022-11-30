@@ -309,7 +309,7 @@ class _DAOStarFinderCatalog:
     """
 
     def __init__(self, data, convolved_data, xypos, kernel, threshold,
-                 sky=0., sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
+                 sky=0.0, sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
                  brightest=None, peakmax=None):
 
         self.data = data
@@ -317,7 +317,7 @@ class _DAOStarFinderCatalog:
         self.xypos = np.atleast_2d(xypos)
         self.kernel = kernel
         self.threshold = threshold
-        self._sky = sky  # DAOFIND has no sky input -> same as sky=0.
+        self._sky = sky  # DAOFIND has no sky input -> same as sky=0.0
         self.sharplo = sharplo
         self.sharphi = sharphi
         self.roundlo = roundlo
@@ -379,8 +379,10 @@ class _DAOStarFinderCatalog:
         """
         Return all lazyproperties (even in superclasses).
         """
+
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
+
         return [i[0] for i in inspect.getmembers(self.__class__,
                                                  predicate=islazyproperty)]
 
@@ -538,7 +540,7 @@ class _DAOStarFinderCatalog:
         hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
 
         # reject the star if the fit amplitude is not positive
-        mask1 = (hx_numer <= 0.) | (hx_denom <= 0.)
+        mask1 = (hx_numer <= 0.0) | (hx_denom <= 0.0)
 
         # ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
@@ -557,7 +559,7 @@ class _DAOStarFinderCatalog:
 
         hsize = size / 2.0
         mask2 = (np.abs(dx) > hsize)
-        mask3 = (data_sum == 0.)
+        mask3 = (data_sum == 0.0)
         mask4 = (mask2 & mask3)
         mask5 = (mask2 & ~mask3)
 

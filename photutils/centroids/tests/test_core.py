@@ -21,12 +21,12 @@ XCEN = 25.7
 YCEN = 26.2
 XSTDS = [3.2, 4.0]
 YSTDS = [5.7, 4.1]
-THETAS = np.array([30., 45.]) * np.pi / 180.
+THETAS = np.array([30.0, 45.0]) * np.pi / 180.0
 
 DATA = np.zeros((3, 3))
-DATA[0:2, 1] = 1.
-DATA[1, 0:2] = 1.
-DATA[1, 1] = 2.
+DATA[0:2, 1] = 1.0
+DATA[1, 0:2] = 1.0
+DATA[1, 1] = 2.0
 
 CENTROID_FUNCS = (centroid_com, centroid_quadratic, centroid_1dg,
                   centroid_2dg)
@@ -42,17 +42,17 @@ def test_centroid_com(x_std, y_std, theta):
     y, x = np.mgrid[0:50, 0:47]
     data = model(x, y)
     xc, yc = centroid_com(data)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
 
     xc, yc = centroid_quadratic(data)
     assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=0.015)
 
     # test with mask
     mask = np.zeros(data.shape, dtype=bool)
-    data[10, 10] = 1.e5
+    data[10, 10] = 1.0e5
     mask[10, 10] = True
     xc, yc = centroid_com(data, mask=mask)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
 
     xc, yc = centroid_quadratic(data, mask=mask)
     assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=0.015)
@@ -80,7 +80,7 @@ def test_centroid_com_nan_withmask(use_mask):
 
     with ctx as warnlist:
         xc, yc = centroid_com(data, mask=mask)
-        assert_allclose(xc, xc_ref, rtol=0, atol=1.e-3)
+        assert_allclose(xc, xc_ref, rtol=0, atol=1.0e-3)
         assert yc > yc_ref
         if nwarn == 1:
             assert len(warnlist) == nwarn
@@ -195,7 +195,7 @@ class TestCentroidSources:
 
     @staticmethod
     def test_centroid_sources():
-        theta = np.pi / 6.
+        theta = np.pi / 6.0
         model = Gaussian2D(2.4, XCEN, YCEN, x_stddev=3.2, y_stddev=5.7,
                            theta=theta)
         y, x = np.mgrid[0:50, 0:47]
@@ -203,8 +203,8 @@ class TestCentroidSources:
         error = np.ones(data.shape, dtype=float)
         mask = np.zeros(data.shape, dtype=bool)
         mask[10, 10] = True
-        xpos = [25.]
-        ypos = [26.]
+        xpos = [25.0]
+        ypos = [26.0]
         xc, yc = centroid_sources(data, xpos, ypos, box_size=21, mask=mask)
         assert_allclose(xc, (25.67,), atol=1e-1)
         assert_allclose(yc, (26.18,), atol=1e-1)
@@ -227,6 +227,7 @@ class TestCentroidSources:
 
         def test_func(data):
             return data
+
         with pytest.raises(ValueError):
             centroid_sources(data, [25], 26, centroid_func=test_func)
 
@@ -333,8 +334,8 @@ class TestCentroidSources:
                                   centroid_func=centroid_1dg)
         xycen2 = centroid_sources(self.data, xpos=25, ypos=25, error=None,
                                   centroid_func=centroid_2dg)
-        assert_allclose(xycen1, ([25], [25]), atol=1.e-3)
-        assert_allclose(xycen2, ([25], [25]), atol=1.e-3)
+        assert_allclose(xycen1, ([25], [25]), atol=1.0e-3)
+        assert_allclose(xycen2, ([25], [25]), atol=1.0e-3)
 
     def test_xypeaks_none(self):
         xycen1 = centroid_sources(self.data, xpos=25, ypos=25, error=None,
@@ -346,6 +347,6 @@ class TestCentroidSources:
         xycen3 = centroid_sources(self.data, xpos=25, ypos=25, error=None,
                                   xpeak=None, ypeak=None,
                                   centroid_func=centroid_quadratic)
-        assert_allclose(xycen1, ([25], [25]), atol=1.e-3)
-        assert_allclose(xycen2, ([25], [25]), atol=1.e-3)
-        assert_allclose(xycen3, ([25], [25]), atol=1.e-3)
+        assert_allclose(xycen1, ([25], [25]), atol=1.0e-3)
+        assert_allclose(xycen2, ([25], [25]), atol=1.0e-3)
+        assert_allclose(xycen3, ([25], [25]), atol=1.0e-3)

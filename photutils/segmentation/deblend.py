@@ -497,7 +497,7 @@ class _Deblender:
                 # remove only the faintest source (one at a time) because
                 # several faint sources could combine to meet the contrast
                 # criterion
-                markers[markers == labels[np.argmin(flux_frac)]] = 0.
+                markers[markers == labels[np.argmin(flux_frac)]] = 0.0
 
         return markers
 

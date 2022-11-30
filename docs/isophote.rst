@@ -22,11 +22,11 @@ For this example, let's create a simple simulated galaxy image::
     >>> from astropy.modeling.models import Gaussian2D
     >>> from photutils.datasets import make_noise_image
 
-    >>> g = Gaussian2D(100., 75, 75, 20, 12, theta=40. * np.pi / 180.)
+    >>> g = Gaussian2D(100.0, 75, 75, 20, 12, theta=40.0 * np.pi / 180.0)
     >>> ny = nx = 150
     >>> y, x = np.mgrid[0:ny, 0:nx]
-    >>> noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
-    ...                          stddev=2., seed=1234)
+    >>> noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
+    ...                          stddev=2.0, seed=1234)
     >>> data = g(x, y) + noise
 
 .. plot::
@@ -36,11 +36,11 @@ For this example, let's create a simple simulated galaxy image::
     from astropy.modeling.models import Gaussian2D
     from photutils.datasets import make_noise_image
 
-    g = Gaussian2D(100., 75, 75, 20, 12, theta=40. * np.pi / 180.)
+    g = Gaussian2D(100.0, 75, 75, 20, 12, theta=40.0 * np.pi / 180.0)
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
-                             stddev=2., seed=1234)
+    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
+                             stddev=2.0, seed=1234)
     data = g(x, y) + noise
     plt.imshow(data, origin='lower')
 
@@ -51,7 +51,7 @@ initial ellipse whose position angle is offset from the data::
 
     >>> from photutils.isophote import EllipseGeometry
     >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
-    ...                            pa=20. * np.pi / 180.)
+    ...                            pa=20.0 * np.pi / 180.0)
 
 Let's show this initial ellipse guess:
 
@@ -74,15 +74,15 @@ Let's show this initial ellipse guess:
     from photutils.datasets import make_noise_image
     from photutils.isophote import EllipseGeometry
 
-    g = Gaussian2D(100., 75, 75, 20, 12, theta=40. * np.pi / 180.)
+    g = Gaussian2D(100.0, 75, 75, 20, 12, theta=40.0 * np.pi / 180.0)
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
-                             stddev=2., seed=1234)
+    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
+                             stddev=2.0, seed=1234)
     data = g(x, y) + noise
 
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
-                               pa=20. * np.pi / 180.)
+                               pa=20.0 * np.pi / 180.0)
     aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
                               geometry.sma * (1 - geometry.eps), geometry.pa)
     plt.imshow(data, origin='lower')
@@ -154,14 +154,14 @@ position as a function of the semimajor axis length:
     from photutils.datasets import make_noise_image
     from photutils.isophote import Ellipse, EllipseGeometry
 
-    g = Gaussian2D(100., 75, 75, 20, 12, theta=40. * np.pi / 180.)
+    g = Gaussian2D(100.0, 75, 75, 20, 12, theta=40.0 * np.pi / 180.0)
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
-                             stddev=2., seed=1234)
+    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
+                             stddev=2.0, seed=1234)
     data = g(x, y) + noise
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
-                               pa=20. * np.pi / 180.)
+                               pa=20.0 * np.pi / 180.0)
     ellipse = Ellipse(data, geometry)
     isolist = ellipse.fit_image()
 
@@ -175,8 +175,8 @@ position as a function of the semimajor axis length:
     plt.ylabel('Ellipticity')
 
     plt.subplot(2, 2, 2)
-    plt.errorbar(isolist.sma, isolist.pa / np.pi * 180.,
-                 yerr=isolist.pa_err / np.pi * 80., fmt='o', markersize=4)
+    plt.errorbar(isolist.sma, isolist.pa / np.pi * 180.0,
+                 yerr=isolist.pa_err / np.pi * 80.0, fmt='o', markersize=4)
     plt.xlabel('Semimajor Axis Length (pix)')
     plt.ylabel('PA (deg)')
 
@@ -215,14 +215,14 @@ isophotes, the elliptical model image, and the residual image:
     from photutils.isophote import (Ellipse, EllipseGeometry,
                                     build_ellipse_model)
 
-    g = Gaussian2D(100., 75, 75, 20, 12, theta=40. * np.pi / 180.)
+    g = Gaussian2D(100.0, 75, 75, 20, 12, theta=40.0 * np.pi / 180.0)
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
-                             stddev=2., seed=1234)
+    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
+                             stddev=2.0, seed=1234)
     data = g(x, y) + noise
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
-                               pa=20. * np.pi / 180.)
+                               pa=20.0 * np.pi / 180.0)
     ellipse = Ellipse(data, geometry)
     isolist = ellipse.fit_image()
 

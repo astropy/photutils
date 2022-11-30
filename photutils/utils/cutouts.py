@@ -64,7 +64,7 @@ class CutoutImage:
     --------
     >>> import numpy as np
     >>> from photutils.utils import CutoutImage
-    >>> data = np.arange(20.).reshape(5, 4)
+    >>> data = np.arange(20.0).reshape(5, 4)
     >>> cutout = CutoutImage(data, (2, 2), (3, 3))
     >>> print(cutout.data)  # doctest: +FLOAT_CMP
     [[ 5.  6.  7.]
@@ -108,7 +108,7 @@ class CutoutImage:
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
-        props = (f'Shape: {self.data.shape}')
+        props = f'Shape: {self.data.shape}'
         return f'{cls_name}\n' + props
 
     def __repr__(self):
@@ -181,6 +181,7 @@ class CutoutImage:
 
     def _calc_xyorigin(self, slices):
         """
+        Calculate the (x, y) origin.
         """
         xorigin, yorigin = (slices[1].start, slices[0].start)
 

@@ -52,6 +52,6 @@ def gini(data):
     flattened = np.sort(np.ravel(data))
     npix = np.size(flattened)
     normalization = np.abs(np.mean(flattened)) * npix * (npix - 1)
-    kernel = (2. * np.arange(1, npix + 1) - npix - 1) * np.abs(flattened)
+    kernel = (2.0 * np.arange(1, npix + 1) - npix - 1) * np.abs(flattened)
 
     return np.sum(kernel) / normalization

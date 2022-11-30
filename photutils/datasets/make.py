@@ -357,7 +357,7 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
             ystd = model.y_stddev.value  # default
 
         sources = sources.copy()
-        sources['amplitude'] = sources['flux'] / (2. * np.pi * xstd * ystd)
+        sources['amplitude'] = sources['flux'] / (2.0 * np.pi * xstd * ystd)
 
     return sources
 
@@ -548,7 +548,7 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
     if 'flux' in colnames and 'amplitude' not in colnames:
         source_table = source_table.copy()
         source_table['amplitude'] = (source_table['flux']
-                                     / (2. * np.pi * xstd * ystd))
+                                     / (2.0 * np.pi * xstd * ystd))
 
     return make_model_sources_image(shape, model, source_table,
                                     oversample=oversample)
@@ -629,7 +629,7 @@ def make_gaussian_prf_sources_image(shape, source_table):
     if 'flux' not in colnames and 'amplitude' in colnames:
         source_table = source_table.copy()
         source_table['flux'] = (source_table['amplitude']
-                                * (2. * np.pi * sigma * sigma))
+                                * (2.0 * np.pi * sigma * sigma))
 
     return make_model_sources_image(shape, model, source_table,
                                     oversample=1)
@@ -675,16 +675,16 @@ def make_4gaussians_image(noise=True):
     table['amplitude'] = [50, 70, 150, 210]
     table['x_mean'] = [160, 25, 150, 90]
     table['y_mean'] = [70, 40, 25, 60]
-    table['x_stddev'] = [15.2, 5.1, 3., 8.1]
-    table['y_stddev'] = [2.6, 2.5, 3., 4.7]
-    table['theta'] = np.radians(np.array([145., 20., 0., 60.]))
+    table['x_stddev'] = [15.2, 5.1, 3.0, 8.1]
+    table['y_stddev'] = [2.6, 2.5, 3.0, 4.7]
+    table['theta'] = np.radians(np.array([145.0, 20.0, 0.0, 60.0]))
 
     shape = (100, 200)
-    data = make_gaussian_sources_image(shape, table) + 5.
+    data = make_gaussian_sources_image(shape, table) + 5.0
 
     if noise:
         rng = np.random.RandomState(12345)
-        data += rng.normal(loc=0., scale=5., size=shape)
+        data += rng.normal(loc=0.0, scale=5.0, size=shape)
 
     return data
 
@@ -747,14 +747,14 @@ def make_100gaussians_image(noise=True):
         sources[param_name] = rng.uniform(lower, upper, n_sources)
     xstd = sources['x_stddev']
     ystd = sources['y_stddev']
-    sources['amplitude'] = sources['flux'] / (2. * np.pi * xstd * ystd)
+    sources['amplitude'] = sources['flux'] / (2.0 * np.pi * xstd * ystd)
 
     shape = (300, 500)
-    data = make_gaussian_sources_image(shape, sources) + 5.
+    data = make_gaussian_sources_image(shape, sources) + 5.0
 
     if noise:
         rng = np.random.RandomState(12345)
-        data += rng.normal(loc=0., scale=2., size=shape)
+        data += rng.normal(loc=0.0, scale=2.0, size=shape)
 
     return data
 
@@ -800,8 +800,8 @@ def make_wcs(shape, galactic=False):
     [197.8925      -1.36555556]
     """
     wcs = WCS(naxis=2)
-    rho = np.pi / 3.
-    scale = 0.1 / 3600.  # 0.1 arcsec/pixel in deg/pix
+    rho = np.pi / 3.0
+    scale = 0.1 / 3600.0  # 0.1 arcsec/pixel in deg/pix
 
     wcs.pixel_shape = shape
     wcs.wcs.crpix = [shape[1] / 2, shape[0] / 2]  # 1-indexed (x, y)
@@ -864,8 +864,8 @@ def make_gwcs(shape, galactic=False):
     from gwcs import coordinate_frames as cf
     from gwcs import wcs as gwcs_wcs
 
-    rho = np.pi / 3.
-    scale = 0.1 / 3600.  # 0.1 arcsec/pixel in deg/pix
+    rho = np.pi / 3.0
+    scale = 0.1 / 3600.0  # 0.1 arcsec/pixel in deg/pix
 
     shift_by_crpix = (models.Shift((-shape[1] / 2) + 1)
                       & models.Shift((-shape[0] / 2) + 1))

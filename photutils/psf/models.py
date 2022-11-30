@@ -63,7 +63,7 @@ class FittableImageModel(Fittable2DModel):
         that should map to coordinate (``x_0``, ``y_0``) of the output
         coordinate system on which the model is evaluated.
 
-        Alternatively, when ``origin`` is set to ``(0,0)``, then model
+        Alternatively, when ``origin`` is set to ``(0, 0)``, then model
         parameters ``x_0`` and ``y_0`` are shifts by which model's image
         should be translated in order to match a target image.
 
@@ -538,7 +538,7 @@ class EPSFModel(FittableImageModel):
         Compute the normalization of input image data as the flux
         within a given radius.
         """
-        xypos = (self._nx / 2., self._ny / 2.)
+        xypos = (self._nx / 2.0, self._ny / 2.0)
         # TODO: generalize "radius" (ellipse?) is oversampling is
         # different along x/y axes
         radius = self._norm_radius * self.oversampling[0]
@@ -1066,10 +1066,10 @@ class PRFAdapter(Fittable2DModel):
 
         if renormalize_psf:
             from scipy.integrate import dblquad
-            self._psf_scale_factor = 1. / dblquad(self.psfmodel,
-                                                  -np.inf, np.inf,
-                                                  lambda x: -np.inf,
-                                                  lambda x: np.inf)[0]
+            self._psf_scale_factor = 1.0 / dblquad(self.psfmodel,
+                                                   -np.inf, np.inf,
+                                                   lambda x: -np.inf,
+                                                   lambda x: np.inf)[0]
         else:
             self._psf_scale_factor = 1
 

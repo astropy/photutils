@@ -156,7 +156,7 @@ class ShepardIDWInterpolator:
         self.kdtree = cKDTree(coordinates, leafsize=leafsize)
 
     def __call__(self, positions, n_neighbors=8, eps=0.0, power=1.0, reg=0.0,
-                 conf_dist=1e-12, dtype=float):
+                 conf_dist=1.0e-12, dtype=float):
         """
         Evaluate the interpolator at the given positions.
 
@@ -269,7 +269,7 @@ class ShepardIDWInterpolator:
                     interp_values[k] = self.values[idk[confused][0]]
                     continue
 
-            w = 1.0 / ((dk ** power) + reg)
+            w = 1.0 / ((dk**power) + reg)
             if self.weights is not None:
                 w *= self.weights[idk]
 

@@ -18,7 +18,7 @@ from photutils.utils.exceptions import NoDetectionsWarning
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestSourceFinder:
     data = make_100gaussians_image() - 5.0  # subtract background
-    kernel = make_2dgaussian_kernel(3., size=5)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel, normalize_kernel=True)
     threshold = 1.5 * 2.0
     npixels = 10

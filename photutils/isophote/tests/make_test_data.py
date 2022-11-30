@@ -11,8 +11,8 @@ from photutils.isophote.geometry import EllipseGeometry
 
 
 def make_test_image(nx=512, ny=512, x0=None, y0=None,
-                    background=100., noise=1.e-6, i0=100., sma=40.,
-                    eps=0.2, pa=0., seed=None):
+                    background=100.0, noise=1.0e-6, i0=100.0, sma=40.0,
+                    eps=0.2, pa=0.0, seed=None):
     """
     Make a simulated image for testing the isophote subpackage.
 
@@ -65,23 +65,23 @@ def make_test_image(nx=512, ny=512, x0=None, y0=None,
     e_radius = g.radius(angle)
     tmp_image = radius / e_radius
 
-    image = i0 * np.exp(-7.669 * (tmp_image**0.25 - 1.)) + background
+    image = i0 * np.exp(-7.669 * (tmp_image**0.25 - 1.0)) + background
 
     # central pixel is messed up; replace it with interpolated value
     image[int(xcen), int(ycen)] = (image[int(xcen - 1), int(ycen)]
                                    + image[int(xcen + 1), int(ycen)]
                                    + image[int(xcen), int(ycen - 1)]
-                                   + image[int(xcen), int(ycen + 1)]) / 4.
+                                   + image[int(xcen), int(ycen + 1)]) / 4.0
 
-    image += make_noise_image(image.shape, distribution='gaussian', mean=0.,
+    image += make_noise_image(image.shape, distribution='gaussian', mean=0.0,
                               stddev=noise, seed=seed)
 
     return image
 
 
 def make_fits_test_image(name, nx=512, ny=512, x0=None, y0=None,
-                         background=100., noise=1.e-6, i0=100., sma=40.,
-                         eps=0.2, pa=0., seed=None):
+                         background=100.0, noise=1.0e-6, i0=100.0, sma=40.0,
+                         eps=0.2, pa=0.0, seed=None):
     """
     Make a simulated image and write it to a FITS file.
 

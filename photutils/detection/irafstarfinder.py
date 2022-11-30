@@ -343,8 +343,10 @@ class _IRAFStarFinderCatalog:
         """
         Return all lazyproperties (even in superclasses).
         """
+
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
+
         return [i[0] for i in inspect.getmembers(self.__class__,
                                                  predicate=islazyproperty)]
 
@@ -358,7 +360,7 @@ class _IRAFStarFinderCatalog:
             skymask = ~self.kernel.mask.astype(bool)  # 1=sky, 0=obj
             nsky = np.count_nonzero(skymask)
             axis = (1, 2)
-            if nsky == 0.:
+            if nsky == 0.0:
                 sky = (np.max(self.cutout_data_nosub, axis=axis)
                        - np.max(self.cutout_convdata, axis=axis))
             else:

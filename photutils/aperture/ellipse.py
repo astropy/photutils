@@ -62,7 +62,7 @@ class EllipticalMaskMixin:
         subpixels : int, optional
             For the ``'subpixel'`` method, resample pixels by this
             factor in each dimension. That is, each pixel is divided
-            into ``subpixels ** 2`` subpixels. This keyword is ignored
+            into ``subpixels**2`` subpixels. This keyword is ignored
             unless ``method='subpixel'``.
 
         Returns
@@ -162,14 +162,14 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     >>> from photutils.aperture import EllipticalAperture
 
     >>> theta = Angle(80, 'deg')
-    >>> aper = EllipticalAperture([10., 20.], 5., 3.)
-    >>> aper = EllipticalAperture((10., 20.), 5., 3., theta=theta)
+    >>> aper = EllipticalAperture([10.0, 20.0], 5.0, 3.0)
+    >>> aper = EllipticalAperture((10.0, 20.0), 5.0, 3.0, theta=theta)
 
-    >>> pos1 = (10., 20.)  # (x, y)
-    >>> pos2 = (30., 40.)
-    >>> pos3 = (50., 60.)
-    >>> aper = EllipticalAperture([pos1, pos2, pos3], 5., 3.)
-    >>> aper = EllipticalAperture((pos1, pos2, pos3), 5., 3., theta=theta)
+    >>> pos1 = (10.0, 20.0)  # (x, y)
+    >>> pos2 = (30.0, 40.0)
+    >>> pos3 = (50.0, 60.0)
+    >>> aper = EllipticalAperture([pos1, pos2, pos3], 5.0, 3.0)
+    >>> aper = EllipticalAperture((pos1, pos2, pos3), 5.0, 3.0, theta=theta)
     """
 
     _params = ('positions', 'a', 'b', 'theta')
@@ -180,7 +180,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
                                'angular Quantity or value in radians from '
                                'the positive x axis.')
 
-    def __init__(self, positions, a, b, theta=0.):
+    def __init__(self, positions, a, b, theta=0.0):
         self.positions = positions
         self.a = a
         self.b = b
@@ -222,10 +222,10 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
                                                                **kwargs)
 
         patches = []
-        theta_deg = self._theta_radians * 180. / np.pi
+        theta_deg = self._theta_radians * 180.0 / np.pi
         for xy_position in xy_positions:
-            patches.append(mpatches.Ellipse(xy_position, 2. * self.a,
-                                            2. * self.b, angle=theta_deg,
+            patches.append(mpatches.Ellipse(xy_position, 2.0 * self.a,
+                                            2.0 * self.b, angle=theta_deg,
                                             **patch_kwargs))
 
         if self.isscalar:
@@ -312,14 +312,15 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     >>> from photutils.aperture import EllipticalAnnulus
 
     >>> theta = Angle(80, 'deg')
-    >>> aper = EllipticalAnnulus([10., 20.], 3., 8., 5.)
-    >>> aper = EllipticalAnnulus((10., 20.), 3., 8., 5., theta=theta)
+    >>> aper = EllipticalAnnulus([10.0, 20.0], 3.0, 8.0, 5.0)
+    >>> aper = EllipticalAnnulus((10.0, 20.0), 3.0, 8.0, 5.0, theta=theta)
 
-    >>> pos1 = (10., 20.)  # (x, y)
-    >>> pos2 = (30., 40.)
-    >>> pos3 = (50., 60.)
-    >>> aper = EllipticalAnnulus([pos1, pos2, pos3], 3., 8., 5.)
-    >>> aper = EllipticalAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=theta)
+    >>> pos1 = (10.0, 20.0)  # (x, y)
+    >>> pos2 = (30.0, 40.0)
+    >>> pos3 = (50.0, 60.0)
+    >>> aper = EllipticalAnnulus([pos1, pos2, pos3], 3.0, 8.0, 5.0)
+    >>> aper = EllipticalAnnulus((pos1, pos2, pos3), 3.0, 8.0, 5.0,
+    ...                          theta=theta)
     """
 
     _params = ('positions', 'a_in', 'a_out', 'b_in', 'b_out', 'theta')
@@ -332,7 +333,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
                                'angular Quantity or value in radians from '
                                'the positive x axis.')
 
-    def __init__(self, positions, a_in, a_out, b_out, b_in=None, theta=0.):
+    def __init__(self, positions, a_in, a_out, b_out, b_in=None, theta=0.0):
         if not a_out > a_in:
             raise ValueError('"a_out" must be greater than "a_in".')
 
@@ -386,12 +387,12 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
                                                                **kwargs)
 
         patches = []
-        theta_deg = self._theta_radians * 180. / np.pi
+        theta_deg = self._theta_radians * 180.0 / np.pi
         for xy_position in xy_positions:
-            patch_inner = mpatches.Ellipse(xy_position, 2. * self.a_in,
-                                           2. * self.b_in, angle=theta_deg)
-            patch_outer = mpatches.Ellipse(xy_position, 2. * self.a_out,
-                                           2. * self.b_out, angle=theta_deg)
+            patch_inner = mpatches.Ellipse(xy_position, 2.0 * self.a_in,
+                                           2.0 * self.b_in, angle=theta_deg)
+            patch_outer = mpatches.Ellipse(xy_position, 2.0 * self.a_out,
+                                           2.0 * self.b_out, angle=theta_deg)
             path = self._make_annulus_path(patch_inner, patch_outer)
             patches.append(mpatches.PathPatch(path, **patch_kwargs))
 
@@ -454,7 +455,7 @@ class SkyEllipticalAperture(SkyAperture):
     >>> from astropy.coordinates import SkyCoord
     >>> import astropy.units as u
     >>> from photutils.aperture import SkyEllipticalAperture
-    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> positions = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     >>> aper = SkyEllipticalAperture(positions, 1.0*u.arcsec, 0.5*u.arcsec)
     """
 
@@ -465,7 +466,7 @@ class SkyEllipticalAperture(SkyAperture):
     theta = ScalarAngle('The position angle in angular units of the ellipse '
                         'semimajor axis.')
 
-    def __init__(self, positions, a, b, theta=0. * u.deg):
+    def __init__(self, positions, a, b, theta=0.0 * u.deg):
         self.positions = positions
         self.a = a
         self.b = b
@@ -531,7 +532,7 @@ class SkyEllipticalAnnulus(SkyAperture):
     >>> from astropy.coordinates import SkyCoord
     >>> import astropy.units as u
     >>> from photutils.aperture import SkyEllipticalAnnulus
-    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> positions = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     >>> aper = SkyEllipticalAnnulus(positions, 0.5*u.arcsec, 2.0*u.arcsec,
     ...                             1.0*u.arcsec)
     """
@@ -546,7 +547,7 @@ class SkyEllipticalAnnulus(SkyAperture):
                         'semimajor axis.')
 
     def __init__(self, positions, a_in, a_out, b_out, b_in=None,
-                 theta=0. * u.deg):
+                 theta=0.0 * u.deg):
         if not a_out > a_in:
             raise ValueError('"a_out" must be greater than "a_in".')
 

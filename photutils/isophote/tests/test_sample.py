@@ -14,15 +14,15 @@ from photutils.isophote.tests.make_test_data import make_test_image
 
 DEFAULT_FIX = np.array([False, False, False, False])
 
-DATA = make_test_image(background=100., i0=0., noise=10., seed=0)
+DATA = make_test_image(background=100.0, i0=0.0, noise=10.0, seed=0)
 
 
 # the median is not so good at estimating rms
 @pytest.mark.parametrize('integrmode, amin, amax',
-                         [(NEAREST_NEIGHBOR, 7., 15.),
-                          (BILINEAR, 7., 15.),
-                          (MEAN, 7., 15.),
-                          (MEDIAN, 6., 15.)])
+                         [(NEAREST_NEIGHBOR, 7.0, 15.0),
+                          (BILINEAR, 7.0, 15.0),
+                          (MEAN, 7.0, 15.0),
+                          (MEDIAN, 6.0, 15.0)])
 def test_scatter(integrmode, amin, amax):
     """
     Check that the pixel standard deviation can be reliably estimated
@@ -33,7 +33,7 @@ def test_scatter(integrmode, amin, amax):
     at extraction matches this input noise.
     """
 
-    sample = EllipseSample(DATA, 50., astep=0.2, integrmode=integrmode)
+    sample = EllipseSample(DATA, 50.0, astep=0.2, integrmode=integrmode)
     sample.update(DEFAULT_FIX)
     iso = Isophote(sample, 0, True, 0)
 
@@ -42,7 +42,7 @@ def test_scatter(integrmode, amin, amax):
 
 
 def test_coordinates():
-    sample = EllipseSample(DATA, 50.)
+    sample = EllipseSample(DATA, 50.0)
     sample.update(DEFAULT_FIX)
     x, y = sample.coordinates()
 
@@ -51,7 +51,7 @@ def test_coordinates():
 
 
 def test_sclip():
-    sample = EllipseSample(DATA, 50., nclip=3)
+    sample = EllipseSample(DATA, 50.0, nclip=3)
     sample.update(DEFAULT_FIX)
     x, y = sample.coordinates()
 

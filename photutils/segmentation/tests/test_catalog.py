@@ -30,27 +30,27 @@ from photutils.utils.cutouts import CutoutImage
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestSourceCatalog:
     def setup_class(self):
-        xcen = 51.
+        xcen = 51.0
         ycen = 52.7
-        major_sigma = 8.
-        minor_sigma = 3.
-        theta = np.pi / 6.
-        g1 = Gaussian2D(111., xcen, ycen, major_sigma, minor_sigma,
+        major_sigma = 8.0
+        minor_sigma = 3.0
+        theta = np.pi / 6.0
+        g1 = Gaussian2D(111.0, xcen, ycen, major_sigma, minor_sigma,
                         theta=theta)
         g2 = Gaussian2D(50, 20, 80, 5.1, 4.5)
         g3 = Gaussian2D(70, 75, 18, 9.2, 4.5)
-        g4 = Gaussian2D(111., 11.1, 12.2, major_sigma, minor_sigma,
+        g4 = Gaussian2D(111.0, 11.1, 12.2, major_sigma, minor_sigma,
                         theta=theta)
-        g5 = Gaussian2D(81., 61, 42.7, major_sigma, minor_sigma, theta=theta)
-        g6 = Gaussian2D(107., 75, 61, major_sigma, minor_sigma, theta=-theta)
-        g7 = Gaussian2D(107., 90, 90, 4, 2, theta=-theta)
+        g5 = Gaussian2D(81.0, 61, 42.7, major_sigma, minor_sigma, theta=theta)
+        g6 = Gaussian2D(107.0, 75, 61, major_sigma, minor_sigma, theta=-theta)
+        g7 = Gaussian2D(107.0, 90, 90, 4, 2, theta=-theta)
 
         yy, xx = np.mgrid[0:101, 0:101]
         self.data = (g1(xx, yy) + g2(xx, yy) + g3(xx, yy) + g4(xx, yy)
                      + g5(xx, yy) + g6(xx, yy) + g7(xx, yy))
-        threshold = 27.
+        threshold = 27.0
         self.segm = detect_sources(self.data, threshold, npixels=5)
-        self.error = make_noise_image(self.data.shape, mean=0, stddev=2.,
+        self.error = make_noise_image(self.data.shape, mean=0, stddev=2.0,
                                       seed=123)
         self.background = np.ones(self.data.shape) * 5.1
         self.mask = np.zeros(self.data.shape, dtype=bool)
@@ -206,7 +206,7 @@ class TestSourceCatalog:
             assert np.isnan(getattr(obj, prop))
 
         assert obj.local_background_aperture is None
-        assert obj.local_background == 0.
+        assert obj.local_background == 0.0
 
     def test_slicing(self):
         self.cat.to_table()  # evaluate and cache several properties
@@ -436,7 +436,7 @@ class TestSourceCatalog:
             assert line in repr(cat)
 
     def test_kernel(self):
-        kernel = np.array([[1., 2, 1], [2, 4, 2], [1, 2, 100]])
+        kernel = np.array([[1.0, 2, 1], [2, 4, 2], [1, 2, 100]])
         kernel /= kernel.sum()
 
         cat1 = SourceCatalog(self.data, self.segm, kernel=None)
@@ -630,7 +630,7 @@ class TestSourceCatalog:
         with pytest.raises(ValueError):
             radius = self.cat.fluxfrac_radius(-1)
 
-        cat = SourceCatalog(self.data - 50., self.segm, error=self.error,
+        cat = SourceCatalog(self.data - 50.0, self.segm, error=self.error,
                             background=self.background, mask=self.mask,
                             wcs=self.wcs, localbkg_width=24)
         radius_hl = cat.fluxfrac_radius(0.5)

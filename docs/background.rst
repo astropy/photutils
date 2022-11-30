@@ -234,7 +234,7 @@ background gradient to the image defined above::
 
     >>> ny, nx = data.shape
     >>> y, x = np.mgrid[:ny, :nx]
-    >>> gradient = x * y / 5000.
+    >>> gradient = x * y / 5000.0
     >>> data2 = data + gradient
     >>> plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r',
     ...            interpolation='nearest')  # doctest: +SKIP
@@ -250,7 +250,7 @@ background gradient to the image defined above::
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient = x * y / 5000.
+    gradient = x * y / 5000.0
     data2 = data + gradient
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r',
@@ -266,7 +266,7 @@ instance of :class:`~photutils.background.MedianBackground`.
 
     >>> from astropy.stats import SigmaClip
     >>> from photutils.background import Background2D, MedianBackground
-    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg_estimator = MedianBackground()
     >>> bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
     ...                    sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
@@ -306,9 +306,9 @@ Let's plot the background image:
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient = x * y / 5000.
+    gradient = x * y / 5000.0
     data2 = data + gradient
-    sigma_clip = SigmaClip(sigma=3.)
+    sigma_clip = SigmaClip(sigma=3.0)
     bkg_estimator = MedianBackground()
     bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
@@ -336,9 +336,9 @@ and the background-subtracted image:
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient = x * y / 5000.
+    gradient = x * y / 5000.0
     data2 = data + gradient
-    sigma_clip = SigmaClip(sigma=3.)
+    sigma_clip = SigmaClip(sigma=3.0)
     bkg_estimator = MedianBackground()
     bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
@@ -370,7 +370,7 @@ this example requires `scipy`_):
 .. doctest-requires:: scipy
 
     >>> from scipy.ndimage import rotate
-    >>> data3 = rotate(data2, -45.)
+    >>> data3 = rotate(data2, -45.0)
     >>> norm = ImageNormalize(stretch=SqrtStretch())  # doctest: +SKIP
     >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
     ...            interpolation='nearest')  # doctest: +SKIP
@@ -387,9 +387,9 @@ this example requires `scipy`_):
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient = x * y / 5000.
+    gradient = x * y / 5000.0
     data2 = data + gradient
-    data3 = rotate(data2, -45.)
+    data3 = rotate(data2, -45.0)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
                interpolation='nearest')
@@ -409,7 +409,7 @@ the rotated image:
     >>> coverage_mask = (data3 == 0)
     >>> bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
     ...                     coverage_mask=coverage_mask, fill_value=0.0,
-    ...                     exclude_percentile=50.)
+    ...                     exclude_percentile=50.0)
 
 Note that the ``coverage_mask`` is applied to the output background
 image (values assigned to ``fill_value``):
@@ -433,13 +433,13 @@ image (values assigned to ``fill_value``):
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient = x * y / 5000.
+    gradient = x * y / 5000.0
     data2 = data + gradient
-    data3 = rotate(data2, -45.)
+    data3 = rotate(data2, -45.0)
     coverage_mask = (data3 == 0)
     bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
                         coverage_mask=coverage_mask, fill_value=0.0,
-                        exclude_percentile=50.)
+                        exclude_percentile=50.0)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(bkg3.background, origin='lower', cmap='Greys_r', norm=norm,
                interpolation='nearest')
@@ -467,13 +467,13 @@ Finally, let's subtract the background from the image and plot it:
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient = x * y / 5000.
+    gradient = x * y / 5000.0
     data2 = data + gradient
-    data3 = rotate(data2, -45.)
+    data3 = rotate(data2, -45.0)
     coverage_mask = (data3 == 0)
     bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
                         coverage_mask=coverage_mask, fill_value=0.0,
-                        exclude_percentile=50.)
+                        exclude_percentile=50.0)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data3 - bkg3.background, origin='lower', cmap='Greys_r',
                norm=norm, interpolation='nearest')
@@ -513,13 +513,13 @@ zoom in on a small portion of the image to show the background meshes:
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
-    gradient = x * y / 5000.
+    gradient = x * y / 5000.0
     data2 = data + gradient
-    data3 = rotate(data2, -45.)
+    data3 = rotate(data2, -45.0)
     coverage_mask = (data3 == 0)
     bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
                         coverage_mask=coverage_mask, fill_value=0.0,
-                        exclude_percentile=50.)
+                        exclude_percentile=50.0)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
                interpolation='nearest')

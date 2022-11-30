@@ -63,7 +63,7 @@ class RectangularMaskMixin:
         subpixels : int, optional
             For the ``'subpixel'`` method, resample pixels by this
             factor in each dimension. That is, each pixel is divided
-            into ``subpixels ** 2`` subpixels. This keyword is ignored
+            into ``subpixels**2`` subpixels. This keyword is ignored
             unless ``method='subpixel'``.
 
         Returns
@@ -113,8 +113,8 @@ class RectangularMaskMixin:
         """
         Calculate half of the bounding box extents of an ellipse.
         """
-        half_width = width / 2.
-        half_height = height / 2.
+        half_width = width / 2.0
+        half_height = height / 2.0
         sin_theta = math.sin(theta)
         cos_theta = math.cos(theta)
         x_extent1 = abs((half_width * cos_theta) - (half_height * sin_theta))
@@ -134,8 +134,8 @@ class RectangularMaskMixin:
         Used for creating `~matplotlib.patches.Rectangle` patch for the
         aperture.
         """
-        half_width = width / 2.
-        half_height = height / 2.
+        half_width = width / 2.0
+        half_height = height / 2.0
         sin_theta = math.sin(theta)
         cos_theta = math.cos(theta)
         xshift = (half_height * sin_theta) - (half_width * cos_theta)
@@ -185,14 +185,14 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     >>> from photutils.aperture import RectangularAperture
 
     >>> theta = Angle(80, 'deg')
-    >>> aper = RectangularAperture([10., 20.], 5., 3.)
-    >>> aper = RectangularAperture((10., 20.), 5., 3., theta=theta)
+    >>> aper = RectangularAperture([10.0, 20.0], 5.0, 3.0)
+    >>> aper = RectangularAperture((10.0, 20.0), 5.0, 3.0, theta=theta)
 
-    >>> pos1 = (10., 20.)  # (x, y)
-    >>> pos2 = (30., 40.)
-    >>> pos3 = (50., 60.)
-    >>> aper = RectangularAperture([pos1, pos2, pos3], 5., 3.)
-    >>> aper = RectangularAperture((pos1, pos2, pos3), 5., 3., theta=theta)
+    >>> pos1 = (10.0, 20.0)  # (x, y)
+    >>> pos2 = (30.0, 40.0)
+    >>> pos3 = (50.0, 60.0)
+    >>> aper = RectangularAperture([pos1, pos2, pos3], 5.0, 3.0)
+    >>> aper = RectangularAperture((pos1, pos2, pos3), 5.0, 3.0, theta=theta)
     """
 
     _params = ('positions', 'w', 'h', 'theta')
@@ -203,7 +203,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
                                'angular Quantity or value in radians from '
                                'the positive x axis.')
 
-    def __init__(self, positions, w, h, theta=0.):
+    def __init__(self, positions, w, h, theta=0.0):
         self.positions = positions
         self.w = w
         self.h = h
@@ -247,7 +247,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
                                                   self.h, self._theta_radians)
 
         patches = []
-        theta_deg = self._theta_radians * 180. / np.pi
+        theta_deg = self._theta_radians * 180.0 / np.pi
         for xy_position in xy_positions:
             patches.append(mpatches.Rectangle(xy_position, self.w, self.h,
                                               angle=theta_deg, **patch_kwargs))
@@ -340,14 +340,14 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     >>> from photutils.aperture import RectangularAnnulus
 
     >>> theta = Angle(80, 'deg')
-    >>> aper = RectangularAnnulus([10., 20.], 3., 8., 5.)
-    >>> aper = RectangularAnnulus((10., 20.), 3., 8., 5., theta=theta)
+    >>> aper = RectangularAnnulus([10.0, 20.0], 3.0, 8.0, 5.0)
+    >>> aper = RectangularAnnulus((10.0, 20.0), 3.0, 8.0, 5.0, theta=theta)
 
-    >>> pos1 = (10., 20.)  # (x, y)
-    >>> pos2 = (30., 40.)
-    >>> pos3 = (50., 60.)
-    >>> aper = RectangularAnnulus([pos1, pos2, pos3], 3., 8., 5.)
-    >>> aper = RectangularAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=theta)
+    >>> pos1 = (10.0, 20.0)  # (x, y)
+    >>> pos2 = (30.0, 40.0)
+    >>> pos3 = (50.0, 60.0)
+    >>> aper = RectangularAnnulus([pos1, pos2, pos3], 3.0, 8.0, 5.0)
+    >>> aper = RectangularAnnulus((pos1, pos2, pos3), 3.0, 8.0, 5.0, theta=theta)
     """
 
     _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')
@@ -360,7 +360,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
                                'angular Quantity or value in radians from '
                                'the positive x axis.')
 
-    def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.):
+    def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):
         if not w_out > w_in:
             raise ValueError('"w_out" must be greater than "w_in"')
 
@@ -421,7 +421,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
                                                         self._theta_radians)
 
         patches = []
-        theta_deg = self._theta_radians * 180. / np.pi
+        theta_deg = self._theta_radians * 180.0 / np.pi
         for xy_in, xy_out in zip(inner_xy_positions, outer_xy_positions):
             patch_inner = mpatches.Rectangle(xy_in, self.w_in, self.h_in,
                                              angle=theta_deg)
@@ -491,7 +491,7 @@ class SkyRectangularAperture(SkyAperture):
     >>> from astropy.coordinates import SkyCoord
     >>> import astropy.units as u
     >>> from photutils.aperture import SkyRectangularAperture
-    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> positions = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     >>> aper = SkyRectangularAperture(positions, 1.0*u.arcsec, 0.5*u.arcsec)
     """
 
@@ -502,7 +502,7 @@ class SkyRectangularAperture(SkyAperture):
     theta = ScalarAngle('The position angle (in angular units) of the '
                         'rectangle "width" side.')
 
-    def __init__(self, positions, w, h, theta=0. * u.deg):
+    def __init__(self, positions, w, h, theta=0.0 * u.deg):
         self.positions = positions
         self.w = w
         self.h = h
@@ -575,7 +575,7 @@ class SkyRectangularAnnulus(SkyAperture):
     >>> from astropy.coordinates import SkyCoord
     >>> import astropy.units as u
     >>> from photutils.aperture import SkyRectangularAnnulus
-    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> positions = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     >>> aper = SkyRectangularAnnulus(positions, 3.0*u.arcsec, 8.0*u.arcsec,
     ...                              5.0*u.arcsec)
     """
@@ -590,7 +590,7 @@ class SkyRectangularAnnulus(SkyAperture):
                         'rectangle "width" side.')
 
     def __init__(self, positions, w_in, w_out, h_out, h_in=None,
-                 theta=0. * u.deg):
+                 theta=0.0 * u.deg):
         if not w_out > w_in:
             raise ValueError('"w_out" must be greater than "w_in".')
 

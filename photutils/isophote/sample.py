@@ -90,7 +90,7 @@ class EllipseSample:
     """
 
     def __init__(self, image, sma, x0=None, y0=None, astep=0.1, eps=0.2,
-                 position_angle=0., sclip=3., nclip=0, linear_growth=False,
+                 position_angle=0.0, sclip=3.0, nclip=0, linear_growth=False,
                  integrmode='bilinear', geometry=None):
         self.image = image
         self.integrmode = integrmode
@@ -208,7 +208,7 @@ class EllipseSample:
         # walk along elliptical path, integrating at specified
         # places defined by polar vector. Need to go a bit beyond
         # full circle to ensure full coverage.
-        while phi <= np.pi * 2. + phi_min:
+        while phi <= np.pi * 2.0 + phi_min:
             # do the integration at phi-radius position, and append
             # results to the angles, radii, and intensities lists.
             integrator.integrate(radius, phi)
@@ -314,7 +314,7 @@ class EllipseSample:
             # solution adopted before 08/12/2019
             # previous_gradient = -0.05  # good enough, based on usage
 
-        if gradient >= (previous_gradient / 3.):  # gradient is negative!
+        if gradient >= (previous_gradient / 3.0):  # gradient is negative!
             gradient, gradient_error = self._get_gradient(2 * step)
 
         # If still no meaningful gradient can be measured, try with
@@ -323,19 +323,19 @@ class EllipseSample:
         # and a deVaucouleurs law or an exponential disk (at least at its
         # inner parts, r <~ 5 req). Gradient error is meaningless in this
         # case.
-        if gradient >= (previous_gradient / 3.):
+        if gradient >= (previous_gradient / 3.0):
             gradient = previous_gradient * 0.8
             gradient_error = None
 
         self.gradient = gradient
         self.gradient_error = gradient_error
-        if gradient_error and gradient < 0.:
+        if gradient_error and gradient < 0.0:
             self.gradient_relative_error = gradient_error / np.abs(gradient)
         else:
             self.gradient_relative_error = None
 
     def _get_gradient(self, step):
-        gradient_sma = (1. + step) * self.geometry.sma
+        gradient_sma = (1.0 + step) * self.geometry.sma
 
         gradient_sample = EllipseSample(
             self.image, gradient_sma, x0=self.geometry.x0,

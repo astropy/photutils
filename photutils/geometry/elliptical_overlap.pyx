@@ -84,7 +84,7 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     dx = (xmax - xmin) / nx
     dy = (ymax - ymin) / ny
 
-    norm = 1. / (dx * dy)
+    norm = 1.0 / (dx * dy)
 
     # For now we use a bounding circle and then use that to find a bounding box
     # but of course this is inefficient and could be done better.
@@ -133,7 +133,7 @@ cdef double elliptical_overlap_single_subpixel(double x0, double y0,
 
     cdef unsigned int i, j
     cdef double x, y
-    cdef double frac = 0.  # Accumulator.
+    cdef double frac = 0.0  # Accumulator.
     cdef double inv_rx_sq, inv_ry_sq
     cdef double cos_theta = cos(theta)
     cdef double sin_theta = sin(theta)
@@ -143,8 +143,8 @@ cdef double elliptical_overlap_single_subpixel(double x0, double y0,
     dx = (x1 - x0) / subpixels
     dy = (y1 - y0) / subpixels
 
-    inv_rx_sq = 1. / (rx * rx)
-    inv_ry_sq = 1. / (ry * ry)
+    inv_rx_sq = 1.0 / (rx * rx)
+    inv_ry_sq = 1.0 / (ry * ry)
 
     x = x0 - 0.5 * dx
     for i in range(subpixels):
@@ -158,7 +158,7 @@ cdef double elliptical_overlap_single_subpixel(double x0, double y0,
             y_tr = y * cos_theta - x * sin_theta
 
             if x_tr * x_tr * inv_rx_sq + y_tr * y_tr * inv_ry_sq < 1.:
-                frac += 1.
+                frac += 1.0
 
     return frac / (subpixels * subpixels)
 

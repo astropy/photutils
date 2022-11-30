@@ -60,7 +60,7 @@ class CircularMaskMixin:
         subpixels : int, optional
             For the ``'subpixel'`` method, resample pixels by this
             factor in each dimension. That is, each pixel is divided
-            into ``subpixels ** 2`` subpixels. This keyword is ignored
+            into ``subpixels**2`` subpixels. This keyword is ignored
             unless ``method='subpixel'``.
 
         Returns
@@ -128,14 +128,14 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
     Examples
     --------
     >>> from photutils.aperture import CircularAperture
-    >>> aper = CircularAperture([10., 20.], 3.)
-    >>> aper = CircularAperture((10., 20.), 3.)
+    >>> aper = CircularAperture([10.0, 20.0], 3.0)
+    >>> aper = CircularAperture((10.0, 20.0), 3.0)
 
-    >>> pos1 = (10., 20.)  # (x, y)
-    >>> pos2 = (30., 40.)
-    >>> pos3 = (50., 60.)
-    >>> aper = CircularAperture([pos1, pos2, pos3], 3.)
-    >>> aper = CircularAperture((pos1, pos2, pos3), 3.)
+    >>> pos1 = (10.0, 20.0)  # (x, y)
+    >>> pos2 = (30.0, 40.0)
+    >>> pos3 = (50.0, 60.0)
+    >>> aper = CircularAperture([pos1, pos2, pos3], 3.0)
+    >>> aper = CircularAperture((pos1, pos2, pos3), 3.0)
     """
 
     _params = ('positions', 'r')
@@ -152,7 +152,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
     @lazyproperty
     def area(self):
-        return math.pi * self.r ** 2
+        return math.pi * self.r**2
 
     def _to_patch(self, origin=(0, 0), **kwargs):
         """
@@ -248,14 +248,14 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     Examples
     --------
     >>> from photutils.aperture import CircularAnnulus
-    >>> aper = CircularAnnulus([10., 20.], 3., 5.)
-    >>> aper = CircularAnnulus((10., 20.), 3., 5.)
+    >>> aper = CircularAnnulus([10.0, 20.0], 3.0, 5.0)
+    >>> aper = CircularAnnulus((10.0, 20.0), 3.0, 5.0)
 
-    >>> pos1 = (10., 20.)  # (x, y)
-    >>> pos2 = (30., 40.)
-    >>> pos3 = (50., 60.)
-    >>> aper = CircularAnnulus([pos1, pos2, pos3], 3., 5.)
-    >>> aper = CircularAnnulus((pos1, pos2, pos3), 3., 5.)
+    >>> pos1 = (10.0, 20.0)  # (x, y)
+    >>> pos2 = (30.0, 40.0)
+    >>> pos3 = (50.0, 60.0)
+    >>> aper = CircularAnnulus([pos1, pos2, pos3], 3.0, 5.0)
+    >>> aper = CircularAnnulus((pos1, pos2, pos3), 3.0, 5.0)
     """
 
     _params = ('positions', 'r_in', 'r_out')
@@ -277,7 +277,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     @lazyproperty
     def area(self):
-        return math.pi * (self.r_out ** 2 - self.r_in ** 2)
+        return math.pi * (self.r_out**2 - self.r_in**2)
 
     def _to_patch(self, origin=(0, 0), **kwargs):
         """
@@ -363,7 +363,7 @@ class SkyCircularAperture(SkyAperture):
     >>> from astropy.coordinates import SkyCoord
     >>> import astropy.units as u
     >>> from photutils.aperture import SkyCircularAperture
-    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> positions = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     >>> aper = SkyCircularAperture(positions, 0.5*u.arcsec)
     """
 
@@ -420,7 +420,7 @@ class SkyCircularAnnulus(SkyAperture):
     >>> from astropy.coordinates import SkyCoord
     >>> import astropy.units as u
     >>> from photutils.aperture import SkyCircularAnnulus
-    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> positions = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     >>> aper = SkyCircularAnnulus(positions, 0.5*u.arcsec, 1.0*u.arcsec)
     """
 

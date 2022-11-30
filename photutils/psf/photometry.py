@@ -1019,7 +1019,7 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
     """
 
     def __init__(self, crit_separation, threshold, fwhm, psf_model, fitshape,
-                 *, sigma=3., ratio=1.0, theta=0.0, sigma_radius=1.5,
+                 *, sigma=3.0, ratio=1.0, theta=0.0, sigma_radius=1.5,
                  sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
                  fitter=LevMarLSQFitter(),
                  niters=3, aperture_radius=None, extra_output_cols=None):

@@ -28,7 +28,7 @@ def _radial_distance(shape):
     """
     if len(shape) != 2:
         raise ValueError('shape must have only 2 elements')
-    position = (np.asarray(shape) - 1) / 2.
+    position = (np.asarray(shape) - 1) / 2.0
     x = np.arange(shape[1]) - position[1]
     y = np.arange(shape[0]) - position[0]
     xx, yy = np.meshgrid(x, y)
@@ -93,7 +93,7 @@ class SplitCosineBellWindow:
             A 2D array containing the cosine bell values.
         """
         radial_dist = _radial_distance(shape)
-        npts = (np.array(shape).min() - 1.) / 2.
+        npts = (np.array(shape).min() - 1.0) / 2.0
         r_inner = self.beta * npts
         r = radial_dist - r_inner
         r_taper = int(np.floor(self.alpha * npts))
@@ -103,9 +103,9 @@ class SplitCosineBellWindow:
         else:
             f = np.ones(shape)
 
-        f[radial_dist < r_inner] = 1.
+        f[radial_dist < r_inner] = 1.0
         r_cut = r_inner + r_taper
-        f[radial_dist > r_cut] = 0.
+        f[radial_dist > r_cut] = 0.0
 
         return f
 

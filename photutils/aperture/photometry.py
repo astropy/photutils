@@ -83,7 +83,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     subpixels : int, optional
         For the ``'subpixel'`` method, resample pixels by this factor
         in each dimension. That is, each pixel is divided into
-        ``subpixels ** 2`` subpixels. This keyword is ignored unless
+        ``subpixels**2`` subpixels. This keyword is ignored unless
         ``method='subpixel'``.
 
     wcs : WCS object, optional

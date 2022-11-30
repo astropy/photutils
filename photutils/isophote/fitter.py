@@ -124,7 +124,7 @@ class EllipseFitter:
         Examples
         --------
         >>> from photutils.isophote import EllipseSample, EllipseFitter
-        >>> sample = EllipseSample(data, sma=10.)
+        >>> sample = EllipseSample(data, sma=10.0)
         >>> fitter = EllipseFitter(sample)
         >>> isophote = fitter.fit()
         """
@@ -269,15 +269,15 @@ class EllipseFitter:
         # check if ellipse geometry diverged.
         if abs(sample.geometry.eps > MAX_EPS):
             proceed = False
-        if (sample.geometry.x0 < 1.
+        if (sample.geometry.x0 < 1.0
                 or sample.geometry.x0 > sample.image.shape[1]
-                or sample.geometry.y0 < 1.
+                or sample.geometry.y0 < 1.0
                 or sample.geometry.y0 > sample.image.shape[0]):
             proceed = False
 
         # See if eps == 0 (round isophote) was crossed.
         # If so, fix it but still proceed
-        if sample.geometry.eps < 0.:
+        if sample.geometry.eps < 0.0:
             sample.geometry.eps = min(-sample.geometry.eps, MAX_EPS)
             if sample.geometry.pa < PI2:
                 sample.geometry.pa += PI2
@@ -293,13 +293,11 @@ class EllipseFitter:
 
 
 class _ParameterCorrector:
-
     def correct(self, sample, harmonic):
         raise NotImplementedError
 
 
 class _PositionCorrector(_ParameterCorrector):
-
     @staticmethod
     def finalize_correction(dx, dy, sample):
         new_x0 = sample.geometry.x0 + dx
@@ -315,9 +313,8 @@ class _PositionCorrector(_ParameterCorrector):
 
 
 class _PositionCorrector0(_PositionCorrector):
-
     def correct(self, sample, harmonic):
-        aux = -harmonic * (1. - sample.geometry.eps) / sample.gradient
+        aux = -harmonic * (1.0 - sample.geometry.eps) / sample.gradient
 
         dx = -aux * math.sin(sample.geometry.pa)
         dy = aux * math.cos(sample.geometry.pa)
@@ -326,7 +323,6 @@ class _PositionCorrector0(_PositionCorrector):
 
 
 class _PositionCorrector1(_PositionCorrector):
-
     def correct(self, sample, harmonic):
         aux = -harmonic / sample.gradient
 
@@ -337,14 +333,13 @@ class _PositionCorrector1(_PositionCorrector):
 
 
 class _AngleCorrector(_ParameterCorrector):
-
     def correct(self, sample, harmonic):
         eps = sample.geometry.eps
         sma = sample.geometry.sma
         gradient = sample.gradient
 
-        correction = (harmonic * 2. * (1. - eps) / sma / gradient
-                      / ((1. - eps)**2 - 1.))
+        correction = (harmonic * 2.0 * (1.0 - eps) / sma / gradient
+                      / ((1.0 - eps)**2 - 1.0))
 
         # '% np.pi' to make angle lie between 0 and np.pi radians
         new_pa = (sample.geometry.pa + correction) % np.pi
@@ -359,13 +354,12 @@ class _AngleCorrector(_ParameterCorrector):
 
 
 class _EllipticityCorrector(_ParameterCorrector):
-
     def correct(self, sample, harmonic):
         eps = sample.geometry.eps
         sma = sample.geometry.sma
         gradient = sample.gradient
 
-        correction = harmonic * 2. * (1. - eps) / sma / gradient
+        correction = harmonic * 2.0 * (1.0 - eps) / sma / gradient
 
         new_eps = min((sample.geometry.eps - correction), MAX_EPS)
 

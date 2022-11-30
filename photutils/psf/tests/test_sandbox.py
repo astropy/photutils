@@ -14,16 +14,16 @@ from numpy.testing import assert_allclose
 from photutils.psf.sandbox import DiscretePRF
 
 PSF_SIZE = 11
-GAUSSIAN_WIDTH = 1.
+GAUSSIAN_WIDTH = 1.0
 IMAGE_SIZE = 101
 
 # Position and FLUXES of test sources
-INTAB = Table([[50., 23, 12, 86], [50., 83, 80, 84],
-               [np.pi * 10, 3.654, 20., 80 / np.sqrt(3)]],
+INTAB = Table([[50.0, 23, 12, 86], [50.0, 83, 80, 84],
+               [np.pi * 10, 3.654, 20.0, 80 / np.sqrt(3)]],
               names=['x_0', 'y_0', 'flux_0'])
 
 # Create test psf
-psf_model = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
+psf_model = Gaussian2D(1.0 / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
                        PSF_SIZE // 2, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
 test_psf = discretize_model(psf_model, (0, PSF_SIZE), (0, PSF_SIZE),
                             mode='oversample')
@@ -39,7 +39,7 @@ for x, y, flux in INTAB:
                               mode='oversample')
 
 # Some tests require an image with wider sources.
-WIDE_GAUSSIAN_WIDTH = 3.
+WIDE_GAUSSIAN_WIDTH = 3.0
 WIDE_INTAB = Table([[50, 23.2], [50.5, 1], [10, 20]],
                    names=['x_0', 'y_0', 'flux_0'])
 wide_image = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
@@ -61,7 +61,7 @@ def test_create_prf_mean():
     with pytest.warns(AstropyDeprecationWarning):
         prf = DiscretePRF.create_from_image(image, sources, PSF_SIZE,
                                             subsampling=1, mode='mean')
-        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
+        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1.0e-8)
 
 
 def test_create_prf_median():
@@ -74,7 +74,7 @@ def test_create_prf_median():
                                             np.array(INTAB['x_0', 'y_0']),
                                             PSF_SIZE, subsampling=1,
                                             mode='median')
-        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
+        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1.0e-8)
 
 
 def test_create_prf_nan():
@@ -104,4 +104,4 @@ def test_create_prf_flux():
                                             mode='median',
                                             fluxes=INTAB['flux_0'])
         assert_allclose(prf._prf_array[0, 0].sum(), 1)
-        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
+        assert_allclose(prf._prf_array[0, 0], test_psf, atol=1.0e-8)

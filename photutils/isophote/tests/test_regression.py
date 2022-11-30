@@ -85,7 +85,7 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
 
     ellipse = Ellipse(data)
     isophote_list = ellipse.fit_image()
-    # isophote_list = ellipse.fit_image(sclip=2., nclip=3)
+    # isophote_list = ellipse.fit_image(sclip=2.0, nclip=3)
 
     fmt = ("%5.2f  %6.1f    %8.3f %8.3f %8.3f        %9.5f  %6.2f   "
            "%6.2f %6.2f   %5.2f   %4d  %3d  %3d  %2d")
@@ -100,22 +100,22 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
         # data from Isophote
         sma_i = iso.sample.geometry.sma
         intens_i = iso.intens
-        int_err_i = iso.int_err if iso.int_err else 0.
-        pix_stddev_i = iso.pix_stddev if iso.pix_stddev else 0.
-        rms_i = iso.rms if iso.rms else 0.
-        ellip_i = iso.sample.geometry.eps if iso.sample.geometry.eps else 0.
-        pa_i = iso.sample.geometry.pa if iso.sample.geometry.pa else 0.
+        int_err_i = iso.int_err if iso.int_err else 0.0
+        pix_stddev_i = iso.pix_stddev if iso.pix_stddev else 0.0
+        rms_i = iso.rms if iso.rms else 0.0
+        ellip_i = iso.sample.geometry.eps if iso.sample.geometry.eps else 0.0
+        pa_i = iso.sample.geometry.pa if iso.sample.geometry.pa else 0.0
         x0_i = iso.sample.geometry.x0
         y0_i = iso.sample.geometry.y0
         rerr_i = (iso.sample.gradient_relative_error
-                  if iso.sample.gradient_relative_error else 0.)
+                  if iso.sample.gradient_relative_error else 0.0)
         ndata_i = iso.ndata
         nflag_i = iso.nflag
         niter_i = iso.niter
         stop_i = iso.stop_code
 
         # convert to old code reference system
-        pa_i = (pa_i - np.pi / 2) / np.pi * 180.
+        pa_i = (pa_i - np.pi / 2) / np.pi * 180.0
         x0_i += 1
         y0_i += 1
 
@@ -136,19 +136,19 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
         stop_t = table['STOP'][row] if table['STOP'][row] else -1
 
         # relative differences
-        sma_d = (sma_i - sma_t) / sma_t * 100. if sma_t > 0. else 0.
-        intens_d = (intens_i - intens_t) / intens_t * 100.
-        int_err_d = ((int_err_i - int_err_t) / int_err_t * 100.
-                     if int_err_t > 0. else 0.)
-        pix_stddev_d = ((pix_stddev_i - pix_stddev_t) / pix_stddev_t * 100.
-                        if pix_stddev_t > 0. else 0.)
-        rms_d = (rms_i - rms_t) / rms_t * 100. if rms_t > 0. else 0.
-        ellip_d = (ellip_i - ellip_t) / ellip_t * 100.
+        sma_d = (sma_i - sma_t) / sma_t * 100.0 if sma_t > 0.0 else 0.0
+        intens_d = (intens_i - intens_t) / intens_t * 100.0
+        int_err_d = ((int_err_i - int_err_t) / int_err_t * 100.0
+                     if int_err_t > 0.0 else 0.0)
+        pix_stddev_d = ((pix_stddev_i - pix_stddev_t) / pix_stddev_t * 100.0
+                        if pix_stddev_t > 0.0 else 0.0)
+        rms_d = (rms_i - rms_t) / rms_t * 100.0 if rms_t > 0.0 else 0.0
+        ellip_d = (ellip_i - ellip_t) / ellip_t * 100.0
         pa_d = pa_i - pa_t  # diff in angle is absolute
         x0_d = x0_i - x0_t  # diff in position is absolute
         y0_d = y0_i - y0_t
         rerr_d = rerr_i - rerr_t  # diff in relative error is absolute
-        ndata_d = (ndata_i - ndata_t) / ndata_t * 100.
+        ndata_d = (ndata_i - ndata_t) / ndata_t * 100.0
         nflag_d = 0
         niter_d = 0
         stop_d = 0 if stop_i == stop_t else -1
@@ -169,22 +169,22 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
             assert abs(x0_d) <= 0.21
             assert abs(y0_d) <= 0.21
 
-            if sma_i > 3.:
-                assert abs(intens_d) <= 1.
+            if sma_i > 3.0:
+                assert abs(intens_d) <= 1.0
             else:
-                assert abs(intens_d) <= 5.
+                assert abs(intens_d) <= 5.0
 
             # prevent "converting a masked element to nan" warning
             if ellip_d is np.ma.masked:
                 continue
 
             if not math.isnan(ellip_d):
-                if sma_i > 3.:
-                    assert abs(ellip_d) <= 1.  # 1%
+                if sma_i > 3.0:
+                    assert abs(ellip_d) <= 1.0  # 1%
                 else:
-                    assert abs(ellip_d) <= 20.  # 20%
+                    assert abs(ellip_d) <= 20.0  # 20%
             if not math.isnan(pa_d):
-                if sma_i > 3.:
-                    assert abs(pa_d) <= 1.  # 1 deg.
+                if sma_i > 3.0:
+                    assert abs(pa_d) <= 1.0  # 1 deg.
                 else:
-                    assert abs(pa_d) <= 20.  # 20 deg.
+                    assert abs(pa_d) <= 20.0  # 20 deg.

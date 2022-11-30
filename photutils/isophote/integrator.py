@@ -143,7 +143,6 @@ class _Integrator:
 
 
 class _NearestNeighborIntegrator(_Integrator):
-
     def integrate(self, radius, phi):
         self._r = radius
 
@@ -161,17 +160,16 @@ class _NearestNeighborIntegrator(_Integrator):
                 self._store_results(phi, radius, sample)
 
     def get_polar_angle_step(self):
-        return 1. / self._r
+        return 1.0 / self._r
 
     def get_sector_area(self):
-        return 1.
+        return 1.0
 
     def is_area(self):
         return False
 
 
 class _BiLinearIntegrator(_Integrator):
-
     def integrate(self, radius, phi):
         self._r = radius
 
@@ -186,8 +184,8 @@ class _BiLinearIntegrator(_Integrator):
         # ignore data point if outside image boundaries
         if (i in self._i_range) and (j in self._j_range):
             # in the future, will need to handle masked pixels here
-            qx = 1. - fx
-            qy = 1. - fy
+            qx = 1.0 - fx
+            qy = 1.0 - fy
 
             if (self._image[j][i] is not np.ma.masked
                     and self._image[j + 1][i] is not np.ma.masked
@@ -202,17 +200,16 @@ class _BiLinearIntegrator(_Integrator):
                 self._store_results(phi, radius, sample)
 
     def get_polar_angle_step(self):
-        return 1. / self._r
+        return 1.0 / self._r
 
     def get_sector_area(self):
-        return 2.
+        return 2.0
 
     def is_area(self):
         return False
 
 
 class _AreaIntegrator(_Integrator):
-
     def __init__(self, image, geometry, angles, radii, intensities):
         super().__init__(image, geometry, angles, radii, intensities)
 
@@ -264,8 +261,8 @@ class _AreaIntegrator(_Integrator):
 
                         # check if radius is inside bounding ellipses
                         sma1, sma2 = self._geometry.bounding_ellipses()
-                        aux = ((1. - self._geometry.eps)
-                               / math.sqrt(((1. - self._geometry.eps)
+                        aux = ((1.0 - self._geometry.eps)
+                               / math.sqrt(((1.0 - self._geometry.eps)
                                             * math.cos(phip))**2
                                            + (math.sin(phip))**2))
 
@@ -298,7 +295,7 @@ class _AreaIntegrator(_Integrator):
 
     def get_polar_angle_step(self):
         _, phi2 = self._geometry.polar_angle_sector_limits()
-        phistep = self._geometry.sector_angular_width / 2. + phi2 - self._phi
+        phistep = self._geometry.sector_angular_width / 2.0 + phi2 - self._phi
         return phistep
 
     def get_sector_area(self):
@@ -318,9 +315,8 @@ class _AreaIntegrator(_Integrator):
 
 
 class _MeanIntegrator(_AreaIntegrator):
-
     def initialize_accumulator(self):
-        accumulator = 0.
+        accumulator = 0.0
         self._npix = 0
         return accumulator
 
@@ -334,7 +330,6 @@ class _MeanIntegrator(_AreaIntegrator):
 
 
 class _MedianIntegrator(_AreaIntegrator):
-
     def initialize_accumulator(self):
         accumulator = []
         self._npix = 0

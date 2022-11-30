@@ -26,12 +26,12 @@ def test_create_matching_kernel():
     """Test with noiseless 2D Gaussians."""
 
     size = 25
-    cen = (size - 1) / 2.
+    cen = (size - 1) / 2.0
     y, x = np.mgrid[0:size, 0:size]
-    std1 = 3.
-    std2 = 5.
-    gm1 = Gaussian2D(1., cen, cen, std1, std1)
-    gm2 = Gaussian2D(1., cen, cen, std2, std2)
+    std1 = 3.0
+    std2 = 5.0
+    gm1 = Gaussian2D(1.0, cen, cen, std1, std1)
+    gm2 = Gaussian2D(1.0, cen, cen, std2, std2)
     g1 = gm1(x, y)
     g2 = gm2(x, y)
     g1 /= g1.sum()

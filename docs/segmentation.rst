@@ -56,7 +56,7 @@ pixels::
 
     >>> from astropy.convolution import convolve
     >>> from photutils.segmentation import make_2dgaussian_kernel
-    >>> kernel = make_2dgaussian_kernel(3.0, size=5)  # FWHM = 3.
+    >>> kernel = make_2dgaussian_kernel(3.0, size=5)  # FWHM = 3.0
     >>> convolved_data = convolve(data, kernel)
 
 Now we are ready to detect the sources in the background-subtracted
@@ -547,7 +547,7 @@ instrumental flux and propagated flux error within the source segments:
 .. doctest-requires:: scipy, skimage
 
     >>> from photutils.utils import calc_total_error
-    >>> effective_gain = 500.
+    >>> effective_gain = 500.0
     >>> error = calc_total_error(data, bkg.background_rms, effective_gain)
     >>> cat = SourceCatalog(data, segm_deblend, error=error)
     >>> labels = [1, 5, 20, 50, 75, 80]

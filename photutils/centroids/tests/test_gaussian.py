@@ -20,12 +20,12 @@ XCEN = 25.7
 YCEN = 26.2
 XSTDS = [3.2, 4.0]
 YSTDS = [5.7, 4.1]
-THETAS = np.array([30., 45.]) * np.pi / 180.
+THETAS = np.array([30.0, 45.0]) * np.pi / 180.0
 
 DATA = np.zeros((3, 3))
-DATA[0:2, 1] = 1.
-DATA[1, 0:2] = 1.
-DATA[1, 1] = 2.
+DATA[0:2, 1] = 1.0
+DATA[1, 0:2] = 1.0
+DATA[1, 1] = 2.0
 
 
 # NOTE: the fitting routines in astropy use scipy.optimize
@@ -38,25 +38,25 @@ def test_centroids(x_std, y_std, theta):
     y, x = np.mgrid[0:50, 0:47]
     data = model(x, y)
     xc, yc = centroid_1dg(data)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
 
     # test with errors
     error = np.sqrt(data)
     xc, yc = centroid_1dg(data, error=error)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data, error=error)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
 
     # test with mask
     mask = np.zeros(data.shape, dtype=bool)
-    data[10, 10] = 1.e5
+    data[10, 10] = 1.0e5
     mask[10, 10] = True
     xc, yc = centroid_1dg(data, mask=mask)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data, mask=mask)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -81,13 +81,13 @@ def test_centroids_nan_withmask(use_mask):
 
     with ctx as warnlist:
         xc, yc = centroid_1dg(data, mask=mask)
-        assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+        assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.0e-3)
         if nwarn == 1:
             assert len(warnlist) == nwarn
 
     with ctx as warnlist:
         xc, yc = centroid_2dg(data, mask=mask)
-        assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+        assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.0e-3)
         if nwarn == 1:
             assert len(warnlist) == nwarn
 
@@ -127,13 +127,13 @@ def test_gaussian1d_moments():
     g = Gaussian1D(*desired)
     data = g(x)
     result = _gaussian1d_moments(data)
-    assert_allclose(result, desired, rtol=0, atol=1.e-6)
+    assert_allclose(result, desired, rtol=0, atol=1.0e-6)
 
-    data[0] = 1.e5
+    data[0] = 1.0e5
     mask = np.zeros(data.shape).astype(bool)
     mask[0] = True
     result = _gaussian1d_moments(data, mask=mask)
-    assert_allclose(result, desired, rtol=0, atol=1.e-6)
+    assert_allclose(result, desired, rtol=0, atol=1.0e-6)
 
     data[0] = np.nan
     mask = np.zeros(data.shape).astype(bool)
@@ -143,5 +143,5 @@ def test_gaussian1d_moments():
                        match='Input data contains non-finite values')
     with ctx as warnlist:
         result = _gaussian1d_moments(data, mask=mask)
-        assert_allclose(result, desired, rtol=0, atol=1.e-6)
+        assert_allclose(result, desired, rtol=0, atol=1.0e-6)
         assert len(warnlist) == 1

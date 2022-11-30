@@ -104,7 +104,7 @@ class TestShepardIDWInterpolator:
             self.f(np.ones((3, 3, 3)))
 
     def test_scalar_values_1d(self):
-        value = 10.
+        value = 10.0
         f = idw(2, value)
         assert_allclose(f(2), value)
         assert_allclose(f(-1), value)
@@ -112,14 +112,14 @@ class TestShepardIDWInterpolator:
         assert_allclose(f(142), value)
 
     def test_scalar_values_2d(self):
-        value = 10.
+        value = 10.0
         f = idw([[1, 2]], value)
         assert_allclose(f([1, 2]), value)
         assert_allclose(f([-1, 0]), value)
         assert_allclose(f([142, 213]), value)
 
     def test_scalar_values_3d(self):
-        value = 10.
+        value = 10.0
         f = idw([[7, 4, 1]], value)
         assert_allclose(f([7, 4, 1]), value)
         assert_allclose(f([-1, 0, 7]), value)

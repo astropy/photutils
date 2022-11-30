@@ -32,7 +32,7 @@ class TestIsophote:
 
     def test_fit(self):
         # low noise image, fitted perfectly by sample
-        data = make_test_image(noise=1.e-10, seed=0)
+        data = make_test_image(noise=1.0e-10, seed=0)
         sample = EllipseSample(data, 40)
         fitter = EllipseFitter(sample)
         iso = fitter.fit(maxit=400)
@@ -41,8 +41,8 @@ class TestIsophote:
         assert iso.stop_code in (0, 2)
 
         # fitted values
-        assert iso.intens <= 201.
-        assert iso.intens >= 199.
+        assert iso.intens <= 201.0
+        assert iso.intens >= 199.0
         assert iso.int_err <= 0.0010
         assert iso.int_err >= 0.0009
         assert iso.pix_stddev <= 0.03
@@ -51,10 +51,10 @@ class TestIsophote:
         assert abs(iso.grad) >= 4.20
 
         # integrals
-        assert iso.tflux_e <= 1.85E6
-        assert iso.tflux_e >= 1.82E6
-        assert iso.tflux_c <= 2.025E6
-        assert iso.tflux_c >= 2.022E6
+        assert iso.tflux_e <= 1.85e6
+        assert iso.tflux_e >= 1.82e6
+        assert iso.tflux_c <= 2.025e6
+        assert iso.tflux_c >= 2.022e6
 
         # deviations from perfect ellipticity. Note
         # that sometimes a None covariance can be
@@ -118,8 +118,8 @@ class TestIsophote:
 
 def test_isophote_comparisons():
     data = make_test_image(seed=0)
-    sma1 = 40.
-    sma2 = 100.
+    sma1 = 40.0
+    sma2 = 100.0
     k = 5
     sample0 = EllipseSample(data, sma1 + k)
     sample1 = EllipseSample(data, sma1 + k)
@@ -156,9 +156,9 @@ class TestIsophoteList:
     def setup_class(self):
         data = make_test_image(seed=0)
         self.slen = 5
-        self.isolist_sma10 = self.build_list(data, sma0=10., slen=self.slen)
-        self.isolist_sma100 = self.build_list(data, sma0=100., slen=self.slen)
-        self.isolist_sma200 = self.build_list(data, sma0=200., slen=self.slen)
+        self.isolist_sma10 = self.build_list(data, sma0=10.0, slen=self.slen)
+        self.isolist_sma100 = self.build_list(data, sma0=100.0, slen=self.slen)
+        self.isolist_sma200 = self.build_list(data, sma0=200.0, slen=self.slen)
 
     @staticmethod
     def build_list(data, sma0, slen=5):
@@ -209,7 +209,7 @@ class TestIsophoteList:
 
         iso = result.get_closest(13.6)
         assert isinstance(iso, Isophote)
-        assert_allclose(iso.sma, 14., atol=1e-6)
+        assert_allclose(iso.sma, 14.0, atol=1e-6)
 
     def test_extend(self):
         # the extend method shouldn't return anything,
@@ -281,8 +281,8 @@ class TestIsophoteList:
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_to_table(self):
         test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
-                                   background=100., noise=1.e-6, i0=100.,
-                                   sma=10., eps=0.2, pa=0., seed=1)
+                                   background=100.0, noise=1.0e-6, i0=100.0,
+                                   sma=10.0, eps=0.2, pa=0.0, seed=1)
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
         ellipse = Ellipse(test_img, geometry=g, threshold=0.1)
         isolist = ellipse.fit_image(maxsma=27)

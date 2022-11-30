@@ -33,7 +33,7 @@ class TestSegmentationImage:
         segm2 = segm.copy()
         assert segm.data is not segm2.data
         assert segm.labels is not segm2.labels
-        segm.data[0, 0] = 100.
+        segm.data[0, 0] = 100.0
         assert segm.data[0, 0] != segm2.data[0, 0]
 
     def test_slicing(self):
@@ -104,7 +104,7 @@ class TestSegmentationImage:
 
         assert (self.segm.segments[0].data_ma.shape
                 == self.segm.segments[0].data.shape)
-        assert (self.segm.segments[0].data_ma.filled(0.).sum()
+        assert (self.segm.segments[0].data_ma.filled(0.0).sum()
                 == self.segm.segments[0].data.sum())
 
         label = 4
@@ -203,11 +203,11 @@ class TestSegmentationImage:
                                             seed=0).colors)
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
-    @pytest.mark.parametrize('color, alpha', (('#00000000', 0.),
+    @pytest.mark.parametrize('color, alpha', (('#00000000', 0.0),
                                               ('#00000040', 64 / 255),
                                               ('#00000080', 128 / 255),
                                               ('#000000C0', 192 / 255),
-                                              ('#000000FF', 1.)))
+                                              ('#000000FF', 1.0)))
     def test_make_cmap_alpha(self, color, alpha):
         cmap = self.segm.make_cmap(background_color=color)
         assert_allclose(cmap.colors[0], (0, 0, 0, alpha))
@@ -392,8 +392,9 @@ class TestSegmentationImage:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_imshow(self):
-        axim = self.segm.imshow(figsize=(5, 5))
         from matplotlib.image import AxesImage
+
+        axim = self.segm.imshow(figsize=(5, 5))
         assert isinstance(axim, AxesImage)
 
 

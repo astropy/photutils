@@ -35,12 +35,12 @@ APERTURE_CL = [CircularAperture,
                RectangularAperture,
                RectangularAnnulus]
 
-TEST_APERTURES = list(zip(APERTURE_CL, ((3.,),
-                                        (3., 5.),
-                                        (3., 5., 1.),
-                                        (3., 5., 4., 12. / 5., 1.),
+TEST_APERTURES = list(zip(APERTURE_CL, ((3.0,),
+                                        (3.0, 5.0),
+                                        (3.0, 5.0, 1.0),
+                                        (3.0, 5.0, 4.0, 12.0 / 5.0, 1.0),
                                         (5, 8, np.pi / 4),
-                                        (8, 12, 8, 16. / 3., np.pi / 8))))
+                                        (8, 12, 8, 16.0 / 3.0, np.pi / 8))))
 
 
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
@@ -55,7 +55,7 @@ def test_outside_array(aperture_class, params):
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_inside_array_simple(aperture_class, params):
     data = np.ones((40, 40), dtype=float)
-    aperture = aperture_class((20., 20.), *params)
+    aperture = aperture_class((20.0, 20.0), *params)
     table1 = aperture_photometry(data, aperture, method='center',
                                  subpixels=10)
     table2 = aperture_photometry(data, aperture, method='subpixel',
@@ -76,7 +76,7 @@ def test_aperture_plots(aperture_class, params):
     # This test should run without any errors, and there is no return
     # value.
     # TODO: check the content of the plot
-    aperture = aperture_class((20., 20.), *params)
+    aperture = aperture_class((20.0, 20.0), *params)
     aperture.plot()
 
 
@@ -90,7 +90,6 @@ def test_aperture_pixel_positions():
 
 
 class BaseTestAperturePhotometry:
-
     def test_array_error(self):
         # Array error
         error = np.ones(self.data.shape, dtype=float)
@@ -129,75 +128,69 @@ class BaseTestAperturePhotometry:
 
 
 class TestCircular(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
-        position = (20., 20.)
-        r = 10.
+        position = (20.0, 20.0)
+        r = 10.0
         self.aperture = CircularAperture(position, r)
         self.area = np.pi * r * r
         self.true_flux = self.area
 
 
 class TestCircularArray(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
-        position = ((20., 20.), (25., 25.))
-        r = 10.
+        position = ((20.0, 20.0), (25.0, 25.0))
+        r = 10.0
         self.aperture = CircularAperture(position, r)
         self.area = np.pi * r * r
-        self.area = np.array((self.area, ) * 2)
+        self.area = np.array((self.area,) * 2)
         self.true_flux = self.area
 
 
 class TestCircularAnnulus(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
-        position = (20., 20.)
-        r_in = 8.
-        r_out = 10.
+        position = (20.0, 20.0)
+        r_in = 8.0
+        r_out = 10.0
         self.aperture = CircularAnnulus(position, r_in, r_out)
         self.area = np.pi * (r_out * r_out - r_in * r_in)
         self.true_flux = self.area
 
 
 class TestCircularAnnulusArray(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
-        position = ((20., 20.), (25., 25.))
-        r_in = 8.
-        r_out = 10.
+        position = ((20.0, 20.0), (25.0, 25.0))
+        r_in = 8.0
+        r_out = 10.0
         self.aperture = CircularAnnulus(position, r_in, r_out)
         self.area = np.pi * (r_out * r_out - r_in * r_in)
-        self.area = np.array((self.area, ) * 2)
+        self.area = np.array((self.area,) * 2)
         self.true_flux = self.area
 
 
 class TestElliptical(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
-        position = (20., 20.)
-        a = 10.
-        b = 5.
-        theta = -np.pi / 4.
+        position = (20.0, 20.0)
+        a = 10.0
+        b = 5.0
+        theta = -np.pi / 4.0
         self.aperture = EllipticalAperture(position, a, b, theta=theta)
         self.area = np.pi * a * b
         self.true_flux = self.area
 
 
 class TestEllipticalAnnulus(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
-        position = (20., 20.)
-        a_in = 5.
-        a_out = 8.
-        b_out = 5.
-        theta = -np.pi / 4.
+        position = (20.0, 20.0)
+        a_in = 5.0
+        a_out = 8.0
+        b_out = 5.0
+        theta = -np.pi / 4.0
         self.aperture = EllipticalAnnulus(position, a_in, a_out, b_out,
                                           theta=theta)
         self.area = (np.pi * (a_out * b_out)
@@ -206,28 +199,26 @@ class TestEllipticalAnnulus(BaseTestAperturePhotometry):
 
 
 class TestRectangularAperture(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
-        position = (20., 20.)
-        h = 5.
-        w = 8.
-        theta = np.pi / 4.
+        position = (20.0, 20.0)
+        h = 5.0
+        w = 8.0
+        theta = np.pi / 4.0
         self.aperture = RectangularAperture(position, w, h, theta=theta)
         self.area = h * w
         self.true_flux = self.area
 
 
 class TestRectangularAnnulus(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
-        position = (20., 20.)
-        h_out = 8.
-        w_in = 8.
-        w_out = 12.
+        position = (20.0, 20.0)
+        h_out = 8.0
+        w_in = 8.0
+        w_out = 12.0
         h_in = w_in * h_out / w_out
-        theta = np.pi / 8.
+        theta = np.pi / 8.0
         self.aperture = RectangularAnnulus(position, w_in, w_out, h_out,
                                            theta=theta)
         self.area = h_out * w_out - h_in * w_in
@@ -235,20 +226,18 @@ class TestRectangularAnnulus(BaseTestAperturePhotometry):
 
 
 class TestMaskedSkipCircular(BaseTestAperturePhotometry):
-
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=float)
         self.mask = np.zeros((40, 40), dtype=bool)
         self.mask[20, 20] = True
-        position = (20., 20.)
-        r = 10.
+        position = (20.0, 20.0)
+        r = 10.0
         self.aperture = CircularAperture(position, r)
         self.area = np.pi * r * r
         self.true_flux = self.area - 1
 
 
 class BaseTestDifferentData:
-
     def test_basic_circular_aperture_photometry(self):
         aperture = CircularAperture(self.position, self.radius)
         table = aperture_photometry(self.data, aperture,
@@ -264,7 +253,6 @@ class BaseTestDifferentData:
 
 
 class TestInputNDData(BaseTestDifferentData):
-
     def setup_class(self):
         data = np.ones((40, 40), dtype=float)
         self.data = NDData(data, unit=u.adu)
@@ -312,8 +300,8 @@ def test_wcs_based_photometry():
     wcs = make_wcs(data.shape)
 
     # hard wired positions in make_4gaussian_image
-    pos_orig_pixel = u.Quantity(([160., 25., 150., 90.],
-                                 [70., 40., 25., 60.]), unit=u.pixel)
+    pos_orig_pixel = u.Quantity(([160.0, 25.0, 150.0, 90.0],
+                                 [70.0, 40.0, 25.0, 60.0]), unit=u.pixel)
 
     pos_skycoord = wcs.pixel_to_world(pos_orig_pixel[0], pos_orig_pixel[1])
     pos_skycoord_s = pos_skycoord[2]
@@ -466,9 +454,9 @@ def test_aperture_photometry_inputs_with_mask():
     """
 
     data = np.ones((5, 5))
-    aperture = CircularAperture((2, 2), 2.)
+    aperture = CircularAperture((2, 2), 2.0)
     mask = np.zeros_like(data, dtype=bool)
-    data[2, 2] = 100.  # bad pixel
+    data[2, 2] = 100.0  # bad pixel
     mask[2, 2] = True
     error = np.sqrt(data)
     data_in = data.copy()
@@ -481,7 +469,7 @@ def test_aperture_photometry_inputs_with_mask():
     assert_allclose(t2['aperture_sum'][0], 111.566370614)
 
 
-TEST_ELLIPSE_EXACT_APERTURES = [(3.469906, 3.923861394, 3.),
+TEST_ELLIPSE_EXACT_APERTURES = [(3.469906, 3.923861394, 3.0),
                                 (0.3834415188257778, 0.3834415188257778, 0.3)]
 
 
@@ -496,9 +484,9 @@ def test_ellipse_exact_grid(x, y, r):
 
     data = np.ones((10, 10))
 
-    aperture = EllipticalAperture((x, y), r, r, 0.)
+    aperture = EllipticalAperture((x, y), r, r, 0.0)
     t = aperture_photometry(data, aperture, method='exact')
-    actual = t['aperture_sum'][0] / (np.pi * r ** 2)
+    actual = t['aperture_sum'][0] / (np.pi * r**2)
     assert_allclose(actual, 1)
 
 
@@ -510,7 +498,7 @@ def test_nan_inf_mask(value):
     mask = np.zeros_like(data, dtype=bool)
     data[4, 4] = value
     mask[4, 4] = True
-    radius = 2.
+    radius = 2.0
     aper = CircularAperture((4, 4), radius)
     tbl = aperture_photometry(data, aper, mask=mask)
     desired = (np.pi * radius**2) - 1
@@ -521,17 +509,17 @@ def test_aperture_partial_overlap():
     data = np.ones((20, 20))
     error = np.ones((20, 20))
     xypos = [(10, 10), (0, 0), (0, 19), (19, 0), (19, 19)]
-    r = 5.
+    r = 5.0
     aper = CircularAperture(xypos, r=r)
     tbl = aperture_photometry(data, aper, error=error)
-    assert_allclose(tbl['aperture_sum'][0], np.pi * r ** 2)
-    assert_array_less(tbl['aperture_sum'][1:], np.pi * r ** 2)
+    assert_allclose(tbl['aperture_sum'][0], np.pi * r**2)
+    assert_array_less(tbl['aperture_sum'][1:], np.pi * r**2)
 
     unit = u.MJy / u.sr
     tbl = aperture_photometry(data * unit, aper, error=error * unit)
-    assert_allclose(tbl['aperture_sum'][0].value, np.pi * r ** 2)
-    assert_array_less(tbl['aperture_sum'][1:].value, np.pi * r ** 2)
-    assert_array_less(tbl['aperture_sum_err'][1:].value, np.pi * r ** 2)
+    assert_allclose(tbl['aperture_sum'][0].value, np.pi * r**2)
+    assert_array_less(tbl['aperture_sum'][1:].value, np.pi * r**2)
+    assert_array_less(tbl['aperture_sum_err'][1:].value, np.pi * r**2)
     assert tbl['aperture_sum'].unit == unit
     assert tbl['aperture_sum_err'].unit == unit
 
@@ -577,7 +565,7 @@ def test_sky_aperture_repr():
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
-    aper = SkyCircularAnnulus(s, r_in=3. * u.deg, r_out=5 * u.deg)
+    aper = SkyCircularAnnulus(s, r_in=3.0 * u.deg, r_out=5 * u.deg)
     a_repr = ('<SkyCircularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg\n'
               '    [(1., 3.), (2., 4.)]>, r_in=3.0 deg, r_out=5.0 deg)>')
     a_str = ('Aperture: SkyCircularAnnulus\npositions: <SkyCoord '
@@ -650,7 +638,7 @@ def test_rectangular_bbox():
     assert a.bbox.shape == (height + 1, width + 1)
 
     a = RectangularAperture((50, 50), w=width, h=height,
-                            theta=90. * np.pi / 180.)
+                            theta=90.0 * np.pi / 180.0)
     assert a.bbox.shape == (width, height)
 
     # test even sizes
@@ -663,7 +651,7 @@ def test_rectangular_bbox():
     assert a.bbox.shape == (height, width)
 
     a = RectangularAperture((50.5, 50.5), w=width, h=height,
-                            theta=90. * np.pi / 180.)
+                            theta=90.0 * np.pi / 180.0)
     assert a.bbox.shape == (width, height)
 
 
@@ -677,7 +665,7 @@ def test_elliptical_bbox():
     ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
     assert ap.bbox.shape == (2 * b, 2 * a)
 
-    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90. * np.pi / 180.)
+    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.0 * np.pi / 180.0)
     assert ap.bbox.shape == (2 * a + 1, 2 * b + 1)
 
     # fractional axes
@@ -689,7 +677,7 @@ def test_elliptical_bbox():
     ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
     assert ap.bbox.shape == (2 * b + 1, 2 * a + 1)
 
-    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90. * np.pi / 180.)
+    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.0 * np.pi / 180.0)
     assert ap.bbox.shape == (2 * a, 2 * b)
 
 
@@ -716,7 +704,7 @@ def test_to_sky_pixel(wcs_type):
     assert_allclose(ap.r_out, ap2.r_out)
 
     ap = EllipticalAperture(((12.3, 15.7), (48.19, 98.14)), a=3.14, b=5.32,
-                            theta=103. * np.pi / 180.)
+                            theta=103.0 * np.pi / 180.0)
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.a, ap2.a)
@@ -724,7 +712,8 @@ def test_to_sky_pixel(wcs_type):
     assert_allclose(ap.theta, ap2.theta)
 
     ap = EllipticalAnnulus(((12.3, 15.7), (48.19, 98.14)), a_in=3.14,
-                           a_out=15.32, b_out=4.89, theta=103. * np.pi / 180.)
+                           a_out=15.32, b_out=4.89,
+                           theta=103.0 * np.pi / 180.0)
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.a_in, ap2.a_in)
@@ -733,7 +722,7 @@ def test_to_sky_pixel(wcs_type):
     assert_allclose(ap.theta, ap2.theta)
 
     ap = RectangularAperture(((12.3, 15.7), (48.19, 98.14)), w=3.14, h=5.32,
-                             theta=103. * np.pi / 180.)
+                             theta=103.0 * np.pi / 180.0)
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.w, ap2.w)
@@ -741,7 +730,8 @@ def test_to_sky_pixel(wcs_type):
     assert_allclose(ap.theta, ap2.theta)
 
     ap = RectangularAnnulus(((12.3, 15.7), (48.19, 98.14)), w_in=3.14,
-                            w_out=15.32, h_out=4.89, theta=103. * np.pi / 180.)
+                            w_out=15.32, h_out=4.89,
+                            theta=103.0 * np.pi / 180.0)
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.w_in, ap2.w_in)
@@ -758,7 +748,7 @@ def test_scalar_aperture():
 
     data = np.ones((20, 20), dtype=float)
 
-    ap = CircularAperture((10, 10), r=3.)
+    ap = CircularAperture((10, 10), r=3.0)
     colnames1 = aperture_photometry(data, ap, error=data).colnames
     assert (colnames1 == ['id', 'xcenter', 'ycenter', 'aperture_sum',
                           'aperture_sum_err'])
@@ -788,8 +778,8 @@ def test_nan_in_bbox():
     data1[22, 23] = np.inf
     error = data1.copy()
 
-    aper1 = CircularAperture((50, 50), r=20.)
-    aper2 = CircularAperture((5, 5), r=20.)
+    aper1 = CircularAperture((50, 50), r=20.0)
+    aper2 = CircularAperture((5, 5), r=20.0)
 
     tbl1 = aperture_photometry(data1, aper1, error=error)
     tbl2 = aperture_photometry(data2, aper1, error=error)

@@ -1083,6 +1083,7 @@ class SegmentationImage:
             return self._data.astype(bool)
 
         from scipy.ndimage import binary_dilation
+
         return binary_dilation(self._data.astype(bool), structure=footprint)
 
     def outline_segments(self, mask_background=False):
@@ -1134,9 +1135,9 @@ class SegmentationImage:
 
         # mode='constant' ensures outline is included on the array borders
         eroded = grey_erosion(self.data, footprint=footprint, mode='constant',
-                              cval=0.)
+                              cval=0.0)
         dilated = grey_dilation(self.data, footprint=footprint,
-                                mode='constant', cval=0.)
+                                mode='constant', cval=0.0)
 
         outlines = ((dilated != eroded) & (self.data != 0)).astype(int)
         outlines *= self.data

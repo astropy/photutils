@@ -28,14 +28,14 @@ class TestFindPeaks:
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3)
         assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
-        assert_array_equal(tbl['peak_value'], [1., 1.])
+        assert_array_equal(tbl['peak_value'], [1.0, 1.0])
 
     def test_footprint(self):
         """Test with footprint."""
         tbl = find_peaks(PEAKDATA, 0.1, footprint=np.ones((3, 3)))
         assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
-        assert_array_equal(tbl['peak_value'], [1., 1.])
+        assert_array_equal(tbl['peak_value'], [1.0, 1.0])
 
     def test_mask(self):
         """Test with mask."""
@@ -72,7 +72,7 @@ class TestFindPeaks:
 
     def test_box_size_int(self):
         """Test non-integer box_size."""
-        tbl1 = find_peaks(PEAKDATA, 0.1, box_size=5.)
+        tbl1 = find_peaks(PEAKDATA, 0.1, box_size=5.0)
         tbl2 = find_peaks(PEAKDATA, 0.1, box_size=5.5)
         assert_array_equal(tbl1, tbl2)
 
@@ -114,7 +114,7 @@ class TestFindPeaks:
         """Test for empty output table when data is constant."""
         data = np.ones((10, 10))
         with pytest.warns(NoDetectionsWarning, match='Input data is constant'):
-            tbl = find_peaks(data, 0.)
+            tbl = find_peaks(data, 0.0)
             assert tbl is None
 
     def test_no_peaks(self):
@@ -143,4 +143,4 @@ class TestFindPeaks:
         """Test that data with NaNs does not issue Runtime warning."""
         data = np.copy(PEAKDATA)
         data[1, 1] = np.nan
-        find_peaks(data, 0.)
+        find_peaks(data, 0.0)

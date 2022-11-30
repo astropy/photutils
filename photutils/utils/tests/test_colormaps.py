@@ -16,4 +16,4 @@ def test_colormap():
     cmap = make_random_cmap(ncolors, seed=0)
     assert len(cmap.colors) == ncolors
     assert cmap.colors.shape == (100, 4)
-    assert_allclose(cmap.colors[0], [0.36951484, 0.42125961, 0.65984082, 1.])
+    assert_allclose(cmap.colors[0], [0.36951484, 0.42125961, 0.65984082, 1.0])

@@ -24,7 +24,7 @@ SOURCE_TABLE['x_mean'] = [30, 50, 70.5]
 SOURCE_TABLE['y_mean'] = [50, 50, 50.5]
 SOURCE_TABLE['x_stddev'] = [1, 2, 3.5]
 SOURCE_TABLE['y_stddev'] = [2, 1, 3.5]
-SOURCE_TABLE['theta'] = np.array([0., 30, 50]) * np.pi / 180.
+SOURCE_TABLE['theta'] = np.array([0.0, 30, 50]) * np.pi / 180.0
 
 SOURCE_TABLE_PRF = Table()
 SOURCE_TABLE_PRF['x_0'] = [30, 50, 70.5]
@@ -36,16 +36,16 @@ SOURCE_TABLE_PRF['amplitude'] = np.array([1, 2, 3]) / (2 * np.pi)
 
 def test_make_noise_image():
     shape = (100, 100)
-    image = make_noise_image(shape, 'gaussian', mean=0., stddev=2.)
+    image = make_noise_image(shape, 'gaussian', mean=0.0, stddev=2.0)
     assert image.shape == shape
-    assert_allclose(image.mean(), 0., atol=1.)
+    assert_allclose(image.mean(), 0.0, atol=1.0)
 
 
 def test_make_noise_image_poisson():
     shape = (100, 100)
-    image = make_noise_image(shape, 'poisson', mean=1.)
+    image = make_noise_image(shape, 'poisson', mean=1.0)
     assert image.shape == shape
-    assert_allclose(image.mean(), 1., atol=1.)
+    assert_allclose(image.mean(), 1.0, atol=1.0)
 
 
 def test_make_noise_image_nomean():
@@ -53,7 +53,7 @@ def test_make_noise_image_nomean():
 
     with pytest.raises(ValueError):
         shape = (100, 100)
-        make_noise_image(shape, 'gaussian', stddev=2.)
+        make_noise_image(shape, 'gaussian', stddev=2.0)
 
 
 def test_make_noise_image_nostddev():
@@ -63,7 +63,7 @@ def test_make_noise_image_nostddev():
 
     with pytest.raises(ValueError):
         shape = (100, 100)
-        make_noise_image(shape, 'gaussian', mean=2.)
+        make_noise_image(shape, 'gaussian', mean=2.0)
 
 
 def test_apply_poisson_noise():
@@ -71,7 +71,7 @@ def test_apply_poisson_noise():
     data = np.ones(shape)
     result = apply_poisson_noise(data)
     assert result.shape == shape
-    assert_allclose(result.mean(), 1., atol=1.)
+    assert_allclose(result.mean(), 1.0, atol=1.0)
 
 
 def test_apply_poisson_noise_negative():
@@ -79,7 +79,7 @@ def test_apply_poisson_noise_negative():
 
     with pytest.raises(ValueError):
         shape = (100, 100)
-        data = np.zeros(shape) - 1.
+        data = np.zeros(shape) - 1.0
         apply_poisson_noise(data)
 
 
@@ -141,7 +141,7 @@ def test_make_4gaussians_image():
     data_sum = 176219.18059091491
     image = make_4gaussians_image()
     assert image.shape == shape
-    assert_allclose(image.sum(), data_sum, rtol=1.e-6)
+    assert_allclose(image.sum(), data_sum, rtol=1.0e-6)
 
 
 def test_make_100gaussians_image():
@@ -149,7 +149,7 @@ def test_make_100gaussians_image():
     data_sum = 826182.24501251709
     image = make_100gaussians_image()
     assert image.shape == shape
-    assert_allclose(image.sum(), data_sum, rtol=1.e-6)
+    assert_allclose(image.sum(), data_sum, rtol=1.0e-6)
 
 
 def test_make_random_models_table():

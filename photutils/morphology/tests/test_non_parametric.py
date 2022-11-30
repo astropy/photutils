@@ -17,5 +17,5 @@ def test_gini():
     data_point_like = np.zeros((100, 100))
     data_point_like[50, 50] = 1
 
-    assert gini(data_evenly_distributed) == 0.
-    assert gini(data_point_like) == 1.
+    assert gini(data_evenly_distributed) == 0.0
+    assert gini(data_point_like) == 1.0
