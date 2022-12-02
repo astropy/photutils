@@ -45,7 +45,7 @@ New Features
   - The progress bar used when deblending sources now is prepended with
     "Deblending". [#1439]
 
-  - Added "windowed" centroids to ``SourceCatalog``. [#1447]
+  - Added "windowed" centroids to ``SourceCatalog``. [#1447, #1468]
 
   - Added quadratic centroids to ``SourceCatalog``. [#1467]
 
