@@ -63,6 +63,9 @@ Bug Fixes
   - Fixed a bug in the ``PixelAperture`` ``area_overlap`` method so that
     the returned value does not inherit the data units. [#1408]
 
+  - Fixed an issue in ``ApertureStats`` ``get_ids`` for the case when
+    the ID numbers are not sorted (due to slicing). [#1423]
+
 - ``photutils.datasets``
 
   - Fixed a bug in the various ``load`` functions where FITS files were
@@ -78,9 +81,8 @@ Bug Fixes
   - Fixed an issue where the ``SourceCatalog`` ``plot_kron_apertures``
     method would raise an error for a scalar ``SourceCatalog``. [#1421]
 
-  - Fixed an issue in ``SegmentationImage`` ``get_ids`` and
-    ``SourceCatalog`` ``get_labels`` for the case when the ID numbers or
-    labels are not sorted (due to slicing). [#1423]
+  - Fixed an issue in ``SourceCatalog`` ``get_labels`` for the case when
+    the labels are not sorted (due to slicing). [#1423]
 
 API Changes
 ^^^^^^^^^^^
