@@ -1455,6 +1455,22 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
+    def cutout_centroid_win(self):
+        """
+        The ``(x, y)`` coordinate, relative to the cutout data, of the
+        "windowed" centroid.
+
+        The window centroid is computed using an iterative algorithm
+        to derive a more accurate centroid. It is equivalent to
+        `SourceExtractor`_'s XWIN_IMAGE and YWIN_IMAGE parameters. See
+        `centroid_win` for futher details about the algorithm.
+        """
+        origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
+        return self.centroid_win - origin
+
+    @lazyproperty
+    @use_detcat
+    @as_scalar
     def cutout_centroid_quad(self):
         """
         The ``(x, y)`` centroid coordinate, relative to the cutout data,
