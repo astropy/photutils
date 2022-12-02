@@ -19,6 +19,7 @@ from astropy.utils.decorators import deprecated_renamed_argument
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
 from photutils.background import SExtractorBackground
+from photutils.centroids import centroid_quadratic
 from photutils.segmentation.core import SegmentationImage
 from photutils.utils._convolution import _filter_data
 from photutils.utils._misc import _get_meta
@@ -1442,6 +1443,24 @@ class SourceCatalog:
         else:
             ycentroid = self.centroid_win[:, 1]
         return ycentroid
+
+    @lazyproperty
+    @use_detcat
+    @as_scalar
+    def centroid_quad(self):
+        """
+        The ``(x, y)`` centroid coordinate calculated by fitting a 2D
+        quadratic polynomical to the unmasked pixels in the source
+        segment.
+
+        `~photutils.centroids.centroid_quadratic` is used to calculate
+        the centroid.
+        """
+        centroid_quad = []
+        for data, mask in zip(self._data_cutouts, self._cutout_total_masks):
+            centroid_quad.append(centroid_quadratic(data, mask=mask))
+
+        return centroid_quad
 
     @lazyproperty
     @use_detcat
