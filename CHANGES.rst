@@ -47,6 +47,8 @@ New Features
 
   - Added "windowed" centroids to ``SourceCatalog``. [#1447]
 
+  - Added quadratic centroids to ``SourceCatalog``. [#1467]
+
 - ``photutils.utils``
 
   - Added ``xyorigin`` attribute to ``CutoutImage``. [#1419]
