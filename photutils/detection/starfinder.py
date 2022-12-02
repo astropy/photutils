@@ -29,7 +29,7 @@ class StarFinder(StarFinderBase):
     threshold : float
         The absolute image value above which to select sources.
 
-    kernel : `numpy.ndarray`
+    kernel : `~numpy.ndarray`
         A 2D array of the PSF kernel.
 
     min_separation : float, optional

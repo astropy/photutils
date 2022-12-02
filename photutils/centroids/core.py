@@ -91,7 +91,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     Parameters
     ----------
-    data : numpy.ndarray
+    data : `~numpy.ndarray`
         Image data.
 
     xpeak, ypeak : float or `None`, optional

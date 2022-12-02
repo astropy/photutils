@@ -48,7 +48,7 @@ class FittableImageModel(Fittable2DModel):
 
     Parameters
     ----------
-    data : numpy.ndarray
+    data : `~numpy.ndarray`
         Array containing 2D image.
 
     origin : tuple, None, optional

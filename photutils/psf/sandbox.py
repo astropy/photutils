@@ -47,7 +47,7 @@ class DiscretePRF(Fittable2DModel):
 
     Parameters
     ----------
-    prf_array : ndarray
+    prf_array : `~numpy.ndarray`
         Array containing PRF images.
     normalize : bool
         Normalize PRF images to unity.  Equivalent to saying there is

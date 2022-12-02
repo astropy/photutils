@@ -23,7 +23,7 @@ class CutoutImage:
 
     Parameters
     ----------
-    data : ndarray
+    data : `~numpy.ndarray`
         The 2D data array from which to extract the cutout array.
 
     position : 2 tuple
