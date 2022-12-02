@@ -1547,6 +1547,36 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
+    def xcentroid_quad(self):
+        """
+        The ``x`` coordinate of the centroid (`centroid_quad`),
+        calculated by fitting a 2D quadratic polynomical to the unmasked
+        pixels in the source segment.
+        """
+        if self.isscalar:
+            xcentroid = self.centroid_quad[0]  # scalar array
+        else:
+            xcentroid = self.centroid_quad[:, 0]
+        return xcentroid
+
+    @lazyproperty
+    @use_detcat
+    @as_scalar
+    def ycentroid_quad(self):
+        """
+        The ``y`` coordinate of the centroid (`centroid_quad`),
+        calculated by fitting a 2D quadratic polynomical to the unmasked
+        pixels in the source segment.
+        """
+        if self.isscalar:
+            ycentroid = self.centroid_quad[1]  # scalar array
+        else:
+            ycentroid = self.centroid_quad[:, 1]
+        return ycentroid
+
+    @lazyproperty
+    @use_detcat
+    @as_scalar
     def sky_centroid(self):
         """
         The sky coordinate of the `centroid` within the source segment,
@@ -1591,6 +1621,24 @@ class SourceCatalog:
         if self.wcs is None:
             return self._null_objects
         return self.wcs.pixel_to_world(self.xcentroid_win, self.ycentroid_win)
+
+    @lazyproperty
+    @use_detcat
+    @as_scalar
+    def sky_centroid_quad(self):
+        """
+        The sky coordinate of the centroid (`centroid_quad`), calculated
+        by fitting a 2D quadratic polynomical to the unmasked pixels in
+        the source segment.
+
+        The output coordinate frame is the same as the input ``wcs``.
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self.wcs.pixel_to_world(self.xcentroid_quad,
+                                       self.ycentroid_quad)
 
     @lazyproperty
     @use_detcat
