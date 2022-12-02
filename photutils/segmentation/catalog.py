@@ -43,6 +43,12 @@ DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',
 def as_scalar(method):
     """
     Return a scalar value from a method if the class is scalar.
+
+    Note that lazyproperties that begin with '_' should not have this
+    decorator applied. Such properties are assumed to always be iterable
+    and when slicing (see __getitem__) from a cached multi-object
+    catalog to create a single-object catalog, they will no longer be
+    scalar.
     """
 
     @functools.wraps(method)
@@ -485,7 +491,8 @@ class SourceCatalog:
                 continue
 
             try:
-                # keep _<attrs> as length-1 iterables
+                # keep _<attr> lazyproperties as length-1 iterables;
+                # _<attr> lazyproperties should not have @as_scalar applied
                 if newcls.isscalar and key.startswith('_'):
                     if isinstance(value, np.ndarray):
                         val = value[:, np.newaxis][index]
