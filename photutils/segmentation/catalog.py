@@ -15,6 +15,7 @@ from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
@@ -1454,20 +1455,76 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
+    def cutout_centroid_quad(self):
+        """
+        The ``(x, y)`` centroid coordinate, relative to the cutout data,
+        calculated by fitting a 2D quadratic polynomical to the unmasked
+        pixels in the source segment.
+
+        Notes
+        -----
+        `~photutils.centroids.centroid_quadratic` is used to calculate
+        the centroid with ``fit_boxsize=3``.
+
+        Because this centroid is based on fitting data, it can fail for
+        many reasons, returning (np.nan, np.nan):
+            * quadratic fit failed
+            * quadratic fit does not have a maximum
+            * quadratic fit maximum falls outside image
+            * not enough unmasked data points (6 are required)
+
+        Also note that a fit is not performed if the maximum data value
+        is at the edge of the source segment. In this case, the position
+        of the maximum pixel will be returned.
+        """
+        centroid_quad = []
+        with warnings.catch_warnings():
+            # ignore fit warnings:
+            #   - quadratic fit failed
+            #   - quadratic fit does not have a maximum
+            #   - quadratic fit maximum falls outside image
+            #   - not enough unmasked data points (6 are required)
+            #   - maximum value is at the edge of the data
+            warnings.simplefilter('ignore', AstropyUserWarning)
+
+            for data, mask in zip(self._data_cutouts,
+                                  self._cutout_total_masks):
+                try:
+                    centroid = centroid_quadratic(data, mask=mask,
+                                                  fit_boxsize=3)
+                except ValueError:
+                    centroid = (np.nan, np.nan)
+                centroid_quad.append(centroid)
+
+        return np.array(centroid_quad)
+
+    @lazyproperty
+    @use_detcat
+    @as_scalar
     def centroid_quad(self):
         """
-        The ``(x, y)`` centroid coordinate calculated by fitting a 2D
+        The ``(x, y)`` centroid coordinate, calculated by fitting a 2D
         quadratic polynomical to the unmasked pixels in the source
         segment.
 
+        Notes
+        -----
         `~photutils.centroids.centroid_quadratic` is used to calculate
-        the centroid.
-        """
-        centroid_quad = []
-        for data, mask in zip(self._data_cutouts, self._cutout_total_masks):
-            centroid_quad.append(centroid_quadratic(data, mask=mask))
+        the centroid with ``fit_boxsize=3``.
 
-        return centroid_quad
+        Because this centroid is based on fitting data, it can fail for
+        many reasons, returning (np.nan, np.nan):
+            * quadratic fit failed
+            * quadratic fit does not have a maximum
+            * quadratic fit maximum falls outside image
+            * not enough unmasked data points (6 are required)
+
+        Also note that a fit is not performed if the maximum data value
+        is at the edge of the source segment. In this case, the position
+        of the maximum pixel will be returned.
+        """
+        origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
+        return self.cutout_centroid_quad + origin
 
     @lazyproperty
     @use_detcat
