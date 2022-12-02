@@ -1468,6 +1468,7 @@ class SourceCatalog:
 
         Because this centroid is based on fitting data, it can fail for
         many reasons, returning (np.nan, np.nan):
+
             * quadratic fit failed
             * quadratic fit does not have a maximum
             * quadratic fit maximum falls outside image
@@ -1514,6 +1515,7 @@ class SourceCatalog:
 
         Because this centroid is based on fitting data, it can fail for
         many reasons, returning (np.nan, np.nan):
+
             * quadratic fit failed
             * quadratic fit does not have a maximum
             * quadratic fit maximum falls outside image
