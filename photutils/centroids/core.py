@@ -133,6 +133,18 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     Hogg (2016) <https://arxiv.org/abs/1610.05873>`_ for their 2D
     second-order polynomial centroiding method.
 
+    Because this centroid is based on fitting data, it can fail for many
+    reasons, returning (np.nan, np.nan):
+
+        * quadratic fit failed
+        * quadratic fit does not have a maximum
+        * quadratic fit maximum falls outside image
+        * not enough unmasked data points (6 are required)
+
+    Also note that a fit is not performed if the maximum data value is
+    at the edge of the data. In this case, the position of the maximum
+    pixel will be returned.
+
     References
     ----------
     .. [1] Vakili and Hogg 2016; arXiv:1610.05873
