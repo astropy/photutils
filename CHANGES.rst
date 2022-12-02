@@ -47,7 +47,7 @@ New Features
 
   - Added "windowed" centroids to ``SourceCatalog``. [#1447, #1468]
 
-  - Added quadratic centroids to ``SourceCatalog``. [#1467]
+  - Added quadratic centroids to ``SourceCatalog``. [#1467, #1469]
 
 - ``photutils.utils``
 
