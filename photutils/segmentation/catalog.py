@@ -25,6 +25,7 @@ from photutils.segmentation.core import SegmentationImage
 from photutils.utils._convolution import _filter_data
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _moments, _moments_central
+from photutils.utils._optional_deps import HAS_TQDM
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
 
@@ -219,6 +220,15 @@ class SourceCatalog:
         custom `kron_photometry`), and `fluxfrac_radius` (which is based
         on the Kron flux).
 
+    progress_bar : bool, optional
+        Whether to display a progress bar when calculating
+        some properties (e.g., ``kron_radius``, ``kron_flux``,
+        ``fluxfrac_radius``, ``circular_photometry``, ``centroid_win``,
+        ``centroid_quad``). The progress bar requires that the `tqdm
+        <https://tqdm.github.io/>`_ optional dependency be installed.
+        Note that the progress bar does not currently work in the
+        Jupyter console due to limitations in ``tqdm``.
+
     Notes
     -----
     ``data`` should be background-subtracted for accurate source
@@ -273,7 +283,8 @@ class SourceCatalog:
     def __init__(self, data, segment_img, *, convolved_data=None, error=None,
                  mask=None, kernel=None, background=None, wcs=None,
                  localbkg_width=0, apermask_method='correct',
-                 kron_params=(2.5, 1.4, 0.0), detection_cat=None):
+                 kron_params=(2.5, 1.4, 0.0), detection_cat=None,
+                 progress_bar=False):
 
         arrays, unit = process_quantities(
             (data, convolved_data, error, background),
@@ -292,6 +303,7 @@ class SourceCatalog:
         self.localbkg_width = self._validate_localbkg_width(localbkg_width)
         self.apermask_method = self._validate_apermask_method(apermask_method)
         self.kron_params = self._validate_kron_params(kron_params)
+        self.progress_bar = progress_bar
 
         # needed for ordering and isscalar
         # NOTE: calculate slices before labels for performance.
@@ -403,6 +415,12 @@ class SourceCatalog:
             'cen_win': {'method': 'subpixel', 'subpixels': 11}
         }
 
+    def _progress_bar(self, iterable, desc=''):
+        if self.progress_bar and HAS_TQDM:
+            from tqdm.auto import tqdm  # pragma: no cover
+            iterable = tqdm(iterable, desc=desc)
+        return iterable
+
     @property
     def _properties(self):
         """
@@ -453,7 +471,7 @@ class SourceCatalog:
                      '_background', 'wcs', '_data_unit', '_convolved_data',
                      'localbkg_width', 'apermask_method', 'kron_params',
                      'default_columns', '_extra_properties', 'meta',
-                     '_apermask_kwargs')
+                     '_apermask_kwargs', 'progress_bar')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -1335,7 +1353,8 @@ class SourceCatalog:
 
         xcen_win = []
         ycen_win = []
-        for label, xcen, ycen, rad_hl in zip(self.labels, self._xcentroid,
+        labels = self._progress_bar(self.labels, 'centroid_win')
+        for label, xcen, ycen, rad_hl in zip(labels, self._xcentroid,
                                              self._ycentroid, radius_hl):
 
             if np.any(~np.isfinite((xcen, ycen))):
@@ -1504,8 +1523,9 @@ class SourceCatalog:
             #   - maximum value is at the edge of the data
             warnings.simplefilter('ignore', AstropyUserWarning)
 
-            for data, mask in zip(self._data_cutouts,
-                                  self._cutout_total_masks):
+            cutouts = self._progress_bar(self._data_cutouts,
+                                         'centroid_quad')
+            for data, mask in zip(cutouts, self._cutout_total_masks):
                 try:
                     centroid = centroid_quadratic(data, mask=mask,
                                                   fit_boxsize=3)
@@ -2846,7 +2866,9 @@ class SourceCatalog:
 
         apertures = self._make_circular_apertures(radius)
         kwargs = self._apermask_kwargs['circ']
-        flux, fluxerr = self._aperture_photometry(apertures, **kwargs)
+        flux, fluxerr = self._aperture_photometry(apertures,
+                                                  desc='circular_photometry',
+                                                  **kwargs)
 
         if self._data_unit is not None:
             flux <<= self._data_unit
@@ -2932,7 +2954,6 @@ class SourceCatalog:
         The returned value is the measured Kron radius without applying
         any minimum Kron or circular radius.
         """
-        labels = self.labels
         apertures = self._make_elliptical_apertures(scale=6.0)
         cxx = self.cxx.value
         cxy = self.cxy.value
@@ -2943,6 +2964,7 @@ class SourceCatalog:
             cyy = (cyy,)
 
         kron_radius = []
+        labels = self._progress_bar(self.labels, 'kron_radius')
         for (label, aperture, cxx_, cxy_, cyy_) in zip(labels, apertures,
                                                        cxx, cxy, cyy):
             if aperture is None:
@@ -3217,7 +3239,7 @@ class SourceCatalog:
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return patches
 
-    def _aperture_photometry(self, apertures, **kwargs):
+    def _aperture_photometry(self, apertures, desc='', **kwargs):
         """
         Perform aperture photometry on cutouts of the data and optional
         error arrays.
@@ -3230,6 +3252,9 @@ class SourceCatalog:
         apertures : list of `PixelAperture`
             A list of the apertures.
 
+        desc : str, optional
+            The description displayed before the progress bar.
+
         **kwargs : dict
             Additional keyword arguments passed to the aperture
             ``to_mask`` method.
@@ -3241,7 +3266,8 @@ class SourceCatalog:
         """
         flux = []
         fluxerr = []
-        for label, aperture, bkg in zip(self.labels, apertures,
+        labels = self._progress_bar(self.labels, desc=desc)
+        for label, aperture, bkg in zip(labels, apertures,
                                         self._local_background):
             # return NaN for completely masked sources or sources where
             # the centroid is not finite
@@ -3312,7 +3338,9 @@ class SourceCatalog:
             kron_aperture = self._make_kron_apertures(kron_params)
 
         kwargs = self._apermask_kwargs['kron']
-        flux, fluxerr = self._aperture_photometry(kron_aperture, **kwargs)
+        flux, fluxerr = self._aperture_photometry(kron_aperture,
+                                                  desc='kron_photometry',
+                                                  **kwargs)
 
         return flux, fluxerr
 
@@ -3465,8 +3493,9 @@ class SourceCatalog:
         kwargs = self._apermask_kwargs['fluxfrac']
 
         args = []
+        labels = self._progress_bar(self.labels, 'fluxfrac_radius prep')
         for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
-                self.labels, self._xcentroid, self._ycentroid,
+                labels, self._xcentroid, self._ycentroid,
                 kron_flux, self._local_background, max_radius):
 
             if (np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_)))
@@ -3523,7 +3552,9 @@ class SourceCatalog:
         from scipy.optimize import root_scalar
 
         radius = []
-        for fluxfrac_args in self._fluxfrac_optimizer_args:
+        args = self._progress_bar(self._fluxfrac_optimizer_args,
+                                  'fluxfrac_radius')
+        for fluxfrac_args in args:
             if fluxfrac_args is None:
                 radius.append(np.nan)
                 continue
