@@ -64,14 +64,21 @@ The :class:`~photutils.aperture.ApertureStats` class now accepts
 `~astropy.nddata.NDData` objects as input.
 
 
-Progress Bars in PSF Fitting
-============================
+Progress Bars in SourceCatalog and PSF fitting
+==============================================
+
+An ``progress_bar`` keyword option was added to
+`~photutils.segmentation.SourceCatalog` to enable progress bars when
+calculating some properties (e.g., ``kron_radius``, ``kron_flux``,
+``fluxfrac_radius``, ``circular_photometry``, ``centroid_win``,
+``centroid_quad``).
 
 An option to enable progress bars during PSF fitting was added. To
 enable it, set ``progress_bar=True`` when calling the PSF-fitting object
-on your data. The progress bar tracks progress over the star groups. It
-requires installation of the `tqdm <https://tqdm.github.io/>`_ optional
-dependency.
+on your data. The progress bar tracks progress over the star groups.
+
+The progress bars require installation of the `tqdm
+<https://tqdm.github.io/>`_ optional dependency.
 
 
 Other changes

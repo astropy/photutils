@@ -49,6 +49,9 @@ New Features
 
   - Added quadratic centroids to ``SourceCatalog``. [#1467, #1469]
 
+  - Added a ``progress_bar`` option to ``SourceCatalog`` for displaying
+    progress bars when calculating some source properties. [#1471]
+
 - ``photutils.utils``
 
   - Added ``xyorigin`` attribute to ``CutoutImage``. [#1419]
