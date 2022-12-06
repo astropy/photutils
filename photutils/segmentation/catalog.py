@@ -1397,18 +1397,20 @@ class SourceCatalog:
                 gweight = np.exp(-rr2 / (2.0 * sigma2))
 
                 # ignore multiplication with non-finite values
+                # and ignore divide-by-zero if moments[0, 0] = 0
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', RuntimeWarning)
                     data = data * aperture_weights * gweight
                     data[mask] = 0.0
 
-                moments = _moments_central(data, center=cutout_xycen, order=1)
-                dy = moments[1, 0] / moments[0, 0]
-                dx = moments[0, 1] / moments[0, 0]
-                dcen = np.sqrt(dx**2 + dy**2)
-                xcen += dx * 2.0
-                ycen += dy * 2.0
-                iter_ += 1
+                    moments = _moments_central(data, center=cutout_xycen,
+                                               order=1)
+                    dy = moments[1, 0] / moments[0, 0]
+                    dx = moments[0, 1] / moments[0, 0]
+                    dcen = np.sqrt(dx**2 + dy**2)
+                    xcen += dx * 2.0
+                    ycen += dy * 2.0
+                    iter_ += 1
 
             xcen_win.append(xcen)
             ycen_win.append(ycen)
