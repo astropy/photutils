@@ -57,6 +57,12 @@ class ApertureStats:
     Class to create a catalog of statistics for pixels within an
     aperture.
 
+    Note that this class returns the statistics of the input
+    ``data`` values within the aperture. It does not convert data
+    in surface brightness units to flux or counts. Conversion from
+    surface-brightness units should be performed before using this
+    function.
+
     Parameters
     ----------
     data : 2D `~numpy.ndarray`, `~astropy.units.Quantity`, `~astropy.nddata.NDData`
