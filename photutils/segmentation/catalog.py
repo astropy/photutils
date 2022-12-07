@@ -1504,12 +1504,15 @@ class SourceCatalog:
         the centroid with ``fit_boxsize=3``.
 
         Because this centroid is based on fitting data, it can fail for
-        many reasons, returning (np.nan, np.nan):
+        many reasons including:
 
             * quadratic fit failed
             * quadratic fit does not have a maximum
             * quadratic fit maximum falls outside image
             * not enough unmasked data points (6 are required)
+
+        In these cases, then the isophotal `centroid` will be used
+        instead.
 
         Also note that a fit is not performed if the maximum data value
         is at the edge of the source segment. In this case, the position
@@ -1535,7 +1538,15 @@ class SourceCatalog:
                     centroid = (np.nan, np.nan)
                 centroid_quad.append(centroid)
 
-        return np.array(centroid_quad)
+        centroid_quad = np.array(centroid_quad)
+
+        # use the segment barycenter if fit returned NaN
+        nan_mask = (np.isnan(centroid_quad[:, 0])
+                    | np.isnan(centroid_quad[:, 1]))
+        if np.any(nan_mask):
+            centroid_quad[nan_mask] = self.cutout_centroid[nan_mask]
+
+        return centroid_quad
 
     @lazyproperty
     @use_detcat
