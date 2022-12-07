@@ -236,6 +236,15 @@ class SourceCatalog:
     be passed into this class to calculate properties of the background
     for each source.
 
+    Note that this class does not convert input data in
+    surface-brightness units to flux or counts. Conversion from
+    surface-brightness units should be performed before using this
+    class.
+
+    function returns the sum of the (weighted) input
+    ``data`` values within the aperture. It does not convert data in
+    surface brightness units to flux or counts.
+
     `SourceExtractor`_'s centroid and morphological parameters are
     always calculated from a convolved, or filtered, "detection"
     image (``convolved_data``), i.e., the image used to define the

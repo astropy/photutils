@@ -26,6 +26,12 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     Perform aperture photometry on the input data by summing the flux
     within the given aperture(s).
 
+    Note that this function returns the sum of the (weighted) input
+    ``data`` values within the aperture. It does not convert data
+    in surface brightness units to flux or counts. Conversion from
+    surface-brightness units should be performed before using this
+    function.
+
     Parameters
     ----------
     data : array_like, `~astropy.units.Quantity`, `~astropy.nddata.NDData`
