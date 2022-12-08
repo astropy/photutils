@@ -27,6 +27,9 @@ New Features
 
   - Added a progress bar for fitting PSF photometry [#1426]
 
+  - Added a ``subshape`` keyword to the PSF-fitting classes to define
+    the shape over which the PSF is subtracted. [#1477]
+
 - ``photutils.segmentation``
 
   - Added the ability to slice ``SegmentationImage`` objects. [#1413]
