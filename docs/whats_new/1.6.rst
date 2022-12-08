@@ -81,6 +81,17 @@ The progress bars require installation of the `tqdm
 <https://tqdm.github.io/>`_ optional dependency.
 
 
+New subshape keyword in PSF fitting
+===================================
+
+A new ``subshape`` keyword was added to the PSF-fitting classes to
+define the shape over which the PSF is subtracted when computing the
+residual image. Previously, the PSF-subtraction region was always
+defined by the ``fitshape`` keyword. By default (and for backwards
+compatibility), ``subshape`` is set to `None`, which means the
+``fitshape`` value will be used.
+
+
 Other changes
 =============
 
