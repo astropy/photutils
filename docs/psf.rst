@@ -683,6 +683,3 @@ Reference/API
 
 .. automodapi:: photutils.psf
     :no-heading:
-
-
-.. automodapi:: photutils.psf.sandbox
