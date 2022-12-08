@@ -17,7 +17,7 @@ from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 from photutils.background import MMMBackground, StdBackgroundRMS
 from photutils.datasets import (make_gaussian_prf_sources_image,
                                 make_noise_image)
-from photutils.detection import DAOStarFinder
+from photutils.detection import DAOStarFinder, IRAFStarFinder
 from photutils.psf.groupstars import DAOGroup
 from photutils.psf.models import FittableImageModel, IntegratedGaussianPRF
 from photutils.psf.photometry import (BasicPSFPhotometry, DAOPhotPSFPhotometry,
@@ -830,3 +830,72 @@ def test_photometry_mask_nan():
                       'non-finite values'):
         tbl2 = psfphot(data, init_guesses=init)
         assert tbl == tbl2
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_photometry_subshape():
+    size = 21
+    cen = (size - 1) // 2
+    sigma = 2.0
+    sources = Table()
+    sources['flux'] = [1]
+    sources['x_0'] = [cen]
+    sources['y_0'] = [cen]
+    sources['sigma'] = [sigma]
+    psf = make_gaussian_prf_sources_image((size, size), sources)
+    psf_model = FittableImageModel(psf)
+
+    sources = Table()
+    sources['flux'] = [2000, 1000]
+    sources['x_0'] = [18, 7]
+    sources['y_0'] = [17, 25]
+    sources['sigma'] = [sigma, sigma]
+    shape = (33, 33)
+    image = make_gaussian_prf_sources_image(shape, sources)
+
+    daogroup = DAOGroup(crit_separation=8)
+    mmm_bkg = MMMBackground()
+    iraffind = IRAFStarFinder(threshold=10, fwhm=5, roundlo=-1, minsep_fwhm=1)
+    fitter = LevMarLSQFitter()
+
+    pobj1 = BasicPSFPhotometry(finder=iraffind, group_maker=daogroup,
+                               bkg_estimator=mmm_bkg, psf_model=psf_model,
+                               fitter=fitter, fitshape=(7, 7),
+                               aperture_radius=5, subshape=(3, 3))
+    pobj2 = BasicPSFPhotometry(finder=iraffind, group_maker=daogroup,
+                               bkg_estimator=mmm_bkg, psf_model=psf_model,
+                               fitter=fitter, fitshape=(7, 7),
+                               aperture_radius=5, subshape=5)
+    pobj3 = BasicPSFPhotometry(finder=iraffind, group_maker=daogroup,
+                               bkg_estimator=mmm_bkg, psf_model=psf_model,
+                               fitter=fitter, fitshape=(7, 7),
+                               aperture_radius=5, subshape=None)
+    pobj4 = BasicPSFPhotometry(finder=iraffind, group_maker=daogroup,
+                               bkg_estimator=mmm_bkg, psf_model=psf_model,
+                               fitter=fitter, fitshape=(7, 7),
+                               aperture_radius=5, subshape=7)
+
+    _ = pobj1(image)
+    _ = pobj2(image)
+    _ = pobj3(image)
+    _ = pobj4(image)
+    resid1 = pobj1.get_residual_image()
+    resid2 = pobj2.get_residual_image()
+    resid3 = pobj3.get_residual_image()
+    resid4 = pobj4.get_residual_image()
+    assert np.sum(resid1) > np.sum(resid2)
+    assert_allclose(np.sum(resid3), np.sum(resid4))
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_subshape_invalid():
+    basic_phot_obj = make_psf_photometry_objs()[0]
+
+    with pytest.raises(ValueError):
+        basic_phot_obj.subshape = (2, 2)
+    with pytest.raises(ValueError):
+        basic_phot_obj.subshape = 2
+    with pytest.raises(ValueError):
+        basic_phot_obj.subshape = (-1, 0)
+    with pytest.raises(ValueError):
+        basic_phot_obj.subshape = (3, 3, 3)
