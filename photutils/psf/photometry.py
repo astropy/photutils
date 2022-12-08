@@ -68,12 +68,11 @@ class BasicPSFPhotometry:
         ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
         used to prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
-        Rectangular shape around the center of a star which will be
-        used to collect the data to do the fitting. Can be an integer
-        to be the same along both axes. For example, 5 is the same as
-        (5, 5), which means to fit only at the following relative pixel
-        positions: [-2, -1, 0, 1, 2]. Each element of ``fitshape`` must
-        be an odd number.
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-fitting region. If ``fitshape`` is a
+        scalar then a square shape of size ``fitshape`` will be used.
+        If ``fitshape`` has two elements, they must be in ``(ny, nx)``
+        order. Each element of ``fitshape`` must be an odd number.
     finder : callable or instance of any \
             `~photutils.detection.StarFinderBase` subclasses or None
         ``finder`` should be able to identify stars, i.e., compute a
@@ -103,6 +102,13 @@ class BasicPSFPhotometry:
         List of additional columns for parameters derived by any of the
         intermediate fitting steps (e.g., ``finder``), such as roundness
         or sharpness.
+    subshape : `None`, int, or length-2 array-like
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-subtraction region. If `None`, then
+        ``fitshape`` will be used. If ``subshape`` is a scalar then a
+        square shape of size ``subshape`` will be used. If ``subshape``
+        has two elements, they must be in ``(ny, nx)`` order. Each
+        element of ``subshape`` must be an odd number.
 
     Notes
     -----
@@ -696,12 +702,11 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
         used to prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
-        Rectangular shape around the center of a star which will be
-        used to collect the data to do the fitting. Can be an integer
-        to be the same along both axes. For example, 5 is the same as
-        (5, 5), which means to fit only at the following relative pixel
-        positions: [-2, -1, 0, 1, 2]. Each element of ``fitshape`` must
-        be an odd number.
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-fitting region. If ``fitshape`` is a
+        scalar then a square shape of size ``fitshape`` will be used.
+        If ``fitshape`` has two elements, they must be in ``(ny, nx)``
+        order. Each element of ``fitshape`` must be an odd number.
     finder : callable or instance of any \
             `~photutils.detection.StarFinderBase` subclasses
         ``finder`` should be able to identify stars, i.e., compute a
@@ -732,6 +737,13 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         List of additional columns for parameters derived by any of the
         intermediate fitting steps (e.g., ``finder``), such as roundness
         or sharpness.
+    subshape : `None`, int, or length-2 array-like
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-subtraction region. If `None`, then
+        ``fitshape`` will be used. If ``subshape`` is a scalar then a
+        square shape of size ``subshape`` will be used. If ``subshape``
+        has two elements, they must be in ``(ny, nx)`` order. Each
+        element of ``subshape`` must be an odd number.
 
     Notes
     -----
@@ -985,12 +997,11 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
         used to prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
-        Rectangular shape around the center of a star which will be
-        used to collect the data to do the fitting. Can be an integer
-        to be the same along both axes. For example, 5 is the same as
-        (5, 5), which means to fit only at the following relative pixel
-        positions: [-2, -1, 0, 1, 2]. Each element of ``fitshape`` must
-        be an odd number.
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-fitting region. If ``fitshape`` is a
+        scalar then a square shape of size ``fitshape`` will be used.
+        If ``fitshape`` has two elements, they must be in ``(ny, nx)``
+        order. Each element of ``fitshape`` must be an odd number.
     sigma : float, optional
         Number of standard deviations used to perform sigma clip with a
         `astropy.stats.SigmaClip` object.
@@ -1033,6 +1044,13 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         List of additional columns for parameters derived by any of the
         intermediate fitting steps (e.g., ``finder``), such as roundness
         or sharpness.
+    subshape : `None`, int, or length-2 array-like
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-subtraction region. If `None`, then
+        ``fitshape`` will be used. If ``subshape`` is a scalar then a
+        square shape of size ``subshape`` will be used. If ``subshape``
+        has two elements, they must be in ``(ny, nx)`` order. Each
+        element of ``subshape`` must be an odd number.
 
     Notes
     -----
