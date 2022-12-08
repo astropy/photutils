@@ -68,12 +68,11 @@ class BasicPSFPhotometry:
         ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
         used to prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
-        Rectangular shape around the center of a star which will be
-        used to collect the data to do the fitting. Can be an integer
-        to be the same along both axes. For example, 5 is the same as
-        (5, 5), which means to fit only at the following relative pixel
-        positions: [-2, -1, 0, 1, 2]. Each element of ``fitshape`` must
-        be an odd number.
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-fitting region. If ``fitshape`` is a
+        scalar then a square shape of size ``fitshape`` will be used.
+        If ``fitshape`` has two elements, they must be in ``(ny, nx)``
+        order. Each element of ``fitshape`` must be an odd number.
     finder : callable or instance of any \
             `~photutils.detection.StarFinderBase` subclasses or None
         ``finder`` should be able to identify stars, i.e., compute a
@@ -103,6 +102,13 @@ class BasicPSFPhotometry:
         List of additional columns for parameters derived by any of the
         intermediate fitting steps (e.g., ``finder``), such as roundness
         or sharpness.
+    subshape : `None`, int, or length-2 array-like
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-subtraction region. If `None`, then
+        ``fitshape`` will be used. If ``subshape`` is a scalar then a
+        square shape of size ``subshape`` will be used. If ``subshape``
+        has two elements, they must be in ``(ny, nx)`` order. Each
+        element of ``subshape`` must be an odd number.
 
     Notes
     -----
@@ -128,7 +134,7 @@ class BasicPSFPhotometry:
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape, *,
                  finder=None, fitter=LevMarLSQFitter(), aperture_radius=None,
-                 extra_output_cols=None):
+                 extra_output_cols=None, subshape=None):
         self.group_maker = group_maker
         self.bkg_estimator = bkg_estimator
         self.psf_model = psf_model
@@ -140,6 +146,7 @@ class BasicPSFPhotometry:
         self._pars_to_output = None
         self._residual_image = None
         self._extra_output_cols = extra_output_cols
+        self.subshape = subshape
 
     @property
     def fitshape(self):
@@ -166,6 +173,36 @@ class BasicPSFPhotometry:
         else:
             raise ValueError('fitshape must have two dimensions, '
                              f'received fitshape={value}')
+
+    @property
+    def subshape(self):
+        return self._subshape
+
+    @subshape.setter
+    def subshape(self, value):
+        if value is None:
+            self._subshape = self._fitshape
+            return
+
+        value = np.asarray(value)
+
+        # assume a lone value should mean both axes
+        if value.shape == ():
+            value = np.array((value, value))
+
+        if value.size == 2:
+            if np.all(value) > 0:
+                if np.all(value % 2) == 1:
+                    self._subshape = tuple(value)
+                else:
+                    raise ValueError('subshape must be odd integer-valued, '
+                                     f'received subshape={value}')
+            else:
+                raise ValueError('subshape must have positive elements, '
+                                 f'received subshape={value}')
+        else:
+            raise ValueError('subshape must have two dimensions, '
+                             f'received subshape={value}')
 
     @property
     def aperture_radius(self):
@@ -498,7 +535,7 @@ class BasicPSFPhotometry:
             # do not subtract if the fitting did not go well
             try:
                 image = subtract_psf(image, self.psf_model, param_table,
-                                     subshape=self.fitshape)
+                                     subshape=self.subshape)
             except NoOverlapError:
                 pass
 
@@ -665,12 +702,11 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
         used to prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
-        Rectangular shape around the center of a star which will be
-        used to collect the data to do the fitting. Can be an integer
-        to be the same along both axes. For example, 5 is the same as
-        (5, 5), which means to fit only at the following relative pixel
-        positions: [-2, -1, 0, 1, 2]. Each element of ``fitshape`` must
-        be an odd number.
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-fitting region. If ``fitshape`` is a
+        scalar then a square shape of size ``fitshape`` will be used.
+        If ``fitshape`` has two elements, they must be in ``(ny, nx)``
+        order. Each element of ``fitshape`` must be an odd number.
     finder : callable or instance of any \
             `~photutils.detection.StarFinderBase` subclasses
         ``finder`` should be able to identify stars, i.e., compute a
@@ -701,6 +737,13 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         List of additional columns for parameters derived by any of the
         intermediate fitting steps (e.g., ``finder``), such as roundness
         or sharpness.
+    subshape : `None`, int, or length-2 array-like
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-subtraction region. If `None`, then
+        ``fitshape`` will be used. If ``subshape`` is a scalar then a
+        square shape of size ``subshape`` will be used. If ``subshape``
+        has two elements, they must be in ``(ny, nx)`` order. Each
+        element of ``subshape`` must be an odd number.
 
     Notes
     -----
@@ -720,12 +763,13 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
                  finder, *, fitter=LevMarLSQFitter(), niters=3,
-                 aperture_radius=None, extra_output_cols=None):
+                 aperture_radius=None, extra_output_cols=None, subshape=None):
 
         super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
                          finder=finder, fitter=fitter,
                          aperture_radius=aperture_radius,
-                         extra_output_cols=extra_output_cols)
+                         extra_output_cols=extra_output_cols,
+                         subshape=subshape)
         self.niters = niters
 
     @property
@@ -953,12 +997,11 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
         used to prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
-        Rectangular shape around the center of a star which will be
-        used to collect the data to do the fitting. Can be an integer
-        to be the same along both axes. For example, 5 is the same as
-        (5, 5), which means to fit only at the following relative pixel
-        positions: [-2, -1, 0, 1, 2]. Each element of ``fitshape`` must
-        be an odd number.
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-fitting region. If ``fitshape`` is a
+        scalar then a square shape of size ``fitshape`` will be used.
+        If ``fitshape`` has two elements, they must be in ``(ny, nx)``
+        order. Each element of ``fitshape`` must be an odd number.
     sigma : float, optional
         Number of standard deviations used to perform sigma clip with a
         `astropy.stats.SigmaClip` object.
@@ -1001,6 +1044,13 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         List of additional columns for parameters derived by any of the
         intermediate fitting steps (e.g., ``finder``), such as roundness
         or sharpness.
+    subshape : `None`, int, or length-2 array-like
+        Rectangular shape around the center of a star that will be
+        used to define the PSF-subtraction region. If `None`, then
+        ``fitshape`` will be used. If ``subshape`` is a scalar then a
+        square shape of size ``subshape`` will be used. If ``subshape``
+        has two elements, they must be in ``(ny, nx)`` order. Each
+        element of ``subshape`` must be an odd number.
 
     Notes
     -----
@@ -1022,7 +1072,8 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
                  *, sigma=3.0, ratio=1.0, theta=0.0, sigma_radius=1.5,
                  sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
                  fitter=LevMarLSQFitter(),
-                 niters=3, aperture_radius=None, extra_output_cols=None):
+                 niters=3, aperture_radius=None, extra_output_cols=None,
+                 subshape=None):
 
         self.crit_separation = crit_separation
         self.threshold = threshold
@@ -1048,4 +1099,5 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
                          psf_model=psf_model, fitshape=fitshape,
                          finder=finder, fitter=fitter, niters=niters,
                          aperture_radius=aperture_radius,
-                         extra_output_cols=extra_output_cols)
+                         extra_output_cols=extra_output_cols,
+                         subshape=subshape)
