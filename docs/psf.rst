@@ -551,6 +551,7 @@ the fainter star as well. Also, note that both of the stars have
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.table import Table
+    from astropy.visualization import simple_norm
     from matplotlib.colors import LogNorm
     from photutils.datasets import (make_gaussian_sources_image,
                                     make_noise_image)
@@ -568,10 +569,8 @@ the fainter star as well. Also, note that both of the stars have
                                 seed=123)
              + make_noise_image(tshape, distribution='gaussian', mean=0.0,
                                 stddev=2.0, seed=123))
-
-    vmin, vmax = np.percentile(image, [5, 95])
-    plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
-               origin='lower', norm=LogNorm(vmin=vmin, vmax=vmax))
+    norm = simple_norm(image, 'sqrt', percent=98.)
+    plt.imshow(image, interpolation='nearest', origin='lower', norm=norm)
 
 Let's instantiate the necessary objects in order to use an
 `~photutils.psf.IterativelySubtractedPSFPhotometry` to perform
@@ -611,53 +610,6 @@ Now, let's use the callable ``itr_phot_obj`` to perform photometry:
 
 We can see that ``sigma_0`` (the initial guess for ``sigma``) was
 assigned to the value we used when creating the PSF model.
-
-Let's take a look at the residual image::
-
-    >>> plt.imshow(itr_phot_obj.get_residual_image(), cmap='viridis',
-    ... aspect=1, interpolation='nearest', origin='lower')  #doctest: +SKIP
-
-.. plot::
-
-    import matplotlib.pyplot as plt
-    from astropy.modeling.fitting import LevMarLSQFitter
-    from astropy.table import Table
-    from photutils.background import MMMBackground
-    from photutils.datasets import (make_gaussian_sources_image,
-                                    make_noise_image)
-    from photutils.detection import IRAFStarFinder
-    from photutils.psf import (DAOGroup, IntegratedGaussianPRF,
-                               IterativelySubtractedPSFPhotometry)
-
-    sources = Table()
-    sources['flux'] = [10000, 1000]
-    sources['x_mean'] = [18, 9]
-    sources['y_mean'] = [17, 21]
-    sources['x_stddev'] = [2] * 2
-    sources['y_stddev'] = sources['x_stddev']
-    sources['theta'] = [0] * 2
-    tshape = (32, 32)
-    image = (make_gaussian_sources_image(tshape, sources)
-             + make_noise_image(tshape, distribution='poisson', mean=6.0,
-                                seed=123)
-             + make_noise_image(tshape, distribution='gaussian', mean=0.0,
-                                stddev=2.0, seed=123))
-
-    daogroup = DAOGroup(crit_separation=8)
-    mmm_bkg = MMMBackground()
-    psf_model = IntegratedGaussianPRF(sigma=2.05)
-    iraffind = IRAFStarFinder(threshold=2.5 * mmm_bkg(image),
-                              fwhm=4.5)
-    fitter = LevMarLSQFitter()
-    psf_model.sigma.fixed = False
-
-    itr_phot_obj = IterativelySubtractedPSFPhotometry(
-        finder=iraffind, group_maker=daogroup, bkg_estimator=mmm_bkg,
-        psf_model=psf_model, fitter=fitter, fitshape=(11, 11), niters=2)
-
-    phot_results_itr = itr_phot_obj(image)
-    plt.imshow(itr_phot_obj.get_residual_image(), cmap='viridis', aspect=1,
-               interpolation='nearest', origin='lower')
 
 
 References
