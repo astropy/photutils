@@ -57,8 +57,8 @@ __depr__[psf] = ('EPSFFitter', 'EPSFBuilder', 'EPSFStar', 'EPSFStars',
 
 __depr__[segmentation] = ('SourceCatalog', 'SegmentationImage', 'Segment',
                           'deblend_sources', 'detect_threshold',
-                          'detect_sources', 'make_source_mask',
-                          'SourceFinder', 'make_2dgaussian_kernel')
+                          'detect_sources', 'SourceFinder',
+                          'make_2dgaussian_kernel')
 
 __depr_mesg__ = ('`photutils.{attr}` is a deprecated alias for '
                  '`{module}.{attr}` and will be removed in the future. '

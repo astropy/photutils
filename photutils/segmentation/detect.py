@@ -8,7 +8,7 @@ import warnings
 import numpy as np
 from astropy.convolution import convolve
 from astropy.stats import SigmaClip
-from astropy.utils.decorators import deprecated, deprecated_renamed_argument
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.segmentation.core import SegmentationImage
@@ -17,7 +17,7 @@ from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._stats import nanmean, nanstd
 from photutils.utils.exceptions import NoDetectionsWarning
 
-__all__ = ['detect_threshold', 'detect_sources', 'make_source_mask']
+__all__ = ['detect_threshold', 'detect_sources']
 
 
 def detect_threshold(data, nsigma, background=None, error=None, mask=None,
@@ -399,79 +399,3 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         warnings.simplefilter('ignore', category=RuntimeWarning)
         return _detect_sources(data, (threshold,), npixels, footprint,
                                inverse_mask, deblend_mode=False)[0]
-
-
-@deprecated('1.5.0', alternative='SegmentationImage.make_source_mask')
-def make_source_mask(data, nsigma, npixels, mask=None, kernel=None,
-                     sigclip_sigma=3.0, sigclip_iters=5, dilate_size=11):
-    """
-    Make a source mask using source segmentation and binary dilation.
-
-    Parameters
-    ----------
-    data : 2D `~numpy.ndarray`
-        The 2D array of the image.
-
-        .. note::
-           It is recommended that the user convolve the data with
-           ``kernel`` and input the convolved data directly into the
-           ``data`` parameter. In this case do not input a ``kernel``,
-           otherwise the data will be convolved twice.
-
-    nsigma : float
-        The number of standard deviations per pixel above the
-        ``background`` for which to consider a pixel as possibly being
-        part of a source.
-
-    npixels : int
-        The minimum number of connected pixels, each greater than
-        ``threshold``, that an object must have to be detected.
-        ``npixels`` must be a positive integer.
-
-    mask : 2D bool `~numpy.ndarray`, optional
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-        Masked pixels are ignored when computing the image background
-        statistics.
-
-    kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
-        The 2D array of the kernel used to filter the image before
-        thresholding. Filtering the image will smooth the noise and
-        maximize detectability of objects with a shape similar to the
-        kernel. ``kernel`` must be `None` if the input ``data`` are
-        already convolved.
-
-    sigclip_sigma : float, optional
-        The number of standard deviations to use as the clipping limit
-        when calculating the image background statistics.
-
-    sigclip_iters : int, optional
-        The maximum number of iterations to perform sigma clipping, or
-        `None` to clip until convergence is achieved (i.e., continue
-        until the last iteration clips nothing) when calculating the
-        image background statistics.
-
-    dilate_size : int, optional
-        The size of the square array used to dilate the segmentation
-        image.
-
-    Returns
-    -------
-    mask : 2D bool `~numpy.ndarray`
-        A 2D boolean image containing the source mask.
-    """
-    from scipy import ndimage
-
-    sigma_clip = SigmaClip(sigma=sigclip_sigma, maxiters=sigclip_iters)
-    threshold = detect_threshold(data, nsigma, background=None, error=None,
-                                 mask=mask, sigma_clip=sigma_clip)
-
-    if kernel is not None:
-        kernel.normalize()
-
-    segm = detect_sources(data, threshold, npixels, kernel=kernel)
-    if segm is None:
-        return np.zeros(data.shape, dtype=bool)
-
-    footprint = np.ones((dilate_size, dilate_size))
-    return ndimage.binary_dilation(segm.data.astype(bool), footprint)

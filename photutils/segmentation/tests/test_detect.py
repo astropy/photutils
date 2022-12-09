@@ -10,9 +10,7 @@ from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.datasets import make_4gaussians_image
-from photutils.segmentation.detect import (detect_sources, detect_threshold,
-                                           make_source_mask)
+from photutils.segmentation.detect import detect_sources, detect_threshold
 from photutils.segmentation.utils import make_2dgaussian_kernel
 from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -267,21 +265,3 @@ class TestDetectSources:
     def test_mask_shape(self):
         with pytest.raises(ValueError):
             detect_sources(self.data, 1.0, 1.0, mask=np.ones((5, 5)))
-
-
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-class TestMakeSourceMask:
-    def setup_class(self):
-        self.data = make_4gaussians_image()
-
-    def test_dilate_size(self):
-        with pytest.warns(AstropyDeprecationWarning):
-            mask1 = make_source_mask(self.data, 5, 10)
-        with pytest.warns(AstropyDeprecationWarning):
-            mask2 = make_source_mask(self.data, 5, 10, dilate_size=20)
-        assert np.count_nonzero(mask2) > np.count_nonzero(mask1)
-
-    def test_no_detections(self):
-        with pytest.warns(AstropyDeprecationWarning):
-            mask = make_source_mask(self.data, 100, 100)
-            assert np.count_nonzero(mask) == 0
