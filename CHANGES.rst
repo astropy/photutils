@@ -13,6 +13,20 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.datasets``
+
+  - Removed the deprecated ``load_fermi_image`` function. [#1479]
+
+- ``photutils.psf``
+
+  - Removed the deprecated ``sandbox`` classes ``DiscretePRF`` and
+    ``Reproject``. [#1479]
+
+- ``photutils.segmentation``
+
+  - Removed the deprecated ``make_source_mask`` function in favor of the
+    ``SegmentationImage.make_source_mask`` method. [#1479]
+
 
 1.6.0 (2022-12-09)
 ------------------
