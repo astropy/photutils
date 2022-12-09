@@ -9,13 +9,9 @@ from urllib.error import HTTPError, URLError
 from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.data import download_file, get_pkg_data_filename
-from astropy.utils.decorators import deprecated
 
 __all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
-           'load_irac_psf', 'load_fermi_image', 'load_star_image',
-           'load_simulated_hst_star_image']
-
-__doctest_skip__ = ['load_fermi_image']  # deprecated
+           'load_irac_psf', 'load_star_image', 'load_simulated_hst_star_image']
 
 
 def get_path(filename, location='local', cache=True, show_progress=False):
@@ -220,38 +216,6 @@ def load_irac_psf(channel, show_progress=False):  # pragma: no cover
     with fits.open(path) as hdulist:
         data = hdulist[0].data
         header = hdulist[0].header
-
-    return fits.ImageHDU(data, header)
-
-
-@deprecated('1.6.0')
-def load_fermi_image(show_progress=False):
-    """
-    Load a Fermi counts image for the Galactic center region.
-
-    Parameters
-    ----------
-    show_progress : bool, optional
-        Whether to display a progress bar during the download (default
-        is `False`).
-
-    Returns
-    -------
-    hdu : `~astropy.io.fits.ImageHDU`
-        A FITS image HDU.
-
-    Examples
-    --------
-    >>> import matplotlib.pyplot as plt
-    >>> from photutils.datasets import load_fermi_image
-    >>> hdu = load_fermi_image()
-    >>> plt.imshow(hdu.data, vmax=10, origin='lower', interpolation='nearest')
-    """
-    path = get_path('fermi_counts.fits.gz', location='local',
-                    show_progress=show_progress)
-    with fits.open(path) as hdulist:
-        data = hdulist[1].data
-        header = hdulist[1].header
 
     return fits.ImageHDU(data, header)
 
