@@ -8,7 +8,7 @@ jobs:
       - checkout
       - run:
           name: Install dependencies for Python 3.8
-          command: /opt/python/cp38-cp38/bin/pip install "tox<4"
+          command: /opt/python/cp38-cp38/bin/pip install tox
       - run:
           name: Run tests for Python 3.8
           command: /opt/python/cp38-cp38/bin/python -m tox -e circleci_32bit
