@@ -4,6 +4,7 @@ on:
   schedule:
     # run at 6am UTC on Tue-Fri (complete tests are run every Monday)
     - cron: '0 6 * * 2-5'
+  workflow_dispatch:
 
 env:
   TOXARGS: '-v'
