@@ -10,3 +10,4 @@ build-backend = 'setuptools.build_meta'
 [tool.isort]
     skip_glob = ['photutils/*__init__.py*']
     known_first_party = ['photutils']
+    use_parentheses = true
