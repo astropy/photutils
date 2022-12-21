@@ -312,7 +312,7 @@ Here is a simple example using a circular aperture at one position.
 Note that like :func:`~photutils.aperture.aperture_photometry`,
 :class:`~photutils.aperture.ApertureStats` expects the input data to
 be background subtracted. For simplicity, here we roughly estimate the
-background as the sigma-clipped medan value::
+background as the sigma-clipped median value::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.aperture import ApertureStats, CircularAperture
