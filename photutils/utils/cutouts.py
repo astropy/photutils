@@ -77,6 +77,7 @@ class CutoutImage:
      [nan  0.  1.]
      [nan  4.  5.]]
     """
+
     def __init__(self, data, position, shape, mode='trim', fill_value=np.nan,
                  copy=False):
         self.position = position
