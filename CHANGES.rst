@@ -7,6 +7,12 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Significantly improved the performance of ``aperture_photometry``
+    and the ``PixelAperture`` ``do_photometry`` method for large arrays.
+    [#1485]
+
 Bug Fixes
 ^^^^^^^^^
 
