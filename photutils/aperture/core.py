@@ -5,6 +5,7 @@ This module defines the base aperture classes.
 
 import abc
 import inspect
+import warnings
 from copy import deepcopy
 
 import astropy.units as u
@@ -516,20 +517,22 @@ class PixelAperture(Aperture):
                     raise ValueError('mask and data must have the same shape')
                 pixel_mask &= ~mask[slc_large]
 
-            values = (data_cutout * apermask_cutout)[pixel_mask]
-            # if the aperture does not overlap the data return np.nan
-            aper_sum = values.sum() if values.shape != (0,) else np.nan
-            aperture_sums.append(aper_sum)
+            # ignore multiplication with non-finite data values
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                values = (data_cutout * apermask_cutout)[pixel_mask]
+            aperture_sums.append(values.sum())
 
             if error is not None:
                 if error.shape != data.shape:
                     raise ValueError('error and data must have the same shape')
                 var_cutout = error[slc_large]**2
 
-                values = (var_cutout * apermask_cutout)[pixel_mask]
-                # if the aperture does not overlap the data return np.nan
-                aper_var = values.sum() if values.shape != (0,) else np.nan
-                aperture_sums.append(np.sqrt(aper_var))
+                # ignore multiplication with non-finite data values
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', RuntimeWarning)
+                    values = (var_cutout * apermask_cutout)[pixel_mask]
+                aperture_sum_errs.append(np.sqrt(values.sum()))
 
         aperture_sums = np.array(aperture_sums)
         if error is None:
