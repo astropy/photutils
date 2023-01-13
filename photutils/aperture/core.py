@@ -14,8 +14,6 @@ from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 
-from photutils.aperture._photometry_utils import (_handle_units,
-                                                  _validate_inputs)
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
@@ -486,12 +484,30 @@ class PixelAperture(Aperture):
         it is recommend to set ``method='subpixel'`` with a larger
         ``subpixels`` size.
         """
-        # validate inputs
-        data, error = _validate_inputs(data, error)
+        data = np.asanyarray(data)
+        if data.ndim != 2:
+            raise ValueError('data must be a 2D array.')
 
-        # handle data, error, and unit inputs
-        # output data and error are ndarray without units
-        data, error, unit = _handle_units(data, error)
+        if error is not None:
+            error = np.asanyarray(error)
+            if error.shape != data.shape:
+                raise ValueError('error and data must have the same shape.')
+
+        # check Quantity inputs
+        unit = {getattr(arr, 'unit', None) for arr in (data, error)
+                if arr is not None}
+        if len(unit) > 1:
+            raise ValueError('If data or error has units, then they both must '
+                             'have the same units.')
+
+        # strip data and error units for performance
+        unit = unit.pop()
+        if unit is not None:
+            unit = data.unit
+            data = data.value
+
+            if error is not None:
+                error = error.value
 
         apermasks = self.to_mask(method=method, subpixels=subpixels)
         if self.isscalar:
