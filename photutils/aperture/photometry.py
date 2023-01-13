@@ -11,9 +11,6 @@ from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.aperture._photometry_utils import (_handle_units,
-                                                  _prepare_photometry_data,
-                                                  _validate_inputs)
 from photutils.aperture.core import Aperture, SkyAperture
 from photutils.utils._misc import _get_version_info
 
@@ -172,16 +169,6 @@ def aperture_photometry(data, apertures, error=None, mask=None,
                                    method=method, subpixels=subpixels,
                                    wcs=wcs)
 
-    # validate inputs
-    data, error = _validate_inputs(data, error)
-
-    # handle data, error, and unit inputs
-    # output data and error are ndarray without units
-    data, error, unit = _handle_units(data, error)
-
-    # compute variance and apply input mask
-    data, variance = _prepare_photometry_data(data, error, mask)
-
     single_aperture = False
     if isinstance(apertures, Aperture):
         single_aperture = True
@@ -234,10 +221,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     sum_key_main = 'aperture_sum'
     sum_err_key_main = 'aperture_sum_err'
     for i, aper in enumerate(apertures):
-        aper_sum, aper_sum_err = aper._do_photometry(data, variance,
-                                                     method=method,
-                                                     subpixels=subpixels,
-                                                     unit=unit)
+        aper_sum, aper_sum_err = aper.do_photometry(data, error=error,
+                                                    mask=mask, method=method,
+                                                    subpixels=subpixels)
 
         sum_key = sum_key_main
         sum_err_key = sum_err_key_main
