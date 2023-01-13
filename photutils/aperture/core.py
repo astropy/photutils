@@ -14,7 +14,6 @@ from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.aperture._photometry_utils import (_handle_units,
-                                                  _prepare_photometry_data,
                                                   _validate_inputs)
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.utils._wcs_helpers import _pixel_scale_angle_at_skycoord
@@ -410,38 +409,6 @@ class PixelAperture(Aperture):
         else:
             return areas
 
-    def _do_photometry(self, data, variance, method='exact', subpixels=5,
-                       unit=None):
-
-        aperture_sums = []
-        aperture_sum_errs = []
-
-        masks = self.to_mask(method=method, subpixels=subpixels)
-        if self.isscalar:
-            masks = (masks,)
-
-        for apermask in masks:
-            values = apermask.get_values(data)
-            # if the aperture does not overlap the data return np.nan
-            aper_sum = values.sum() if values.shape != (0,) else np.nan
-            aperture_sums.append(aper_sum)
-
-            if variance is not None:
-                values = apermask.get_values(variance)
-                # if the aperture does not overlap the data return np.nan
-                aper_var = values.sum() if values.shape != (0,) else np.nan
-                aperture_sum_errs.append(np.sqrt(aper_var))
-
-        aperture_sums = np.array(aperture_sums)
-        aperture_sum_errs = np.array(aperture_sum_errs)
-
-        # apply units
-        if unit is not None:
-            aperture_sums = aperture_sums * unit  # can't use *= w/old numpy
-            aperture_sum_errs = aperture_sum_errs * unit
-
-        return aperture_sums, aperture_sum_errs
-
     def do_photometry(self, data, error=None, mask=None, method='exact',
                       subpixels=5):
         """
@@ -525,11 +492,56 @@ class PixelAperture(Aperture):
         # output data and error are ndarray without units
         data, error, unit = _handle_units(data, error)
 
-        # compute variance and apply input mask
-        data, variance = _prepare_photometry_data(data, error, mask)
+        apermasks = self.to_mask(method=method, subpixels=subpixels)
+        if self.isscalar:
+            apermasks = (apermasks,)
 
-        return self._do_photometry(data, variance, method=method,
-                                   subpixels=subpixels, unit=unit)
+        aperture_sums = []
+        aperture_sum_errs = []
+        for apermask in apermasks:
+            slc_large, slc_small = apermask.get_overlap_slices(data.shape)
+
+            # no overlap of the aperture with the data
+            if slc_large is None:
+                aperture_sums.append(np.nan)
+                aperture_sum_errs.append(np.nan)
+                continue
+
+            data_cutout = data[slc_large]
+            apermask_cutout = apermask.data[slc_small]
+            pixel_mask = (apermask_cutout > 0)  # good pixels
+
+            if mask is not None:
+                if mask.shape != data.shape:
+                    raise ValueError('mask and data must have the same shape')
+                pixel_mask &= ~mask[slc_large]
+
+            values = (data_cutout * apermask_cutout)[pixel_mask]
+            # if the aperture does not overlap the data return np.nan
+            aper_sum = values.sum() if values.shape != (0,) else np.nan
+            aperture_sums.append(aper_sum)
+
+            if error is not None:
+                if error.shape != data.shape:
+                    raise ValueError('error and data must have the same shape')
+                var_cutout = error[slc_large]**2
+
+                values = (var_cutout * apermask_cutout)[pixel_mask]
+                # if the aperture does not overlap the data return np.nan
+                aper_var = values.sum() if values.shape != (0,) else np.nan
+                aperture_sums.append(np.sqrt(aper_var))
+
+        aperture_sums = np.array(aperture_sums)
+        if error is None:
+            aperture_sum_errs = []
+        aperture_sum_errs = np.array(aperture_sum_errs)
+
+        # apply units
+        if unit is not None:
+            aperture_sums = aperture_sums * unit  # can't use *= w/old numpy
+            aperture_sum_errs = aperture_sum_errs * unit
+
+        return aperture_sums, aperture_sum_errs
 
     @staticmethod
     def _make_annulus_path(patch_inner, patch_outer):
