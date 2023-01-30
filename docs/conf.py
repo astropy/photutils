@@ -14,8 +14,10 @@
 
 import os
 import sys
-from configparser import ConfigParser
 from datetime import datetime
+from pathlib import Path
+
+import tomli
 
 try:
     from sphinx_astropy.conf.v1 import *  # noqa: F403
@@ -25,10 +27,9 @@ except ImportError:
     sys.exit(1)
 
 # Get configuration information from setup.cfg
-conf = ConfigParser()
-conf.read([os.path.join(os.path.dirname(__file__), '..', 'setup.cfg')])
-setup_cfg = dict(conf.items('metadata'))
-
+with open(Path(__file__).parent.parent / 'pyproject.toml', 'rb') as configuration_file:
+    configuration = tomli.load(configuration_file)
+metadata = configuration['metadata']
 
 # -- General configuration ----------------------------------------------------
 # By default, highlight as Python 3.
@@ -61,10 +62,9 @@ rst_epilog = """
 # Turn off table of contents entries for functions and classes
 toc_object_entries = False
 
-
 # -- Project information ------------------------------------------------------
-project = setup_cfg['name']
-author = setup_cfg['author']
+project = metadata['name']
+author = metadata['authors'][0]['name']
 copyright = f'2011-{datetime.utcnow().year}, {author}'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -77,7 +77,6 @@ package = sys.modules[project]
 version = package.__version__.split('-', 1)[0]
 # The full version, including alpha/beta/rc tags.
 release = package.__version__
-
 
 # -- Options for HTML output --------------------------------------------------
 # The global astropy configuration uses a custom theme,
@@ -131,7 +130,6 @@ htmlhelp_basename = project + 'doc'
 html_static_path = ['_static']
 html_style = 'photutils.css'
 
-
 # -- Options for LaTeX output -------------------------------------------------
 # Grouping the document tree into LaTeX files. List of tuples (source
 # start file, target name, title, author, documentclass [howto/manual]).
@@ -139,18 +137,15 @@ latex_documents = [('index', project + '.tex', project + ' Documentation',
                     author, 'manual')]
 latex_logo = '_static/photutils_banner.pdf'
 
-
 # -- Options for manual page output -------------------------------------------
 # One entry per manual page. List of tuples (source start file, name,
 # description, authors, manual section).
 man_pages = [('index', project.lower(), project + ' Documentation',
               [author], 1)]
 
-
 # -- Resolving issue number to links in changelog -----------------------------
-github_project = setup_cfg['github_project']
+github_project = configuration['tool']['build-sphinx']['github_project']
 github_issues_url = f'https://github.com/{github_project}/issues/'
-
 
 # -- Turn on nitpicky mode for sphinx (to warn about references not found) ----
 nitpicky = True
@@ -177,7 +172,6 @@ if os.path.isfile(nitpick_filename):
         dtype, target = line.split(None, 1)
         target = target.strip()
         nitpick_ignore.append((dtype, target))
-
 
 # -- Options for linkcheck output ---------------------------------------------
 linkcheck_retry = 5

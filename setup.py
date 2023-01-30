@@ -61,8 +61,7 @@ if 'build_docs' in sys.argv or 'build_sphinx' in sys.argv:
 
 # Import these after the above checks to ensure they are printed even if
 # extensions_helpers is not installed
-from setuptools import setup  # noqa: E402
-
 from extension_helpers import get_extensions  # noqa: E402
+from setuptools import setup  # noqa: E402
 
 setup(ext_modules=get_extensions())
