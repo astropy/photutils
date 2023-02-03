@@ -294,55 +294,6 @@ class PixelAperture(Aperture):
         """
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
-    @abc.abstractmethod
-    def to_mask(self, method='exact', subpixels=5):
-        """
-        Return a mask for the aperture.
-
-        Parameters
-        ----------
-        method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
-            generally slower.  The following methods are available:
-
-                * ``'exact'`` (default):
-                  The the exact fractional overlap of the aperture and
-                  each pixel is calculated. The aperture weights will
-                  contain values between 0 and 1.
-
-                * ``'center'``:
-                  A pixel is considered to be entirely in or out of the
-                  aperture depending on whether its center is in or out
-                  of the aperture. The aperture weights will contain
-                  values only of 0 (out) and 1 (in).
-
-                * ``'subpixel'``:
-                  A pixel is divided into subpixels (see the
-                  ``subpixels`` keyword), each of which are considered
-                  to be entirely in or out of the aperture depending
-                  on whether its center is in or out of the aperture.
-                  If ``subpixels=1``, this method is equivalent to
-                  ``'center'``. The aperture weights will contain values
-                  between 0 and 1.
-
-        subpixels : int, optional
-            For the ``'subpixel'`` method, resample pixels by this
-            factor in each dimension. That is, each pixel is divided
-            into ``subpixels**2`` subpixels. This keyword is ignored
-            unless ``method='subpixel'``.
-
-        Returns
-        -------
-        mask : `~photutils.aperture.ApertureMask` or list of `~photutils.aperture.ApertureMask`
-            A mask for the aperture.  If the aperture is scalar then a
-            single `~photutils.aperture.ApertureMask` is returned,
-            otherwise a list of `~photutils.aperture.ApertureMask` is
-            returned.
-        """
-        raise NotImplementedError('Needs to be implemented in a subclass.')
-
     def area_overlap(self, data, *, mask=None, method='exact', subpixels=5):
         """
         Return the area of overlap between the data and the aperture.
@@ -436,6 +387,55 @@ class PixelAperture(Aperture):
             return areas[0]
         else:
             return areas
+
+    @abc.abstractmethod
+    def to_mask(self, method='exact', subpixels=5):
+        """
+        Return a mask for the aperture.
+
+        Parameters
+        ----------
+        method : {'exact', 'center', 'subpixel'}, optional
+            The method used to determine the overlap of the aperture on
+            the pixel grid.  Not all options are available for all
+            aperture types.  Note that the more precise methods are
+            generally slower.  The following methods are available:
+
+                * ``'exact'`` (default):
+                  The the exact fractional overlap of the aperture and
+                  each pixel is calculated. The aperture weights will
+                  contain values between 0 and 1.
+
+                * ``'center'``:
+                  A pixel is considered to be entirely in or out of the
+                  aperture depending on whether its center is in or out
+                  of the aperture. The aperture weights will contain
+                  values only of 0 (out) and 1 (in).
+
+                * ``'subpixel'``:
+                  A pixel is divided into subpixels (see the
+                  ``subpixels`` keyword), each of which are considered
+                  to be entirely in or out of the aperture depending
+                  on whether its center is in or out of the aperture.
+                  If ``subpixels=1``, this method is equivalent to
+                  ``'center'``. The aperture weights will contain values
+                  between 0 and 1.
+
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this
+            factor in each dimension. That is, each pixel is divided
+            into ``subpixels**2`` subpixels. This keyword is ignored
+            unless ``method='subpixel'``.
+
+        Returns
+        -------
+        mask : `~photutils.aperture.ApertureMask` or list of `~photutils.aperture.ApertureMask`
+            A mask for the aperture.  If the aperture is scalar then a
+            single `~photutils.aperture.ApertureMask` is returned,
+            otherwise a list of `~photutils.aperture.ApertureMask` is
+            returned.
+        """
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     def do_photometry(self, data, error=None, mask=None, method='exact',
                       subpixels=5):
