@@ -345,7 +345,7 @@ class PixelAperture(Aperture):
         Parameters
         ----------
         data : array_like or `~astropy.units.Quantity`
-            The 2D array to multiply with the aperture mask.
+            A 2D array.
 
         mask : array_like (bool), optional
             A boolean mask with the same shape as ``data`` where a
@@ -399,10 +399,22 @@ class PixelAperture(Aperture):
             if mask.shape != data.shape:
                 raise ValueError('mask and data must have the same shape')
 
-        data = np.ones(data.shape)  # pixels
-        vals = [apermask.get_values(data, mask=mask) for apermask in apermasks]
-        # if the aperture does not overlap the data return np.nan
-        areas = [val.sum() if val.shape != (0,) else np.nan for val in vals]
+        areas = []
+        for apermask in apermasks:
+            slc_large, slc_small = apermask.get_overlap_slices(data.shape)
+
+            # if the aperture does not overlap the data return np.nan
+            if slc_large is None:
+                area = np.nan
+            else:
+                aper_weights = apermask.data[slc_small]
+                if mask is not None:
+                    aper_weights[mask[slc_large]] = 0.0
+                area = np.sum(aper_weights)
+
+            areas.append(area)
+
+        areas = np.array(areas)
         if self.isscalar:
             return areas[0]
         else:
