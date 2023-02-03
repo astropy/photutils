@@ -278,10 +278,19 @@ class PixelAperture(Aperture):
         """
         The exact analytical area of the aperture shape.
 
+        Use the `area_overlap` method to return the area of overlap
+        between the data and the aperture, taking into account the
+        aperture mask method, masked data pixels (``mask`` keyword), and
+        partial/no overlap of the aperture with the data.
+
         Returns
         -------
         area : float
             The aperture area.
+
+        See Also
+        --------
+        area_overlap
         """
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
@@ -336,11 +345,15 @@ class PixelAperture(Aperture):
 
     def area_overlap(self, data, *, mask=None, method='exact', subpixels=5):
         """
-        Return the pixel areas of the aperture masks that overlap with
-        the data.
+        Return the area of overlap between the data and the aperture.
 
-        In other words, this method returns the pixel area(s) within the
-        aperture(s) that are used to calculate the aperture sum(s).
+        This method takes into account the aperture mask method, masked
+        data pixels (``mask`` keyword), and partial/no overlap of the
+        aperture with the data. In other words, it returns the area that
+        used to compute the aperture sum (assuming identical inputs).
+
+        Use the `area` method to calculate the exact analytical area of
+        the aperture shape.
 
         Parameters
         ----------
@@ -387,8 +400,12 @@ class PixelAperture(Aperture):
         Returns
         -------
         areas : float or array_like
-            The overlapping areas (in pixels**2) between the aperture
-            masks and the data.
+            The area (in pixels**2) of overlap between the data and the
+            aperture.
+
+        See Also
+        --------
+        area
         """
         apermasks = self.to_mask(method=method, subpixels=subpixels)
         if self.isscalar:
