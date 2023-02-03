@@ -123,7 +123,7 @@ class Aperture(metaclass=abc.ABCMeta):
         """
         Inequality operator for `Aperture`.
         """
-        return not (self == other)
+        return not self == other
 
     @property
     def _lazyproperties(self):
@@ -555,7 +555,7 @@ class PixelAperture(Aperture):
 
             data_cutout = data[slc_large]
             apermask_cutout = apermask.data[slc_small]
-            pixel_mask = (apermask_cutout > 0)  # good pixels
+            pixel_mask = apermask_cutout > 0  # good pixels
 
             if mask is not None:
                 if mask.shape != data.shape:
