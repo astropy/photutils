@@ -13,6 +13,9 @@ New Features
     and the ``PixelAperture`` ``do_photometry`` method for large arrays.
     [#1485]
 
+  - Significantly improved the performance of the ``PixelAperture``
+    ``area_overlap`` method, especially for large arrays. [#1490]
+
 Bug Fixes
 ^^^^^^^^^
 

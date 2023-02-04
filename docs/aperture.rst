@@ -486,7 +486,7 @@ using a mask, the results are identical::
 
     >>> aperture_area = aperture.area_overlap(data)
     >>> print(aperture_area)  # doctest: +FLOAT_CMP
-    [78.53981633974485, 78.53981633974482, 78.53981633974483]
+    [78.53981634 78.53981634 78.53981634]
 
 The total background within the circular aperture is then::
 

@@ -123,7 +123,7 @@ class Aperture(metaclass=abc.ABCMeta):
         """
         Inequality operator for `Aperture`.
         """
-        return not (self == other)
+        return not self == other
 
     @property
     def _lazyproperties(self):
@@ -278,12 +278,115 @@ class PixelAperture(Aperture):
         """
         The exact analytical area of the aperture shape.
 
+        Use the `area_overlap` method to return the area of overlap
+        between the data and the aperture, taking into account the
+        aperture mask method, masked data pixels (``mask`` keyword), and
+        partial/no overlap of the aperture with the data.
+
         Returns
         -------
         area : float
             The aperture area.
+
+        See Also
+        --------
+        area_overlap
         """
         raise NotImplementedError('Needs to be implemented in a subclass.')
+
+    def area_overlap(self, data, *, mask=None, method='exact', subpixels=5):
+        """
+        Return the area of overlap between the data and the aperture.
+
+        This method takes into account the aperture mask method, masked
+        data pixels (``mask`` keyword), and partial/no overlap of the
+        aperture with the data. In other words, it returns the area that
+        used to compute the aperture sum (assuming identical inputs).
+
+        Use the `area` method to calculate the exact analytical area of
+        the aperture shape.
+
+        Parameters
+        ----------
+        data : array_like or `~astropy.units.Quantity`
+            A 2D array.
+
+        mask : array_like (bool), optional
+            A boolean mask with the same shape as ``data`` where a
+            `True` value indicates the corresponding element of ``data``
+            is masked. Masked data are excluded from the area overlap.
+
+        method : {'exact', 'center', 'subpixel'}, optional
+            The method used to determine the overlap of the aperture on
+            the pixel grid.  Not all options are available for all
+            aperture types.  Note that the more precise methods are
+            generally slower.  The following methods are available:
+
+                * ``'exact'`` (default):
+                  The the exact fractional overlap of the aperture and
+                  each pixel is calculated. The aperture weights will
+                  contain values between 0 and 1.
+
+                * ``'center'``:
+                  A pixel is considered to be entirely in or out of the
+                  aperture depending on whether its center is in or out
+                  of the aperture. The aperture weights will contain
+                  values only of 0 (out) and 1 (in).
+
+                * ``'subpixel'``:
+                  A pixel is divided into subpixels (see the
+                  ``subpixels`` keyword), each of which are considered
+                  to be entirely in or out of the aperture depending
+                  on whether its center is in or out of the aperture.
+                  If ``subpixels=1``, this method is equivalent to
+                  ``'center'``. The aperture weights will contain values
+                  between 0 and 1.
+
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this
+            factor in each dimension. That is, each pixel is divided
+            into ``subpixels**2`` subpixels. This keyword is ignored
+            unless ``method='subpixel'``.
+
+        Returns
+        -------
+        areas : float or array_like
+            The area (in pixels**2) of overlap between the data and the
+            aperture.
+
+        See Also
+        --------
+        area
+        """
+        apermasks = self.to_mask(method=method, subpixels=subpixels)
+        if self.isscalar:
+            apermasks = (apermasks,)
+
+        if mask is not None:
+            mask = np.asarray(mask)
+            if mask.shape != data.shape:
+                raise ValueError('mask and data must have the same shape')
+
+        areas = []
+        for apermask in apermasks:
+            slc_large, slc_small = apermask.get_overlap_slices(data.shape)
+
+            # if the aperture does not overlap the data return np.nan
+            if slc_large is None:
+                area = np.nan
+            else:
+                aper_weights = apermask.data[slc_small]
+                if mask is not None:
+                    aper_weights[mask[slc_large]] = 0.0
+                area = np.sum(aper_weights)
+
+            areas.append(area)
+
+        areas = np.array(areas)
+        if self.isscalar:
+            return areas[0]
+        else:
+            return areas
 
     @abc.abstractmethod
     def to_mask(self, method='exact', subpixels=5):
@@ -333,80 +436,6 @@ class PixelAperture(Aperture):
             returned.
         """
         raise NotImplementedError('Needs to be implemented in a subclass.')
-
-    def area_overlap(self, data, *, mask=None, method='exact', subpixels=5):
-        """
-        Return the pixel areas of the aperture masks that overlap with
-        the data.
-
-        In other words, this method returns the pixel area(s) within the
-        aperture(s) that are used to calculate the aperture sum(s).
-
-        Parameters
-        ----------
-        data : array_like or `~astropy.units.Quantity`
-            The 2D array to multiply with the aperture mask.
-
-        mask : array_like (bool), optional
-            A boolean mask with the same shape as ``data`` where a
-            `True` value indicates the corresponding element of ``data``
-            is masked. Masked data are excluded from the area overlap.
-
-        method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
-            generally slower.  The following methods are available:
-
-                * ``'exact'`` (default):
-                  The the exact fractional overlap of the aperture and
-                  each pixel is calculated. The aperture weights will
-                  contain values between 0 and 1.
-
-                * ``'center'``:
-                  A pixel is considered to be entirely in or out of the
-                  aperture depending on whether its center is in or out
-                  of the aperture. The aperture weights will contain
-                  values only of 0 (out) and 1 (in).
-
-                * ``'subpixel'``:
-                  A pixel is divided into subpixels (see the
-                  ``subpixels`` keyword), each of which are considered
-                  to be entirely in or out of the aperture depending
-                  on whether its center is in or out of the aperture.
-                  If ``subpixels=1``, this method is equivalent to
-                  ``'center'``. The aperture weights will contain values
-                  between 0 and 1.
-
-        subpixels : int, optional
-            For the ``'subpixel'`` method, resample pixels by this
-            factor in each dimension. That is, each pixel is divided
-            into ``subpixels**2`` subpixels. This keyword is ignored
-            unless ``method='subpixel'``.
-
-        Returns
-        -------
-        areas : float or array_like
-            The overlapping areas (in pixels**2) between the aperture
-            masks and the data.
-        """
-        apermasks = self.to_mask(method=method, subpixels=subpixels)
-        if self.isscalar:
-            apermasks = (apermasks,)
-
-        if mask is not None:
-            mask = np.asarray(mask)
-            if mask.shape != data.shape:
-                raise ValueError('mask and data must have the same shape')
-
-        data = np.ones(data.shape)  # pixels
-        vals = [apermask.get_values(data, mask=mask) for apermask in apermasks]
-        # if the aperture does not overlap the data return np.nan
-        areas = [val.sum() if val.shape != (0,) else np.nan for val in vals]
-        if self.isscalar:
-            return areas[0]
-        else:
-            return areas
 
     def do_photometry(self, data, error=None, mask=None, method='exact',
                       subpixels=5):
@@ -526,7 +555,7 @@ class PixelAperture(Aperture):
 
             data_cutout = data[slc_large]
             apermask_cutout = apermask.data[slc_small]
-            pixel_mask = (apermask_cutout > 0)  # good pixels
+            pixel_mask = apermask_cutout > 0  # good pixels
 
             if mask is not None:
                 if mask.shape != data.shape:
