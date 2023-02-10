@@ -5,9 +5,11 @@ growth.
 """
 
 import math
+import warnings
 
 import numpy as np
 from astropy.utils import lazyproperty
+from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._quantity_helpers import process_quantities
 
@@ -135,3 +137,18 @@ class CurveOfGrowth(ProfileBase):
     @lazyproperty
     def area(self):
         return self._aperphot[2]
+
+    def normalize(self, mode='max'):
+        if mode == 'max':
+            normalization = self.profile.max()
+        elif mode == 'sum':
+            normalization = self.profile.sum()
+        else:
+            raise ValueError('invalid mode, must be "peak" or "integral"')
+
+        if normalization == 0:
+            warnings.warn('The profile cannot be normalized because the '
+                          'max or sum is zero.', AstropyUserWarning)
+        else:
+            self.__dict__['profile'] = self.profile / normalization
+            self.__dict__['profile_err'] = self.profile_err / normalization
