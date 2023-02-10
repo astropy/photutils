@@ -109,6 +109,21 @@ class ProfileBase:
 
         return fluxes, fluxerrs, areas
 
+    def normalize(self, method='max'):
+        if method == 'max':
+            normalization = self.profile.max()
+        elif method == 'sum':
+            normalization = self.profile.sum()
+        else:
+            raise ValueError('invalid method, must be "peak" or "integral"')
+
+        if normalization == 0:
+            warnings.warn('The profile cannot be normalized because the '
+                          'max or sum is zero.', AstropyUserWarning)
+        else:
+            self.__dict__['profile'] = self.profile / normalization
+            self.__dict__['profile_err'] = self.profile_err / normalization
+
     def plot(self, ax=None, **kwargs):
         import matplotlib.pyplot as plt
 
@@ -149,21 +164,6 @@ class CurveOfGrowth(ProfileBase):
     @lazyproperty
     def area(self):
         return self._aperphot[2]
-
-    def normalize(self, method='max'):
-        if method == 'max':
-            normalization = self.profile.max()
-        elif method == 'sum':
-            normalization = self.profile.sum()
-        else:
-            raise ValueError('invalid method, must be "peak" or "integral"')
-
-        if normalization == 0:
-            warnings.warn('The profile cannot be normalized because the '
-                          'max or sum is zero.', AstropyUserWarning)
-        else:
-            self.__dict__['profile'] = self.profile / normalization
-            self.__dict__['profile_err'] = self.profile_err / normalization
 
 
 class RadialProfile(ProfileBase):
