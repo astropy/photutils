@@ -13,7 +13,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._quantity_helpers import process_quantities
 
-__all__ = ['ProfileBase', 'CurveOfGrowth']
+__all__ = ['ProfileBase', 'CurveOfGrowth', 'RadialProfile']
 
 
 class ProfileBase:
@@ -164,3 +164,29 @@ class CurveOfGrowth(ProfileBase):
         else:
             self.__dict__['profile'] = self.profile / normalization
             self.__dict__['profile_err'] = self.profile_err / normalization
+
+
+class RadialProfile(ProfileBase):
+    @lazyproperty
+    def radius(self):
+        return self._annulus_radii
+
+    @lazyproperty
+    def _flux(self):
+        return np.diff(self._photometry[0])
+
+    @lazyproperty
+    def _fluxerr(self):
+        return np.sqrt(np.diff(self._photometry[1] ** 2))
+
+    @lazyproperty
+    def area(self):
+        return np.diff(self._photometry[2])
+
+    @lazyproperty
+    def profile(self):
+        return self._flux / self.area
+
+    @lazyproperty
+    def profile_err(self):
+        return self._fluxerr / self.area
