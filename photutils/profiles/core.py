@@ -11,7 +11,7 @@ from astropy.utils import lazyproperty
 
 from photutils.utils._quantity_helpers import process_quantities
 
-__all__ = ['ProfileBase']
+__all__ = ['ProfileBase', 'CurveOfGrowth']
 
 
 class ProfileBase:
@@ -106,3 +106,32 @@ class ProfileBase:
         areas = np.array(areas)
 
         return fluxes, fluxerrs, areas
+
+
+class CurveOfGrowth(ProfileBase):
+    @lazyproperty
+    def _aperphot(self):
+        # remove first element of flux, fluxerr, and area arrays
+        aperphot = np.array(self._photometry)
+        if self._circular_apertures[0] is None:
+            aperphot = aperphot[:, 1:]
+        return aperphot
+
+    @lazyproperty
+    def radius(self):
+        radius = self._circular_radii
+        if self._circular_apertures[0] is None:
+            radius = radius[1:]
+        return radius
+
+    @lazyproperty
+    def profile(self):
+        return self._aperphot[0]
+
+    @lazyproperty
+    def profile_err(self):
+        return self._aperphot[1]
+
+    @lazyproperty
+    def area(self):
+        return self._aperphot[2]
