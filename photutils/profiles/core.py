@@ -16,7 +16,7 @@ __all__ = ['ProfileBase']
 
 class ProfileBase:
     def __init__(self, data, xycen, min_radius, max_radius, radius_step, *,
-                 error=None, mask=None):
+                 error=None, mask=None, method='exact', subpixels=5):
 
         (data, error), _ = process_quantities((data, error), ('data', 'error'))
         self.data = data
@@ -38,6 +38,9 @@ class ProfileBase:
         if mask is not None and mask.shape != data.shape:
             raise ValueError('mask must have the same same as data')
         self.mask = mask
+
+        self.method = method
+        self.subpixels = subpixels
 
         self._nradii = int(math.ceil(self.max_radius - self.min_radius)
                            / self.radius_step) + 1  # inclusive
@@ -78,17 +81,6 @@ class ProfileBase:
         return apertures
 
     @lazyproperty
-    def _circular_aperture_masks(self):
-        apermasks = []
-        for aperture in self._circular_apertures:
-            if aperture is None:
-                apermask = None
-            else:
-                apermask = aperture.to_mask()
-            apermasks.append(apermask)
-        return apermasks
-
-    @lazyproperty
     def _photometry(self):
         fluxes = []
         fluxerrs = []
@@ -98,10 +90,12 @@ class ProfileBase:
                 flux, fluxerr = [0.0], [0.0]
                 area = 0.0
             else:
-                flux, fluxerr = aperture.do_photometry(self.data,
-                                                       error=self.error,
-                                                       mask=self.mask)
-                area = aperture.area_overlap(self.data, mask=self.mask)
+                flux, fluxerr = aperture.do_photometry(
+                    self.data, error=self.error, mask=self.mask,
+                    method=self.method, subpixels=self.subpixels)
+                area = aperture.area_overlap(self.data, mask=self.mask,
+                                             method=self.method,
+                                             subpixels=self.subpixels)
             fluxes.append(flux[0])
             if self.error is not None:
                 fluxerrs.append(fluxerr[0])
