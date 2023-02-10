@@ -114,9 +114,9 @@ class CurveOfGrowth(ProfileBase):
     @lazyproperty
     def _aperphot(self):
         # remove first element of flux, fluxerr, and area arrays
-        aperphot = np.array(self._photometry)
+        aperphot = self._photometry
         if self._circular_apertures[0] is None:
-            aperphot = aperphot[:, 1:]
+            aperphot = tuple(phot[1:] for phot in aperphot)
         return aperphot
 
     @lazyproperty
