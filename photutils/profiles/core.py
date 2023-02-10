@@ -109,6 +109,18 @@ class ProfileBase:
 
         return fluxes, fluxerrs, areas
 
+    def plot(self, ax=None, **kwargs):
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            ax = plt.gca()
+
+        ax.plot(self.radius, self.profile, **kwargs)
+        ax.set_xlabel('Radius (pixels)')
+        ax.set_ylabel('Profile')
+
+        return ax
+
 
 class CurveOfGrowth(ProfileBase):
     @lazyproperty
@@ -138,13 +150,13 @@ class CurveOfGrowth(ProfileBase):
     def area(self):
         return self._aperphot[2]
 
-    def normalize(self, mode='max'):
-        if mode == 'max':
+    def normalize(self, method='max'):
+        if method == 'max':
             normalization = self.profile.max()
-        elif mode == 'sum':
+        elif method == 'sum':
             normalization = self.profile.sum()
         else:
-            raise ValueError('invalid mode, must be "peak" or "integral"')
+            raise ValueError('invalid method, must be "peak" or "integral"')
 
         if normalization == 0:
             warnings.warn('The profile cannot be normalized because the '
