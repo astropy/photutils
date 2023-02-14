@@ -136,6 +136,26 @@ class ProfileBase:
 
         return ax
 
+    def plot_error(self, ax=None, **kwargs):
+        if self.profile_err.shape == (0,):
+            warnings.warn('Errors were not input', AstropyUserWarning)
+            return
+
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            ax = plt.gca()
+
+        # set default fill_between values
+        kwargs.setdefault('color', 'gray')
+        kwargs.setdefault('alpha', 0.5)
+
+        ymin = self.profile - self.profile_err
+        ymax = self.profile + self.profile_err
+        ax.fill_between(self.radius, ymin, ymax, **kwargs)
+
+        return ax
+
 
 class CurveOfGrowth(ProfileBase):
     @lazyproperty
