@@ -59,7 +59,7 @@ class ProfileBase:
         apertures = []
         for i in range(self._nradii - 1):
             try:
-                aperture = CircularAnnulus(self.xycen, self._nradii[i],
+                aperture = CircularAnnulus(self.xycen, self._circular_radii[i],
                                            self._circular_radii[i + 1])
             except ValueError:  # zero radius
                 aperture = CircularAperture(self.xycen,
@@ -139,7 +139,7 @@ class ProfileBase:
     def plot_error(self, ax=None, **kwargs):
         if self.profile_err.shape == (0,):
             warnings.warn('Errors were not input', AstropyUserWarning)
-            return
+            return None
 
         import matplotlib.pyplot as plt
 
@@ -167,6 +167,13 @@ class CurveOfGrowth(ProfileBase):
         return aperphot
 
     @lazyproperty
+    def apertures(self):
+        apertures = self._circular_apertures
+        if apertures[0] is None:
+            apertures = apertures[1:]
+        return apertures
+
+    @lazyproperty
     def radius(self):
         radius = self._circular_radii
         if self._circular_apertures[0] is None:
@@ -187,6 +194,10 @@ class CurveOfGrowth(ProfileBase):
 
 
 class RadialProfile(ProfileBase):
+    @lazyproperty
+    def apertures(self):
+        return self._annulus_apertures
+
     @lazyproperty
     def radius(self):
         return self._annulus_radii
