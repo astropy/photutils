@@ -130,11 +130,11 @@ class ProfileBase:
         if ax is None:
             ax = plt.gca()
 
-        ax.plot(self.radius, self.profile, **kwargs)
+        lines = ax.plot(self.radius, self.profile, **kwargs)
         ax.set_xlabel('Radius (pixels)')
         ax.set_ylabel('Profile')
 
-        return ax
+        return lines
 
     def plot_error(self, ax=None, **kwargs):
         if self.profile_err.shape == (0,):
@@ -146,15 +146,20 @@ class ProfileBase:
         if ax is None:
             ax = plt.gca()
 
-        # set default fill_between values
-        kwargs.setdefault('color', 'gray')
-        kwargs.setdefault('alpha', 0.5)
+        # set default fill_between facecolor
+        # facecolor must be first key, otherwise it will override color kwarg
+        # (i.e., cannot use setdefault here)
+        if 'facecolor' not in kwargs:
+            kws = {'facecolor': (0.5, 0.5, 0.5, 0.3)}
+            kws.update(kwargs)
+        else:
+            kws = kwargs
 
         ymin = self.profile - self.profile_err
         ymax = self.profile + self.profile_err
-        ax.fill_between(self.radius, ymin, ymax, **kwargs)
+        polycoll = ax.fill_between(self.radius, ymin, ymax, **kws)
 
-        return ax
+        return polycoll
 
 
 class CurveOfGrowth(ProfileBase):
