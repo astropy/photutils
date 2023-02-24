@@ -225,8 +225,14 @@ class RadialProfile(ProfileBase):
 
     @lazyproperty
     def profile(self):
-        return self._flux / self.area
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return self._flux / self.area
 
     @lazyproperty
     def profile_err(self):
-        return self._fluxerr / self.area
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return self._fluxerr / self.area
