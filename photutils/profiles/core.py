@@ -44,9 +44,13 @@ class ProfileBase:
         self.method = method
         self.subpixels = subpixels
 
-        self._nradii = int(math.ceil(self.max_radius - self.min_radius)
-                           / self.radius_step) + 1  # inclusive
-        self._circular_radii = np.linspace(min_radius, max_radius,
+        # input min/max radius are the bin centers; calculate the bin
+        # edges
+        shift = radius_step / 2
+        self._nradii = int(math.ceil((self.max_radius - self.min_radius)
+                           / self.radius_step)) + 2  # inclusive
+        self._circular_radii = np.linspace(self.min_radius - shift,
+                                           self.max_radius + shift,
                                            self._nradii)
         self._annulus_radii = (self._circular_radii[1:]
                                + self._circular_radii[:-1]) / 2
@@ -75,7 +79,7 @@ class ProfileBase:
         # only circular apertures
         apertures = []
         for radius in self._circular_radii:
-            if radius == 0.0:
+            if radius <= 0.0:
                 aper = None
             else:
                 aper = CircularAperture(self.xycen, radius)
