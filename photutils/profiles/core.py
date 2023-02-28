@@ -44,18 +44,6 @@ class ProfileBase:
         self.method = method
         self.subpixels = subpixels
 
-        # input min/max radius are the bin centers; calculate the bin
-        # edges
-        shift = radius_step / 2
-        self._nradii = int(math.ceil((self.max_radius - self.min_radius)
-                           / self.radius_step)) + 2  # inclusive
-        self._circular_radii = np.linspace(self.min_radius - shift,
-                                           self.max_radius + shift,
-                                           self._nradii)
-        self._annulus_radii = (self._circular_radii[1:]
-                               + self._circular_radii[:-1]) / 2
-
-
     @lazyproperty
     def _circular_apertures(self):
         from photutils.aperture import CircularAperture
@@ -152,41 +140,53 @@ class ProfileBase:
 
 class CurveOfGrowth(ProfileBase):
     @lazyproperty
-    def _aperphot(self):
-        # remove first element of flux, fluxerr, and area arrays
-        aperphot = self._photometry
-        if self._circular_apertures[0] is None:
-            aperphot = tuple(phot[1:] for phot in aperphot)
-        return aperphot
+    def _circular_radii(self):
+        nsteps = int(math.floor((self.max_radius - self.min_radius) /
+                                self.radius_step))
+        max_radius = self.min_radius + (nsteps * self.radius_step)
+        return np.linspace(self.min_radius, max_radius, nsteps + 1)
 
     @lazyproperty
     def apertures(self):
-        apertures = self._circular_apertures
-        if apertures[0] is None:
-            apertures = apertures[1:]
-        return apertures
+        """
+        list of `CircularAperture` or `None`
+        If ``radius_min`` is zero, then the first item will be `None`.
+        """
+        return self._circular_apertures
 
     @lazyproperty
     def radius(self):
-        radius = self._circular_radii
-        if self._circular_apertures[0] is None:
-            radius = radius[1:]
-        return radius
+        return self._circular_radii
 
     @lazyproperty
     def profile(self):
-        return self._aperphot[0]
+        return self._photometry[0]
 
     @lazyproperty
     def profile_err(self):
-        return self._aperphot[1]
+        return self._photometry[1]
 
     @lazyproperty
     def area(self):
-        return self._aperphot[2]
+        return self._photometry[2]
 
 
 class RadialProfile(ProfileBase):
+
+    @lazyproperty
+    def _circular_radii(self):
+
+        # input min/max radius are the bin centers; calculate the bin
+        # edges
+        shift = self.radius_step / 2
+        self._nradii = int(math.ceil((self.max_radius - self.min_radius)
+                           / self.radius_step)) + 2  # inclusive
+        self._circular_radii = np.linspace(self.min_radius - shift,
+                                           self.max_radius + shift,
+                                           self._nradii)
+        self._annulus_radii = (self._circular_radii[1:]
+                               + self._circular_radii[:-1]) / 2
+
     @lazyproperty
     def apertures(self):
         from photutils.aperture import CircularAnnulus, CircularAperture
