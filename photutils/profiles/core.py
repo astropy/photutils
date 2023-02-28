@@ -55,22 +55,6 @@ class ProfileBase:
         self._annulus_radii = (self._circular_radii[1:]
                                + self._circular_radii[:-1]) / 2
 
-    @lazyproperty
-    def _annulus_apertures(self):
-        from photutils.aperture import CircularAnnulus, CircularAperture
-
-        # circular annulus apertures (circular aperture if min_radius = 0)
-        apertures = []
-        for i in range(self._nradii - 1):
-            try:
-                aperture = CircularAnnulus(self.xycen, self._circular_radii[i],
-                                           self._circular_radii[i + 1])
-            except ValueError:  # zero radius
-                aperture = CircularAperture(self.xycen,
-                                            self._circular_radii[i + 1])
-            apertures.append(aperture)
-
-        return apertures
 
     @lazyproperty
     def _circular_apertures(self):
@@ -205,7 +189,20 @@ class CurveOfGrowth(ProfileBase):
 class RadialProfile(ProfileBase):
     @lazyproperty
     def apertures(self):
-        return self._annulus_apertures
+        from photutils.aperture import CircularAnnulus, CircularAperture
+
+        # circular annulus apertures (circular aperture if min_radius = 0)
+        apertures = []
+        for i in range(self._nradii - 1):
+            try:
+                aperture = CircularAnnulus(self.xycen, self._circular_radii[i],
+                                           self._circular_radii[i + 1])
+            except ValueError:  # zero radius
+                aperture = CircularAperture(self.xycen,
+                                            self._circular_radii[i + 1])
+            apertures.append(aperture)
+
+        return apertures
 
     @lazyproperty
     def radius(self):
