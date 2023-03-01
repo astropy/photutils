@@ -28,7 +28,8 @@ def process_quantities(arrays, names):
         A list of numpy arrays, where units have been removed.
 
     unit : `~astropy.unit.Unit`
-        The data unit.
+        The data unit. `None` will be returned if the input arrays do
+        not have units.
 
     Raises
     ------
