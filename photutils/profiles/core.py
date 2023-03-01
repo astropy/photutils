@@ -241,6 +241,9 @@ class RadialProfile(ProfileBase):
 
     @lazyproperty
     def profile_error(self):
+        if self.error is None:
+            return self._fluxerr
+
         # ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
