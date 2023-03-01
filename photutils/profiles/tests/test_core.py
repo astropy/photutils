@@ -15,8 +15,8 @@ from photutils.profiles import CurveOfGrowth, RadialProfile
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 
-@pytest.fixture()
-def profile_data():
+@pytest.fixture(name='profile_data')
+def fixture_profile_data():
     xsize = 101
     ysize = 80
     xcen = (xsize - 1) / 2
@@ -53,6 +53,32 @@ def test_curve_of_growth(profile_data):
     assert len(cg1.apertures) == 36
     assert cg1.apertures[0] is None
     assert isinstance(cg1.apertures[1], CircularAperture)
+
+    min_radius = 1.0
+    max_radius = 35.0
+    radius_step = 1.0
+    cg2 = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
+                        error=None, mask=None)
+    assert cg2.area[0] > 0.0
+    assert isinstance(cg2.apertures[0], CircularAperture)
+
+
+def test_curve_of_growth_units(profile_data):
+    xycen, data, error, _ = profile_data
+
+    min_radius = 0.0
+    max_radius = 35.0
+    radius_step = 1.0
+    unit = u.Jy
+    cg1 = CurveOfGrowth(data << unit, xycen, min_radius, max_radius,
+                        radius_step, error=error << unit, mask=None)
+
+    assert cg1.profile.unit == unit
+    assert cg1.profile_error.unit == unit
+
+    with pytest.raises(ValueError):
+        cg1 = CurveOfGrowth(data << unit, xycen, min_radius, max_radius,
+                            radius_step, error=error, mask=None)
 
 
 def test_curve_of_growth_error(profile_data):
@@ -161,3 +187,9 @@ def test_curve_of_growth_plot(profile_data):
     assert_allclose(pc1.get_facecolor(), [[0.5, 0.5, 0.5, 0.3]])
     pc2 = cg2.plot_error(facecolor='blue')
     assert_allclose(pc2.get_facecolor(), [[0, 0, 1, 1]])
+
+    unit = u.Jy
+    cg3 = CurveOfGrowth(data << unit, xycen, min_radius, max_radius,
+                        radius_step, error=error << unit, mask=None)
+    cg3.plot()
+    cg3.plot_error()
