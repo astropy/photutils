@@ -19,7 +19,7 @@ __all__ = ['ProfileBase', 'CurveOfGrowth', 'RadialProfile']
 class ProfileBase:
     _circular_radii = None
     profile = None
-    profile_err = None
+    profile_error = None
 
     def __init__(self, data, xycen, min_radius, max_radius, radius_step, *,
                  error=None, mask=None, method='exact', subpixels=5):
@@ -50,8 +50,11 @@ class ProfileBase:
 
     @lazyproperty
     def radius(self):
-        nsteps = int(math.floor((self.max_radius - self.min_radius) /
-                                self.radius_step))
+        """
+        The profile radius in pixels.
+        """
+        nsteps = int(math.floor((self.max_radius - self.min_radius)
+                                / self.radius_step))
         max_radius = self.min_radius + (nsteps * self.radius_step)
         return np.linspace(self.min_radius, max_radius, nsteps + 1)
 
@@ -109,7 +112,7 @@ class ProfileBase:
                           'max or sum is zero.', AstropyUserWarning)
         else:
             self.__dict__['profile'] = self.profile / normalization
-            self.__dict__['profile_err'] = self.profile_err / normalization
+            self.__dict__['profile_error'] = self.profile_error / normalization
 
     def plot(self, ax=None, **kwargs):
         import matplotlib.pyplot as plt
@@ -124,7 +127,7 @@ class ProfileBase:
         return lines
 
     def plot_error(self, ax=None, **kwargs):
-        if self.profile_err.shape == (0,):
+        if self.profile_error.shape == (0,):
             warnings.warn('Errors were not input', AstropyUserWarning)
             return None
 
@@ -142,8 +145,8 @@ class ProfileBase:
         else:
             kws = kwargs
 
-        ymin = self.profile - self.profile_err
-        ymax = self.profile + self.profile_err
+        ymin = self.profile - self.profile_error
+        ymax = self.profile + self.profile_error
         polycoll = ax.fill_between(self.radius, ymin, ymax, **kws)
 
         return polycoll
@@ -167,7 +170,7 @@ class CurveOfGrowth(ProfileBase):
         return self._photometry[0]
 
     @lazyproperty
-    def profile_err(self):
+    def profile_error(self):
         return self._photometry[1]
 
     @lazyproperty
@@ -183,8 +186,8 @@ class RadialProfile(ProfileBase):
         shift = self.radius_step / 2
         min_radius = self.min_radius - shift
         max_radius = self.max_radius + shift
-        nsteps = int(math.floor((max_radius - min_radius) /
-                                self.radius_step))
+        nsteps = int(math.floor((max_radius - min_radius)
+                                / self.radius_step))
         max_radius = min_radius + (nsteps * self.radius_step)
         return np.linspace(min_radius, max_radius, nsteps + 1)
 
@@ -224,7 +227,7 @@ class RadialProfile(ProfileBase):
             return self._flux / self.area
 
     @lazyproperty
-    def profile_err(self):
+    def profile_error(self):
         # ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
