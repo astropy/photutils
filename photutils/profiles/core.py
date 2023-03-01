@@ -24,8 +24,10 @@ class ProfileBase:
     def __init__(self, data, xycen, min_radius, max_radius, radius_step, *,
                  error=None, mask=None, method='exact', subpixels=5):
 
-        (data, error), _ = process_quantities((data, error), ('data', 'error'))
+        (data, error), unit = process_quantities((data, error),
+                                                 ('data', 'error'))
         self.data = data
+        self.unit = unit
         self.xycen = xycen
 
         if min_radius < 0 or max_radius < 0:
@@ -96,6 +98,9 @@ class ProfileBase:
         fluxes = np.array(fluxes)
         fluxerrs = np.array(fluxerrs)
         areas = np.array(areas)
+        if self.unit is not None:
+            fluxes <<= self.unit
+            fluxerrs <<= self.unit
 
         return fluxes, fluxerrs, areas
 
@@ -122,7 +127,10 @@ class ProfileBase:
 
         lines = ax.plot(self.radius, self.profile, **kwargs)
         ax.set_xlabel('Radius (pixels)')
-        ax.set_ylabel('Profile')
+        ylabel = 'Profile'
+        if self.unit is not None:
+            ylabel = f'{ylabel} ({self.unit})'
+        ax.set_ylabel(ylabel)
 
         return lines
 
@@ -145,8 +153,13 @@ class ProfileBase:
         else:
             kws = kwargs
 
-        ymin = self.profile - self.profile_error
-        ymax = self.profile + self.profile_error
+        profile = self.profile
+        profile_error = self.profile_error
+        if self.unit is not None:
+            profile = profile.value
+            profile_error = profile_error.value
+        ymin = profile - profile_error
+        ymax = profile + profile_error
         polycoll = ax.fill_between(self.radius, ymin, ymax, **kws)
 
         return polycoll
