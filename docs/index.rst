@@ -71,6 +71,7 @@ User Documentation
     psf_matching.rst
     segmentation.rst
     centroids.rst
+    profiles.rst
     morphology.rst
     isophote.rst
     geometry.rst

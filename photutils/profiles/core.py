@@ -17,6 +17,69 @@ __all__ = ['ProfileBase', 'CurveOfGrowth', 'RadialProfile']
 
 
 class ProfileBase:
+    """
+    Base class for profile classes.
+
+    Parameters
+    ----------
+    data : `numpy.ndarray`
+        The 2D data array.
+
+    xycen : tuple of 2 floats
+        The ``(x, y)`` pixel coordinate of the source center.
+
+    min_radius : float
+        The minimum radius for the profile.
+
+    max_radius : float
+        The maximum radius for the profile.
+
+    radius_step : float
+        The radial step size in pixels.
+
+    error : 2D `numpy.ndarray`, optional
+        The pixel-wise 1-sigma errors of the input ``data``.
+        ``error`` is assumed to include *all* sources of
+        error, including the Poisson error of the sources (see
+        `~photutils.utils.calc_total_error`) . ``error`` must have the
+        same shape as the input ``data``.
+
+    mask : 2D bool `numpy.ndarray`, optional
+        A boolean mask with the same shape as ``data`` where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from all calculations.
+
+    method : {'exact', 'center', 'subpixel'}, optional
+        The method used to determine the overlap of the aperture on the
+        pixel grid. Note that the more precise methods are generally
+        slower. The following methods are available:
+
+            * ``'exact'`` (default):
+              The the exact fractional overlap of the aperture and each
+              pixel is calculated. The aperture weights will contain
+              values between 0 and 1.
+
+            * ``'center'``:
+              A pixel is considered to be entirely in or out of the
+              aperture depending on whether its center is in or out of
+              the aperture. The aperture weights will contain values
+              only of 0 (out) and 1 (in).
+
+            * ``'subpixel'``:
+              A pixel is divided into subpixels (see the ``subpixels``
+              keyword), each of which are considered to be entirely in
+              or out of the aperture depending on whether its center is
+              in or out of the aperture. If ``subpixels=1``, this method
+              is equivalent to ``'center'``. The aperture weights will
+              contain values between 0 and 1.
+
+    subpixels : int, optional
+        For the ``'subpixel'`` method, resample pixels by this factor
+        in each dimension. That is, each pixel is divided into
+        ``subpixels**2`` subpixels. This keyword is ignored unless
+        ``method='subpixel'``.
+    """
+
     _circular_radii = None
     profile = None
     profile_error = None
@@ -62,9 +125,13 @@ class ProfileBase:
 
     @lazyproperty
     def _circular_apertures(self):
+        """
+        A list of `~photutils.aperture.CircularAperture` objects.
+
+        The first element may be `None`
+        """
         from photutils.aperture import CircularAperture
 
-        # only circular apertures
         apertures = []
         for radius in self._circular_radii:
             if radius <= 0.0:
@@ -76,6 +143,10 @@ class ProfileBase:
 
     @lazyproperty
     def _photometry(self):
+        """
+        The aperture fluxes, flux errors, and areas as a function of
+        radius.
+        """
         fluxes = []
         fluxerrs = []
         areas = []
@@ -105,6 +176,20 @@ class ProfileBase:
         return fluxes, fluxerrs, areas
 
     def normalize(self, method='max'):
+        """
+        Normalize the profile.
+
+        Parameters
+        ----------
+        method : {'max', 'sum'}, optional
+            The method used to normalize the profile:
+                * 'max' (default)
+                  The profile is normalized such that its peak value is
+                  1.
+                * 'sum' (default)
+                  The profile is normalized such that its sum (integral)
+                  is 1.
+        """
         if method == 'max':
             normalization = self.profile.max()
         elif method == 'sum':
@@ -120,6 +205,23 @@ class ProfileBase:
             self.__dict__['profile_error'] = self.profile_error / normalization
 
     def plot(self, ax=None, **kwargs):
+        """
+        Plot the profile.
+
+        Parameters
+        ----------
+        ax : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
+        **kwargs : `dict`
+            Any keyword arguments accepted by `matplotlib.pyplot.plot`.
+
+        Returns
+        -------
+        lines : list of `~matplotlib.lines.Line2D`
+            A list of lines representing the plotted data.
+        """
         import matplotlib.pyplot as plt
 
         if ax is None:
@@ -135,6 +237,25 @@ class ProfileBase:
         return lines
 
     def plot_error(self, ax=None, **kwargs):
+        """
+        Plot the profile errors.
+
+        Parameters
+        ----------
+        ax : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
+        **kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.pyplot.fill_between`.
+
+        Returns
+        -------
+        lines : `matplotlib.collections.PolyCollection`
+            A `~matplotlib.collections.PolyCollection` containing the
+            plotted polygons.
+        """
         if self.profile_error.shape == (0,):
             warnings.warn('Errors were not input', AstropyUserWarning)
             return None
@@ -166,6 +287,72 @@ class ProfileBase:
 
 
 class CurveOfGrowth(ProfileBase):
+    """
+    Class to create a curve of growth using concentric circular
+    apertures.
+
+    The curve of growth profile represents the circular aperture flux as
+    a function of circular radius.
+
+    Parameters
+    ----------
+    data : 2D `numpy.ndarray`
+        The 2D data array.
+
+    xycen : tuple of 2 floats
+        The ``(x, y)`` pixel coordinate of the source center.
+
+    min_radius : float
+        The minimum radius for the profile.
+
+    max_radius : float
+        The maximum radius for the profile.
+
+    radius_step : float
+        The radial step size in pixels.
+
+    error : 2D `numpy.ndarray`, optional
+        The pixel-wise 1-sigma errors of the input ``data``.
+        ``error`` is assumed to include *all* sources of
+        error, including the Poisson error of the sources (see
+        `~photutils.utils.calc_total_error`) . ``error`` must have the
+        same shape as the input ``data``.
+
+    mask : 2D bool `numpy.ndarray`, optional
+        A boolean mask with the same shape as ``data`` where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from all calculations.
+
+    method : {'exact', 'center', 'subpixel'}, optional
+        The method used to determine the overlap of the aperture on the
+        pixel grid. Note that the more precise methods are generally
+        slower. The following methods are available:
+
+            * ``'exact'`` (default):
+              The the exact fractional overlap of the aperture and each
+              pixel is calculated. The aperture weights will contain
+              values between 0 and 1.
+
+            * ``'center'``:
+              A pixel is considered to be entirely in or out of the
+              aperture depending on whether its center is in or out of
+              the aperture. The aperture weights will contain values
+              only of 0 (out) and 1 (in).
+
+            * ``'subpixel'``:
+              A pixel is divided into subpixels (see the ``subpixels``
+              keyword), each of which are considered to be entirely in
+              or out of the aperture depending on whether its center is
+              in or out of the aperture. If ``subpixels=1``, this method
+              is equivalent to ``'center'``. The aperture weights will
+              contain values between 0 and 1.
+
+    subpixels : int, optional
+        For the ``'subpixel'`` method, resample pixels by this factor
+        in each dimension. That is, each pixel is divided into
+        ``subpixels**2`` subpixels. This keyword is ignored unless
+        ``method='subpixel'``.
+    """
     @lazyproperty
     def _circular_radii(self):
         return self.radius
@@ -173,29 +360,115 @@ class CurveOfGrowth(ProfileBase):
     @lazyproperty
     def apertures(self):
         """
-        list of `CircularAperture` or `None`
+        A list of `~photutils.aperture.CircularAperture` objects used to
+        measure the profile.
+
         If ``radius_min`` is zero, then the first item will be `None`.
         """
         return self._circular_apertures
 
     @lazyproperty
     def profile(self):
+        """
+        The curve-of-growth profile.
+        """
         return self._photometry[0]
 
     @lazyproperty
     def profile_error(self):
+        """
+        The curve-of-growth profile errors.
+        """
         return self._photometry[1]
 
     @lazyproperty
     def area(self):
+        """
+        The area in each circular aperture as a function of radius.
+        """
         return self._photometry[2]
 
 
 class RadialProfile(ProfileBase):
+    """
+    Class to create a radial profile using concentric apertures.
+
+    The radial profile represents the azimuthally-averaged flux in
+    circular annuli apertures as a function of radius.
+
+    Parameters
+    ----------
+    data : `numpy.ndarray`
+        The 2D data array.
+
+    xycen : tuple of 2 floats
+        The ``(x, y)`` pixel coordinate of the source center.
+
+    min_radius : float
+        The minimum radius for the profile.
+
+    max_radius : float
+        The maximum radius for the profile.
+
+    radius_step : float
+        The radial step size in pixels.
+
+    error : 2D `numpy.ndarray`, optional
+        The pixel-wise 1-sigma errors of the input ``data``.
+        ``error`` is assumed to include *all* sources of
+        error, including the Poisson error of the sources (see
+        `~photutils.utils.calc_total_error`) . ``error`` must have the
+        same shape as the input ``data``.
+
+    mask : 2D bool `numpy.ndarray`, optional
+        A boolean mask with the same shape as ``data`` where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from all calculations.
+
+    method : {'exact', 'center', 'subpixel'}, optional
+        The method used to determine the overlap of the aperture on the
+        pixel grid. Note that the more precise methods are generally
+        slower. The following methods are available:
+
+            * ``'exact'`` (default):
+              The the exact fractional overlap of the aperture and each
+              pixel is calculated. The aperture weights will contain
+              values between 0 and 1.
+
+            * ``'center'``:
+              A pixel is considered to be entirely in or out of the
+              aperture depending on whether its center is in or out of
+              the aperture. The aperture weights will contain values
+              only of 0 (out) and 1 (in).
+
+            * ``'subpixel'``:
+              A pixel is divided into subpixels (see the ``subpixels``
+              keyword), each of which are considered to be entirely in
+              or out of the aperture depending on whether its center is
+              in or out of the aperture. If ``subpixels=1``, this method
+              is equivalent to ``'center'``. The aperture weights will
+              contain values between 0 and 1.
+
+    subpixels : int, optional
+        For the ``'subpixel'`` method, resample pixels by this factor
+        in each dimension. That is, each pixel is divided into
+        ``subpixels**2`` subpixels. This keyword is ignored unless
+        ``method='subpixel'``.
+
+    Notes
+    -----
+    If the ``min_radius`` is less than or equal to half the
+    ``radius_step``, then a circular aperture with radius equal to
+    ``min_radius + 0.5 * radius_step`` will be used for the innermost
+    aperture.
+    """
+
     @lazyproperty
     def _circular_radii(self):
-        # input min/max radius are the radial bin centers;
-        # here we calculate the radial bin edges
+        """
+        The circular aperture radii for the radial bin edges (inner and
+        outer annulus radii).
+        """
         shift = self.radius_step / 2
         min_radius = self.min_radius - shift
         max_radius = self.max_radius + shift
@@ -206,6 +479,15 @@ class RadialProfile(ProfileBase):
 
     @lazyproperty
     def apertures(self):
+        """
+        The circular annulus apertures used to measure the radial
+        profile.
+
+        If the ``min_radius`` is less than or equal to half the
+        ``radius_step``, then a circular aperture with radius equal
+        to ``min_radius + 0.5 * radius_step`` will be used for the
+        innermost aperture.
+        """
         from photutils.aperture import CircularAnnulus, CircularAperture
 
         apertures = []
@@ -222,18 +504,31 @@ class RadialProfile(ProfileBase):
 
     @lazyproperty
     def _flux(self):
+        """
+        The flux in a circular annulus.
+        """
         return np.diff(self._photometry[0])
 
     @lazyproperty
     def _fluxerr(self):
+        """
+        The flux error in a circular annulus.
+        """
         return np.sqrt(np.diff(self._photometry[1] ** 2))
 
     @lazyproperty
     def area(self):
+        """
+        The area in each circular annulus (or aperture) as a function of
+        radius.
+        """
         return np.diff(self._photometry[2])
 
     @lazyproperty
     def profile(self):
+        """
+        The radial profile.
+        """
         # ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -241,6 +536,9 @@ class RadialProfile(ProfileBase):
 
     @lazyproperty
     def profile_error(self):
+        """
+        The radial profile errors.
+        """
         if self.error is None:
             return self._fluxerr
 
