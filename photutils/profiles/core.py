@@ -22,8 +22,8 @@ class ProfileBase:
 
     Parameters
     ----------
-    data : `numpy.ndarray`
-        The 2D data array.
+    data : 2D `numpy.ndarray`
+        The 2D data array. The data should be background-subtracted.
 
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
@@ -38,11 +38,10 @@ class ProfileBase:
         The radial step size in pixels.
 
     error : 2D `numpy.ndarray`, optional
-        The pixel-wise 1-sigma errors of the input ``data``.
-        ``error`` is assumed to include *all* sources of
-        error, including the Poisson error of the sources (see
-        `~photutils.utils.calc_total_error`) . ``error`` must have the
-        same shape as the input ``data``.
+        The 1-sigma errors of the input ``data``. ``error`` is assumed
+        to include all sources of error, including the Poisson error
+        of the sources (see `~photutils.utils.calc_total_error`) .
+        ``error`` must have the same shape as the input ``data``.
 
     mask : 2D bool `numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -51,8 +50,7 @@ class ProfileBase:
 
     method : {'exact', 'center', 'subpixel'}, optional
         The method used to determine the overlap of the aperture on the
-        pixel grid. Note that the more precise methods are generally
-        slower. The following methods are available:
+        pixel grid:
 
             * ``'exact'`` (default):
               The the exact fractional overlap of the aperture and each
@@ -183,10 +181,11 @@ class ProfileBase:
         ----------
         method : {'max', 'sum'}, optional
             The method used to normalize the profile:
-                * 'max' (default)
+
+                * 'max' (default):
                   The profile is normalized such that its peak value is
                   1.
-                * 'sum' (default)
+                * 'sum':
                   The profile is normalized such that its sum (integral)
                   is 1.
         """
@@ -297,7 +296,7 @@ class CurveOfGrowth(ProfileBase):
     Parameters
     ----------
     data : 2D `numpy.ndarray`
-        The 2D data array.
+        The 2D data array. The data should be background-subtracted.
 
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
@@ -312,11 +311,10 @@ class CurveOfGrowth(ProfileBase):
         The radial step size in pixels.
 
     error : 2D `numpy.ndarray`, optional
-        The pixel-wise 1-sigma errors of the input ``data``.
-        ``error`` is assumed to include *all* sources of
-        error, including the Poisson error of the sources (see
-        `~photutils.utils.calc_total_error`) . ``error`` must have the
-        same shape as the input ``data``.
+        The 1-sigma errors of the input ``data``. ``error`` is assumed
+        to include all sources of error, including the Poisson error
+        of the sources (see `~photutils.utils.calc_total_error`) .
+        ``error`` must have the same shape as the input ``data``.
 
     mask : 2D bool `numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -325,8 +323,7 @@ class CurveOfGrowth(ProfileBase):
 
     method : {'exact', 'center', 'subpixel'}, optional
         The method used to determine the overlap of the aperture on the
-        pixel grid. Note that the more precise methods are generally
-        slower. The following methods are available:
+        pixel grid:
 
             * ``'exact'`` (default):
               The the exact fractional overlap of the aperture and each
@@ -352,7 +349,159 @@ class CurveOfGrowth(ProfileBase):
         in each dimension. That is, each pixel is divided into
         ``subpixels**2`` subpixels. This keyword is ignored unless
         ``method='subpixel'``.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from astropy.modeling.models import Gaussian2D
+    >>> from astropy.visualization import simple_norm
+    >>> from photutils.centroids import centroid_quadratic
+    >>> from photutils.datasets import make_noise_image
+    >>> from photutils.profiles import CurveOfGrowth
+
+    Create an artificial single source. Note this image does not have
+    any background.
+
+    >>> gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+    >>> yy, xx = np.mgrid[0:100, 0:100]
+    >>> data = gmodel(xx, yy)
+    >>> error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+    >>> data += error
+
+    Create the curve of growth.
+
+    >>> xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    >>> min_radius = 0.0
+    >>> max_radius = 25.0
+    >>> radius_step = 1.0
+    >>> cog = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
+    ...                     error=error, mask=None)
+
+    >>> print(cog.radius)
+    [ 0.  1.  2.  3.  4.  5.  6.  7.  8.  9. 10. 11. 12. 13. 14. 15. 16. 17.
+     18. 19. 20. 21. 22. 23. 24. 25.]
+
+    >>> print(cog.profile)
+    [   0.           44.24262785  230.045847    517.09461433  895.41389489
+     1384.78414693 1994.51012018 2536.89839378 3076.16630629 3622.14500995
+     4204.23295293 4701.35699212 4972.30793443 5230.92936624 5329.40933093
+     5519.94868684 5722.07026693 5843.25060227 5984.16890988 5969.70922551
+     5951.25037391 6016.99238299 6013.50761569 6080.36559577 6064.9320246
+     6086.71964068]
+
+    >>> print(cog.profile_error)
+    [  0.          12.76804447  23.15586078  38.2433841   55.24058795
+      66.52057642  81.63523336  93.43862845 102.83616712 117.21122048
+     130.49919809 148.28232437 163.57751497 176.45622026 187.42586274
+     199.41527661 212.86328414 226.6456507  239.05415187 251.12602376
+     264.18008088 276.88148449 289.59691975 303.195796   317.98690124
+     330.4533652 ]
+
+    Plot the curve of growth.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import CurveOfGrowth
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+
+        # create the curve of growth
+        min_radius = 0.0
+        max_radius = 25.0
+        radius_step = 1.0
+        cog = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
+                            error=error, mask=None)
+
+        # plot the curve of growth
+        cog.plot()
+        cog.plot_error()
+
+    Plot the normalized curve of growth.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import CurveOfGrowth
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+
+        # create the curve of growth
+        min_radius = 0.0
+        max_radius = 25.0
+        radius_step = 1.0
+        cog = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
+                            error=error, mask=None)
+
+        # plot the curve of growth
+        cog.normalize()
+        cog.plot()
+        cog.plot_error()
+
+    Plot a couple of the apertures on the data.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import CurveOfGrowth
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+
+        # create the curve of growth
+        min_radius = 0.0
+        max_radius = 25.0
+        radius_step = 1.0
+        cog = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
+                            error=error, mask=None)
+
+        norm = simple_norm(data, 'sqrt')
+        plt.imshow(data, norm=norm)
+        cog.apertures[5].plot(color='C0')
+        cog.apertures[10].plot(color='C1')
     """
+
     @lazyproperty
     def _circular_radii(self):
         return self.radius
@@ -398,8 +547,8 @@ class RadialProfile(ProfileBase):
 
     Parameters
     ----------
-    data : `numpy.ndarray`
-        The 2D data array.
+    data : 2D `numpy.ndarray`
+        The 2D data array. The data should be background-subtracted.
 
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
@@ -414,11 +563,10 @@ class RadialProfile(ProfileBase):
         The radial step size in pixels.
 
     error : 2D `numpy.ndarray`, optional
-        The pixel-wise 1-sigma errors of the input ``data``.
-        ``error`` is assumed to include *all* sources of
-        error, including the Poisson error of the sources (see
-        `~photutils.utils.calc_total_error`) . ``error`` must have the
-        same shape as the input ``data``.
+        The 1-sigma errors of the input ``data``. ``error`` is assumed
+        to include all sources of error, including the Poisson error
+        of the sources (see `~photutils.utils.calc_total_error`) .
+        ``error`` must have the same shape as the input ``data``.
 
     mask : 2D bool `numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -427,8 +575,7 @@ class RadialProfile(ProfileBase):
 
     method : {'exact', 'center', 'subpixel'}, optional
         The method used to determine the overlap of the aperture on the
-        pixel grid. Note that the more precise methods are generally
-        slower. The following methods are available:
+        pixel grid:
 
             * ``'exact'`` (default):
               The the exact fractional overlap of the aperture and each
