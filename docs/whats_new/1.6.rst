@@ -7,7 +7,7 @@ What's New in Photutils 1.6?
 ****************************
 
 Here we highlight some of the new functionality of the 1.6 release. In
-addition to these major changes, Photoutils 1.6 includes a large number
+addition to these major changes, Photutils 1.6 includes a large number
 of smaller improvements and bug fixes, which are described in the full
 :ref:`changelog`.
 
