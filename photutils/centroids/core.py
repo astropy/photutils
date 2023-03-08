@@ -239,6 +239,12 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     y = y.ravel()
     coeff_matrix = np.vstack((np.ones_like(x), x, y, x * y, x * x, y * y)).T
 
+    # remove NaNs from data to be fit
+    mask = ~np.isnan(cutout)
+    if np.any(mask):
+        coeff_matrix = coeff_matrix[mask]
+        cutout = cutout[mask]
+
     try:
         c = np.linalg.lstsq(coeff_matrix, cutout, rcond=None)[0]
     except np.linalg.LinAlgError:
