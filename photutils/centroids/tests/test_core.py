@@ -15,6 +15,7 @@ from numpy.testing import assert_allclose
 from photutils.centroids.core import (centroid_com, centroid_quadratic,
                                       centroid_sources)
 from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
+from photutils.datasets import make_noise_image
 from photutils.utils._optional_deps import HAS_SCIPY
 
 XCEN = 25.7
@@ -36,7 +37,7 @@ CENTROID_FUNCS = (centroid_com, centroid_quadratic, centroid_1dg,
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize(('x_std', 'y_std', 'theta'),
                          list(itertools.product(XSTDS, YSTDS, THETAS)))
-def test_centroid_com(x_std, y_std, theta):
+def test_centroid_comquad(x_std, y_std, theta):
     model = Gaussian2D(2.4, XCEN, YCEN, x_stddev=x_std, y_stddev=y_std,
                        theta=theta)
     y, x = np.mgrid[0:50, 0:47]
@@ -60,7 +61,7 @@ def test_centroid_com(x_std, y_std, theta):
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('use_mask', [True, False])
-def test_centroid_com_nan_withmask(use_mask):
+def test_centroid_comquad_nan_withmask(use_mask):
     xc_ref = 24.7
     yc_ref = 25.2
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
@@ -123,6 +124,20 @@ def test_centroid_quadratic_xypeak():
         centroid_quadratic(data, xpeak=5, ypeak=15)
     with pytest.raises(ValueError):
         centroid_quadratic(data, xpeak=15, ypeak=15)
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_centroid_quadratic_nan():
+    gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+    yy, xx = np.mgrid[0:100, 0:100]
+    data = gmodel(xx, yy)
+    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+    data += error
+
+    data[50, 50] = np.nan
+    mask = ~np.isfinite(data)
+    xycen = centroid_quadratic(data, xpeak=47, ypeak=52, mask=mask)
+    assert_allclose(xycen, [47.58324, 51.827182])
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
