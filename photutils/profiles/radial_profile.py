@@ -7,11 +7,16 @@ import math
 import warnings
 
 import numpy as np
+from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.models import Gaussian1D
+from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.utils import lazyproperty
 
 from photutils.profiles.core import ProfileBase
 
 __all__ = ['RadialProfile']
+
+__doctest_requires__ = {('RadialProfile'): ['scipy']}
 
 
 class RadialProfile(ProfileBase):
@@ -201,7 +206,7 @@ class RadialProfile(ProfileBase):
         rp.plot()
         rp.plot_error()
 
-    Plot a couple of the apertures on the data.
+    Plot two of the annulus apertures on the data.
 
     .. plot::
 
@@ -236,6 +241,52 @@ class RadialProfile(ProfileBase):
         plt.imshow(data, norm=norm)
         rp.apertures[5].plot(color='C0', lw=2)
         rp.apertures[10].plot(color='C1', lw=2)
+
+    Fit a 1D Gaussian to the radial profile and return the Gaussian
+    model.
+
+    >>> rp.gaussian_fit  # doctest: +FLOAT_CMP
+    <Gaussian1D(amplitude=41.80620963, mean=0., stddev=4.69126969)>
+
+    >>> print(rp.gaussian_fwhm)  # doctest: +FLOAT_CMP
+    11.04709589620093
+
+    Plot the fitted 1D Gaussian on the radial profile.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import RadialProfile
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+        # create the radial profile
+        min_radius = 0.0
+        max_radius = 25.0
+        radius_step = 1.0
+        rp = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
+                           error=error, mask=None)
+
+        # plot the radial profile
+        rp.normalize()
+        rp.plot(label='Radial Profile')
+        rp.plot_error()
+        plt.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
+        plt.legend()
     """
 
     @lazyproperty
@@ -321,3 +372,35 @@ class RadialProfile(ProfileBase):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return self._fluxerr / self.area
+
+    @lazyproperty
+    def gaussian_fit(self):
+        """
+        The fitted 1D Gaussian to the radial profile as
+        a `~astropy.modeling.functional_models.Gaussian1D` model.
+        """
+        amplitude = np.max(self.profile)
+        std = np.sqrt(abs(np.sum(self.profile * self.radius**2)
+                          / np.sum(self.profile)))
+        g_init = Gaussian1D(amplitude=amplitude, mean=0.0, stddev=std)
+        g_init.mean.fixed = True
+        fitter = LevMarLSQFitter()
+        g_fit = fitter(g_init, self.radius, self.profile)
+
+        return g_fit
+
+    @lazyproperty
+    def gaussian_profile(self):
+        """
+        The fitted 1D Gaussian profile to the radial profile as a 1D
+        `~numpy.ndarray`.
+        """
+        return self.gaussian_fit(self.radius)
+
+    @lazyproperty
+    def gaussian_fwhm(self):
+        """
+        The full-width at half-maximum (FWHM) in pixels of the 1D
+        Gaussian fitted to the radial profile.
+        """
+        return self.gaussian_fit.stddev.value * gaussian_sigma_to_fwhm
