@@ -114,7 +114,7 @@ class ProfileBase:
     @lazyproperty
     def radius(self):
         """
-        The profile radius in pixels.
+        The profile radius in pixels as a 1D `~numpy.ndarray`.
         """
         nsteps = int(math.floor((self.max_radius - self.min_radius)
                                 / self.radius_step))
@@ -126,7 +126,7 @@ class ProfileBase:
         """
         A list of `~photutils.aperture.CircularAperture` objects.
 
-        The first element may be `None`
+        The first element may be `None`.
         """
         from photutils.aperture import CircularAperture
 
@@ -359,8 +359,8 @@ class CurveOfGrowth(ProfileBase):
     >>> from photutils.datasets import make_noise_image
     >>> from photutils.profiles import CurveOfGrowth
 
-    Create an artificial single source. Note this image does not have
-    any background.
+    Create an artificial single source. Note that this image does not
+    have any background.
 
     >>> gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     >>> yy, xx = np.mgrid[0:100, 0:100]
@@ -431,7 +431,7 @@ class CurveOfGrowth(ProfileBase):
         cog.plot()
         cog.plot_error()
 
-    Plot the normalized curve of growth.
+    Normalize the profile and plot the normalized curve of growth.
 
     .. plot::
 
@@ -497,9 +497,10 @@ class CurveOfGrowth(ProfileBase):
                             error=error, mask=None)
 
         norm = simple_norm(data, 'sqrt')
+        plt.figure(figsize=(5, 5))
         plt.imshow(data, norm=norm)
-        cog.apertures[5].plot(color='C0')
-        cog.apertures[10].plot(color='C1')
+        cog.apertures[5].plot(color='C0', lw=2)
+        cog.apertures[10].plot(color='C1', lw=2)
     """
 
     @lazyproperty
@@ -519,21 +520,22 @@ class CurveOfGrowth(ProfileBase):
     @lazyproperty
     def profile(self):
         """
-        The curve-of-growth profile.
+        The curve-of-growth profile as a 1D `~numpy.ndarray`.
         """
         return self._photometry[0]
 
     @lazyproperty
     def profile_error(self):
         """
-        The curve-of-growth profile errors.
+        The curve-of-growth profile errors as a 1D `~numpy.ndarray`.
         """
         return self._photometry[1]
 
     @lazyproperty
     def area(self):
         """
-        The area in each circular aperture as a function of radius.
+        The unmasked area in each circular aperture as a function of
+        radius as a 1D `~numpy.ndarray`.
         """
         return self._photometry[2]
 
@@ -627,8 +629,8 @@ class RadialProfile(ProfileBase):
     @lazyproperty
     def apertures(self):
         """
-        The circular annulus apertures used to measure the radial
-        profile.
+        A list of the circular annulus apertures used to measure the
+        radial profile.
 
         If the ``min_radius`` is less than or equal to half the
         ``radius_step``, then a circular aperture with radius equal
@@ -666,15 +668,15 @@ class RadialProfile(ProfileBase):
     @lazyproperty
     def area(self):
         """
-        The area in each circular annulus (or aperture) as a function of
-        radius.
+        The unmasked area in each circular annulus (or aperture) as a
+        function of radius as a 1D `~numpy.ndarray`.
         """
         return np.diff(self._photometry[2])
 
     @lazyproperty
     def profile(self):
         """
-        The radial profile.
+        The radial profile as a 1D `~numpy.ndarray`.
         """
         # ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
@@ -684,7 +686,7 @@ class RadialProfile(ProfileBase):
     @lazyproperty
     def profile_error(self):
         """
-        The radial profile errors.
+        The radial profile errors as a 1D `~numpy.ndarray`.
         """
         if self.error is None:
             return self._fluxerr
