@@ -370,32 +370,32 @@ class CurveOfGrowth(ProfileBase):
 
     Create the curve of growth.
 
-    >>> xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    >>> xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
     >>> min_radius = 0.0
     >>> max_radius = 25.0
     >>> radius_step = 1.0
     >>> cog = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
     ...                     error=error, mask=None)
 
-    >>> print(cog.radius)
+    >>> print(cog.radius)  # doctest: +FLOAT_CMP
     [ 0.  1.  2.  3.  4.  5.  6.  7.  8.  9. 10. 11. 12. 13. 14. 15. 16. 17.
      18. 19. 20. 21. 22. 23. 24. 25.]
 
-    >>> print(cog.profile)
-    [   0.           44.24262785  230.045847    517.09461433  895.41389489
-     1384.78414693 1994.51012018 2536.89839378 3076.16630629 3622.14500995
-     4204.23295293 4701.35699212 4972.30793443 5230.92936624 5329.40933093
-     5519.94868684 5722.07026693 5843.25060227 5984.16890988 5969.70922551
-     5951.25037391 6016.99238299 6013.50761569 6080.36559577 6064.9320246
-     6086.71964068]
+    >>> print(cog.profile)  # doctest: +FLOAT_CMP
+    [   0.          130.57472018  501.34744442 1066.59182074 1760.50163608
+     2502.13955554 3218.50667597 3892.81448231 4455.36403436 4869.66609313
+     5201.99745378 5429.02043984 5567.28370644 5659.24831854 5695.06577065
+     5783.46217755 5824.01080702 5825.59003768 5818.22316662 5866.52307412
+     5896.96917375 5948.92254787 5968.30540534 5931.15611704 5941.94457249
+     5942.06535486]
 
-    >>> print(cog.profile_error)
-    [  0.          12.76804447  23.15586078  38.2433841   55.24058795
-      66.52057642  81.63523336  93.43862845 102.83616712 117.21122048
-     130.49919809 148.28232437 163.57751497 176.45622026 187.42586274
-     199.41527661 212.86328414 226.6456507  239.05415187 251.12602376
-     264.18008088 276.88148449 289.59691975 303.195796   317.98690124
-     330.4533652 ]
+    >>> print(cog.profile_error)  # doctest: +FLOAT_CMP
+    [  0.           5.32777186   9.37111012  13.41750992  16.62928904
+      21.7350922   25.39862532  30.3867526   34.11478867  39.28263973
+      43.96047829  48.11931395  52.00967328  55.7471834   60.48824739
+      64.81392778  68.71042311  72.71899201  76.54959872  81.33806741
+      85.98568713  91.34841248  95.5173253   99.22190499 102.51980185
+     106.83601366]
 
     Plot the curve of growth.
 
@@ -418,7 +418,7 @@ class CurveOfGrowth(ProfileBase):
         data += error
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
 
         # create the curve of growth
         min_radius = 0.0
@@ -452,7 +452,7 @@ class CurveOfGrowth(ProfileBase):
         data += error
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
 
         # create the curve of growth
         min_radius = 0.0
@@ -487,7 +487,7 @@ class CurveOfGrowth(ProfileBase):
         data += error
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
 
         # create the curve of growth
         min_radius = 0.0
@@ -631,18 +631,18 @@ class RadialProfile(ProfileBase):
 
     Create the radial profile.
 
-    >>> xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    >>> xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
     >>> min_radius = 0.0
     >>> max_radius = 25.0
     >>> radius_step = 1.0
     >>> rp = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
     ...                    error=error, mask=None)
 
-    >>> print(rp.radius)
+    >>> print(rp.radius)  # doctest: +FLOAT_CMP
     [ 0.  1.  2.  3.  4.  5.  6.  7.  8.  9. 10. 11. 12. 13. 14. 15. 16. 17.
      18. 19. 20. 21. 22. 23. 24. 25.]
 
-    >>> print(rp.profile)
+    >>> print(rp.profile)  # doctest: +FLOAT_CMP
     [ 4.27430150e+01  4.02150658e+01  3.81601146e+01  3.38116846e+01
       2.89343205e+01  2.34250297e+01  1.84368533e+01  1.44310461e+01
       9.55543388e+00  6.55415896e+00  4.49693014e+00  2.56010523e+00
@@ -651,7 +651,7 @@ class RadialProfile(ProfileBase):
       1.94567871e-01  4.49109676e-01 -2.00995374e-01 -7.74387397e-02
       5.70302749e-02 -3.27578439e-02]
 
-    >>> print(rp.profile_error)
+    >>> print(rp.profile_error)  # doctest: +FLOAT_CMP
     [2.95008692 1.17855895 0.6610777  0.51902503 0.47524302 0.43072819
      0.39770113 0.37667594 0.33909996 0.35356048 0.30377721 0.29455808
      0.25670656 0.26599511 0.27354232 0.2430305  0.22910334 0.22204777
@@ -679,7 +679,7 @@ class RadialProfile(ProfileBase):
         data += error
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
 
         # create the radial profile
         min_radius = 0.0
@@ -713,7 +713,7 @@ class RadialProfile(ProfileBase):
         data += error
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
 
         # create the radial profile
         min_radius = 0.0
@@ -748,7 +748,7 @@ class RadialProfile(ProfileBase):
         data += error
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
 
         # create the radial profile
         min_radius = 0.0
