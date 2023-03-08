@@ -23,13 +23,14 @@ def centroid_1dg(data, error=None, mask=None):
 
     Parameters
     ----------
-    data : array_like
-        The 2D data array.
+    data : 2D `~numpy.ndarray`
+        The 2D image data. The image should be a background-subtracted
+        cutout image containing a single source.
 
-    error : array_like, optional
+    error : 2D `~numpy.ndarray`, optional
         The 2D array of the 1-sigma errors of the input ``data``.
 
-    mask : array_like (bool), optional
+    mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
@@ -94,10 +95,10 @@ def _gaussian1d_moments(data, mask=None):
 
     Parameters
     ----------
-    data : array_like (1D)
-        The 1D array.
+    data : 1D `~numpy.ndarray`
+        The 1D data array.
 
-    mask : array_like (1D bool), optional
+    mask : 1D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
@@ -141,13 +142,14 @@ def centroid_2dg(data, error=None, mask=None):
 
     Parameters
     ----------
-    data : array_like
-        The 2D data array.
+    data : 2D `~numpy.ndarray`
+        The 2D image data. The image should be a background-subtracted
+        cutout image containing a single source.
 
-    error : array_like, optional
+    error : 2D `~numpy.ndarray`, optional
         The 2D array of the 1-sigma errors of the input ``data``.
 
-    mask : array_like (bool), optional
+    mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
@@ -170,7 +172,7 @@ def centroid_2dg(data, error=None, mask=None):
     if np.any(~np.isfinite(data)):
         data = np.ma.masked_invalid(data)
         warnings.warn('Input data contains non-finite values (e.g., NaN or '
-                      'infs) that were automatically masked.',
+                      'inf) that were automatically masked.',
                       AstropyUserWarning)
 
     if error is not None:

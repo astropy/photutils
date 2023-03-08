@@ -26,10 +26,11 @@ def centroid_com(data, mask=None):
 
     Parameters
     ----------
-    data : array_like
-        The input n-dimensional array.
+    data : `~numpy.ndarray`
+        The input n-dimensional array. The image should be a
+        background-subtracted cutout image containing a single source.
 
-    mask : array_like (bool), optional
+    mask : bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
@@ -39,7 +40,8 @@ def centroid_com(data, mask=None):
         The coordinates of the centroid in pixel order (e.g., ``(x, y)``
         or ``(x, y, z)``), not numpy axis order.
     """
-    data = data.astype(float)
+    # preserve input data - which should be a small cutout image
+    data = data.copy()
 
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asarray(mask, dtype=bool)
@@ -91,8 +93,9 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     Parameters
     ----------
-    data : `~numpy.ndarray`
-        Image data.
+    data : 2D `~numpy.ndarray`
+        The 2D image data. The image should be a background-subtracted
+        cutout image containing a single source.
 
     xpeak, ypeak : float or `None`, optional
         The initial guess of the position of the centroid. If either
@@ -159,20 +162,22 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     if ypeak is not None and ((ypeak < 0) or (ypeak > data.shape[0] - 1)):
         raise ValueError('ypeak is outside of the input data')
 
+    # preserve input data - which should be a small cutout image
     data = np.asanyarray(data, dtype=float).copy()
     ny, nx = data.shape
 
     badmask = ~np.isfinite(data)
+    if mask is not None:
+        if data.shape != mask.shape:
+            raise ValueError('data and mask must have the same shape.')
+        data[mask] = np.nan
+        badmask &= ~mask
+
     if np.any(badmask):
         warnings.warn('Input data contains non-finite values (e.g., NaN or '
                       'inf) that were automatically masked.',
                       AstropyUserWarning)
         data[badmask] = np.nan
-
-    if mask is not None:
-        if data.shape != mask.shape:
-            raise ValueError('data and mask must have the same shape.')
-        data[mask] = np.nan
 
     fit_boxsize = as_pair('fit_boxsize', fit_boxsize, lower_bound=(0, 1),
                           upper_bound=data.shape, check_odd=True)
@@ -239,6 +244,12 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     y = y.ravel()
     coeff_matrix = np.vstack((np.ones_like(x), x, y, x * y, x * x, y * y)).T
 
+    # remove NaNs from data to be fit
+    mask = ~np.isnan(cutout)
+    if np.any(mask):
+        coeff_matrix = coeff_matrix[mask]
+        cutout = cutout[mask]
+
     try:
         c = np.linalg.lstsq(coeff_matrix, cutout, rcond=None)[0]
     except np.linalg.LinAlgError:
@@ -277,8 +288,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
     Parameters
     ----------
-    data : array_like
-        The 2D array of the image.
+    data : 2D `~numpy.ndarray`
+        The 2D image data. The image should be background-subtracted.
 
     xpos, ypos : float or array-like of float
         The initial ``x`` and ``y`` pixel position(s) of the center
@@ -303,12 +314,12 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         ``footprint`` must be defined. If they are both defined, then
         ``footprint`` overrides ``box_size``.
 
-    mask : array_like, bool, optional
+    mask : 2D bool `~numpy.ndarray`, optional
         A 2D boolean array with the same shape as ``data``, where a
         `True` value indicates the corresponding element of ``data`` is
         masked.
 
-    error : array_like, optional
+    error : 2D `~numpy.ndarray`, optional
         The 2D array of the 1-sigma errors of the input ``data``.
         ``error`` must have the same shape as ``data``.  ``error`` will
         be used only if supported by the input ``centroid_func``.
