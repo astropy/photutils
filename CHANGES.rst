@@ -19,7 +19,7 @@ New Features
 - ``photutils.profiles``
 
   - Added a new ``profiles`` subpackage containing ``RadialProfile`` and
-    ``CurveOfGrowth`` classes. [#1494]
+    ``CurveOfGrowth`` classes. [#1494, #1496]
 
 Bug Fixes
 ^^^^^^^^^
