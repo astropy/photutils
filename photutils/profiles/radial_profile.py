@@ -9,6 +9,7 @@ import warnings
 import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling.models import Gaussian1D
+from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.utils import lazyproperty
 
 from photutils.profiles.core import ProfileBase
@@ -324,17 +325,11 @@ class RadialProfile(ProfileBase):
             warnings.simplefilter('ignore', RuntimeWarning)
             return self._fluxerr / self.area
 
-    def fit_gaussian(self):
+    @lazyproperty
+    def gaussian_fit(self):
         """
-        Fit a 1D Gaussian to the radial profile.
-
-        Returns
-        -------
-        model : `~astropy.modeling.models.Gaussian1D`
-            The fitted 1D Gaussian model.
-
-        yfit : 1D `~numpy.ndarray`
-            The fitted Gaussian profile as a 1D array.
+        The fitted 1D Gaussian to the radial profile as
+        a `~astropy.modeling.models.Gaussian1D` model.
         """
         amplitude = np.max(self.profile)
         std = np.sqrt(abs(np.sum(self.profile * self.radius**2)
@@ -344,4 +339,20 @@ class RadialProfile(ProfileBase):
         fitter = LevMarLSQFitter()
         g_fit = fitter(g_init, self.radius, self.profile)
 
-        return g_fit, g_fit(self.radius)
+        return g_fit
+
+    @lazyproperty
+    def gaussian_profile(self):
+        """
+        The fitted 1D Gaussian profile to the radial profile as a 1D
+        `~numpy.ndarray`.
+        """
+        return self.gaussian_fit(self.radius)
+
+    @lazyproperty
+    def gaussian_fwhm(self):
+        """
+        The full-width at half-maximum (FWHM) in pixels of the 1D
+        Gaussian fitted to the radial profile.
+        """
+        return self.gaussian_fit.stddev.value * gaussian_sigma_to_fwhm
