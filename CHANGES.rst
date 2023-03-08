@@ -16,6 +16,11 @@ New Features
   - Significantly improved the performance of the ``PixelAperture``
     ``area_overlap`` method, especially for large arrays. [#1490]
 
+- ``photutils.profiles``
+
+  - Added a new ``profiles`` subpackage containing ``RadialProfile`` and
+    ``CurveOfGrowth`` classes. [#1494]
+
 Bug Fixes
 ^^^^^^^^^
 
