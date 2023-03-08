@@ -9,7 +9,7 @@ used to separate stars into optimum groups.  The stars in each group
 are defined as those close enough together such that they need to be
 fit simultaneously, i.e., their profiles overlap.
 
-Photoutils currently provides two classes to group stars:
+Photutils currently provides two classes to group stars:
 
   * :class:`~photutils.psf.DAOGroup`:  An implementation of the
     `DAOPHOT
