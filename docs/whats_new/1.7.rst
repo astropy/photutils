@@ -1,7 +1,5 @@
 .. doctest-skip-all
 
-.. _whatsnew-1.7:
-
 ****************************
 What's New in Photutils 1.7?
 ****************************
