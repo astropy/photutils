@@ -191,15 +191,8 @@ profile and return the Gaussian model using the
 
 .. doctest-requires:: scipy
 
-    >>> print(rp.gaussian_fit)  # doctest: +FLOAT_CMP
-    Model: Gaussian1D
-    Inputs: ('x',)
-    Outputs: ('y',)
-    Model set size: 1
-    Parameters:
-            amplitude      mean      stddev
-        ------------------ ---- ----------------
-        41.806209629824345  0.0 4.69126968725788
+    >>> rp.gaussian_fit  # doctest: +FLOAT_CMP
+    <Gaussian1D(amplitude=41.80620963, mean=0., stddev=4.69126969)>
 
 The FWHM of the fitted 1D Gaussian model is stored in the
 `~photutils.profiles.RadialProfile.gaussian_fwhm` attribute:
