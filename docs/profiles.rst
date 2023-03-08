@@ -1,3 +1,5 @@
+.. _profiles:
+
 Profiles (`photutils.profiles`)
 ===============================
 

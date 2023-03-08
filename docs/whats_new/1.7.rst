@@ -1,0 +1,28 @@
+.. doctest-skip-all
+
+.. _whatsnew-1.7:
+
+****************************
+What's New in Photutils 1.7?
+****************************
+
+Here we highlight some of the new functionality of the 1.7 release. In
+addition to these major changes, Photutils 1.7 includes a large number
+of smaller improvements and bug fixes, which are described in the full
+:ref:`changelog`.
+
+
+New Profiles Subpackage
+=======================
+
+A new :ref:`profile subpackage <profiles>` was added containing tools
+for computing radial profiles and curves of growth:
+
+  *  `~photutils.profiles.RadialProfile`
+  *  `~photutils.profiles.CurveOfGrowth`
+
+
+Other changes
+=============
+
+Please see the :ref:`changelog` for the complete list of changes.
