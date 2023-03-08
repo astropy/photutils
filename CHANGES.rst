@@ -24,6 +24,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.centroid``
+
+  - Fixed an issue where ``centroid_quadratic`` would sometimes fail if
+    the input data contained NaNs. [#1495]
+
 API Changes
 ^^^^^^^^^^^
 
