@@ -85,12 +85,11 @@ def test_centroid_com_nan_withmask(use_mask):
         if nwarn == 1:
             assert len(warnlist) == nwarn
 
-    ctx = pytest.warns(AstropyUserWarning,
-                       match='Input data contains non-finite values')
     with ctx as warnlist:
         xc, yc = centroid_quadratic(data, mask=mask)
         assert_allclose(xc, xc_ref, rtol=0, atol=0.15)
-        assert len(warnlist) == 1
+        if nwarn == 1:
+            assert len(warnlist) == nwarn
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')

@@ -39,7 +39,8 @@ def centroid_com(data, mask=None):
         The coordinates of the centroid in pixel order (e.g., ``(x, y)``
         or ``(x, y, z)``), not numpy axis order.
     """
-    data = data.astype(float)
+    # preserve input data - which should be a small cutout image
+    data = data.copy()
 
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asarray(mask, dtype=bool)
@@ -91,8 +92,9 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     Parameters
     ----------
-    data : `~numpy.ndarray`
-        Image data.
+    data : 2D `~numpy.ndarray`
+        The 2D image data. The image should be a cutout image containing
+        a single source.
 
     xpeak, ypeak : float or `None`, optional
         The initial guess of the position of the centroid. If either
@@ -159,20 +161,22 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     if ypeak is not None and ((ypeak < 0) or (ypeak > data.shape[0] - 1)):
         raise ValueError('ypeak is outside of the input data')
 
+    # preserve input data - which should be a small cutout image
     data = np.asanyarray(data, dtype=float).copy()
     ny, nx = data.shape
 
     badmask = ~np.isfinite(data)
+    if mask is not None:
+        if data.shape != mask.shape:
+            raise ValueError('data and mask must have the same shape.')
+        data[mask] = np.nan
+        badmask &= ~mask
+
     if np.any(badmask):
         warnings.warn('Input data contains non-finite values (e.g., NaN or '
                       'inf) that were automatically masked.',
                       AstropyUserWarning)
         data[badmask] = np.nan
-
-    if mask is not None:
-        if data.shape != mask.shape:
-            raise ValueError('data and mask must have the same shape.')
-        data[mask] = np.nan
 
     fit_boxsize = as_pair('fit_boxsize', fit_boxsize, lower_bound=(0, 1),
                           upper_bound=data.shape, check_odd=True)
