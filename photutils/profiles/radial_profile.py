@@ -7,6 +7,8 @@ import math
 import warnings
 
 import numpy as np
+from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.models import Gaussian1D
 from astropy.utils import lazyproperty
 
 from photutils.profiles.core import ProfileBase
@@ -321,3 +323,25 @@ class RadialProfile(ProfileBase):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return self._fluxerr / self.area
+
+    def fit_gaussian(self):
+        """
+        Fit a 1D Gaussian to the radial profile.
+
+        Returns
+        -------
+        model : `~astropy.modeling.models.Gaussian1D`
+            The fitted 1D Gaussian model.
+
+        yfit : 1D `~numpy.ndarray`
+            The fitted Gaussian profile as a 1D array.
+        """
+        amplitude = np.max(self.profile)
+        std = np.sqrt(abs(np.sum(self.profile * self.radius**2)
+                          / np.sum(self.profile)))
+        g_init = Gaussian1D(amplitude=amplitude, mean=0.0, stddev=std)
+        g_init.mean.fixed = True
+        fitter = LevMarLSQFitter()
+        g_fit = fitter(g_init, self.radius, self.profile)
+
+        return g_fit, g_fit(self.radius)
