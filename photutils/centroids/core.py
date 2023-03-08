@@ -26,10 +26,11 @@ def centroid_com(data, mask=None):
 
     Parameters
     ----------
-    data : array_like
-        The input n-dimensional array.
+    data : `~numpy.ndarray`
+        The input n-dimensional array. The image should be a
+        background-subtracted cutout image containing a single source.
 
-    mask : array_like (bool), optional
+    mask : bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
@@ -93,8 +94,8 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        The 2D image data. The image should be a cutout image containing
-        a single source.
+        The 2D image data. The image should be a background-subtracted
+        cutout image containing a single source.
 
     xpeak, ypeak : float or `None`, optional
         The initial guess of the position of the centroid. If either
@@ -287,8 +288,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
     Parameters
     ----------
-    data : array_like
-        The 2D array of the image.
+    data : 2D `~numpy.ndarray`
+        The 2D image data. The image should be background-subtracted.
 
     xpos, ypos : float or array-like of float
         The initial ``x`` and ``y`` pixel position(s) of the center
@@ -313,12 +314,12 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         ``footprint`` must be defined. If they are both defined, then
         ``footprint`` overrides ``box_size``.
 
-    mask : array_like, bool, optional
+    mask : 2D bool `~numpy.ndarray`, optional
         A 2D boolean array with the same shape as ``data``, where a
         `True` value indicates the corresponding element of ``data`` is
         masked.
 
-    error : array_like, optional
+    error : 2D `~numpy.ndarray`, optional
         The 2D array of the 1-sigma errors of the input ``data``.
         ``error`` must have the same shape as ``data``.  ``error`` will
         be used only if supported by the input ``centroid_func``.
