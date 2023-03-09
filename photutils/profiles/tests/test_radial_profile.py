@@ -35,7 +35,6 @@ def fixture_profile_data():
     return xycen, data, error, mask
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_radial_profile(profile_data):
     xycen, data, _, _ = profile_data
 
@@ -76,6 +75,13 @@ def test_radial_profile_gaussian(profile_data):
     assert isinstance(rp1.gaussian_fit, Gaussian1D)
     assert rp1.gaussian_profile.shape == (36,)
     assert rp1.gaussian_fwhm < 23.6
+
+    max_radius = 200
+    rp2 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
+                        error=None, mask=None)
+    assert isinstance(rp2.gaussian_fit, Gaussian1D)
+    assert rp2.gaussian_profile.shape == (201,)
+    assert rp2.gaussian_fwhm < 23.6
 
 
 def test_radial_profile_unit(profile_data):
