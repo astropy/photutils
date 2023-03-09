@@ -7,7 +7,8 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian1D, Gaussian2D
-from numpy.testing import assert_equal
+from astropy.utils.exceptions import AstropyUserWarning
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture import CircularAnnulus, CircularAperture
 from photutils.profiles import RadialProfile
@@ -111,3 +112,34 @@ def test_radial_profile_error(profile_data):
     assert len(rp1.apertures) == 36
     assert isinstance(rp1.apertures[0], CircularAperture)
     assert isinstance(rp1.apertures[1], CircularAnnulus)
+
+
+def test_radial_profile_nonfinite(profile_data):
+    xycen, data, error, _ = profile_data
+    data2 = data.copy()
+    data2[40, 40] = np.nan
+    mask = ~np.isfinite(data2)
+
+    min_radius = 0.0
+    max_radius = 35.0
+    radius_step = 1.0
+
+    rp1 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
+                        error=None, mask=mask)
+
+    rp2 = RadialProfile(data2, xycen, min_radius, max_radius, radius_step,
+                        error=error, mask=mask)
+    assert_allclose(rp1.profile, rp2.profile)
+
+    msg = 'Input data contains non-finite values'
+    with pytest.raises(AstropyUserWarning, match=msg):
+        rp3 = RadialProfile(data2, xycen, min_radius, max_radius, radius_step,
+                            error=error, mask=None)
+        assert_allclose(rp1.profile, rp3.profile)
+
+    error2 = error.copy()
+    error2[40, 40] = np.inf
+    with pytest.raises(AstropyUserWarning, match=msg):
+        rp4 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
+                            error=error2, mask=None)
+        assert_allclose(rp1.profile, rp4.profile)
