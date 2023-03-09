@@ -203,9 +203,9 @@ class ProfileBase:
                   is 1.
         """
         if method == 'max':
-            normalization = self.profile.max()
+            normalization = np.nanmax(self.profile)
         elif method == 'sum':
-            normalization = self.profile.sum()
+            normalization = np.nansum(self.profile)
         else:
             raise ValueError('invalid method, must be "peak" or "integral"')
 
