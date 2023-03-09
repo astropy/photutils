@@ -26,6 +26,9 @@ class RadialProfile(ProfileBase):
     The radial profile represents the azimuthally-averaged flux in
     circular annuli apertures as a function of radius.
 
+    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
+    array are automatically masked.
+
     Parameters
     ----------
     data : 2D `numpy.ndarray`

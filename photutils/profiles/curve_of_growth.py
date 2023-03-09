@@ -18,6 +18,9 @@ class CurveOfGrowth(ProfileBase):
     The curve of growth profile represents the circular aperture flux as
     a function of circular radius.
 
+    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
+    array are automatically masked.
+
     Parameters
     ----------
     data : 2D `numpy.ndarray`
