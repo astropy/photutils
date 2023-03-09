@@ -86,7 +86,29 @@ class ProfileBase:
 
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
+
+        if error is not None and error.shape != data.shape:
+            raise ValueError('error must have the same same as data')
+
+        badmask = ~np.isfinite(data)
+        if error is not None:
+            badmask |= ~np.isfinite(error)
+        if mask is not None:
+            if mask.shape != data.shape:
+                raise ValueError('mask must have the same same as data')
+            badmask &= ~mask  # non-finite values not in input mask
+            mask |= badmask  # all masked pixels
+        else:
+            mask = badmask
+
+        if np.any(badmask):
+            warnings.warn('Input data contains non-finite values (e.g., NaN '
+                          'or inf) that were automatically masked.',
+                          AstropyUserWarning)
+
         self.data = data
+        self.error = error
+        self.mask = mask
         self.unit = unit
         self.xycen = xycen
 
@@ -99,14 +121,6 @@ class ProfileBase:
         self.min_radius = min_radius
         self.max_radius = max_radius
         self.radius_step = radius_step
-
-        if error is not None and error.shape != data.shape:
-            raise ValueError('error must have the same same as data')
-        self.error = error
-        if mask is not None and mask.shape != data.shape:
-            raise ValueError('mask must have the same same as data')
-        self.mask = mask
-
         self.method = method
         self.subpixels = subpixels
 
@@ -189,9 +203,9 @@ class ProfileBase:
                   is 1.
         """
         if method == 'max':
-            normalization = self.profile.max()
+            normalization = np.nanmax(self.profile)
         elif method == 'sum':
-            normalization = self.profile.sum()
+            normalization = np.nansum(self.profile)
         else:
             raise ValueError('invalid method, must be "peak" or "integral"')
 

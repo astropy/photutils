@@ -26,6 +26,9 @@ class RadialProfile(ProfileBase):
     The radial profile represents the azimuthally-averaged flux in
     circular annuli apertures as a function of radius.
 
+    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
+    array are automatically masked.
+
     Parameters
     ----------
     data : 2D `numpy.ndarray`
@@ -374,18 +377,24 @@ class RadialProfile(ProfileBase):
             return self._fluxerr / self.area
 
     @lazyproperty
+    def _profile_nanmask(self):
+        return np.isfinite(self.profile)
+
+    @lazyproperty
     def gaussian_fit(self):
         """
         The fitted 1D Gaussian to the radial profile as
         a `~astropy.modeling.functional_models.Gaussian1D` model.
         """
-        amplitude = np.max(self.profile)
-        std = np.sqrt(abs(np.sum(self.profile * self.radius**2)
-                          / np.sum(self.profile)))
+        profile = self.profile[self._profile_nanmask]
+        radius = self.radius[self._profile_nanmask]
+
+        amplitude = np.max(profile)
+        std = np.sqrt(abs(np.sum(profile * radius**2) / np.sum(profile)))
         g_init = Gaussian1D(amplitude=amplitude, mean=0.0, stddev=std)
         g_init.mean.fixed = True
         fitter = LevMarLSQFitter()
-        g_fit = fitter(g_init, self.radius, self.profile)
+        g_fit = fitter(g_init, radius, profile)
 
         return g_fit
 
