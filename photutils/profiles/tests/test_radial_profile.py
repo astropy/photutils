@@ -114,6 +114,22 @@ def test_radial_profile_error(profile_data):
     assert isinstance(rp1.apertures[1], CircularAnnulus)
 
 
+def test_radial_profile_normalize_nan(profile_data):
+    """
+    If the profile has NaNs (e.g., aperture outside of the image),
+    make sure the normalization ignores them.
+    """
+    xycen, data, _, _ = profile_data
+
+    min_radius = 0.0
+    max_radius = 100.0
+    radius_step = 1.0
+
+    rp1 = RadialProfile(data, xycen, min_radius, max_radius, radius_step)
+    rp1.normalize()
+    assert not np.isnan(rp1.profile[0])
+
+
 def test_radial_profile_nonfinite(profile_data):
     xycen, data, error, _ = profile_data
     data2 = data.copy()
