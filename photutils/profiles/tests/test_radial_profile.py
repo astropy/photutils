@@ -154,14 +154,14 @@ def test_radial_profile_nonfinite(profile_data):
     assert_allclose(rp1.profile, rp2.profile)
 
     msg = 'Input data contains non-finite values'
-    with pytest.raises(AstropyUserWarning, match=msg):
+    with pytest.warns(AstropyUserWarning, match=msg):
         rp3 = RadialProfile(data2, xycen, min_radius, max_radius, radius_step,
                             error=error, mask=None)
         assert_allclose(rp1.profile, rp3.profile)
 
     error2 = error.copy()
     error2[40, 40] = np.inf
-    with pytest.raises(AstropyUserWarning, match=msg):
+    with pytest.warns(AstropyUserWarning, match=msg):
         rp4 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
                             error=error2, mask=None)
         assert_allclose(rp1.profile, rp4.profile)
