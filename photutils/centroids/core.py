@@ -182,7 +182,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     fit_boxsize = as_pair('fit_boxsize', fit_boxsize, lower_bound=(0, 1),
                           upper_bound=data.shape, check_odd=True)
 
-    if np.product(fit_boxsize) < 6:
+    if np.prod(fit_boxsize) < 6:
         raise ValueError('fit_boxsize is too small.  6 values are required '
                          'to fit a 2D quadratic polynomial.')
 

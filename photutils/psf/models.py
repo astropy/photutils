@@ -544,7 +544,7 @@ class EPSFModel(FittableImageModel):
         radius = self._norm_radius * self.oversampling[0]
         aper = CircularAperture(xypos, r=radius)
         flux, _ = aper.do_photometry(self._data, method='exact')
-        return flux[0] / np.product(self.oversampling)
+        return flux[0] / np.prod(self.oversampling)
 
     def _compute_normalization(self, normalize=True):
         """
