@@ -1,0 +1,42 @@
+name: CI-32bit
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+  pull_request:
+  schedule:
+    # run every Monday at 6am UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TOXARGS: '-v'
+
+permissions:
+  contents: read
+
+jobs:
+  ci-32bit-tests:
+    name: 32-bit tests
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/pypa/manylinux2014_i686:2022-04-03-da6ecb3
+    steps:
+    # TODO: Use newer checkout actions when
+    #       https://github.com/actions/checkout/issues/334 is fixed
+    - name: Checkout code
+      uses: actions/checkout@v1
+      with:
+        fetch-depth: 0
+    - name: Install dependencies for Python 3.9
+      run: /opt/python/cp39-cp39/bin/pip install --upgrade tox
+    - name: Run tests for Python 3.9
+      run: /opt/python/cp39-cp39/bin/python -m tox -e 32bit
