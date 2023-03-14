@@ -5,9 +5,12 @@ Tests for the harmonics module.
 
 import numpy as np
 import pytest
+from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose
 
+from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.fitter import EllipseFitter
+from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics,
                                           fit_upper_harmonic)
@@ -178,12 +181,38 @@ class TestFitEllipseSamples:
         fitter = EllipseFitter(sample)
         iso = fitter.fit(maxit=400)
 
-        assert_allclose(iso.a3, -6.825e-7, atol=1.0e-9)
-        assert_allclose(iso.b3, 1.68e-6, atol=1.0e-8)
-        assert_allclose(iso.a4, -4.36e-6, atol=1.0e-8)
-        assert_allclose(iso.b4, 4.73e-5, atol=1.0e-7)
+        assert_allclose(iso.a3, 6.825e-7, atol=1.0e-9)
+        assert_allclose(iso.b3, -1.68e-6, atol=1.0e-8)
+        assert_allclose(iso.a4, 4.36e-6, atol=1.0e-8)
+        assert_allclose(iso.b4, -4.73e-5, atol=1.0e-7)
 
         assert_allclose(iso.a3_err, 8.152e-6, atol=1.0e-7)
         assert_allclose(iso.b3_err, 8.115e-6, atol=1.0e-7)
         assert_allclose(iso.a4_err, 7.501e-6, atol=1.0e-7)
         assert_allclose(iso.b4_err, 7.473e-6, atol=1.0e-7)
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_upper_harmonics_sign():
+    """
+    Regression test for #1486/#1501.
+    """
+
+    angle = 40.0 * np.pi / 180.0
+    g1 = Gaussian2D(100.0, 75, 75, 15, 3, theta=angle)
+    g2 = Gaussian2D(100.0, 75, 75, 10, 8, theta=angle)
+
+    ny = nx = 150
+    y, x = np.mgrid[0:ny, 0:nx]
+    data = g1(x, y) + g2(x, y)
+    geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.9, pa=angle)
+    ellipse = Ellipse(data, geometry)
+    isolist = ellipse.fit_image()
+
+    # test image is "disky: disky isophotes have b4 > 0
+    # (boxy isophotes have b4 < 0)
+    assert np.all(isolist.b4[30:] > 0)
+    assert isolist.a3[-1] < 0
+    assert isolist.a4[-1] < 0
+    assert isolist.b3[-1] > 0
+    assert isolist.b4[-1] > 0

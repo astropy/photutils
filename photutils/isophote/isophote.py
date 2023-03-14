@@ -271,8 +271,8 @@ class Isophote:
                                                            sample.values[2],
                                                            n)
 
-            a = up_coeffs[1] / self.sma / sample.gradient
-            b = up_coeffs[2] / self.sma / sample.gradient
+            a = up_coeffs[1] / self.sma / abs(sample.gradient)
+            b = up_coeffs[2] / self.sma / abs(sample.gradient)
 
             def errfunc(x, phi, order, intensities):
                 return (x[0] + x[1] * np.sin(order * phi)
@@ -288,7 +288,7 @@ class Isophote:
             # this comes from the old code. Likely it was based on
             # empirical experience with the STSDAS task, so we leave
             # it here without too much thought.
-            gre = self.grad_r_error if self.grad_r_error is not None else 0.64
+            gre = self.grad_r_error if self.grad_r_error is not None else 0.8
 
             a_err = abs(a) * np.sqrt((ce[1] / up_coeffs[1])**2 + gre**2)
             b_err = abs(b) * np.sqrt((ce[2] / up_coeffs[2])**2 + gre**2)

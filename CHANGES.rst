@@ -29,6 +29,14 @@ Bug Fixes
   - Fixed an issue where ``centroid_quadratic`` would sometimes fail if
     the input data contained NaNs. [#1495]
 
+- ``photutils.isophote``
+
+  - Fixed a bug where the upper harmonics (a3, a4, b3, and b4) had the
+    incorrect sign. [#1501]
+
+  - Fixed a bug in the calculation of the upper harmonic errors (a3_err,
+    a4_err, b3_err, and b4_err). [#1501].
+
 API Changes
 ^^^^^^^^^^^
 
