@@ -104,7 +104,9 @@ class Isophote:
         perfect ellipse.  These values are actually the raw harmonic
         amplitudes divided by the local radial gradient and the
         semimajor axis length, so they can directly be compared with
-        each other.
+        each other. The ``b4`` parameter is positive for galaxies with
+        disky (kite-like) isophotes and negative for galaxies with boxy
+        isophotes.
     a3_err, b3_err, a4_err, b4_err : float
         The errors associated with the ``a3``, ``b3``, ``a4``, and
         ``b4`` attributes.
