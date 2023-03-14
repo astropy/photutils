@@ -271,8 +271,8 @@ class Isophote:
                                                            sample.values[2],
                                                            n)
 
-            a = up_coeffs[1] / self.sma / sample.gradient
-            b = up_coeffs[2] / self.sma / sample.gradient
+            a = up_coeffs[1] / self.sma / abs(sample.gradient)
+            b = up_coeffs[2] / self.sma / abs(sample.gradient)
 
             def errfunc(x, phi, order, intensities):
                 return (x[0] + x[1] * np.sin(order * phi)
