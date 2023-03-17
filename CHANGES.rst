@@ -21,6 +21,11 @@ New Features
   - Added a new ``profiles`` subpackage containing ``RadialProfile`` and
     ``CurveOfGrowth`` classes. [#1494, #1496, #1498, #1499]
 
+- ``photutils.psf``
+
+  - Significantly improved the performance of evaluating and fitting
+    ``GriddedPSFModel`` instances. [#1503]
+
 Bug Fixes
 ^^^^^^^^^
 
