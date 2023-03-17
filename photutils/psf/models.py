@@ -6,6 +6,7 @@ This module provides models for doing PSF/PRF-fitting photometry.
 import copy
 import itertools
 import warnings
+from functools import lru_cache
 
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
@@ -759,6 +760,12 @@ class GriddedPSFModel(Fittable2DModel):
         self._ref_indices = None
         self._psf_interp = None
 
+        # NOTE: replace @lru_cache with @cache for Python 3.9+;
+        # Here we avoid decorating the instance method with
+        # @lru_cache/cache to prevent memory leaks
+        self._compute_local_model = lru_cache(maxsize=128)(
+            self._compute_local_model_uncached)
+
         super().__init__(flux, x_0, y_0)
 
     @staticmethod
@@ -887,18 +894,10 @@ class GriddedPSFModel(Fittable2DModel):
 
         return np.sum(data * weights[:, None, None], axis=0) / norm
 
-    def _compute_local_model(self, x_0, y_0):
+    def _compute_local_model_uncached(self, x_0, y_0):
         """
         Return `FittableImageModel` for interpolated PSF at some (x_0, y_0).
         """
-        # NOTE: this is needed because the PSF photometry routines input
-        # length-1 values instead of scalars.  TODO: fix the photometry
-        # routines.
-        if not np.isscalar(x_0):
-            x_0 = x_0[0]
-        if not np.isscalar(y_0):
-            y_0 = y_0[0]
-
         if (x_0 < self._xgrid_min or x_0 > self._xgrid_max
                 or y_0 < self._ygrid_min or y_0 > self._ygrid_max):
 
@@ -924,7 +923,16 @@ class GriddedPSFModel(Fittable2DModel):
         """
         Evaluate the `GriddedPSFModel` for the input parameters.
         """
-        # Get the local PSF at the (x_0,y_0)
+        # NOTE: this is needed because the PSF photometry routines input
+        # length-1 values instead of scalars.  TODO: fix the photometry
+        # routines.
+        if not np.isscalar(x_0):
+            x_0 = x_0[0]
+        if not np.isscalar(y_0):
+            y_0 = y_0[0]
+
+        # calculate the local (interpolated) PSF at (x_0, y_0) from the
+        # grid of PSF models
         psfmodel = self._compute_local_model(x_0, y_0)
 
         # now evaluate the PSF at the (x_0, y_0) subpixel position on
