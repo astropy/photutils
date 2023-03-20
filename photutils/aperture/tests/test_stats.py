@@ -171,14 +171,16 @@ class TestApertureStats:
                 assert_equal(getattr(apstats[i], prop),
                              getattr(apstats0, prop))
 
-        with pytest.raises(ValueError):
-            _ = ApertureStats(data, self.aperture, local_bkg=10)
+        # test broadcasting
+        local_bkg = (12, 12, 12)
+        apstats1 = ApertureStats(data, self.aperture, local_bkg=local_bkg)
+        apstats2 = ApertureStats(data, self.aperture, local_bkg=local_bkg[0])
+        assert_equal(apstats1.sum, apstats2.sum)
+
         with pytest.raises(ValueError):
             _ = ApertureStats(data, self.aperture, local_bkg=(10, 20))
         with pytest.raises(ValueError):
             _ = ApertureStats(data, self.aperture[0:2], local_bkg=(10, np.nan))
-        with pytest.raises(ValueError):
-            _ = ApertureStats(data, self.aperture[0:2], local_bkg=(10, None))
         with pytest.raises(ValueError):
             _ = ApertureStats(data, self.aperture[0:2],
                               local_bkg=(-np.inf, 10))
