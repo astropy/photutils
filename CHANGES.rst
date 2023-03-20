@@ -45,6 +45,11 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - The ``ApertureStats`` ``local_bkg`` keyword can now be broadcast for
+    apertures with multiple positions. [#1504]
+
 - ``photutils.datasets``
 
   - Removed the deprecated ``load_fermi_image`` function. [#1479]
