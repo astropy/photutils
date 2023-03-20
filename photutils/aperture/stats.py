@@ -145,11 +145,13 @@ class ApertureStats:
 
     local_bkg : float, `~numpy.ndarray`,  `~astropy.units.Quantity`, or `None`
         The *per-pixel* local background values to subtract from the
-        data at each aperture position. The ``local_bkg`` values
-        correspond to the input ``aperture`` positions. ``local_bkg``
-        must have the same as the length of the input ``aperture``.
-        If `None`, then no local background subtraction is performed.
-        If the input ``data`` has units, then ``local_bkg`` must be a
+        data before performing measurements. If input as any array,
+        the order of ``local_bkg`` values corresponds to the order
+        of the input ``aperture`` positions. ``local_bkg`` must have
+        the same length as the the input ``aperture`` or must be a
+        scalar value, which will be broadcast to all apertures. If
+        `None`, then no local background subtraction is performed. If
+        the input ``data`` has units, then ``local_bkg`` must be a
         `~astropy.units.Quantity` with the same units.
 
     Notes
@@ -236,17 +238,20 @@ class ApertureStats:
 
         self._local_bkg = np.zeros(self.n_apertures)  # no local bkg
         if local_bkg is not None:
-            local_bkg = np.atleast_1d(np.asanyarray(local_bkg, dtype=float))
+            local_bkg = np.atleast_1d(local_bkg)
             if local_bkg.ndim != 1:
                 raise ValueError('local_bkg must be a 1D array')
-            if len(local_bkg) != self.n_apertures:
-                raise ValueError('local_bkg must have the same length as '
-                                 'the aperture')
+
+            n_local_bkg = len(local_bkg)
+            if n_local_bkg != 1 and n_local_bkg != self.n_apertures:
+                raise ValueError('local_bkg must be scalar or have the same '
+                                 'length as the input aperture')
+            local_bkg = np.broadcast_to(local_bkg, self.n_apertures)
+
             if np.any(~np.isfinite(local_bkg)):
                 raise ValueError('local_bkg must not contain any non-finite '
                                  '(e.g., inf or NaN) values')
-            # NOTE: _local_bkg is always an iterable
-            self._local_bkg = local_bkg
+            self._local_bkg = local_bkg  # always an iterable
 
         self._ids = np.arange(self.n_apertures) + 1
         self.default_columns = DEFAULT_COLUMNS
