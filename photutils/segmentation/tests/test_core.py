@@ -357,19 +357,35 @@ class TestSegmentationImage:
         segm_array = np.zeros((7, 7)).astype(int)
         segm_array[3, 3] = 1
         segm = SegmentationImage(segm_array)
+        mask = segm.make_source_mask()
+        assert_equal(mask, segm_array.astype(bool))
+
+        mask = segm.make_source_mask(size=3)
+        expected1 = np.array([[0, 0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0, 0],
+                              [0, 0, 1, 1, 1, 0, 0],
+                              [0, 0, 1, 1, 1, 0, 0],
+                              [0, 0, 1, 1, 1, 0, 0],
+                              [0, 0, 0, 0, 0, 0, 0],
+                              [0, 0, 0, 0, 0, 0, 0]])
+        assert_equal(mask.astype(int), expected1)
+
+        mask = segm.make_source_mask(footprint=np.ones((3, 3)))
+        assert_equal(mask.astype(int), expected1)
+
         footprint = circular_footprint(radius=3)
         mask = segm.make_source_mask(footprint=footprint)
-        expected = np.array([[0, 0, 0, 1, 0, 0, 0],
-                             [0, 1, 1, 1, 1, 1, 0],
-                             [0, 1, 1, 1, 1, 1, 0],
-                             [1, 1, 1, 1, 1, 1, 1],
-                             [0, 1, 1, 1, 1, 1, 0],
-                             [0, 1, 1, 1, 1, 1, 0],
-                             [0, 0, 0, 1, 0, 0, 0]])
-        assert_equal(mask.astype(int), expected)
+        expected2 = np.array([[0, 0, 0, 1, 0, 0, 0],
+                              [0, 1, 1, 1, 1, 1, 0],
+                              [0, 1, 1, 1, 1, 1, 0],
+                              [1, 1, 1, 1, 1, 1, 1],
+                              [0, 1, 1, 1, 1, 1, 0],
+                              [0, 1, 1, 1, 1, 1, 0],
+                              [0, 0, 0, 1, 0, 0, 0]])
+        assert_equal(mask.astype(int), expected2)
 
-        mask = segm.make_source_mask(footprint=None)
-        assert_equal(mask, segm.data.astype(bool))
+        mask = segm.make_source_mask(footprint=np.ones((3, 3)), size=5)
+        assert_equal(mask, expected1)
 
     def test_outline_segments(self):
         segm_array = np.zeros((5, 5)).astype(int)
