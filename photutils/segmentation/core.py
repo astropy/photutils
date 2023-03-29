@@ -1051,7 +1051,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        size : scalar or tuple, optional
+        size : int or tuple of int, optional
             The size along each axis of the footprint used for the
             source dilation. If ``size`` is a scalar, then a square
             footprint of ``size`` will be used. If ``size`` has two
@@ -1076,10 +1076,10 @@ class SegmentationImage:
 
         Notes
         -----
-        When performing source dilation, a square footprint will be much
-        faster than using other shapes (e.g., a circular footprint).
-        Source dilation also is slower for larger images and larger
-        footprints.
+        When performing source dilation, using a square footprint
+        will be much faster than using other shapes (e.g., a circular
+        footprint). Source dilation also is slower for larger images and
+        larger footprints.
 
         Examples
         --------
@@ -1089,9 +1089,38 @@ class SegmentationImage:
         >>> data = np.zeros((7, 7), dtype=int)
         >>> data[3, 3] = 1
         >>> segm = SegmentationImage(data)
+        >>> segm.data
+        array([[0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 1, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0]])
+
+        >>> mask0 = segm.make_source_mask()
+        >>> mask0
+        array([[False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False, False,  True, False, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False]])
+
+        >>> mask1 = segm.make_source_mask(size=3)
+        >>> mask1
+        array([[False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False,  True,  True,  True, False, False],
+               [False, False,  True,  True,  True, False, False],
+               [False, False,  True,  True,  True, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False]])
+
         >>> footprint = circular_footprint(radius=3)
-        >>> mask = segm.make_source_mask(footprint=footprint)
-        >>> mask
+        >>> mask2 = segm.make_source_mask(footprint=footprint)
+        >>> mask2
         array([[False, False, False,  True, False, False, False],
                [False,  True,  True,  True,  True,  True, False],
                [False,  True,  True,  True,  True,  True, False],
