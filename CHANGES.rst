@@ -26,6 +26,15 @@ New Features
   - Significantly improved the performance of evaluating and fitting
     ``GriddedPSFModel`` instances. [#1503]
 
+- ``photutils.segmentation``
+
+  - Added a ``size`` keyword to the ``SegmentationImage``
+    ``make_source_mask`` method. [#1506]
+
+  - Significantly improved the performance of ``SegmentationImage``
+    ``make_source_mask`` when using square footprints for source
+    dilation. [#1506]
+
 Bug Fixes
 ^^^^^^^^^
 
