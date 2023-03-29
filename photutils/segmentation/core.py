@@ -14,6 +14,7 @@ from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
+from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
 
 __all__ = ['SegmentationImage', 'Segment']
@@ -1041,24 +1042,44 @@ class SegmentationImage:
             remove_labels = list(set(remove_labels) - set(interior_labels))
         self.remove_labels(remove_labels, relabel=relabel)
 
-    def make_source_mask(self, footprint=None):
+    def make_source_mask(self, *, size=None, footprint=None):
         """
         Make a source mask from the segmentation image.
 
-        Use the ``footprint`` keyword to perform binary dilation on the
-        segmentation image.
+        Use the ``size`` or ``footprint`` keyword to perform binary
+        dilation on the segmentation image mask.
 
         Parameters
         ----------
+        size : int or tuple of int, optional
+            The size along each axis of the footprint used for the
+            source dilation. If ``size`` is a scalar, then a square
+            footprint of ``size`` will be used. If ``size`` has two
+            elements, they must be in ``(ny, nx)`` order. ``size``
+            should have odd values for each axis. To perform source
+            dilation, either ``size`` or ``footprint`` must be defined.
+            If they are both defined, then ``footprint`` overrides
+            ``size``.
+
         footprint : 2D `~numpy.ndarray`, optional
             The local footprint used for the source dilation. Non-zero
-            elements are considered `True`.  If `None`, then no dilation
-            is performed.
+            elements are considered `True`. ``size=(n, m)`` is
+            equivalent to ``footprint=np.ones((n, m))``. To perform
+            source dilation, either ``size`` or ``footprint`` must
+            be defined. If they are both defined, then ``footprint``
+            overrides ``size``.
 
         Returns
         -------
         mask : 2D bool `~numpy.ndarray`
             A 2D boolean image containing the source mask.
+
+        Notes
+        -----
+        When performing source dilation, using a square footprint
+        will be much faster than using other shapes (e.g., a circular
+        footprint). Source dilation also is slower for larger images and
+        larger footprints.
 
         Examples
         --------
@@ -1068,9 +1089,38 @@ class SegmentationImage:
         >>> data = np.zeros((7, 7), dtype=int)
         >>> data[3, 3] = 1
         >>> segm = SegmentationImage(data)
+        >>> segm.data
+        array([[0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 1, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0, 0]])
+
+        >>> mask0 = segm.make_source_mask()
+        >>> mask0
+        array([[False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False, False,  True, False, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False]])
+
+        >>> mask1 = segm.make_source_mask(size=3)
+        >>> mask1
+        array([[False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False,  True,  True,  True, False, False],
+               [False, False,  True,  True,  True, False, False],
+               [False, False,  True,  True,  True, False, False],
+               [False, False, False, False, False, False, False],
+               [False, False, False, False, False, False, False]])
+
         >>> footprint = circular_footprint(radius=3)
-        >>> mask = segm.make_source_mask(footprint=footprint)
-        >>> mask
+        >>> mask2 = segm.make_source_mask(footprint=footprint)
+        >>> mask2
         array([[False, False, False,  True, False, False, False],
                [False,  True,  True,  True,  True,  True, False],
                [False,  True,  True,  True,  True,  True, False],
@@ -1079,12 +1129,25 @@ class SegmentationImage:
                [False,  True,  True,  True,  True,  True, False],
                [False, False, False,  True, False, False, False]])
         """
+        mask = self._data.astype(bool)
+
         if footprint is None:
-            return self._data.astype(bool)
+            if size is None:
+                return mask
+            else:
+                size = as_pair('size', size, check_odd=False)
+                footprint = np.ones(size)
 
-        from scipy.ndimage import binary_dilation
-
-        return binary_dilation(self._data.astype(bool), structure=footprint)
+        if np.all(footprint):
+            # With a rectangular footprint, scipy grey_dilation is
+            # currently much faster than binary_dilation (separable
+            # footprint). grey_dilation and binary_dilation are identical
+            # for binary inputs (equivalent to a 2D maximum filter).
+            from scipy.ndimage import grey_dilation
+            return grey_dilation(mask, footprint=footprint)
+        else:
+            from scipy.ndimage import binary_dilation
+            return binary_dilation(mask, structure=footprint)
 
     def outline_segments(self, mask_background=False):
         """
