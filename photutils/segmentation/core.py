@@ -1373,6 +1373,12 @@ class Segment:
     def __repr__(self):
         return self.__str__()
 
+    def _repr_svg_(self):
+        if self.polygon is not None:
+            print(repr(self))
+            return self.polygon._repr_svg_()
+        return None
+
     def __array__(self):
         """
         Array representation of the labeled region (e.g., for
