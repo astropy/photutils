@@ -6,7 +6,7 @@ segment within a segmentation image.
 
 import inspect
 import warnings
-from copy import deepcopy
+from copy import copy, deepcopy
 
 import numpy as np
 from astropy.utils import lazyproperty
@@ -1181,14 +1181,32 @@ class SegmentationImage:
             polygons.append(shape(geo_poly[0]))
         return polygons
 
-    @lazyproperty
-    def patches(self):
+    def to_patches(self, origin=(0, 0), **kwargs):
         from matplotlib.patches import Polygon
+
+        origin = np.array(origin)
+        patch_kwargs = {'edgecolor': 'white', 'facecolor': 'none'}
+        patch_kwargs.update(kwargs)
 
         patches = []
         for geo_poly in self._geo_polygons:
-            xy = np.array(geo_poly[0]['coordinates'][0]) - (0.5, 0.5)
-            patches.append(Polygon(xy, edgecolor='white', facecolor='none'))
+            xy = (np.array(geo_poly[0]['coordinates'][0]) - origin
+                  - np.array((0.5, 0.5)))
+            patches.append(Polygon(xy, **patch_kwargs))
+
+        return patches
+
+    def plot_patches(self, ax=None, origin=(0, 0), **kwargs):
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            ax = plt.gca()
+
+        patches = self.to_patches(origin=origin, **kwargs)
+        for patch in patches:
+            patch = copy(patch)
+            ax.add_patch(patch)
+
         return patches
 
     def outline_segments(self, mask_background=False):
