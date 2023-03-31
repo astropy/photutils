@@ -1166,6 +1166,16 @@ class SegmentationImage:
         # do not include polygons for background (label = 0)
         return polygons[1:]
 
+    @lazyproperty
+    def patches(self):
+        from matplotlib.patches import Polygon
+
+        patches = []
+        for geo_poly in self._geo_polygons:
+            xy = np.array(geo_poly[0]['coordinates'][0]) - (0.5, 0.5)
+            patches.append(Polygon(xy, edgecolor='white', facecolor='none'))
+        return patches
+
     def outline_segments(self, mask_background=False):
         """
         Outline the labeled segments.
