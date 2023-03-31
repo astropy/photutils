@@ -1274,7 +1274,7 @@ class SegmentationImage:
         if cmap is None:
             cmap = self.cmap
 
-        return ax.imshow(self.data, cmap=cmap, interpolation='none',
+        return ax.imshow(self.data, cmap=cmap, interpolation='nearest',
                          origin='lower', alpha=alpha)
 
 
