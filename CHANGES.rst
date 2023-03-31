@@ -73,6 +73,10 @@ API Changes
   - Removed the deprecated ``make_source_mask`` function in favor of the
     ``SegmentationImage.make_source_mask`` method. [#1479]
 
+  - The ``SegmentationImage`` ``imshow`` method now uses "nearest"
+    interpolation instead of "none" to avoid rendering issues with some
+    backends. [#1507]
+
 
 1.6.0 (2022-12-09)
 ------------------
