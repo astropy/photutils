@@ -1152,7 +1152,7 @@ class SegmentationImage:
     @lazyproperty
     def _geo_polygons(self):
         """
-        A list of polygons for each source segment.
+        A list of polygons representing each source segment.
 
         Each item in the list is tuple of (polygon, value) where the
         polygon is a GeoJSON-like dict and the value is the label from
@@ -1165,6 +1165,19 @@ class SegmentationImage:
 
         # do not include polygons for background (label = 0)
         return polygons[1:]
+
+    @lazyproperty
+    def polygons(self):
+        """
+        A list of `Shapely <https://shapely.readthedocs.io/>`_ polygons
+        representing each source segment.
+        """
+        from shapely.geometry import shape
+
+        polygons = []
+        for geo_poly in self._geo_polygons:
+            polygons.append(shape(geo_poly[0]))
+        return polygons
 
     @lazyproperty
     def patches(self):
