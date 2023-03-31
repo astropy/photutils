@@ -375,6 +375,13 @@ subtract the background from the data::
 
     >>> phot_table = aperture_photometry(data - bkg, aperture)  # doctest: +SKIP
 
+In the case of a constant global background, you can pass in the background
+value using ``local_bkg`` in :class:`~photutils.aperture.ApertureStats`.
+This would avoid reading an entire memory-mapped array into memory
+beforehand, as would happen if you manually subtract the background as
+shown above. So instead you could do this::
+
+    >>> aperstats = ApertureStats(data, aperture, local_bkg=bkg)  # doctest: +SKIP
 
 Local Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
