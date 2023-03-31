@@ -1149,6 +1149,23 @@ class SegmentationImage:
             from scipy.ndimage import binary_dilation
             return binary_dilation(mask, structure=footprint)
 
+    @lazyproperty
+    def _geo_polygons(self):
+        """
+        A list of polygons for each source segment.
+
+        Each item in the list is tuple of (polygon, value) where the
+        polygon is a GeoJSON-like dict and the value is the label from
+        the segmentation image.
+        """
+        from rasterio.features import shapes
+
+        polygons = list(shapes(self.data.astype('int32'), connectivity=8))
+        polygons.sort(key=lambda x: x[1])
+
+        # do not include polygons for background (label = 0)
+        return polygons[1:]
+
     def outline_segments(self, mask_background=False):
         """
         Outline the labeled segments.
