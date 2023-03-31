@@ -121,9 +121,11 @@ class SegmentationImage:
         of the ``labels`` attribute.
         """
         segments = []
-        for label, slc, bbox, area in zip(self.labels, self.slices, self.bbox,
-                                          self.areas):
-            segments.append(Segment(self.data, label, slc, bbox, area))
+        for label, slc, bbox, area, polygon in zip(self.labels, self.slices,
+                                                   self.bbox, self.areas,
+                                                   self.polygons):
+            segments.append(Segment(self.data, label, slc, bbox, area,
+                                    polygon=polygon))
         return segments
 
     @property
@@ -1342,14 +1344,20 @@ class Segment:
 
     area : float
         The area of the segment in pixels**2.
+
+    polygon : Shapely polygon, optional
+        The outline of the segment as a `Shapely
+        <https://shapely.readthedocs.io/>`_ polygon.
     """
 
-    def __init__(self, segment_data, label, slices, bbox, area):
+    def __init__(self, segment_data, label, slices, bbox, area,
+                 polygon=None):
         self._segment_data = segment_data
         self.label = label
         self.slices = slices
         self.bbox = bbox
         self.area = area
+        self.polygon = polygon
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
