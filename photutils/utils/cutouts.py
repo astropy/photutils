@@ -167,29 +167,16 @@ class CutoutImage:
         """
         return self._calc_bbox(self.slices_cutout)
 
-    def _calc_origin_offset(self):
-        """
-        For ``mode='partial'``, calculate the origin offset for cases of
-        partial overlap.
-        """
-        yshape = self.slices_original[0].stop - self.slices_original[0].start
-        xshape = self.slices_original[1].stop - self.slices_original[1].start
-        yoffset, xoffset = 0, 0
-        if self.shape != (yshape, xshape):
-            yoffset = yshape - self.shape[0]
-            xoffset = xshape - self.shape[1]
-        return yoffset, xoffset
-
     def _calc_xyorigin(self, slices):
         """
-        Calculate the (x, y) origin.
+        Calculate the (x, y) origin, taking into account partial
+        overlaps.
         """
         xorigin, yorigin = (slices[1].start, slices[0].start)
 
         if self.mode == 'partial':
-            yoffset, xoffset = self._calc_origin_offset()
-            xorigin += xoffset
-            yorigin += yoffset
+            yorigin -= self.slices_cutout[0].start
+            xorigin -= self.slices_cutout[1].start
 
         return np.array((xorigin, yorigin))
 
