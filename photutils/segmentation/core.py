@@ -1181,7 +1181,7 @@ class SegmentationImage:
             polygons.append(shape(geo_poly[0]))
         return polygons
 
-    def to_patches(self, origin=(0, 0), **kwargs):
+    def to_patches(self, *, origin=(0, 0), **kwargs):
         from matplotlib.patches import Polygon
 
         origin = np.array(origin)
@@ -1196,16 +1196,26 @@ class SegmentationImage:
 
         return patches
 
-    def plot_patches(self, ax=None, origin=(0, 0), **kwargs):
+    def plot_patches(self, *, ax=None, origin=(0, 0), labels=None, **kwargs):
         import matplotlib.pyplot as plt
 
         if ax is None:
             ax = plt.gca()
 
         patches = self.to_patches(origin=origin, **kwargs)
+        if labels is not None:
+            patches = np.array(patches)
+            indices = self.get_indices(labels)
+            patches = patches[indices]
+            if np.isscalar(labels):
+                patches = (patches,)
+
         for patch in patches:
             patch = copy(patch)
             ax.add_patch(patch)
+
+        if labels is not None and np.isscalar(labels):
+            patches = patches[0]
 
         return patches
 
