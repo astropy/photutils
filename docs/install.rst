@@ -41,7 +41,7 @@ Photutils also optionally depends on other packages for some features:
 * `rasterio <https://rasterio.readthedocs.io/>`_: Used for converting
   source segments into polygon objects.
 
-* `shapely <https://shapely.readthedocs.io/>`_: Used for converting
+* `Shapely <https://shapely.readthedocs.io/>`_: Used for converting
   source segments into polygon objects.
 
 Photutils depends on `pytest-astropy
