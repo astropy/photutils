@@ -14,9 +14,9 @@ from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
+from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
 from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
-from photutils.utils._optional_deps import (HAS_RASTERIO, HAS_SHAPELY)
 
 __all__ = ['SegmentationImage', 'Segment']
 

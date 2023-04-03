@@ -13,7 +13,7 @@ from numpy.testing import assert_allclose, assert_equal
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.utils import circular_footprint
 from photutils.utils._optional_deps import (HAS_MATPLOTLIB, HAS_RASTERIO,
-                                            HAS_SHAPELY, HAS_SCIPY)
+                                            HAS_SCIPY, HAS_SHAPELY)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -448,7 +448,6 @@ class TestSegmentationImage:
             assert isinstance(segm_outlines, np.ma.MaskedArray)
             assert np.ma.count(segm_outlines) == 8
             assert np.ma.count_masked(segm_outlines) == 17
-
 
 
 class CustomSegm(SegmentationImage):
