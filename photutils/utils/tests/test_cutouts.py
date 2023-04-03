@@ -67,6 +67,21 @@ def test_cutout_partial_overlap():
 
     assert_equal(cutout.xyorigin, np.array((-18, -1)))
 
+    # regression test for xyorgin in partial mode when cutout extends
+    # beyond right or top edge
+    data = make_100gaussians_image()
+    shape = (54, 57)
+    cutout = CutoutImage(data, (281, 485), shape, mode='partial')
+
+    assert_equal(cutout.xyorigin, np.array((457, 254)))
+    assert (cutout.bbox_original
+            == BoundingBox(ixmin=457, ixmax=500, iymin=254, iymax=300))
+    assert (cutout.bbox_cutout
+            == BoundingBox(ixmin=0, ixmax=43, iymin=0, iymax=46))
+    assert cutout.slices_original == (slice(254, 300, None),
+                                      slice(457, 500, None))
+    assert cutout.slices_cutout == (slice(0, 46, None), slice(0, 43, None))
+
 
 def test_cutout_copy():
     data = make_100gaussians_image()
