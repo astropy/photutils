@@ -1254,14 +1254,14 @@ class SegmentationImage:
             indices = self.get_indices(labels)
             patches = patches[indices]
             if np.isscalar(labels):
-                patches = (patches,)
+                patches = [patches]
 
         for patch in patches:
             patch = copy(patch)
             ax.add_patch(patch)
 
-        if labels is not None and np.isscalar(labels):
-            patches = patches[0]
+        if labels is not None:
+            patches = list(patches)
 
         return patches
 

@@ -388,6 +388,35 @@ class TestSegmentationImage:
         mask = segm.make_source_mask(footprint=np.ones((3, 3)), size=5)
         assert_equal(mask, expected1)
 
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_imshow(self):
+        from matplotlib.image import AxesImage
+
+        axim = self.segm.imshow(figsize=(5, 5))
+        assert isinstance(axim, AxesImage)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_patches(self):
+        from matplotlib.patches import Polygon
+
+        patches = self.segm.to_patches(edgecolor='blue')
+        assert isinstance(patches[0], Polygon)
+        assert patches[0].get_edgecolor() == (0, 0, 1, 1)
+
+        patches = self.segm.plot_patches(edgecolor='red')
+        assert isinstance(patches[0], Polygon)
+        assert patches[0].get_edgecolor() == (1, 0, 0, 1)
+
+        patches = self.segm.plot_patches(labels=1)
+        assert len(patches) == 1
+        assert isinstance(patches, list)
+        assert isinstance(patches[0], Polygon)
+
+        patches = self.segm.plot_patches(labels=(4, 7))
+        assert len(patches) == 2
+        assert isinstance(patches, list)
+        assert isinstance(patches[0], Polygon)
+
     def test_outline_segments(self):
         segm_array = np.zeros((5, 5)).astype(int)
         segm_array[1:4, 1:4] = 2
@@ -409,12 +438,6 @@ class TestSegmentationImage:
             assert np.ma.count(segm_outlines) == 8
             assert np.ma.count_masked(segm_outlines) == 17
 
-    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
-    def test_imshow(self):
-        from matplotlib.image import AxesImage
-
-        axim = self.segm.imshow(figsize=(5, 5))
-        assert isinstance(axim, AxesImage)
 
 
 class CustomSegm(SegmentationImage):
