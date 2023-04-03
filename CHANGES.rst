@@ -51,6 +51,12 @@ Bug Fixes
   - Fixed a bug in the calculation of the upper harmonic errors (a3_err,
     a4_err, b3_err, and b4_err). [#1501].
 
+- ``photutils.utils``
+
+  - Fixed a bug in the calculation of ``ImageCutout`` ``xyorigin`` when
+    using the ``'partial'`` mode when the cutout extended beyond the
+    right or top edge. [#1508]
+
 API Changes
 ^^^^^^^^^^^
 
