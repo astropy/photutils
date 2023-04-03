@@ -49,11 +49,25 @@ class TestDAOStarFinder:
         tbl = starfinder(DATA)
         assert len(tbl) == 20
 
+        # test when no detections
+        starfinder = DAOStarFinder(threshold=100, fwhm=2, sigma_radius=1.5,
+                                   exclude_border=False)
+        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
+            tbl = starfinder(DATA)
+            assert tbl is None
+
     def test_daofind_exclude_border(self):
         starfinder = DAOStarFinder(threshold=10, fwhm=2, sigma_radius=1.5,
                                    exclude_border=True)
         tbl = starfinder(DATA)
         assert len(tbl) == 19
+
+        # test when no detections
+        starfinder = DAOStarFinder(threshold=100, fwhm=2, sigma_radius=1.5,
+                                   exclude_border=True)
+        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
+            tbl = starfinder(DATA)
+            assert tbl is None
 
     def test_daofind_nosources(self):
         data = np.ones((3, 3))

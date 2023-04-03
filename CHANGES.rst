@@ -51,6 +51,13 @@ Bug Fixes
   - Fixed an issue where ``centroid_quadratic`` would sometimes fail if
     the input data contained NaNs. [#1495]
 
+- ``photutils.detection``
+
+  - Fixed an issue with the starfinders (``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder``) where an exception was
+    raised if ``exclude_border=True`` and there were no detections.
+    [#1512].
+
 - ``photutils.isophote``
 
   - Fixed a bug where the upper harmonics (a3, a4, b3, and b4) had the
