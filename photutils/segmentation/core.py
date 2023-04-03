@@ -16,6 +16,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.aperture import BoundingBox
 from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
+from photutils.utils._optional_deps import (HAS_RASTERIO, HAS_SHAPELY)
 
 __all__ = ['SegmentationImage', 'Segment']
 
@@ -121,11 +122,20 @@ class SegmentationImage:
         of the ``labels`` attribute.
         """
         segments = []
-        for label, slc, bbox, area, polygon in zip(self.labels, self.slices,
-                                                   self.bbox, self.areas,
-                                                   self.polygons):
-            segments.append(Segment(self.data, label, slc, bbox, area,
-                                    polygon=polygon))
+
+        if HAS_RASTERIO and HAS_SHAPELY:
+            for label, slc, bbox, area, polygon in zip(self.labels,
+                                                       self.slices,
+                                                       self.bbox,
+                                                       self.areas,
+                                                       self.polygons):
+                segments.append(Segment(self.data, label, slc, bbox, area,
+                                        polygon=polygon))
+        else:
+            for label, slc, bbox, area in zip(self.labels, self.slices,
+                                              self.bbox, self.areas):
+                segments.append(Segment(self.data, label, slc, bbox, area))
+
         return segments
 
     @property
