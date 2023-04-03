@@ -1430,7 +1430,7 @@ class Segment:
     def __repr__(self):
         return self.__str__()
 
-    def _repr_svg_(self):
+    def _repr_svg_(self):  # pragma: no cover
         if self.polygon is not None:
             print(repr(self))
             return self.polygon._repr_svg_()

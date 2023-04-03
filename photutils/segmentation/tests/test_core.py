@@ -12,7 +12,8 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.utils import circular_footprint
-from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY
+from photutils.utils._optional_deps import (HAS_MATPLOTLIB, HAS_RASTERIO,
+                                            HAS_SHAPELY, HAS_SCIPY)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -98,6 +99,8 @@ class TestSegmentationImage:
         assert np.ma.count(self.segm.data_ma) == 18
         assert np.ma.count_masked(self.segm.data_ma) == 18
 
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     def test_segments(self):
         assert isinstance(self.segm.segments[0], Segment)
         assert_allclose(self.segm.segments[0].data,
@@ -122,15 +125,21 @@ class TestSegmentationImage:
         for prop in props:
             assert f'{prop}:' in repr(self.segm)
 
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     def test_segment_repr_str(self):
         props = ['label', 'slices', 'area']
         for prop in props:
             assert f'{prop}:' in repr(self.segm.segments[0])
 
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     def test_segment_data(self):
         assert_allclose(self.segm.segments[3].data.shape, (3, 3))
         assert_allclose(np.unique(self.segm.segments[3].data), [0, 5])
 
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     def test_segment_make_cutout(self):
         cutout = self.segm.segments[3].make_cutout(self.data,
                                                    masked_array=False)
@@ -142,6 +151,8 @@ class TestSegmentationImage:
         assert np.ma.is_masked(cutout)
         assert_allclose(cutout.shape, (3, 3))
 
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     def test_segment_make_cutout_input(self):
         with pytest.raises(ValueError):
             self.segm.segments[0].make_cutout(np.arange(10))
@@ -395,6 +406,16 @@ class TestSegmentationImage:
         axim = self.segm.imshow(figsize=(5, 5))
         assert isinstance(axim, AxesImage)
 
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_polygons(self):
+        from shapely.geometry.polygon import Polygon
+
+        polygons = self.segm.polygons
+        assert len(polygons) == self.segm.nlabels
+        assert isinstance(polygons[0], Polygon)
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_patches(self):
         from matplotlib.patches import Polygon

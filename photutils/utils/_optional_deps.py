@@ -9,7 +9,7 @@ import importlib
 # Note that in some cases the package names are different from the
 # pip-install name (e.g.k scikit-image -> skimage).
 optional_deps = ['scipy', 'matplotlib', 'skimage', 'sklearn', 'gwcs',
-                 'bottleneck', 'tqdm']
+                 'bottleneck', 'tqdm', 'rasterio', 'shapely']
 deps = {key.upper(): key for key in optional_deps}
 __all__ = [f'HAS_{pkg}' for pkg in deps]
 
