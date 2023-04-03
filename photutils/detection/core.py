@@ -105,15 +105,15 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             tbl = find_peaks(convolved_data, threshold, footprint=footprint,
                              mask=mask)
 
+        if tbl is None:
+            return None
+
         if exclude_border:
             xmax = convolved_data.shape[1] - xpad
             ymax = convolved_data.shape[0] - ypad
             mask = ((tbl['x_peak'] > xpad) & (tbl['y_peak'] > ypad)
                     & (tbl['x_peak'] < xmax) & (tbl['y_peak'] < ymax))
             tbl = tbl[mask]
-
-        if tbl is None:
-            return None
 
         xpos, ypos = tbl['x_peak'], tbl['y_peak']
         if not exclude_border:
