@@ -6,12 +6,14 @@ Tests for the core module.
 import numpy as np
 import pytest
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.utils import circular_footprint
-from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY
+from photutils.utils._optional_deps import (HAS_MATPLOTLIB, HAS_RASTERIO,
+                                            HAS_SCIPY, HAS_SHAPELY)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -387,13 +389,53 @@ class TestSegmentationImage:
         mask = segm.make_source_mask(footprint=np.ones((3, 3)), size=5)
         assert_equal(mask, expected1)
 
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_imshow(self):
+        from matplotlib.image import AxesImage
+
+        axim = self.segm.imshow(figsize=(5, 5))
+        assert isinstance(axim, AxesImage)
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+    def test_polygons(self):
+        from shapely.geometry.polygon import Polygon
+
+        polygons = self.segm.polygons
+        assert len(polygons) == self.segm.nlabels
+        assert isinstance(polygons[0], Polygon)
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_patches(self):
+        from matplotlib.patches import Polygon
+
+        patches = self.segm.to_patches(edgecolor='blue')
+        assert isinstance(patches[0], Polygon)
+        assert patches[0].get_edgecolor() == (0, 0, 1, 1)
+
+        patches = self.segm.plot_patches(edgecolor='red')
+        assert isinstance(patches[0], Polygon)
+        assert patches[0].get_edgecolor() == (1, 0, 0, 1)
+
+        patches = self.segm.plot_patches(labels=1)
+        assert len(patches) == 1
+        assert isinstance(patches, list)
+        assert isinstance(patches[0], Polygon)
+
+        patches = self.segm.plot_patches(labels=(4, 7))
+        assert len(patches) == 2
+        assert isinstance(patches, list)
+        assert isinstance(patches[0], Polygon)
+
     def test_outline_segments(self):
         segm_array = np.zeros((5, 5)).astype(int)
         segm_array[1:4, 1:4] = 2
         segm = SegmentationImage(segm_array)
         segm_array_ref = np.copy(segm_array)
         segm_array_ref[2, 2] = 0
-        assert_allclose(segm.outline_segments(), segm_array_ref)
+        with pytest.warns(AstropyDeprecationWarning):
+            assert_allclose(segm.outline_segments(), segm_array_ref)
 
     def test_outline_segments_masked_background(self):
         segm_array = np.zeros((5, 5)).astype(int)
@@ -401,17 +443,11 @@ class TestSegmentationImage:
         segm = SegmentationImage(segm_array)
         segm_array_ref = np.copy(segm_array)
         segm_array_ref[2, 2] = 0
-        segm_outlines = segm.outline_segments(mask_background=True)
-        assert isinstance(segm_outlines, np.ma.MaskedArray)
-        assert np.ma.count(segm_outlines) == 8
-        assert np.ma.count_masked(segm_outlines) == 17
-
-    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
-    def test_imshow(self):
-        from matplotlib.image import AxesImage
-
-        axim = self.segm.imshow(figsize=(5, 5))
-        assert isinstance(axim, AxesImage)
+        with pytest.warns(AstropyDeprecationWarning):
+            segm_outlines = segm.outline_segments(mask_background=True)
+            assert isinstance(segm_outlines, np.ma.MaskedArray)
+            assert np.ma.count(segm_outlines) == 8
+            assert np.ma.count_masked(segm_outlines) == 17
 
 
 class CustomSegm(SegmentationImage):

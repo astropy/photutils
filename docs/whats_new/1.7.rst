@@ -20,6 +20,18 @@ for computing radial profiles and curves of growth:
   *  `~photutils.profiles.CurveOfGrowth`
 
 
+Converting ``SegmentationImage`` segments to polygons
+=====================================================
+
+The ``SegmentationImage`` class now has a ``polygons`` attribute, which
+returns a list of `Shapely <https://shapely.readthedocs.io/>`_ polygons
+representing each source segment. It also now has a ``to_patches`` and
+a ``plot_patches`` method, which returns or plots, respectively, a list
+of `matplotlib.patches.Polygon` objects. These features require that
+both the `Rasterio <https://rasterio.readthedocs.io/>`_ and `Shapely
+<https://shapely.readthedocs.io/>`_ optional dependencies are installed.
+
+
 Other changes
 =============
 

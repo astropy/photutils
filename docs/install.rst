@@ -38,6 +38,12 @@ Photutils also optionally depends on other packages for some features:
 * `tqdm <https://tqdm.github.io/>`_: Used to display optional progress
   bars.
 
+* `rasterio <https://rasterio.readthedocs.io/>`_: Used for converting
+  source segments into polygon objects.
+
+* `Shapely <https://shapely.readthedocs.io/>`_: Used for converting
+  source segments into polygon objects.
+
 Photutils depends on `pytest-astropy
 <https://github.com/astropy/pytest-astropy>`_ (0.4 or later) to run
 the test suite.

@@ -6,14 +6,15 @@ segment within a segmentation image.
 
 import inspect
 import warnings
-from copy import deepcopy
+from copy import copy, deepcopy
 
 import numpy as np
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
+from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
 from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
 
@@ -121,9 +122,20 @@ class SegmentationImage:
         of the ``labels`` attribute.
         """
         segments = []
-        for label, slc, bbox, area in zip(self.labels, self.slices, self.bbox,
-                                          self.areas):
-            segments.append(Segment(self.data, label, slc, bbox, area))
+
+        if HAS_RASTERIO and HAS_SHAPELY:
+            for label, slc, bbox, area, polygon in zip(self.labels,
+                                                       self.slices,
+                                                       self.bbox,
+                                                       self.areas,
+                                                       self.polygons):
+                segments.append(Segment(self.data, label, slc, bbox, area,
+                                        polygon=polygon))
+        else:
+            for label, slc, bbox, area in zip(self.labels, self.slices,
+                                              self.bbox, self.areas):
+                segments.append(Segment(self.data, label, slc, bbox, area))
+
         return segments
 
     @property
@@ -1149,6 +1161,139 @@ class SegmentationImage:
             from scipy.ndimage import binary_dilation
             return binary_dilation(mask, structure=footprint)
 
+    @lazyproperty
+    def _geo_polygons(self):
+        """
+        A list of polygons representing each source segment.
+
+        Each item in the list is tuple of (polygon, value) where the
+        polygon is a GeoJSON-like dict and the value is the label from
+        the segmentation image.
+        """
+        from rasterio.features import shapes
+
+        polygons = list(shapes(self.data.astype('int32'), connectivity=8))
+        polygons.sort(key=lambda x: x[1])
+
+        # do not include polygons for background (label = 0)
+        return polygons[1:]
+
+    @lazyproperty
+    def polygons(self):
+        """
+        A list of `Shapely <https://shapely.readthedocs.io/>`_ polygons
+        representing each source segment.
+        """
+        from shapely.geometry import shape
+
+        polygons = []
+        for geo_poly in self._geo_polygons:
+            polygons.append(shape(geo_poly[0]))
+        return polygons
+
+    def to_patches(self, *, origin=(0, 0), **kwargs):
+        """
+        Return a list of `~matplotlib.patches.Polygon` objects
+        representing each source segment.
+
+        By default, the polygon patch will have a white edge color and
+        no face color.
+
+        Parameters
+        ----------
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        **kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Polygon`.
+        """
+        from matplotlib.patches import Polygon
+
+        origin = np.array(origin)
+        patch_kwargs = {'edgecolor': 'white', 'facecolor': 'none'}
+        patch_kwargs.update(kwargs)
+
+        patches = []
+        for geo_poly in self._geo_polygons:
+            xy = (np.array(geo_poly[0]['coordinates'][0]) - origin
+                  - np.array((0.5, 0.5)))
+            patches.append(Polygon(xy, **patch_kwargs))
+
+        return patches
+
+    def plot_patches(self, *, ax=None, origin=(0, 0), labels=None, **kwargs):
+        """
+        Plot the `~matplotlib.patches.Polygon` objects for the source
+        segments on a matplotlib `~matplotlib.axes.Axes` instance.
+
+        Parameters
+        ----------
+        ax : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        labels: int or array of int, optional
+            The label numbers whose polygons are to be ploted. If
+            `None`, the polygons for all labels will be plotted.
+
+        **kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Polygon`.
+
+        Returns
+        -------
+        patches : list of `~matplotlib.patches.Polygon`
+            A list of matplotlib polygon patches for the plotted
+            polygons. The patches can be used, for example, when adding
+            a plot legend.
+
+        Examples
+        --------
+        .. plot::
+            :include-source:
+
+            import numpy as np
+            from photutils.segmentation import SegmentationImage
+
+            data = np.array([[1, 1, 0, 0, 4, 4],
+                             [0, 0, 0, 0, 0, 4],
+                             [0, 0, 3, 3, 0, 0],
+                             [7, 0, 0, 0, 0, 5],
+                             [7, 7, 0, 5, 5, 5],
+                             [7, 7, 0, 0, 5, 5]])
+            segm = SegmentationImage(data)
+            segm.imshow(figsize=(5, 5))
+            segm.plot_patches(edgecolor='white', lw=2)
+        """
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            ax = plt.gca()
+
+        patches = self.to_patches(origin=origin, **kwargs)
+        if labels is not None:
+            patches = np.array(patches)
+            indices = self.get_indices(labels)
+            patches = patches[indices]
+            if np.isscalar(labels):
+                patches = [patches]
+
+        for patch in patches:
+            patch = copy(patch)
+            ax.add_patch(patch)
+
+        if labels is not None:
+            patches = list(patches)
+
+        return patches
+
+    @deprecated('1.7.0', alternative='`plot_patches`')
     def outline_segments(self, mask_background=False):
         """
         Outline the labeled segments.
@@ -1171,24 +1316,6 @@ class SegmentationImage:
             pixel values in the outlines correspond to the labels in the
             segmentation array.  If ``mask_background`` is `True`, then
             a `~numpy.ma.MaskedArray` is returned.
-
-        Examples
-        --------
-        >>> from photutils.segmentation import SegmentationImage
-        >>> data = np.array([[0, 0, 0, 0, 0, 0],
-        ...                  [0, 2, 2, 2, 2, 0],
-        ...                  [0, 2, 2, 2, 2, 0],
-        ...                  [0, 2, 2, 2, 2, 0],
-        ...                  [0, 2, 2, 2, 2, 0],
-        ...                  [0, 0, 0, 0, 0, 0]])
-        >>> segm = SegmentationImage(data)
-        >>> segm.outline_segments()
-        array([[0, 0, 0, 0, 0, 0],
-               [0, 2, 2, 2, 2, 0],
-               [0, 2, 0, 0, 2, 0],
-               [0, 2, 0, 0, 2, 0],
-               [0, 2, 2, 2, 2, 0],
-               [0, 0, 0, 0, 0, 0]])
         """
         from scipy.ndimage import (generate_binary_structure, grey_dilation,
                                    grey_erosion)
@@ -1302,14 +1429,20 @@ class Segment:
 
     area : float
         The area of the segment in pixels**2.
+
+    polygon : Shapely polygon, optional
+        The outline of the segment as a `Shapely
+        <https://shapely.readthedocs.io/>`_ polygon.
     """
 
-    def __init__(self, segment_data, label, slices, bbox, area):
+    def __init__(self, segment_data, label, slices, bbox, area,
+                 polygon=None):
         self._segment_data = segment_data
         self.label = label
         self.slices = slices
         self.bbox = bbox
         self.area = area
+        self.polygon = polygon
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
@@ -1324,6 +1457,12 @@ class Segment:
 
     def __repr__(self):
         return self.__str__()
+
+    def _repr_svg_(self):  # pragma: no cover
+        if self.polygon is not None:
+            print(repr(self))
+            return self.polygon._repr_svg_()
+        return None
 
     def __array__(self):
         """

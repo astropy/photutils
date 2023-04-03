@@ -4,6 +4,9 @@
 General
 ^^^^^^^
 
+- The ``rasterio`` and ``shapely`` packages are now optional
+  dependencies. [#1509]
+
 New Features
 ^^^^^^^^^^^^
 
@@ -34,6 +37,11 @@ New Features
   - Significantly improved the performance of ``SegmentationImage``
     ``make_source_mask`` when using square footprints for source
     dilation. [#1506]
+
+  - Added the ``polygons`` property and ``to_patches`` and
+    ``plot_patches`` methods to ``SegmentationImage``. [#1509]
+
+  - Added ``polygon`` keyword to the ``Segment`` class. [#1509]
 
 Bug Fixes
 ^^^^^^^^^
@@ -82,6 +90,13 @@ API Changes
   - The ``SegmentationImage`` ``imshow`` method now uses "nearest"
     interpolation instead of "none" to avoid rendering issues with some
     backends. [#1507]
+
+  - The ``repr()`` notebook output for the ``Segment`` class now
+    includes a SVG polygon representation of the segment if the
+    ``rasterio`` and ``shapely`` packages are installed. [#1509]
+
+  - Deprecated the ``SegmentationImage`` ``outline_segments`` method.
+    Use the ``plot_patches`` method instead. [#1509]
 
 
 1.6.0 (2022-12-09)
