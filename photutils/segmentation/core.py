@@ -10,7 +10,7 @@ from copy import copy, deepcopy
 
 import numpy as np
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
@@ -1265,6 +1265,7 @@ class SegmentationImage:
 
         return patches
 
+    @deprecated('1.7.0', alternative='`plot_patches`')
     def outline_segments(self, mask_background=False):
         """
         Outline the labeled segments.
@@ -1287,24 +1288,6 @@ class SegmentationImage:
             pixel values in the outlines correspond to the labels in the
             segmentation array.  If ``mask_background`` is `True`, then
             a `~numpy.ma.MaskedArray` is returned.
-
-        Examples
-        --------
-        >>> from photutils.segmentation import SegmentationImage
-        >>> data = np.array([[0, 0, 0, 0, 0, 0],
-        ...                  [0, 2, 2, 2, 2, 0],
-        ...                  [0, 2, 2, 2, 2, 0],
-        ...                  [0, 2, 2, 2, 2, 0],
-        ...                  [0, 2, 2, 2, 2, 0],
-        ...                  [0, 0, 0, 0, 0, 0]])
-        >>> segm = SegmentationImage(data)
-        >>> segm.outline_segments()
-        array([[0, 0, 0, 0, 0, 0],
-               [0, 2, 2, 2, 2, 0],
-               [0, 2, 0, 0, 2, 0],
-               [0, 2, 0, 0, 2, 0],
-               [0, 2, 2, 2, 2, 0],
-               [0, 0, 0, 0, 0, 0]])
         """
         from scipy.ndimage import (generate_binary_structure, grey_dilation,
                                    grey_erosion)

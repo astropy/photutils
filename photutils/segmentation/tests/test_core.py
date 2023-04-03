@@ -6,7 +6,8 @@ Tests for the core module.
 import numpy as np
 import pytest
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.segmentation.core import Segment, SegmentationImage
@@ -393,7 +394,8 @@ class TestSegmentationImage:
         segm = SegmentationImage(segm_array)
         segm_array_ref = np.copy(segm_array)
         segm_array_ref[2, 2] = 0
-        assert_allclose(segm.outline_segments(), segm_array_ref)
+        with pytest.warns(AstropyDeprecationWarning):
+            assert_allclose(segm.outline_segments(), segm_array_ref)
 
     def test_outline_segments_masked_background(self):
         segm_array = np.zeros((5, 5)).astype(int)
@@ -401,10 +403,11 @@ class TestSegmentationImage:
         segm = SegmentationImage(segm_array)
         segm_array_ref = np.copy(segm_array)
         segm_array_ref[2, 2] = 0
-        segm_outlines = segm.outline_segments(mask_background=True)
-        assert isinstance(segm_outlines, np.ma.MaskedArray)
-        assert np.ma.count(segm_outlines) == 8
-        assert np.ma.count_masked(segm_outlines) == 17
+        with pytest.warns(AstropyDeprecationWarning):
+            segm_outlines = segm.outline_segments(mask_background=True)
+            assert isinstance(segm_outlines, np.ma.MaskedArray)
+            assert np.ma.count(segm_outlines) == 8
+            assert np.ma.count_masked(segm_outlines) == 17
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_imshow(self):
