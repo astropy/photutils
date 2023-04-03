@@ -1182,6 +1182,23 @@ class SegmentationImage:
         return polygons
 
     def to_patches(self, *, origin=(0, 0), **kwargs):
+        """
+        Return a list of `~matplotlib.patches.Polygon` objects
+        representing each source segment.
+
+        By default, the polygon patch will have a white edge color and
+        no face color.
+
+        Parameters
+        ----------
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        **kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Polygon`.
+        """
         from matplotlib.patches import Polygon
 
         origin = np.array(origin)
@@ -1197,6 +1214,35 @@ class SegmentationImage:
         return patches
 
     def plot_patches(self, *, ax=None, origin=(0, 0), labels=None, **kwargs):
+        """
+        Plot the `~matplotlib.patches.Polygon` objects for the source
+        segments on a matplotlib `~matplotlib.axes.Axes` instance.
+
+        Parameters
+        ----------
+        ax : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        labels: int or array of int, optional
+            The label numbers whose polygons are to be ploted. If
+            `None`, the polygons for all labels will be plotted.
+
+        **kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Polygon`.
+
+        Returns
+        -------
+        patches : list of `~matplotlib.patches.Polygon`
+            A list of matplotlib polygon patches for the plotted
+            polygons. The patches can be used, for example, when adding
+            a plot legend.
+        """
         import matplotlib.pyplot as plt
 
         if ax is None:
