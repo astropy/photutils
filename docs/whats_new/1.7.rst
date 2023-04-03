@@ -32,6 +32,26 @@ both the `Rasterio <https://rasterio.readthedocs.io/>`_ and `Shapely
 <https://shapely.readthedocs.io/>`_ optional dependencies are installed.
 
 
+`ApertureStats` local background
+================================
+
+The `ApertureStats` ``local_bkg`` keyword can now be input as a scalar
+value, which will be broadcast for apertures with multiple positions.
+This can be useful to avoid loading large memory-mapped images into
+memory if the background level is constant.
+
+
+Performance Improvements
+========================
+
+A number of significant performance improvements have been made:
+
+  * :func:`aperture_photometry` and :meth:`PixelAperture.do_photometry`
+  * :meth:`PixelAperture.area_overlap`
+  * :class:`GriddedPSFModel`
+  * :meth:`SegmentationImage.make_source_mask`
+
+
 Other changes
 =============
 
