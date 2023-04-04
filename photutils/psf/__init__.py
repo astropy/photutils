@@ -13,6 +13,7 @@ from .models import *  # noqa: F401, F403
 from .photometry import *  # noqa: F401, F403
 from .utils import *  # noqa: F401, F403
 
+# exclude matching from this list to avoid sphinx warnings
 __all__ = []
 __all__.extend(epsf.__all__)
 __all__.extend(epsf_stars.__all__)

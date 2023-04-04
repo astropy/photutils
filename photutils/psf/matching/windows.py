@@ -22,7 +22,7 @@ def _radial_distance(shape):
 
     Returns
     -------
-    result : `~numpy.ndarray`
+    result : 2D `~numpy.ndarray`
         An array containing the Euclidean radial distances from the
         array center.
     """
@@ -80,7 +80,8 @@ class SplitCosineBellWindow:
 
     def __call__(self, shape):
         """
-        Return a 2D split cosine bell.
+        Call self as a function to return a 2D window function of the
+        given shape.
 
         Parameters
         ----------
@@ -89,8 +90,8 @@ class SplitCosineBellWindow:
 
         Returns
         -------
-        result : `~numpy.ndarray`
-            A 2D array containing the cosine bell values.
+        result : 2D `~numpy.ndarray`
+            The window function as a 2D array.
         """
         radial_dist = _radial_distance(shape)
         npts = (np.array(shape).min() - 1.0) / 2.0
