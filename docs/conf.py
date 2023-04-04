@@ -35,7 +35,7 @@ setup_cfg = dict(conf.items('metadata'))
 highlight_language = 'python3'
 
 # If your documentation needs a minimal Sphinx version, state it here.
-needs_sphinx = '1.7'
+needs_sphinx = '3.0'
 
 # Extend astropy intersphinx_mapping with packages we use here
 intersphinx_mapping['skimage'] = ('https://scikit-image.org/docs/stable/', None)  # noqa: F405
