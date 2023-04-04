@@ -44,7 +44,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     data : array_like
         The 2D array of the image.
 
-    threshold : float or array-like
+    threshold : float or array_like
         The data value or pixel-wise data values to be used for the
         detection threshold. A 2D ``threshold`` must have the same shape
         as ``data``. See `~photutils.segmentation.detect_threshold` for

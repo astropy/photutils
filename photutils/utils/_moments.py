@@ -14,7 +14,7 @@ def _moments_central(data, center=None, order=1):
 
     Parameters
     ----------
-    data : 2D array-like
+    data : 2D array_like
         The input 2D array.
 
     center : tuple of two floats or `None`, optional
@@ -52,7 +52,7 @@ def _moments(data, order=1):
 
     Parameters
     ----------
-    data : 2D array-like
+    data : 2D array_like
         The input 2D array.
 
     order : int, optional

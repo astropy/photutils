@@ -37,7 +37,7 @@ def apply_poisson_noise(data, seed=None):
 
     Parameters
     ----------
-    data : array-like
+    data : array_like
         The array on which to apply Poisson noise.  Every pixel in the
         array must have a positive value (i.e., counts).
 
@@ -906,7 +906,7 @@ def make_imagehdu(data, wcs=None):
 
     Parameters
     ----------
-    data : 2D array-like
+    data : 2D array_like
         The input 2D data.
 
     wcs : `None` or `~astropy.wcs.WCS`, optional

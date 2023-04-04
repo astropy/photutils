@@ -41,7 +41,7 @@ def gini(data):
 
     Parameters
     ----------
-    data : array-like
+    data : array_like
         The 2D data array or object that can be converted to an array.
 
     Returns

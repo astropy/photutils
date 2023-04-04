@@ -28,7 +28,7 @@ def calc_total_error(data, bkg_error, effective_gain):
         ``bkg_error`` are `~astropy.units.Quantity` objects, then they
         must have the same units.
 
-    effective_gain : float, array-like, or `~astropy.units.Quantity`
+    effective_gain : float, array_like, or `~astropy.units.Quantity`
         Ratio of counts (e.g., electrons or photons) to the units of
         ``data`` used to calculate the Poisson error of the sources.  If
         ``effective_gain`` is zero (or contains zero values in an

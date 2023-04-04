@@ -67,7 +67,7 @@ class BasicPSFPhotometry:
         fit. The names of these parameters should be given as ``x_0``,
         ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
         used to prepare any 2D model to match this assumption.
-    fitshape : int or length-2 array-like
+    fitshape : int or length-2 array_like
         Rectangular shape around the center of a star that will be
         used to define the PSF-fitting region. If ``fitshape`` is a
         scalar then a square shape of size ``fitshape`` will be used.
@@ -102,7 +102,7 @@ class BasicPSFPhotometry:
         List of additional columns for parameters derived by any of the
         intermediate fitting steps (e.g., ``finder``), such as roundness
         or sharpness.
-    subshape : `None`, int, or length-2 array-like
+    subshape : `None`, int, or length-2 array_like
         Rectangular shape around the center of a star that will be
         used to define the PSF-subtraction region. If `None`, then
         ``fitshape`` will be used. If ``subshape`` is a scalar then a
@@ -701,7 +701,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         fit. The names of these parameters should be given as ``x_0``,
         ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
         used to prepare any 2D model to match this assumption.
-    fitshape : int or length-2 array-like
+    fitshape : int or length-2 array_like
         Rectangular shape around the center of a star that will be
         used to define the PSF-fitting region. If ``fitshape`` is a
         scalar then a square shape of size ``fitshape`` will be used.
@@ -737,7 +737,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         List of additional columns for parameters derived by any of the
         intermediate fitting steps (e.g., ``finder``), such as roundness
         or sharpness.
-    subshape : `None`, int, or length-2 array-like
+    subshape : `None`, int, or length-2 array_like
         Rectangular shape around the center of a star that will be
         used to define the PSF-subtraction region. If `None`, then
         ``fitshape`` will be used. If ``subshape`` is a scalar then a
@@ -996,7 +996,7 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         fit. The names of these parameters should be given as ``x_0``,
         ``y_0`` and ``flux``. `~photutils.psf.prepare_psf_model` can be
         used to prepare any 2D model to match this assumption.
-    fitshape : int or length-2 array-like
+    fitshape : int or length-2 array_like
         Rectangular shape around the center of a star that will be
         used to define the PSF-fitting region. If ``fitshape`` is a
         scalar then a square shape of size ``fitshape`` will be used.
@@ -1044,7 +1044,7 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         List of additional columns for parameters derived by any of the
         intermediate fitting steps (e.g., ``finder``), such as roundness
         or sharpness.
-    subshape : `None`, int, or length-2 array-like
+    subshape : `None`, int, or length-2 array_like
         Rectangular shape around the center of a star that will be
         used to define the PSF-subtraction region. If `None`, then
         ``fitshape`` will be used. If ``subshape`` is a scalar then a

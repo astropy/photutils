@@ -605,7 +605,7 @@ class SourceCatalog:
             The name of property. The name must not conflict with any of
             the built-in property names or attributes.
 
-        value : array-like or float
+        value : array_like or float
             The value to assign.
 
         overwrite : bool, option

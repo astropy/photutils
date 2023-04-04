@@ -67,7 +67,7 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         ``kernel`` must be `None` if the input ``data`` are already
         convolved.
 
-    labels : int or array-like of int, optional
+    labels : int or array_like of int, optional
         The label numbers to deblend.  If `None` (default), then all
         labels in the segmentation image will be deblended.
 

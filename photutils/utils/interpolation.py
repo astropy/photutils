@@ -20,7 +20,7 @@ class ShepardIDWInterpolator:
 
     Parameters
     ----------
-    coordinates : float, 1D array-like, or NxM-array-like
+    coordinates : float, 1D array_like, or NxM array_like
         Coordinates of the known data points. In general, it is expected
         that these coordinates are in a form of a NxM-like array where N
         is the number of points and M is dimension of the coordinate
@@ -35,7 +35,7 @@ class ShepardIDWInterpolator:
             it will be flattened to form an array of size NxM where N =
             N1 * N2 * ... * Nn.
 
-    values : float or 1D array-like
+    values : float or 1D array_like
         Values of the data points corresponding to each coordinate
         provided in ``coordinates``. In general a 1D array is expected.
         When a single data point is available, then ``values`` can be a
@@ -45,7 +45,7 @@ class ShepardIDWInterpolator:
             If the dimensionality of ``values`` is larger than 1 then it
             will be flattened.
 
-    weights : float or 1D array-like, optional
+    weights : float or 1D array_like, optional
         Weights to be associated with each data value. These weights, if
         provided, will be combined with inverse distance weights (see
         the Notes section for details). When ``weights`` is `None`
@@ -162,7 +162,7 @@ class ShepardIDWInterpolator:
 
         Parameters
         ----------
-        positions : float, 1D array-like, or NxM-array-like
+        positions : float, 1D array_like, or NxM array_like
             Coordinates of the position(s) at which the interpolator
             should be evaluated. In general, it is expected that these
             coordinates are in a form of a NxM-like array where N is the
