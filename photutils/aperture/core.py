@@ -26,8 +26,6 @@ class Aperture(metaclass=abc.ABCMeta):
     """
 
     _params = ()
-    positions = np.array(())
-    theta = None
 
     def __len__(self):
         if self.isscalar:
@@ -145,6 +143,10 @@ class Aperture(metaclass=abc.ABCMeta):
             params_copy[param] = deepcopy(getattr(self, param))
         return self.__class__(**params_copy)
 
+    @abc.abstractmethod
+    def positions(self):
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
     @lazyproperty
     def shape(self):
         """
@@ -205,7 +207,6 @@ class PixelAperture(Aperture):
 
         return use_exact, subpixels
 
-    @lazyproperty
     @abc.abstractmethod
     def _xy_extents(self):
         """
@@ -273,7 +274,7 @@ class PixelAperture(Aperture):
 
         return edges
 
-    @lazyproperty
+    @abc.abstractmethod
     def area(self):
         """
         The exact analytical area of the aperture shape.
