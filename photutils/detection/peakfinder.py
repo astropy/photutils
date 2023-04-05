@@ -106,6 +106,15 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         their values.  If ``centroid_func`` is input, then the table
         will also contain the centroid position.  If no peaks are found
         then `None` is returned.
+
+    Notes
+    -----
+    By default, the returned pixel coordinates are the integer indices
+    of the maximum pixel value within the input ``box_size`` or
+    ``footprint`` (i.e., only the peak pixel is identified). However, a
+    centroiding function can be input via the ``centroid_func`` keyword
+    to compute centroid coordinates with subpixel precision within the
+    input ``box_size`` or ``footprint``.
     """
     from scipy.ndimage import maximum_filter
 
