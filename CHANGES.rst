@@ -71,6 +71,9 @@ Bug Fixes
   - Fixed an issue where the PSF-photometry progress bar was not shown.
     [#1517]
 
+  - Fixed an issue where all PSF uncertainties were excluded if the last
+    star group had no covariance matrix. [#1519]
+
 - ``photutils.utils``
 
   - Fixed a bug in the calculation of ``ImageCutout`` ``xyorigin`` when
