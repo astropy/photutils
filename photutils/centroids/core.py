@@ -397,6 +397,12 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         else:
             mask_cutout = footprint_mask
 
+        if np.all(mask_cutout):
+            raise ValueError(f'The cutout for the source at ({xp, yp}) is '
+                             'completely masked. Please check your input '
+                             'mask and footprint. Also note that footprint '
+                             'must be a small, local footprint.')
+
         centroid_kwargs.update({'mask': mask_cutout})
 
         error = centroid_kwargs.get('error', None)
