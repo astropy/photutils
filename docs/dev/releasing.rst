@@ -148,17 +148,17 @@ to the upstream repository.
 
         git checkout <X.Y.Z>
 
-#. Generate the source distribution tar file by first making sure the
-   `build <https://pypi.org/project/build/>`_ package is installed and
-   up to date::
+#. Ensure the `build <https://pypi.org/project/build/>`_ and `twine
+   <https://pypi.org/project/twine/>`_ packages are installed and up to
+   date::
 
-        pip install build --upgrade
+        pip install build twine --upgrade
 
-   then create the source distribution with::
+#. Generate the source distribution tar file::
 
         python -m build --sdist .
 
-   and do a preliminary check of the source distribution::
+   and perform a preliminary check of the tar file::
 
        python -m twine check --strict dist/*
 
