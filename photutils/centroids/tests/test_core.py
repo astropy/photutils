@@ -93,7 +93,23 @@ def test_centroid_comquad_nan_withmask(use_mask):
             assert len(warnlist) == nwarn
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_centroid_com_allmask():
+    xc_ref = 24.7
+    yc_ref = 25.2
+    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
+    y, x = np.mgrid[0:50, 0:50]
+    data = model(x, y)
+    mask = np.ones(data.shape, dtype=bool)
+    xc, yc = centroid_com(data, mask=mask)
+    assert np.isnan(xc)
+    assert np.isnan(yc)
+
+    data = np.zeros((25, 25))
+    xc, yc = centroid_com(data, mask=None)
+    assert np.isnan(xc)
+    assert np.isnan(yc)
+
+
 def test_centroid_com_invalid_inputs():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
