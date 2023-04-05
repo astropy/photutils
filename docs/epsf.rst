@@ -22,12 +22,12 @@ Building an ePSF
 
 Photutils provides tools for building an ePSF following the
 prescription of `Anderson and King (2000; PASP 112, 1360)
-<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_ and
-subsequent enhancements detailed mainly in `Anderson (2016), ISR WFC3
-2016-12
-<https://www.stsci.edu/files/live/sites/www/files/home/hst/instrumentation/wfc3/documentation/instrument-science-reports-isrs/_documents/2016/WFC3-2016-12.pdf>`_.
-The process involves iterating between the ePSF itself and the stars
-used to build it.
+<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
+and subsequent enhancements detailed mainly
+in `Anderson (2016; WFC3 ISR 2016-12
+<https://ui.adsabs.harvard.edu/abs/2016wfc..rept...12A/abstract>`_. The
+process involves iterating between the ePSF itself and the stars used to
+build it.
 
 To begin, we must first define a sample of stars used to build the
 ePSF.  Ideally these stars should be bright (high S/N) and isolated to
