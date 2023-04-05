@@ -115,10 +115,8 @@ error:
 
 .. plot::
 
-    import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from astropy.visualization import simple_norm
 
     from photutils.centroids import centroid_quadratic
     from photutils.datasets import make_noise_image
@@ -209,7 +207,6 @@ Finally, let's plot the fitted 1D Gaussian on the radial profile:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from astropy.visualization import simple_norm
 
     from photutils.centroids import centroid_quadratic
     from photutils.datasets import make_noise_image
@@ -230,7 +227,7 @@ Finally, let's plot the fitted 1D Gaussian on the radial profile:
     max_radius = 25.0
     radius_step = 1.0
     rp = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
-                        error=error, mask=None)
+                       error=error, mask=None)
 
     # plot the radial profile
     rp.normalize()
@@ -302,10 +299,8 @@ error:
 
 .. plot::
 
-    import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from astropy.visualization import simple_norm
 
     from photutils.centroids import centroid_quadratic
     from photutils.datasets import make_noise_image
