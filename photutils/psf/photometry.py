@@ -862,7 +862,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
             # n_start = 2 because it starts in the second iteration
             # since the first iteration is above
-            output_table = self._do_photometry(n_start=2, mask=mask)
+            output_table = self._do_photometry(n_start=2, mask=mask,
+                                               progress_bar=progress_bar)
             output_table = vstack([table, output_table])
         else:
             if self.bkg_estimator is not None:
@@ -873,13 +874,14 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             if self.aperture_radius is None:
                 self.set_aperture_radius()
 
-            output_table = self._do_photometry(mask=mask)
+            output_table = self._do_photometry(mask=mask,
+                                               progress_bar=progress_bar)
 
         output_table.meta = {'version': _get_version_info()}
 
         return QTable(output_table)
 
-    def _do_photometry(self, n_start=1, mask=None):
+    def _do_photometry(self, n_start=1, mask=None, progress_bar=False):
         """
         Helper function which performs the iterations of the photometry
         process.
@@ -932,7 +934,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
             star_groups = self.group_maker(init_guess_tab)
             table, self._residual_image = super().nstar(
-                self._residual_image, star_groups, mask=mask)
+                self._residual_image, star_groups, mask=mask,
+                progress_bar=progress_bar)
 
             star_groups = star_groups.group_by('group_id')
             table = hstack([star_groups, table])
