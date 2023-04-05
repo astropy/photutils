@@ -535,6 +535,10 @@ class BasicPSFPhotometry:
             except NoOverlapError:
                 pass
 
+        for col in unc_tab.colnames:
+            if np.all(np.isnan(unc_tab[col])):
+                unc_tab.remove_column(col)
+
         result_tab = hstack([result_tab, unc_tab])
 
         return result_tab, image
