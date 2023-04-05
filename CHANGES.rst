@@ -66,6 +66,11 @@ Bug Fixes
   - Fixed a bug in the calculation of the upper harmonic errors (a3_err,
     a4_err, b3_err, and b4_err). [#1501].
 
+- ``photutils.psf``
+
+  - Fixed an issue where the PSF-photometry progress bar was not shown.
+    [#1517]
+
 - ``photutils.utils``
 
   - Fixed a bug in the calculation of ``ImageCutout`` ``xyorigin`` when
