@@ -46,7 +46,7 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
-- ``photutils.centroid``
+- ``photutils.centroids``
 
   - Fixed an issue where ``centroid_quadratic`` would sometimes fail if
     the input data contained NaNs. [#1495]
@@ -79,6 +79,11 @@ API Changes
 
   - The ``ApertureStats`` ``local_bkg`` keyword can now be broadcast for
     apertures with multiple positions. [#1504]
+
+- ``photutils.centroids``
+
+  - The ``centroid_sources`` function will now raise an error if the
+    cutout mask contains all ``True`` values. [#1516]
 
 - ``photutils.datasets``
 
@@ -490,7 +495,7 @@ Bug Fixes
     would result in incorrect image padding if only one of the axes needed
     padding. [#1292]
 
-- ``photutils.centroid``
+- ``photutils.centroids``
 
   - Fixed a bug in ``centroid_sources`` where setting ``error``,
     ``xpeak``, or ``ypeak`` to ``None`` would result in an error.
@@ -531,7 +536,7 @@ API Changes
     range. If backwards-compatibility is needed with older Photutils
     versions, set ``clip=False``. [#1324]
 
-- ``photutils.centroid``
+- ``photutils.centroids``
 
   - Removed the deprecated ``centroid_epsf`` and ``gaussian1d_moments``
     functions. [#1280]
@@ -577,7 +582,7 @@ General
 New Features
 ^^^^^^^^^^^^
 
-- ``photutils.centroid``
+- ``photutils.centroids``
 
   - Extra keyword arguments can be input to ``centroid_sources`` that
     are then passed on to the ``centroid_func`` if supported.
@@ -801,7 +806,7 @@ API Changes
     ``OpenCV (cv2.resize)``. If backwards-compatibility is needed with
     older Photutils versions, set ``grid_mode=False``. [#1239]
 
-- ``photutils.centroid``
+- ``photutils.centroids``
 
   - Deprecated the ``gaussian1d_moments`` and ``centroid_epsf``
     functions. [#1240]
@@ -977,7 +982,7 @@ API Changes
   - Deprecated the ``BoundingBox`` ``slices`` attribute. Use the
     ``get_overlap_slices`` method instead. [#1157]
 
-- ``photutils.centroid``
+- ``photutils.centroids``
 
   - Removed the deprecated ``fit_2dgaussian`` function and
     ``GaussianConst2D`` class. [#1147]
@@ -1730,7 +1735,7 @@ New Features
   - Added default theta value for elliptical and rectangular
     apertures. [#674]
 
-- ``photutils.centroid``
+- ``photutils.centroids``
 
   - Added a ``centroid_sources`` function to calculate centroid of
     many sources in a single image. [#656]
