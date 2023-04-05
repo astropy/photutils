@@ -526,11 +526,7 @@ class BasicPSFPhotometry:
                                     image[usepixel])
             param_table = self._model_params2table(fit_model, group)
             result_tab = vstack([result_tab, param_table])
-
-            param_cov = self.fitter.fit_info.get('param_cov', None)
-            if param_cov is not None:
-                unc_tab = vstack([unc_tab,
-                                  self._get_uncertainties(len(group))])
+            unc_tab = vstack([unc_tab, self._get_uncertainties(len(group))])
 
             # do not subtract if the fitting did not go well
             try:
@@ -539,8 +535,7 @@ class BasicPSFPhotometry:
             except NoOverlapError:
                 pass
 
-        if param_cov is not None:
-            result_tab = hstack([result_tab, unc_tab])
+        result_tab = hstack([result_tab, unc_tab])
 
         return result_tab, image
 
@@ -610,8 +605,12 @@ class BasicPSFPhotometry:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             for i in range(star_group_size):
-                unc_tab[i] = np.sqrt(np.diag(param_cov))[k: k + n_fit_params]
-                k = k + n_fit_params
+                if param_cov is None:
+                    unc_tab[i] = [np.nan] * n_fit_params
+                else:
+                    sig = np.sqrt(np.diag(param_cov))
+                    unc_tab[i] = sig[k: k + n_fit_params]
+                    k += n_fit_params
 
         return unc_tab
 
