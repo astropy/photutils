@@ -347,7 +347,6 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
     Examples
     --------
-    >>> import matplotlib.pyplot as plt
     >>> from photutils.centroids import centroid_com, centroid_sources
     >>> from photutils.datasets import make_4gaussians_image
     >>> from photutils.utils import circular_footprint
