@@ -1,8 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module provides tools to build and fit an effective PSF (ePSF)
-based on Anderson and King (2000; PASP 112, 1360) and Anderson (2016),
-ISR WFC3 2016-12.
+based on Anderson and King (2000; PASP 112, 1360) and Anderson (2016;
+WFC3 ISR 2016-12).
 """
 
 import copy
@@ -219,8 +219,8 @@ class EPSFBuilder:
 
     See `Anderson and King (2000; PASP 112, 1360)
     <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
-    and `Anderson (2016), ISR WFC3 2016-12
-    <https://www.stsci.edu/files/live/sites/www/files/home/hst/instrumentation/wfc3/documentation/instrument-science-reports-isrs/_documents/2016/WFC3-2016-12.pdf>`_
+    and `Anderson (2016; WFC3 ISR 2016-12)
+    <https://ui.adsabs.harvard.edu/abs/2016wfc..rept...12A/abstract>`_
     for details.
 
     Parameters
