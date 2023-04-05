@@ -15,7 +15,7 @@ from numpy.testing import assert_allclose
 from photutils.centroids.core import (centroid_com, centroid_quadratic,
                                       centroid_sources)
 from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
-from photutils.datasets import make_noise_image
+from photutils.datasets import make_4gaussians_image, make_noise_image
 from photutils.utils._optional_deps import HAS_SCIPY
 
 XCEN = 25.7
@@ -93,7 +93,23 @@ def test_centroid_comquad_nan_withmask(use_mask):
             assert len(warnlist) == nwarn
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_centroid_com_allmask():
+    xc_ref = 24.7
+    yc_ref = 25.2
+    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
+    y, x = np.mgrid[0:50, 0:50]
+    data = model(x, y)
+    mask = np.ones(data.shape, dtype=bool)
+    xc, yc = centroid_com(data, mask=mask)
+    assert np.isnan(xc)
+    assert np.isnan(yc)
+
+    data = np.zeros((25, 25))
+    xc, yc = centroid_com(data, mask=None)
+    assert np.isnan(xc)
+    assert np.isnan(yc)
+
+
 def test_centroid_com_invalid_inputs():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
@@ -336,13 +352,6 @@ class TestCentroidSources:
         assert not np.allclose(xcen1, xcen2)
         assert not np.allclose(ycen1, ycen2)
 
-        # mask all data values
-        mask = np.ones(self.data.shape, dtype=bool)
-        xcen3, ycen3 = centroid_sources(self.data, 25, 23,
-                                        box_size=(55, 55), mask=mask)
-        assert np.isnan(xcen3[0])
-        assert np.isnan(ycen3[0])
-
     def test_error_none(self):
         xycen1 = centroid_sources(self.data, xpos=25, ypos=25, error=None,
                                   centroid_func=centroid_1dg)
@@ -364,3 +373,25 @@ class TestCentroidSources:
         assert_allclose(xycen1, ([25], [25]), atol=1.0e-3)
         assert_allclose(xycen2, ([25], [25]), atol=1.0e-3)
         assert_allclose(xycen3, ([25], [25]), atol=1.0e-3)
+
+
+def test_cutout_mask():
+    """
+    Test that the cutout is not completely masked (see #1514).
+    """
+    data = make_4gaussians_image()
+    x_init = (25, 91, 151, 160)
+    y_init = (40, 61, 24, 71)
+    with pytest.raises(ValueError):
+        footprint = np.zeros((3, 3))
+        _ = centroid_sources(data, x_init, y_init, footprint=footprint,
+                             centroid_func=centroid_com)
+
+    with pytest.raises(ValueError):
+        footprint = np.zeros(data.shape, dtype=bool)
+        _ = centroid_sources(data, x_init, y_init, footprint=footprint,
+                             centroid_func=centroid_com)
+
+    with pytest.raises(ValueError):
+        mask = np.ones(data.shape, dtype=bool)
+        _ = centroid_sources(data, x_init, y_init, box_size=11, mask=mask)

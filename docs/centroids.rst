@@ -149,7 +149,8 @@ Let's plot the results:
                             centroid_func=centroid_com)
     plt.figure(figsize=(8, 4))
     plt.imshow(data, origin='lower', interpolation='nearest')
-    plt.scatter(x, y, marker='+', s=80, color='red')
+    plt.scatter(x, y, marker='+', s=80, color='red', label='Centroids')
+    plt.legend()
     plt.tight_layout()
 
 

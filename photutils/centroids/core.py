@@ -344,6 +344,42 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         a ``box_size`` that is too small when using a fitting-based
         centroid function (e.g., `centroid_1dg`, `centroid_2dg`, or
         `centroid_quadratic`.
+
+    Examples
+    --------
+    >>> from photutils.centroids import centroid_com, centroid_sources
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> from photutils.utils import circular_footprint
+    >>> data = make_4gaussians_image()
+
+    >>> x_init = (25, 91, 151, 160)
+    >>> y_init = (40, 61, 24, 71)
+    >>> footprint = circular_footprint(5.0)
+    >>> x, y = centroid_sources(data, x_init, y_init, footprint=footprint,
+    ...                         centroid_func=centroid_com)
+    >>> print(x)  # doctest: +FLOAT_CMP
+    [ 24.9865905   90.84751557 150.50228056 159.74319544]
+    >>> print(y)  # doctest: +FLOAT_CMP
+    [40.01096547 60.92509086 24.52986889 70.57971148]
+
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        from photutils.centroids import centroid_com, centroid_sources
+        from photutils.datasets import make_4gaussians_image
+        from photutils.utils import circular_footprint
+        data = make_4gaussians_image()
+        x_init = (25, 91, 151, 160)
+        y_init = (40, 61, 24, 71)
+        footprint = circular_footprint(5.0)
+        x, y = centroid_sources(data, x_init, y_init, footprint=footprint,
+                                centroid_func=centroid_com)
+        plt.figure(figsize=(8, 4))
+        plt.imshow(data, origin='lower', interpolation='nearest')
+        plt.scatter(x, y, marker='+', s=80, color='red', label='Centroids')
+        plt.legend()
+        plt.tight_layout()
     """
     xpos = np.atleast_1d(xpos)
     ypos = np.atleast_1d(ypos)
@@ -396,6 +432,12 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
             mask_cutout = np.logical_or(mask[slices_large], footprint_mask)
         else:
             mask_cutout = footprint_mask
+
+        if np.all(mask_cutout):
+            raise ValueError(f'The cutout for the source at ({xp, yp}) is '
+                             'completely masked. Please check your input '
+                             'mask and footprint. Also note that footprint '
+                             'must be a small, local footprint.')
 
         centroid_kwargs.update({'mask': mask_cutout})
 
