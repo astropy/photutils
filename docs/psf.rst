@@ -549,10 +549,8 @@ the fainter star as well. Also, note that both of the stars have
     :include-source:
 
     import matplotlib.pyplot as plt
-    import numpy as np
     from astropy.table import Table
     from astropy.visualization import simple_norm
-    from matplotlib.colors import LogNorm
     from photutils.datasets import (make_gaussian_sources_image,
                                     make_noise_image)
 

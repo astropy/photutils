@@ -248,7 +248,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        labels : int, array-like (1D, int)
+        labels : int, array_like (1D, int)
             The label numbers(s) to find.
 
         Returns
@@ -340,7 +340,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        labels : int, 1D array-like (int)
+        labels : int, 1D array_like (int)
             The label(s) for which to return areas.  Label must be
             non-zero.
 
@@ -401,7 +401,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        labels : int, 1D array-like (int)
+        labels : int, 1D array_like (int)
             The label(s) to check.
 
         Raises
@@ -562,7 +562,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        labels : int, array-like (1D, int)
+        labels : int, array_like (1D, int)
             The label numbers(s) to reassign.
 
         new_label : int
@@ -755,7 +755,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        labels : int, array-like (1D, int)
+        labels : int, array_like (1D, int)
             The label number(s) to keep.
 
         relabel : bool, optional
@@ -866,7 +866,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        labels : int, array-like (1D, int)
+        labels : int, array_like (1D, int)
             The label number(s) to remove.
 
         relabel : bool, optional
@@ -1366,7 +1366,7 @@ class SegmentationImage:
             If `None`, then the colormap defined by the `cmap` attribute
             will be used.
 
-        alpha : float, array-like, or `None`, optional
+        alpha : float, array_like, or `None`, optional
             The alpha blending value, between 0 (transparent) and 1
             (opaque). If alpha is an array, the alpha blending values
             are applied pixel by pixel, and alpha must have the same

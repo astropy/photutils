@@ -533,3 +533,4 @@ Reference/API
 
 .. automodapi:: photutils.background
     :no-heading:
+    :inherited-members:

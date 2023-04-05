@@ -895,3 +895,4 @@ Reference/API
 
 .. automodapi:: photutils.aperture
     :no-heading:
+    :inherited-members:

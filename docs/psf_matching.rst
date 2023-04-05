@@ -44,7 +44,6 @@ source and target PSFs must have the same shape and pixel scale::
 Let's plot the result:
 
 .. plot::
-    :include-source:
 
     import matplotlib.pyplot as plt
     import numpy as np
@@ -86,7 +85,6 @@ Here are plots of 1D cuts across the center of the 2D window
 functions:
 
 .. plot::
-    :include-source:
 
     import matplotlib.pyplot as plt
     from photutils.psf import (CosineBellWindow, HanningWindow,
@@ -102,7 +100,8 @@ functions:
     y0 = (shape[0] - 1) // 2
 
     plt.figure()
-    plt.subplots_adjust(wspace=0.4, hspace=0.4)
+    plt.subplots_adjust(left=0.1, bottom=0.1, right=0.95, top=0.93,
+                        wspace=0.5, hspace=0.5)
 
     plt.subplot(2, 3, 1)
     plt.plot(w1(shape)[y0, :])
@@ -154,7 +153,6 @@ normalized such that the kernel array sums to 1::
 Let's display the new matching kernel:
 
 .. plot::
-    :include-source:
 
     import matplotlib.pyplot as plt
     import numpy as np
@@ -179,7 +177,6 @@ As desired, the result is indeed a 2D Gaussian with a
 kernel images:
 
 .. plot::
-    :include-source:
 
     import matplotlib.pyplot as plt
     import numpy as np
@@ -225,7 +222,6 @@ microns) PSF.  We load the PSFs using the
 Let's display the images:
 
 .. plot::
-    :include-source:
 
     import matplotlib.pyplot as plt
     from astropy.visualization import LogStretch
@@ -265,7 +261,6 @@ lower-resolution PSF to the same size as the higher-resolution PSF.
 Let's display the matching kernel result:
 
 .. plot::
-    :include-source:
 
     import matplotlib.pyplot as plt
     from astropy.visualization import LogStretch
@@ -296,7 +291,7 @@ Reference/API
 
 .. automodapi:: photutils.psf.matching
     :no-heading:
-
+    :inherited-members:
 
 .. _Gordon et al. 2008:  https://ui.adsabs.harvard.edu/abs/2008ApJ...682..336G/abstract
 

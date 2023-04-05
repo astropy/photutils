@@ -291,12 +291,12 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
     data : 2D `~numpy.ndarray`
         The 2D image data. The image should be background-subtracted.
 
-    xpos, ypos : float or array-like of float
+    xpos, ypos : float or array_like of float
         The initial ``x`` and ``y`` pixel position(s) of the center
         position.  A cutout image centered on this position be used to
         calculate the centroid.
 
-    box_size : int or array-like of int, optional
+    box_size : int or array_like of int, optional
         The size of the cutout image along each axis. If ``box_size`` is
         a number, then a square cutout of ``box_size`` will be created.
         If ``box_size`` has two elements, they must be in ``(ny, nx)``

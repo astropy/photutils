@@ -24,7 +24,7 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
     data : array_like
         The 2D array of the image.
 
-    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`
+    kernel : array_like (2D) or `~astropy.convolution.Kernel2D`
         The 2D kernel used to filter the input ``data``. Filtering the
         ``data`` will smooth the noise and maximize detectability of
         objects with a shape similar to the kernel.
