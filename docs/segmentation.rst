@@ -278,7 +278,7 @@ the background-subtracted (convolved) image and threshold:
 Modifying a Segmentation Image
 ------------------------------
 The :class:`~photutils.segmentation.SegmentationImage` object provides
-several methods that can be used to visualize or modify itself (e.g.,
+several methods that can be used to modify itself (e.g.,
 combining labels, removing labels, removing border segments) prior to
 measuring source photometry and other source properties, including:
 
@@ -300,9 +300,6 @@ measuring source photometry and other source properties, including:
 
   * :meth:`~photutils.segmentation.SegmentationImage.remove_masked_labels`:
     Remove labeled segments located within a masked region.
-
-  * :meth:`~photutils.segmentation.SegmentationImage.outline_segments`:
-    Outline the labeled segments for plotting.
 
 
 Photometry, Centroids, and Shape Properties

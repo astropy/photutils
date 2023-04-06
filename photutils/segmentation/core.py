@@ -10,7 +10,6 @@ from copy import copy, deepcopy
 
 import numpy as np
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
@@ -1292,50 +1291,6 @@ class SegmentationImage:
             patches = list(patches)
 
         return patches
-
-    @deprecated('1.7.0', alternative='`plot_patches`')
-    def outline_segments(self, mask_background=False):
-        """
-        Outline the labeled segments.
-
-        The "outlines" represent the pixels *just inside* the segments,
-        leaving the background pixels unmodified.
-
-        Parameters
-        ----------
-        mask_background : bool, optional
-            Set to `True` to mask the background pixels (labels = 0) in
-            the returned array.  This is useful for overplotting the
-            segment outlines.  The default is `False`.
-
-        Returns
-        -------
-        boundaries : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-            An array with the same shape of the segmentation array
-            containing only the outlines of the labeled segments.  The
-            pixel values in the outlines correspond to the labels in the
-            segmentation array.  If ``mask_background`` is `True`, then
-            a `~numpy.ma.MaskedArray` is returned.
-        """
-        from scipy.ndimage import (generate_binary_structure, grey_dilation,
-                                   grey_erosion)
-
-        # edge connectivity
-        footprint = generate_binary_structure(self._ndim, 1)
-
-        # mode='constant' ensures outline is included on the array borders
-        eroded = grey_erosion(self.data, footprint=footprint, mode='constant',
-                              cval=0.0)
-        dilated = grey_dilation(self.data, footprint=footprint,
-                                mode='constant', cval=0.0)
-
-        outlines = ((dilated != eroded) & (self.data != 0)).astype(int)
-        outlines *= self.data
-
-        if mask_background:
-            outlines = np.ma.masked_where(outlines == 0, outlines)
-
-        return outlines
 
     def imshow(self, ax=None, figsize=None, dpi=None, cmap=None, alpha=None):
         """
