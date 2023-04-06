@@ -33,7 +33,7 @@ API Changes
 
   - Deprecated the ``kernel`` keyword in ``SourceCatalog``. [#1525]
 
-  - Removed the deprecated ``outline_segmentsl`` method from
+  - Removed the deprecated ``outline_segments`` method from
     ``SegmentationImage``. [#1526]
 
 
