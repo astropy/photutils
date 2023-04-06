@@ -4,6 +4,16 @@
 General
 ^^^^^^^
 
+- The minimum required Numpy is now 1.21. [#1527]
+
+- The minimum required Scipy is now 1.7.0. [#1527]
+
+- The minimum required Matplotlib is now 3.5.0. [#1527]
+
+- The minimum required scikit-image is now 0.19.0. [#1527]
+
+- The minimum required gwcs is now 0.18. [#1527]
+
 New Features
 ^^^^^^^^^^^^
 
