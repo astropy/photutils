@@ -3,8 +3,6 @@
 Tests for the deblend module.
 """
 
-import warnings
-
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
@@ -36,20 +34,14 @@ class TestDeblendSources:
 
     @pytest.mark.parametrize('mode', ['exponential', 'linear', 'sinh'])
     def test_deblend_sources(self, mode):
-        # scipy DeprecationWarning is currently raised from skimage
-        # (https://github.com/scikit-image/scikit-image/pull/6231)
-        # This can be removed for skimage >= 0.19.2.
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            result = deblend_sources(self.data, self.segm, self.npixels,
-                                     mode=mode, progress_bar=False)
+        result = deblend_sources(self.data, self.segm, self.npixels,
+                                 mode=mode, progress_bar=False)
 
-            if mode == 'linear':
-                # test multiprocessing
-                result2 = deblend_sources(self.data, self.segm, self.npixels,
-                                          mode=mode, progress_bar=False,
-                                          nproc=2)
-                assert_equal(result.data, result2.data)
+        if mode == 'linear':
+            # test multiprocessing
+            result2 = deblend_sources(self.data, self.segm, self.npixels,
+                                      mode=mode, progress_bar=False, nproc=2)
+            assert_equal(result.data, result2.data)
 
         assert result.nlabels == 2
         assert result.nlabels == len(result.slices)
