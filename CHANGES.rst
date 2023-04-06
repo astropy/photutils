@@ -21,6 +21,8 @@ API Changes
   - Removed the deprecated ``kernel`` keyword from ``detect_sources``
     and ``deblend_sources``. [#1524]
 
+  - Deprecated the ``kernel`` keyword in ``SourceCatalog``. [#1525]
+
 
 1.7.0 (2023-04-05)
 ------------------
