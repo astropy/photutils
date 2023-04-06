@@ -13,6 +13,9 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- Removed the deprecated ``axes`` keyword in favor of ``ax`` for
+  consistency with other packages. [#1523]
+
 
 1.7.0 (2023-04-05)
 ------------------
