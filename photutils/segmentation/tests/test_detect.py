@@ -7,7 +7,6 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.stats import SigmaClip
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.segmentation.detect import detect_sources, detect_threshold
@@ -210,17 +209,6 @@ class TestDetectSources:
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=4)
         assert_array_equal(segm.data, ref)
 
-    def test_basic_kernel(self):
-        """Test detection with kernel."""
-        kernel = np.ones((3, 3)) / 9.0
-        threshold = 0.3
-        expected = np.ones((3, 3))
-        expected[2] = 0
-        with pytest.warns(AstropyDeprecationWarning):
-            segm = detect_sources(self.data, threshold, npixels=1,
-                                  kernel=kernel)
-            assert_array_equal(segm.data, expected)
-
     def test_npixels_nonint(self):
         """Test if error raises if npixel is non-integer."""
         with pytest.raises(ValueError):
@@ -235,18 +223,6 @@ class TestDetectSources:
         """Test if error raises if connectivity is invalid."""
         with pytest.raises(ValueError):
             detect_sources(self.data, threshold=1, npixels=1, connectivity=10)
-
-    def test_kernel_array(self):
-        with pytest.warns(AstropyDeprecationWarning):
-            segm = detect_sources(self.data, 0.1, npixels=1,
-                                  kernel=self.kernel.array)
-            assert_array_equal(segm.data, np.ones((3, 3)))
-
-    def test_kernel(self):
-        with pytest.warns(AstropyDeprecationWarning):
-            segm = detect_sources(self.data, 0.1, npixels=1,
-                                  kernel=self.kernel)
-            assert_array_equal(segm.data, np.ones((3, 3)))
 
     def test_mask(self):
         data = np.zeros((11, 11))
