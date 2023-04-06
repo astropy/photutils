@@ -11,7 +11,6 @@ import numpy as np
 from astropy.nddata import NDData
 from astropy.stats import SigmaClip
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.lib.index_tricks import index_exp
 
@@ -655,7 +654,6 @@ class Background2D:
             bkg_rms <<= self.unit
         return bkg_rms
 
-    @deprecated_renamed_argument('axes', 'ax', '1.6.0')
     def plot_meshes(self, *, ax=None, marker='+', markersize=None,
                     color='blue', alpha=None, outlines=False, **kwargs):
         """

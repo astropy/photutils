@@ -10,7 +10,7 @@ from copy import copy, deepcopy
 
 import numpy as np
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated, deprecated_renamed_argument
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
@@ -1337,7 +1337,6 @@ class SegmentationImage:
 
         return outlines
 
-    @deprecated_renamed_argument('axes', 'ax', '1.6.0')
     def imshow(self, ax=None, figsize=None, dpi=None, cmap=None, alpha=None):
         """
         Display the segmentation image in a matplotlib

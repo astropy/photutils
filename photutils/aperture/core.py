@@ -12,7 +12,6 @@ import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.utils._wcs_helpers import _pixel_scale_angle_at_skycoord
@@ -675,7 +674,6 @@ class PixelAperture(Aperture):
         """
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
-    @deprecated_renamed_argument('axes', 'ax', '1.6.0')
     def plot(self, ax=None, origin=(0, 0), **kwargs):
         """
         Plot the aperture on a matplotlib `~matplotlib.axes.Axes`
