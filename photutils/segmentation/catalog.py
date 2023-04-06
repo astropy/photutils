@@ -14,7 +14,6 @@ import numpy as np
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import (BoundingBox, CircularAperture,
@@ -2801,7 +2800,6 @@ class SourceCatalog:
         return self._make_circular_apertures(radius)
 
     @as_scalar
-    @deprecated_renamed_argument('axes', 'ax', '1.6.0')
     def plot_circular_apertures(self, radius, ax=None, origin=(0, 0),
                                 **kwargs):
         """
@@ -3192,7 +3190,6 @@ class SourceCatalog:
         return self._make_kron_apertures(kron_params)
 
     @as_scalar
-    @deprecated_renamed_argument('axes', 'ax', '1.6.0')
     def plot_kron_apertures(self, kron_params=None, ax=None, origin=(0, 0),
                             **kwargs):
         """
