@@ -1434,7 +1434,7 @@ class Segment:
         <https://shapely.readthedocs.io/>`_ polygon.
     """
 
-    def __init__(self, segment_data, label, slices, bbox, area,
+    def __init__(self, segment_data, label, slices, bbox, area, *,
                  polygon=None):
         self._segment_data = segment_data
         self.label = label

@@ -14,6 +14,7 @@ import numpy as np
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import (BoundingBox, CircularAperture,
@@ -89,13 +90,13 @@ class SourceCatalog:
     ----------
     data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The 2D array from which to calculate the source photometry and
-        properties. If ``convolved_data`` (or ``kernel``) is input,
-        then a convolved version of ``data`` will be used instead of
-        ``data`` to calculate the source centroid and morphological
-        properties. Source photometry is always measured from ``data``.
-        For accurate source properties and photometry, ``data`` should
-        be background-subtracted. Non-finite ``data`` values (NaN and
-        inf) are automatically masked.
+        properties. If ``convolved_data`` is input, then a convolved
+        version of ``data`` will be used instead of ``data`` to
+        calculate the source centroid and morphological properties.
+        Source photometry is always measured from ``data``. For
+        accurate source properties and photometry, ``data`` should be
+        background-subtracted. Non-finite ``data`` values (NaN and inf)
+        are automatically masked.
 
     segment_img : `~photutils.segmentation.SegmentationImage`
         A `~photutils.segmentation.SegmentationImage` object defining
@@ -103,8 +104,8 @@ class SourceCatalog:
 
     convolved_data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The 2D array used to calculate the source centroid and
-        morphological properties. It is recommended that the user input
-        the convolved data directly instead of using the ``kernel``
+        morphological properties. The user should input the convolved
+        data directly instead of using the deprecated ``kernel``
         keyword. If ``convolved_data`` is input, then the ``kernel``
         keyword will be ignored. If both ``convolved_data`` and
         ``kernel`` are `None`, then the unconvolved ``data`` will be
@@ -135,6 +136,9 @@ class SourceCatalog:
         masked.
 
     kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
+        Deprecated. Please input a convolved image directly into the
+        ``convolved_data`` keyword.
+
         The 2D kernel used to filter the data prior to calculating
         the source centroid and morphological parameters. The
         kernel should be the same one used in defining the
@@ -250,10 +254,9 @@ class SourceCatalog:
     segmentation image. The usual downside of the filtering is the
     sources will be made more circular than they actually are. If
     you wish to reproduce `SourceExtractor`_ centroid and morphology
-    results, then input the ``convolved_data`` (or ``kernel``, but not
-    both). If ``convolved_data`` and ``kernel`` are both `None`, then
-    the unfiltered ``data`` will be used for the source centroid and
-    morphological parameters.
+    results, then input the ``convolved_data`` If ``convolved_data`` and
+    ``kernel`` are both `None`, then the unfiltered ``data`` will be
+    used for the source centroid and morphological parameters.
 
     Negative data values within the source segment are set to zero
     when calculating morphological properties based on image moments.
@@ -288,6 +291,11 @@ class SourceCatalog:
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
 
+    @deprecated_renamed_argument('kernel', None, '1.8', message='"kernel" was '
+                                 'deprecated in version 1.8 and will be '
+                                 'removed in version 1.9. Instead, please '
+                                 'input a convolved image directly into the '
+                                 '"convolved_data" parameter.')
     def __init__(self, data, segment_img, *, convolved_data=None, error=None,
                  mask=None, kernel=None, background=None, wcs=None,
                  localbkg_width=0, apermask_method='correct',

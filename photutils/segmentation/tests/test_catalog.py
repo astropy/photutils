@@ -10,6 +10,7 @@ from astropy.convolution import convolve
 from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture import (BoundingBox, CircularAperture,
@@ -439,10 +440,11 @@ class TestSourceCatalog:
         kernel = np.array([[1.0, 2, 1], [2, 4, 2], [1, 2, 100]])
         kernel /= kernel.sum()
 
-        cat1 = SourceCatalog(self.data, self.segm, kernel=None)
-        cat2 = SourceCatalog(self.data, self.segm, kernel=kernel)
-        assert not np.array_equal(cat1.xcentroid, cat2.xcentroid)
-        assert not np.array_equal(cat1.ycentroid, cat2.ycentroid)
+        with pytest.warns(AstropyDeprecationWarning):
+            cat1 = SourceCatalog(self.data, self.segm, kernel=None)
+            cat2 = SourceCatalog(self.data, self.segm, kernel=kernel)
+            assert not np.array_equal(cat1.xcentroid, cat2.xcentroid)
+            assert not np.array_equal(cat1.ycentroid, cat2.ycentroid)
 
         convolved_data = _filter_data(self.data, kernel, mode='constant',
                                       fill_value=0.0,
