@@ -6,10 +6,7 @@ This module provides tools for detecting sources in an image.
 import warnings
 
 import numpy as np
-from astropy.convolution import convolve
 from astropy.stats import SigmaClip
-from astropy.utils.decorators import deprecated_renamed_argument
-from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _make_binary_structure
@@ -20,7 +17,7 @@ from photutils.utils.exceptions import NoDetectionsWarning
 __all__ = ['detect_threshold', 'detect_sources']
 
 
-def detect_threshold(data, nsigma, background=None, error=None, mask=None,
+def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
                      sigma_clip=SigmaClip(sigma=3.0, maxiters=10)):
     """
     Calculate a pixel-wise threshold image that can be used to detect
@@ -123,7 +120,7 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
     return threshold
 
 
-def _detect_sources(data, thresholds, npixels, footprint, inverse_mask,
+def _detect_sources(data, thresholds, npixels, footprint, inverse_mask, *,
                     deblend_mode=False):
     """
     Detect sources above a specified threshold value in an image.
@@ -141,13 +138,8 @@ def _detect_sources(data, thresholds, npixels, footprint, inverse_mask,
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        The 2D array of the image.
-
-        .. note::
-           It is strongly recommended that the user convolve the data
-           with ``kernel`` and input the convolved data directly
-           into the ``data`` parameter. In this case do not input a
-           ``kernel``, otherwise the data will be convolved twice.
+        The 2D array of the image. If filtering is desired, please input
+        a convolved image here.
 
     thresholds : list of 2D `~numpy.ndarray` or 1D array of floats
         The data values (as a 1D array of floats) or pixel-wise data
@@ -257,13 +249,7 @@ def _detect_sources(data, thresholds, npixels, footprint, inverse_mask,
     return segms
 
 
-@deprecated_renamed_argument('kernel', None, '1.5', message='"kernel" was '
-                             'deprecated in version 1.5 and will be removed '
-                             'in a future version. Instead, if filtering is '
-                             'desired, please input a convolved image '
-                             'directly into the "data" parameter.')
-def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
-                   mask=None):
+def detect_sources(data, threshold, npixels, *, connectivity=8, mask=None):
     """
     Detect sources above a specified threshold value in an image.
 
@@ -280,13 +266,8 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        The 2D array of the image.
-
-        .. note::
-           It is strongly recommended that the user convolve the data
-           with ``kernel`` and input the convolved data directly
-           into the ``data`` parameter. In this case do not input a
-           ``kernel``, otherwise the data will be convolved twice.
+        The 2D array of the image. If filtering is desired, please input
+        a convolved image here.
 
     threshold : float or 2D `~numpy.ndarray`
         The data value or pixel-wise data values to be used for the
@@ -297,16 +278,6 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         The minimum number of connected pixels, each greater than
         ``threshold``, that an object must have to be detected.
         ``npixels`` must be a positive integer.
-
-    kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
-        Deprecated. If filtering is desired, please input a convolved
-        image directly into the ``data`` parameter.
-
-        The 2D array of the kernel used to filter the image before
-        thresholding. Filtering the image will smooth the noise and
-        maximize detectability of objects with a shape similar to the
-        kernel. ``kernel`` must be `None` if the input ``data`` are
-        already convolved.
 
     connectivity : {4, 8}, optional
         The type of pixel connectivity used in determining how pixels
@@ -387,11 +358,6 @@ def detect_sources(data, threshold, npixels, kernel=None, connectivity=8,
         inverse_mask = np.logical_not(mask)
     else:
         inverse_mask = None
-
-    if kernel is not None:
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', AstropyUserWarning)
-            data = convolve(data, kernel, mask=mask, normalize_kernel=True)
 
     footprint = _make_binary_structure(data.ndim, connectivity)
 

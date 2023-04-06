@@ -16,6 +16,11 @@ API Changes
 - Removed the deprecated ``axes`` keyword in favor of ``ax`` for
   consistency with other packages. [#1523]
 
+- ``photutils.segmentation``
+
+  - Removed the deprecated ``kernel`` keyword from ``detect_sources``
+    and ``deblend_sources``. [#1524]
+
 
 1.7.0 (2023-04-05)
 ------------------

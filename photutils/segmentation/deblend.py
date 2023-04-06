@@ -9,26 +9,19 @@ from multiprocessing import cpu_count, get_context
 
 import numpy as np
 from astropy.units import Quantity
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.detect import _detect_sources
 from photutils.segmentation.utils import _make_binary_structure
-from photutils.utils._convolution import _filter_data
 from photutils.utils._optional_deps import HAS_TQDM
 
 __all__ = ['deblend_sources']
 
 
-@deprecated_renamed_argument('kernel', None, '1.5', message='"kernel" was '
-                             'deprecated in version 1.5 and will be removed '
-                             'in a future version. Instead, if filtering is '
-                             'desired, please input a convolved image '
-                             'directly into the "data" parameter.')
-def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
-                    nlevels=32, contrast=0.001, mode='exponential',
-                    connectivity=8, relabel=True, nproc=1, progress_bar=True):
+def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
+                    contrast=0.001, mode='exponential', connectivity=8,
+                    relabel=True, nproc=1, progress_bar=True):
     """
     Deblend overlapping sources labeled in a segmentation image.
 
@@ -40,14 +33,9 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        The 2D data array. This array should be the same array used in
-        `~photutils.segmentation.detect_sources`.
-
-        .. note::
-           It is strongly recommended that the user convolve the data
-           with ``kernel`` and input the convolved data directly
-           into the ``data`` parameter. In this case do not input a
-           ``kernel``, otherwise the data will be convolved twice.
+        The 2D array of the image. If filtering is desired, please input
+        a convolved image here. This array should be the same array used
+        in `~photutils.segmentation.detect_sources`.
 
     segment_img : `~photutils.segmentation.SegmentationImage`
         The segmentation image to deblend.
@@ -56,16 +44,6 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
         The minimum number of connected pixels, each greater than
         ``threshold``, that an object must have to be deblended.
         ``npixels`` must be a positive integer.
-
-    kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
-        Deprecated. If filtering is desired, please input a convolved
-        image directly into the ``data`` parameter.
-
-        The 2D kernel used to filter the image before thresholding.
-        Filtering the image will smooth the noise and maximize
-        detectability of objects with a shape similar to the kernel.
-        ``kernel`` must be `None` if the input ``data`` are already
-        convolved.
 
     labels : int or array_like of int, optional
         The label numbers to deblend.  If `None` (default), then all
@@ -177,10 +155,6 @@ def deblend_sources(data, segment_img, npixels, kernel=None, labels=None,
     labels = labels[mask]
 
     footprint = _make_binary_structure(data.ndim, connectivity)
-
-    if kernel is not None:
-        data = _filter_data(data, kernel, mode='constant',
-                            fill_value=0.0)  # pragma: no cover
 
     if nproc is None:
         nproc = cpu_count()  # pragma: no cover
