@@ -545,7 +545,9 @@ class PixelAperture(Aperture):
         aperture_sums = []
         aperture_sum_errs = []
         for apermask in apermasks:
-            slc_large, slc_small = apermask.get_overlap_slices(data.shape)
+            (slc_large,
+             aper_weights,
+             pixel_mask) = apermask._get_overlap_cutouts(data.shape, mask=mask)
 
             # no overlap of the aperture with the data
             if slc_large is None:
@@ -553,29 +555,16 @@ class PixelAperture(Aperture):
                 aperture_sum_errs.append(np.nan)
                 continue
 
-            data_cutout = data[slc_large]
-            apermask_cutout = apermask.data[slc_small]
-            pixel_mask = apermask_cutout > 0  # good pixels
-
-            if mask is not None:
-                if mask.shape != data.shape:
-                    raise ValueError('mask and data must have the same shape')
-                pixel_mask &= ~mask[slc_large]
-
-            # ignore multiplication with non-finite data values
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                values = (data_cutout * apermask_cutout)[pixel_mask]
-            aperture_sums.append(values.sum())
-
-            if error is not None:
-                var_cutout = error[slc_large]**2
-
                 # ignore multiplication with non-finite data values
-                with warnings.catch_warnings():
-                    warnings.simplefilter('ignore', RuntimeWarning)
-                    values = (var_cutout * apermask_cutout)[pixel_mask]
-                aperture_sum_errs.append(np.sqrt(values.sum()))
+                warnings.simplefilter('ignore', RuntimeWarning)
+
+                values = (data[slc_large] * aper_weights)[pixel_mask]
+                aperture_sums.append(values.sum())
+
+                if error is not None:
+                    variance = (error[slc_large]**2 * aper_weights)[pixel_mask]
+                    aperture_sum_errs.append(np.sqrt(variance.sum()))
 
         aperture_sums = np.array(aperture_sums)
         aperture_sum_errs = np.array(aperture_sum_errs)
