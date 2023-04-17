@@ -569,8 +569,6 @@ class PixelAperture(Aperture):
             aperture_sums.append(values.sum())
 
             if error is not None:
-                if error.shape != data.shape:
-                    raise ValueError('error and data must have the same shape')
                 var_cutout = error[slc_large]**2
 
                 # ignore multiplication with non-finite data values
@@ -580,8 +578,6 @@ class PixelAperture(Aperture):
                 aperture_sum_errs.append(np.sqrt(values.sum()))
 
         aperture_sums = np.array(aperture_sums)
-        if error is None:
-            aperture_sum_errs = []
         aperture_sum_errs = np.array(aperture_sum_errs)
 
         # apply units
