@@ -253,6 +253,13 @@ class ApertureMask:
 
         pixel_mask: 2D bool `~numpy.ndarray`
             The cutout pixel mask for the overlap.
+
+        Notes
+        -----
+        This method is separate from ``get_values`` to facilitate
+        applying the same slices, aper_weights, and pixel_mask to
+        multiple associated arrays (e.g., data and error arrays). It is
+        used in this way by the `PixelAperture.do_photometry` method.
         """
         if mask is not None:
             if mask.shape != shape:
