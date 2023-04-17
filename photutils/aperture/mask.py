@@ -222,6 +222,54 @@ class ApertureMask:
 
             return weighted_cutout
 
+    def _get_overlap_cutouts(self, shape, mask=None):
+        """
+        Get the aperture mask weights, pixel mask, and slice for the
+        overlap with the input shape.
+
+        If input, the ``mask`` is included in the output pixel mask
+        cutout.
+
+        Parameters
+        ----------
+        shape : tuple of int
+            The shape of data.
+
+        mask : array_like (bool), optional
+            A boolean mask with the same shape as ``shape`` where a
+            `True` value indicates a masked pixel.
+
+        Returns
+        -------
+        slices_large : tuple of slices or `None`
+            A tuple of slice objects for each axis of the large array
+            of given ``shape``, such that ``large_array[slices_large]``
+            extracts the region of the large array that overlaps with
+            the small array. `None` is returned if there is no overlap
+            of the bounding box with the given image shape.
+
+        aper_weights: 2D float `~numpy.ndarray`
+            The cutout aperture mask weights for the overlap.
+
+        pixel_mask: 2D bool `~numpy.ndarray`
+            The cutout pixel mask for the overlap.
+        """
+        if mask is not None:
+            if mask.shape != shape:
+                raise ValueError('mask and data must have the same shape')
+
+        slc_large, slc_small = self.get_overlap_slices(shape)
+        if slc_large is None:  # no overlap
+            return None, None, None
+
+        aper_weights = self.data[slc_small]
+        pixel_mask = (aper_weights > 0)  # good pixels
+
+        if mask is not None:
+            pixel_mask &= ~mask[slc_large]
+
+        return slc_large, aper_weights, pixel_mask
+
     def get_values(self, data, mask=None):
         """
         Get the mask-weighted pixel values from the data as a 1D array.
@@ -248,19 +296,15 @@ class ApertureMask:
             input ``data``, the result will be an empty array with shape
             (0,).
         """
-        slc_large, slc_small = self.get_overlap_slices(data.shape)
+        slc_large, aper_weights, pixel_mask = self._get_overlap_cutouts(
+            data.shape, mask=mask)
+
         if slc_large is None:
             return np.array([])
-        cutout = data[slc_large]
-        apermask = self.data[slc_small]
-        pixel_mask = (apermask > 0)  # good pixels
-
-        if mask is not None:
-            if mask.shape != data.shape:
-                raise ValueError('mask and data must have the same shape')
-            pixel_mask &= ~mask[slc_large]
 
         # ignore multiplication with non-finite data values
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            return (cutout * apermask)[pixel_mask]
+            # pixel_mask is used so that pixels value where data = 0 and
+            # aper_weights != 0 are still returned
+            return (data[slc_large] * aper_weights)[pixel_mask]
