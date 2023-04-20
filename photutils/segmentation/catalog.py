@@ -196,7 +196,7 @@ class SourceCatalog:
 
         This keyword will be ignored if ``detection_cat`` is input.
 
-    kron_params : list of 2 or 3 floats, optional
+    kron_params : tuple of 2 or 3 floats, optional
         A list of parameters used to determine the Kron aperture.
         The first item is the scaling parameter of the unscaled Kron
         radius and the second item represents the minimum value for
@@ -393,7 +393,8 @@ class SourceCatalog:
 
     @staticmethod
     def _validate_kron_params(kron_params):
-        kron_params = np.atleast_1d(kron_params)
+        if np.ndim(kron_params) != 1:
+            raise ValueError('kron_params must by 1D')
         nparams = len(kron_params)
         if nparams not in (2, 3):
             raise ValueError('kron_params must have 2 or 3 elements')
@@ -403,7 +404,7 @@ class SourceCatalog:
             raise ValueError('kron_params[1] must be > 0')
         if nparams == 3 and kron_params[2] < 0:
             raise ValueError('kron_params[2] must be >= 0')
-        return kron_params
+        return tuple(kron_params)
 
     def _validate_detection_cat(self, detection_cat):
         if detection_cat is None:
