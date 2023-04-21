@@ -36,6 +36,9 @@ API Changes
   - Removed the deprecated ``outline_segments`` method from
     ``SegmentationImage``. [#1526]
 
+  - The ``SourceCatalog`` ``kron_params`` attribute is no longer
+    returned as a ``ndarray``. It is returned as a ``tuple``. [#1531]
+
 
 1.7.0 (2023-04-05)
 ------------------

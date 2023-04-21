@@ -484,6 +484,7 @@ class TestSourceCatalog:
         assert np.min(kronrad) == kron_params[1]
         assert isinstance(cat.kron_aperture[2], EllipticalAperture)
         assert isinstance(cat.kron_aperture[4], EllipticalAperture)
+        assert isinstance(cat.kron_params, tuple)
 
     def test_kron_masking(self):
         apermask_method = 'none'
