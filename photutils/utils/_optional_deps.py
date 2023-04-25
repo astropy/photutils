@@ -18,7 +18,7 @@ def __getattr__(name):
     if name in __all__:
         try:
             importlib.import_module(deps[name[4:]])
-        except (ImportError, ModuleNotFoundError):
+        except ImportError:
             return False
         return True
 
