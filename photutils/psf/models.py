@@ -1093,6 +1093,13 @@ class PRFAdapter(Fittable2DModel):
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """The evaluation function for PRFAdapter."""
+        if not np.isscalar(flux):
+            flux = flux[0]
+        if not np.isscalar(x_0):
+            x_0 = x_0[0]
+        if not np.isscalar(y_0):
+            y_0 = y_0[0]
+
         if self.xname is None:
             dx = x - x_0
         else:
