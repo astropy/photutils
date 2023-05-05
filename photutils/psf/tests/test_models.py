@@ -165,14 +165,8 @@ class TestGriddedPSFModel:
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_interp(self):
         # test xyref length
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             self.psfmodel._bilinear_interp([1, 1], 1, 1, 1)
-
-        # test zref shape
-        with pytest.raises(ValueError):
-            xyref = [[0, 0], [0, 1], [1, 0], [1, 1]]
-            zref = np.ones((3, 4, 4))
-            self.psfmodel._bilinear_interp(xyref, zref, 1, 1)
 
         # test if refxy points form a rectangle
         with pytest.raises(ValueError):

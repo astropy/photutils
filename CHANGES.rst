@@ -20,6 +20,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Fixed an issue with the local model cache in ``GriddedPSFModel``,
+    significantly improving performance. [#1536]
+
 API Changes
 ^^^^^^^^^^^
 
