@@ -769,7 +769,7 @@ class GriddedPSFModel(Fittable2DModel):
         super().__init__(flux, x_0, y_0)
 
     @staticmethod
-    def _find_bounds_1d(data, x):
+    def _find_start_idx(data, x):
         """
         Find the index of the lower bound where ``x`` should be inserted
         into ``a`` to maintain order.
@@ -797,7 +797,6 @@ class GriddedPSFModel(Fittable2DModel):
             idx0 = idx - 2
         else:
             idx0 = idx - 1
-
         return idx0
 
     def _find_bounding_points(self, x, y):
@@ -809,29 +808,22 @@ class GriddedPSFModel(Fittable2DModel):
         ----------
         x, y : float
             The ``(x, y)`` position where the PSF is to be evaluated.
+            The position must be inside the region defined by the grid
+            of PSF positions.
 
         Returns
         -------
         indices : list of int
             A list of indices of the bounding grid points.
         """
-        if not np.isscalar(x) or not np.isscalar(y):  # pragma: no cover
-            raise TypeError('x and y must be scalars')
+        x0 = self._find_start_idx(self._xgrid, x)
+        y0 = self._find_start_idx(self._ygrid, y)
+        xypoints = list(itertools.product(self._xgrid[x0:x0 + 2],
+                                          self._ygrid[y0:y0 + 2]))
 
-        if (x < self._xgrid_min
-                or x > self._xgrid_max
-                or y < self._ygrid_min
-                or y > self._ygrid_max):  # pragma: no cover
-            raise ValueError('(x, y) position is outside of the region '
-                             'defined by grid of PSF positions')
-
-        x0 = self._find_bounds_1d(self._xgrid, x)
-        y0 = self._find_bounds_1d(self._ygrid, y)
-        points = list(itertools.product(self._xgrid[x0:x0 + 2],
-                                        self._ygrid[y0:y0 + 2]))
-
+        # find the grid_xypos indices of the reference xypoints
         indices = []
-        for xx, yy in points:
+        for xx, yy in xypoints:
             indices.append(np.argsort(np.hypot(self._grid_xpos - xx,
                                                self._grid_ypos - yy))[0])
 
@@ -863,13 +855,6 @@ class GriddedPSFModel(Fittable2DModel):
         result : 2D `~numpy.ndarray`
             The 2D interpolated array.
         """
-        if len(xyref) != 4:
-            raise ValueError('xyref must contain only 4 (x, y) pairs')
-
-        if zref.shape[0] != 4:
-            raise ValueError('zref must have a length of 4 on the first '
-                             'axis.')
-
         xyref = [tuple(i) for i in xyref]
         idx = sorted(range(len(xyref)), key=xyref.__getitem__)
         xyref = sorted(xyref)  # sort by x, then y
@@ -900,12 +885,11 @@ class GriddedPSFModel(Fittable2DModel):
         """
         if (x_0 < self._xgrid_min or x_0 > self._xgrid_max
                 or y_0 < self._ygrid_min or y_0 > self._ygrid_max):
-
             # position is outside of the grid, so simply use the
             # closest reference PSF
-            self._ref_indices = np.argsort(np.hypot(self._grid_xpos - x_0,
-                                                    self._grid_ypos - y_0))[0]
-            self._psf_interp = self.data[self._ref_indices, :, :]
+            self._ref_index = np.argsort(np.hypot(self._grid_xpos - x_0,
+                                                  self._grid_ypos - y_0))[0]
+            self._psf_interp = self.data[self._ref_index, :, :]
         else:
             # find the four bounding reference PSFs and interpolate
             self._ref_indices = self._find_bounding_points(x_0, y_0)
@@ -923,16 +907,18 @@ class GriddedPSFModel(Fittable2DModel):
         """
         Evaluate the `GriddedPSFModel` for the input parameters.
         """
-        # NOTE: this is needed because the PSF photometry routines input
-        # length-1 values instead of scalars.  TODO: fix the photometry
-        # routines.
+        # NOTE: the astropy base Model.__call__() method converts scalar
+        # inputs to size-1 arrays before calling evaluate().
+        if not np.isscalar(flux):
+            flux = flux[0]
         if not np.isscalar(x_0):
             x_0 = x_0[0]
         if not np.isscalar(y_0):
             y_0 = y_0[0]
 
-        # calculate the local (interpolated) PSF at (x_0, y_0) from the
-        # grid of PSF models
+        # Calculate the local (interpolated) PSF at (x_0, y_0) from the
+        # grid of PSF models. Only the integer part of the position is
+        # input so that the local model can be cached.
         psfmodel = self._compute_local_model(int(x_0), int(y_0))
 
         # now evaluate the PSF at the (x_0, y_0) subpixel position on
