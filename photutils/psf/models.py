@@ -933,7 +933,7 @@ class GriddedPSFModel(Fittable2DModel):
 
         # calculate the local (interpolated) PSF at (x_0, y_0) from the
         # grid of PSF models
-        psfmodel = self._compute_local_model(x_0, y_0)
+        psfmodel = self._compute_local_model(int(x_0), int(y_0))
 
         # now evaluate the PSF at the (x_0, y_0) subpixel position on
         # the input (x, y) values
