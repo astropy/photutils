@@ -31,6 +31,10 @@ API Changes
 - Removed the deprecated ``axes`` keyword in favor of ``ax`` for
   consistency with other packages. [#1523]
 
+- ``photutils.aperture``
+
+  - Removed the ``ApertureStats`` ``unpack_nddata`` method. [#1537]
+
 - ``photutils.segmentation``
 
   - Removed the deprecated ``kernel`` keyword from ``detect_sources``

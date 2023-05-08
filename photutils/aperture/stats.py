@@ -213,7 +213,8 @@ class ApertureStats:
                  local_bkg=None):
 
         if isinstance(data, NDData):
-            data, error, mask, wcs = self.unpack_nddata(data, error, mask, wcs)
+            data, error, mask, wcs = self._unpack_nddata(data, error, mask,
+                                                         wcs)
 
         (data, error, local_bkg), unit = process_quantities(
             (data, error, local_bkg), ('data', 'error', 'local_bkg'))
@@ -258,7 +259,7 @@ class ApertureStats:
         self.meta = _get_meta()
 
     @staticmethod
-    def unpack_nddata(data, error, mask, wcs):
+    def _unpack_nddata(data, error, mask, wcs):
         nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
         for key, value in nddata_attr.items():
             if value is not None:
