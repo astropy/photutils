@@ -11,7 +11,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture import CircularAnnulus, CircularAperture
-from photutils.profiles import RadialProfile
+from photutils.profiles import EdgeRadialProfile, RadialProfile
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
@@ -60,6 +60,49 @@ def test_radial_profile(profile_data):
     rp2 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
                         error=None, mask=None)
     assert isinstance(rp2.apertures[0], CircularAnnulus)
+
+
+def test_edge_radial_profile(profile_data):
+    xycen, data, _, _ = profile_data
+
+    edge_radii = np.arange(37)
+    rp1 = EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
+
+    assert_equal(rp1.radius, np.arange(36) + 0.5)
+    assert rp1.area.shape == (36,)
+    assert rp1.profile.shape == (36,)
+    assert rp1.profile_error.shape == (0,)
+    assert_allclose(rp1.area[0], np.pi)
+
+    assert len(rp1.apertures) == 36
+    assert isinstance(rp1.apertures[0], CircularAperture)
+    assert isinstance(rp1.apertures[1], CircularAnnulus)
+
+    edge_radii = np.arange(1, 36)
+    rp2 = EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
+    assert isinstance(rp2.apertures[0], CircularAnnulus)
+
+
+def test_edge_radial_profile_inputs(profile_data):
+    xycen, data, _, _ = profile_data
+
+    msg = 'minimum edge_radii must be >= 0'
+    with pytest.raises(ValueError, match=msg):
+        edge_radii = np.arange(-1, 10)
+        EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
+
+    msg = 'edge_radii must be a 1D array and have at least two values'
+    with pytest.raises(ValueError, match=msg):
+        edge_radii = [1]
+        EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
+    with pytest.raises(ValueError, match=msg):
+        edge_radii = np.arange(6).reshape(2, 3)
+        EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
+
+    msg = 'edge_radii must be strictly increasing'
+    with pytest.raises(ValueError, match=msg):
+        edge_radii = np.arange(10)[::-1]
+        EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
