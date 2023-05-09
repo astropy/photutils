@@ -92,7 +92,7 @@ class RadialProfile(ProfileBase):
 
     See Also
     --------
-    `EdgeRadialProfile` : Allows input of the radial edges.
+    EdgeRadialProfile : Allows input of the radial edges.
 
     Notes
     -----
@@ -502,13 +502,196 @@ class EdgeRadialProfile(RadialProfile):
 
     See Also
     --------
-    `RadialProfile`
+    RadialProfile
 
     Notes
     -----
     If the minimum of ``edge_radii`` is zero, then a circular aperture
     with radius equal to ``edge_radii[1]`` will be used for the
     innermost aperture.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from astropy.modeling.models import Gaussian2D
+    >>> from astropy.visualization import simple_norm
+    >>> from photutils.centroids import centroid_quadratic
+    >>> from photutils.datasets import make_noise_image
+    >>> from photutils.profiles import EdgeRadialProfile
+
+    Create an artificial single source. Note that this image does not
+    have any background.
+
+    >>> gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+    >>> yy, xx = np.mgrid[0:100, 0:100]
+    >>> data = gmodel(xx, yy)
+    >>> error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+    >>> data += error
+
+    Create the radial profile.
+
+    >>> xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+    >>> edge_radii = np.arange(26)
+    >>> rp = EdgeRadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+    >>> print(rp.radius)  # doctest: +FLOAT_CMP
+    [ 0.5  1.5  2.5  3.5  4.5  5.5  6.5  7.5  8.5  9.5 10.5 11.5 12.5 13.5
+     14.5 15.5 16.5 17.5 18.5 19.5 20.5 21.5 22.5 23.5 24.5]
+
+    >>> print(rp.profile)  # doctest: +FLOAT_CMP
+    [ 4.15632243e+01  3.93402079e+01  3.59845746e+01  3.15540506e+01
+      2.62300757e+01  2.07297033e+01  1.65106801e+01  1.19376723e+01
+      7.75743772e+00  5.56759777e+00  3.44112671e+00  1.91350281e+00
+      1.17092981e+00  4.22261078e-01  9.70256904e-01  4.16355795e-01
+      1.52328707e-02 -6.69985111e-02  4.15522650e-01  2.48494731e-01
+      4.03348112e-01  1.43482678e-01 -2.62777461e-01  7.30653622e-02
+      7.84616804e-04]
+
+    >>> print(rp.profile_error)  # doctest: +FLOAT_CMP
+    [1.69588246 0.81797694 0.61132694 0.44670831 0.49499835 0.38025361
+     0.40844702 0.32906672 0.36466713 0.33059274 0.29661894 0.27314739
+     0.25551933 0.27675376 0.25553986 0.23421017 0.22966813 0.21747036
+     0.23654884 0.22760386 0.23941711 0.20661313 0.18999134 0.17469024
+     0.19527558]
+
+    Plot the radial profile.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import EdgeRadialProfile
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+        # create the radial profile
+        edge_radii = np.arange(26)
+        rp = EdgeRadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+        # plot the radial profile
+        rp.plot()
+        rp.plot_error()
+
+    Normalize the profile and plot the normalized radial profile.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import EdgeRadialProfile
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+        # create the radial profile
+        edge_radii = np.arange(26)
+        rp = EdgeRadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+        # plot the radial profile
+        rp.normalize()
+        rp.plot()
+        rp.plot_error()
+
+    Plot two of the annulus apertures on the data.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import EdgeRadialProfile
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+        # create the radial profile
+        edge_radii = np.arange(26)
+        rp = EdgeRadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+        norm = simple_norm(data, 'sqrt')
+        plt.figure(figsize=(5, 5))
+        plt.imshow(data, norm=norm)
+        rp.apertures[5].plot(color='C0', lw=2)
+        rp.apertures[10].plot(color='C1', lw=2)
+
+    Fit a 1D Gaussian to the radial profile and return the Gaussian
+    model.
+
+    >>> rp.gaussian_fit  # doctest: +FLOAT_CMP
+    <Gaussian1D(amplitude=41.54880743, mean=0., stddev=4.71059406)>
+
+    >>> print(rp.gaussian_fwhm)  # doctest: +FLOAT_CMP
+    11.09260130738712
+
+    Plot the fitted 1D Gaussian on the radial profile.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import EdgeRadialProfile
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+        # create the radial profile
+        edge_radii = np.arange(26)
+        rp = EdgeRadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+        # plot the radial profile
+        rp.normalize()
+        rp.plot(label='Radial Profile')
+        rp.plot_error()
+        plt.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
+        plt.legend()
     """
 
     def __init__(self, data, xycen, edge_radii, *, error=None, mask=None,
