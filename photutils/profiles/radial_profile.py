@@ -14,9 +14,9 @@ from astropy.utils import lazyproperty
 
 from photutils.profiles.core import ProfileBase
 
-__all__ = ['RadialProfile']
+__all__ = ['RadialProfile', 'EdgeRadialProfile']
 
-__doctest_requires__ = {('RadialProfile'): ['scipy']}
+__doctest_requires__ = {('RadialProfile', 'EdgeRadialProfile'): ['scipy']}
 
 
 class RadialProfile(ProfileBase):
@@ -90,6 +90,10 @@ class RadialProfile(ProfileBase):
         ``subpixels**2`` subpixels. This keyword is ignored unless
         ``method='subpixel'``.
 
+    See Also
+    --------
+    `EdgeRadialProfile` : Allows input of the radial edges.
+
     Notes
     -----
     Note that the ``min_radius``, ``max_radius``, and ``radius_step``
@@ -98,6 +102,10 @@ class RadialProfile(ProfileBase):
     ``radius_step``, then a circular aperture with radius equal to
     ``min_radius + 0.5 * radius_step`` will be used for the innermost
     aperture.
+
+    The `EdgeRadialProfile` class can be used to input an array of the
+    radial bin edges. For that class, the radial spacing does not need
+    to be constant.
 
     Examples
     --------
@@ -419,3 +427,117 @@ class RadialProfile(ProfileBase):
         Gaussian fitted to the radial profile.
         """
         return self.gaussian_fit.stddev.value * gaussian_sigma_to_fwhm
+
+
+class EdgeRadialProfile(RadialProfile):
+    """
+    Class to create a radial profile using concentric circular
+    apertures.
+
+    The radial profile represents the azimuthally-averaged flux in
+    circular annuli apertures as a function of radius.
+
+    For this class, the input radii represent the edges of the radial
+    bins. This differs from the `RadialProfile` class, where the inputs
+    represent the centers of the radial bins.
+
+    Parameters
+    ----------
+    data : 2D `numpy.ndarray`
+        The 2D data array. The data should be background-subtracted.
+        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
+
+    xycen : tuple of 2 floats
+        The ``(x, y)`` pixel coordinate of the source center.
+
+    edge_radii : 1D float `numpy.ndarray`
+        An array of radii defining the edges of the radial bins.
+        ``edge_radii`` must be strictly increasing with a minimum value
+        greater than or equal to zero, and contain at least 2 values.
+        The radial spacing does not need to be constant. The output
+        `radius` attribute will be defined at the bin centers.
+
+    error : 2D `numpy.ndarray`, optional
+        The 1-sigma errors of the input ``data``. ``error`` is assumed
+        to include all sources of error, including the Poisson error
+        of the sources (see `~photutils.utils.calc_total_error`) .
+        ``error`` must have the same shape as the input ``data``.
+        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
+
+    mask : 2D bool `numpy.ndarray`, optional
+        A boolean mask with the same shape as ``data`` where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from all calculations.
+
+    method : {'exact', 'center', 'subpixel'}, optional
+        The method used to determine the overlap of the aperture on the
+        pixel grid:
+
+            * ``'exact'`` (default):
+              The the exact fractional overlap of the aperture and each
+              pixel is calculated. The aperture weights will contain
+              values between 0 and 1.
+
+            * ``'center'``:
+              A pixel is considered to be entirely in or out of the
+              aperture depending on whether its center is in or out of
+              the aperture. The aperture weights will contain values
+              only of 0 (out) and 1 (in).
+
+            * ``'subpixel'``:
+              A pixel is divided into subpixels (see the ``subpixels``
+              keyword), each of which are considered to be entirely in
+              or out of the aperture depending on whether its center is
+              in or out of the aperture. If ``subpixels=1``, this method
+              is equivalent to ``'center'``. The aperture weights will
+              contain values between 0 and 1.
+
+    subpixels : int, optional
+        For the ``'subpixel'`` method, resample pixels by this factor
+        in each dimension. That is, each pixel is divided into
+        ``subpixels**2`` subpixels. This keyword is ignored unless
+        ``method='subpixel'``.
+
+    See Also
+    --------
+    `RadialProfile`
+
+    Notes
+    -----
+    If the minimum of ``edge_radii`` is zero, then a circular aperture
+    with radius equal to ``edge_radii[1]`` will be used for the
+    innermost aperture.
+    """
+
+    def __init__(self, data, xycen, edge_radii, *, error=None, mask=None,
+                 method='exact', subpixels=5):
+        super().__init__(data, xycen, None, None, None, error=error, mask=mask,
+                         method=method, subpixels=subpixels)
+
+        self.edge_radii = self._validate_edge_radii(edge_radii)
+
+    def _validate_edge_radii(self, edge_radii):
+        edge_radii = np.array(edge_radii)
+        if edge_radii.ndim != 1 or edge_radii.size < 2:
+            raise ValueError('edge_radii must be a 1D array and have at '
+                             'least two values')
+        if edge_radii.min() < 0:
+            raise ValueError('minimum edge_radii must be >= 0')
+
+        if not np.all(edge_radii[1:] > edge_radii[:-1]):
+            raise ValueError('edge_radii must be strictly increasing')
+
+        return edge_radii
+
+    @lazyproperty
+    def radius(self):
+        """
+        The profile radius in pixels as a 1D `~numpy.ndarray`.
+        """
+        return (self.edge_radii[:-1] + self.edge_radii[1:]) / 2
+
+    @lazyproperty
+    def _circular_radii(self):
+        return self.edge_radii
