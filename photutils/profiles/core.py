@@ -3,6 +3,7 @@
 This module provides a base class for profiles.
 """
 
+import abc
 import math
 import warnings
 
@@ -15,9 +16,9 @@ from photutils.utils._quantity_helpers import process_quantities
 __all__ = ['ProfileBase']
 
 
-class ProfileBase:
+class ProfileBase(metaclass=abc.ABCMeta):
     """
-    Base class for profile classes.
+    Abtract base class for profile classes.
 
     Parameters
     ----------
@@ -77,10 +78,6 @@ class ProfileBase:
         ``method='subpixel'``.
     """
 
-    _circular_radii = None
-    profile = None
-    profile_error = None
-
     def __init__(self, data, xycen, min_radius, max_radius, radius_step, *,
                  error=None, mask=None, method='exact', subpixels=5):
 
@@ -133,6 +130,31 @@ class ProfileBase:
                                 / self.radius_step))
         max_radius = self.min_radius + (nsteps * self.radius_step)
         return np.linspace(self.min_radius, max_radius, nsteps + 1)
+
+    @property
+    @abc.abstractmethod
+    def _circular_radii(self):
+        """
+        The circular aperture radii for the radial bin edges (inner and
+        outer annulus radii).
+        """
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
+    @property
+    @abc.abstractmethod
+    def profile(self):
+        """
+        The radial profile as a 1D `~numpy.ndarray`.
+        """
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
+    @property
+    @abc.abstractmethod
+    def profile_error(self):
+        """
+        The radial profile errors as a 1D `~numpy.ndarray`.
+        """
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @lazyproperty
     def _circular_apertures(self):
