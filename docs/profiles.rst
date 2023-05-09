@@ -212,6 +212,8 @@ profile and return the Gaussian model using the
     >>> rp1.gaussian_fit  # doctest: +FLOAT_CMP
     <Gaussian1D(amplitude=41.80620963, mean=0., stddev=4.69126969)>
 
+.. doctest-requires:: scipy
+
     >>> rp2.gaussian_fit  # doctest: +FLOAT_CMP
     <Gaussian1D(amplitude=41.54880743, mean=0., stddev=4.71059406)>
 
@@ -222,6 +224,8 @@ The FWHM of the fitted 1D Gaussian model is stored in the
 
     >>> print(rp1.gaussian_fwhm)  # doctest: +FLOAT_CMP
     11.04709589620093
+
+.. doctest-requires:: scipy
 
     >>> print(rp2.gaussian_fwhm)  # doctest: +FLOAT_CMP
     11.09260130738712
