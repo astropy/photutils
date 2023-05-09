@@ -17,6 +17,11 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.profiles``
+
+  - Added ``EdgeRadialProfile`` class defined using radial bin edges.
+    [#1538]
+
 Bug Fixes
 ^^^^^^^^^
 
