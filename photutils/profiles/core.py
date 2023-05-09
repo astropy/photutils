@@ -87,6 +87,31 @@ class ProfileBase(metaclass=abc.ABCMeta):
         if error is not None and error.shape != data.shape:
             raise ValueError('error must have the same same as data')
 
+        self.data = data
+        self.error = error
+        self.mask = self._compute_mask(data, error, mask)
+        self.unit = unit
+        self.xycen = xycen
+        self.method = method
+        self.subpixels = subpixels
+
+        if (min_radius is not None or max_radius is not None
+                or radius_step is not None):
+            if min_radius < 0 or max_radius < 0:
+                raise ValueError('min_radius and max_radius must be >= 0')
+            if min_radius >= max_radius:
+                raise ValueError('max_radius must be greater than min_radius')
+            if radius_step <= 0:
+                raise ValueError('radius_step must be > 0')
+        self.min_radius = min_radius
+        self.max_radius = max_radius
+        self.radius_step = radius_step
+
+    def _compute_mask(self, data, error, mask):
+        """
+        Compute the mask array, automatically masking non-finite data or
+        error values.
+        """
         badmask = ~np.isfinite(data)
         if error is not None:
             badmask |= ~np.isfinite(error)
@@ -103,23 +128,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
                           'or inf) that were automatically masked.',
                           AstropyUserWarning)
 
-        self.data = data
-        self.error = error
-        self.mask = mask
-        self.unit = unit
-        self.xycen = xycen
-
-        if min_radius < 0 or max_radius < 0:
-            raise ValueError('min_radius and max_radius must be >= 0')
-        if min_radius >= max_radius:
-            raise ValueError('max_radius must be greater than min_radius')
-        if radius_step <= 0:
-            raise ValueError('radius_step must be > 0')
-        self.min_radius = min_radius
-        self.max_radius = max_radius
-        self.radius_step = radius_step
-        self.method = method
-        self.subpixels = subpixels
+        return mask
 
     @lazyproperty
     def radius(self):
