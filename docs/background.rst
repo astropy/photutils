@@ -4,20 +4,19 @@ Background Estimation (`photutils.background`)
 Introduction
 ------------
 
-To accurately measure the photometry and morphological properties of
-astronomical sources, one requires an accurate estimate of the
-background, which can be from both the sky and the detector.
-Similarly, having an accurate estimate of the background noise is
-important for determining the significance of source detections and
-for estimating photometric errors.
+To accurately measure the photometry and morphological properties
+of astronomical sources, one requires an accurate estimate of the
+background, which can be from both the sky and the detector. Similarly,
+having an accurate estimate of the background noise is important for
+determining the significance of source detections and for estimating
+photometric errors.
 
-Unfortunately, accurate background and background noise estimation is
-a difficult task.  Further, because astronomical images can cover a
-wide variety of scenes, there is not a single background estimation
-method that will always be applicable. Photutils provides tools for
-estimating the background and background noise in your data, but they
-will likely require some tweaking to optimize the background estimate
-for your data.
+Unfortunately, accurate background and background noise estimation is a
+difficult task. Further, because astronomical images can cover a wide
+variety of scenes, there is not a single background estimation method
+that will always be applicable. Photutils provides tools for estimating
+the background and background noise in your data, but they will likely
+require some tweaking to optimize the background estimate for your data.
 
 
 Scalar Background and Noise Estimation
@@ -28,21 +27,22 @@ Simple Statistics
 
 If the background level and noise are relatively constant across an
 image, the simplest way to estimate these values is to derive scalar
-quantities using simple approximations.  Of course, when computing the
-image statistics one must take into account the astronomical sources
-present in the images, which add a positive tail to the distribution
-of pixel intensities. For example, one may consider using the image
-median as the background level and the image standard deviation as the
-1-sigma background noise, but the resulting values are obviously
-biased by the presence of real sources.
+quantities using simple approximations. When computing the image
+statistics one must take into account the astronomical sources present
+in the images, which add a positive tail to the distribution of pixel
+intensities. For example, one may consider using the image median as
+the background level and the image standard deviation as the 1-sigma
+background noise, but the resulting values are biased by the presence of
+real sources.
 
-A slightly better method involves using statistics that are robust
-against the presence of outliers, such as the biweight location for
-the background level and biweight scale or `median absolute deviation
-(MAD) <https://en.wikipedia.org/wiki/Median_absolute_deviation>`__ for
-the background noise estimation. However, for most astronomical scenes
-these methods will also be biased by the presence of astronomical
-sources in the image.
+A slightly better method involves using statistics that
+are robust against the presence of outliers, such as the
+biweight location for the background level and biweight
+scale or normalized `median absolute deviation (MAD)
+<https://en.wikipedia.org/wiki/Median_absolute_deviation>`__ for the
+background noise estimation. However, for most astronomical scenes these
+methods will also be biased by the presence of astronomical sources in
+the image.
 
 As an example, we load a synthetic image comprised of 100 sources with
 a Gaussian-distributed background whose mean is 5 and standard
@@ -98,10 +98,10 @@ Sigma Clipping Sources
 ^^^^^^^^^^^^^^^^^^^^^^
 
 The most widely used technique to remove the sources from the image
-statistics is called sigma clipping.  Briefly, pixels that are above
-or below a specified sigma level from the median are discarded and the
-statistics are recalculated.  The procedure is typically repeated over
-a number of iterations or until convergence is reached.  This method
+statistics is called sigma clipping. Briefly, pixels that are above or
+below a specified sigma level from the median are discarded and the
+statistics are recalculated. The procedure is typically repeated over
+a number of iterations or until convergence is reached. This method
 provides a better estimate of the background and background noise
 levels::
 
@@ -115,11 +115,10 @@ Masking Sources
 ^^^^^^^^^^^^^^^
 
 An even better procedure is to exclude the sources in the image by
-masking them. Of course, this technique requires one to :ref:`identify
-the sources in the data <source_detection>`, which in turn depends
-on the background and background noise. Therefore, this method for
-estimating the background and background RMS requires an iterative
-procedure.
+masking them. This technique requires one to :ref:`identify the sources
+in the data <source_detection>`, which in turn depends on the background
+and background noise. Therefore, this method for estimating the
+background and background RMS requires an iterative procedure.
 
 One method to create a source mask is to use a
 :ref:`segmentation image <image_segmentation>`. Here we use the
@@ -144,9 +143,9 @@ method with a circular dilation footprint to create the source mask:
     >>> print((mean, median, std))  # doctest: +FLOAT_CMP
     (4.994042038715669, 4.991333562774164, 1.9699473426119296)
 
-Of course, the source detection and masking procedure can be iterated
-further. Even with one iteration we are within 0.2% of the true
-background value and 1.5% of the true background RMS.
+The source detection and masking procedure can be iterated further. Even
+with one iteration we are within 0.2% of the true background value and
+1.5% of the true background RMS.
 
 .. _scipy: https://www.scipy.org/
 
@@ -156,12 +155,12 @@ background value and 1.5% of the true background RMS.
 
 If the background or the background noise varies across the image,
 then you will generally want to generate a 2D image of the background
-and background RMS (or compute these values locally).  This can be
+and background RMS (or compute these values locally). This can be
 accomplished by applying the above techniques to subregions of the
-image.  A common procedure is to use sigma-clipped statistics in each
+image. A common procedure is to use sigma-clipped statistics in each
 mesh of a grid that covers the input data to create a low-resolution
-background image.  The final background or background RMS image can
-then be generated by interpolating the low-resolution image.
+background image. The final background or background RMS image can then
+be generated by interpolating the low-resolution image.
 
 Photutils provides the :class:`~photutils.background.Background2D`
 class to estimate the 2D background and background noise in an
@@ -193,9 +192,9 @@ For this method, the background in each mesh is calculated as ``(2.5 *
 median) - (1.5 * mean)``. However, if ``(mean - median) / std > 0.3``
 then the ``median`` is used instead.
 
-Likewise, the background RMS level in each mesh is calculated using
-the function or callable object input via the ``bkgrms_estimator``
-keyword.  Photutils provides the following classes for this purpose:
+Likewise, the background RMS level in each mesh is calculated using the
+function or callable object input via the ``bkgrms_estimator`` keyword.
+Photutils provides the following classes for this purpose:
 
 * `~photutils.background.StdBackgroundRMS`
 * `~photutils.background.MADStdBackgroundRMS`
@@ -205,20 +204,19 @@ For even more flexibility, users may input a custom function or
 callable object to the ``bkg_estimator`` and/or ``bkgrms_estimator``
 keywords.
 
-By default, the ``bkg_estimator`` and ``bkgrms_estimator`` are applied
-to sigma clipped data.  Sigma clipping is defined by inputting a
-:class:`astropy.stats.SigmaClip` object to the ``sigma_clip`` keyword.
-The default is to perform sigma clipping with ``sigma=3`` and
-``maxiters=10``.  Sigma clipping can be turned off by setting
+By default, the ``bkg_estimator`` and ``bkgrms_estimator`` are
+applied to sigma clipped data. Sigma clipping is defined by inputting
+a :class:`astropy.stats.SigmaClip` object to the ``sigma_clip``
+keyword. The default is to perform sigma clipping with ``sigma=3``
+and ``maxiters=10``. Sigma clipping can be turned off by setting
 ``sigma_clip=None``.
 
-After the background level has been determined in each of the boxes,
-the low-resolution background image can be median filtered, with a
-window of size of ``filter_size``, to suppress local under- or
-overestimations (e.g., due to bright galaxies in a particular box).
-Likewise, the median filter can be applied only to those boxes where
-the background level is above a specified threshold
-(``filter_threshold``).
+After the background level has been determined in each of the boxes, the
+low-resolution background image can be median filtered, with a window
+of size of ``filter_size``, to suppress local under- or overestimations
+(e.g., due to bright galaxies in a particular box). Likewise, the median
+filter can be applied only to those boxes where the background level is
+above a specified threshold (``filter_threshold``).
 
 The low-resolution background and background RMS images are resized to
 the original data size using the function or callable object
@@ -274,12 +272,11 @@ instance of :class:`~photutils.background.MedianBackground`.
 
 The 2D background and background RMS images are retrieved using the
 ``background`` and ``background_rms`` attributes, respectively, on the
-returned object.  The low-resolution versions of these images are
-stored in the ``background_mesh`` and ``background_rms_mesh``
-attributes, respectively.   The global median value of the
-low-resolution background and background RMS image can be accessed
-with the ``background_median`` and ``background_rms_median``
-attributes, respectively:
+returned object. The low-resolution versions of these images are stored
+in the ``background_mesh`` and ``background_rms_mesh`` attributes,
+respectively. The global median value of the low-resolution background
+and background RMS image can be accessed with the ``background_median``
+and ``background_rms_median`` attributes, respectively:
 
 .. doctest-requires:: scipy
 
