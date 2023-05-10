@@ -8,10 +8,10 @@ Introduction
 
 One generally needs to identify astronomical sources in their data
 before they can perform photometry or morphological measurements.
-Photutils provides two functions designed specifically to detect
-point-like (stellar) sources in an astronomical image.  Photutils also
-provides a function to identify local peaks in an image that are above
-a specified threshold value.
+Photutils provides several tools designed specifically to detect
+point-like (stellar) sources in an astronomical image. Photutils also
+provides a function to identify local peaks in an image that are above a
+specified threshold value.
 
 For general-use source detection and extraction of both point-like
 and extended sources, please see :ref:`Image Segmentation
@@ -22,30 +22,35 @@ Detecting Stars
 ---------------
 
 Photutils includes two widely-used tools that are used to detect stars
-in an image, `DAOFIND`_ and IRAF's `starfind`_.
+in an image, `DAOFIND`_ and IRAF's `starfind`_, plus a third tool that
+allows input of a custom user-defined kernel.
 
-:class:`~photutils.detection.DAOStarFinder` is a class that provides
-an implementation of the `DAOFIND`_ algorithm (`Stetson 1987, PASP 99,
-191
+:class:`~photutils.detection.DAOStarFinder` is a class that provides an
+implementation of the `DAOFIND`_ algorithm (`Stetson 1987, PASP 99, 191
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_).
 It searches images for local density maxima that have a peak amplitude
 greater than a specified threshold (the threshold is applied to a
 convolved image) and have a size and shape similar to a defined 2D
-Gaussian kernel.  :class:`~photutils.detection.DAOStarFinder` also
+Gaussian kernel. :class:`~photutils.detection.DAOStarFinder` also
 provides an estimate of the objects' roundness and sharpness, whose
 lower and upper bounds can be specified.
 
 :class:`~photutils.detection.IRAFStarFinder` is a class that
-implements IRAF's `starfind`_ algorithm.  It is fundamentally similar
-to :class:`~photutils.detection.DAOStarFinder`, but
-:class:`~photutils.detection.DAOStarFinder` can use an elliptical
-Gaussian kernel. One other difference in
+implements IRAF's `starfind`_ algorithm. It is fundamentally
+similar to :class:`~photutils.detection.DAOStarFinder`,
+but :class:`~photutils.detection.DAOStarFinder` can use
+an elliptical Gaussian kernel. One other difference in
 :class:`~photutils.detection.IRAFStarFinder` is that it calculates the
 objects' centroid, roundness, and sharpness using image moments.
 
-As an example, let's load an image from the bundled datasets and
-select a subset of the image.  We will estimate the background and
-background noise using sigma-clipped statistics::
+:class:`~photutils.detection.StarFinder` is a class similar to
+:class:`~photutils.detection.IRAFStarFinder`, but which allows input
+of a custom user-defined kernel as a 2D array. This allows for more
+generalization beyond simple Gaussian kernels.
+
+As an example, let's load an image from the bundled datasets and select
+a subset of the image. We will estimate the background and background
+noise using sigma-clipped statistics::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.datasets import load_star_image
@@ -144,9 +149,6 @@ regions:
    >>> mask[50:151, 50:351] = True
    >>> mask[250:351, 150:351] = True
    >>> sources = daofind(data - median, mask=mask)
-   >>> for col in sources.colnames:
-   >>>     sources[col].info.format = '%.8g'  # for consistent table output
-   >>> print(sources)
 
 .. plot::
 
@@ -185,20 +187,15 @@ Local Peak Detection
 
 Photutils also includes a :func:`~photutils.detection.find_peaks`
 function to find local peaks in an image that are above a specified
-threshold value. Peaks are the local maxima above a specified
-threshold that are separated by a specified minimum number of pixels.
+threshold value. Peaks are the local maxima above a specified threshold
+that are separated by a specified minimum number of pixels, defined by a
+box size or a local footprint.
 
-By default, the returned pixel coordinates are always integer-valued
-(i.e., no centroiding is performed, only the peak pixel is
-identified).  However, a centroiding function can be input via the
-``centroid_func`` keyword to :func:`~photutils.detection.find_peaks`
-to compute centroid coordinates with subpixel precision.
-
-:func:`~photutils.detection.find_peaks` supports a number of
-additional options, including searching for peaks only within a
-specified footprint.  Please see the
-:func:`~photutils.detection.find_peaks` documentation for more
-options.
+The returned pixel coordinates for the peaks are always integer-valued
+(i.e., no centroiding is performed, only the peak pixel is identified).
+However, a centroiding function can be input via the ``centroid_func``
+keyword to :func:`~photutils.detection.find_peaks` to also compute
+centroid coordinates with subpixel precision.
 
 As a simple example, let's find the local peaks in an image that are 5
 sigma above the background and a separated by at least 5 pixels:
