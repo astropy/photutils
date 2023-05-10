@@ -487,7 +487,8 @@ Plotting Meshes
 Finally, the meshes that were used in generating the 2D
 background can be plotted on the original image using the
 :meth:`~photutils.background.Background2D.plot_meshes` method. Here we
-zoom in on a small portion of the image to show the background meshes:
+zoom in on a small portion of the image to show the background meshes.
+Meshes without a center marker were excluded.
 
 .. doctest-skip::
 
