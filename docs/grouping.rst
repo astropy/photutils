@@ -1,13 +1,13 @@
-Grouping Algorithms
-===================
+Star Grouping Algorithms
+========================
 
 Introduction
 ------------
 
-In Point Spread Function (PSF) photometry, a grouping algorithm is
-used to separate stars into optimum groups.  The stars in each group
-are defined as those close enough together such that they need to be
-fit simultaneously, i.e., their profiles overlap.
+In Point Spread Function (PSF) photometry, a grouping algorithm is used
+to separate stars into optimum groups. The stars in each group are
+defined as those close enough together such that they need to be fit
+simultaneously, i.e., their profiles overlap.
 
 Photutils currently provides two classes to group stars:
 
@@ -28,12 +28,11 @@ Stetson, in his seminal paper (`Stetson 1987, PASP 99, 191
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_),
 provided a simple and powerful grouping algorithm to decide whether
 the profile of a given star extends into the fitting region of any
-other star.  Stetson defines this in terms of a "critical separation"
+other star. Stetson defines this in terms of a "critical separation"
 parameter, which is defined as the minimal distance that any two stars
-must be separated by in order to be in different groups.  Stetson
-gives intuitive reasoning to suggest that the critical separation may
-be defined as a multiple of the stellar full width at half maximum
-(FWHM).
+must be separated by in order to be in different groups. Stetson gives
+intuitive reasoning to suggest that the critical separation may be
+defined as a multiple of the stellar full width at half maximum (FWHM).
 
 Photutils provides an implementation of the DAOPHOT GROUP algorithm in
 the :class:`~photutils.psf.DAOGroup` class. Let's take a look at a
@@ -83,11 +82,11 @@ Here we rename ``x_mean`` to ``x_0`` and ``y_mean`` to ``y_0``:
     >>> starlist['x_mean'].name = 'x_0'
     >>> starlist['y_mean'].name = 'y_0'
 
-Now, let's find the stellar groups.  We start by creating a
-`~photutils.psf.DAOGroup` object.  Here we set its ``crit_separation``
+Now, let's find the stellar groups. We start by creating a
+`~photutils.psf.DAOGroup` object. Here we set its ``crit_separation``
 parameter ``2.5 * fwhm``, where the stellar ``fwhm`` was defined above
-when we created the stars as 2D Gaussians.  In general one will need
-to measure the FWHM of the stellar profiles.
+when we created the stars as 2D Gaussians. In general one will need to
+measure the FWHM of the stellar profiles.
 
 .. doctest-skip::
 
@@ -104,10 +103,10 @@ as a calling function that receives as input a table of stars (e.g.,
 
     >>> star_groups = daogroup(starlist)
 
-The ``star_groups`` output is copy of the input ``starlist`` table,
-but with an extra column called ``group_id``.  This column contains
-integers that represent the group assigned to each source.  Here the
-grouping algorithm separated the 350 stars into 92 distinct groups:
+The ``star_groups`` output is copy of the input ``starlist`` table, but
+with an extra column called ``group_id``. This column contains integers
+that represent the group assigned to each source. Here the grouping
+algorithm separated the 350 stars into 92 distinct groups:
 
 .. doctest-skip::
 
@@ -202,18 +201,18 @@ in the same group have the same aperture color:
 DBSCANGroup
 -----------
 
-Photutils also provides a :class:`~photutils.psf.DBSCANGroup` class to
-group stars based on the `Density-Based Spatial Clustering of
-Applications with Noise (DBSCAN)
+Photutils also provides a :class:`~photutils.psf.DBSCANGroup`
+class to group stars based on the `Density-Based
+Spatial Clustering of Applications with Noise (DBSCAN)
 <https://en.wikipedia.org/wiki/DBSCAN>`_ algorithm.
 :class:`~photutils.psf.DBSCANGroup` provides a more general algorithm
 than :class:`~photutils.psf.DAOGroup`.
 
 Here's a simple example using :class:`~photutils.psf.DBSCANGroup` with
-``min_samples=1`` and ``metric=euclidean``.  With these parameters,
-the result is identical to the `~photutils.psf.DAOGroup` algorithm.
-Note that `scikit-learn <https://scikit-learn.org/>`_ must be installed
-to use :class:`~photutils.psf.DBSCANGroup`.
+``min_samples=1`` and ``metric=euclidean``. With these parameters, the
+result is identical to the `~photutils.psf.DAOGroup` algorithm. Note
+that `scikit-learn <https://scikit-learn.org/>`_ must be installed to
+use :class:`~photutils.psf.DBSCANGroup`.
 
 .. plot::
 
