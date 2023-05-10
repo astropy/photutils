@@ -3,6 +3,7 @@
 This module provides a base class for profiles.
 """
 
+import abc
 import math
 import warnings
 
@@ -15,9 +16,9 @@ from photutils.utils._quantity_helpers import process_quantities
 __all__ = ['ProfileBase']
 
 
-class ProfileBase:
+class ProfileBase(metaclass=abc.ABCMeta):
     """
-    Base class for profile classes.
+    Abtract base class for profile classes.
 
     Parameters
     ----------
@@ -77,10 +78,6 @@ class ProfileBase:
         ``method='subpixel'``.
     """
 
-    _circular_radii = None
-    profile = None
-    profile_error = None
-
     def __init__(self, data, xycen, min_radius, max_radius, radius_step, *,
                  error=None, mask=None, method='exact', subpixels=5):
 
@@ -90,6 +87,31 @@ class ProfileBase:
         if error is not None and error.shape != data.shape:
             raise ValueError('error must have the same same as data')
 
+        self.data = data
+        self.error = error
+        self.mask = self._compute_mask(data, error, mask)
+        self.unit = unit
+        self.xycen = xycen
+        self.method = method
+        self.subpixels = subpixels
+
+        if (min_radius is not None or max_radius is not None
+                or radius_step is not None):
+            if min_radius < 0 or max_radius < 0:
+                raise ValueError('min_radius and max_radius must be >= 0')
+            if min_radius >= max_radius:
+                raise ValueError('max_radius must be greater than min_radius')
+            if radius_step <= 0:
+                raise ValueError('radius_step must be > 0')
+        self.min_radius = min_radius
+        self.max_radius = max_radius
+        self.radius_step = radius_step
+
+    def _compute_mask(self, data, error, mask):
+        """
+        Compute the mask array, automatically masking non-finite data or
+        error values.
+        """
         badmask = ~np.isfinite(data)
         if error is not None:
             badmask |= ~np.isfinite(error)
@@ -106,23 +128,7 @@ class ProfileBase:
                           'or inf) that were automatically masked.',
                           AstropyUserWarning)
 
-        self.data = data
-        self.error = error
-        self.mask = mask
-        self.unit = unit
-        self.xycen = xycen
-
-        if min_radius < 0 or max_radius < 0:
-            raise ValueError('min_radius and max_radius must be >= 0')
-        if min_radius >= max_radius:
-            raise ValueError('max_radius must be greater than min_radius')
-        if radius_step <= 0:
-            raise ValueError('radius_step must be > 0')
-        self.min_radius = min_radius
-        self.max_radius = max_radius
-        self.radius_step = radius_step
-        self.method = method
-        self.subpixels = subpixels
+        return mask
 
     @lazyproperty
     def radius(self):
@@ -133,6 +139,31 @@ class ProfileBase:
                                 / self.radius_step))
         max_radius = self.min_radius + (nsteps * self.radius_step)
         return np.linspace(self.min_radius, max_radius, nsteps + 1)
+
+    @property
+    @abc.abstractmethod
+    def _circular_radii(self):
+        """
+        The circular aperture radii for the radial bin edges (inner and
+        outer annulus radii).
+        """
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
+    @property
+    @abc.abstractmethod
+    def profile(self):
+        """
+        The radial profile as a 1D `~numpy.ndarray`.
+        """
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
+    @property
+    @abc.abstractmethod
+    def profile_error(self):
+        """
+        The radial profile errors as a 1D `~numpy.ndarray`.
+        """
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @lazyproperty
     def _circular_apertures(self):

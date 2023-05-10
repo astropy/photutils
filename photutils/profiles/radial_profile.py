@@ -14,34 +14,36 @@ from astropy.utils import lazyproperty
 
 from photutils.profiles.core import ProfileBase
 
-__all__ = ['RadialProfile']
+__all__ = ['RadialProfile', 'EdgeRadialProfile']
 
-__doctest_requires__ = {('RadialProfile'): ['scipy']}
+__doctest_requires__ = {('RadialProfile', 'EdgeRadialProfile'): ['scipy']}
 
 
 class RadialProfile(ProfileBase):
     """
-    Class to create a radial profile using concentric apertures.
+    Class to create a radial profile using concentric circular
+    apertures.
 
     The radial profile represents the azimuthally-averaged flux in
     circular annuli apertures as a function of radius.
-
-    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
-    array are automatically masked.
 
     Parameters
     ----------
     data : 2D `numpy.ndarray`
         The 2D data array. The data should be background-subtracted.
+        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
 
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
 
     min_radius : float
-        The minimum radius for the profile.
+        The minimum radius for the profile. This radius is the minimum
+        radial bin center, not the edge.
 
     max_radius : float
-        The maximum radius for the profile.
+        The maximum radius for the profile. This radius is the maximum
+        radial bin center, not the edge.
 
     radius_step : float
         The radial step size in pixels.
@@ -51,6 +53,8 @@ class RadialProfile(ProfileBase):
         to include all sources of error, including the Poisson error
         of the sources (see `~photutils.utils.calc_total_error`) .
         ``error`` must have the same shape as the input ``data``.
+        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
 
     mask : 2D bool `numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -86,12 +90,22 @@ class RadialProfile(ProfileBase):
         ``subpixels**2`` subpixels. This keyword is ignored unless
         ``method='subpixel'``.
 
+    See Also
+    --------
+    EdgeRadialProfile : Allows input of the radial edges.
+
     Notes
     -----
-    If the ``min_radius`` is less than or equal to half the
+    Note that the ``min_radius``, ``max_radius``, and ``radius_step``
+    define the radial bin centers, not the edges. As a consequence,
+    if the ``min_radius`` is less than or equal to half the
     ``radius_step``, then a circular aperture with radius equal to
     ``min_radius + 0.5 * radius_step`` will be used for the innermost
     aperture.
+
+    The `EdgeRadialProfile` class can be used to input an array of the
+    radial bin edges. For that class, the radial spacing does not need
+    to be constant.
 
     Examples
     --------
@@ -413,3 +427,300 @@ class RadialProfile(ProfileBase):
         Gaussian fitted to the radial profile.
         """
         return self.gaussian_fit.stddev.value * gaussian_sigma_to_fwhm
+
+
+class EdgeRadialProfile(RadialProfile):
+    """
+    Class to create a radial profile using concentric circular
+    apertures.
+
+    The radial profile represents the azimuthally-averaged flux in
+    circular annuli apertures as a function of radius.
+
+    For this class, the input radii represent the edges of the radial
+    bins. This differs from the `RadialProfile` class, where the inputs
+    represent the centers of the radial bins.
+
+    Parameters
+    ----------
+    data : 2D `numpy.ndarray`
+        The 2D data array. The data should be background-subtracted.
+        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
+
+    xycen : tuple of 2 floats
+        The ``(x, y)`` pixel coordinate of the source center.
+
+    edge_radii : 1D float `numpy.ndarray`
+        An array of radii defining the edges of the radial bins.
+        ``edge_radii`` must be strictly increasing with a minimum value
+        greater than or equal to zero, and contain at least 2 values.
+        The radial spacing does not need to be constant. The output
+        `radius` attribute will be defined at the bin centers.
+
+    error : 2D `numpy.ndarray`, optional
+        The 1-sigma errors of the input ``data``. ``error`` is assumed
+        to include all sources of error, including the Poisson error
+        of the sources (see `~photutils.utils.calc_total_error`) .
+        ``error`` must have the same shape as the input ``data``.
+        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
+
+    mask : 2D bool `numpy.ndarray`, optional
+        A boolean mask with the same shape as ``data`` where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from all calculations.
+
+    method : {'exact', 'center', 'subpixel'}, optional
+        The method used to determine the overlap of the aperture on the
+        pixel grid:
+
+            * ``'exact'`` (default):
+              The the exact fractional overlap of the aperture and each
+              pixel is calculated. The aperture weights will contain
+              values between 0 and 1.
+
+            * ``'center'``:
+              A pixel is considered to be entirely in or out of the
+              aperture depending on whether its center is in or out of
+              the aperture. The aperture weights will contain values
+              only of 0 (out) and 1 (in).
+
+            * ``'subpixel'``:
+              A pixel is divided into subpixels (see the ``subpixels``
+              keyword), each of which are considered to be entirely in
+              or out of the aperture depending on whether its center is
+              in or out of the aperture. If ``subpixels=1``, this method
+              is equivalent to ``'center'``. The aperture weights will
+              contain values between 0 and 1.
+
+    subpixels : int, optional
+        For the ``'subpixel'`` method, resample pixels by this factor
+        in each dimension. That is, each pixel is divided into
+        ``subpixels**2`` subpixels. This keyword is ignored unless
+        ``method='subpixel'``.
+
+    See Also
+    --------
+    RadialProfile
+
+    Notes
+    -----
+    If the minimum of ``edge_radii`` is zero, then a circular aperture
+    with radius equal to ``edge_radii[1]`` will be used for the
+    innermost aperture.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from astropy.modeling.models import Gaussian2D
+    >>> from astropy.visualization import simple_norm
+    >>> from photutils.centroids import centroid_quadratic
+    >>> from photutils.datasets import make_noise_image
+    >>> from photutils.profiles import EdgeRadialProfile
+
+    Create an artificial single source. Note that this image does not
+    have any background.
+
+    >>> gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+    >>> yy, xx = np.mgrid[0:100, 0:100]
+    >>> data = gmodel(xx, yy)
+    >>> error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+    >>> data += error
+
+    Create the radial profile.
+
+    >>> xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+    >>> edge_radii = np.arange(26)
+    >>> rp = EdgeRadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+    >>> print(rp.radius)  # doctest: +FLOAT_CMP
+    [ 0.5  1.5  2.5  3.5  4.5  5.5  6.5  7.5  8.5  9.5 10.5 11.5 12.5 13.5
+     14.5 15.5 16.5 17.5 18.5 19.5 20.5 21.5 22.5 23.5 24.5]
+
+    >>> print(rp.profile)  # doctest: +FLOAT_CMP
+    [ 4.15632243e+01  3.93402079e+01  3.59845746e+01  3.15540506e+01
+      2.62300757e+01  2.07297033e+01  1.65106801e+01  1.19376723e+01
+      7.75743772e+00  5.56759777e+00  3.44112671e+00  1.91350281e+00
+      1.17092981e+00  4.22261078e-01  9.70256904e-01  4.16355795e-01
+      1.52328707e-02 -6.69985111e-02  4.15522650e-01  2.48494731e-01
+      4.03348112e-01  1.43482678e-01 -2.62777461e-01  7.30653622e-02
+      7.84616804e-04]
+
+    >>> print(rp.profile_error)  # doctest: +FLOAT_CMP
+    [1.69588246 0.81797694 0.61132694 0.44670831 0.49499835 0.38025361
+     0.40844702 0.32906672 0.36466713 0.33059274 0.29661894 0.27314739
+     0.25551933 0.27675376 0.25553986 0.23421017 0.22966813 0.21747036
+     0.23654884 0.22760386 0.23941711 0.20661313 0.18999134 0.17469024
+     0.19527558]
+
+    Plot the radial profile.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import EdgeRadialProfile
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+        # create the radial profile
+        edge_radii = np.arange(26)
+        rp = EdgeRadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+        # plot the radial profile
+        rp.plot()
+        rp.plot_error()
+
+    Normalize the profile and plot the normalized radial profile.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import EdgeRadialProfile
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+        # create the radial profile
+        edge_radii = np.arange(26)
+        rp = EdgeRadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+        # plot the radial profile
+        rp.normalize()
+        rp.plot()
+        rp.plot_error()
+
+    Plot two of the annulus apertures on the data.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import EdgeRadialProfile
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+        # create the radial profile
+        edge_radii = np.arange(26)
+        rp = EdgeRadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+        norm = simple_norm(data, 'sqrt')
+        plt.figure(figsize=(5, 5))
+        plt.imshow(data, norm=norm)
+        rp.apertures[5].plot(color='C0', lw=2)
+        rp.apertures[10].plot(color='C1', lw=2)
+
+    Fit a 1D Gaussian to the radial profile and return the Gaussian
+    model.
+
+    >>> rp.gaussian_fit  # doctest: +FLOAT_CMP
+    <Gaussian1D(amplitude=41.54880743, mean=0., stddev=4.71059406)>
+
+    >>> print(rp.gaussian_fwhm)  # doctest: +FLOAT_CMP
+    11.09260130738712
+
+    Plot the fitted 1D Gaussian on the radial profile.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+        from astropy.visualization import simple_norm
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import EdgeRadialProfile
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
+        data += error
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+        # create the radial profile
+        edge_radii = np.arange(26)
+        rp = EdgeRadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+        # plot the radial profile
+        rp.normalize()
+        rp.plot(label='Radial Profile')
+        rp.plot_error()
+        plt.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
+        plt.legend()
+    """
+
+    def __init__(self, data, xycen, edge_radii, *, error=None, mask=None,
+                 method='exact', subpixels=5):
+        super().__init__(data, xycen, None, None, None, error=error, mask=mask,
+                         method=method, subpixels=subpixels)
+
+        self.edge_radii = self._validate_edge_radii(edge_radii)
+
+    def _validate_edge_radii(self, edge_radii):
+        edge_radii = np.array(edge_radii)
+        if edge_radii.ndim != 1 or edge_radii.size < 2:
+            raise ValueError('edge_radii must be a 1D array and have at '
+                             'least two values')
+        if edge_radii.min() < 0:
+            raise ValueError('minimum edge_radii must be >= 0')
+
+        if not np.all(edge_radii[1:] > edge_radii[:-1]):
+            raise ValueError('edge_radii must be strictly increasing')
+
+        return edge_radii
+
+    @lazyproperty
+    def radius(self):
+        """
+        The profile radius in pixels as a 1D `~numpy.ndarray`.
+        """
+        return (self.edge_radii[:-1] + self.edge_radii[1:]) / 2
+
+    @lazyproperty
+    def _circular_radii(self):
+        return self.edge_radii

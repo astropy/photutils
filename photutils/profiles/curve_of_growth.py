@@ -18,19 +18,19 @@ class CurveOfGrowth(ProfileBase):
     The curve of growth profile represents the circular aperture flux as
     a function of circular radius.
 
-    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
-    array are automatically masked.
-
     Parameters
     ----------
     data : 2D `numpy.ndarray`
         The 2D data array. The data should be background-subtracted.
+        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
 
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
 
     min_radius : float
-        The minimum radius for the profile.
+        The minimum radius for the profile. Must be greater than or
+        equal to zero.
 
     max_radius : float
         The maximum radius for the profile.
@@ -43,6 +43,8 @@ class CurveOfGrowth(ProfileBase):
         to include all sources of error, including the Poisson error
         of the sources (see `~photutils.utils.calc_total_error`) .
         ``error`` must have the same shape as the input ``data``.
+        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
 
     mask : 2D bool `numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
