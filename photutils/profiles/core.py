@@ -4,7 +4,6 @@ This module provides a base class for profiles.
 """
 
 import abc
-import math
 import warnings
 
 import numpy as np
@@ -28,14 +27,12 @@ class ProfileBase(metaclass=abc.ABCMeta):
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
 
-    min_radius : float
-        The minimum radius for the profile.
-
-    max_radius : float
-        The maximum radius for the profile.
-
-    radius_step : float
-        The radial step size in pixels.
+    radii : 1D float `numpy.ndarray`
+        An array of radii defining the edges of the radial bins.
+        ``radii`` must be strictly increasing with a minimum value
+        greater than or equal to zero, and contain at least 2 values.
+        The radial spacing does not need to be constant. The output
+        `radius` attribute will be defined at the bin centers.
 
     error : 2D `numpy.ndarray`, optional
         The 1-sigma errors of the input ``data``. ``error`` is assumed
@@ -78,34 +75,36 @@ class ProfileBase(metaclass=abc.ABCMeta):
         ``method='subpixel'``.
     """
 
-    def __init__(self, data, xycen, min_radius, max_radius, radius_step, *,
-                 error=None, mask=None, method='exact', subpixels=5):
+    def __init__(self, data, xycen, radii, *, error=None, mask=None,
+                 method='exact', subpixels=5):
 
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
 
         if error is not None and error.shape != data.shape:
-            raise ValueError('error must have the same same as data')
+            raise ValueError('error must have the same shape as data')
 
         self.data = data
-        self.error = error
-        self.mask = self._compute_mask(data, error, mask)
         self.unit = unit
         self.xycen = xycen
+        self.radii = self._validate_radii(radii)
+        self.error = error
+        self.mask = self._compute_mask(data, error, mask)
         self.method = method
         self.subpixels = subpixels
 
-        if (min_radius is not None or max_radius is not None
-                or radius_step is not None):
-            if min_radius < 0 or max_radius < 0:
-                raise ValueError('min_radius and max_radius must be >= 0')
-            if min_radius >= max_radius:
-                raise ValueError('max_radius must be greater than min_radius')
-            if radius_step <= 0:
-                raise ValueError('radius_step must be > 0')
-        self.min_radius = min_radius
-        self.max_radius = max_radius
-        self.radius_step = radius_step
+    def _validate_radii(self, edge_radii):
+        edge_radii = np.array(edge_radii)
+        if edge_radii.ndim != 1 or edge_radii.size < 2:
+            raise ValueError('edge_radii must be a 1D array and have at '
+                             'least two values')
+        if edge_radii.min() < 0:
+            raise ValueError('minimum edge_radii must be >= 0')
+
+        if not np.all(edge_radii[1:] > edge_radii[:-1]):
+            raise ValueError('edge_radii must be strictly increasing')
+
+        return edge_radii
 
     def _compute_mask(self, data, error, mask):
         """
@@ -117,7 +116,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
             badmask |= ~np.isfinite(error)
         if mask is not None:
             if mask.shape != data.shape:
-                raise ValueError('mask must have the same same as data')
+                raise ValueError('mask must have the same shape as data')
             badmask &= ~mask  # non-finite values not in input mask
             mask |= badmask  # all masked pixels
         else:
@@ -135,19 +134,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         The profile radius in pixels as a 1D `~numpy.ndarray`.
         """
-        nsteps = int(math.floor((self.max_radius - self.min_radius)
-                                / self.radius_step))
-        max_radius = self.min_radius + (nsteps * self.radius_step)
-        return np.linspace(self.min_radius, max_radius, nsteps + 1)
-
-    @property
-    @abc.abstractmethod
-    def _circular_radii(self):
-        """
-        The circular aperture radii for the radial bin edges (inner and
-        outer annulus radii).
-        """
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        return self.radii
 
     @property
     @abc.abstractmethod
@@ -175,12 +162,11 @@ class ProfileBase(metaclass=abc.ABCMeta):
         from photutils.aperture import CircularAperture
 
         apertures = []
-        for radius in self._circular_radii:
+        for radius in self.radii:
             if radius <= 0.0:
-                aper = None
+                apertures.append(None)
             else:
-                aper = CircularAperture(self.xycen, radius)
-            apertures.append(aper)
+                apertures.append(CircularAperture(self.xycen, radius))
         return apertures
 
     @lazyproperty

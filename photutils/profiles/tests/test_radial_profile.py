@@ -11,7 +11,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture import CircularAnnulus, CircularAperture
-from photutils.profiles import EdgeRadialProfile, RadialProfile
+from photutils.profiles import RadialProfile
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
@@ -38,127 +38,101 @@ def fixture_profile_data():
 def test_radial_profile(profile_data):
     xycen, data, _, _ = profile_data
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
-    rp1 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
-                        error=None, mask=None)
+    edge_radii = np.arange(36)
+    rp1 = RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
-    assert_equal(rp1.radius, np.arange(36))
-    assert rp1.area.shape == (36,)
-    assert rp1.profile.shape == (36,)
+    assert_equal(rp1.radius, np.arange(35) + 0.5)
+    assert rp1.area.shape == (35,)
+    assert rp1.profile.shape == (35,)
     assert rp1.profile_error.shape == (0,)
     assert rp1.area[0] > 0.0
 
-    assert len(rp1.apertures) == 36
+    assert len(rp1.apertures) == 35
     assert isinstance(rp1.apertures[0], CircularAperture)
     assert isinstance(rp1.apertures[1], CircularAnnulus)
 
-    min_radius = 0.7
-    max_radius = 35.0
-    radius_step = 1.0
-    rp2 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
-                        error=None, mask=None)
+    edge_radii = np.arange(36) + 0.1
+    rp2 = RadialProfile(data, xycen, edge_radii, error=None, mask=None)
     assert isinstance(rp2.apertures[0], CircularAnnulus)
 
 
-def test_edge_radial_profile(profile_data):
-    xycen, data, _, _ = profile_data
-
-    edge_radii = np.arange(37)
-    rp1 = EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
-
-    assert_equal(rp1.radius, np.arange(36) + 0.5)
-    assert rp1.area.shape == (36,)
-    assert rp1.profile.shape == (36,)
-    assert rp1.profile_error.shape == (0,)
-    assert_allclose(rp1.area[0], np.pi)
-
-    assert len(rp1.apertures) == 36
-    assert isinstance(rp1.apertures[0], CircularAperture)
-    assert isinstance(rp1.apertures[1], CircularAnnulus)
-
-    edge_radii = np.arange(1, 36)
-    rp2 = EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
-    assert isinstance(rp2.apertures[0], CircularAnnulus)
-
-
-def test_edge_radial_profile_inputs(profile_data):
+def test_radial_profile_inputs(profile_data):
     xycen, data, _, _ = profile_data
 
     msg = 'minimum edge_radii must be >= 0'
     with pytest.raises(ValueError, match=msg):
         edge_radii = np.arange(-1, 10)
-        EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
+        RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
     msg = 'edge_radii must be a 1D array and have at least two values'
     with pytest.raises(ValueError, match=msg):
         edge_radii = [1]
-        EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
+        RadialProfile(data, xycen, edge_radii, error=None, mask=None)
     with pytest.raises(ValueError, match=msg):
         edge_radii = np.arange(6).reshape(2, 3)
-        EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
+        RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
     msg = 'edge_radii must be strictly increasing'
     with pytest.raises(ValueError, match=msg):
         edge_radii = np.arange(10)[::-1]
-        EdgeRadialProfile(data, xycen, edge_radii, error=None, mask=None)
+        RadialProfile(data, xycen, edge_radii, error=None, mask=None)
+
+    msg = 'error must have the same shape as data'
+    with pytest.raises(ValueError, match=msg):
+        edge_radii = np.arange(10)
+        RadialProfile(data, xycen, edge_radii, error=np.ones(3), mask=None)
+
+    msg = 'mask must have the same shape as data'
+    with pytest.raises(ValueError, match=msg):
+        edge_radii = np.arange(10)
+        mask = np.ones(3, dtype=bool)
+        RadialProfile(data, xycen, edge_radii, error=None, mask=mask)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_radial_profile_gaussian(profile_data):
     xycen, data, _, _ = profile_data
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
-    rp1 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
-                        error=None, mask=None)
+    edge_radii = np.arange(36)
+    rp1 = RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
     assert isinstance(rp1.gaussian_fit, Gaussian1D)
-    assert rp1.gaussian_profile.shape == (36,)
+    assert rp1.gaussian_profile.shape == (35,)
     assert rp1.gaussian_fwhm < 23.6
 
-    max_radius = 200
-    rp2 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
-                        error=None, mask=None)
+    edge_radii = np.arange(201)
+    rp2 = RadialProfile(data, xycen, edge_radii, error=None, mask=None)
     assert isinstance(rp2.gaussian_fit, Gaussian1D)
-    assert rp2.gaussian_profile.shape == (201,)
+    assert rp2.gaussian_profile.shape == (200,)
     assert rp2.gaussian_fwhm < 23.6
 
 
 def test_radial_profile_unit(profile_data):
     xycen, data, error, _ = profile_data
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
+    edge_radii = np.arange(36)
     unit = u.Jy
-    rp1 = RadialProfile(data << unit, xycen, min_radius, max_radius,
-                        radius_step, error=error << unit, mask=None)
+    rp1 = RadialProfile(data << unit, xycen, edge_radii, error=error << unit,
+                        mask=None)
     assert rp1.profile.unit == unit
     assert rp1.profile_error.unit == unit
 
     with pytest.raises(ValueError):
-        RadialProfile(data << unit, xycen, min_radius, max_radius, radius_step,
-                      error=error, mask=None)
+        RadialProfile(data << unit, xycen, edge_radii, error=error, mask=None)
 
 
 def test_radial_profile_error(profile_data):
     xycen, data, error, _ = profile_data
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
-    rp1 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
-                        error=error, mask=None)
+    edge_radii = np.arange(36)
+    rp1 = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
-    assert_equal(rp1.radius, np.arange(36))
-    assert rp1.area.shape == (36,)
-    assert rp1.profile.shape == (36,)
-    assert rp1.profile_error.shape == (36,)
+    assert_equal(rp1.radius, np.arange(35) + 0.5)
+    assert rp1.area.shape == (35,)
+    assert rp1.profile.shape == (35,)
+    assert rp1.profile_error.shape == (35,)
 
-    assert len(rp1.apertures) == 36
+    assert len(rp1.apertures) == 35
     assert isinstance(rp1.apertures[0], CircularAperture)
     assert isinstance(rp1.apertures[1], CircularAnnulus)
 
@@ -170,11 +144,8 @@ def test_radial_profile_normalize_nan(profile_data):
     """
     xycen, data, _, _ = profile_data
 
-    min_radius = 0.0
-    max_radius = 100.0
-    radius_step = 1.0
-
-    rp1 = RadialProfile(data, xycen, min_radius, max_radius, radius_step)
+    edge_radii = np.arange(101)
+    rp1 = RadialProfile(data, xycen, edge_radii)
     rp1.normalize()
     assert not np.isnan(rp1.profile[0])
 
@@ -185,26 +156,19 @@ def test_radial_profile_nonfinite(profile_data):
     data2[40, 40] = np.nan
     mask = ~np.isfinite(data2)
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
+    edge_radii = np.arange(36)
+    rp1 = RadialProfile(data, xycen, edge_radii, error=None, mask=mask)
 
-    rp1 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
-                        error=None, mask=mask)
-
-    rp2 = RadialProfile(data2, xycen, min_radius, max_radius, radius_step,
-                        error=error, mask=mask)
+    rp2 = RadialProfile(data2, xycen, edge_radii, error=error, mask=mask)
     assert_allclose(rp1.profile, rp2.profile)
 
     msg = 'Input data contains non-finite values'
     with pytest.warns(AstropyUserWarning, match=msg):
-        rp3 = RadialProfile(data2, xycen, min_radius, max_radius, radius_step,
-                            error=error, mask=None)
+        rp3 = RadialProfile(data2, xycen, edge_radii, error=error, mask=None)
         assert_allclose(rp1.profile, rp3.profile)
 
     error2 = error.copy()
     error2[40, 40] = np.inf
     with pytest.warns(AstropyUserWarning, match=msg):
-        rp4 = RadialProfile(data, xycen, min_radius, max_radius, radius_step,
-                            error=error2, mask=None)
+        rp4 = RadialProfile(data, xycen, edge_radii, error=error2, mask=None)
         assert_allclose(rp1.profile, rp4.profile)

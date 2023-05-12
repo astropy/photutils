@@ -38,27 +38,20 @@ def fixture_profile_data():
 def test_curve_of_growth(profile_data):
     xycen, data, _, _ = profile_data
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
-    cg1 = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
-                        error=None, mask=None)
+    radii = np.arange(1, 37)
+    cg1 = CurveOfGrowth(data, xycen, radii, error=None, mask=None)
 
-    assert_equal(cg1.radius, np.arange(36))
+    assert_equal(cg1.radius, radii)
     assert cg1.area.shape == (36,)
     assert cg1.profile.shape == (36,)
     assert cg1.profile_error.shape == (0,)
-    assert cg1.area[0] == 0.0
+    assert_allclose(cg1.area[0], np.pi)
 
     assert len(cg1.apertures) == 36
-    assert cg1.apertures[0] is None
-    assert isinstance(cg1.apertures[1], CircularAperture)
+    assert isinstance(cg1.apertures[0], CircularAperture)
 
-    min_radius = 1.0
-    max_radius = 35.0
-    radius_step = 1.0
-    cg2 = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
-                        error=None, mask=None)
+    radii = np.arange(1, 36)
+    cg2 = CurveOfGrowth(data, xycen, radii, error=None, mask=None)
     assert cg2.area[0] > 0.0
     assert isinstance(cg2.apertures[0], CircularAperture)
 
@@ -66,44 +59,34 @@ def test_curve_of_growth(profile_data):
 def test_curve_of_growth_units(profile_data):
     xycen, data, error, _ = profile_data
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
+    radii = np.arange(1, 36)
     unit = u.Jy
-    cg1 = CurveOfGrowth(data << unit, xycen, min_radius, max_radius,
-                        radius_step, error=error << unit, mask=None)
+    cg1 = CurveOfGrowth(data << unit, xycen, radii, error=error << unit,
+                        mask=None)
 
     assert cg1.profile.unit == unit
     assert cg1.profile_error.unit == unit
 
     with pytest.raises(ValueError):
-        CurveOfGrowth(data << unit, xycen, min_radius, max_radius, radius_step,
-                      error=error, mask=None)
+        CurveOfGrowth(data << unit, xycen, radii, error=error, mask=None)
 
 
 def test_curve_of_growth_error(profile_data):
     xycen, data, error, _ = profile_data
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
-    cg1 = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
-                        error=error, mask=None)
+    radii = np.arange(1, 36)
+    cg1 = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
 
-    assert cg1.profile.shape == (36,)
-    assert cg1.profile_error.shape == (36,)
+    assert cg1.profile.shape == (35,)
+    assert cg1.profile_error.shape == (35,)
 
 
 def test_curve_of_growth_mask(profile_data):
     xycen, data, error, mask = profile_data
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
-    cg1 = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
-                        error=error, mask=None)
-    cg2 = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
-                        error=error, mask=mask)
+    radii = np.arange(1, 36)
+    cg1 = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
+    cg2 = CurveOfGrowth(data, xycen, radii, error=error, mask=mask)
 
     assert cg1.profile.sum() > cg2.profile.sum()
     assert np.sum(cg1.profile_error**2) > np.sum(cg2.profile_error**2)
@@ -112,11 +95,8 @@ def test_curve_of_growth_mask(profile_data):
 def test_curve_of_growth_normalize(profile_data):
     xycen, data, _, _ = profile_data
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
-    cg1 = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
-                        error=None, mask=None)
+    radii = np.arange(1, 36)
+    cg1 = CurveOfGrowth(data, xycen, radii, error=None, mask=None)
 
     profile1 = cg1.profile
     cg1.normalize()
@@ -139,49 +119,41 @@ def test_curve_of_growth_normalize(profile_data):
 def test_curve_of_growth_inputs(profile_data):
     xycen, data, error, _ = profile_data
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
+    msg = 'radii must be > 0'
+    with pytest.raises(ValueError, match=msg):
+        radii = np.arange(10)
+        CurveOfGrowth(data, xycen, radii, error=None, mask=None)
 
-    with pytest.raises(ValueError):
-        CurveOfGrowth(data, xycen, -1, max_radius, radius_step, error=None,
+    msg = 'radii must be a 1D array and have at least two values'
+    with pytest.raises(ValueError, match=msg):
+        CurveOfGrowth(data, xycen, [1], error=None, mask=None)
+    with pytest.raises(ValueError, match=msg):
+        CurveOfGrowth(data, xycen, np.arange(1, 7).reshape(2, 3), error=None,
                       mask=None)
-    with pytest.raises(ValueError):
-        CurveOfGrowth(data, xycen, 10.0, 1.0, radius_step, error=None,
-                      mask=None)
-    with pytest.raises(ValueError):
-        CurveOfGrowth(data, xycen, min_radius, max_radius, -1.0, error=None,
-                      mask=None)
-    with pytest.raises(ValueError):
-        CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
-                      error=np.ones((3, 3)), mask=None)
-    with pytest.raises(ValueError):
-        CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
-                      error=None, mask=np.ones((3, 3)))
+
+    msg = 'radii must be strictly increasing'
+    with pytest.raises(ValueError, match=msg):
+        radii = np.arange(1, 10)[::-1]
+        CurveOfGrowth(data, xycen, radii, error=None, mask=None)
 
     with pytest.raises(ValueError):
         unit1 = u.Jy
         unit2 = u.km
-        CurveOfGrowth(data << unit1, xycen, min_radius, max_radius,
-                      radius_step, error=error << unit2)
+        radii = np.arange(1, 36)
+        CurveOfGrowth(data << unit1, xycen, radii, error=error << unit2)
 
 
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 def test_curve_of_growth_plot(profile_data):
     xycen, data, error, _ = profile_data
 
-    min_radius = 0.0
-    max_radius = 35.0
-    radius_step = 1.0
-
-    cg1 = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
-                        error=None, mask=None)
+    radii = np.arange(1, 36)
+    cg1 = CurveOfGrowth(data, xycen, radii, error=None, mask=None)
     cg1.plot()
     with pytest.warns(AstropyUserWarning, match='Errors were not input'):
         cg1.plot_error()
 
-    cg2 = CurveOfGrowth(data, xycen, min_radius, max_radius, radius_step,
-                        error=error, mask=None)
+    cg2 = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
     cg2.plot()
     pc1 = cg2.plot_error()
     assert_allclose(pc1.get_facecolor(), [[0.5, 0.5, 0.5, 0.3]])
@@ -189,7 +161,7 @@ def test_curve_of_growth_plot(profile_data):
     assert_allclose(pc2.get_facecolor(), [[0, 0, 1, 1]])
 
     unit = u.Jy
-    cg3 = CurveOfGrowth(data << unit, xycen, min_radius, max_radius,
-                        radius_step, error=error << unit, mask=None)
+    cg3 = CurveOfGrowth(data << unit, xycen, radii, error=error << unit,
+                        mask=None)
     cg3.plot()
     cg3.plot_error()

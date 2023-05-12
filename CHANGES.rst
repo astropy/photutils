@@ -17,11 +17,6 @@ General
 New Features
 ^^^^^^^^^^^^
 
-- ``photutils.profiles``
-
-  - Added ``EdgeRadialProfile`` class defined using radial bin edges.
-    [#1538]
-
 Bug Fixes
 ^^^^^^^^^
 
@@ -39,6 +34,13 @@ API Changes
 - ``photutils.aperture``
 
   - Removed the ``ApertureStats`` ``unpack_nddata`` method. [#1537]
+
+- ``photutils.profiles``
+
+  - The API for defining the radial bins for the ``RadialProfile`` and
+    ``CurveOfGrowth`` classes was changed. While the new API allows for
+    more flexibility, unfortunately, it is not backwards-compatible.
+    [#1540]
 
 - ``photutils.segmentation``
 
