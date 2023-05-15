@@ -10,6 +10,19 @@ of smaller improvements and bug fixes, which are described in the full
 :ref:`changelog`.
 
 
+API changes to ``RadialProfile`` and ``CurveOfGrowth``
+------------------------------------------------------
+
+The API for defining the radial bins for the ``RadialProfile`` and
+``CurveOfGrowth`` classes was changed. The new API provides more
+flexibility by allowing the user full control of the radial bins,
+including non-uniform radial spacing. Unfortunately, due to the
+nature of this change, it was not possible to have a deprecation
+phase for the inputs to these classes. Because the changes are not
+backwards-compatible, one will need to update how these classes are
+created.
+
+
 Other changes
 =============
 
