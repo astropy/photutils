@@ -145,7 +145,7 @@ the "-e" option::
 Alternatively, `pip`_ can be used to retrieve, build, and install the
 latest development version from `GitHub`_::
 
-    pip install "git+https://github.com/astropy/photutils.git#egg=photutils[all]"
+    pip install "photutils[all] @ git+https://github.com/astropy/photutils.git"
 
 
 Testing an installed Photutils
