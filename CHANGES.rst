@@ -17,6 +17,12 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.profiles``
+
+  - The ``RadialProfile`` and ``CurveOfGrowth`` radial bins can now be
+    directly input, which also allows for non-uniform radial spacing.
+    [#1540]
+
 Bug Fixes
 ^^^^^^^^^
 
