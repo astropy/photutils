@@ -899,3 +899,47 @@ def test_subshape_invalid():
         basic_phot_obj.subshape = (-1, 0)
     with pytest.raises(ValueError):
         basic_phot_obj.subshape = (3, 3, 3)
+
+
+@pytest.mark.filterwarnings('ignore:Both init_guesses and finder are '
+                            'different than None')
+@pytest.mark.filterwarnings('ignore:No sources were found')
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.parametrize("sigma_psf, sources",
+                         [(sigma_psfs[0], sources1),
+                          (sigma_psfs[1], sources2)])
+def test_psf_photometry_oneiter_uncert(sigma_psf, sources):
+    """
+    Make an image with a group of two overlapped stars and an
+    isolated one, and check that the best-fit fluxes have smaller
+    uncertainties when the measured fluxes have smaller uncertainties.
+    """
+    img_shape = (32, 32)
+    # generate image with read-out noise (Gaussian) and
+    # background noise (Poisson)
+    image = (make_gaussian_prf_sources_image(img_shape, sources)
+             + make_noise_image(img_shape, distribution='poisson', mean=6.0,
+                                seed=0)
+             + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
+                                stddev=2.0, seed=0))
+
+    sigma_clip = SigmaClip(sigma=3.0)
+    bkgrms = StdBackgroundRMS(sigma_clip)
+    std = bkgrms(image)
+    phot_objs = make_psf_photometry_objs(std, sigma_psf)
+
+    flux_uncertainties_0 = []
+    flux_uncertainties_1 = []
+
+    for uncertainty_scale_factor, flux_uncert in zip(
+        [1e-5, 0.1], [flux_uncertainties_0, flux_uncertainties_1]
+    ):
+        for phot_proc in phot_objs:
+            uncertainty = (
+                uncertainty_scale_factor * np.std(image) * np.ones_like(image)
+            )
+            result_tab = phot_proc(image, uncertainty=uncertainty)
+            flux_uncert.append(np.array(result_tab['flux_unc']))
+
+    for uncert_0, uncert_1 in zip(flux_uncertainties_0, flux_uncertainties_1):
+        assert np.all(uncert_0 < uncert_1)
