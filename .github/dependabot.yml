@@ -8,3 +8,6 @@ updates:
     directory: "/"  # checks files in .github/workflows
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "actions/checkout"
+        versions: ["1"]
