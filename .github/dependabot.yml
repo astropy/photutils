@@ -1,0 +1,10 @@
+# Keep dependencies updated with Dependabot version updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+version: 2
+updates:
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"  # checks files in .github/workflows
+    schedule:
+      interval: "weekly"
