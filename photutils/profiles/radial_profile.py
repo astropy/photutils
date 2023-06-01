@@ -288,6 +288,13 @@ class RadialProfile(ProfileBase):
         """
         The profile radius (bin centers) in pixels as a 1D
         `~numpy.ndarray`.
+
+        The returned radius values are defined as the arithmetic means
+        of the input radial-bins edges (``radii``).
+
+        For logarithmically-spaced input ``radii``, one could instead
+        use a radius array defined using the geometric mean of the bin
+        edges, i.e. ``np.sqrt(radii[:-1] * radii[1:])``.
         """
         # define the radial bin centers from the radial bin edges
         return (self.radii[:-1] + self.radii[1:]) / 2
