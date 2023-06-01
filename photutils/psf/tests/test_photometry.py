@@ -5,6 +5,7 @@ Tests for the photometry module.
 
 import numpy as np
 import pytest
+import astropy
 from astropy.convolution.utils import discretize_model
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.fitting import LevMarLSQFitter, SimplexLSQFitter
@@ -12,6 +13,7 @@ from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.introspection import minversion
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
 from photutils.background import MMMBackground, StdBackgroundRMS
@@ -905,6 +907,8 @@ def test_subshape_invalid():
                             'different than None')
 @pytest.mark.filterwarnings('ignore:No sources were found')
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.skipif(not minversion(astropy, '5.3'),
+                    reason='astropy 5.3 is required')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2)])
