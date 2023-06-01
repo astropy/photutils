@@ -43,8 +43,7 @@ def test_tukey():
 def test_tukey_scipy():
     """Test Tukey window against 1D scipy version."""
 
-    # scipy.signal.tukey was introduced in Scipy v0.16.0
-    from scipy.signal import tukey
+    from scipy.signal.windows import tukey
 
     size = 101
     cen = (size - 1) // 2
