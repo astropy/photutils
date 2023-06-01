@@ -7,6 +7,8 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- Propagate measurement uncertainties in PSF fitting. [#1543]
+
 Bug Fixes
 ^^^^^^^^^
 

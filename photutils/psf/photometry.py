@@ -7,6 +7,7 @@ import warnings
 
 import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.nddata import StdDevUncertainty
 from astropy.nddata.utils import NoOverlapError, overlap_slices
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Column, QTable, hstack, vstack
@@ -282,16 +283,17 @@ class BasicPSFPhotometry:
         return mask
 
     def __call__(self, image, *, mask=None, init_guesses=None,
-                 progress_bar=False):
+                 progress_bar=False, uncertainty=None):
         """
         Perform PSF photometry. See `do_photometry` for more details
         including the `__call__` signature.
         """
         return self.do_photometry(image, mask=mask, init_guesses=init_guesses,
-                                  progress_bar=progress_bar)
+                                  progress_bar=progress_bar,
+                                  uncertainty=uncertainty)
 
     def do_photometry(self, image, *, mask=None, init_guesses=None,
-                      progress_bar=False):
+                      progress_bar=False, uncertainty=None):
         """
         Perform PSF photometry in ``image``.
 
@@ -334,6 +336,8 @@ class BasicPSFPhotometry:
             <https://tqdm.github.io/>`_ optional dependency be
             installed. Note that the progress bar does not currently
             work in the Jupyter console due to limitations in ``tqdm``.
+        uncertainty : 2D `~numpy.ndarray`, optional
+            Stddev uncertainty for each element in ``image``.
 
         Returns
         -------
@@ -430,7 +434,9 @@ class BasicPSFPhotometry:
             star_groups = self.group_maker(init_guesses)
 
         output_tab, self._residual_image = self.nstar(
-            image, star_groups, mask=mask, progress_bar=progress_bar)
+            image, star_groups, mask=mask, progress_bar=progress_bar,
+            uncertainty=uncertainty
+        )
         star_groups = star_groups.group_by('group_id')
 
         if hasattr(output_tab, 'update'):  # requires Astropy >= 5.0
@@ -448,7 +454,8 @@ class BasicPSFPhotometry:
 
         return star_groups
 
-    def nstar(self, image, star_groups, *, mask=None, progress_bar=False):
+    def nstar(self, image, star_groups, *, mask=None, progress_bar=False,
+              uncertainty=None):
         """
         Fit, as appropriate, a compound or single model to the given
         ``star_groups``. Groups are fitted sequentially from the
@@ -481,6 +488,9 @@ class BasicPSFPhotometry:
             <https://tqdm.github.io/>`_ optional dependency be
             installed. Note that the progress bar does not currently
             work in the Jupyter console due to limitations in ``tqdm``.
+
+        uncertainty : 2D `~numpy.ndarray`, optional
+            Stddev uncertainty for each element in ``image``.
 
         Returns
         -------
@@ -522,8 +532,16 @@ class BasicPSFPhotometry:
             if mask is not None:
                 usepixel &= ~mask
 
+            if hasattr(image, 'uncertainty'):
+                sigma = image.uncertainty.represent_as(StdDevUncertainty).array
+                weights = 1 / sigma[usepixel]
+            elif uncertainty is not None:
+                weights = 1 / uncertainty[usepixel]
+            else:
+                weights = None
+
             fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
-                                    image[usepixel])
+                                    image[usepixel], weights=weights)
             param_table = self._model_params2table(fit_model, group)
             result_tab = vstack([result_tab, param_table])
             unc_tab = vstack([unc_tab, self._get_uncertainties(len(group))])
@@ -806,7 +824,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         self._finder = value
 
     def do_photometry(self, image, *, mask=None, init_guesses=None,
-                      progress_bar=False):
+                      progress_bar=False, uncertainty=None):
         """
         Perform PSF photometry in ``image``.
 
@@ -843,6 +861,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             A boolean mask with the same shape as ``image``, where
             a `True` value indicates the corresponding element of
             ``image`` is masked.
+        uncertainty : 2D `~numpy.ndarray`, optional
+            Stddev uncertainty for each element in ``image``.
 
         Returns
         -------
@@ -860,13 +880,15 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         if init_guesses is not None:
             table = super().do_photometry(image, mask=mask,
                                           init_guesses=init_guesses,
-                                          progress_bar=progress_bar)
+                                          progress_bar=progress_bar,
+                                          uncertainty=uncertainty)
             table['iter_detected'] = np.ones(table['x_fit'].shape, dtype=int)
 
             # n_start = 2 because it starts in the second iteration
             # since the first iteration is above
             output_table = self._do_photometry(n_start=2, mask=mask,
-                                               progress_bar=progress_bar)
+                                               progress_bar=progress_bar,
+                                               uncertainty=uncertainty)
             output_table = vstack([table, output_table])
         else:
             if self.bkg_estimator is not None:
@@ -878,13 +900,15 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                 self.set_aperture_radius()
 
             output_table = self._do_photometry(mask=mask,
-                                               progress_bar=progress_bar)
+                                               progress_bar=progress_bar,
+                                               uncertainty=uncertainty)
 
         output_table.meta = {'version': _get_version_info()}
 
         return QTable(output_table)
 
-    def _do_photometry(self, n_start=1, mask=None, progress_bar=False):
+    def _do_photometry(self, n_start=1, mask=None, progress_bar=False,
+                       uncertainty=None):
         """
         Helper function which performs the iterations of the photometry
         process.
@@ -938,7 +962,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             star_groups = self.group_maker(init_guess_tab)
             table, self._residual_image = super().nstar(
                 self._residual_image, star_groups, mask=mask,
-                progress_bar=progress_bar)
+                progress_bar=progress_bar, uncertainty=uncertainty)
 
             star_groups = star_groups.group_by('group_id')
             table = hstack([star_groups, table])
