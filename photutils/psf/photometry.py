@@ -12,6 +12,7 @@ from astropy.table import QTable, Table
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
+from photutils.utils._optional_deps import HAS_TQDM
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
 
@@ -29,7 +30,8 @@ class PSFPhotometry:
     """
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
-                 fitter=LevMarLSQFitter(), aperture_radius=None):
+                 fitter=LevMarLSQFitter(), aperture_radius=None,
+                 progress_bar=None):
 
         self.psf_model = self._validate_model(psf_model)
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(0, 1),
@@ -38,6 +40,7 @@ class PSFPhotometry:
         self.finder = self._validate_callable(finder, 'finder')
         self.fitter = self._validate_callable(fitter, 'fitter')
         self.aperture_radius = self._validate_radius(aperture_radius)
+        self.progress_bar = progress_bar
 
         self._fitted_group_models = []
 
@@ -154,11 +157,18 @@ class PSFPhotometry:
 
         return np.mgrid[ymin:ymax, xmin:xmax]
 
-    def _fit_sources(self, data, init_params, *, mask=None,
-                     progress_bar=None):
+    def _add_progress_bar(self, sources, desc=None):
+        if self.progress_bar and HAS_TQDM:
+            from tqdm.auto import tqdm  # pragma: no cover
+
+            sources = tqdm(sources, desc=desc)  # pragma: no cover
+
+        return sources
+
+    def _fit_sources(self, data, init_params, *, mask=None):
 
         sources = init_params.group_by('group_id').groups
-        # sources = self._add_progress_bar(sources, desc='Fit star/group')
+        sources = self._add_progress_bar(sources, desc='Fit star/group')
 
         fitted_models = []
         for sources_ in sources:
@@ -180,8 +190,7 @@ class PSFPhotometry:
 
         return fitted_models
 
-    def __call__(self, data, *, mask=None, init_params=None,
-                 progress_bar=False):
+    def __call__(self, data, *, mask=None, init_params=None):
         """
         Perform PSF photometry.
         """
@@ -231,8 +240,7 @@ class PSFPhotometry:
         if 'group_id' not in init_params.colnames:
             init_params['group_id'] = init_params['id']
 
-        fitted_models = self._fit_sources(data, init_params, mask=mask,
-                                          progress_bar=progress_bar)
+        fitted_models = self._fit_sources(data, init_params, mask=mask)
         self._fitted_group_models.append(fitted_models)
 
         # TODO: create output table
