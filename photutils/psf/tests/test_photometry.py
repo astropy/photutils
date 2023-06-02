@@ -51,17 +51,21 @@ def test_inputs():
         data = np.ones((11, 11))
         _ = psfphot(data, init_params=tbl)
 
+    psfphot2 = PSFPhotometry(model, (3, 3), aperture_radius=3)
+    init_params = Table()
+    init_params['x_init'] = [1, 2]
+    init_params['y_init'] = [1, 2]
     with pytest.warns(AstropyUserWarning):
         data = np.ones((11, 11))
         data[5, 5] = np.nan
-        _ = psfphot(data)
+        _ = psfphot2(data, init_params=init_params)
 
     with pytest.warns(AstropyUserWarning):
         data = np.ones((11, 11))
         data[5, 5] = np.nan
         mask = np.zeros(data.shape, dtype=bool)
         mask[7, 7] = True
-        _ = psfphot(data)
+        _ = psfphot2(data, init_params=init_params)
 
     # this should not raise a warning because the non-finite pixel was
     # explicitly masked
@@ -69,4 +73,4 @@ def test_inputs():
     data[5, 5] = np.nan
     mask = np.zeros(data.shape, dtype=bool)
     mask[5, 5] = True
-    _ = psfphot(data, mask=mask)
+    _ = psfphot2(data, mask=mask, init_params=init_params)

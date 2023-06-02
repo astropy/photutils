@@ -104,7 +104,25 @@ class PSFPhotometry:
                 raise ValueError(f'{column!r} must be a column in '
                                  'init_params')
 
+        return init_params.copy()
+
+    def _make_init_params(self, data, mask, sources):
+        xpos = sources['xcentroid']
+        ypos = sources['ycentroid']
+        apertures = CircularAperture(zip(xpos, ypos), r=self.aperture_radius)
+        flux, _ = apertures.do_photometry(data, mask=mask)
+
+        init_params = QTable()
+        init_params['id'] = np.arange(len(xpos)) + 1
+        init_params['x_init'] = xpos
+        init_params['y_init'] = ypos
+        init_params['flux_init'] = flux
+
         return init_params
+
+    def _fit_stars(self, data, init_params, *, mask=None,
+                   progress_bar=None):
+        pass
 
     def __call__(self, data, *, mask=None, init_params=None,
                  progress_bar=False):
@@ -116,4 +134,34 @@ class PSFPhotometry:
         mask = self._make_mask(data,
                                self._validate_array(mask, 'mask',
                                                     data_shape=data.shape))
-        init_params = self._validate_params(init_params)
+        init_params = self._validate_params(init_params)  # also copies
+
+        if (self.aperture_radius is None
+            and (init_params is None
+                 or 'flux_init' not in init_params.colnames)):
+            raise ValueError('aperture_radius must be defined if init_params '
+                             'is not input or if a "flux_init" column is '
+                             'not in init_params')
+
+        if init_params is None:
+            if self.finder is None:
+                raise ValueError('finder must be defined if init_params '
+                                 'is not input')
+
+            # TODO: save sources table in dict
+            sources = self.finder(data, mask=mask)
+            if sources is None:
+                return None
+
+            init_params = self._make_init_params(sources)
+
+        # TODO: group stars
+        #if grouper is not None:
+        #    init_params['group_id'] = ...
+
+        fit_stars = self._fit_stars(data, init_params, mask=mask,
+                                    progress_bar=progress_bar)
+
+        # TODO: create output table
+
+        return fit_stars
