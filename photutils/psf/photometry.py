@@ -136,6 +136,37 @@ class PSFPhotometry:
 
         return init_params
 
+    def _add_progress_bar(self, sources, desc=None):
+        if self.progress_bar and HAS_TQDM:
+            from tqdm.auto import tqdm  # pragma: no cover
+
+            sources = tqdm(sources, desc=desc)  # pragma: no cover
+
+        return sources
+
+    def _make_psf_model(self, sources):
+        """
+        Make a PSF model to fit a single source or several sources within
+        a group.
+        """
+        # TODO: generalize this mapping
+        par_map = {}
+        par_map['x_init'] = 'x_0'
+        par_map['y_init'] = 'y_0'
+        par_map['flux_init'] = 'flux'
+
+        for i, source in enumerate(sources):
+            model = self.psf_model.copy()
+            for param, model_param in par_map.items():
+                setattr(model, model_param, source[param])
+
+            if i == 0:
+                psf_model = model
+            else:
+                psf_model += model
+
+        return psf_model
+
     def _define_fit_coords(self, sources, shape):
         xmin = ymin = np.inf
         xmax = ymax = -np.inf
@@ -157,14 +188,6 @@ class PSFPhotometry:
 
         return np.mgrid[ymin:ymax, xmin:xmax]
 
-    def _add_progress_bar(self, sources, desc=None):
-        if self.progress_bar and HAS_TQDM:
-            from tqdm.auto import tqdm  # pragma: no cover
-
-            sources = tqdm(sources, desc=desc)  # pragma: no cover
-
-        return sources
-
     def _fit_sources(self, data, init_params, *, mask=None):
 
         sources = init_params.group_by('group_id').groups
@@ -172,8 +195,7 @@ class PSFPhotometry:
 
         fitted_models = []
         for sources_ in sources:
-            # TODO: make grouped model
-            psf_model = self.psf_model
+            psf_model = self._make_psf_model(sources_)
 
             yi, xi = self._define_fit_coords(sources_, data.shape)
             cutout = data[yi, xi]
