@@ -3,9 +3,9 @@
 Tests for the photometry module.
 """
 
+import astropy
 import numpy as np
 import pytest
-import astropy
 from astropy.convolution.utils import discretize_model
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.fitting import LevMarLSQFitter, SimplexLSQFitter
@@ -22,8 +22,9 @@ from photutils.datasets import (make_gaussian_prf_sources_image,
 from photutils.detection import DAOStarFinder, IRAFStarFinder
 from photutils.psf.groupstars import DAOGroup
 from photutils.psf.models import FittableImageModel, IntegratedGaussianPRF
-from photutils.psf.photometry import (BasicPSFPhotometry, DAOPhotPSFPhotometry,
-                                      IterativelySubtractedPSFPhotometry)
+from photutils.psf.photometry_depr import (BasicPSFPhotometry,
+                                           DAOPhotPSFPhotometry,
+                                           IterativelySubtractedPSFPhotometry)
 from photutils.psf.utils import prepare_psf_model
 from photutils.utils._optional_deps import HAS_SCIPY
 
