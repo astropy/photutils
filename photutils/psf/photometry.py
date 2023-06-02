@@ -8,9 +8,10 @@ import warnings
 import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling import Fittable2DModel
-from astropy.table import Table
+from astropy.table import Table, QTable
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.aperture import CircularAperture
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
 
@@ -106,17 +107,27 @@ class PSFPhotometry:
 
         return init_params.copy()
 
-    def _make_init_params(self, data, mask, sources):
-        xpos = sources['xcentroid']
-        ypos = sources['ycentroid']
+    def _get_aper_fluxes(self, data, mask, init_params):
+        # TODO: flexible input column names
+        xpos = init_params['x_init']
+        ypos = init_params['y_init']
         apertures = CircularAperture(zip(xpos, ypos), r=self.aperture_radius)
         flux, _ = apertures.do_photometry(data, mask=mask)
+        return flux
 
+    def _make_init_params(self, data, mask, sources):
+        """
+        sources : `~astropy.table.Table`
+            Output from star finder with 'xcentroid' and 'ycentroid'
+            columns'.
+        """
         init_params = QTable()
-        init_params['id'] = np.arange(len(xpos)) + 1
-        init_params['x_init'] = xpos
-        init_params['y_init'] = ypos
-        init_params['flux_init'] = flux
+        init_params['id'] = np.arange(len(sources)) + 1
+        # TODO: flexible finder column names
+        init_params['x_init'] = sources['xcentroid']
+        init_params['y_init'] = sources['ycentroid']
+        init_params['flux_init'] = self._get_aper_fluxes(data, mask,
+                                                         init_params)
 
         return init_params
 
@@ -154,6 +165,16 @@ class PSFPhotometry:
                 return None
 
             init_params = self._make_init_params(sources)
+        else:
+            colnames = init_params.colnames
+            if 'flux_init' not in colnames:
+                init_params['flux_init'] = self._get_aper_fluxes(data, mask,
+                                                                 init_params)
+
+            if 'group_id' in colnames:
+                # grouper is ignored if group_id is input in init_params
+                grouper = None
+
 
         # TODO: group stars
         #if grouper is not None:
