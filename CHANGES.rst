@@ -7,10 +7,16 @@ General
 New Features
 ^^^^^^^^^^^^
 
-- Propagate measurement uncertainties in PSF fitting. [#1543]
+- ``photutils.psf``
+
+  - Propagate measurement uncertainties in PSF fitting. [#1543]
 
 Bug Fixes
 ^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - Fixed a bug in the validation of ``PixelAperture`` positions. [#1553]
 
 API Changes
 ^^^^^^^^^^^

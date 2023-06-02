@@ -92,10 +92,10 @@ class PixelPositions(ApertureAttribute):
                              '(e.g., NaN or inf) positions')
 
         value = np.atleast_2d(value)
-        if value.ndim > 2 and value.shape[1] != 2:
-            raise TypeError(f'{self.name!r} must be a (x, y) pixel position '
-                            'or a list or array of (x, y) pixel positions, '
-                            'e.g., [(x1, y1), (x2, y2), (x3, y3)]')
+        if value.ndim > 2 or value.shape[1] != 2:
+            raise ValueError(f'{self.name!r} must be a (x, y) pixel position '
+                             'or a list or array of (x, y) pixel positions, '
+                             'e.g., [(x1, y1), (x2, y2), (x3, y3)]')
 
 
 class SkyCoordPositions(ApertureAttribute):
@@ -133,7 +133,7 @@ class ScalarAngle(ApertureAttribute):
             if not value.unit.physical_type == 'angle':
                 raise ValueError(f'{self.name!r} must have angular units')
         else:
-            raise TypeError(f'{self.name!r} must be a scalar angle')
+            raise ValueError(f'{self.name!r} must be a scalar angle')
 
 
 class PositiveScalarAngle(ApertureAttribute):
@@ -154,7 +154,7 @@ class PositiveScalarAngle(ApertureAttribute):
             if not value.unit.physical_type == 'angle':
                 raise ValueError(f'{self.name!r} must have angular units')
         else:
-            raise TypeError(f'{self.name!r} must be a scalar angle')
+            raise ValueError(f'{self.name!r} must be a scalar angle')
 
 
 class ScalarAngleOrValue(ApertureAttribute):
@@ -186,5 +186,5 @@ class ScalarAngleOrValue(ApertureAttribute):
                 raise ValueError(f'{self.name!r} must have angular units')
         else:
             if not np.isscalar(value):
-                raise TypeError(f'If not an angle Quantity, {self.name!r} '
-                                'must be a scalar float in radians')
+                raise ValueError(f'If not an angle Quantity, {self.name!r} '
+                                 'must be a scalar float in radians')
