@@ -6,9 +6,9 @@ This module provides classes to perform PSF-fitting photometry.
 import warnings
 
 import numpy as np
-from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling import Fittable2DModel
-from astropy.table import Table, QTable
+from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.table import QTable, Table
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
@@ -164,7 +164,7 @@ class PSFPhotometry:
             if sources is None:
                 return None
 
-            init_params = self._make_init_params(sources)
+            init_params = self._make_init_params(data, mask, sources)
         else:
             colnames = init_params.colnames
             if 'flux_init' not in colnames:
@@ -173,16 +173,19 @@ class PSFPhotometry:
 
             if 'group_id' in colnames:
                 # grouper is ignored if group_id is input in init_params
-                grouper = None
+                self.grouper = None
 
+        if self.grouper is not None:
+            # TODO: change grouper API
+            # init_params['group_id'] = self.grouper(init_params)
+            init_params = self.grouper(init_params)
 
-        # TODO: group stars
-        #if grouper is not None:
-        #    init_params['group_id'] = ...
+        if 'group_id' not in init_params.colnames:
+            init_params['group_id'] = init_params['id']
 
-        fit_stars = self._fit_stars(data, init_params, mask=mask,
-                                    progress_bar=progress_bar)
+        fitted_stars = self._fit_stars(data, init_params, mask=mask,
+                                       progress_bar=progress_bar)
 
         # TODO: create output table
 
-        return fit_stars
+        return fitted_stars
