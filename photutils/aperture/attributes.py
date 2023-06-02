@@ -92,7 +92,7 @@ class PixelPositions(ApertureAttribute):
                              '(e.g., NaN or inf) positions')
 
         value = np.atleast_2d(value)
-        if value.ndim > 2 and value.shape[1] != 2:
+        if value.ndim > 2 or value.shape[1] != 2:
             raise TypeError(f'{self.name!r} must be a (x, y) pixel position '
                             'or a list or array of (x, y) pixel positions, '
                             'e.g., [(x1, y1), (x2, y2), (x3, y3)]')
