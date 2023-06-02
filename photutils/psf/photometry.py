@@ -39,6 +39,8 @@ class PSFPhotometry:
         self.fitter = self._validate_callable(fitter, 'fitter')
         self.aperture_radius = self._validate_radius(aperture_radius)
 
+        self._fitted_group_models = []
+
     @staticmethod
     def _validate_model(psf_model):
         if not isinstance(psf_model, Fittable2DModel):
@@ -131,9 +133,52 @@ class PSFPhotometry:
 
         return init_params
 
-    def _fit_stars(self, data, init_params, *, mask=None,
-                   progress_bar=None):
-        pass
+    def _define_fit_coords(self, sources, shape):
+        xmin = ymin = np.inf
+        xmax = ymax = -np.inf
+
+        hshape = (self.fit_shape - 1) // 2
+        for row in sources:
+            # bbox "slice indices" (max is non-inclusive)
+            xcen = int(row['x_init'] + 0.5)
+            ycen = int(row['y_init'] + 0.5)
+            xmin = min((xmin, xcen - hshape[1]))
+            xmax = max((xmax, xcen + hshape[1] + 1))
+            ymin = min((ymin, ycen - hshape[0]))
+            ymax = max((ymax, ycen + hshape[0] + 1))
+
+        xmin = max((0, xmin))
+        xmax = min((shape[1], xmax))
+        ymin = max((0, ymin))
+        ymax = min((shape[0], ymax))
+
+        return np.mgrid[ymin:ymax, xmin:xmax]
+
+    def _fit_sources(self, data, init_params, *, mask=None,
+                     progress_bar=None):
+
+        sources = init_params.group_by('group_id').groups
+        # sources = self._add_progress_bar(sources, desc='Fit star/group')
+
+        fitted_models = []
+        for sources_ in sources:
+            # TODO: make grouped model
+            psf_model = self.psf_model
+
+            yi, xi = self._define_fit_coords(sources_, data.shape)
+            cutout = data[yi, xi]
+
+            if mask is not None:
+                cmask = ~mask[yi, xi]
+                xi = xi[cmask]
+                yi = yi[cmask]
+                cutout = cutout[cmask]
+
+            fitted_models.append(self.fitter(psf_model, xi, yi, cutout))
+
+            # TODO: upgroup fitted models
+
+        return fitted_models
 
     def __call__(self, data, *, mask=None, init_params=None,
                  progress_bar=False):
@@ -167,6 +212,9 @@ class PSFPhotometry:
             init_params = self._make_init_params(data, mask, sources)
         else:
             colnames = init_params.colnames
+            if 'id' not in colnames:
+                init_params['id'] = np.arange(len(init_params)) + 1
+
             if 'flux_init' not in colnames:
                 init_params['flux_init'] = self._get_aper_fluxes(data, mask,
                                                                  init_params)
@@ -183,9 +231,11 @@ class PSFPhotometry:
         if 'group_id' not in init_params.colnames:
             init_params['group_id'] = init_params['id']
 
-        fitted_stars = self._fit_stars(data, init_params, mask=mask,
-                                       progress_bar=progress_bar)
+        fitted_models = self._fit_sources(data, init_params, mask=mask,
+                                          progress_bar=progress_bar)
+        self._fitted_group_models.append(fitted_models)
 
         # TODO: create output table
+        fitted_stars = QTable()
 
         return fitted_stars
