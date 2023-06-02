@@ -175,3 +175,20 @@ def test_area_overlap_mask():
     with pytest.raises(ValueError):
         mask = np.zeros((3, 3), dtype=bool)
         aper.area_overlap(data, mask=mask)
+
+
+def test_invalid_positions():
+    with pytest.raises(ValueError):
+        _ = CircularAperture([], r=3)
+
+    with pytest.raises(ValueError):
+        _ = CircularAperture([1], r=3)
+
+    with pytest.raises(ValueError):
+        _ = CircularAperture([[1]], r=3)
+
+    with pytest.raises(ValueError):
+        _ = CircularAperture([1, 2, 3], r=3)
+
+    with pytest.raises(ValueError):
+        _ = CircularAperture([[1, 2, 3]], r=3)
