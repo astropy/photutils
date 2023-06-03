@@ -8,7 +8,7 @@ import warnings
 import numpy as np
 from astropy.modeling import Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.table import QTable, Table
+from astropy.table import QTable, Table, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
@@ -145,20 +145,28 @@ class PSFPhotometry:
 
         return sources
 
+    def _param_map(self):
+        # TODO: generalize this mapping based of self.psf_model
+        param_map = {}
+        param_map['x_init'] = 'x_0'
+        param_map['y_init'] = 'y_0'
+        param_map['flux_init'] = 'flux'
+
+        fit_param_map = {val: key.replace('_init', '_fit')
+                         for key, val in param_map.items()}
+
+        return param_map, fit_param_map
+
     def _make_psf_model(self, sources):
         """
         Make a PSF model to fit a single source or several sources within
         a group.
         """
-        # TODO: generalize this mapping
-        par_map = {}
-        par_map['x_init'] = 'x_0'
-        par_map['y_init'] = 'y_0'
-        par_map['flux_init'] = 'flux'
+        param_map = self._param_map()[0]
 
         for i, source in enumerate(sources):
             model = self.psf_model.copy()
-            for param, model_param in par_map.items():
+            for param, model_param in param_map.items():
                 setattr(model, model_param, source[param])
                 model.name = source['id']
 
@@ -234,9 +242,32 @@ class PSFPhotometry:
             psf_model = self._make_psf_model(sources_)
             yi, xi = self._define_fit_coords(sources_, data.shape, mask)
             cutout = data[yi, xi]
+
+            # TODO: catch fit warning messages0 and save the fit_info dict
+            # from the fitter; create a single warning summary after
+            # warning, pointing to where to get the fit_info for the
+            # fits
             fitted_models.append(self.fitter(psf_model, xi, yi, cutout))
 
         return fitted_models
+
+    def _model_params_to_table(self, models):
+        param_map = self._param_map()[1]
+
+        params = []
+        for model in models:
+            mparams = []
+            for model_param in param_map.keys():
+                mparams.append(getattr(model, model_param).value)
+            params.append(mparams)
+        vals = np.transpose(params)
+
+        colnames = param_map.values()
+        table = QTable()
+        for i, colname in enumerate(colnames):
+            table[colname] = vals[i]
+
+        return table
 
     def __call__(self, data, *, mask=None, init_params=None):
         """
@@ -288,12 +319,17 @@ class PSFPhotometry:
         if 'group_id' not in init_params.colnames:
             init_params['group_id'] = init_params['id']
 
+        # order init_params columns
+        colnames = ('id', 'group_id', 'x_init', 'y_init', 'flux_init')
+        init_params = init_params[colnames]
+
         fitted_models = self._fit_sources(data, init_params, mask=mask)
         ungrouped_models = self._split_grouped_models(fitted_models)
         self._fitted_group_models = fitted_models
         self._fitted_models = ungrouped_models
 
-        # TODO: create output table
-        fitted_stars = QTable()
+        # create output table
+        sources_fit = self._model_params_to_table(ungrouped_models)
+        source_tbl = hstack((init_params, sources_fit))
 
-        return fitted_stars
+        return source_tbl
