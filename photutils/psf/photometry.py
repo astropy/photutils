@@ -42,7 +42,8 @@ class PSFPhotometry:
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
-        self._fitted_group_models = []
+        self._fitted_group_models = None
+        self._fitted_models = None
 
     @staticmethod
     def _validate_model(psf_model):
@@ -159,6 +160,7 @@ class PSFPhotometry:
             model = self.psf_model.copy()
             for param, model_param in par_map.items():
                 setattr(model, model_param, source[param])
+                model.name = source['id']
 
             if i == 0:
                 psf_model = model
@@ -199,20 +201,40 @@ class PSFPhotometry:
 
         return yi, xi
 
-    def _fit_sources(self, data, init_params, *, mask=None):
+    @staticmethod
+    def _split_compound_model(model, chunk_size):
+        for i in range(0, model.n_submodels, chunk_size):
+            yield model[i: i + chunk_size]
 
+    def _split_grouped_models(self, models):
+        psf_nsub = self.psf_model.n_submodels
+
+        ungrouped_models = []
+        for model in models:
+            model_nsub = model.n_submodels
+
+            if model_nsub == psf_nsub:
+                # model for a single star (which may be compound)
+                ungrouped_models.append(model)
+                continue
+
+            # model is a grouped model for multiple stars
+            ungrouped_models.extend(self._split_compound_model(model,
+                                                               psf_nsub))
+
+        # sorted back into original source order
+        return sorted(ungrouped_models, key=lambda model: model.name)
+
+    def _fit_sources(self, data, init_params, *, mask=None):
         sources = init_params.group_by('group_id').groups
         sources = self._add_progress_bar(sources, desc='Fit star/group')
 
         fitted_models = []
         for sources_ in sources:
             psf_model = self._make_psf_model(sources_)
-
             yi, xi = self._define_fit_coords(sources_, data.shape, mask)
             cutout = data[yi, xi]
             fitted_models.append(self.fitter(psf_model, xi, yi, cutout))
-
-            # TODO: upgroup fitted models
 
         return fitted_models
 
@@ -267,7 +289,9 @@ class PSFPhotometry:
             init_params['group_id'] = init_params['id']
 
         fitted_models = self._fit_sources(data, init_params, mask=mask)
-        self._fitted_group_models.append(fitted_models)
+        ungrouped_models = self._split_grouped_models(fitted_models)
+        self._fitted_group_models = fitted_models
+        self._fitted_models = ungrouped_models
 
         # TODO: create output table
         fitted_stars = QTable()
