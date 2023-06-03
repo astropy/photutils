@@ -167,11 +167,13 @@ class PSFPhotometry:
 
         return psf_model
 
-    def _define_fit_coords(self, sources, shape):
+    def _define_fit_coords(self, sources, mask):
         xmin = ymin = np.inf
         xmax = ymax = -np.inf
 
         hshape = (self.fit_shape - 1) // 2
+        yi = []
+        xi = []
         for row in sources:
             # bbox "slice indices" (max is non-inclusive)
             xcen = int(row['x_init'] + 0.5)
@@ -180,13 +182,22 @@ class PSFPhotometry:
             xmax = max((xmax, xcen + hshape[1] + 1))
             ymin = min((ymin, ycen - hshape[0]))
             ymax = max((ymax, ycen + hshape[0] + 1))
+            yy, xx = np.mgrid[ymin:ymax, xmin:xmax]
+            xi.append(xx)
+            yi.append(yy)
 
-        xmin = max((0, xmin))
-        xmax = min((shape[1], xmax))
-        ymin = max((0, ymin))
-        ymax = min((shape[0], ymax))
+        xi = np.array(xi).ravel()
+        yi = np.array(yi).ravel()
+        # find unique (x, y) pairs
+        yi, xi = np.unique(np.column_stack((yi, xi)), axis=0).T
+        # yi, xi = np.array(list(set(zip(yi, xi)))).T
 
-        return np.mgrid[ymin:ymax, xmin:xmax]
+        if mask is not None:
+            inv_mask = ~mask[yi, xi]
+            yi = yi[inv_mask]
+            xi = xi[inv_mask]
+
+        return yi, xi
 
     def _fit_sources(self, data, init_params, *, mask=None):
 
@@ -197,15 +208,8 @@ class PSFPhotometry:
         for sources_ in sources:
             psf_model = self._make_psf_model(sources_)
 
-            yi, xi = self._define_fit_coords(sources_, data.shape)
+            yi, xi = self._define_fit_coords(sources_, data.shape, mask)
             cutout = data[yi, xi]
-
-            if mask is not None:
-                cmask = ~mask[yi, xi]
-                xi = xi[cmask]
-                yi = yi[cmask]
-                cutout = cutout[cmask]
-
             fitted_models.append(self.fitter(psf_model, xi, yi, cutout))
 
             # TODO: upgroup fitted models
