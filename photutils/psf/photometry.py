@@ -254,7 +254,14 @@ class PSFPhotometry:
                 warnings.simplefilter('ignore', AstropyUserWarning)
                 fitted_models.append(self.fitter(psf_model, xi, yi, cutout))
 
-            self.fit_info.append(self.fitter.fit_info.copy())
+            fit_info = self.fitter.fit_info.copy()
+            nsources_ = len(sources_)
+            if nsources_ == 1:  # number of sources in the group
+                self.fit_info.append(fit_info)
+            else:
+                # fit_info list has an item for each source
+                fit_info = [fit_info] * nsources_
+                self.fit_info.extend(fit_info)
 
         for idx, finfo in enumerate(self.fit_info):
             ierr = finfo.get('ierr', None)
