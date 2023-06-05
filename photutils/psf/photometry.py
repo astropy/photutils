@@ -242,7 +242,7 @@ class PSFPhotometry:
         # sorted back into original source order
         return sorted(ungrouped_models, key=lambda model: model.name)
 
-    def _fit_sources(self, data, init_params, *, mask=None):
+    def _fit_sources(self, data, init_params, *, error=None, mask=None):
         sources = init_params.group_by('group_id').groups
         sources = self._add_progress_bar(sources, desc='Fit star/group')
 
@@ -257,16 +257,23 @@ class PSFPhotometry:
                 fit_info = {'message': 'Source was not fit because it was '
                             'completely masked'}
             else:
+                if error is not None:
+                    weights = 1 / error[yi, xi]
+                else:
+                    weights = None
+
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', AstropyUserWarning)
                     try:
                         result = self.fitter(psf_model, xi, yi, cutout,
+                                             weights=weights,
                                              maxiter=self.maxiters)
                     except TypeError:
                         warnings.warn('"maxiters" will be ignored because it '
                                       'is not accepted by the input fitter ',
                                       AstropyUserWarning)
-                        result = self.fitter(psf_model, xi, yi, cutout)
+                        result = self.fitter(psf_model, xi, yi, cutout,
+                                             weights=weights)
 
                     fit_info = self.fitter.fit_info.copy()
 
@@ -371,11 +378,12 @@ class PSFPhotometry:
 
         return flags
 
-    def __call__(self, data, *, mask=None, init_params=None):
+    def __call__(self, data, *, mask=None, error=None, init_params=None):
         """
         Perform PSF photometry.
         """
-        (data,), unit = process_quantities((data,), ('data',))
+        (data, error), unit = process_quantities((data, error),
+                                                 ('data', 'error'))
         data = self._validate_array(data, 'data')
         mask = self._make_mask(data,
                                self._validate_array(mask, 'mask',
@@ -425,7 +433,8 @@ class PSFPhotometry:
         colnames = ('id', 'group_id', 'x_init', 'y_init', 'flux_init')
         init_params = init_params[colnames]
 
-        fitted_models = self._fit_sources(data, init_params, mask=mask)
+        fitted_models = self._fit_sources(data, init_params, error=error,
+                                          mask=mask)
         ungrouped_models = self._split_grouped_models(fitted_models)
         self._fitted_group_models = fitted_models
         self._fitted_models = ungrouped_models
