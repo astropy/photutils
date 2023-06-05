@@ -8,6 +8,7 @@ import warnings
 import numpy as np
 from astropy.modeling import Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.nddata import overlap_slices
 from astropy.table import QTable, Table, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -296,6 +297,27 @@ class PSFPhotometry:
             names.append(name)
 
         return tuple(names)
+
+    def make_model_image(self, shape, psf_shape):
+        fit_models = self._fitted_models
+
+        data = np.zeros(shape)
+        xname, yname, _ = self._get_psf_param_names()
+
+        desc = 'Model image'
+        fit_models = self._add_progress_bar(fit_models, desc=desc)
+
+        # fit_models must be a list of individual, not grouped, PSF
+        # models, i.e., there should be one PSF model (which may be
+        # compound) for each source
+        for fit_model in fit_models:
+            x0 = getattr(fit_model, xname).value
+            y0 = getattr(fit_model, yname).value
+            slc_lg, _ = overlap_slices(shape, psf_shape, (y0, x0), mode='trim')
+            yy, xx = np.mgrid[slc_lg]
+            data[slc_lg] += fit_model(xx, yy)
+
+        return data
 
     def __call__(self, data, *, mask=None, init_params=None):
         """
