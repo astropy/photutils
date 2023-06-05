@@ -43,6 +43,8 @@ class PSFPhotometry:
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
+        self.fit_error_indices = []
+        self.fit_info = []
         self._fitted_group_models = None
         self._fitted_models = None
 
@@ -248,11 +250,20 @@ class PSFPhotometry:
             yi, xi = self._define_fit_coords(sources_, data.shape, mask)
             cutout = data[yi, xi]
 
-            # TODO: catch fit warning messages0 and save the fit_info dict
-            # from the fitter; create a single warning summary after
-            # warning, pointing to where to get the fit_info for the
-            # fits
+            # TODO: catch fit warning messages
             fitted_models.append(self.fitter(psf_model, xi, yi, cutout))
+            self.fit_info.append(self.fitter.fit_info.copy())
+
+        for idx, finfo in enumerate(self.fit_info):
+            ierr = finfo.get('ierr', None)
+            if ierr not in (1, 2, 3, 4):  # all good flags defined by scipy
+                self.fit_error_indices.append(idx)
+
+        if self.fit_error_indices:
+            warnings.warn('One or more fit(s) may not have converged. Please '
+                          'check the "fit_error_indices" and "fit_info" '
+                          'attribute for more information.',
+                          AstropyUserWarning)
 
         return fitted_models
 
