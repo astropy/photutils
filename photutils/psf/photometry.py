@@ -350,6 +350,9 @@ class PSFPhotometry:
 
         return data
 
+    def make_residual_image(self, data, psf_shape):
+        return data - self.make_model_image(data.shape, psf_shape)
+
     def __call__(self, data, *, mask=None, init_params=None):
         """
         Perform PSF photometry.
