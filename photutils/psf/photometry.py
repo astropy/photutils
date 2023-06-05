@@ -137,13 +137,17 @@ class PSFPhotometry:
 
         return init_params
 
-    def _add_progress_bar(self, sources, desc=None):
+    def _add_progress_bar(self, iterable, desc=None):
         if self.progress_bar and HAS_TQDM:
-            from tqdm.auto import tqdm  # pragma: no cover
+            try:
+                from ipywidgets import FloatProgress  # noqa: F401
+                from tqdm.auto import tqdm
+            except ImportError:
+                from tqdm import tqdm
 
-            sources = tqdm(sources, desc=desc)  # pragma: no cover
+            iterable = tqdm(iterable, desc=desc)  # pragma: no cover
 
-        return sources
+        return iterable
 
     def _param_map(self):
         # TODO: generalize this mapping based of self.psf_model
