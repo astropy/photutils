@@ -250,8 +250,10 @@ class PSFPhotometry:
             yi, xi = self._define_fit_coords(sources_, data.shape, mask)
             cutout = data[yi, xi]
 
-            # TODO: catch fit warning messages
-            fitted_models.append(self.fitter(psf_model, xi, yi, cutout))
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', AstropyUserWarning)
+                fitted_models.append(self.fitter(psf_model, xi, yi, cutout))
+
             self.fit_info.append(self.fitter.fit_info.copy())
 
         for idx, finfo in enumerate(self.fit_info):
