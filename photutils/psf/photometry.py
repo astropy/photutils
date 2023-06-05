@@ -287,9 +287,9 @@ class PSFPhotometry:
 
         if self.fit_error_indices:
             warnings.warn('One or more fit(s) may not have converged. Please '
-                          'check the "fit_error_indices" and "fit_info" '
-                          'attribute for more information.',
-                          AstropyUserWarning)
+                          'check the "flags" column in the output table, and '
+                          'the "fit_error_indices" and "fit_info" attributes '
+                          'for more information.', AstropyUserWarning)
 
         return fitted_models
 
@@ -359,6 +359,18 @@ class PSFPhotometry:
     def make_residual_image(self, data, psf_shape):
         return data - self.make_model_image(data.shape, psf_shape)
 
+    def _define_flags(self):
+        flags = np.zeros(len(self.fit_info), dtype=int)
+        flags[self.fit_error_indices] = 1
+
+        idx = []
+        for index, fit_info in enumerate(self.fit_info):
+            if 'completely masked' in fit_info['message']:
+                idx.append(index)
+        flags[idx] = 2
+
+        return flags
+
     def __call__(self, data, *, mask=None, init_params=None):
         """
         Perform PSF photometry.
@@ -420,6 +432,11 @@ class PSFPhotometry:
 
         # create output table
         sources_fit = self._model_params_to_table(ungrouped_models)
+        if len(init_params) != len(sources_fit):
+            raise ValueError('init_params and fit sources tables have '
+                             'different lengths')
         source_tbl = hstack((init_params, sources_fit))
+
+        source_tbl['flags'] = self._define_flags()
 
         return source_tbl
