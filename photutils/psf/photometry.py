@@ -273,6 +273,30 @@ class PSFPhotometry:
 
         return table
 
+    def _get_psf_param_names(self):
+        """
+        Get the names of the PSF model parameters corresponding to x, y,
+        and flux.
+
+        The PSF model must either define 'xname', 'yname', and
+        'fluxname' attributes or have parameters called 'x_0', 'y_0',
+        and 'flux'. Otherwise, a `ValueError` is raised.
+        """
+        keys = [('xname', 'x_0'), ('yname', 'y_0'), ('fluxname', 'flux')]
+        names = []
+        for key in keys:
+            try:
+                name = getattr(self.psf_model, key[0])
+            except AttributeError:
+                if key[1] in self.psf_model.param_names:
+                    name = key[1]
+                else:
+                    raise ValueError('Could not find PSF parameter names')
+
+            names.append(name)
+
+        return tuple(names)
+
     def __call__(self, data, *, mask=None, init_params=None):
         """
         Perform PSF photometry.
