@@ -31,7 +31,7 @@ class PSFPhotometry:
     """
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
-                 fitter=LevMarLSQFitter(), aperture_radius=None,
+                 fitter=LevMarLSQFitter(), maxiters=100, aperture_radius=None,
                  progress_bar=None):
 
         self.psf_model = self._validate_model(psf_model)
@@ -40,6 +40,7 @@ class PSFPhotometry:
         self.grouper = self._validate_callable(grouper, 'grouper')
         self.finder = self._validate_callable(finder, 'finder')
         self.fitter = self._validate_callable(fitter, 'fitter')
+        self.maxiters = maxiters
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
@@ -252,7 +253,16 @@ class PSFPhotometry:
 
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', AstropyUserWarning)
-                fitted_models.append(self.fitter(psf_model, xi, yi, cutout))
+                try:
+                    result = self.fitter(psf_model, xi, yi, cutout,
+                                         maxiter=self.maxiters)
+                except TypeError:
+                    warnings.warn('"maxiters" will be ignored because it '
+                                  'is not accepted by the input fitter ',
+                                  AstropyUserWarning)
+                    result = self.fitter(psf_model, xi, yi, cutout)
+
+                fitted_models.append(result)
 
             fit_info = self.fitter.fit_info.copy()
             nsources_ = len(sources_)
