@@ -252,20 +252,26 @@ class PSFPhotometry:
             yi, xi = self._define_fit_coords(sources_, data.shape, mask)
             cutout = data[yi, xi]
 
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', AstropyUserWarning)
-                try:
-                    result = self.fitter(psf_model, xi, yi, cutout,
-                                         maxiter=self.maxiters)
-                except TypeError:
-                    warnings.warn('"maxiters" will be ignored because it '
-                                  'is not accepted by the input fitter ',
-                                  AstropyUserWarning)
-                    result = self.fitter(psf_model, xi, yi, cutout)
+            if cutout.shape == (0,):
+                result = psf_model  # no fit was performed (initial model)
+                fit_info = {'message': 'Source was not fit because it was '
+                            'completely masked'}
+            else:
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', AstropyUserWarning)
+                    try:
+                        result = self.fitter(psf_model, xi, yi, cutout,
+                                             maxiter=self.maxiters)
+                    except TypeError:
+                        warnings.warn('"maxiters" will be ignored because it '
+                                      'is not accepted by the input fitter ',
+                                      AstropyUserWarning)
+                        result = self.fitter(psf_model, xi, yi, cutout)
 
-                fitted_models.append(result)
+                    fit_info = self.fitter.fit_info.copy()
 
-            fit_info = self.fitter.fit_info.copy()
+            fitted_models.append(result)
+
             nsources_ = len(sources_)
             if nsources_ == 1:  # number of sources in the group
                 self.fit_info.append(fit_info)
