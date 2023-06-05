@@ -44,6 +44,7 @@ class PSFPhotometry:
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
+        self.finder_results = []
         self.fit_error_indices = []
         self.fit_info = []
         self._fitted_group_models = None
@@ -372,8 +373,8 @@ class PSFPhotometry:
                 raise ValueError('finder must be defined if init_params '
                                  'is not input')
 
-            # TODO: save sources table in dict
             sources = self.finder(data, mask=mask)
+            self.finder_results.append(sources)
             if sources is None:
                 return None
 
