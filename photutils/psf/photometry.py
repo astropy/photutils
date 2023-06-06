@@ -3,6 +3,7 @@
 This module provides classes to perform PSF-fitting photometry.
 """
 
+import inspect
 import warnings
 
 import numpy as np
@@ -40,7 +41,7 @@ class PSFPhotometry:
         self.grouper = self._validate_callable(grouper, 'grouper')
         self.finder = self._validate_callable(finder, 'finder')
         self.fitter = self._validate_callable(fitter, 'fitter')
-        self.maxiters = maxiters
+        self.maxiters = self._validate_maxiters(maxiters)
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
@@ -61,6 +62,15 @@ class PSFPhotometry:
         if obj is not None and not callable(obj):
             raise TypeError(f'{name!r} must be a callable object')
         return obj
+
+    def _validate_maxiters(self, maxiters):
+        spec = inspect.signature(self.fitter.__call__)
+        if 'maxiter' not in spec.parameters:
+            warnings.warn('"maxiters" will be ignored because it is not '
+                          'accepted by the input fitter __call__ method',
+                          AstropyUserWarning)
+            maxiters = None
+        return maxiters
 
     @staticmethod
     def _validate_radius(radius):
@@ -243,6 +253,11 @@ class PSFPhotometry:
         return sorted(ungrouped_models, key=lambda model: model.name)
 
     def _fit_sources(self, data, init_params, *, error=None, mask=None):
+        if self.maxiters is not None:
+            kwargs = {'maxiter': self.maxiters}
+        else:
+            kwargs = {}
+
         sources = init_params.group_by('group_id').groups
         sources = self._add_progress_bar(sources, desc='Fit star/group')
 
@@ -264,17 +279,8 @@ class PSFPhotometry:
 
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', AstropyUserWarning)
-                    try:
-                        result = self.fitter(psf_model, xi, yi, cutout,
-                                             weights=weights,
-                                             maxiter=self.maxiters)
-                    except TypeError:
-                        warnings.warn('"maxiters" will be ignored because it '
-                                      'is not accepted by the input fitter ',
-                                      AstropyUserWarning)
-                        result = self.fitter(psf_model, xi, yi, cutout,
-                                             weights=weights)
-
+                    result = self.fitter(psf_model, xi, yi, cutout,
+                                         weights=weights, **kwargs)
                     fit_info = self.fitter.fit_info.copy()
 
             fitted_models.append(result)
@@ -435,8 +441,8 @@ class PSFPhotometry:
 
         fitted_models = self._fit_sources(data, init_params, error=error,
                                           mask=mask)
-        ungrouped_models = self._split_grouped_models(fitted_models)
         self._fitted_group_models = fitted_models
+        ungrouped_models = self._split_grouped_models(fitted_models)
         self._fitted_models = ungrouped_models
 
         # create output table
