@@ -55,6 +55,19 @@ class PSFPhotometry:
         self._fit_param_errs = []
         self._ungroup_indices = []
 
+        self._valid_x_colnames = ('x_init', 'xcentroid', 'x_centroid',
+                                  'x_peak', 'x', 'xcen', 'x_cen', 'xpos',
+                                  'x_pos')
+        self._valid_y_colnames = ('y_init', 'ycentroid', 'y_centroid',
+                                  'y_peak', 'y', 'ycen', 'y_cen', 'ypos',
+                                  'y_pos')
+        self._valid_flux_colnames = ('flux_init', 'flux', 'source_sum',
+                                     'segment_flux', 'kron_flux')
+
+        self._xinit_name = self._valid_x_colnames[0]
+        self._yinit_name = self._valid_y_colnames[0]
+        self._fluxinit_name = self._valid_flux_colnames[0]
+
     @staticmethod
     def _validate_model(psf_model):
         if not isinstance(psf_model, Fittable2DModel):
@@ -95,20 +108,41 @@ class PSFPhotometry:
         return array
 
     @staticmethod
-    def _validate_params(init_params):
+    def _find_column_name(valid_names, colnames):
+        name = ''
+        for valid_name in valid_names:
+            if valid_name in colnames:
+                name = valid_name
+        return name
+
+    def _validate_params(self, init_params):
         if init_params is None:
             return init_params
 
         if not isinstance(init_params, Table):
             raise TypeError('init_params must be an astropy Table')
 
-        columns = ('x_init', 'y_init')
-        for column in columns:
-            if column not in init_params.columns:
-                raise ValueError(f'{column!r} must be a column in '
-                                 'init_params')
+        xcolname = self._find_column_name(self._valid_x_colnames,
+                                          init_params.colnames)
+        ycolname = self._find_column_name(self._valid_y_colnames,
+                                          init_params.colnames)
+        if not xcolname or not ycolname:
+            raise ValueError('init_param must contain valid column names '
+                             'for the x and y source positions')
 
-        return init_params.copy()
+        init_params = init_params.copy()
+        if xcolname != self._xinit_name:
+            init_params.rename_column(xcolname, self._xinit_name)
+        if ycolname != self._xinit_name:
+            init_params.rename_column(ycolname, self._yinit_name)
+
+        fluxcolname = self._find_column_name(self._valid_flux_colnames,
+                                             init_params.colnames)
+        if fluxcolname:
+            if fluxcolname != self._fluxinit_name:
+                init_params.rename_column(fluxcolname, self._fluxinit_name)
+
+        return init_params
 
     @staticmethod
     def _make_mask(image, mask):
@@ -145,9 +179,8 @@ class PSFPhotometry:
         return iterable
 
     def _get_aper_fluxes(self, data, mask, init_params):
-        # TODO: flexible input column names
-        xpos = init_params['x_init']
-        ypos = init_params['y_init']
+        xpos = init_params[self._xinit_name]
+        ypos = init_params[self._yinit_name]
         apertures = CircularAperture(zip(xpos, ypos), r=self.aperture_radius)
         flux, _ = apertures.do_photometry(data, mask=mask)
         return flux
@@ -160,22 +193,22 @@ class PSFPhotometry:
         """
         init_params = QTable()
         init_params['id'] = np.arange(len(sources)) + 1
-        # TODO: flexible finder column names
-        init_params['x_init'] = sources['xcentroid']
-        init_params['y_init'] = sources['ycentroid']
-        init_params['flux_init'] = self._get_aper_fluxes(data, mask,
-                                                         init_params)
+        init_params[self._xinit_name] = sources['xcentroid']
+        init_params[self._yinit_name] = sources['ycentroid']
+        init_params[self._fluxinit_name] = self._get_aper_fluxes(data, mask,
+                                                                 init_params)
 
         return init_params
 
     def _param_map(self):
         # TODO: generalize this mapping based of self.psf_model
         param_map = {}
-        param_map['x_init'] = 'x_0'
-        param_map['y_init'] = 'y_0'
-        param_map['flux_init'] = 'flux'
+        param_map[self._xinit_name] = 'x_0'
+        param_map[self._yinit_name] = 'y_0'
+        param_map[self._fluxinit_name] = 'flux'
 
-        fit_param_map = {val: key.replace('_init', '_fit')
+        init_suffix = self._xinit_name[1:]
+        fit_param_map = {val: key.replace(init_suffix, '_fit')
                          for key, val in param_map.items()}
 
         return param_map, fit_param_map
@@ -200,10 +233,7 @@ class PSFPhotometry:
 
         return psf_model
 
-    def _define_fit_coords(self, sources, mask):
-        xmin = ymin = np.inf
-        xmax = ymax = -np.inf
-
+    def _define_fit_coords(self, sources, shape, mask):
         hshape = (self.fit_shape - 1) // 2
         yi = []
         xi = []
@@ -211,10 +241,11 @@ class PSFPhotometry:
             # bbox "slice indices" (max is non-inclusive)
             xcen = int(row['x_init'] + 0.5)
             ycen = int(row['y_init'] + 0.5)
-            xmin = min((xmin, xcen - hshape[1]))
-            xmax = max((xmax, xcen + hshape[1] + 1))
-            ymin = min((ymin, ycen - hshape[0]))
-            ymax = max((ymax, ycen + hshape[0] + 1))
+            # max values are non-inclusive (slices)
+            xmin = max((0, xcen - hshape[1]))
+            xmax = min((shape[1], xcen + hshape[1] + 1))
+            ymin = max((0, ycen - hshape[0]))
+            ymax = min((shape[0], ycen + hshape[0] + 1))
             yy, xx = np.mgrid[ymin:ymax, xmin:xmax]
             xi.append(xx)
             yi.append(yy)
@@ -360,6 +391,13 @@ class PSFPhotometry:
 
         return table
 
+    def _param_errors_to_table(self):
+        table = QTable()
+        table['x_err'] = self._fit_param_errs[:, 0]
+        table['y_err'] = self._fit_param_errs[:, 1]
+        table['flux_err'] = self._fit_param_errs[:, 2]
+        return table
+
     def _define_flags(self):
         flags = np.zeros(len(self.fit_infos), dtype=int)
         flags[self.fit_error_indices] = 1
@@ -386,10 +424,10 @@ class PSFPhotometry:
 
         if (self.aperture_radius is None
             and (init_params is None
-                 or 'flux_init' not in init_params.colnames)):
+                 or self._fluxinit_name not in init_params.colnames)):
             raise ValueError('aperture_radius must be defined if init_params '
-                             'is not input or if a "flux_init" column is '
-                             'not in init_params')
+                             'is not input or if a flux column is not in '
+                             'init_params')
 
         if init_params is None:
             if self.finder is None:
@@ -407,9 +445,9 @@ class PSFPhotometry:
             if 'id' not in colnames:
                 init_params['id'] = np.arange(len(init_params)) + 1
 
-            if 'flux_init' not in colnames:
-                init_params['flux_init'] = self._get_aper_fluxes(data, mask,
-                                                                 init_params)
+            if self._fluxinit_name not in colnames:
+                init_params[self._fluxinit_name] = self._get_aper_fluxes(
+                    data, mask, init_params)
 
             if 'group_id' in colnames:
                 # grouper is ignored if group_id is input in init_params
@@ -425,7 +463,8 @@ class PSFPhotometry:
             init_params['group_id'] = init_params['id']
 
         # order init_params columns
-        colnames = ('id', 'group_id', 'x_init', 'y_init', 'flux_init')
+        colnames = ('id', 'group_id', self._xinit_name, self._yinit_name,
+                    self._fluxinit_name)
         init_params = init_params[colnames]
 
         fit_models = self._fit_sources(data, init_params, error=error,
@@ -437,6 +476,13 @@ class PSFPhotometry:
             raise ValueError('init_params and fit_sources tables have '
                              'different lengths')
         source_tbl = hstack((init_params, fit_sources))
+
+        param_errors = self._param_errors_to_table()
+        if len(param_errors) > 0:
+            if len(param_errors) != len(source_tbl):
+                raise ValueError('param errors and fit sources tables have '
+                                 'different lengths')
+            source_tbl = hstack((source_tbl, param_errors))
 
         source_tbl['flags'] = self._define_flags()
 
