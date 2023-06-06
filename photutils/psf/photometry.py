@@ -46,12 +46,13 @@ class PSFPhotometry:
         self.progress_bar = progress_bar
 
         self.finder_results = []
-        self.fit_error_indices = []
         self._fit_group_models = []
+        self._fit_group_infos = []
+        self._fit_group_nsources = []
+        self.fit_error_indices = []
         self.fit_models = []
         self.fit_infos = []
-        self._fit_param_err = []
-        self._fit_nsources = []
+        self._fit_param_errs = []
         self._ungroup_indices = []
 
     @staticmethod
@@ -234,46 +235,67 @@ class PSFPhotometry:
     @staticmethod
     def _split_compound_model(model, chunk_size):
         for i in range(0, model.n_submodels, chunk_size):
-            yield model[i: i + chunk_size]
+            yield model[i:i + chunk_size]
+
+    @staticmethod
+    def _split_param_errs(param_err, nparam):
+        for i in range(0, len(param_err), nparam):
+            yield param_err[i:i + nparam]
 
     def _split_groups(self, models, infos):
         psf_nsub = self.psf_model.n_submodels
 
         fit_models = []
         fit_infos = []
+        fit_param_errs = []
+        nparam = 3  # x, y, flux
         for model, info in zip(models, infos):
             model_nsub = model.n_submodels
+
+            param_cov = info.get('param_cov', None)
+            if param_cov is None:
+                param_err = np.array([np.nan] * nparam)
+            else:
+                param_err = np.sqrt(np.diag(param_cov))
 
             # model is for a single source (which may be compound)
             if model_nsub == psf_nsub:
                 fit_models.append(model)
                 fit_infos.append(info)
-                self._fit_nsources.append(1)
+                fit_param_errs.append(param_err)
                 continue
 
             # model is a grouped model for multiple sources
             fit_models.extend(self._split_compound_model(model, psf_nsub))
             nsources = model_nsub // psf_nsub
-            self._fit_nsources.extend([nsources] * nsources)
             fit_infos.extend([info] * nsources)  # views
+            fit_param_errs.extend(self._split_param_errs(param_err, nparam))
 
         if len(fit_models) != len(fit_infos):
             raise ValueError('fit_models and fit_infos have different lengths')
+        if len(fit_models) != len(fit_param_errs):
+            raise ValueError('fit_models and fit_param_errs have different '
+                             'lengths')
 
-        self._fit_nsources = np.array(self._fit_nsources, dtype=int)
-        self._fit_nsources = self._fit_nsources[self._ungroup_indices]
-        z1 = [fit_models[i] for i in self._ungroup_indices]
-        z2 = [fit_infos[i] for i in self._ungroup_indices]
+        # change the sorting from group_id to source id order
+        fit_models = [fit_models[i] for i in self._ungroup_indices]
+        fit_infos = [fit_infos[i] for i in self._ungroup_indices]
+        fit_param_errs = [fit_param_errs[i] for i in self._ungroup_indices]
 
-        # now change the sorting from group_id to source id order
-        # the model.name attribute stores the source index
-        fit_models, fit_infos = zip(*sorted(zip(fit_models, fit_infos),
-                                            key=lambda pair: pair[0].name))
+        self.fit_models = fit_models
+        self.fit_infos = fit_infos
+        self._fit_param_errs = np.array(fit_param_errs)
 
-        assert z1 == list(fit_models)
-        assert z2 == list(fit_infos)
+        return fit_models
 
-        return list(fit_models), list(fit_infos)
+    def _set_fit_error_indices(self):
+        indices = []
+        for index, fit_info in enumerate(self.fit_infos):
+            ierr = fit_info.get('ierr', None)
+            if ierr not in (1, 2, 3, 4):  # all good flags defined by scipy
+                indices.append(index)
+
+        self.fit_error_indices = np.array(indices, dtype=int)
 
     def _fit_sources(self, data, init_params, *, error=None, mask=None):
         if self.maxiters is not None:
@@ -314,35 +336,11 @@ class PSFPhotometry:
 
         # split the groups and return objects in source-id order
         self._fit_group_models = fit_models
-        fit_models, fit_infos = self._split_groups(fit_models, fit_infos)
-        self.fit_models = fit_models
-        self.fit_infos = fit_infos
+        self._fit_group_infos = fit_infos
+        fit_models = self._split_groups(fit_models, fit_infos)
+        self._set_fit_error_indices()
 
         return fit_models
-
-    def _set_fit_info_attrs(self):
-        for index, fit_info in enumerate(self.fit_infos):
-            ierr = fit_info.get('ierr', None)
-            if ierr not in (1, 2, 3, 4):  # all good flags defined by scipy
-                self.fit_error_indices.append(index)
-
-            param_cov = fit_info.get('param_cov', None)
-            nparam = 3
-            if param_cov is None:
-                param_err = np.array([np.nan] * nparam)
-            else:
-                param_err = np.sqrt(np.diag(param_cov))
-
-            if self._fit_nsources[index] == 1:
-                self._fit_param_err.append(param_err)
-            else:
-                param_errs = []
-                for i in range(0, len(param_err),  nparam):
-                    param_errs.append(param_err[i:i + nparam])
-                self._fit_param_err.extend(param_errs)
-
-        self._fit_param_err = np.array(self._fit_param_err)
-        self.fit_error_indices = np.array(self.fit_error_indices, dtype=int)
 
     def _model_params_to_table(self, models):
         param_map = self._param_map()[1]
@@ -432,8 +430,6 @@ class PSFPhotometry:
 
         fit_models = self._fit_sources(data, init_params, error=error,
                                        mask=mask)
-
-        self._set_fit_info_attrs()
 
         # create output table
         fit_sources = self._model_params_to_table(fit_models)  # ungrouped
