@@ -228,6 +228,21 @@ class PSFPhotometry:
 
         return yi, xi
 
+    def _set_fit_info_attrs(self, fit_info, nsources):
+        if nsources == 1:  # number of sources in the group
+            self.fit_info.append(fit_info)
+        else:
+            # fit_info list has an item for each source
+            fit_info = [fit_info] * nsources
+            self.fit_info.extend(fit_info)
+
+        for idx, finfo in enumerate(self.fit_info):
+            ierr = finfo.get('ierr', None)
+            if ierr not in (1, 2, 3, 4):  # all good flags defined by scipy
+                self.fit_error_indices.append(idx)
+
+        # TODO: set param_errs attribute
+
     @staticmethod
     def _split_compound_model(model, chunk_size):
         for i in range(0, model.n_submodels, chunk_size):
@@ -285,24 +300,7 @@ class PSFPhotometry:
 
             fitted_models.append(result)
 
-            nsources_ = len(sources_)
-            if nsources_ == 1:  # number of sources in the group
-                self.fit_info.append(fit_info)
-            else:
-                # fit_info list has an item for each source
-                fit_info = [fit_info] * nsources_
-                self.fit_info.extend(fit_info)
-
-        for idx, finfo in enumerate(self.fit_info):
-            ierr = finfo.get('ierr', None)
-            if ierr not in (1, 2, 3, 4):  # all good flags defined by scipy
-                self.fit_error_indices.append(idx)
-
-        if self.fit_error_indices:
-            warnings.warn('One or more fit(s) may not have converged. Please '
-                          'check the "flags" column in the output table, and '
-                          'the "fit_error_indices" and "fit_info" attributes '
-                          'for more information.', AstropyUserWarning)
+            self._set_fit_info_attrs(fit_info, len(sources_))
 
         return fitted_models
 
@@ -453,5 +451,11 @@ class PSFPhotometry:
         source_tbl = hstack((init_params, sources_fit))
 
         source_tbl['flags'] = self._define_flags()
+
+        if len(self.fit_error_indices) > 0:
+            warnings.warn('One or more fit(s) may not have converged. Please '
+                          'check the "flags" column in the output table, and '
+                          'the "fit_error_indices" and "fit_info" attributes '
+                          'for more information.', AstropyUserWarning)
 
         return source_tbl
