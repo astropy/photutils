@@ -45,15 +45,19 @@ class PSFPhotometry:
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
+        self._unfixed_params = self._get_unfixed_params()
+
         self.finder_results = []
-        self._fit_group_models = []
-        self._fit_group_infos = []
-        self._fit_group_nsources = []
         self.fit_error_indices = []
         self.fit_models = []
         self.fit_infos = []
+
+        self._fit_group_models = []
+        self._fit_group_infos = []
+        self._fit_group_nsources = []
         self._fit_param_errs = []
         self._ungroup_indices = []
+        self._group_index = []
 
         self._valid_x_colnames = ('x_init', 'xcentroid', 'x_centroid',
                                   'x_peak', 'x', 'xcen', 'x_cen', 'xpos',
@@ -73,6 +77,19 @@ class PSFPhotometry:
         if not isinstance(psf_model, Fittable2DModel):
             raise TypeError('psf_model must be an astropy Fittable2DModel')
         return psf_model
+
+    def _get_unfixed_params(self):
+        unfixed_params = []
+        for param in self.psf_model.param_names:
+            if not self.psf_model.fixed[param]:
+                # TODO: check for only x, y, flux
+                unfixed_params.append(param)
+
+        if len(unfixed_params) > 3:
+            raise ValueError('psf_model must have only 3 unfixed parameters, '
+                             'corresponding to (x, y, flux)')
+
+        return unfixed_params
 
     @staticmethod
     def _validate_callable(obj, name):
@@ -210,8 +227,10 @@ class PSFPhotometry:
         init_suffix = self._xinit_name[1:]
         fit_param_map = {val: key.replace(init_suffix, '_fit')
                          for key, val in param_map.items()}
+        err_param_map = {val: key.replace(init_suffix, '_err')
+                         for key, val in param_map.items()}
 
-        return param_map, fit_param_map
+        return param_map, fit_param_map, err_param_map
 
     def _make_psf_model(self, sources):
         """
@@ -238,9 +257,8 @@ class PSFPhotometry:
         yi = []
         xi = []
         for row in sources:
-            # bbox "slice indices" (max is non-inclusive)
-            xcen = int(row['x_init'] + 0.5)
-            ycen = int(row['y_init'] + 0.5)
+            xcen = int(row[self._xinit_name] + 0.5)
+            ycen = int(row[self._yinit_name] + 0.5)
             # max values are non-inclusive (slices)
             xmin = max((0, xcen - hshape[1]))
             xmax = min((shape[1], xcen + hshape[1] + 1))
@@ -279,13 +297,13 @@ class PSFPhotometry:
         fit_models = []
         fit_infos = []
         fit_param_errs = []
-        nparam = 3  # x, y, flux
+        nparam = len(self._unfixed_params)
         for model, info in zip(models, infos):
             model_nsub = model.n_submodels
 
             param_cov = info.get('param_cov', None)
             if param_cov is None:
-                param_err = np.array([np.nan] * nparam)
+                param_err = np.array([np.nan] * nparam * model_nsub)
             else:
                 param_err = np.sqrt(np.diag(param_cov))
 
@@ -300,18 +318,18 @@ class PSFPhotometry:
             fit_models.extend(self._split_compound_model(model, psf_nsub))
             nsources = model_nsub // psf_nsub
             fit_infos.extend([info] * nsources)  # views
-            fit_param_errs.extend(self._split_param_errs(param_err, nparam))
+            if nparam != 0:
+                fit_param_errs.extend(self._split_param_errs(param_err,
+                                                             nparam))
 
         if len(fit_models) != len(fit_infos):
             raise ValueError('fit_models and fit_infos have different lengths')
-        if len(fit_models) != len(fit_param_errs):
-            raise ValueError('fit_models and fit_param_errs have different '
-                             'lengths')
 
         # change the sorting from group_id to source id order
         fit_models = [fit_models[i] for i in self._ungroup_indices]
         fit_infos = [fit_infos[i] for i in self._ungroup_indices]
-        fit_param_errs = [fit_param_errs[i] for i in self._ungroup_indices]
+        if nparam != 0:
+            fit_param_errs = [fit_param_errs[i] for i in self._ungroup_indices]
 
         self.fit_models = fit_models
         self.fit_infos = fit_infos
@@ -358,6 +376,7 @@ class PSFPhotometry:
 
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', AstropyUserWarning)
+                    # TODO: TypeError improper input
                     fit_model = self.fitter(psf_model, xi, yi, cutout,
                                             weights=weights, **kwargs)
                     fit_info = self.fitter.fit_info.copy()
@@ -392,11 +411,18 @@ class PSFPhotometry:
         return table
 
     def _param_errors_to_table(self):
+        param_map = self._param_map()[2]
         table = QTable()
-        table['x_err'] = self._fit_param_errs[:, 0]
-        table['y_err'] = self._fit_param_errs[:, 1]
-        table['flux_err'] = self._fit_param_errs[:, 2]
-        return table
+        for index, name in enumerate(self._unfixed_params):
+            colname = param_map[name]
+            table[colname] = self._fit_param_errs[:, index]
+
+        # order error columns
+        colnames = ('x_err', 'y_err', 'flux_err')
+        tmp = {val: i for i, val in enumerate(colnames)}
+        sorted_colnames = sorted(table.colnames, key=lambda val: tmp[val])
+
+        return table[sorted_colnames]
 
     def _define_flags(self):
         flags = np.zeros(len(self.fit_infos), dtype=int)
