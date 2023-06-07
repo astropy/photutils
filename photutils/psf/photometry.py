@@ -3,6 +3,7 @@
 This module provides classes to perform PSF-fitting photometry.
 """
 
+from itertools import chain
 import inspect
 import warnings
 
@@ -57,6 +58,7 @@ class PSFPhotometry:
         self._fit_group_nsources = []
         self._fit_param_errs = []
         self._ungroup_indices = []
+        self._cen_residual_indices = []
         self._group_index = []
 
         self._valid_x_colnames = ('x_init', 'xcentroid', 'x_centroid',
@@ -183,6 +185,13 @@ class PSFPhotometry:
 
         return mask
 
+    @staticmethod
+    def _flatten(iterable):
+        """
+        Flatten a list of lists.
+        """
+        return list(chain.from_iterable(iterable))
+
     def _add_progress_bar(self, iterable, desc=None):
         if self.progress_bar and HAS_TQDM:
             try:
@@ -256,6 +265,8 @@ class PSFPhotometry:
         hshape = (self.fit_shape - 1) // 2
         yi = []
         xi = []
+        group_index = []
+        cen_index = []
         for row in sources:
             xcen = int(row[self._xinit_name] + 0.5)
             ycen = int(row[self._yinit_name] + 0.5)
@@ -265,19 +276,31 @@ class PSFPhotometry:
             ymin = max((0, ycen - hshape[0]))
             ymax = min((shape[0], ycen + hshape[0] + 1))
             yy, xx = np.mgrid[ymin:ymax, xmin:xmax]
+
+            if mask is not None:
+                inv_mask = ~mask[yy, xx]
+                yy = yy[inv_mask]
+                xx = xx[inv_mask]
+            else:
+                xx = xx.ravel()
+                yy = yy.ravel()
+
+            idx = np.where((xx == xcen) & (yy == ycen))[0]
+            if len(idx) == 0:
+                idx = [np.nan]
+            cen_index.append(idx[0])
+
             xi.append(xx)
             yi.append(yy)
+            group_index.append(len(xx))
 
-        xi = np.array(xi).ravel()
-        yi = np.array(yi).ravel()
-        # find unique (x, y) pairs
-        yi, xi = np.unique(np.column_stack((yi, xi)), axis=0).T
-        # yi, xi = np.array(list(set(zip(yi, xi)))).T
+        # flatten the lists, which may contain arrays of different
+        # lengths due to masking
+        xi = self._flatten(xi)
+        yi = self._flatten(yi)
 
-        if mask is not None:
-            inv_mask = ~mask[yi, xi]
-            yi = yi[inv_mask]
-            xi = xi[inv_mask]
+        self._cen_residual_indices.append(cen_index)
+        self._group_index.append(np.cumsum(group_index)[:-1])
 
         return yi, xi
 
@@ -424,6 +447,61 @@ class PSFPhotometry:
 
         return table[sorted_colnames]
 
+    def _calc_fit_metrics(self, data, source_tbl):
+
+        psf_shape = self.fit_shape
+        model_resid = []
+        for i, fit_model in enumerate(self.fit_models):
+            x0 = source_tbl['x_init'][i]
+            y0 = source_tbl['y_init'][i]
+            slc_lg, _ = overlap_slices(data.shape, psf_shape, (y0, x0),
+                                       mode='trim')
+            yy, xx = np.mgrid[slc_lg]
+            res = fit_model(xx, yy)
+            model_resid.append(data[slc_lg] - res)
+        self.model_resid = model_resid
+
+        fit_residuals = []
+        for idx, fit_info in zip(self._group_index, self._fit_group_infos):
+            fit_residuals.extend(np.split(fit_info['fvec'], idx))
+        self.fit_res = fit_residuals
+
+        if len(fit_residuals) != len(source_tbl):
+            raise ValueError('fit_residuals does not match the source '
+                             'table length')
+
+        with warnings.catch_warnings():
+            # ignore divide-by-zero if flux = 0
+            warnings.simplefilter('ignore', RuntimeWarning)
+
+            qfit = []
+            qfit2 = []
+            cfit = []
+            cfit2 = []
+
+            for index, (model, residual, res_cen_idx) in enumerate(
+                    zip(self.fit_models, fit_residuals,
+                        self._cen_residual_indices)):
+                source = source_tbl[index]
+                xcen = int(source[self._xinit_name] + 0.5)
+                ycen = int(source[self._yinit_name] + 0.5)
+                flux_fit = source['flux_fit']
+                # flux_fit2 = model.flux.value  # identical to flux_fit
+                qfit.append(np.sum(np.abs(residual)) / flux_fit)
+                qfit2.append(np.sum(np.abs(model_resid[index])) / flux_fit)
+
+                if np.isnan(res_cen_idx):
+                    # need to calculate residual at central pixel
+                    cen_residual = data[ycen, xcen] - model(xcen, ycen)
+                else:
+                    # find residual at (xcen, ycen)
+                    cen_residual = -residual[res_cen_idx]
+
+                cfit.append(cen_residual / flux_fit)
+                cfit2.append((data[ycen, xcen] - model(xcen, ycen)) / flux_fit)
+
+        return qfit, cfit, qfit2, cfit2
+
     def _define_flags(self):
         flags = np.zeros(len(self.fit_infos), dtype=int)
         flags[self.fit_error_indices] = 1
@@ -509,6 +587,17 @@ class PSFPhotometry:
                 raise ValueError('param errors and fit sources tables have '
                                  'different lengths')
             source_tbl = hstack((source_tbl, param_errors))
+
+        # flatten the indices and put in source-id order
+        indices = self._flatten(self._cen_residual_indices)
+        indices = [indices[i] for i in self._ungroup_indices]
+        self._cen_residual_indices = indices
+
+        qfit, cfit, qfit2, cfit2 = self._calc_fit_metrics(data, source_tbl)
+        source_tbl['qfit'] = qfit
+        source_tbl['qfit2'] = qfit2
+        source_tbl['cfit'] = cfit
+        source_tbl['cfit2'] = cfit2
 
         source_tbl['flags'] = self._define_flags()
 
