@@ -48,6 +48,11 @@ class PSFPhotometry:
 
         self._unfixed_params = self._get_unfixed_params()
 
+        self._init_colnames = self._define_init_colnames()
+        self._xinit_name = self._init_colnames['x_valid'][0]
+        self._yinit_name = self._init_colnames['y_valid'][0]
+        self._fluxinit_name = self._init_colnames['flux_valid'][0]
+
         self.finder_results = []
         self.fit_error_indices = []
         self.fit_models = []
@@ -62,37 +67,11 @@ class PSFPhotometry:
         self._group_nfit = []
         self._group_index = []
 
-        self._valid_x_colnames = ('x_init', 'xcentroid', 'x_centroid',
-                                  'x_peak', 'x', 'xcen', 'x_cen', 'xpos',
-                                  'x_pos')
-        self._valid_y_colnames = ('y_init', 'ycentroid', 'y_centroid',
-                                  'y_peak', 'y', 'ycen', 'y_cen', 'ypos',
-                                  'y_pos')
-        self._valid_flux_colnames = ('flux_init', 'flux', 'source_sum',
-                                     'segment_flux', 'kron_flux')
-
-        self._xinit_name = self._valid_x_colnames[0]
-        self._yinit_name = self._valid_y_colnames[0]
-        self._fluxinit_name = self._valid_flux_colnames[0]
-
     @staticmethod
     def _validate_model(psf_model):
         if not isinstance(psf_model, Fittable2DModel):
             raise TypeError('psf_model must be an astropy Fittable2DModel')
         return psf_model
-
-    def _get_unfixed_params(self):
-        unfixed_params = []
-        for param in self.psf_model.param_names:
-            if not self.psf_model.fixed[param]:
-                # TODO: check for only x, y, flux
-                unfixed_params.append(param)
-
-        if len(unfixed_params) > 3:
-            raise ValueError('psf_model must have only 3 unfixed parameters, '
-                             'corresponding to (x, y, flux)')
-
-        return unfixed_params
 
     @staticmethod
     def _validate_callable(obj, name):
@@ -127,9 +106,37 @@ class PSFPhotometry:
                 raise ValueError(f'data and {name} must have the same shape.')
         return array
 
+    def _get_unfixed_params(self):
+        unfixed_params = []
+        for param in self.psf_model.param_names:
+            if not self.psf_model.fixed[param]:
+                # TODO: check for only x, y, flux
+                unfixed_params.append(param)
+
+        if len(unfixed_params) > 3:
+            raise ValueError('psf_model must have only 3 unfixed parameters, '
+                             'corresponding to (x, y, flux)')
+
+        return unfixed_params
+
     @staticmethod
-    def _find_column_name(valid_names, colnames):
+    def _define_init_colnames():
+        xy_suffixes = ('_init', 'centroid', '_centroid', '_peak', '',
+                       'cen', '_cen', 'pos', '_pos')
+        x_valid = ['x' + i for i in xy_suffixes]
+        y_valid = ['y' + i for i in xy_suffixes]
+
+        init_colnames = {}
+        init_colnames['x_valid'] = x_valid
+        init_colnames['y_valid'] = y_valid
+        init_colnames['flux_valid'] = ('flux_init', 'flux', 'source_sum',
+                                       'segment_flux', 'kron_flux')
+
+        return init_colnames
+
+    def _find_column_name(self, key, colnames):
         name = ''
+        valid_names = self._init_colnames[key]
         for valid_name in valid_names:
             if valid_name in colnames:
                 name = valid_name
@@ -142,10 +149,8 @@ class PSFPhotometry:
         if not isinstance(init_params, Table):
             raise TypeError('init_params must be an astropy Table')
 
-        xcolname = self._find_column_name(self._valid_x_colnames,
-                                          init_params.colnames)
-        ycolname = self._find_column_name(self._valid_y_colnames,
-                                          init_params.colnames)
+        xcolname = self._find_column_name('x_valid', init_params.colnames)
+        ycolname = self._find_column_name('y_valid', init_params.colnames)
         if not xcolname or not ycolname:
             raise ValueError('init_param must contain valid column names '
                              'for the x and y source positions')
@@ -153,10 +158,10 @@ class PSFPhotometry:
         init_params = init_params.copy()
         if xcolname != self._xinit_name:
             init_params.rename_column(xcolname, self._xinit_name)
-        if ycolname != self._xinit_name:
+        if ycolname != self._yinit_name:
             init_params.rename_column(ycolname, self._yinit_name)
 
-        fluxcolname = self._find_column_name(self._valid_flux_colnames,
+        fluxcolname = self._find_column_name('flux_valid',
                                              init_params.colnames)
         if fluxcolname:
             if fluxcolname != self._fluxinit_name:
