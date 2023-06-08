@@ -3,6 +3,7 @@
 This module provides classes to perform PSF-fitting photometry.
 """
 
+from collections import defaultdict
 from itertools import chain
 import inspect
 import warnings
@@ -46,26 +47,17 @@ class PSFPhotometry:
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
-        self._unfixed_params = self._get_unfixed_params()
-
         self._init_colnames = self._define_init_colnames()
         self._xinit_name = self._init_colnames['x_valid'][0]
         self._yinit_name = self._init_colnames['y_valid'][0]
         self._fluxinit_name = self._init_colnames['flux_valid'][0]
 
+        self._unfixed_params = self._get_unfixed_params()
         self.finder_results = []
         self.fit_error_indices = []
-        self.fit_models = []
-        self.fit_infos = []
-
-        self._fit_group_models = []
-        self._fit_group_infos = []
-        self._fit_group_nsources = []
-        self._fit_param_errs = []
+        self.fit_results = defaultdict(list)
+        self._group_results = defaultdict(list)
         self._ungroup_indices = []
-        self._cen_residual_indices = []
-        self._group_nfit = []
-        self._group_index = []
 
     @staticmethod
     def _validate_model(psf_model):
@@ -271,7 +263,7 @@ class PSFPhotometry:
         hshape = (self.fit_shape - 1) // 2
         yi = []
         xi = []
-        group_nfit = []
+        npixfit = []
         cen_index = []
         for row in sources:
             xcen = int(row[self._xinit_name] + 0.5)
@@ -297,23 +289,22 @@ class PSFPhotometry:
                 xx = xx.ravel()
                 yy = yy.ravel()
 
+            xi.append(xx)
+            yi.append(yy)
+            npixfit.append(len(xx))
+
             idx = np.where((xx == xcen) & (yy == ycen))[0]
             if len(idx) == 0:
                 idx = [np.nan]
             cen_index.append(idx[0])
 
-            xi.append(xx)
-            yi.append(yy)
-            group_nfit.append(len(xx))
-
-        # flatten the lists, which may contain arrays of different
-        # lengths due to masking
+        # flatten the lists, which may contain arrays of different lengths
+        # due to masking
         xi = self._flatten(xi)
         yi = self._flatten(yi)
 
-        self._cen_residual_indices.append(cen_index)
-        self._group_nfit.append(group_nfit)
-        self._group_index.append(np.cumsum(group_nfit)[:-1])
+        self._group_results['npixfit'].append(npixfit)
+        self._group_results['cen_res_idx'].append(cen_index)
 
         return yi, xi
 
@@ -327,7 +318,13 @@ class PSFPhotometry:
         for i in range(0, len(param_err), nparam):
             yield param_err[i:i + nparam]
 
-    def _split_groups(self, models, infos):
+    def _order_by_id(self, iterable):
+        """
+        Reorder the list from group-id to source-id order.
+        """
+        return [iterable[i] for i in self._ungroup_indices]
+
+    def _make_fit_results(self, models, infos):
         psf_nsub = self.psf_model.n_submodels
 
         fit_models = []
@@ -339,7 +336,7 @@ class PSFPhotometry:
 
             param_cov = info.get('param_cov', None)
             if param_cov is None:
-                param_err = np.array([np.nan] * nparam * model_nsub)
+                param_err = np.nan
             else:
                 param_err = np.sqrt(np.diag(param_cov))
 
@@ -354,28 +351,29 @@ class PSFPhotometry:
             fit_models.extend(self._split_compound_model(model, psf_nsub))
             nsources = model_nsub // psf_nsub
             fit_infos.extend([info] * nsources)  # views
-            if nparam != 0:
+            if param_cov is not None:
                 fit_param_errs.extend(self._split_param_errs(param_err,
                                                              nparam))
+            else:
+                fit_param_errs.extend([np.nan] * model_nsub)
 
         if len(fit_models) != len(fit_infos):
             raise ValueError('fit_models and fit_infos have different lengths')
 
         # change the sorting from group_id to source id order
-        fit_models = [fit_models[i] for i in self._ungroup_indices]
-        fit_infos = [fit_infos[i] for i in self._ungroup_indices]
-        if nparam != 0:
-            fit_param_errs = [fit_param_errs[i] for i in self._ungroup_indices]
+        fit_models = self._order_by_id(fit_models)
+        fit_infos = self._order_by_id(fit_infos)
+        fit_param_errs = np.array(self._order_by_id(fit_param_errs))
 
-        self.fit_models = fit_models
-        self.fit_infos = fit_infos
-        self._fit_param_errs = np.array(fit_param_errs)
+        self.fit_results['fit_models'] = fit_models
+        self.fit_results['fit_infos'] = fit_infos
+        self.fit_results['fit_param_errs'] = fit_param_errs
 
         return fit_models
 
     def _set_fit_error_indices(self):
         indices = []
-        for index, fit_info in enumerate(self.fit_infos):
+        for index, fit_info in enumerate(self.fit_results['fit_infos']):
             ierr = fit_info.get('ierr', None)
             if ierr not in (1, 2, 3, 4):  # all good flags defined by scipy
                 indices.append(index)
@@ -395,7 +393,9 @@ class PSFPhotometry:
 
         fit_models = []
         fit_infos = []
+        nmodels = []
         for sources_ in sources:  # fit in group_id order
+            nmodels.append(len(sources_))
             psf_model = self._make_psf_model(sources_)
             yi, xi = self._define_fit_coords(sources_, data.shape, mask)
             cutout = data[yi, xi]
@@ -422,10 +422,12 @@ class PSFPhotometry:
             fit_models.append(fit_model)
             fit_infos.append(fit_info)
 
+        self._group_results['fit_models'] = fit_models
+        self._group_results['fit_infos'] = fit_infos
+        self._group_results['nmodels'] = nmodels
+
         # split the groups and return objects in source-id order
-        self._fit_group_models = fit_models
-        self._fit_group_infos = fit_infos
-        fit_models = self._split_groups(fit_models, fit_infos)
+        fit_models = self._make_fit_results(fit_models, fit_infos)
         self._set_fit_error_indices()
 
         return fit_models
@@ -453,7 +455,7 @@ class PSFPhotometry:
         table = QTable()
         for index, name in enumerate(self._unfixed_params):
             colname = param_map[name]
-            table[colname] = self._fit_param_errs[:, index]
+            table[colname] = self.fit_results['fit_param_errs'][:, index]
 
         # order error columns
         colnames = ('x_err', 'y_err', 'flux_err')
@@ -466,7 +468,7 @@ class PSFPhotometry:
 
         psf_shape = self.fit_shape
         model_resid = []
-        for i, fit_model in enumerate(self.fit_models):
+        for i, fit_model in enumerate(self.fit_results['fit_models']):
             x0 = source_tbl['x_init'][i]
             y0 = source_tbl['y_init'][i]
             slc_lg, _ = overlap_slices(data.shape, psf_shape, (y0, x0),
@@ -476,8 +478,12 @@ class PSFPhotometry:
             model_resid.append(data[slc_lg] - res)
         self.model_resid = model_resid
 
+        # FIXME
+        #self._group_index.append(np.cumsum(group_npixfit)[:-1])
+
         fit_residuals = []
-        for idx, fit_info in zip(self._group_index, self._fit_group_infos):
+        for idx, fit_info in zip(self._group_results['group_index'],
+                                 self._group_results['fit_infos']):
             fit_residuals.extend(np.split(fit_info['fvec'], idx))
         fit_residuals = [fit_residuals[i] for i in self._ungroup_indices]
         self.fit_res = fit_residuals
@@ -495,9 +501,11 @@ class PSFPhotometry:
             cfit = []
             cfit2 = []
 
+            #self._group_results['cen_res_idx'].append(cen_index)
+
             for index, (model, residual, res_cen_idx) in enumerate(
-                    zip(self.fit_models, fit_residuals,
-                        self._cen_residual_indices)):
+                    zip(self.fit_results['fit_models'], fit_residuals,
+                        self._group_results['cen_res_idx'])):
                 source = source_tbl[index]
                 xcen = int(source[self._xinit_name] + 0.5)
                 ycen = int(source[self._yinit_name] + 0.5)
@@ -519,11 +527,11 @@ class PSFPhotometry:
         return qfit, cfit, qfit2, cfit2
 
     def _define_flags(self):
-        flags = np.zeros(len(self.fit_infos), dtype=int)
+        flags = np.zeros(len(self.fit_results['fit_infos']), dtype=int)
         flags[self.fit_error_indices] = 1
 
         idx = []
-        for index, fit_info in enumerate(self.fit_infos):
+        for index, fit_info in enumerate(self.fit_results['fit_infos']):
             if 'completely masked' in fit_info['message']:
                 idx.append(index)
         flags[idx] = 2
@@ -597,30 +605,30 @@ class PSFPhotometry:
                              'different lengths')
         source_tbl = hstack((init_params, fit_sources))
 
-        param_errors = self._param_errors_to_table()
-        if len(param_errors) > 0:
-            if len(param_errors) != len(source_tbl):
-                raise ValueError('param errors and fit sources tables have '
-                                 'different lengths')
-            source_tbl = hstack((source_tbl, param_errors))
+        #param_errors = self._param_errors_to_table()
+        #if len(param_errors) > 0:
+        #    if len(param_errors) != len(source_tbl):
+        #        raise ValueError('param errors and fit sources tables have '
+        #                         'different lengths')
+        #    source_tbl = hstack((source_tbl, param_errors))
 
         # flatten the indices and put in source-id order
-        nfit = self._flatten(self._group_nfit)
+        nfit = self._flatten(self._group_results['npixfit'])
         nfit = [nfit[i] for i in self._ungroup_indices]
-        self._group_nfit = nfit
-        source_tbl['nfit'] = self._group_nfit
+        self._group_results['npixfit'] = nfit
+        source_tbl['npixfit'] = self._group_results['npixfit']
 
-        indices = self._flatten(self._cen_residual_indices)
-        indices = [indices[i] for i in self._ungroup_indices]
-        self._cen_residual_indices = indices
+        #indices = self._flatten(self._cen_residual_indices)
+        #indices = [indices[i] for i in self._ungroup_indices]
+        #self._cen_residual_indices = indices
 
-        qfit, cfit, qfit2, cfit2 = self._calc_fit_metrics(data, source_tbl)
-        source_tbl['qfit'] = qfit
-        source_tbl['qfit2'] = qfit2
-        source_tbl['cfit'] = cfit
-        source_tbl['cfit2'] = cfit2
+        #qfit, cfit, qfit2, cfit2 = self._calc_fit_metrics(data, source_tbl)
+        #source_tbl['qfit'] = qfit
+        #source_tbl['qfit2'] = qfit2
+        #source_tbl['cfit'] = cfit
+        #source_tbl['cfit2'] = cfit2
 
-        source_tbl['flags'] = self._define_flags()
+        #source_tbl['flags'] = self._define_flags()
 
         if len(self.fit_error_indices) > 0:
             warnings.warn('One or more fit(s) may not have converged. Please '
@@ -656,7 +664,7 @@ class PSFPhotometry:
         return tuple(names)
 
     def make_model_image(self, shape, psf_shape):
-        fit_models = self.fit_models
+        fit_models = self.fit_results['fit_models']
 
         data = np.zeros(shape)
         xname, yname, _ = self._get_psf_param_names()
