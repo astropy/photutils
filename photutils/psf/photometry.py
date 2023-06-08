@@ -395,22 +395,24 @@ class PSFPhotometry:
             yi, xi = self._define_fit_coords(sources_, data.shape, mask)
             cutout = data[yi, xi]
 
-            if cutout.shape == (0,):
-                fit_model = psf_model  # no fit was performed (initial model)
-                fit_info = {'message': 'Source was not fit because it was '
-                            'completely masked'}
+            if error is not None:
+                weights = 1.0 / error[yi, xi]
             else:
-                if error is not None:
-                    weights = 1.0 / error[yi, xi]
-                else:
-                    weights = None
+                weights = None
 
-                with warnings.catch_warnings():
-                    warnings.simplefilter('ignore', AstropyUserWarning)
-                    # TODO: TypeError improper input
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', AstropyUserWarning)
+                try:
                     fit_model = self.fitter(psf_model, xi, yi, cutout,
                                             weights=weights, **kwargs)
-                    fit_info = self.fitter.fit_info.copy()
+                except TypeError as exc:
+                    msg = ('The number of data points is less than the '
+                           'number of fit parameters. This is likely due '
+                           'to overmasked data. Please check the input '
+                           'mask.')
+                    raise ValueError(msg) from exc
+
+                fit_info = self.fitter.fit_info.copy()
 
             fit_models.append(fit_model)
             fit_infos.append(fit_info)
