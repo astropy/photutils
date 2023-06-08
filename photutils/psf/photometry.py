@@ -11,7 +11,7 @@ import warnings
 import numpy as np
 from astropy.modeling import Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata import overlap_slices
+from astropy.nddata import overlap_slices, NoOverlapError
 from astropy.table import QTable, Table, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -260,7 +260,6 @@ class PSFPhotometry:
         return psf_model
 
     def _define_fit_coords(self, sources, shape, mask):
-        hshape = (self.fit_shape - 1) // 2
         yi = []
         xi = []
         npixfit = []
@@ -268,17 +267,21 @@ class PSFPhotometry:
         for row in sources:
             xcen = int(row[self._xinit_name] + 0.5)
             ycen = int(row[self._yinit_name] + 0.5)
-            # max values are non-inclusive (slices)
-            xmin = max((0, xcen - hshape[1]))
-            xmax = min((shape[1], xcen + hshape[1] + 1))
-            ymin = max((0, ycen - hshape[0]))
-            ymax = min((shape[0], ycen + hshape[0] + 1))
-            yy, xx = np.mgrid[ymin:ymax, xmin:xmax]
+
+            try:
+                slc_lg, _ = overlap_slices(shape, self.fit_shape,
+                                           (ycen, xcen), mode='trim')
+            except NoOverlapError as exc:
+                msg = (f'Initial source at ({xcen}, {ycen}) does not '
+                       'overlap with the input data.')
+                raise ValueError(msg) from exc
+
+            yy, xx = np.mgrid[slc_lg]
 
             if mask is not None:
                 inv_mask = ~mask[yy, xx]
                 if np.count_nonzero(inv_mask) == 0:
-                    msg = (f'Source at {(xcen, ycen)} is completely masked. '
+                    msg = (f'Source at ({xcen}, {ycen}) is completely masked. '
                            'Remove the source from init_params or correct '
                            'the input mask.')
                     raise ValueError(msg)
@@ -457,12 +460,15 @@ class PSFPhotometry:
             colname = param_map[name]
             table[colname] = self.fit_results['fit_param_errs'][:, index]
 
-        # order error columns
+        # add missing error columns
         colnames = ('x_err', 'y_err', 'flux_err')
-        tmp = {val: i for i, val in enumerate(colnames)}
-        sorted_colnames = sorted(table.colnames, key=lambda val: tmp[val])
+        nsources = len(self.fit_results['fit_models'])
+        for colname in colnames:
+            if colname not in table.colnames:
+                table[colname] = [np.nan] * nsources
 
-        return table[sorted_colnames]
+        # sort column names
+        return table[colnames]
 
     def _calc_fit_metrics(self, data, source_tbl):
 
@@ -605,12 +611,12 @@ class PSFPhotometry:
                              'different lengths')
         source_tbl = hstack((init_params, fit_sources))
 
-        #param_errors = self._param_errors_to_table()
-        #if len(param_errors) > 0:
-        #    if len(param_errors) != len(source_tbl):
-        #        raise ValueError('param errors and fit sources tables have '
-        #                         'different lengths')
-        #    source_tbl = hstack((source_tbl, param_errors))
+        param_errors = self._param_errors_to_table()
+        if len(param_errors) > 0:
+            if len(param_errors) != len(source_tbl):
+                raise ValueError('param errors and fit sources tables have '
+                                 'different lengths')
+            source_tbl = hstack((source_tbl, param_errors))
 
         # flatten the indices and put in source-id order
         nfit = self._flatten(self._group_results['npixfit'])
