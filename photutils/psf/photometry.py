@@ -59,6 +59,7 @@ class PSFPhotometry:
         self._fit_param_errs = []
         self._ungroup_indices = []
         self._cen_residual_indices = []
+        self._group_nfit = []
         self._group_index = []
 
         self._valid_x_colnames = ('x_init', 'xcentroid', 'x_centroid',
@@ -265,7 +266,7 @@ class PSFPhotometry:
         hshape = (self.fit_shape - 1) // 2
         yi = []
         xi = []
-        group_index = []
+        group_nfit = []
         cen_index = []
         for row in sources:
             xcen = int(row[self._xinit_name] + 0.5)
@@ -279,6 +280,12 @@ class PSFPhotometry:
 
             if mask is not None:
                 inv_mask = ~mask[yy, xx]
+                if np.count_nonzero(inv_mask) == 0:
+                    msg = (f'Source at {(xcen, ycen)} is completely masked. '
+                           'Remove the source from init_params or correct '
+                           'the input mask.')
+                    raise ValueError(msg)
+
                 yy = yy[inv_mask]
                 xx = xx[inv_mask]
             else:
@@ -292,7 +299,7 @@ class PSFPhotometry:
 
             xi.append(xx)
             yi.append(yy)
-            group_index.append(len(xx))
+            group_nfit.append(len(xx))
 
         # flatten the lists, which may contain arrays of different
         # lengths due to masking
@@ -300,7 +307,8 @@ class PSFPhotometry:
         yi = self._flatten(yi)
 
         self._cen_residual_indices.append(cen_index)
-        self._group_index.append(np.cumsum(group_index)[:-1])
+        self._group_nfit.append(group_nfit)
+        self._group_index.append(np.cumsum(group_nfit)[:-1])
 
         return yi, xi
 
@@ -464,6 +472,7 @@ class PSFPhotometry:
         fit_residuals = []
         for idx, fit_info in zip(self._group_index, self._fit_group_infos):
             fit_residuals.extend(np.split(fit_info['fvec'], idx))
+        fit_residuals = [fit_residuals[i] for i in self._ungroup_indices]
         self.fit_res = fit_residuals
 
         if len(fit_residuals) != len(source_tbl):
@@ -589,6 +598,11 @@ class PSFPhotometry:
             source_tbl = hstack((source_tbl, param_errors))
 
         # flatten the indices and put in source-id order
+        nfit = self._flatten(self._group_nfit)
+        nfit = [nfit[i] for i in self._ungroup_indices]
+        self._group_nfit = nfit
+        source_tbl['nfit'] = self._group_nfit
+
         indices = self._flatten(self._cen_residual_indices)
         indices = [indices[i] for i in self._ungroup_indices]
         self._cen_residual_indices = indices
