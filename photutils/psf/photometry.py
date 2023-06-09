@@ -327,6 +327,13 @@ class PSFPhotometry:
         """
         return [iterable[i] for i in self._ungroup_indices]
 
+    def _ungroup(self, iterable):
+        """
+        Expand a list of lists (groups) and reorder in source-id order.
+        """
+        iterable = self._flatten(iterable)
+        return self._order_by_id(iterable)
+
     def _make_fit_results(self, models, infos):
         psf_nsub = self.psf_model.n_submodels
 
@@ -396,7 +403,8 @@ class PSFPhotometry:
         fit_infos = []
         nmodels = []
         for sources_ in sources:  # fit in group_id order
-            nmodels.append(len(sources_))
+            nsources = len(sources_)
+            nmodels.append([nsources] * nsources)
             psf_model = self._make_psf_model(sources_)
             yi, xi = self._define_fit_coords(sources_, data.shape, mask)
             cutout = data[yi, xi]
@@ -469,13 +477,16 @@ class PSFPhotometry:
         return table[colnames]
 
     def _calc_fit_metrics(self, data, source_tbl):
+        #indices = self._flatten(self._cen_residual_indices)
+        #indices = [indices[i] for i in self._ungroup_indices]
+        #self._cen_residual_indices = indices
 
         model_resid = []
         for i, fit_model in enumerate(self.fit_results['fit_models']):
             x0 = source_tbl['x_init'][i]
             y0 = source_tbl['y_init'][i]
-            slc_lg, _ = overlap_slices(data.shape, self.fit_shape, (y0, x0),
-                                       mode='trim')
+            slc_lg, _ = overlap_slices(data.shape, self.fit_shape,
+                                       (y0, x0), mode='trim')
             yy, xx = np.mgrid[slc_lg]
             res = fit_model(xx, yy)
             model_resid.append(data[slc_lg] - res)
@@ -621,15 +632,13 @@ class PSFPhotometry:
                                  'different lengths')
             source_tbl = hstack((source_tbl, param_errors))
 
-        # flatten the indices and put in source-id order
-        nfit = self._flatten(self._group_results['npixfit'])
-        nfit = [nfit[i] for i in self._ungroup_indices]
-        self._group_results['npixfit'] = nfit
-        source_tbl['npixfit'] = self._group_results['npixfit']
+        npixfit = self._ungroup(self._group_results['npixfit'])
+        self.fit_results['npixfit'] = npixfit
+        source_tbl['npixfit'] = npixfit
 
-        #indices = self._flatten(self._cen_residual_indices)
-        #indices = [indices[i] for i in self._ungroup_indices]
-        #self._cen_residual_indices = indices
+        nmodels = self._ungroup(self._group_results['nmodels'])
+        self.fit_results['nmodels'] = nmodels
+        source_tbl['group_size'] = nmodels
 
         #qfit, cfit, qfit2, cfit2 = self._calc_fit_metrics(data, source_tbl)
         #source_tbl['qfit'] = qfit
