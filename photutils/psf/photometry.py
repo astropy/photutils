@@ -470,12 +470,11 @@ class PSFPhotometry:
 
     def _calc_fit_metrics(self, data, source_tbl):
 
-        psf_shape = self.fit_shape
         model_resid = []
         for i, fit_model in enumerate(self.fit_results['fit_models']):
             x0 = source_tbl['x_init'][i]
             y0 = source_tbl['y_init'][i]
-            slc_lg, _ = overlap_slices(data.shape, psf_shape, (y0, x0),
+            slc_lg, _ = overlap_slices(data.shape, self.fit_shape, (y0, x0),
                                        mode='trim')
             yy, xx = np.mgrid[slc_lg]
             res = fit_model(xx, yy)
@@ -530,15 +529,21 @@ class PSFPhotometry:
 
         return qfit, cfit, qfit2, cfit2
 
-    def _define_flags(self):
+    def _define_flags(self, source_tbl, shape):
         flags = np.zeros(len(self.fit_results['fit_infos']), dtype=int)
-        flags[self.fit_error_indices] = 1
 
-        idx = []
+        for index, row in enumerate(source_tbl):
+            if row['npixfit'] < np.prod(self.fit_shape):
+                flags[index] += 1
+            if (row['x_fit'] < 0 or row['y_fit'] < 0
+                    or row['x_fit'] > shape[1] or row['y_fit'] > shape[0]):
+                flags[index] += 2
+
+        flags[self.fit_error_indices] += 4
+
         for index, fit_info in enumerate(self.fit_results['fit_infos']):
-            if 'completely masked' in fit_info['message']:
-                idx.append(index)
-        flags[idx] = 2
+            if fit_info['param_cov'] is None:
+                flags[index] += 8
 
         return flags
 
@@ -632,13 +637,12 @@ class PSFPhotometry:
         #source_tbl['cfit'] = cfit
         #source_tbl['cfit2'] = cfit2
 
-        #source_tbl['flags'] = self._define_flags()
+        source_tbl['flags'] = self._define_flags(source_tbl, data.shape)
 
         if len(self.fit_error_indices) > 0:
             warnings.warn('One or more fit(s) may not have converged. Please '
-                          'check the "flags" column in the output table, and '
-                          'the "fit_error_indices" and "fit_infos" attributes '
-                          'for more information.', AstropyUserWarning)
+                          'check the "flags" column in the output table.',
+                          AstropyUserWarning)
 
         return source_tbl
 
@@ -648,8 +652,8 @@ class PSFPhotometry:
         and flux.
 
         The PSF model must either define 'xname', 'yname', and
-        'fluxname' attributes or have parameters called 'x_0', 'y_0',
-        and 'flux'. Otherwise, a `ValueError` is raised.
+        'fluxname' attributes (checked first) or have parameters called
+        'x_0', 'y_0', and 'flux'. Otherwise, a `ValueError` is raised.
         """
         keys = [('xname', 'x_0'), ('yname', 'y_0'), ('fluxname', 'flux')]
         names = []
