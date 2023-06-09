@@ -73,6 +73,8 @@ class PSFPhotometry:
 
     @staticmethod
     def _validate_model(psf_model):
+        # TODO: also allow output of prepare_psf_model (CompoundModel)
+        #       when prepare_psf_model is fixed
         if not isinstance(psf_model, Fittable2DModel):
             raise TypeError('psf_model must be an astropy Fittable2DModel')
         return psf_model
@@ -257,12 +259,38 @@ class PSFPhotometry:
 
         return init_params
 
+    def _get_psf_param_names(self):
+        """
+        Get the names of the PSF model parameters corresponding to x, y,
+        and flux.
+
+        The PSF model must either define 'xname', 'yname', and
+        'fluxname' attributes (checked first) or have parameters called
+        'x_0', 'y_0', and 'flux'. Otherwise, a `ValueError` is raised.
+        """
+        keys = [('xname', 'x_0'), ('yname', 'y_0'), ('fluxname', 'flux')]
+        names = []
+        for key in keys:
+            try:
+                name = getattr(self.psf_model, key[0])
+            except AttributeError as exc:
+                if key[1] in self.psf_model.param_names:
+                    name = key[1]
+                else:
+                    msg = 'Could not find PSF parameter names'
+                    raise ValueError(msg) from exc
+
+            names.append(name)
+
+        return tuple(names)
+
     def _param_map(self):
-        # TODO: generalize this mapping based of self.psf_model
+        psf_param_names = self._get_psf_param_names()
+
         param_map = {}
-        param_map[self._xinit_name] = 'x_0'
-        param_map[self._yinit_name] = 'y_0'
-        param_map[self._fluxinit_name] = 'flux'
+        param_map[self._xinit_name] = psf_param_names[0]
+        param_map[self._yinit_name] = psf_param_names[1]
+        param_map[self._fluxinit_name] = psf_param_names[2]
 
         init_suffix = self._xinit_name[1:]
         fit_param_map = {val: key.replace(init_suffix, '_fit')
@@ -700,31 +728,6 @@ class PSFPhotometry:
                           AstropyUserWarning)
 
         return source_tbl
-
-    def _get_psf_param_names(self):
-        """
-        Get the names of the PSF model parameters corresponding to x, y,
-        and flux.
-
-        The PSF model must either define 'xname', 'yname', and
-        'fluxname' attributes (checked first) or have parameters called
-        'x_0', 'y_0', and 'flux'. Otherwise, a `ValueError` is raised.
-        """
-        keys = [('xname', 'x_0'), ('yname', 'y_0'), ('fluxname', 'flux')]
-        names = []
-        for key in keys:
-            try:
-                name = getattr(self.psf_model, key[0])
-            except AttributeError as exc:
-                if key[1] in self.psf_model.param_names:
-                    name = key[1]
-                else:
-                    msg = 'Could not find PSF parameter names'
-                    raise ValueError(msg) from exc
-
-            names.append(name)
-
-        return tuple(names)
 
     def make_model_image(self, shape, psf_shape):
         fit_models = self.fit_results['fit_models']
