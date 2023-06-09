@@ -18,6 +18,7 @@ from astropy.table import QTable, Table, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
+from photutils.utils._misc import _get_meta
 from photutils.utils._optional_deps import HAS_TQDM
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
@@ -686,6 +687,12 @@ class PSFPhotometry:
         if unit is not None:
             source_tbl['flux_fit'] <<= unit
             source_tbl['flux_err'] <<= unit
+
+        meta = _get_meta()
+        attrs = ('fit_shape', 'maxiters', 'aperture_radius', 'progress_bar')
+        for attr in attrs:
+            meta[attr] = getattr(self, attr)
+        source_tbl.meta = meta
 
         if len(self.fit_error_indices) > 0:
             warnings.warn('One or more fit(s) may not have converged. Please '
