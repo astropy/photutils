@@ -339,7 +339,9 @@ class PSFPhotometry:
 
             param_cov = info.get('param_cov', None)
             if param_cov is None:
-                param_err = np.nan
+                if nparam == 0:  # model params are all fixed
+                    nparam = 3
+                param_err = np.array([np.nan] * nparam * model_nsub)
             else:
                 param_err = np.sqrt(np.diag(param_cov))
 
@@ -354,11 +356,7 @@ class PSFPhotometry:
             fit_models.extend(self._split_compound_model(model, psf_nsub))
             nsources = model_nsub // psf_nsub
             fit_infos.extend([info] * nsources)  # views
-            if param_cov is not None:
-                fit_param_errs.extend(self._split_param_errs(param_err,
-                                                             nparam))
-            else:
-                fit_param_errs.extend([np.nan] * model_nsub)
+            fit_param_errs.extend(self._split_param_errs(param_err, nparam))
 
         if len(fit_models) != len(fit_infos):
             raise ValueError('fit_models and fit_infos have different lengths')
