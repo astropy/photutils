@@ -489,17 +489,6 @@ class PSFPhotometry:
         cen_idx = self._ungroup(self._group_results['cen_res_idx'])
         self.fit_results['cen_res_idx'] = cen_idx
 
-        model_resid = []
-        for i, fit_model in enumerate(self.fit_results['fit_models']):
-            x0 = source_tbl['x_init'][i]
-            y0 = source_tbl['y_init'][i]
-            slc_lg, _ = overlap_slices(data.shape, self.fit_shape,
-                                       (y0, x0), mode='trim')
-            yy, xx = np.mgrid[slc_lg]
-            res = fit_model(xx, yy)
-            model_resid.append(data[slc_lg] - res)
-        self.model_resid = model_resid  # TEMP
-
         split_index = []
         for npixfit in self._group_results['npixfit']:
             split_index.append(np.cumsum(npixfit)[:-1])
@@ -516,9 +505,6 @@ class PSFPhotometry:
             if len(residuals) != npixfit:
                 raise ValueError('size of residuals does not match npixfit')
 
-        # TEMP
-        self.fit_res = fit_residuals
-
         if len(fit_residuals) != len(source_tbl):
             raise ValueError('fit_residuals does not match the source '
                              'table length')
@@ -528,10 +514,7 @@ class PSFPhotometry:
             warnings.simplefilter('ignore', RuntimeWarning)
 
             qfit = []
-            qfit2 = []
             cfit = []
-            cfit2 = []
-
             for index, (model, residual, cen_idx_) in enumerate(
                     zip(self.fit_results['fit_models'], fit_residuals,
                         cen_idx)):
@@ -539,21 +522,17 @@ class PSFPhotometry:
                 xcen = int(source[self._xinit_name] + 0.5)
                 ycen = int(source[self._yinit_name] + 0.5)
                 flux_fit = source['flux_fit']
-                # flux_fit2 = model.flux.value  # identical to flux_fit
                 qfit.append(np.sum(np.abs(residual)) / flux_fit)
-                qfit2.append(np.sum(np.abs(model_resid[index])) / flux_fit)
 
                 if np.isnan(cen_idx_):
-                    # need to calculate residual at central pixel
+                    # calculate residual at central pixel
                     cen_residual = data[ycen, xcen] - model(xcen, ycen)
                 else:
                     # find residual at (xcen, ycen)
                     cen_residual = -residual[cen_idx_]
-
                 cfit.append(cen_residual / flux_fit)
-                cfit2.append((data[ycen, xcen] - model(xcen, ycen)) / flux_fit)
 
-        return qfit, cfit, qfit2, cfit2
+        return qfit, cfit
 
     def _define_flags(self, source_tbl, shape):
         flags = np.zeros(len(self.fit_results['fit_infos']), dtype=int)
@@ -658,11 +637,9 @@ class PSFPhotometry:
         self.fit_results['nmodels'] = nmodels
         source_tbl['group_size'] = nmodels
 
-        qfit, cfit, qfit2, cfit2 = self._calc_fit_metrics(data, source_tbl)
+        qfit, cfit = self._calc_fit_metrics(data, source_tbl)
         source_tbl['qfit'] = qfit
-        source_tbl['qfit2'] = qfit2
         source_tbl['cfit'] = cfit
-        source_tbl['cfit2'] = cfit2
 
         source_tbl['flags'] = self._define_flags(source_tbl, data.shape)
 
