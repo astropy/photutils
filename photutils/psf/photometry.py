@@ -53,6 +53,15 @@ class PSFPhotometry:
         self._fluxinit_name = self._init_colnames['flux_valid'][0]
 
         self._unfixed_params = self._get_unfixed_params()
+
+        # reset these attributes for each __call__ (see _reset_results)
+        self.finder_results = []
+        self.fit_error_indices = []
+        self.fit_results = defaultdict(list)
+        self._group_results = defaultdict(list)
+        self._ungroup_indices = []
+
+    def _reset_results(self):
         self.finder_results = []
         self.fit_error_indices = []
         self.fit_results = defaultdict(list)
@@ -568,6 +577,9 @@ class PSFPhotometry:
         """
         Perform PSF photometry.
         """
+        # reset results from previous runs
+        self._reset_results()
+
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
         data = self._validate_array(data, 'data')
