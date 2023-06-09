@@ -7,6 +7,11 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.background``
+
+  - Added ``LocalBackground`` class for computing local backgrounds in a
+    circular annulus aperture. [#1556]
+
 - ``photutils.psf``
 
   - Propagate measurement uncertainties in PSF fitting. [#1543]
