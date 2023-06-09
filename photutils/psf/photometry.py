@@ -3,15 +3,16 @@
 This module provides classes to perform PSF-fitting photometry.
 """
 
-from collections import defaultdict
-from itertools import chain
 import inspect
 import warnings
+from collections import defaultdict
+from itertools import chain
 
+import astropy.units as u
 import numpy as np
 from astropy.modeling import Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata import overlap_slices, NoOverlapError
+from astropy.nddata import NoOverlapError, overlap_slices
 from astropy.table import QTable, Table, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -143,7 +144,7 @@ class PSFPhotometry:
                 name = valid_name
         return name
 
-    def _validate_params(self, init_params):
+    def _validate_params(self, init_params, unit):
         if init_params is None:
             return init_params
 
@@ -164,9 +165,28 @@ class PSFPhotometry:
 
         fluxcolname = self._find_column_name('flux_valid',
                                              init_params.colnames)
+
         if fluxcolname:
             if fluxcolname != self._fluxinit_name:
                 init_params.rename_column(fluxcolname, self._fluxinit_name)
+
+            init_flux = init_params[self._fluxinit_name]
+            if isinstance(init_flux, u.Quantity):
+                if unit is None:
+                    raise ValueError('init_params flux column has '
+                                     'units, but the input data does not '
+                                     'have units.')
+                try:
+                    init_params[self._fluxinit_name] = init_flux.to(unit)
+                except u.UnitConversionError as exc:
+                    raise ValueError('init_params flux column has '
+                                     'units that are incompatible with '
+                                     'the input data units.') from exc
+            else:
+                if unit is not None:
+                    raise ValueError('The input data has units, but the '
+                                     'init_params flux column does not have '
+                                     'units.')
 
         return init_params
 
@@ -218,7 +238,7 @@ class PSFPhotometry:
         flux, _ = apertures.do_photometry(data, mask=mask)
         return flux
 
-    def _make_init_params(self, data, mask, sources):
+    def _make_init_params(self, data, mask, sources, unit):
         """
         sources : `~astropy.table.Table`
             Output from star finder with 'xcentroid' and 'ycentroid'
@@ -228,8 +248,10 @@ class PSFPhotometry:
         init_params['id'] = np.arange(len(sources)) + 1
         init_params[self._xinit_name] = sources['xcentroid']
         init_params[self._yinit_name] = sources['ycentroid']
-        init_params[self._fluxinit_name] = self._get_aper_fluxes(data, mask,
-                                                                 init_params)
+        flux = self._get_aper_fluxes(data, mask, init_params)
+        if unit is not None:
+            flux <<= unit
+        init_params[self._fluxinit_name] = flux
 
         return init_params
 
@@ -258,7 +280,10 @@ class PSFPhotometry:
         for index, source in enumerate(sources):
             model = self.psf_model.copy()
             for param, model_param in param_map.items():
-                setattr(model, model_param, source[param])
+                value = source[param]
+                if isinstance(value, u.Quantity):
+                    value = value.value  # psf model cannot be fit with units
+                setattr(model, model_param, value)
                 model.name = source['id']
 
             if index == 0:
@@ -565,7 +590,7 @@ class PSFPhotometry:
         mask = self._make_mask(data,
                                self._validate_array(mask, 'mask',
                                                     data_shape=data.shape))
-        init_params = self._validate_params(init_params)  # also copies
+        init_params = self._validate_params(init_params, unit)  # also copies
 
         if (self.aperture_radius is None
             and (init_params is None
@@ -584,7 +609,7 @@ class PSFPhotometry:
             if sources is None:
                 return None
 
-            init_params = self._make_init_params(data, mask, sources)
+            init_params = self._make_init_params(data, mask, sources, unit)
         else:
             colnames = init_params.colnames
             if 'id' not in colnames:
@@ -643,6 +668,10 @@ class PSFPhotometry:
 
         source_tbl['flags'] = self._define_flags(source_tbl, data.shape)
 
+        if unit is not None:
+            source_tbl['flux_fit'] <<= unit
+            source_tbl['flux_err'] <<= unit
+
         if len(self.fit_error_indices) > 0:
             warnings.warn('One or more fit(s) may not have converged. Please '
                           'check the "flags" column in the output table.',
@@ -679,7 +708,7 @@ class PSFPhotometry:
         fit_models = self.fit_results['fit_models']
 
         data = np.zeros(shape)
-        xname, yname, _ = self._get_psf_param_names()
+        xname, yname = self._get_psf_param_names()[0:2]
 
         desc = 'Model image'
         fit_models = self._add_progress_bar(fit_models, desc=desc)
