@@ -12,7 +12,8 @@ import astropy.units as u
 import numpy as np
 from astropy.modeling import Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata import NoOverlapError, overlap_slices
+from astropy.nddata import (NDData, NoOverlapError, StdDevUncertainty,
+                            overlap_slices)
 from astropy.table import QTable, Table, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -581,6 +582,20 @@ class PSFPhotometry:
         """
         Perform PSF photometry.
         """
+        if isinstance(data, NDData):
+            data_ = data.data
+            if data.unit is not None:
+                data_ <<= data.unit
+            mask = data.mask
+            unc = data.uncertainty
+            if unc is not None:
+                unc = unc.represent_as(StdDevUncertainty)
+                error = unc.array
+                if unc.unit is not None:
+                    error <<= unc.unit
+            return self.__call__(data_, mask=mask, error=error,
+                                 init_params=init_params)
+
         # reset results from previous runs
         self._reset_results()
 
