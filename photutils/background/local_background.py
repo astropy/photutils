@@ -13,6 +13,27 @@ __all__ = ['LocalBackground']
 
 
 class LocalBackground:
+    """
+    Class to compute a local background using a circular annulus
+    aperture.
+
+    Parameters
+    ----------
+    inner_radius : float
+        The inner radius of the circular annulus in pixels.
+
+    outer_radius : float
+        The outer radius of the circular annulus in pixels.
+
+    bkg_estimator : callable, optional
+        A callable object (a function or e.g., an instance of any
+        `~photutils.background.BackgroundBase` subclass) used to
+        estimate the background in each aperture. The callable object
+        must take in a 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+        and have an ``axis`` keyword. The default is an instance of
+        `~photutils.background.MedianBackground` with sigma clipping
+        (i.e. sigma-clipped median).
+    """
     def __init__(self, inner_radius, outer_radius,
                  bkg_estimator=MedianBackground()):
         self.inner_radius = inner_radius
@@ -29,7 +50,7 @@ class LocalBackground:
         data : 2D `~numpy.ndarray`
             The 2D array on which to measure the local background.
 
-        x, y : float or 1D float `~numpy.nddarray`
+        x, y : float or 1D float `~numpy.ndarray`
             The aperture center (x, y) position(s) at which to measure
             the local background.
 
