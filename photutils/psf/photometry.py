@@ -284,6 +284,8 @@ class PSFPhotometry:
                     init_params[self._yinit_name], mask=mask)
             init_params['local_bkg'] = local_bkg
 
+        self.fit_results['local_bkg'] = init_params['local_bkg']
+
         if self.grouper is not None:
             # TODO: change grouper API
             # init_params['group_id'] = self.grouper(init_params)
@@ -750,12 +752,13 @@ class PSFPhotometry:
         # fit_models must be a list of individual, not grouped, PSF
         # models, i.e., there should be one PSF model (which may be
         # compound) for each source
-        for fit_model in fit_models:
+        for fit_model, local_bkg in zip(fit_models,
+                                        self.fit_results['local_bkg']):
             x0 = getattr(fit_model, xname).value
             y0 = getattr(fit_model, yname).value
             slc_lg, _ = overlap_slices(shape, psf_shape, (y0, x0), mode='trim')
             yy, xx = np.mgrid[slc_lg]
-            data[slc_lg] += fit_model(xx, yy)
+            data[slc_lg] += (fit_model(xx, yy) + local_bkg)
 
         return data
 
