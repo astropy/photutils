@@ -37,8 +37,8 @@ class PSFPhotometry:
     """
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
-                 fitter=LevMarLSQFitter(), maxiters=100, aperture_radius=None,
-                 progress_bar=None):
+                 fitter=LevMarLSQFitter(), localbkg_estimator=None,
+                 maxiters=100, aperture_radius=None, progress_bar=None):
 
         self.psf_model = self._validate_model(psf_model)
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(0, 1),
@@ -46,6 +46,8 @@ class PSFPhotometry:
         self.grouper = self._validate_callable(grouper, 'grouper')
         self.finder = self._validate_callable(finder, 'finder')
         self.fitter = self._validate_callable(fitter, 'fitter')
+        self.localbkg_estimator = self._validate_callable(
+            localbkg_estimator, 'localbkg_estimator')
         self.maxiters = self._validate_maxiters(maxiters)
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
@@ -267,11 +269,20 @@ class PSFPhotometry:
                 # grouper is ignored if group_id is input in init_params
                 self.grouper = None
 
-        if self._fluxinit_name not in colnames:
+        if self._fluxinit_name not in init_params.colnames:
             flux = self._get_aper_fluxes(data, mask, init_params)
             if unit is not None:
                 flux <<= unit
             init_params[self._fluxinit_name] = flux
+
+        if 'local_bkg' not in init_params.colnames:
+            if self.localbkg_estimator is None:
+                local_bkg = np.zeros(len(init_params))
+            else:
+                local_bkg = self.localbkg_estimator(
+                    data, init_params[self._xinit_name],
+                    init_params[self._yinit_name], mask=mask)
+            init_params['local_bkg'] = local_bkg
 
         if self.grouper is not None:
             # TODO: change grouper API
@@ -283,9 +294,9 @@ class PSFPhotometry:
             init_params['group_id'] = init_params['id']
 
         # order init_params columns
-        colnames = ('id', 'group_id', self._xinit_name, self._yinit_name,
-                    self._fluxinit_name)
-        init_params = init_params[colnames]
+        colname_order = ('id', 'group_id', 'local_bkg', self._xinit_name,
+                         self._yinit_name, self._fluxinit_name)
+        init_params = init_params[colname_order]
 
         return init_params
 
@@ -353,9 +364,10 @@ class PSFPhotometry:
 
         return psf_model
 
-    def _define_fit_coords(self, sources, shape, mask):
+    def _define_fit_data(self, sources, data, mask):
         yi = []
         xi = []
+        cutout = []
         npixfit = []
         cen_index = []
         for row in sources:
@@ -363,7 +375,7 @@ class PSFPhotometry:
             ycen = int(row[self._yinit_name] + 0.5)
 
             try:
-                slc_lg, _ = overlap_slices(shape, self.fit_shape,
+                slc_lg, _ = overlap_slices(data.shape, self.fit_shape,
                                            (ycen, xcen), mode='trim')
             except NoOverlapError as exc:
                 msg = (f'Initial source at ({xcen}, {ycen}) does not '
@@ -388,6 +400,7 @@ class PSFPhotometry:
 
             xi.append(xx)
             yi.append(yy)
+            cutout.append(data[yy, xx] - row['local_bkg'])
             npixfit.append(len(xx))
 
             idx = np.where((xx == xcen) & (yy == ycen))[0]
@@ -399,11 +412,12 @@ class PSFPhotometry:
         # due to masking
         xi = self._flatten(xi)
         yi = self._flatten(yi)
+        cutout = self._flatten(cutout)
 
         self._group_results['npixfit'].append(npixfit)
         self._group_results['cen_res_idx'].append(cen_index)
 
-        return yi, xi
+        return yi, xi, cutout
 
     @staticmethod
     def _split_compound_model(model, chunk_size):
@@ -500,8 +514,7 @@ class PSFPhotometry:
             nsources = len(sources_)
             nmodels.append([nsources] * nsources)
             psf_model = self._make_psf_model(sources_)
-            yi, xi = self._define_fit_coords(sources_, data.shape, mask)
-            cutout = data[yi, xi]
+            yi, xi, cutout = self._define_fit_data(sources_, data, mask)
 
             if error is not None:
                 weights = 1.0 / error[yi, xi]
@@ -706,6 +719,7 @@ class PSFPhotometry:
         source_tbl['flags'] = self._define_flags(source_tbl, data.shape)
 
         if unit is not None:
+            source_tbl['local_bkg'] <<= unit
             source_tbl['flux_fit'] <<= unit
             source_tbl['flux_err'] <<= unit
 
