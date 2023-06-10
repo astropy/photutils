@@ -242,20 +242,50 @@ class PSFPhotometry:
         flux, _ = apertures.do_photometry(data, mask=mask)
         return flux
 
-    def _make_init_params(self, data, mask, sources, unit):
-        """
-        sources : `~astropy.table.Table`
-            Output from star finder with 'xcentroid' and 'ycentroid'
-            columns'.
-        """
-        init_params = QTable()
-        init_params['id'] = np.arange(len(sources)) + 1
-        init_params[self._xinit_name] = sources['xcentroid']
-        init_params[self._yinit_name] = sources['ycentroid']
-        flux = self._get_aper_fluxes(data, mask, init_params)
-        if unit is not None:
-            flux <<= unit
-        init_params[self._fluxinit_name] = flux
+    def _prepare_init_params(self, data, unit, mask, init_params):
+        if init_params is None:
+            if self.finder is None:
+                raise ValueError('finder must be defined if init_params '
+                                 'is not input')
+
+            sources = self.finder(data, mask=mask)
+            self.finder_results.append(sources)
+            if sources is None:
+                return None
+
+            init_params = QTable()
+            init_params['id'] = np.arange(len(sources)) + 1
+            init_params[self._xinit_name] = sources['xcentroid']
+            init_params[self._yinit_name] = sources['ycentroid']
+
+        else:
+            colnames = init_params.colnames
+            if 'id' not in colnames:
+                init_params['id'] = np.arange(len(init_params)) + 1
+
+            if 'group_id' in colnames:
+                # grouper is ignored if group_id is input in init_params
+                self.grouper = None
+
+        if self._fluxinit_name not in colnames:
+            flux = self._get_aper_fluxes(data, mask, init_params)
+            if unit is not None:
+                flux <<= unit
+            init_params[self._fluxinit_name] = flux
+
+        if self.grouper is not None:
+            # TODO: change grouper API
+            # init_params['group_id'] = self.grouper(init_params)
+            init_params = self.grouper(init_params)
+
+        # no grouping
+        if 'group_id' not in init_params.colnames:
+            init_params['group_id'] = init_params['id']
+
+        # order init_params columns
+        colnames = ('id', 'group_id', self._xinit_name, self._yinit_name,
+                    self._fluxinit_name)
+        init_params = init_params[colnames]
 
         return init_params
 
@@ -631,9 +661,8 @@ class PSFPhotometry:
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
         data = self._validate_array(data, 'data')
-        mask = self._make_mask(data,
-                               self._validate_array(mask, 'mask',
-                                                    data_shape=data.shape))
+        mask = self._validate_array(mask, 'mask', data_shape=data.shape)
+        mask = self._make_mask(data, mask)
         init_params = self._validate_params(init_params, unit)  # also copies
 
         if (self.aperture_radius is None
@@ -643,43 +672,7 @@ class PSFPhotometry:
                              'is not input or if a flux column is not in '
                              'init_params')
 
-        if init_params is None:
-            if self.finder is None:
-                raise ValueError('finder must be defined if init_params '
-                                 'is not input')
-
-            sources = self.finder(data, mask=mask)
-            self.finder_results.append(sources)
-            if sources is None:
-                return None
-
-            init_params = self._make_init_params(data, mask, sources, unit)
-        else:
-            colnames = init_params.colnames
-            if 'id' not in colnames:
-                init_params['id'] = np.arange(len(init_params)) + 1
-
-            if self._fluxinit_name not in colnames:
-                init_params[self._fluxinit_name] = self._get_aper_fluxes(
-                    data, mask, init_params)
-
-            if 'group_id' in colnames:
-                # grouper is ignored if group_id is input in init_params
-                self.grouper = None
-
-        if self.grouper is not None:
-            # TODO: change grouper API
-            # init_params['group_id'] = self.grouper(init_params)
-            init_params = self.grouper(init_params)
-
-        # no grouping
-        if 'group_id' not in init_params.colnames:
-            init_params['group_id'] = init_params['id']
-
-        # order init_params columns
-        colnames = ('id', 'group_id', self._xinit_name, self._yinit_name,
-                    self._fluxinit_name)
-        init_params = init_params[colnames]
+        init_params = self._prepare_init_params(data, unit, mask, init_params)
 
         fit_models = self._fit_sources(data, init_params, error=error,
                                        mask=mask)
