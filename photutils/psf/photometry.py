@@ -641,12 +641,14 @@ class PSFPhotometry:
             if (row['x_fit'] < 0 or row['y_fit'] < 0
                     or row['x_fit'] > shape[1] or row['y_fit'] > shape[0]):
                 flags[index] += 2
+            if row['flux_fit'] <= 0:
+                flags[index] += 4
 
-        flags[self.fit_error_indices] += 4
+        flags[self.fit_error_indices] += 8
 
         for index, fit_info in enumerate(self.fit_results['fit_infos']):
             if fit_info['param_cov'] is None:
-                flags[index] += 8
+                flags[index] += 16
 
         return flags
 
