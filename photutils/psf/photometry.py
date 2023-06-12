@@ -269,12 +269,6 @@ class PSFPhotometry:
                 # grouper is ignored if group_id is input in init_params
                 self.grouper = None
 
-        if self._fluxinit_name not in init_params.colnames:
-            flux = self._get_aper_fluxes(data, mask, init_params)
-            if unit is not None:
-                flux <<= unit
-            init_params[self._fluxinit_name] = flux
-
         if 'local_bkg' not in init_params.colnames:
             if self.localbkg_estimator is None:
                 local_bkg = np.zeros(len(init_params))
@@ -285,6 +279,13 @@ class PSFPhotometry:
             init_params['local_bkg'] = local_bkg
 
         self.fit_results['local_bkg'] = init_params['local_bkg']
+
+        if self._fluxinit_name not in init_params.colnames:
+            flux = self._get_aper_fluxes(data, mask, init_params)
+            flux -= init_params['local_bkg']
+            if unit is not None:
+                flux <<= unit
+            init_params[self._fluxinit_name] = flux
 
         if self.grouper is not None:
             # TODO: change grouper API
