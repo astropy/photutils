@@ -602,10 +602,23 @@ class PSFPhotometry:
         for npixfit in self._group_results['npixfit']:
             split_index.append(np.cumsum(npixfit)[:-1])
 
+        # find the key with the fit residual (fitter dependent)
+        finfo_keys = self._group_results['fit_infos'][0].keys()
+        keys = ('fvec', 'fun')
+        key = None
+        for key_ in keys:
+            if key_ in finfo_keys:
+                key = key_
+
+        # SimplexLSQFitter
+        if key is None:
+            qfit = cfit = np.array([[np.nan]] * len(source_tbl))
+            return qfit, cfit
+
         fit_residuals = []
         for idx, fit_info in zip(split_index,
                                  self._group_results['fit_infos']):
-            fit_residuals.extend(np.split(fit_info['fvec'], idx))
+            fit_residuals.extend(np.split(fit_info[key], idx))
         fit_residuals = self._order_by_id(fit_residuals)
         self.fit_results['fit_residuals'] = fit_residuals
 
@@ -644,7 +657,7 @@ class PSFPhotometry:
         return qfit, cfit
 
     def _define_flags(self, source_tbl, shape):
-        flags = np.zeros(len(self.fit_results['fit_infos']), dtype=int)
+        flags = np.zeros(len(source_tbl), dtype=int)
 
         for index, row in enumerate(source_tbl):
             if row['npixfit'] < np.prod(self.fit_shape):
@@ -657,9 +670,12 @@ class PSFPhotometry:
 
         flags[self.fit_error_indices] += 8
 
-        for index, fit_info in enumerate(self.fit_results['fit_infos']):
-            if fit_info['param_cov'] is None:
-                flags[index] += 16
+        try:
+            for index, fit_info in enumerate(self.fit_results['fit_infos']):
+                if fit_info['param_cov'] is None:
+                    flags[index] += 16
+        except KeyError:
+            pass
 
         return flags
 
