@@ -24,6 +24,7 @@ from photutils.utils._misc import _get_meta
 from photutils.utils._optional_deps import HAS_TQDM
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['PSFPhotometry', 'IterativePSFPhotometry']
 
@@ -1221,8 +1222,12 @@ class IterativePSFPhotometry:
 
             resid.append(residual_data)
 
-            new_tbl = self.psfphot(residual_data, mask=mask, error=error,
-                                   init_params=None)
+            # do not warn if no sources are found beyond the first iteration
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', NoDetectionsWarning)
+                new_tbl = self.psfphot(residual_data, mask=mask, error=error,
+                                       init_params=None)
+
             if new_tbl is None:  # no new sources detected
                 break
 
