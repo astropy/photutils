@@ -1107,6 +1107,8 @@ class IterativePSFPhotometry:
                                      aperture_radius=aperture_radius,
                                      progress_bar=progress_bar)
 
+        self.fit_results = []
+
     @staticmethod
     def _validate_maxiters(maxiters):
         if (not np.isscalar(maxiters) or maxiters <= 0
@@ -1201,7 +1203,8 @@ class IterativePSFPhotometry:
         phot_tbl = self.psfphot(data, mask=mask, error=error,
                                 init_params=init_params)
         if phot_tbl is None:
-            return
+            return None
+        self.fit_results.append(deepcopy(self.psfphot))
 
         phot_tbl['iter_detected'] = 1
 
@@ -1219,15 +1222,24 @@ class IterativePSFPhotometry:
             resid.append(residual_data)
 
             new_tbl = self.psfphot(residual_data, mask=mask, error=error,
-                                    init_params=None)
+                                   init_params=None)
             if new_tbl is None:  # no new sources detected
                 break
+
+            self.fit_results.append(deepcopy(self.psfphot))
+
             new_tbl['iter_detected'] = iter_num
             new_tbl['id'] += np.max(phot_tbl['id'])
             new_tbl['group_id'] += np.max(phot_tbl['group_id'])
 
             # combine tables
             phot_tbl = vstack([phot_tbl, new_tbl])
+
+            # re-order 'iter_detected' column
+            colnames = phot_tbl.colnames.copy()
+            colnames.insert(2, 'iter_detected')
+            colnames = colnames[:-1]
+            phot_tbl = phot_tbl[colnames]
 
             iter_num += 1
 
