@@ -6,6 +6,7 @@ This module provides classes to perform PSF-fitting photometry.
 import inspect
 import warnings
 from collections import defaultdict
+from copy import deepcopy
 from itertools import chain
 
 import astropy.units as u
@@ -994,7 +995,20 @@ class PSFPhotometry:
             The residual image of the ``data`` minus the ``local_bkg``
             minus the fit PSF models.
         """
-        return data - self.make_model_image(data.shape, psf_shape)
+        if isinstance(data, NDData):
+            residual = deepcopy(data)
+            residual.data[:] = self.make_residual_image(data.data, psf_shape)
+        else:
+            unit = None
+            if isinstance(data, u.Quantity):
+                unit = data.unit
+                data = data.value
+            residual = data - self.make_model_image(data.shape, psf_shape)
+
+            if unit is not None:
+                residual <<= unit
+
+        return residual
 
 
 class IterativePSFPhotometry:
