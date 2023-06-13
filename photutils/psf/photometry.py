@@ -34,11 +34,77 @@ class PSFPhotometry:
     find sources in an image, group overlapping sources, fit the PSF
     model to the sources, and subtract the fit PSF models from the
     image.
+
+    Parameters
+    ----------
+    psf_model : `astropy.modeling.Fittable2DModel`
+        The PSF model to fit to the data. The model needs to have
+        three parameters named ``x_0``, ``y_0``, and ``flux``,
+        corresponding to the center (x, y) position and flux.
+
+    fit_shape : int or length-2 array_like
+        The rectangular shape around the center of a star that will
+        be used to define the PSF-fitting data. If ``fit_shape`` is a
+        scalar then a square shape of size ``fit_shape`` will be used.
+        If ``fitshape`` has two elements, they must be in ``(ny, nx)``
+        order. Each element of ``fitshape`` must be an odd number.
+
+    finder : callable or `~photutils.detection.StarFinderBase` or `None`, optional
+        A callable used to identify stars in an image. The
+        ``finder`` must accept a 2D image as input and return a
+        `~astropy.table.Table` containing the x and y centroid
+        positions. These positions are used as the starting points for
+        the PSF fitting. The allowed ``x`` column names are (same suffix
+        for ``y``): ``'x_init'``, ``'xcentroid'``, ``'x_centroid'``,
+        ``'x_peak'``, ``'x'``, ``'xcen'``, ``'x_cen'``, ``'xpos'``, and
+        ``'x_pos'``. If `None`, then the initial (x, y) model positions
+        must be input using the ``init_params`` keyword when calling
+        the class. The (x, y) values in ``init_params`` override this
+        keyword.
+
+    grouper : callable or `~photutils.psf.GroupStarsBase` or `None`, optional
+        A callable used to group stars. Typically, grouped stars
+        are those that overlap with their neighbors. Stars that are
+        grouped are fit simultaneously. The ``grouper`` must accept a
+        `~astropy.table.Table` with columns named ``id``, ``x_init``,
+        and ``y_init`` and return a new `~astropy.table.Table`
+        with a ``group_id`` column. The column ``group_id`` should
+        contain integers starting from 1 that indicate the group in
+        which a given source belongs. If `None`, then no grouping
+        is performed, i.e. each source is fit independently. The
+        ``group_id`` values in ``init_params`` override this keyword.
+
+    fitter : `~astropy.modeling.fitting.Fitter`, optional
+        The fitter object used to perform the fit of the model to the
+        data.
+
+    localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
+        The object used to estimate the local background around each
+        source.  If `None`, then no local background is subtracted.  The
+        ``local_bkg`` values in ``init_params`` override this keyword.
+
+    maxiters : int, optional
+        The maximum number of iterations in which the ``fitter`` is
+        called for each source.
+
+    aperture_radius : float of `None`, optional
+        The radius of the circular aperture used to estimate the initial
+        flux of each source. If `None`, then the initial flux of each
+        source must be input using the ``init_params`` keyword when
+        calling the class. The ``flux_init` values in ``init_params``
+        override this keyword.
+
+    progress_bar : bool, optional
+        Whether to display a progress bar when fitting the
+        source groups. The progress bar requires that the `tqdm
+        <https://tqdm.github.io/>`_ optional dependency be installed.
+        Note that the progress bar does not currently work in the
+        Jupyter console due to limitations in ``tqdm``.
     """
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
                  fitter=LevMarLSQFitter(), localbkg_estimator=None,
-                 maxiters=100, aperture_radius=None, progress_bar=None):
+                 maxiters=100, aperture_radius=None, progress_bar=False):
 
         self.psf_model = self._validate_model(psf_model)
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(0, 1),
