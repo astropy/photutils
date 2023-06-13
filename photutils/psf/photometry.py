@@ -18,6 +18,7 @@ from astropy.table import QTable, Table, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
+from photutils.psf.groupstars import GroupStarsBase
 from photutils.utils._misc import _get_meta
 from photutils.utils._optional_deps import HAS_TQDM
 from photutils.utils._parameters import as_pair
@@ -62,15 +63,13 @@ class PSFPhotometry:
         the class. The (x, y) values in ``init_params`` override this
         keyword.
 
-    grouper : callable or `~photutils.psf.GroupStarsBase` or `None`, optional
-        A callable used to group stars. Typically, grouped stars
-        are those that overlap with their neighbors. Stars that are
-        grouped are fit simultaneously. The ``grouper`` must accept a
-        `~astropy.table.Table` with columns named ``id``, ``x_init``,
-        and ``y_init`` and return a new `~astropy.table.Table`
-        with a ``group_id`` column. The column ``group_id`` should
-        contain integers starting from 1 that indicate the group in
-        which a given source belongs. If `None`, then no grouping
+    grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
+        A callable used to group stars. Typically, grouped stars are
+        those that overlap with their neighbors. Stars that are grouped
+        are fit simultaneously. The ``grouper`` must accept the x and
+        y coordinates of the sources and return an integer array of
+        the group id numbers (starting from 1) indicating the group
+        in which a given source belongs. If `None`, then no grouping
         is performed, i.e. each source is fit independently. The
         ``group_id`` values in ``init_params`` override this keyword.
 
@@ -95,8 +94,8 @@ class PSFPhotometry:
         override this keyword.
 
     progress_bar : bool, optional
-        Whether to display a progress bar when fitting the
-        source groups. The progress bar requires that the `tqdm
+        Whether to display a progress bar when fitting the sources
+        (or groups). The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
         Note that the progress bar does not currently work in the
         Jupyter console due to limitations in ``tqdm``.
@@ -109,7 +108,7 @@ class PSFPhotometry:
         self.psf_model = self._validate_model(psf_model)
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(0, 1),
                                  check_odd=True)
-        self.grouper = self._validate_callable(grouper, 'grouper')
+        self.grouper = self._validate_grouper(grouper, 'grouper')
         self.finder = self._validate_callable(finder, 'finder')
         self.fitter = self._validate_callable(fitter, 'fitter')
         self.localbkg_estimator = self._validate_callable(
@@ -138,6 +137,13 @@ class PSFPhotometry:
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
         self._ungroup_indices = []
+
+    def _validate_grouper(self, grouper, name):
+        # remove this check when GroupStarsBase subclasses are removed
+        if isinstance(grouper, GroupStarsBase):
+            raise ValueError('Invalid grouper class. Please use '
+                             'SourceGrouper.')
+        return self._validate_callable(grouper, name)
 
     @staticmethod
     def _validate_model(psf_model):
@@ -348,9 +354,8 @@ class PSFPhotometry:
             init_params[self._fluxinit_name] = flux
 
         if self.grouper is not None:
-            # TODO: change grouper API
-            # init_params['group_id'] = self.grouper(init_params)
-            init_params = self.grouper(init_params)
+            init_params['group_id'] = self.grouper(
+                init_params['x_init'], init_params['y_init'])
 
         # no grouping
         if 'group_id' not in init_params.colnames:
