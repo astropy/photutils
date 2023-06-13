@@ -748,6 +748,79 @@ class PSFPhotometry:
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         """
         Perform PSF photometry.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D array on which to perform photometry. Invalid data
+            values (i.e., NaN or inf) are automatically masked.
+
+        mask : 2D bool `~numpy.ndarray`, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.
+
+        error : 2D `~numpy.ndarray`, optional
+            The pixel-wise 1-sigma errors of the input ``data``.
+            ``error`` is assumed to include *all* sources of
+            error, including the Poisson error of the sources
+            (see `~photutils.utils.calc_total_error`) . ``error``
+            must have the same shape as the input ``data``. If a
+            `~astropy.units.Quantity` array, then ``data`` must also be
+            a `~astropy.units.Quantity` array with the same units.
+
+        init_params : `~astropy.table.Table` or `None`, optional
+            A table containing the initial guesses of the (x, y, flux)
+            model parameters for each source. If the x and y values are
+            not input, then the ``finder`` keyword must be defined. If
+            the flux values are not input, then the ``aperture_radius``
+            keyword must be defined. The allowed column names are:
+
+              * ``x_init``, ``xcentroid``, ``x_centroid``, ``x_peak``,
+                ``x``, ``xcen``, ``x_cen``, ``xpos``, and ``x_pos``.
+
+              * ``y_init``, ``ycentroid``, ``y_centroid``, ``y_peak``,
+                ``y``, ``ycen``, ``y_cen``, ``ypos``, and ``y_pos``.
+
+              * ``flux_init``, ``flux``, ``source_sum``,
+                ``segment_flux``, and ``kron_flux``.
+
+            The parameter names are searched in the input table in the
+            above order, stopping at the first match.
+
+        Returns
+        -------
+        table : `~astropy.table.QTable`
+            An astropy table with the PSF-fitting results. The table
+            will contain the following columns:
+
+              * ``id`` : unique identification number for the source
+              * ``group_id`` : unique identification number for the
+                source group
+              * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
+                error of the source x center
+              * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit, and
+                error of the soruce y center
+              * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
+                fit, and error of the source flux
+              * ``npixfit`` : the number of unmasked pixels used to fit
+                the source
+              * ``group_size`` : the total number of sources that were
+                simultaneously fit along with the given source
+              * ``qfit`` : a quality-of-fit metric defined as the
+                absolute value of the sum of the fit residuals divided by
+                the fit flux
+              * ``cfit`` : a quality-of-fit metric defined as the
+                fit residual in the central pixel divided by the fit flux
+              * ``flags`` : bitwise flag values:
+                  * 1 : one or more pixels in the ``fit_shape`` region
+                    were masked
+                  * 2 : the fit x and/or y position lies outside of the
+                    input data
+                  * 4 : the fit flux is less than or equal to zero
+                  * 8 : the fitter may not have converged
+                  * 16 : the fitter parameter covariance matrix was not
+                    returned
         """
         if isinstance(data, NDData):
             data_ = data.data
@@ -832,6 +905,23 @@ class PSFPhotometry:
         return source_tbl
 
     def make_model_image(self, shape, psf_shape):
+        """
+        Create a 2D image from the fit PSF models and local background.
+
+        Parameters
+        ----------
+        shape : 2 tuple of int
+            The shape of the output array.
+
+        psf_shape : 2 tuple of int
+            The shape of region around the center of the fit model to
+            render in the output image.
+
+        Returns
+        -------
+        array : 2D `~numpy.ndarray`
+            The rendered image from the fit PSF models.
+        """
         fit_models = self.fit_results['fit_models']
 
         data = np.zeros(shape)
@@ -854,4 +944,25 @@ class PSFPhotometry:
         return data
 
     def make_residual_image(self, data, psf_shape):
+        """
+        Create a 2D residual image from the fit PSF models and local
+        background.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D array on which photometry was performed. This should
+            be the same array input when calling the PSF-photometry
+            class.
+
+        psf_shape : 2 tuple of int
+            The shape of region around the center of the fit model to
+            render in the output image.
+
+        Returns
+        -------
+        array : 2D `~numpy.ndarray`
+            The residual image of the ``data`` minus the ``local_bkg``
+            minus the fit PSF models.
+        """
         return data - self.make_model_image(data.shape, psf_shape)
