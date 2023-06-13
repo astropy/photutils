@@ -4,13 +4,17 @@ This module provides tools for making example datasets for examples and
 tests.
 """
 
+import warnings
+
 import astropy.units as u
 import numpy as np
 from astropy import coordinates as coord
 from astropy.convolution import discretize_model
 from astropy.io import fits
 from astropy.modeling import models
+from astropy.nddata import overlap_slices
 from astropy.table import QTable
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 
 from photutils.psf import IntegratedGaussianPRF
@@ -21,7 +25,8 @@ __all__ = ['apply_poisson_noise', 'make_noise_image',
            'make_model_sources_image', 'make_gaussian_sources_image',
            'make_4gaussians_image', 'make_100gaussians_image',
            'make_wcs', 'make_gwcs', 'make_imagehdu',
-           'make_gaussian_prf_sources_image']
+           'make_gaussian_prf_sources_image',
+           'make_test_psf_data']
 
 __doctest_requires__ = {('make_gwcs'): ['gwcs']}
 
@@ -942,3 +947,113 @@ def make_imagehdu(data, wcs=None):
         header = None
 
     return fits.ImageHDU(data, header=header)
+
+
+def _make_nonoverlap_coords(xrange, yrange, ncoords, min_separation, seed=0):
+    from scipy.spatial import KDTree
+
+    rng = np.random.default_rng(seed)
+
+    xycoords = np.zeros((0, 2))
+    niter = 1
+
+    while xycoords.shape[0] < ncoords:
+        if niter > 20:
+            break
+
+        x_new = rng.uniform(xrange[0], xrange[1], ncoords)
+        y_new = rng.uniform(yrange[0], yrange[1], ncoords)
+        new_xycoords = np.transpose((x_new, y_new))
+        if niter == 1:
+            xycoords = new_xycoords
+        else:
+            xycoords = np.vstack((xycoords, new_xycoords))
+
+        dist, _ = KDTree(xycoords).query(xycoords, k=[2])
+        mask = (dist >= min_separation).squeeze()
+        xycoords = xycoords[mask]
+        niter += 1
+
+    xycoords = xycoords[0:ncoords]
+    if len(xycoords) < ncoords:
+        warnings.warn(f'Unable to produce {ncoords!r} coordinates.',
+                      AstropyUserWarning)
+
+    return xycoords
+
+
+def make_test_psf_data(shape, psf_model, psf_shape, nsources,
+                       flux_range=(100, 1000), min_separation=1, seed=0):
+    """
+    Make an example image containing PSF model images.
+
+    Source positions and fluxes are randomly generated using an optional
+    ``seed``.
+
+    Parameters
+    ----------
+    shape : 2-tuple of int
+        The shape of the output image.
+
+    psf_model : `astropy.modeling.Fittable2DModel`
+        The PSF model.
+
+    psf_shape : 2-tuple of int
+        The shape around the center of the star that will used to
+        evaluate the ``psf_model``.
+
+    nsources : int
+        The number of sources to generate.
+
+    flux_range : tuple, optional
+        The lower and upper bounds of the flux range.
+
+    min_separation : float, optional
+        The minimum separation between the centers of two sources. Note
+        that if the minimum separation is too large, the number of
+        sources generated may be less than ``nsources``.
+
+    seed : int, optional
+        A seed to initialize the `numpy.random.BitGenerator`. If `None`,
+        then fresh, unpredictable entropy will be pulled from the OS.
+
+    Returns
+    -------
+    data : 2D `~numpy.ndarray`
+        The simulated image.
+
+    table : `~astropy.table.Table`
+        A table containing the parameters of the generated sources.
+    """
+    hshape = (np.array(psf_shape) - 1) // 2
+    xrange = (hshape[1], shape[1] - hshape[1])
+    yrange = (hshape[0], shape[0] - hshape[0])
+
+    xycoords = _make_nonoverlap_coords(xrange, yrange, nsources,
+                                       min_separation=min_separation,
+                                       seed=seed)
+    x, y = np.transpose(xycoords)
+
+    rng = np.random.default_rng(seed)
+    flux = rng.uniform(flux_range[0], flux_range[1], nsources)
+
+    sources = QTable()
+    sources['x_0'] = x
+    sources['y_0'] = y
+    sources['flux'] = flux
+
+    data = np.zeros(shape, dtype=float)
+    for source in sources:
+        for param in ('x_0', 'y_0', 'flux'):
+            setattr(psf_model, param, source[param])
+        xcen = source['x_0']
+        ycen = source['y_0']
+        slc_lg, _ = overlap_slices(shape, psf_shape, (ycen, xcen), mode='trim')
+        yy, xx = np.mgrid[slc_lg]
+        data[slc_lg] += psf_model(xx, yy)
+
+    sources.rename_column('x_0', 'x_true')
+    sources.rename_column('y_0', 'y_true')
+    sources.rename_column('flux', 'flux_true')
+
+    return data, sources
