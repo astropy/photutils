@@ -14,7 +14,7 @@ from astropy.modeling import Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import (NDData, NoOverlapError, StdDevUncertainty,
                             overlap_slices)
-from astropy.table import QTable, Table, hstack
+from astropy.table import QTable, Table, hstack, vstack
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
@@ -24,7 +24,7 @@ from photutils.utils._optional_deps import HAS_TQDM
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
 
-__all__ = ['PSFPhotometry']
+__all__ = ['PSFPhotometry', 'IterativePSFPhotometry']
 
 
 class PSFPhotometry:
@@ -47,8 +47,8 @@ class PSFPhotometry:
         The rectangular shape around the center of a star that will
         be used to define the PSF-fitting data. If ``fit_shape`` is a
         scalar then a square shape of size ``fit_shape`` will be used.
-        If ``fitshape`` has two elements, they must be in ``(ny, nx)``
-        order. Each element of ``fitshape`` must be an odd number.
+        If ``fit_shape`` has two elements, they must be in ``(ny, nx)``
+        order. Each element of ``fit_shape`` must be an odd number.
 
     finder : callable or `~photutils.detection.StarFinderBase` or `None`, optional
         A callable used to identify stars in an image. The
@@ -61,7 +61,7 @@ class PSFPhotometry:
         ``'x_pos'``. If `None`, then the initial (x, y) model positions
         must be input using the ``init_params`` keyword when calling
         the class. The (x, y) values in ``init_params`` override this
-        keyword.
+        keyword *only for the first iteration*.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group stars. Typically, grouped stars are
@@ -71,27 +71,26 @@ class PSFPhotometry:
         the group id numbers (starting from 1) indicating the group
         in which a given source belongs. If `None`, then no grouping
         is performed, i.e. each source is fit independently. The
-        ``group_id`` values in ``init_params`` override this keyword.
+        ``group_id`` values in ``init_params`` override this keyword
+        *only for the first iteration*.
 
     fitter : `~astropy.modeling.fitting.Fitter`, optional
         The fitter object used to perform the fit of the model to the
         data.
+
+    fitter_maxiters : int, optional
+        The maximum number of iterations in which the ``fitter`` is
+        called for each source.
 
     localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
         The object used to estimate the local background around each
         source.  If `None`, then no local background is subtracted.  The
         ``local_bkg`` values in ``init_params`` override this keyword.
 
-    maxiters : int, optional
-        The maximum number of iterations in which the ``fitter`` is
-        called for each source.
-
-    aperture_radius : float of `None`, optional
+    aperture_radius : float, optional
         The radius of the circular aperture used to estimate the initial
-        flux of each source. If `None`, then the initial flux of each
-        source must be input using the ``init_params`` keyword when
-        calling the class. The ``flux_init` values in ``init_params``
-        override this keyword.
+        flux of each source. The ``flux_init`` values in ``init_params``
+        override this keyword *only for the first iteration*.
 
     progress_bar : bool, optional
         Whether to display a progress bar when fitting the sources
@@ -102,8 +101,9 @@ class PSFPhotometry:
     """
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
-                 fitter=LevMarLSQFitter(), localbkg_estimator=None,
-                 maxiters=100, aperture_radius=None, progress_bar=False):
+                 fitter=LevMarLSQFitter(), fitter_maxiters=100,
+                 localbkg_estimator=None, aperture_radius=None,
+                 progress_bar=False):
 
         self.psf_model = self._validate_model(psf_model)
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(0, 1),
@@ -113,7 +113,7 @@ class PSFPhotometry:
         self.fitter = self._validate_callable(fitter, 'fitter')
         self.localbkg_estimator = self._validate_callable(
             localbkg_estimator, 'localbkg_estimator')
-        self.maxiters = self._validate_maxiters(maxiters)
+        self.fitter_maxiters = self._validate_maxiters(fitter_maxiters)
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
@@ -597,8 +597,8 @@ class PSFPhotometry:
         self.fit_error_indices = np.array(indices, dtype=int)
 
     def _fit_sources(self, data, init_params, *, error=None, mask=None):
-        if self.maxiters is not None:
-            kwargs = {'maxiter': self.maxiters}
+        if self.fitter_maxiters is not None:
+            kwargs = {'maxiter': self.fitter_maxiters}
         else:
             kwargs = {}
 
@@ -879,6 +879,10 @@ class PSFPhotometry:
 
         init_params = self._prepare_init_params(data, unit, mask, init_params)
 
+        if init_params is None:  # no sources detected
+            # TODO: raise warning
+            return None
+
         fit_models = self._fit_sources(data, init_params, error=error,
                                        mask=mask)
 
@@ -916,7 +920,8 @@ class PSFPhotometry:
             source_tbl['flux_err'] <<= unit
 
         meta = _get_meta()
-        attrs = ('fit_shape', 'maxiters', 'aperture_radius', 'progress_bar')
+        attrs = ('fit_shape', 'fitter_maxiters', 'aperture_radius',
+                 'progress_bar')
         for attr in attrs:
             meta[attr] = getattr(self, attr)
         source_tbl.meta = meta
@@ -990,3 +995,226 @@ class PSFPhotometry:
             minus the fit PSF models.
         """
         return data - self.make_model_image(data.shape, psf_shape)
+
+
+class IterativePSFPhotometry:
+    """
+    Class to iteratively perform PSF photometry.
+
+    This class implements a flexible PSF photometry algorithm that can
+    find sources in an image, group overlapping sources, fit the PSF
+    model to the sources, subtract the fit PSF models from the image,
+    and then repeat until no more stars are detected or a given number
+    of maximum iterations is reached.
+
+    Parameters
+    ----------
+    psf_model : `astropy.modeling.Fittable2DModel`
+        The PSF model to fit to the data. The model needs to have
+        three parameters named ``x_0``, ``y_0``, and ``flux``,
+        corresponding to the center (x, y) position and flux.
+
+    fit_shape : int or length-2 array_like
+        The rectangular shape around the center of a star that will
+        be used to define the PSF-fitting data. If ``fit_shape`` is a
+        scalar then a square shape of size ``fit_shape`` will be used.
+        If ``fit_shape`` has two elements, they must be in ``(ny, nx)``
+        order. Each element of ``fit_shape`` must be an odd number.
+
+    finder : callable or `~photutils.detection.StarFinderBase`
+        A callable used to identify stars in an image. The
+        ``finder`` must accept a 2D image as input and return a
+        `~astropy.table.Table` containing the x and y centroid
+        positions. These positions are used as the starting points for
+        the PSF fitting. The allowed ``x`` column names are (same suffix
+        for ``y``): ``'x_init'``, ``'xcentroid'``, ``'x_centroid'``,
+        ``'x_peak'``, ``'x'``, ``'xcen'``, ``'x_cen'``, ``'xpos'``, and
+        ``'x_pos'``. If `None`, then the initial (x, y) model positions
+        must be input using the ``init_params`` keyword when calling
+        the class. The (x, y) values in ``init_params`` override this
+        keyword *only for the first iteration*.
+
+    grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
+        A callable used to group stars. Typically, grouped stars are
+        those that overlap with their neighbors. Stars that are grouped
+        are fit simultaneously. The ``grouper`` must accept the x and
+        y coordinates of the sources and return an integer array of
+        the group id numbers (starting from 1) indicating the group
+        in which a given source belongs. If `None`, then no grouping
+        is performed, i.e. each source is fit independently. The
+        ``group_id`` values in ``init_params`` override this keyword
+        *only for the first iteration*.
+
+    fitter : `~astropy.modeling.fitting.Fitter`, optional
+        The fitter object used to perform the fit of the model to the
+        data.
+
+    fitter_maxiters : int, optional
+        The maximum number of iterations in which the ``fitter`` is
+        called for each source.
+
+    localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
+        The object used to estimate the local background around each
+        source.  If `None`, then no local background is subtracted.  The
+        ``local_bkg`` values in ``init_params`` override this keyword.
+
+    aperture_radius : float, optional
+        The radius of the circular aperture used to estimate the initial
+        flux of each source. The ``flux_init`` values in ``init_params``
+        override this keyword *only for the first iteration*.
+
+    progress_bar : bool, optional
+        Whether to display a progress bar when fitting the sources
+        (or groups). The progress bar requires that the `tqdm
+        <https://tqdm.github.io/>`_ optional dependency be installed.
+        Note that the progress bar does not currently work in the
+        Jupyter console due to limitations in ``tqdm``.
+    """
+
+    def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
+                 fitter=LevMarLSQFitter(), fitter_maxiters=100, maxiters=3,
+                 localbkg_estimator=None, aperture_radius=None,
+                 progress_bar=False):
+
+        if finder is None:
+            raise ValueError('finder cannot be None for '
+                             'IterativePSFPhotometry.')
+
+        if aperture_radius is None:
+            raise ValueError('aperture_radius must not be None for '
+                             'IterativePSFPhotometry.')
+
+        self.maxiters = self._validate_maxiters(maxiters)
+
+        self.psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                                     grouper=grouper, fitter=fitter,
+                                     fitter_maxiters=fitter_maxiters,
+                                     localbkg_estimator=localbkg_estimator,
+                                     aperture_radius=aperture_radius,
+                                     progress_bar=progress_bar)
+
+    @staticmethod
+    def _validate_maxiters(maxiters):
+        if (not np.isscalar(maxiters) or maxiters <= 0
+                or ~np.isfinite(maxiters)):
+            raise ValueError('maxiters must be a strictly-positive scalar')
+        if maxiters != int(maxiters):
+            raise ValueError('maxiters must be an integer')
+        return maxiters
+
+    def __call__(self, data, *, mask=None, error=None, init_params=None):
+        """
+        Perform PSF photometry.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D array on which to perform photometry. Invalid data
+            values (i.e., NaN or inf) are automatically masked.
+
+        mask : 2D bool `~numpy.ndarray`, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.
+
+        error : 2D `~numpy.ndarray`, optional
+            The pixel-wise 1-sigma errors of the input ``data``.
+            ``error`` is assumed to include *all* sources of
+            error, including the Poisson error of the sources
+            (see `~photutils.utils.calc_total_error`) . ``error``
+            must have the same shape as the input ``data``. If a
+            `~astropy.units.Quantity` array, then ``data`` must also be
+            a `~astropy.units.Quantity` array with the same units.
+
+        init_params : `~astropy.table.Table` or `None`, optional
+            A table containing the initial guesses of the (x, y, flux)
+            model parameters for each source *only for the first
+            iteration*. If the x and y values are not input, then the
+            ``finder`` will be used for all iterations. If the flux
+            values are not input, then the initial fluxes will be
+            measured in using the ``aperture_radius`` keyword. The input
+            flux values will be used for the first iteration only. The
+            allowed column names are:
+
+              * ``x_init``, ``xcentroid``, ``x_centroid``, ``x_peak``,
+                ``x``, ``xcen``, ``x_cen``, ``xpos``, and ``x_pos``.
+
+              * ``y_init``, ``ycentroid``, ``y_centroid``, ``y_peak``,
+                ``y``, ``ycen``, ``y_cen``, ``ypos``, and ``y_pos``.
+
+              * ``flux_init``, ``flux``, ``source_sum``,
+                ``segment_flux``, and ``kron_flux``.
+
+            The parameter names are searched in the input table in the
+            above order, stopping at the first match.
+
+        Returns
+        -------
+        table : `~astropy.table.QTable`
+            An astropy table with the PSF-fitting results. The table
+            will contain the following columns:
+
+              * ``id`` : unique identification number for the source
+              * ``group_id`` : unique identification number for the
+                source group
+              * ``iter_detected`` : the iteration number in which the
+                source was detected
+              * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
+                error of the source x center
+              * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit, and
+                error of the soruce y center
+              * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
+                fit, and error of the source flux
+              * ``npixfit`` : the number of unmasked pixels used to fit
+                the source
+              * ``group_size`` : the total number of sources that were
+                simultaneously fit along with the given source
+              * ``qfit`` : a quality-of-fit metric defined as the
+                absolute value of the sum of the fit residuals divided by
+                the fit flux
+              * ``cfit`` : a quality-of-fit metric defined as the
+                fit residual in the central pixel divided by the fit flux
+              * ``flags`` : bitwise flag values:
+                  * 1 : one or more pixels in the ``fit_shape`` region
+                    were masked
+                  * 2 : the fit x and/or y position lies outside of the
+                    input data
+                  * 4 : the fit flux is less than or equal to zero
+                  * 8 : the fitter may not have converged
+                  * 16 : the fitter parameter covariance matrix was not
+                    returned
+        """
+        phot_tbl = self.psfphot(data, mask=mask, error=error,
+                                init_params=init_params)
+        if phot_tbl is None:
+            return
+
+        phot_tbl['iter_detected'] = 1
+
+        resid = []
+
+        iter_num = 2
+        while iter_num <= self.maxiters and phot_tbl is not None:
+            if iter_num == 2:
+                residual_data = self.psfphot.make_residual_image(
+                    data, self.psfphot.fit_shape)
+            else:
+                residual_data = self.psfphot.make_residual_image(
+                    residual_data, self.psfphot.fit_shape)
+
+            resid.append(residual_data)
+
+            new_tbl = self.psfphot(residual_data, mask=mask, error=error,
+                                    init_params=None)
+            if new_tbl is None:  # no new sources detected
+                break
+            new_tbl['iter_detected'] = iter_num
+            new_tbl['id'] += np.max(phot_tbl['id'])
+            new_tbl['group_id'] += np.max(phot_tbl['group_id'])
+
+            # combine tables
+            phot_tbl = vstack([phot_tbl, new_tbl])
+
+            iter_num += 1
+
+        return phot_tbl, resid
