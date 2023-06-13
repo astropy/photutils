@@ -494,8 +494,16 @@ class PSFPhotometry:
         indices = []
         for index, fit_info in enumerate(self.fit_results['fit_infos']):
             ierr = fit_info.get('ierr', None)
-            if ierr not in (1, 2, 3, 4):  # all good flags defined by scipy
-                indices.append(index)
+            # check if in good flags defined by scipy
+            if ierr is not None:
+                # scipy.optimize.leastsq
+                if ierr not in (1, 2, 3, 4):
+                    indices.append(index)
+            else:
+                # scipy.optimize.least_squares
+                status = fit_info.get('status', None)
+                if status is not None and status in (-1, 0):
+                    indices.append(index)
 
         self.fit_error_indices = np.array(indices, dtype=int)
 
