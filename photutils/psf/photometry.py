@@ -345,7 +345,7 @@ class PSFPhotometry:
                     init_params[self._yinit_name], mask=mask)
             init_params['local_bkg'] = local_bkg
 
-        self.fit_results['local_bkg'] = init_params['local_bkg']
+        self.fit_results['local_bkg'] = init_params['local_bkg'].value
 
         if self._fluxinit_name not in init_params.colnames:
             flux = self._get_aper_fluxes(data, mask, init_params)
@@ -1244,3 +1244,86 @@ class IterativePSFPhotometry:
             iter_num += 1
 
         return phot_tbl, resid
+
+    def make_model_image(self, shape, psf_shape):
+        """
+        Create a 2D image from the fit PSF models and local background.
+
+        Parameters
+        ----------
+        shape : 2 tuple of int
+            The shape of the output array.
+
+        psf_shape : 2 tuple of int
+            The shape of region around the center of the fit model to
+            render in the output image.
+
+        Returns
+        -------
+        array : 2D `~numpy.ndarray`
+            The rendered image from the fit PSF models.
+        """
+        fit_models = []
+        local_bkgs = []
+        for psfphot in self.fit_results:
+            fit_models.append(psfphot.fit_results['fit_models'])
+            local_bkgs.append(psfphot.fit_results['local_bkg'])
+
+        fit_models = self.fit_results[0]._flatten(fit_models)
+        local_bkgs = self.fit_results[0]._flatten(local_bkgs)
+
+        data = np.zeros(shape)
+        xname, yname = self.fit_results[0]._get_psf_param_names()[0][0:2]
+
+        desc = 'Model image'
+        fit_models = self.fit_results[0]._add_progress_bar(fit_models,
+                                                           desc=desc)
+
+        # fit_models must be a list of individual, not grouped, PSF
+        # models, i.e., there should be one PSF model (which may be
+        # compound) for each source
+        for fit_model, local_bkg in zip(fit_models, local_bkgs):
+            x0 = getattr(fit_model, xname).value
+            y0 = getattr(fit_model, yname).value
+            slc_lg, _ = overlap_slices(shape, psf_shape, (y0, x0), mode='trim')
+            yy, xx = np.mgrid[slc_lg]
+            data[slc_lg] += (fit_model(xx, yy) + local_bkg)
+
+        return data
+
+    def make_residual_image(self, data, psf_shape):
+        """
+        Create a 2D residual image from the fit PSF models and local
+        background.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D array on which photometry was performed. This should
+            be the same array input when calling the PSF-photometry
+            class.
+
+        psf_shape : 2 tuple of int
+            The shape of region around the center of the fit model to
+            render in the output image.
+
+        Returns
+        -------
+        array : 2D `~numpy.ndarray`
+            The residual image of the ``data`` minus the ``local_bkg``
+            minus the fit PSF models.
+        """
+        if isinstance(data, NDData):
+            residual = deepcopy(data)
+            residual.data[:] = self.make_residual_image(data.data, psf_shape)
+        else:
+            unit = None
+            if isinstance(data, u.Quantity):
+                unit = data.unit
+                data = data.value
+            residual = data - self.make_model_image(data.shape, psf_shape)
+
+            if unit is not None:
+                residual <<= unit
+
+        return residual
