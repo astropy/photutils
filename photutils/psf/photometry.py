@@ -184,13 +184,7 @@ class PSFPhotometry:
         unfixed_params = []
         for param in self.psf_model.param_names:
             if not self.psf_model.fixed[param]:
-                # TODO: check for only x, y, flux
                 unfixed_params.append(param)
-
-        if len(unfixed_params) > 3:
-            raise ValueError('psf_model must have only 3 unfixed parameters, '
-                             'corresponding to (x, y, flux)')
-
         return unfixed_params
 
     @staticmethod
@@ -362,9 +356,24 @@ class PSFPhotometry:
         if 'group_id' not in init_params.colnames:
             init_params['group_id'] = init_params['id']
 
+        extra_params = self._get_psf_param_names()[1]
+        param_map = self._param_map()[0]
+
+        extra_param_cols = []
+        for extra_param in extra_params:
+            for key, val in param_map.items():
+                if val == extra_param:
+                    extra_param_cols.append(key)
+
+        for extra_col in extra_param_cols:
+            if extra_col not in init_params.colnames:
+                init_params[extra_col] = getattr(self.psf_model,
+                                                 param_map[extra_col])
+
         # order init_params columns
-        colname_order = ('id', 'group_id', 'local_bkg', self._xinit_name,
-                         self._yinit_name, self._fluxinit_name)
+        colname_order = ['id', 'group_id', 'local_bkg', self._xinit_name,
+                         self._yinit_name, self._fluxinit_name]
+        colname_order.extend(extra_param_cols)
         init_params = init_params[colname_order]
 
         return init_params
@@ -392,15 +401,24 @@ class PSFPhotometry:
 
             names.append(name)
 
-        return tuple(names)
+        extra_params = []
+        for key in self._unfixed_params:
+            if key not in names:
+                extra_params.append(key)
+
+        return tuple(names), tuple(extra_params)
 
     def _param_map(self):
-        psf_param_names = self._get_psf_param_names()
+        psf_param_names, extra_params = self._get_psf_param_names()
+        xname, yname, fluxname = psf_param_names
 
         param_map = {}
-        param_map[self._xinit_name] = psf_param_names[0]
-        param_map[self._yinit_name] = psf_param_names[1]
-        param_map[self._fluxinit_name] = psf_param_names[2]
+        param_map[self._xinit_name] = xname
+        param_map[self._yinit_name] = yname
+        param_map[self._fluxinit_name] = fluxname
+
+        for extra_param in extra_params:
+            param_map[f'{extra_param}_init'] = extra_param
 
         init_suffix = self._xinit_name[1:]
         fit_param_map = {val: key.replace(init_suffix, '_fit')
@@ -650,8 +668,9 @@ class PSFPhotometry:
             colname = param_map[name]
             table[colname] = self.fit_results['fit_param_errs'][:, index]
 
+        colnames = list(param_map.values())
+
         # add missing error columns
-        colnames = ('x_err', 'y_err', 'flux_err')
         nsources = len(self.fit_results['fit_models'])
         for colname in colnames:
             if colname not in table.colnames:
@@ -925,7 +944,7 @@ class PSFPhotometry:
         fit_models = self.fit_results['fit_models']
 
         data = np.zeros(shape)
-        xname, yname = self._get_psf_param_names()[0:2]
+        xname, yname = self._get_psf_param_names()[0][0:2]
 
         desc = 'Model image'
         fit_models = self._add_progress_bar(fit_models, desc=desc)
