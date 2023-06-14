@@ -170,9 +170,13 @@ Fitting multiple stars
 ^^^^^^^^^^^^^^^^^^^^^^
 
 Now let's use `~photutils.psf.PSFPhotometry` to perform PSF photometry
-on this image. We'll use the `~photutils.detection.DAOStarFinder` for
-source detection. We'll fit the central 5x5 pixel region of each star
-using a `~photutils.psf.IntegratedGaussianPRF` PSF model::
+on this image. Note that the input image must be background-subtracted
+prior to using the photometry classes. See :ref:`background` for tools
+to subtract a global background from an image.
+
+We'll use the `~photutils.detection.DAOStarFinder` for source
+detection. We'll fit the central 5x5 pixel region of each star using a
+`~photutils.psf.IntegratedGaussianPRF` PSF model::
 
     >>> from photutils.detection import DAOStarFinder
     >>> from photutils.psf import PSFPhotometry
@@ -420,6 +424,82 @@ two stars). The stars in each group were simultaneously fit.
       8        6          2
       9        6          2
      10        5          2
+
+
+Local Background Subtraction
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To subtract a local background from each source, define a
+`~photutils.background.LocalBackground` instance an input it via the
+``localbkg_estimator`` keyword. Here we'll use an annulus with an
+inner and outer radius of 5 and 10 pixels, respectively, with the
+`~photutils.background.MMMBackground` statistic (with its default sigma
+clipping)::
+
+    >>> from photutils.background import LocalBackground, MMMBackground
+    >>> bkgstat = MMMBackground()
+    >>> localbkg_estimator = LocalBackground(5, 10, bkgstat)
+    >>> finder = DAOStarFinder(10.0, 2.0)
+
+    >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+    ...                         grouper=grouper, aperture_radius=4
+    ...                         localbkg_estimator=localbkg_estimator)
+    >>> phot = psfphot(data, error=error)
+
+The local background values are output in the table::
+
+    >>> print(phot[('id', 'local_bkg')])
+     id      local_bkg
+    --- --------------------
+      1  0.05683413339116036
+      2   0.1465178770856933
+      3  0.05156304353688759
+      4  0.06533797895988643
+      5 0.015539380434351796
+      6   0.2946447148528156
+      7 -0.24848306906560644
+      8  0.06902761284931344
+      9 0.037708674392344696
+     10  0.07697120639964465
+
+
+Iterative PSF Photometry
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Now let's use the `~photutils.psf.IterativePSFPhotometry` class to
+iteratively fit the stars in the image. This class is useful for crowded
+fields where faint stars are very close to bright stars. The faint stars
+may not be detected until after the bright stars are subtracted.
+
+For this simple example, let's input a table of three stars for the
+first fit iteration. Subsequent iterations will use the ``finder`` to
+find additional stars::
+
+    >>> init_params = QTable()
+    >>> init_params['x'] = [33, 13, 64]
+    >>> init_params['y'] = [12, 15, 22]
+    >>> psfphot2 = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+    ...                                   localbkg_estimator=localbkg_estimator,
+    ...                                   aperture_radius=4)
+    >>> phot = psfphot2(data, error=error, init_params=init_params)
+
+The table output from `~photutils.psf.IterativePSFPhotometry` contains a
+column called ``iter_detected`` which returns the fit iteration in which
+the source was detected::
+
+    >>> print(phot2[('id', 'iter_detected', 'x_fit', 'y_fit', 'flux_fit')])
+      id iter_detected       x_fit              y_fit             flux_fit
+    --- ------------- ------------------ ------------------ ------------------
+      1             1  32.78080238212221 12.215569632832379  631.3728970528724
+      2             1 13.270436821198123  14.58460590684079 508.67012005993433
+      3             1  63.63290114928681  22.40686369968043  639.6021481152056
+      4             2  82.27790147215153 25.534763865978288  655.2570434776327
+      5             2  41.54497971052003 35.889780164594136  687.3208299191051
+      6             2   21.5687339044637  41.95064339406346  622.0413056357854
+      7             2 14.190712563534408  65.00609713727931  682.9852091170068
+      8             2 61.841700204614824  67.55075533597399  617.0243577148906
+      9             2   74.6233906521105   68.1802921736959 507.47873637759386
+     10             2 15.158481627411087  78.01467993772174  556.6266865096007
 
 
 References

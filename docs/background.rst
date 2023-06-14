@@ -1,3 +1,5 @@
+.. _background:
+
 Background Estimation (`photutils.background`)
 ==============================================
 
