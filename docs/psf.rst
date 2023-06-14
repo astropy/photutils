@@ -63,8 +63,7 @@ fit sources are subtracted, the process repeats until no additional
 sources are detected or a maximum number of iterations has been
 performed. When used with the `~photutils.detection.DAOStarfinder`,
 `~photutils.psf.IterativePSFPhotometry` is essentially an implementation
-of the DAOPHOT algorithm (`~photutils.psf.DAOPhotPSFPhotometry`)
-described by Stetson in his `seminal paper
+of the DAOPHOT algorithm described by Stetson in his `seminal paper
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_ for
 crowded-field stellar photometry.
 
@@ -93,10 +92,10 @@ space, which facilitates the optimization process. For more details see
 
 The local background around each source can optionally be subtracted
 using the ``localbkg_estimator`` keyword. This keyword accepts a
-`~photutils.backgrounds.LocalBackground` instance that estimates the
+`~photutils.background.LocalBackground` instance that estimates the
 local statistics in a circular annulus aperture centered on each
 source. The size of the annulus and the statistic can be configured in
-`~photutils.backgrounds.LocalBackground`.
+`~photutils.background.LocalBackground`.
 
 The next step is to fit the sources and/or groups. This
 task is performed using an astropy fitter, for example
@@ -122,15 +121,305 @@ table of the initial parameters for the source centers, fluxes, group
 identifiers, and local backgrounds. This is also useful is one is
 interested in fitting only one or a few sources in an image.
 
-Basic Usage
-^^^^^^^^^^^
+Example Usage
+-------------
 
 Let's start with a simple example with simulated stars whose PSF is
 assumed to be Gaussian. We'll create a synthetic image provided by the
 :ref:`photutils.datasets <datasets>` module::
 
-    >>> from photutils.datasets import make_psf_test_data
-    >>> data, sources = make_psf_test_data()
+    >>> import numpy as np
+    >>> from photutils.datasets import make_test_psf_data, make_noise_image
+    >>> from photutils.psf import IntegratedGaussianPRF
+
+    >>> psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_shape = (25, 25)
+    >>> nsources = 10
+    >>> shape = (101, 101)
+    >>> data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
+    ...                                        nsources, flux_range=(500, 700),
+    ...                                        min_separation=10, seed=0)
+    >>> noise = make_noise_image(data.shape, mean=0, stddev=1)
+    >>> data += noise
+    >>> error = np.abs(noise)
+
+Let's plot the image:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.datasets import make_test_psf_data, make_noise_image
+    from photutils.psf import IntegratedGaussianPRF
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_shape = (25, 25)
+    nsources = 10
+    shape = (101, 101)
+    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
+                                           nsources, flux_range=(500, 700),
+                                           min_separation=10, seed=0)
+    noise = make_noise_image(data.shape, mean=0, stddev=1)
+    data += noise
+    plt.imshow(data)
+    plt.title('Simulated Data')
+    plt.colorbar()
+
+
+Fitting multiple stars
+^^^^^^^^^^^^^^^^^^^^^^
+
+Now let's use `~photutils.psf.PSFPhotometry` to perform PSF photometry
+on this image. We'll use the `~photutils.detection.DAOStarFinder` for
+source detection. We'll fit the central 5x5 pixel region of each star
+using a `~photutils.psf.IntegratedGaussianPRF` PSF model::
+
+    >>> from photutils.detection import DAOStarFinder
+    >>> from photutils.psf import PSFPhotometry
+
+    >>> psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> fit_shape = (5, 5)
+    >>> finder = DAOStarFinder(6.0, 2.0)
+    >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+    >>>                         aperture_radius=4)
+    >>> phot = psfphot(data, error=error)
+
+The result is an astropy `~astropy.table.Table` with columns for the
+source and group identification numbers, the x, y, and flux initial,
+fit, and error values, local background, number of unmasked pixels
+fit, the group size, quality-of-fit metrics, and flags. See the
+`~photutils.psf.PSFPhotometry` documentation for descriptions of the
+output columns.
+
+The full table cannot be shown here as it has a large number of columns,
+but let's print print the source id along with the fit x, y, and flux
+values::
+
+    >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')]
+    id       x_fit              y_fit             flux_fit
+    --- ------------------ ------------------ ------------------
+      1  32.77404564797249  12.21241587326953  627.4295952266112
+      2 13.280576995465728  14.59025837871636   509.587414373434
+      3 63.636601583810105  22.40323207475757  647.7941676784337
+      4  82.28254515932343 25.529559437743846  663.6261884967792
+      5 41.545338645209505  35.89394538939527   687.803302465493
+      6 21.570470010710824 41.949846900895494  622.2950919502064
+      7 14.179729867606312  65.01034469898062  682.1063539928764
+      8 61.832928315721446  67.55176672592506  608.6862651104628
+      9  74.62575019365177  68.18507475252673 502.22374019838963
+     10 15.152402590000605  78.01918334187057   553.394644171982
+
+Let's create the residual image::
+
+    >>> resid = psfphot.make_residual_image(data, (25, 25))
+
+and plot it:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.datasets import make_test_psf_data, make_noise_image
+    from photutils.psf import IntegratedGaussianPRF
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_shape = (25, 25)
+    nsources = 10
+    shape = (101, 101)
+    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
+                                           nsources, flux_range=(500, 700),
+                                           min_separation=10, seed=0)
+    noise = make_noise_image(data.shape, mean=0, stddev=1)
+    data += noise
+    error = np.abs(noise)
+
+    from photutils.detection import DAOStarFinder
+    from photutils.psf import PSFPhotometry
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    phot = psfphot(data, error=error)
+
+    resid = psfphot.make_residual_image(data, (25, 25))
+    plt.imshow(resid)
+    plt.title('Residual Image')
+    plt.colorbar()
+
+The residual image looks like noise, indicating good fits to the
+sources.
+
+Further details about the PSF fitting can be obtained from attributes on
+the `~photutils.psf.PSFPhotometry` instance. For example, the results
+from the ``finder`` instance (another astropy table) can be obtained::
+
+    >>> print(psfphot.finder_results[0])
+     id     xcentroid      ...        flux               mag
+    --- ------------------ ... ----------------- -------------------
+      1 32.798546744210974 ... 8.961786512586334  -2.380986484874818
+      2 13.277691484600824 ... 6.614429496837522  -2.051230979184781
+      3 63.631531678983926 ... 8.524071587500329 -2.3266177209553094
+      4  82.28629177090498 ... 8.455331590418556 -2.3178266096881077
+      5  41.48375684304935 ... 9.508906296394022  -2.445326419379224
+      6 21.506684549579933 ... 8.600694332329011  -2.336333782913264
+      7  14.18281096109073 ... 9.993015501623889  -2.499241402772193
+      8  61.86210314839908 ...  8.40967305502954  -2.311947779876285
+      9   74.6331728593996 ... 6.961807305185392  -2.106804995857878
+     10 15.152159604120909 ... 8.476286915780012  -2.320514122052738
+
+The ``fit_results`` attribute contains a dictionary with a wealth
+of further detailed information, including the fit models and any
+information returned from the ``fitter`` for each source:
+
+    >>> psfphot.fit_results.keys()
+    dict_keys(['local_bkg', 'fit_models', 'fit_infos', 'fit_param_errs', 'npixfit', 'nmodels', 'cen_res_idx', 'fit_residuals'])
+
+As an example, let's print the fit parameter covariance matrix for the
+first source (note that not all astropy fitters will return a covariance
+matrix)::
+
+    >>> psfphot.fit_results['fit_infos'][0]['param_cov']
+    array([[ 9.55761538e-01,  3.66212195e-04, -1.06887650e-03],
+           [ 3.66212195e-04,  1.24115431e-05, -1.75532271e-06],
+           [-1.06887650e-03, -1.75532271e-06,  2.97592212e-06]])
+
+
+Fitting a single source
+^^^^^^^^^^^^^^^^^^^^^^^
+
+In some cases, one may want to fit only a single source (or few sources)
+in an image. We can do that by defining a table of the sources that
+we want to fit. For this example, let's fit the single star at ``(x,
+y) = (42, 36)``. We first define a table with this position and then
+pass that table into the ``init_params`` keyword when calling the PSF
+photometry class on the data::
+
+    >>> from astropy.table import QTable
+    >>> init_params = QTable()
+    >>> init_params['x'] = [42]
+    >>> init_params['y'] = [36]
+    >>> phot = psfphot(data, error=error, init_params=init_params)
+
+The output table contains only the fit results for the input source.
+Let's show the residual image:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.datasets import make_test_psf_data, make_noise_image
+    from photutils.psf import IntegratedGaussianPRF
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_shape = (25, 25)
+    nsources = 10
+    shape = (101, 101)
+    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
+                                           nsources, flux_range=(500, 700),
+                                           min_separation=10, seed=0)
+    noise = make_noise_image(data.shape, mean=0, stddev=1)
+    data += noise
+    error = np.abs(noise)
+
+    from photutils.detection import DAOStarFinder
+    from photutils.psf import PSFPhotometry
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+
+    from astropy.table import QTable
+    init_params = QTable()
+    init_params['x'] = [42]
+    init_params['y'] = [36]
+    phot = psfphot(data, error=error, init_params=init_params)
+
+    resid = psfphot.make_residual_image(data, (25, 25))
+    plt.imshow(resid)
+
+    from photutils.aperture import CircularAperture
+
+    resid = psfphot.make_residual_image(data, (25, 25))
+    aper = CircularAperture(zip(init_params['x'], init_params['y']), r=4)
+    plt.imshow(resid)
+    aper.plot(color='red')
+
+    plt.title('Residual Image')
+    plt.colorbar()
+
+The red circular aperture shows the location of the star that was
+subtracted.
+
+
+Forced Photometry
+^^^^^^^^^^^^^^^^^
+
+In general, the three parameters fit for each source are the x and
+y positions and the flux. However, the astropy modeling and fitting
+framework allows any of these parameters to be fixed during the fitting.
+
+Let's say you want to fix the (x, y) position for each source. You can
+do that by setting the ``fixed`` attribute on the model parameter::
+
+    >>> psf_model2 = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_model2.x_0.fixed = True
+    >>> psf_model2.y_0.fixed = True
+    >>> psf_model2.fixed
+    {'flux': False, 'x_0': True, 'y_0': True, 'sigma': True}
+
+Now when the model is fit the (x, y) position will be fixed at its
+initial position for every source. Let's just fit a single source
+(defined in ``init_params``)::
+
+    >>> psfphot = PSFPhotometry(psf_model2, fit_shape, finder=finder,
+    ...                         aperture_radius=4)
+    >>> phot = psfphot(data, error=error, init_params=init_params)
+
+The output table shows that the (x, y) position was unchanged, with the
+fit values being identical to the initial values. However, the flux was
+fit::
+
+    >>> print(phot[('id', 'x_init', 'y_init', 'flux_init', 'x_fit',
+    ...             'y_fit', 'flux_fit')])
+     id x_init y_init     flux_init     x_fit y_fit      flux_fit
+    --- ------ ------ ----------------- ----- ----- ------------------
+      1     42     36 676.9365873273836  42.0  36.0 496.70185010898047
+
+
+Source Grouping
+^^^^^^^^^^^^^^^
+
+Source grouping is an optional feature. To turn it on, create a
+`~photutils.psf.SourceGrouper` instance and input it via the ``grouper``
+keyword. Here we'll group stars that are within 20 pixels of each
+other::
+
+    >>> from photutils.psf import SourceGrouper
+    >>> grouper = SourceGrouper(min_separation=20)
+    >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+    ...                         grouper=grouper, aperture_radius=4)
+    >>> phot = psfphot(data, error=error)
+
+The ``group_id`` column shows that 6 groups were identified (each with
+two stars). The stars in each group were simultaneously fit.
+
+    >>> print(phot[('id', 'group_id', 'group_size')])
+     id group_id group_size
+    --- -------- ----------
+      1        1          2
+      2        1          2
+      3        2          2
+      4        2          2
+      5        3          1
+      6        4          1
+      7        5          2
+      8        6          2
+      9        6          2
+     10        5          2
 
 
 References
