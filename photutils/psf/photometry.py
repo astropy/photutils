@@ -1236,19 +1236,20 @@ class IterativePSFPhotometry:
             new_tbl['iter_detected'] = iter_num
             new_tbl['id'] += np.max(phot_tbl['id'])
             new_tbl['group_id'] += np.max(phot_tbl['group_id'])
+            new_tbl.meta = {}  # prevent merge conflicts
 
             # combine tables
             phot_tbl = vstack([phot_tbl, new_tbl])
 
-            # re-order 'iter_detected' column
-            colnames = phot_tbl.colnames.copy()
-            colnames.insert(2, 'iter_detected')
-            colnames = colnames[:-1]
-            phot_tbl = phot_tbl[colnames]
-
             iter_num += 1
 
-        return phot_tbl, resid
+        # re-order 'iter_detected' column
+        colnames = phot_tbl.colnames.copy()
+        colnames.insert(2, 'iter_detected')
+        colnames = colnames[:-1]
+        phot_tbl = phot_tbl[colnames]
+
+        return phot_tbl
 
     def make_model_image(self, shape, psf_shape):
         """
