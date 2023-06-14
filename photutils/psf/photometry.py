@@ -968,7 +968,11 @@ class PSFPhotometry:
                                         self.fit_results['local_bkg']):
             x0 = getattr(fit_model, xname).value
             y0 = getattr(fit_model, yname).value
-            slc_lg, _ = overlap_slices(shape, psf_shape, (y0, x0), mode='trim')
+            try:
+                slc_lg, _ = overlap_slices(shape, psf_shape, (y0, x0),
+                                           mode='trim')
+            except NoOverlapError:
+                continue
             yy, xx = np.mgrid[slc_lg]
             data[slc_lg] += (fit_model(xx, yy) + local_bkg)
 
