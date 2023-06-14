@@ -6,6 +6,7 @@ for use in photutils.
 """
 
 import os
+import numpy as np
 import astropy
 import astropy.io.fits as fits
 
