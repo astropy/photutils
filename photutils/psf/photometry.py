@@ -295,7 +295,7 @@ class PSFPhotometry:
 
     def _add_progress_bar(self, iterable, desc=None):
         if self.progress_bar and HAS_TQDM:
-            try:
+            try: # pragma: no cover
                 from ipywidgets import FloatProgress  # noqa: F401
                 from tqdm.auto import tqdm
             except ImportError:
