@@ -6,7 +6,6 @@ for use in photutils.
 """
 
 import os
-import matplotlib.pyplot as plt
 import astropy
 import astropy.io.fits as fits
 
@@ -172,6 +171,10 @@ class STDPSFGrid(object):
             Scale factor to increase or decrease the display stretch limits.
 
         """
+        # matplotlib is not a formal dependency of photutils (and not installed in the CI)
+        # so only import at runtime if the user calls this display function
+        import matplotlib.pyplot as plt
+
         if ax is None:
             plt.figure(figsize=(12 if self._ndetectors==1 else 20,8))
             ax = plt.gca()
