@@ -1036,6 +1036,7 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
 
     rng = np.random.default_rng(seed)
     flux = rng.uniform(flux_range[0], flux_range[1], nsources)
+    flux = flux[:len(x)]
 
     sources = QTable()
     sources['x_0'] = x
