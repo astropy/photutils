@@ -61,7 +61,7 @@ models from the image. `~photutils.psf.IterativePSFPhotometry` is an
 iterative version of `~photutils.psf.PSFPhotometry` where after the
 fit sources are subtracted, the process repeats until no additional
 sources are detected or a maximum number of iterations has been
-performed. When used with the `~photutils.detection.DAOStarfinder`,
+performed. When used with the `~photutils.detection.DAOStarFinder`,
 `~photutils.psf.IterativePSFPhotometry` is essentially an implementation
 of the DAOPHOT algorithm described by Stetson in his `seminal paper
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_ for
@@ -139,7 +139,7 @@ assumed to be Gaussian. We'll create a synthetic image provided by the
     >>> data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
     ...                                        nsources, flux_range=(500, 700),
     ...                                        min_separation=10, seed=0)
-    >>> noise = make_noise_image(data.shape, mean=0, stddev=1)
+    >>> noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     >>> data += noise
     >>> error = np.abs(noise)
 
@@ -159,7 +159,7 @@ Let's plot the image:
     data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
                                            nsources, flux_range=(500, 700),
                                            min_separation=10, seed=0)
-    noise = make_noise_image(data.shape, mean=0, stddev=1)
+    noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
     plt.imshow(data)
     plt.title('Simulated Data')
@@ -185,7 +185,7 @@ detection. We'll fit the central 5x5 pixel region of each star using a
     >>> fit_shape = (5, 5)
     >>> finder = DAOStarFinder(6.0, 2.0)
     >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-    >>>                         aperture_radius=4)
+    ...                         aperture_radius=4)
     >>> phot = psfphot(data, error=error)
 
 The result is an astropy `~astropy.table.Table` with columns for the
@@ -199,19 +199,19 @@ The full table cannot be shown here as it has a large number of columns,
 but let's print print the source id along with the fit x, y, and flux
 values::
 
-    >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')]
-    id       x_fit              y_fit             flux_fit
+    >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
+     id       x_fit              y_fit             flux_fit
     --- ------------------ ------------------ ------------------
-      1  32.77404564797249  12.21241587326953  627.4295952266112
-      2 13.280576995465728  14.59025837871636   509.587414373434
-      3 63.636601583810105  22.40323207475757  647.7941676784337
-      4  82.28254515932343 25.529559437743846  663.6261884967792
-      5 41.545338645209505  35.89394538939527   687.803302465493
-      6 21.570470010710824 41.949846900895494  622.2950919502064
-      7 14.179729867606312  65.01034469898062  682.1063539928764
-      8 61.832928315721446  67.55176672592506  608.6862651104628
-      9  74.62575019365177  68.18507475252673 502.22374019838963
-     10 15.152402590000605  78.01918334187057   553.394644171982
+      1  32.77148399484856  12.22102577825017  627.4273999433956
+      2  13.27001582702945  14.58405114790792  507.5777675679552
+      3  63.64829088944866 22.390725227343395  640.9277337102149
+      4  82.28474959784151 25.522276342326016  662.0007199929463
+      5  41.54155347688922  35.88933616834469  687.8236197218502
+      6 21.572091809145466  41.94801131801161  620.8561882378236
+      7 14.182317247338144  65.00902999557461  681.7447257950179
+      8  61.83627242626185   67.5559557331335  608.2459417927776
+      9   74.6206253109306  68.18554867674209 502.89058093032907
+     10 15.168451808033558  78.03734517330257  558.0203651230795
 
 Let's create the residual image::
 
@@ -233,7 +233,7 @@ and plot it:
     data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
                                            nsources, flux_range=(500, 700),
                                            min_separation=10, seed=0)
-    noise = make_noise_image(data.shape, mean=0, stddev=1)
+    noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
     error = np.abs(noise)
 
@@ -259,19 +259,19 @@ Further details about the PSF fitting can be obtained from attributes on
 the `~photutils.psf.PSFPhotometry` instance. For example, the results
 from the ``finder`` instance (another astropy table) can be obtained::
 
-    >>> print(psfphot.finder_results[0])
-     id     xcentroid      ...        flux               mag
-    --- ------------------ ... ----------------- -------------------
-      1 32.798546744210974 ... 8.961786512586334  -2.380986484874818
-      2 13.277691484600824 ... 6.614429496837522  -2.051230979184781
-      3 63.631531678983926 ... 8.524071587500329 -2.3266177209553094
-      4  82.28629177090498 ... 8.455331590418556 -2.3178266096881077
-      5  41.48375684304935 ... 9.508906296394022  -2.445326419379224
-      6 21.506684549579933 ... 8.600694332329011  -2.336333782913264
-      7  14.18281096109073 ... 9.993015501623889  -2.499241402772193
-      8  61.86210314839908 ...  8.40967305502954  -2.311947779876285
-      9   74.6331728593996 ... 6.961807305185392  -2.106804995857878
-     10 15.152159604120909 ... 8.476286915780012  -2.320514122052738
+    >>> print(psfphot.finder_results[0])  # doctest: +FLOAT_CMP
+     id     xcentroid      ...        flux                mag
+    --- ------------------ ... ------------------ -------------------
+      1  32.76616312538923 ...  8.759914568968053 -2.3562496768338215
+      2 13.260487336490504 ...  6.942889580709919 -2.1038506457966806
+      3  63.65811505587449 ...  8.112512027320118 -2.2728883841959138
+      4  82.29828239306062 ...  8.557042352587091  -2.330809203775193
+      5 41.503985357241085 ...  9.149300616176507  -2.403469743323483
+      6   21.5234588686359 ...   8.41831136093057 -2.3130624614752806
+      7  14.17914895242459 ... 10.352214238287955 -2.5375831277724186
+      8 61.832258738894474 ...  8.296287915436698 -2.2972095386343816
+      9  74.62182677494232 ...  7.114958201196044  -2.130430882609707
+     10 15.152687611700179 ...  8.252429063923989 -2.2914544997949413
 
 The ``fit_results`` attribute contains a dictionary with a wealth
 of further detailed information, including the fit models and any
@@ -284,10 +284,10 @@ As an example, let's print the fit parameter covariance matrix for the
 first source (note that not all astropy fitters will return a covariance
 matrix)::
 
-    >>> psfphot.fit_results['fit_infos'][0]['param_cov']
-    array([[ 9.55761538e-01,  3.66212195e-04, -1.06887650e-03],
-           [ 3.66212195e-04,  1.24115431e-05, -1.75532271e-06],
-           [-1.06887650e-03, -1.75532271e-06,  2.97592212e-06]])
+    >>> psfphot.fit_results['fit_infos'][0]['param_cov']  # doctest: +FLOAT_CMP
+    array([[ 7.27034774e-01,  8.86845334e-04,  3.98593038e-03],
+           [ 8.86845334e-04,  2.92871525e-06, -6.36805464e-07],
+           [ 3.98593038e-03, -6.36805464e-07,  4.29520185e-05]])
 
 
 Fitting a single source
@@ -323,7 +323,7 @@ Let's show the residual image:
     data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
                                            nsources, flux_range=(500, 700),
                                            min_separation=10, seed=0)
-    noise = make_noise_image(data.shape, mean=0, stddev=1)
+    noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
     error = np.abs(noise)
 
@@ -388,10 +388,10 @@ fit values being identical to the initial values. However, the flux was
 fit::
 
     >>> print(phot[('id', 'x_init', 'y_init', 'flux_init', 'x_fit',
-    ...             'y_fit', 'flux_fit')])
+    ...             'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id x_init y_init     flux_init     x_fit y_fit      flux_fit
-    --- ------ ------ ----------------- ----- ----- ------------------
-      1     42     36 676.9365873273836  42.0  36.0 496.70185010898047
+    --- ------ ------ ----------------- ----- ----- -----------------
+      1     42     36 701.6390630906382  42.0  36.0 921.2167861548569
 
 
 Source Grouping
@@ -408,7 +408,7 @@ other::
     ...                         grouper=grouper, aperture_radius=4)
     >>> phot = psfphot(data, error=error)
 
-The ``group_id`` column shows that 6 groups were identified (each with
+The ``group_id`` column shows that six groups were identified (each with
 two stars). The stars in each group were simultaneously fit.
 
     >>> print(phot[('id', 'group_id', 'group_size')])
@@ -442,25 +442,25 @@ clipping)::
     >>> finder = DAOStarFinder(10.0, 2.0)
 
     >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-    ...                         grouper=grouper, aperture_radius=4
+    ...                         grouper=grouper, aperture_radius=4,
     ...                         localbkg_estimator=localbkg_estimator)
     >>> phot = psfphot(data, error=error)
 
 The local background values are output in the table::
 
-    >>> print(phot[('id', 'local_bkg')])
+    >>> print(phot[('id', 'local_bkg')])  # doctest: +FLOAT_CMP
      id      local_bkg
     --- --------------------
-      1  0.05683413339116036
-      2   0.1465178770856933
-      3  0.05156304353688759
-      4  0.06533797895988643
-      5 0.015539380434351796
-      6   0.2946447148528156
-      7 -0.24848306906560644
-      8  0.06902761284931344
-      9 0.037708674392344696
-     10  0.07697120639964465
+      1   0.2868767131808984
+      2 0.020718326602389925
+      3  -0.1331493984320581
+      4   0.2440799441238853
+      5 -0.03708541210598071
+      6  -0.2863497468267567
+      7 -0.16388547407177662
+      8  0.05435649834620228
+      9 -0.14307720372014684
+     10 -0.04142177531136823
 
 
 Iterative PSF Photometry
@@ -475,6 +475,7 @@ For this simple example, let's input a table of three stars for the
 first fit iteration. Subsequent iterations will use the ``finder`` to
 find additional stars::
 
+    >>> from photutils.psf import IterativePSFPhotometry
     >>> init_params = QTable()
     >>> init_params['x'] = [33, 13, 64]
     >>> init_params['y'] = [12, 15, 22]
@@ -487,19 +488,19 @@ The table output from `~photutils.psf.IterativePSFPhotometry` contains a
 column called ``iter_detected`` which returns the fit iteration in which
 the source was detected::
 
-    >>> print(phot2[('id', 'iter_detected', 'x_fit', 'y_fit', 'flux_fit')])
-      id iter_detected       x_fit              y_fit             flux_fit
-    --- ------------- ------------------ ------------------ ------------------
-      1             1  32.78080238212221 12.215569632832379  631.3728970528724
-      2             1 13.270436821198123  14.58460590684079 508.67012005993433
-      3             1  63.63290114928681  22.40686369968043  639.6021481152056
-      4             2  82.27790147215153 25.534763865978288  655.2570434776327
-      5             2  41.54497971052003 35.889780164594136  687.3208299191051
-      6             2   21.5687339044637  41.95064339406346  622.0413056357854
-      7             2 14.190712563534408  65.00609713727931  682.9852091170068
-      8             2 61.841700204614824  67.55075533597399  617.0243577148906
-      9             2   74.6233906521105   68.1802921736959 507.47873637759386
-     10             2 15.158481627411087  78.01467993772174  556.6266865096007
+    >>> print(phot[('id', 'iter_detected', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
+     id iter_detected       x_fit              y_fit             flux_fit
+    --- ------------- ------------------ ------------------ -----------------
+      1             1 32.769748521507736 12.217877551785042  623.112845666705
+      2             1 13.267368530744182 14.584313177544152 505.6723003886122
+      3             1 63.649999091018834 22.386979414024587 644.4718993131787
+      4             2  82.28810152282769  25.52243260298307 658.0372017828031
+      5             2  41.54196044408549  35.88887512943361 688.7884814263355
+      6             2 21.576693854399878  41.94709948442762 625.1697408936903
+      7             2 14.181996733367436  65.00871043519591 683.7102916315391
+      8             2  61.83517624202557  67.55451682658261 607.3982833181155
+      9             2   74.6199614642493  68.18647252595234 506.1033464597233
+     10             2 15.167462695939475  78.03763869218587 558.5846710637369
 
 
 References
