@@ -9,6 +9,9 @@ import os
 import astropy
 import astropy.io.fits as fits
 
+from photutils.psf.models import GriddedPSFModel
+
+__all__ = ['STDPSFGrid']
 
 class STDPSFGrid(object):
     """ Pythonic wrapper for 'STDPSF' format ePSF model grids, from Anderson et al.
@@ -260,7 +263,6 @@ class STDPSFGrid(object):
         Returns:
              photutils.GriddedPSFModel instance
         """
-        import photutils
 
         if self._ndetectors > 1:
             raise RuntimeError("Cannot convert a STDPSF grid with multiple detectors into a photutils.GriddedPSFModel")
@@ -283,5 +285,5 @@ class STDPSFGrid(object):
 
         psfdata_with_meta = astropy.nddata.NDData(psfdata, meta=meta)
 
-        return  photutils.GriddedPSFModel(psfdata_with_meta)
+        return  GriddedPSFModel(psfdata_with_meta)
 
