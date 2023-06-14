@@ -176,7 +176,8 @@ to subtract a global background from an image.
 
 We'll use the `~photutils.detection.DAOStarFinder` for source
 detection. We'll fit the central 5x5 pixel region of each star using a
-`~photutils.psf.IntegratedGaussianPRF` PSF model::
+`~photutils.psf.IntegratedGaussianPRF` PSF model. We first create
+an instance of the `~photutils.psf.PSFPhotometry` class::
 
     >>> from photutils.detection import DAOStarFinder
     >>> from photutils.psf import PSFPhotometry
@@ -186,7 +187,25 @@ detection. We'll fit the central 5x5 pixel region of each star using a
     >>> finder = DAOStarFinder(6.0, 2.0)
     >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
     ...                         aperture_radius=4)
+
+To perform the PSF fitting, we then call the class instance
+on the data array, and optionally an error and mask array. A
+`~astropy.nddata.NDData` object holding the data, error, and mask arrays
+can also be input into the ``data`` parameter. A table of initial
+PSF model parameter values can also be input when calling the class
+instance. Here we use the data and error arrays::
+
     >>> phot = psfphot(data, error=error)
+
+Equivalently, one can input an `~astropy.nddata.NDData` object with any
+uncertainty object that can be converted to standard-deviation errors:
+
+.. doctest-skip::
+
+    >>> from astropy.nddata import NDData, StdDevUncertainty
+    >>> uncertainty = StdDevUncertainty(error)
+    >>> nddata = NDData(data, uncertainty=uncertainty)
+    >>> phot2 = psfphot(nddata)
 
 The result is an astropy `~astropy.table.Table` with columns for the
 source and group identification numbers, the x, y, and flux initial,
