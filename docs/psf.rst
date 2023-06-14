@@ -54,14 +54,14 @@ connect these pieces together.
 
 The two main PSF-photometry classes are `~photutils.psf.PSFPhotometry`
 and `~photutils.psf.IterativePSFPhotometry`.
-`~photutils.psf.PSFPhotometry` is a flexible PSF photometry algorithm
-that can find sources in an image, optionally group overlapping
-sources, fit the PSF model to the sources, and subtract the fit PSF
-models from the image. `~photutils.psf.IterativePSFPhotometry` is an
-iterative version of `~photutils.psf.PSFPhotometry` where after the
-fit sources are subtracted, the process repeats until no additional
-sources are detected or a maximum number of iterations has been
-performed. When used with the `~photutils.detection.DAOStarFinder`,
+`~photutils.psf.PSFPhotometry` provides the framework for a flexible PSF
+photometry workflow that can find sources in an image, optionally group
+overlapping sources, fit the PSF model to the sources, and subtract the
+fit PSF models from the image. `~photutils.psf.IterativePSFPhotometry`
+is an iterative version of `~photutils.psf.PSFPhotometry` where
+after the fit sources are subtracted, the process repeats until no
+additional sources are detected or a maximum number of iterations has
+been reached. When used with the `~photutils.detection.DAOStarFinder`,
 `~photutils.psf.IterativePSFPhotometry` is essentially an implementation
 of the DAOPHOT algorithm described by Stetson in his `seminal paper
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_ for
@@ -70,7 +70,7 @@ crowded-field stellar photometry.
 The star-finding step is controlled by the ``finder``
 keyword, where one inputs a callable function or class
 instance. Typically this would be one of the star-detection
-classes implemented in the `~photutils.detection`
+classes implemented in the `photutils.detection`
 subpackage, e.g., `~photutils.detection.DAOStarFinder`,
 `~photutils.detection.IRAFStarFinder`, or
 `~photutils.detection.StarFinder`.
@@ -86,15 +86,15 @@ for each star has three parameters to be fitted. If one constructs a
 single model to fit the 300 stars simultaneously, then the optimization
 algorithm will have to search for the solution in a 900-dimensional
 space, which is computationally expensive and error-prone. Reducing
-the stars in groups effectively reduces the dimension of the parameter
-space, which facilitates the optimization process. For more details see
-:ref:`psf-grouping`.
+the number of stars in groups effectively reduces the dimension of the
+parameter space, which facilitates the optimization process. For more
+details see :ref:`psf-grouping`.
 
 The local background around each source can optionally be subtracted
 using the ``localbkg_estimator`` keyword. This keyword accepts a
 `~photutils.background.LocalBackground` instance that estimates the
-local statistics in a circular annulus aperture centered on each
-source. The size of the annulus and the statistic can be configured in
+local statistics in a circular annulus aperture centered on each source.
+The size of the annulus and the statistic function can be configured in
 `~photutils.background.LocalBackground`.
 
 The next step is to fit the sources and/or groups. This
@@ -102,8 +102,8 @@ task is performed using an astropy fitter, for example
 `~astropy.modeling.fitting.LevMarLSQFitter`, input via the ``fitter``
 keyword.
 
-After sources are fitted, a model image of the source or
-a residual image can be generated using, for example, the
+After sources are fitted, a model image of the fit
+sources or a residual image can be generated using the
 :meth:`~photutils.psf.PSFPhotometry.make_model_image` and
 :meth:`~photutils.psf.PSFPhotometry.make_residual_image` methods.
 
@@ -125,8 +125,8 @@ Example Usage
 -------------
 
 Let's start with a simple example with simulated stars whose PSF is
-assumed to be Gaussian. We'll create a synthetic image provided by the
-:ref:`photutils.datasets <datasets>` module::
+assumed to be Gaussian. We'll create a synthetic image using tools
+provided by the :ref:`photutils.datasets <datasets>` module::
 
     >>> import numpy as np
     >>> from photutils.datasets import make_test_psf_data, make_noise_image
@@ -170,14 +170,16 @@ Fitting multiple stars
 ^^^^^^^^^^^^^^^^^^^^^^
 
 Now let's use `~photutils.psf.PSFPhotometry` to perform PSF photometry
-on this image. Note that the input image must be background-subtracted
-prior to using the photometry classes. See :ref:`background` for tools
-to subtract a global background from an image.
+on the stars in this image. Note that the input image must be
+background-subtracted prior to using the photometry classes. See
+:ref:`background` for tools to subtract a global background from an
+image. This is not needed for our synthetic image because it does not
+include background.
 
-We'll use the `~photutils.detection.DAOStarFinder` for source
+We'll use the `~photutils.detection.DAOStarFinder` class for source
 detection. We'll fit the central 5x5 pixel region of each star using a
-`~photutils.psf.IntegratedGaussianPRF` PSF model. We first create
-an instance of the `~photutils.psf.PSFPhotometry` class::
+`~photutils.psf.IntegratedGaussianPRF` PSF model. We first create an
+instance of the `~photutils.psf.PSFPhotometry` class::
 
     >>> from photutils.detection import DAOStarFinder
     >>> from photutils.psf import PSFPhotometry
@@ -191,11 +193,14 @@ an instance of the `~photutils.psf.PSFPhotometry` class::
 To perform the PSF fitting, we then call the class instance
 on the data array, and optionally an error and mask array. A
 `~astropy.nddata.NDData` object holding the data, error, and mask arrays
-can also be input into the ``data`` parameter. A table of initial
-PSF model parameter values can also be input when calling the class
-instance. Here we use the data and error arrays::
+can also be input into the ``data`` parameter. Note that all non-finite
+(e.g., NaN or inf) data values are automatically masked. Here we input
+the data and error arrays::
 
     >>> phot = psfphot(data, error=error)
+
+A table of initial PSF model parameter values can also be input when
+calling the class instance. An example of that is shown later.
 
 Equivalently, one can input an `~astropy.nddata.NDData` object with any
 uncertainty object that can be converted to standard-deviation errors:
@@ -215,8 +220,7 @@ fit, the group size, quality-of-fit metrics, and flags. See the
 output columns.
 
 The full table cannot be shown here as it has a large number of columns,
-but let's print print the source id along with the fit x, y, and flux
-values::
+but let's print the source ID along with the fit x, y, and flux values::
 
     >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id       x_fit              y_fit             flux_fit
@@ -276,7 +280,9 @@ sources.
 
 Further details about the PSF fitting can be obtained from attributes on
 the `~photutils.psf.PSFPhotometry` instance. For example, the results
-from the ``finder`` instance (another astropy table) can be obtained::
+from the ``finder`` instance called during PSF fitting can be accessed
+using the ``finder_results`` attribute (the ``finder`` returns an
+astropy table)::
 
     >>> print(psfphot.finder_results[0])  # doctest: +FLOAT_CMP
      id     xcentroid      ...        flux                mag
@@ -292,16 +298,16 @@ from the ``finder`` instance (another astropy table) can be obtained::
       9  74.62182677494232 ...  7.114958201196044  -2.130430882609707
      10 15.152687611700179 ...  8.252429063923989 -2.2914544997949413
 
-The ``fit_results`` attribute contains a dictionary with a wealth
-of further detailed information, including the fit models and any
-information returned from the ``fitter`` for each source:
+The ``fit_results`` attribute contains a dictionary with a wealth of
+detailed information, including the fit models and any information
+returned from the ``fitter`` for each source:
 
     >>> psfphot.fit_results.keys()
     dict_keys(['local_bkg', 'fit_models', 'fit_infos', 'fit_param_errs', 'npixfit', 'nmodels', 'cen_res_idx', 'fit_residuals'])
 
-As an example, let's print the fit parameter covariance matrix for the
-first source (note that not all astropy fitters will return a covariance
-matrix)::
+As an example, let's print the covariance matrix of the fit parameters
+for the first source (note that not all astropy fitters will return a
+covariance matrix)::
 
     >>> psfphot.fit_results['fit_infos'][0]['param_cov']  # doctest: +FLOAT_CMP
     array([[ 7.27034774e-01,  8.86845334e-04,  3.98593038e-03],
@@ -325,8 +331,19 @@ photometry class on the data::
     >>> init_params['y'] = [36]
     >>> phot = psfphot(data, error=error, init_params=init_params)
 
-The output table contains only the fit results for the input source.
-Let's show the residual image:
+The PSF photometry class allows for flexible input column names
+using a heuristic to identify the x, y, and flux columns. See
+`~photutils.psf.PSFPhotometry` for more details.
+
+The output table contains only the fit results for the input source::
+
+    >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
+     id       x_fit             y_fit            flux_fit
+    --- ----------------- ----------------- -----------------
+      1 41.54155347697608 35.88933616826206 687.8236201009081
+
+Finally, let's show the residual image. The red circular aperture shows
+the location of the star that was fit and subtracted.
 
 .. plot::
 
@@ -374,9 +391,6 @@ Let's show the residual image:
     plt.title('Residual Image')
     plt.colorbar()
 
-The red circular aperture shows the location of the star that was
-subtracted.
-
 
 Forced Photometry
 ^^^^^^^^^^^^^^^^^
@@ -386,7 +400,7 @@ y positions and the flux. However, the astropy modeling and fitting
 framework allows any of these parameters to be fixed during the fitting.
 
 Let's say you want to fix the (x, y) position for each source. You can
-do that by setting the ``fixed`` attribute on the model parameter::
+do that by setting the ``fixed`` attribute on the model parameters::
 
     >>> psf_model2 = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     >>> psf_model2.x_0.fixed = True
@@ -449,9 +463,9 @@ Local Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To subtract a local background from each source, define a
-`~photutils.background.LocalBackground` instance an input it via the
-``localbkg_estimator`` keyword. Here we'll use an annulus with an
-inner and outer radius of 5 and 10 pixels, respectively, with the
+`~photutils.background.LocalBackground` instance and input it via
+the ``localbkg_estimator`` keyword. Here we'll use an annulus with
+an inner and outer radius of 5 and 10 pixels, respectively, with the
 `~photutils.background.MMMBackground` statistic (with its default sigma
 clipping)::
 
@@ -504,7 +518,7 @@ find additional stars::
     >>> phot = psfphot2(data, error=error, init_params=init_params)
 
 The table output from `~photutils.psf.IterativePSFPhotometry` contains a
-column called ``iter_detected`` which returns the fit iteration in which
+column called ``iter_detected`` that returns the fit iteration in which
 the source was detected::
 
     >>> print(phot[('id', 'iter_detected', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
@@ -531,12 +545,10 @@ References
 `The Kepler Pixel Response Function
 <https://ui.adsabs.harvard.edu/abs/2010ApJ...713L..97B/abstract>`_
 
-`Stetson, Astronomical Society of the Pacific, Publications, (ISSN
-0004-6280), vol. 99, March 1987, p. 191-222.
+`Stetson (1987 PASP 99, 191)
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_
 
-`Anderson & King, Astronomical Society of the Pacific, Publications,
-Volume 112, Issue 776, pp. 1360-1382, Nov 2000
+`Anderson and King (2000 PASP 112, 1360)
 <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
 
 
