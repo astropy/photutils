@@ -126,12 +126,13 @@ Example Usage
 
 Let's start with a simple example with simulated stars whose PSF is
 assumed to be Gaussian. We'll create a synthetic image using tools
-provided by the :ref:`photutils.datasets <datasets>` module::
+provided by the :ref:`photutils.datasets <datasets>` module:
+
+.. doctest-requires:: scipy
 
     >>> import numpy as np
     >>> from photutils.datasets import make_test_psf_data, make_noise_image
     >>> from photutils.psf import IntegratedGaussianPRF
-
     >>> psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     >>> psf_shape = (25, 25)
     >>> nsources = 10
@@ -179,11 +180,12 @@ include background.
 We'll use the `~photutils.detection.DAOStarFinder` class for source
 detection. We'll fit the central 5x5 pixel region of each star using a
 `~photutils.psf.IntegratedGaussianPRF` PSF model. We first create an
-instance of the `~photutils.psf.PSFPhotometry` class::
+instance of the `~photutils.psf.PSFPhotometry` class:
+
+.. doctest-requires:: scipy
 
     >>> from photutils.detection import DAOStarFinder
     >>> from photutils.psf import PSFPhotometry
-
     >>> psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     >>> fit_shape = (5, 5)
     >>> finder = DAOStarFinder(6.0, 2.0)
@@ -195,7 +197,9 @@ on the data array, and optionally an error and mask array. A
 `~astropy.nddata.NDData` object holding the data, error, and mask arrays
 can also be input into the ``data`` parameter. Note that all non-finite
 (e.g., NaN or inf) data values are automatically masked. Here we input
-the data and error arrays::
+the data and error arrays:
+
+.. doctest-requires:: scipy
 
     >>> phot = psfphot(data, error=error)
 
@@ -220,7 +224,9 @@ fit, the group size, quality-of-fit metrics, and flags. See the
 output columns.
 
 The full table cannot be shown here as it has a large number of columns,
-but let's print the source ID along with the fit x, y, and flux values::
+but let's print the source ID along with the fit x, y, and flux values:
+
+.. doctest-requires:: scipy
 
     >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id       x_fit              y_fit             flux_fit
@@ -236,7 +242,9 @@ but let's print the source ID along with the fit x, y, and flux values::
       9   74.6206253109306  68.18554867674209 502.89058093032907
      10 15.168451808033558  78.03734517330257  558.0203651230795
 
-Let's create the residual image::
+Let's create the residual image:
+
+.. doctest-requires:: scipy
 
     >>> resid = psfphot.make_residual_image(data, (25, 25))
 
@@ -282,7 +290,9 @@ Further details about the PSF fitting can be obtained from attributes on
 the `~photutils.psf.PSFPhotometry` instance. For example, the results
 from the ``finder`` instance called during PSF fitting can be accessed
 using the ``finder_results`` attribute (the ``finder`` returns an
-astropy table)::
+astropy table):
+
+.. doctest-requires:: scipy
 
     >>> print(psfphot.finder_results[0])  # doctest: +FLOAT_CMP
      id     xcentroid      ...        flux                mag
@@ -302,12 +312,16 @@ The ``fit_results`` attribute contains a dictionary with a wealth of
 detailed information, including the fit models and any information
 returned from the ``fitter`` for each source:
 
+.. doctest-requires:: scipy
+
     >>> psfphot.fit_results.keys()
     dict_keys(['local_bkg', 'fit_models', 'fit_infos', 'fit_param_errs', 'npixfit', 'nmodels', 'cen_res_idx', 'fit_residuals'])
 
 As an example, let's print the covariance matrix of the fit parameters
 for the first source (note that not all astropy fitters will return a
-covariance matrix)::
+covariance matrix):
+
+.. doctest-skip::
 
     >>> psfphot.fit_results['fit_infos'][0]['param_cov']  # doctest: +FLOAT_CMP
     array([[ 7.27034774e-01,  8.86845334e-04,  3.98593038e-03],
@@ -323,7 +337,9 @@ in an image. We can do that by defining a table of the sources that
 we want to fit. For this example, let's fit the single star at ``(x,
 y) = (42, 36)``. We first define a table with this position and then
 pass that table into the ``init_params`` keyword when calling the PSF
-photometry class on the data::
+photometry class on the data:
+
+.. doctest-requires:: scipy
 
     >>> from astropy.table import QTable
     >>> init_params = QTable()
@@ -335,12 +351,14 @@ The PSF photometry class allows for flexible input column names
 using a heuristic to identify the x, y, and flux columns. See
 `~photutils.psf.PSFPhotometry` for more details.
 
-The output table contains only the fit results for the input source::
+The output table contains only the fit results for the input source:
+
+.. doctest-requires:: scipy
 
     >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
-     id       x_fit             y_fit            flux_fit
-    --- ----------------- ----------------- -----------------
-      1 41.54155347697608 35.88933616826206 687.8236201009081
+     id       x_fit             y_fit           flux_fit
+    --- ----------------- ----------------- ----------------
+      1 41.54155347697608 35.88933616826206 687.823620100908
 
 Finally, let's show the residual image. The red circular aperture shows
 the location of the star that was fit and subtracted.
@@ -400,7 +418,9 @@ y positions and the flux. However, the astropy modeling and fitting
 framework allows any of these parameters to be fixed during the fitting.
 
 Let's say you want to fix the (x, y) position for each source. You can
-do that by setting the ``fixed`` attribute on the model parameters::
+do that by setting the ``fixed`` attribute on the model parameters:
+
+.. doctest-requires:: scipy
 
     >>> psf_model2 = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     >>> psf_model2.x_0.fixed = True
@@ -410,7 +430,9 @@ do that by setting the ``fixed`` attribute on the model parameters::
 
 Now when the model is fit the (x, y) position will be fixed at its
 initial position for every source. Let's just fit a single source
-(defined in ``init_params``)::
+(defined in ``init_params``):
+
+.. doctest-requires:: scipy
 
     >>> psfphot = PSFPhotometry(psf_model2, fit_shape, finder=finder,
     ...                         aperture_radius=4)
@@ -418,7 +440,9 @@ initial position for every source. Let's just fit a single source
 
 The output table shows that the (x, y) position was unchanged, with the
 fit values being identical to the initial values. However, the flux was
-fit::
+fit:
+
+.. doctest-requires:: scipy
 
     >>> print(phot[('id', 'x_init', 'y_init', 'flux_init', 'x_fit',
     ...             'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
@@ -433,7 +457,9 @@ Source Grouping
 Source grouping is an optional feature. To turn it on, create a
 `~photutils.psf.SourceGrouper` instance and input it via the ``grouper``
 keyword. Here we'll group stars that are within 20 pixels of each
-other::
+other:
+
+.. doctest-requires:: scipy, sklearn
 
     >>> from photutils.psf import SourceGrouper
     >>> grouper = SourceGrouper(min_separation=20)
@@ -443,6 +469,8 @@ other::
 
 The ``group_id`` column shows that six groups were identified (each with
 two stars). The stars in each group were simultaneously fit.
+
+.. doctest-requires:: scipy, sklearn
 
     >>> print(phot[('id', 'group_id', 'group_size')])
      id group_id group_size
@@ -467,19 +495,22 @@ To subtract a local background from each source, define a
 the ``localbkg_estimator`` keyword. Here we'll use an annulus with
 an inner and outer radius of 5 and 10 pixels, respectively, with the
 `~photutils.background.MMMBackground` statistic (with its default sigma
-clipping)::
+clipping):
+
+.. doctest-requires:: scipy, sklearn
 
     >>> from photutils.background import LocalBackground, MMMBackground
     >>> bkgstat = MMMBackground()
     >>> localbkg_estimator = LocalBackground(5, 10, bkgstat)
     >>> finder = DAOStarFinder(10.0, 2.0)
-
     >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
     ...                         grouper=grouper, aperture_radius=4,
     ...                         localbkg_estimator=localbkg_estimator)
     >>> phot = psfphot(data, error=error)
 
-The local background values are output in the table::
+The local background values are output in the table:
+
+.. doctest-requires:: scipy, sklearn
 
     >>> print(phot[('id', 'local_bkg')])  # doctest: +FLOAT_CMP
      id      local_bkg
@@ -506,7 +537,9 @@ may not be detected until after the bright stars are subtracted.
 
 For this simple example, let's input a table of three stars for the
 first fit iteration. Subsequent iterations will use the ``finder`` to
-find additional stars::
+find additional stars:
+
+.. doctest-requires:: scipy
 
     >>> from photutils.psf import IterativePSFPhotometry
     >>> init_params = QTable()
@@ -519,7 +552,9 @@ find additional stars::
 
 The table output from `~photutils.psf.IterativePSFPhotometry` contains a
 column called ``iter_detected`` that returns the fit iteration in which
-the source was detected::
+the source was detected:
+
+.. doctest-requires:: scipy
 
     >>> print(phot[('id', 'iter_detected', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id iter_detected       x_fit              y_fit             flux_fit
