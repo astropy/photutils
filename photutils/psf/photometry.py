@@ -19,6 +19,7 @@ from astropy.table import QTable, Table, hstack, vstack
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
+from photutils.background import LocalBackground
 from photutils.psf.groupstars import GroupStarsBase
 from photutils.utils._misc import _get_meta
 from photutils.utils._optional_deps import HAS_TQDM
@@ -113,7 +114,7 @@ class PSFPhotometry:
         self.grouper = self._validate_grouper(grouper, 'grouper')
         self.finder = self._validate_callable(finder, 'finder')
         self.fitter = self._validate_callable(fitter, 'fitter')
-        self.localbkg_estimator = self._validate_callable(
+        self.localbkg_estimator = self._validate_localbkg(
             localbkg_estimator, 'localbkg_estimator')
         self.fitter_maxiters = self._validate_maxiters(fitter_maxiters)
         self.aperture_radius = self._validate_radius(aperture_radius)
@@ -160,6 +161,12 @@ class PSFPhotometry:
         if obj is not None and not callable(obj):
             raise TypeError(f'{name!r} must be a callable object')
         return obj
+
+    def _validate_localbkg(self, value, name):
+        if value is not None and not isinstance(value, LocalBackground):
+            raise ValueError('localbkg_estimator must be a '
+                             'LocalBackground instance.')
+        return self._validate_callable(value, name)
 
     def _validate_maxiters(self, maxiters):
         spec = inspect.signature(self.fitter.__call__)

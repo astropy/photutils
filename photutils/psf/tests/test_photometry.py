@@ -55,6 +55,11 @@ def test_inputs():
         grouper = DAOGroup(1)
         _ = PSFPhotometry(model, 1, grouper=grouper)
 
+    match = 'localbkg_estimator must be a LocalBackground instance'
+    with pytest.raises(ValueError, match=match):
+        localbkg = MMMBackground()
+        _ = PSFPhotometry(model, 1, localbkg_estimator=localbkg)
+
     match = 'aperture_radius must be a strictly-positive scalar'
     for radius in (0, -1, np.nan, np.inf):
         with pytest.raises(ValueError, match=match):
