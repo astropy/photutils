@@ -1,4 +1,6 @@
 comment: false
+codecov:
+  branch: main
 coverage:
 status:
   project:
