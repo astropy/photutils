@@ -19,8 +19,10 @@ from photutils.psf import (IntegratedGaussianPRF, IterativePSFPhotometry,
                            PSFPhotometry, SourceGrouper)
 from photutils.psf.photometry_depr import DAOGroup
 from photutils.utils.exceptions import NoDetectionsWarning
+from photutils.utils._optional_deps import HAS_SCIPY, HAS_SKLEARN
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_inputs():
     model = IntegratedGaussianPRF(sigma=1.0)
 
@@ -134,6 +136,7 @@ def fixture_test_data():
     return data, error, true_params
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry(test_data):
     data, error, sources = test_data
 
@@ -189,6 +192,7 @@ def test_psf_photometry(test_data):
     # assert resid_data3.unit == unit
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_mask(test_data):
     data, error, sources = test_data
     data_orig = data.copy()
@@ -257,6 +261,7 @@ def test_psf_photometry_mask(test_data):
     assert len(phot) == 1
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_init_params(test_data):
     data, error, _ = test_data
     data = data.copy()
@@ -315,6 +320,8 @@ def test_psf_photometry_init_params(test_data):
         _ = psfphot(data, init_params=init_params)
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.skipif(not HAS_SKLEARN, reason='sklearn is required')
 def test_grouper(test_data):
     data, error, sources = test_data
 
@@ -331,6 +338,7 @@ def test_grouper(test_data):
     assert_equal(phot['group_size'], (2, 2, 2, 2, 1, 1, 2, 2, 2, 2))
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_local_bkg(test_data):
     data, error, sources = test_data
 
@@ -349,6 +357,7 @@ def test_local_bkg(test_data):
     assert np.count_nonzero(phot['local_bkg']) == len(sources)
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fixed_params(test_data):
     data, error, _ = test_data
 
@@ -369,6 +378,7 @@ def test_fixed_params(test_data):
         assert np.all(np.isnan(phot['flux_err']))
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fit_warning(test_data):
     data, _, _ = test_data
 
@@ -388,6 +398,7 @@ def test_fit_warning(test_data):
         assert len(psfphot.fit_error_indices) > 0
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fitter_no_maxiters_no_residuals(test_data):
     data, error, _ = test_data
 
@@ -405,6 +416,7 @@ def test_fitter_no_maxiters_no_residuals(test_data):
         assert np.all(np.isnan(phot['cfit']))
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_iterative_psf_photometry(test_data):
     data, error, sources = test_data
 
@@ -453,6 +465,7 @@ def test_iterative_psf_photometry(test_data):
         assert phot is None
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_iterative_psf_photometry_inputs():
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     fit_shape = (5, 5)
