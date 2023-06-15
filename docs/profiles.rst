@@ -106,9 +106,9 @@ error:
 
 .. plot::
 
+    import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-
     from photutils.centroids import centroid_quadratic
     from photutils.datasets import make_noise_image
     from photutils.profiles import RadialProfile
@@ -142,7 +142,6 @@ list of the apertures. Let's plot two of the annulus apertures for the
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from astropy.visualization import simple_norm
-
     from photutils.centroids import centroid_quadratic
     from photutils.datasets import make_noise_image
     from photutils.profiles import RadialProfile
@@ -193,7 +192,6 @@ class:`~photutils.profiles.RadialProfile` radial profile:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-
     from photutils.centroids import centroid_quadratic
     from photutils.datasets import make_noise_image
     from photutils.profiles import RadialProfile
@@ -273,7 +271,6 @@ error:
 
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-
     from photutils.centroids import centroid_quadratic
     from photutils.datasets import make_noise_image
     from photutils.profiles import CurveOfGrowth
@@ -305,7 +302,6 @@ list of the apertures. Let's plot a couple of the apertures on the data:
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from astropy.visualization import simple_norm
-
     from photutils.centroids import centroid_quadratic
     from photutils.datasets import make_noise_image
     from photutils.profiles import CurveOfGrowth

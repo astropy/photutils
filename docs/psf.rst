@@ -149,8 +149,7 @@ Let's plot the image:
 .. plot::
 
     import matplotlib.pyplot as plt
-    import numpy as np
-    from photutils.datasets import make_test_psf_data, make_noise_image
+    from photutils.datasets import make_noise_image, make_test_psf_data
     from photutils.psf import IntegratedGaussianPRF
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
@@ -257,8 +256,9 @@ and plot it:
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from photutils.datasets import make_test_psf_data, make_noise_image
-    from photutils.psf import IntegratedGaussianPRF
+    from photutils.datasets import make_noise_image, make_test_psf_data
+    from photutils.detection import DAOStarFinder
+    from photutils.psf import IntegratedGaussianPRF, PSFPhotometry
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     psf_shape = (25, 25)
@@ -270,9 +270,6 @@ and plot it:
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
     error = np.abs(noise)
-
-    from photutils.detection import DAOStarFinder
-    from photutils.psf import PSFPhotometry
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     fit_shape = (5, 5)
@@ -379,8 +376,11 @@ the location of the star that was fit and subtracted.
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from photutils.datasets import make_test_psf_data, make_noise_image
-    from photutils.psf import IntegratedGaussianPRF
+    from astropy.table import QTable
+    from photutils.aperture import CircularAperture
+    from photutils.datasets import make_noise_image, make_test_psf_data
+    from photutils.detection import DAOStarFinder
+    from photutils.psf import IntegratedGaussianPRF, PSFPhotometry
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     psf_shape = (25, 25)
@@ -393,16 +393,12 @@ the location of the star that was fit and subtracted.
     data += noise
     error = np.abs(noise)
 
-    from photutils.detection import DAOStarFinder
-    from photutils.psf import PSFPhotometry
-
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
 
-    from astropy.table import QTable
     init_params = QTable()
     init_params['x'] = [42]
     init_params['y'] = [36]
@@ -410,8 +406,6 @@ the location of the star that was fit and subtracted.
 
     resid = psfphot.make_residual_image(data, (25, 25))
     plt.imshow(resid)
-
-    from photutils.aperture import CircularAperture
 
     resid = psfphot.make_residual_image(data, (25, 25))
     aper = CircularAperture(zip(init_params['x'], init_params['y']), r=4)
