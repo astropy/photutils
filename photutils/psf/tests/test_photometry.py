@@ -182,19 +182,18 @@ def test_psf_photometry(test_data):
     assert resid_data2.data.shape == data.shape
     assert_allclose(resid_data, resid_data2.data)
 
-    # FIXME
-    # test NDData input with units (upstream bug?)
-    # unit = u.Jy
-    # uncertainty = StdDevUncertainty(error)
-    # nddata = NDData(data, uncertainty=uncertainty, unit=unit)
-    # psfphotu = PSFPhotometry(psf_model, fit_shape, finder=finder,
-    #                           aperture_radius=4)
-    # photu = psfphotu(nddata)
-    # assert photu['flux_init'].unit == unit
-    # assert photu['flux_fit'].unit == unit
-    # assert photu['flux_err'].unit == unit
-    # resid_data3 = psfphotu.make_residual_image(nddata, fit_shape)
-    # assert resid_data3.unit == unit
+    # test NDData input with units
+    unit = u.Jy
+    uncertainty = StdDevUncertainty(error)
+    nddata = NDData(data, uncertainty=uncertainty, unit=unit)
+    psfphotu = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                             aperture_radius=4)
+    photu = psfphotu(nddata)
+    assert photu['flux_init'].unit == unit
+    assert photu['flux_fit'].unit == unit
+    assert photu['flux_err'].unit == unit
+    resid_data3 = psfphotu.make_residual_image(nddata, fit_shape)
+    assert resid_data3.unit == unit
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
