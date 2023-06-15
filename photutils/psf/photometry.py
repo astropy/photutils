@@ -276,13 +276,15 @@ class PSFPhotometry:
         finite_mask = ~np.isfinite(image)
 
         if mask is not None:
-            mask |= finite_mask
+            finite_mask |= mask
             if np.any(finite_mask & ~mask):
                 warn_nonfinite()
         else:
             mask = finite_mask
             if np.any(finite_mask):
                 warn_nonfinite()
+            else:
+                mask = None
 
         return mask
 
@@ -295,10 +297,10 @@ class PSFPhotometry:
 
     def _add_progress_bar(self, iterable, desc=None):
         if self.progress_bar and HAS_TQDM:
-            try: # pragma: no cover
+            try:  # pragma: no cover
                 from ipywidgets import FloatProgress  # noqa: F401
                 from tqdm.auto import tqdm
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 from tqdm import tqdm
 
             iterable = tqdm(iterable, desc=desc)  # pragma: no cover
@@ -1100,7 +1102,7 @@ class IterativePSFPhotometry:
                              'IterativePSFPhotometry.')
 
         if aperture_radius is None:
-            raise ValueError('aperture_radius must not be None for '
+            raise ValueError('aperture_radius cannot be None for '
                              'IterativePSFPhotometry.')
 
         self.maxiters = self._validate_maxiters(maxiters)
