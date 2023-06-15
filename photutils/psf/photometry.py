@@ -865,10 +865,11 @@ class PSFPhotometry:
             mask = data.mask
             unc = data.uncertainty
             if unc is not None:
-                unc = unc.represent_as(StdDevUncertainty)
-                error = unc.array
-                if unc.unit is not None:
-                    error <<= unc.unit
+                error = unc.represent_as(StdDevUncertainty).quantity
+                if error.unit is u.dimensionless_unscaled:
+                    error = error.value
+                else:
+                    error = error.to(data.unit)
             return self.__call__(data_, mask=mask, error=error,
                                  init_params=init_params)
 
