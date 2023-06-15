@@ -174,7 +174,8 @@ class PSFPhotometry:
     def _validate_radius(radius):
         if radius is not None and (not np.isscalar(radius)
                                    or radius <= 0 or ~np.isfinite(radius)):
-            raise ValueError('radius must be a strictly-positive scalar')
+            raise ValueError('aperture_radius must be a strictly-positive '
+                             'scalar')
         return radius
 
     def _validate_array(self, array, name, data_shape=None):

@@ -3,7 +3,6 @@
 Tests for the photometry module.
 """
 
-from photutils.utils.exceptions import NoDetectionsWarning
 import astropy.units as u
 import numpy as np
 import pytest
@@ -18,75 +17,97 @@ from photutils.datasets import make_noise_image, make_test_psf_data
 from photutils.detection import DAOStarFinder
 from photutils.psf import (IntegratedGaussianPRF, IterativePSFPhotometry,
                            PSFPhotometry, SourceGrouper)
-from photutils.psf.models import IntegratedGaussianPRF
-from photutils.psf.photometry import PSFPhotometry
 from photutils.psf.photometry_depr import DAOGroup
+from photutils.utils.exceptions import NoDetectionsWarning
 
 
 def test_inputs():
     model = IntegratedGaussianPRF(sigma=1.0)
 
-    with pytest.raises(TypeError):
+    match = 'psf_model must be an astropy Fittable2DModel'
+    with pytest.raises(TypeError, match=match):
         _ = PSFPhotometry(1, 3)
 
-    shapes = ((0, 0), (-1, 1), (np.nan, 3), (5, np.inf), (4, 3))
-    for shape in shapes:
-        with pytest.raises(ValueError):
+    match = 'fit_shape must have an odd value for both axes'
+    for shape in ((0, 0), (4, 3)):
+        with pytest.raises(ValueError, match=match):
+            _ = PSFPhotometry(model, shape)
+
+    match = 'fit_shape must be > 0'
+    with pytest.raises(ValueError, match=match):
+        _ = PSFPhotometry(model, (-1, 1))
+
+    match = 'fit_shape must be a finite value'
+    for shape in ((np.nan, 3), (5, np.inf)):
+        with pytest.raises(ValueError, match=match):
             _ = PSFPhotometry(model, shape)
 
     kwargs = {'grouper': 1, 'finder': 1, 'fitter': 1}
     for key, val in kwargs.items():
-        with pytest.raises(TypeError):
+        match = f"'{key}' must be a callable object"
+        with pytest.raises(TypeError, match=match):
             _ = PSFPhotometry(model, 1, **{key: val})
 
-    with pytest.raises(ValueError):
+    match = 'Invalid grouper class. Please use SourceGrouper.'
+    with pytest.raises(ValueError, match=match):
         grouper = DAOGroup(1)
         _ = PSFPhotometry(model, 1, grouper=grouper)
 
+    match = 'aperture_radius must be a strictly-positive scalar'
     for radius in (0, -1, np.nan, np.inf):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             _ = PSFPhotometry(model, 1, aperture_radius=radius)
 
+    match = 'data must be a 2D array'
     psfphot = PSFPhotometry(model, (3, 3))
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         _ = psfphot(np.arange(3))
 
-    with pytest.raises(ValueError):
+    match = 'data and mask must have the same shape.'
+    with pytest.raises(ValueError, match=match):
         data = np.ones((11, 11))
         mask = np.ones((3, 3))
         _ = psfphot(data, mask=mask)
 
-    with pytest.raises(TypeError):
+    match = 'init_params must be an astropy Table'
+    with pytest.raises(TypeError, match=match):
         data = np.ones((11, 11))
         _ = psfphot(data, init_params=1)
 
-    with pytest.raises(ValueError):
+    match = ('init_param must contain valid column names for the x and y '
+             'source positions')
+    with pytest.raises(ValueError, match=match):
         tbl = Table()
         tbl['a'] = np.arange(3)
         data = np.ones((11, 11))
         _ = psfphot(data, init_params=tbl)
 
     # test no finder or init_params
+    match = 'finder must be defined if init_params is not input'
     psfphot = PSFPhotometry(model, (3, 3), aperture_radius=5)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         data = np.ones((11, 11))
         _ = psfphot(data)
 
+    # data has unmasked non-finite value
+    match = 'Input data contains unmasked non-finite values'
     psfphot2 = PSFPhotometry(model, (3, 3), aperture_radius=3)
     init_params = Table()
     init_params['x_init'] = [1, 2]
     init_params['y_init'] = [1, 2]
-    with pytest.warns(AstropyUserWarning):
+    with pytest.warns(AstropyUserWarning, match=match):
         data = np.ones((11, 11))
         data[5, 5] = np.nan
         _ = psfphot2(data, init_params=init_params)
 
-    with pytest.warns(AstropyUserWarning):
+    # mask is input, but data has unmasked non-finite value
+    match = 'Input data contains unmasked non-finite values'
+    with pytest.warns(AstropyUserWarning, match=match):
         data = np.ones((11, 11))
         data[5, 5] = np.nan
         mask = np.zeros(data.shape, dtype=bool)
         mask[7, 7] = True
-        _ = psfphot2(data, init_params=init_params)
+        _ = psfphot2(data, mask=mask, init_params=init_params)
 
     # this should not raise a warning because the non-finite pixel was
     # explicitly masked
@@ -180,12 +201,14 @@ def test_psf_photometry_mask(test_data):
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
 
-    with pytest.warns(AstropyUserWarning):
+    match = 'Input data contains unmasked non-finite values'
+    with pytest.warns(AstropyUserWarning, match=match):
         phot = psfphot(data, error=error, mask=None)
         assert len(phot) == len(sources)
 
     # unmasked NaN with mask not None
-    with pytest.warns(AstropyUserWarning):
+    match = 'Input data contains unmasked non-finite values'
+    with pytest.warns(AstropyUserWarning, match=match):
         mask = ~np.isfinite(data)
         mask[50, 40] = False
         phot = psfphot(data, error=error, mask=mask)
@@ -201,7 +224,9 @@ def test_psf_photometry_mask(test_data):
         _ = psfphot(data, mask=mask)
 
     # completely masked source
-    with pytest.raises(ValueError):
+    match = ('is completely masked. Remove the source from init_params '
+             'or correct the input mask')
+    with pytest.raises(ValueError, match=match):
         init_params = QTable()
         init_params['x'] = [42]
         init_params['y'] = [36]
@@ -222,9 +247,6 @@ def test_psf_photometry_mask(test_data):
                                 aperture_radius=4)
         _ = psfphot(data_orig, mask=mask, init_params=init_params)
 
-
-
-
     # masked central pixel
     init_params = QTable()
     init_params['x'] = [42]
@@ -236,7 +258,7 @@ def test_psf_photometry_mask(test_data):
 
 
 def test_psf_photometry_init_params(test_data):
-    data, error, sources = test_data
+    data, error, _ = test_data
     data = data.copy()
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
@@ -267,21 +289,29 @@ def test_psf_photometry_init_params(test_data):
     assert len(phot) == 1
 
     init_params['flux'] = [650 * u.Jy]
-    with pytest.raises(ValueError):
+    match = ('init_params flux column has units, but the input data does '
+             'not have units')
+    with pytest.raises(ValueError, match=match):
         _ = psfphot(data, error=error, init_params=init_params)
 
     init_params['flux'] = [650 * u.Jy]
-    with pytest.raises(ValueError):
+    match = ('init_params flux column has units that are incompatible with '
+             'the input data units')
+    with pytest.raises(ValueError, match=match):
         _ = psfphot(data << u.m, init_params=init_params)
 
     init_params['flux'] = [650]
-    with pytest.raises(ValueError):
+    match = ('The input data has units, but the init_params flux column '
+             'does not have units')
+    with pytest.raises(ValueError, match=match):
         _ = psfphot(data << u.Jy, init_params=init_params)
 
     init_params = QTable()
     init_params['x'] = [-42]
     init_params['y'] = [-36]
-    with pytest.raises(ValueError):
+    init_params['flux'] = [100]
+    match = 'does not overlap with the input data'
+    with pytest.raises(ValueError, match=match):
         _ = psfphot(data, init_params=init_params)
 
 
@@ -320,7 +350,7 @@ def test_local_bkg(test_data):
 
 
 def test_fixed_params(test_data):
-    data, error, sources = test_data
+    data, error, _ = test_data
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     psf_model.x_0.fixed = True
@@ -331,7 +361,8 @@ def test_fixed_params(test_data):
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
 
-    with pytest.warns(AstropyUserWarning):
+    match = r'One or more fit\(s\) may not have converged.'
+    with pytest.warns(AstropyUserWarning, match=match):
         phot = psfphot(data, error=error)
         assert np.all(np.isnan(phot['x_err']))
         assert np.all(np.isnan(phot['y_err']))
@@ -339,7 +370,7 @@ def test_fixed_params(test_data):
 
 
 def test_fit_warning(test_data):
-    data, error, sources = test_data
+    data, _, _ = test_data
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     psf_model.flux.fixed = False
@@ -351,13 +382,14 @@ def test_fit_warning(test_data):
                             fitter_maxiters=1, finder=finder,
                             aperture_radius=4)
 
-    with pytest.warns(AstropyUserWarning):
-        phot = psfphot(data)
+    match = r'One or more fit\(s\) may not have converged.'
+    with pytest.warns(AstropyUserWarning, match=match):
+        _ = psfphot(data)
         assert len(psfphot.fit_error_indices) > 0
 
 
 def test_fitter_no_maxiters_no_residuals(test_data):
-    data, error, sources = test_data
+    data, error, _ = test_data
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     psf_model.flux.fixed = False
@@ -411,8 +443,17 @@ def test_iterative_psf_photometry(test_data):
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.unit == unit
 
+    # test return None if no stars are found on first iteration
+    finder = DAOStarFinder(1000.0, 2.0)
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                     localbkg_estimator=localbkg_estimator,
+                                     aperture_radius=4)
+    with pytest.warns(NoDetectionsWarning):
+        phot = psfphot(data, error=error)
+        assert phot is None
 
-def test_iterative_psf_photometry_inputs(test_data):
+
+def test_iterative_psf_photometry_inputs():
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     fit_shape = (5, 5)
     finder = DAOStarFinder(10.0, 2.0)
