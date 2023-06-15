@@ -1,3 +1,5 @@
+.. _psf-grouping:
+
 Star Grouping Algorithms
 ========================
 

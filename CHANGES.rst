@@ -12,9 +12,16 @@ New Features
   - Added ``LocalBackground`` class for computing local backgrounds in a
     circular annulus aperture. [#1556]
 
+- ``photutils.datasets``
+
+  - Added new ``make_test_psf_data`` function. [#1558]
+
 - ``photutils.psf``
 
   - Propagate measurement uncertainties in PSF fitting. [#1543]
+
+  - Added new ``PSFPhotometry``, ``IterativePSFPhotometry``, and
+    ``SourceGrouper`` classes. [#1558]
 
 Bug Fixes
 ^^^^^^^^^

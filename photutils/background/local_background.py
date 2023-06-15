@@ -32,7 +32,7 @@ class LocalBackground:
         must take in a 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
         and have an ``axis`` keyword. The default is an instance of
         `~photutils.background.MedianBackground` with sigma clipping
-        (i.e. sigma-clipped median).
+        (i.e., sigma-clipped median).
     """
     def __init__(self, inner_radius, outer_radius,
                  bkg_estimator=MedianBackground()):

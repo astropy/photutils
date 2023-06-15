@@ -12,7 +12,7 @@ from numpy.testing import assert_allclose
 
 from photutils.psf.groupstars import DAOGroup
 from photutils.psf.models import IntegratedGaussianPRF
-from photutils.psf.photometry import BasicPSFPhotometry
+from photutils.psf.photometry_depr import BasicPSFPhotometry
 from photutils.psf.utils import (get_grouped_psf_model, prepare_psf_model,
                                  subtract_psf)
 from photutils.utils._optional_deps import HAS_SCIPY
