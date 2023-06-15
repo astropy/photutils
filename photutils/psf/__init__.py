@@ -5,7 +5,7 @@ photometry.
 """
 
 from . import (epsf, epsf_stars, groupers, groupstars, models, photometry,
-               utils)
+               photometry_depr, utils)
 from .epsf import *  # noqa: F401, F403
 from .epsf_stars import *  # noqa: F401, F403
 from .groupers import *  # noqa: F401, F403
@@ -24,4 +24,5 @@ __all__.extend(groupers.__all__)
 __all__.extend(groupstars.__all__)
 __all__.extend(models.__all__)
 __all__.extend(photometry.__all__)
+__all__.extend(photometry_depr.__all__)
 __all__.extend(utils.__all__)
