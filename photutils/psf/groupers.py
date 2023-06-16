@@ -16,7 +16,7 @@ class SourceGrouper:
     This class uses the `"Density-based Spatial Clustering
     of Applications with Noise" clustering algorithm
     <https://scikit-learn.org/stable/modules/clustering.html#dbscan>`_
-    from `scikit-learn <https://https://scikit-learn.org/>`_.
+    from `scikit-learn <https://scikit-learn.org/>`_.
 
     Parameters
     ----------
