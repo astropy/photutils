@@ -810,7 +810,11 @@ class PSFPhotometry:
             model parameters for each source. If the x and y values are
             not input, then the ``finder`` keyword must be defined. If
             the flux values are not input, then the ``aperture_radius``
-            keyword must be defined. The allowed column names are:
+            keyword must be defined. Note that the initital flux
+            values refer to the model flux parameters and are not
+            corrected for local background values (computed using
+            ``localbkg_estimator`` or input in a ``local_bkg`` column)
+            The allowed column names are:
 
               * ``x_init``, ``xcentroid``, ``x_centroid``, ``x_peak``,
                 ``x``, ``xcen``, ``x_cen``, ``xpos``, and ``x_pos``.
@@ -823,6 +827,12 @@ class PSFPhotometry:
 
             The parameter names are searched in the input table in the
             above order, stopping at the first match.
+
+            The table can also have ``group_id`` and ``local_bkg``
+            columns. If ``group_id`` is input, the values will be used
+            and ``grouper`` keyword will be ignored. If ``local_bkg`` is
+            input, they will be used and the ``localbkg_estimator`` will
+            be ignored.
 
         Returns
         -------
