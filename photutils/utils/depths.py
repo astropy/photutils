@@ -87,13 +87,14 @@ class ImageDepth:
         A list of the number of apertures used for each iteration.
 
     fluxes : list of `~numpy.ndarray`
-        A list of the flux measurements for each iteration.
+        A list of arrays containing the flux measurements for each
+        iteration.
 
-    flux_limits : list
-        A list of the flux limits for each iteration.
+    flux_limits : 1D `~numpy.ndarray`
+        An array of the flux limits for each iteration.
 
-    mag_limits : list
-        A list of the magnitude limits for each iteration.
+    mag_limits : 1D `~numpy.ndarray`
+        An array of the magnitude limits for each iteration.
 
     Notes
     -----
