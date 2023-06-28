@@ -10,8 +10,7 @@ import numpy as np
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 
-# pylint: disable-next=E0611
-from photutils.utils._optional_deps import HAS_TQDM
+from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils.footprints import circular_footprint
 
 __all__ = ['ImageDepth']
@@ -245,12 +244,6 @@ class ImageDepth:
         # prevent circular import
         from photutils.aperture import CircularAperture
 
-        iter_range = range(self.niters)
-        if self.progress_bar and HAS_TQDM:
-            from tqdm.auto import tqdm  # pragma: no cover
-
-            iter_range = tqdm(iter_range, desc='Image Depths')  # pragma: no cover
-
         if mask is None or not np.any(mask):
             all_xycoords = self._make_all_coords_no_mask(data.shape)
         else:
@@ -264,6 +257,11 @@ class ImageDepth:
         if not self.overlap:
             napers2 = 1.5 * self.napers
             napers = int(min(napers2, 0.1 * len(all_xycoords)))
+
+        iter_range = range(self.niters)
+        if self.progress_bar:
+            desc = 'Image Depths'
+            iter_range = add_progress_bar(iter_range, desc=desc)  # pragma: no cover
 
         fluxes = []
         flux_limits = []
