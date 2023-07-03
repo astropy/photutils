@@ -21,7 +21,7 @@ from photutils.psf.models import EPSFModel
 from photutils.psf.utils import _interpolate_missing_data
 from photutils.utils._optional_deps import HAS_BOTTLENECK, HAS_TQDM
 from photutils.utils._parameters import as_pair
-from photutils.utils._round import _py2intround
+from photutils.utils._round import py2intround
 
 __all__ = ['EPSFFitter', 'EPSFBuilder']
 
@@ -453,8 +453,8 @@ class EPSFBuilder:
 
         epsf_xcenter, epsf_ycenter = (int((epsf.data.shape[1] - 1) / 2),
                                       int((epsf.data.shape[0] - 1) / 2))
-        xidx = _py2intround(x + epsf_xcenter)
-        yidx = _py2intround(y + epsf_ycenter)
+        xidx = py2intround(x + epsf_xcenter)
+        yidx = py2intround(y + epsf_ycenter)
 
         resampled_img = np.full(epsf.shape, np.nan)
 
