@@ -7,14 +7,15 @@ This module provides tools for progress bars.
 from photutils.utils._optional_deps import HAS_TQDM
 
 
-def add_progress_bar(iterable, desc=None, total=None, text=False):
+def add_progress_bar(iterable=None, desc=None, total=None, text=False):
     """
     Add a progress bar for an iterable.
 
     Parameters
     ----------
-    iterable : iterable
-        The iterable for which to add a progress bar.
+    iterable : iterable, optional
+        The iterable for which to add a progress bar. Set to `None` to
+        manually manage the progress bar updates.
 
     desc : str, optional
         The prefix string for the progress bar.
@@ -22,6 +23,9 @@ def add_progress_bar(iterable, desc=None, total=None, text=False):
     total : int, optional
         The number of expected iterations. If unspecified, len(iterable)
         is used if possible.
+
+    text : bool, optional
+        Whether to always use a text-based progress bar.
 
     Returns
     -------
@@ -41,6 +45,6 @@ def add_progress_bar(iterable, desc=None, total=None, text=False):
             except ImportError:  # pragma: no cover
                 from tqdm import tqdm
 
-        iterable = tqdm(iterable, desc=desc, total=total)  # pragma: no cover
+        iterable = tqdm(iterable=iterable, desc=desc, total=total)  # pragma: no cover
 
     return iterable
