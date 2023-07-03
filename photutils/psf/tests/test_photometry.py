@@ -325,6 +325,38 @@ def test_psf_photometry_init_params(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_psf_photometry_init_params_columns(test_data):
+    data, error, _ = test_data
+    data = data.copy()
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+
+    xy_suffixes = ('_init', 'init', 'centroid', '_centroid', '_peak', '',
+                   'cen', '_cen', 'pos', '_pos', '_0', '0')
+    xcols = ['x' + i for i in xy_suffixes]
+    ycols = ['y' + i for i in xy_suffixes]
+
+    phots = []
+    for xcol, ycol in zip(xcols, ycols):
+        init_params = QTable()
+        init_params[xcol] = [42]
+        init_params[ycol] = [36]
+        phot = psfphot(data, error=error, init_params=init_params)
+        assert isinstance(phot, QTable)
+        assert len(phot) == 1
+        phots.append(phot)
+
+    for phot in phots[1:]:
+        assert_allclose(phot['x_fit'], phots[0]['x_fit'])
+        assert_allclose(phot['y_fit'], phots[0]['y_fit'])
+        assert_allclose(phot['flux_fit'], phots[0]['flux_fit'])
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.skipif(not HAS_SKLEARN, reason='sklearn is required')
 def test_grouper(test_data):
     data, error, sources = test_data

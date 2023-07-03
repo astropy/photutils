@@ -57,14 +57,15 @@ class PSFPhotometry:
         A callable used to identify stars in an image. The
         ``finder`` must accept a 2D image as input and return a
         `~astropy.table.Table` containing the x and y centroid
-        positions. These positions are used as the starting points for
-        the PSF fitting. The allowed ``x`` column names are (same suffix
-        for ``y``): ``'x_init'``, ``'xcentroid'``, ``'x_centroid'``,
-        ``'x_peak'``, ``'x'``, ``'xcen'``, ``'x_cen'``, ``'xpos'``, and
-        ``'x_pos'``. If `None`, then the initial (x, y) model positions
-        must be input using the ``init_params`` keyword when calling
-        the class. The (x, y) values in ``init_params`` override this
-        keyword *only for the first iteration*.
+        positions. These positions are used as the starting points
+        for the PSF fitting. The allowed ``x`` column names are (same
+        suffix for ``y``): ``'x_init'``, ``'xinit'``, ``'xcentroid'``,
+        ``'x_centroid'``, ``'x_peak'``, ``'x'``, ``'xcen'``,
+        ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_0'``, and ``'x0'``.
+        If `None`, then the initial (x, y) model positions must be input
+        using the ``init_params`` keyword when calling the class. The
+        (x, y) values in ``init_params`` override this keyword *only for
+        the first iteration*.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group stars. Typically, grouped stars are
@@ -205,8 +206,8 @@ class PSFPhotometry:
 
     @staticmethod
     def _define_init_colnames():
-        xy_suffixes = ('_init', 'centroid', '_centroid', '_peak', '',
-                       'cen', '_cen', 'pos', '_pos')
+        xy_suffixes = ('_init', 'init', 'centroid', '_centroid', '_peak', '',
+                       'cen', '_cen', 'pos', '_pos', '_0', '0')
         x_valid = ['x' + i for i in xy_suffixes]
         y_valid = ['y' + i for i in xy_suffixes]
 
@@ -806,11 +807,13 @@ class PSFPhotometry:
             ``localbkg_estimator`` or input in a ``local_bkg`` column)
             The allowed column names are:
 
-              * ``x_init``, ``xcentroid``, ``x_centroid``, ``x_peak``,
-                ``x``, ``xcen``, ``x_cen``, ``xpos``, and ``x_pos``.
+              * ``x_init``, ``xinit``, ``xcentroid``, ``x_centroid``,
+                ``x_peak``, ``x``, ``xcen``, ``x_cen``, ``xpos``,
+                ``x_pos``, ``x_0``, and ``x0``.
 
-              * ``y_init``, ``ycentroid``, ``y_centroid``, ``y_peak``,
-                ``y``, ``ycen``, ``y_cen``, ``ypos``, and ``y_pos``.
+              * ``y_init``, ``yinit``, ``ycentroid``, ``y_centroid``,
+                ``y_peak``, ``y``, ``ycen``, ``y_cen``, ``ypos``,
+                ``y_pos``, ``y_0``, and ``y0``.
 
               * ``flux_init``, ``flux``, ``source_sum``,
                 ``segment_flux``, and ``kron_flux``.
@@ -1056,14 +1059,15 @@ class IterativePSFPhotometry:
         A callable used to identify stars in an image. The
         ``finder`` must accept a 2D image as input and return a
         `~astropy.table.Table` containing the x and y centroid
-        positions. These positions are used as the starting points for
-        the PSF fitting. The allowed ``x`` column names are (same suffix
-        for ``y``): ``'x_init'``, ``'xcentroid'``, ``'x_centroid'``,
-        ``'x_peak'``, ``'x'``, ``'xcen'``, ``'x_cen'``, ``'xpos'``, and
-        ``'x_pos'``. If `None`, then the initial (x, y) model positions
-        must be input using the ``init_params`` keyword when calling
-        the class. The (x, y) values in ``init_params`` override this
-        keyword *only for the first iteration*.
+        positions. These positions are used as the starting points
+        for the PSF fitting. The allowed ``x`` column names are (same
+        suffix for ``y``): ``'x_init'``, ``'xinit'``, ``'xcentroid'``,
+        ``'x_centroid'``, ``'x_peak'``, ``'x'``, ``'xcen'``,
+        ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_0'``, and ``'x0'``.
+        If `None`, then the initial (x, y) model positions must be input
+        using the ``init_params`` keyword when calling the class. The
+        (x, y) values in ``init_params`` override this keyword *only for
+        the first iteration*.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group stars. Typically, grouped stars are
@@ -1169,11 +1173,13 @@ class IterativePSFPhotometry:
             flux values will be used for the first iteration only. The
             allowed column names are:
 
-              * ``x_init``, ``xcentroid``, ``x_centroid``, ``x_peak``,
-                ``x``, ``xcen``, ``x_cen``, ``xpos``, and ``x_pos``.
+              * ``x_init``, ``xinit``, ``xcentroid``, ``x_centroid``,
+                ``x_peak``, ``x``, ``xcen``, ``x_cen``, ``xpos``,
+                ``x_pos``, ``x_0``, and ``x0``.
 
-              * ``y_init``, ``ycentroid``, ``y_centroid``, ``y_peak``,
-                ``y``, ``ycen``, ``y_cen``, ``ypos``, and ``y_pos``.
+              * ``y_init``, ``yinit``, ``ycentroid``, ``y_centroid``,
+                ``y_peak``, ``y``, ``ycen``, ``y_cen``, ``ypos``,
+                ``y_pos``, and ``y_0``, and ``y0``.
 
               * ``flux_init``, ``flux``, ``source_sum``,
                 ``segment_flux``, and ``kron_flux``.
