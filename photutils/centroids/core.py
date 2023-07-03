@@ -11,7 +11,7 @@ from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._parameters import as_pair
-from photutils.utils._round import _py2intround
+from photutils.utils._round import py2intround
 
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
@@ -189,8 +189,8 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     if xpeak is None or ypeak is None:
         yidx, xidx = np.unravel_index(np.nanargmax(data), data.shape)
     else:
-        xidx = _py2intround(xpeak)
-        yidx = _py2intround(ypeak)
+        xidx = py2intround(xpeak)
+        yidx = py2intround(ypeak)
 
         if search_boxsize is not None:
             search_boxsize = as_pair('search_boxsize', search_boxsize,
