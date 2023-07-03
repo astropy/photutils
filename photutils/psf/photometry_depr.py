@@ -20,7 +20,7 @@ from photutils.psf.groupstars import DAOGroup
 from photutils.psf.utils import (_extract_psf_fitting_names,
                                  get_grouped_psf_model, subtract_psf)
 from photutils.utils._misc import _get_version_info
-from photutils.utils._optional_deps import HAS_TQDM
+from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
@@ -513,10 +513,9 @@ class BasicPSFPhotometry:
 
         star_groups = star_groups.group_by('group_id')
         group_iter = star_groups.groups
-        if progress_bar and HAS_TQDM:
-            from tqdm.auto import tqdm  # pragma: no cover
 
-            group_iter = tqdm(group_iter, desc='Star Group')  # pragma: no cover
+        if progress_bar:
+            group_iter = add_progress_bar(group_iter, desc='Fit source/group')  # pragma: no cover
 
         for group in group_iter:
             group_psf = get_grouped_psf_model(self.psf_model, group,
