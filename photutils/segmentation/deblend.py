@@ -14,7 +14,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.detect import _detect_sources
 from photutils.segmentation.utils import _make_binary_structure
-from photutils.utils._optional_deps import HAS_TQDM
+from photutils.utils._progress_bars import add_progress_bar
 
 __all__ = ['deblend_sources']
 
@@ -159,9 +159,6 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     if nproc is None:
         nproc = cpu_count()  # pragma: no cover
 
-    if progress_bar and HAS_TQDM:
-        from tqdm.auto import tqdm  # pragma: no cover
-
     segm_deblended = object.__new__(SegmentationImage)
     segm_deblended._data = np.copy(segment_img.data)
     last_label = segment_img.max_label
@@ -181,9 +178,9 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         all_source_slices.append(source_slice)
 
     if nproc == 1:
-        if progress_bar and HAS_TQDM:
-            all_source_data = tqdm(all_source_data,
-                                   desc='Deblending')  # pragma: no cover
+        if progress_bar:
+            desc = 'Deblending'
+            all_source_data = add_progress_bar(all_source_data, desc=desc)  # pragma: no cover
 
         all_source_deblends = []
         for source_data, source_segment in zip(all_source_data,
@@ -199,9 +196,10 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
                        (npixels,) * nlabels, (footprint,) * nlabels,
                        (nlevels,) * nlabels, (contrast,) * nlabels,
                        (mode,) * nlabels)
-        if progress_bar and HAS_TQDM:
-            args_all = tqdm(args_all, total=nlabels,
-                            desc='Deblending')  # pragma: no cover
+
+        if progress_bar:
+            desc = 'Deblending'
+            args_all = add_progress_bar(args_all, total=nlabels, desc=desc)  # pragma: no cover
 
         with get_context('spawn').Pool(processes=nproc) as executor:
             all_source_deblends = executor.starmap(_deblend_source, args_all)
