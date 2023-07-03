@@ -13,13 +13,14 @@ from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background import LocalBackground, MMMBackground
-from photutils.datasets import make_noise_image, make_test_psf_data
+from photutils.datasets import (make_gaussian_prf_sources_image,
+                                make_noise_image, make_test_psf_data)
 from photutils.detection import DAOStarFinder
 from photutils.psf import (IntegratedGaussianPRF, IterativePSFPhotometry,
                            PSFPhotometry, SourceGrouper)
 from photutils.psf.photometry_depr import DAOGroup
-from photutils.utils.exceptions import NoDetectionsWarning
 from photutils.utils._optional_deps import HAS_SCIPY, HAS_SKLEARN
+from photutils.utils.exceptions import NoDetectionsWarning
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -529,3 +530,22 @@ def test_iterative_psf_photometry_inputs():
     with pytest.raises(ValueError, match=match):
         _ = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                    aperture_radius=4, maxiters=3.14)
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_negative_xy():
+    sources = Table()
+    sources['id'] = np.arange(3) + 1
+    sources['flux'] = 1
+    sources['x_0'] = [-1.4, 15.2, -0.7]
+    sources['y_0'] = [-0.3, -0.4, 18.7]
+    sources['sigma'] = 3.1
+    shape = (31, 31)
+    data = make_gaussian_prf_sources_image(shape, sources)
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=3.1)
+    fit_shape = (11, 11)
+    psfphot = PSFPhotometry(psf_model, fit_shape,
+                            aperture_radius=10)
+    phot = psfphot(data, init_params=sources)
+    assert_equal(phot['x_init'], sources['x_0'])
+    assert_equal(phot['y_init'], sources['y_0'])
