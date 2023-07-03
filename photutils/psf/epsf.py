@@ -19,8 +19,9 @@ from photutils.centroids import centroid_com
 from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from photutils.psf.models import EPSFModel
 from photutils.psf.utils import _interpolate_missing_data
-from photutils.utils._optional_deps import HAS_BOTTLENECK, HAS_TQDM
+from photutils.utils._optional_deps import HAS_BOTTLENECK
 from photutils.utils._parameters import as_pair
+from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._round import py2intround
 
 __all__ = ['EPSFFitter', 'EPSFBuilder']
@@ -758,12 +759,10 @@ class EPSFBuilder:
         center_dist_sq = self.center_accuracy_sq + 1.0
         centers = stars.cutout_center_flat
 
-        if self.progress_bar and HAS_TQDM:
-            from tqdm.auto import tqdm
-            pbar_desc = f'EPSFBuilder ({self.maxiters} maxiters)'
-            pbar = tqdm(total=self.maxiters, desc=pbar_desc)
-        else:
-            pbar = None
+        pbar = None
+        if self.progress_bar:
+            desc = f'EPSFBuilder ({self.maxiters} maxiters)'
+            pbar = add_progress_bar(total=self.maxiters, desc=desc)  # pragma: no cover
 
         while (iter_num < self.maxiters and not np.all(fit_failed)
                and np.max(center_dist_sq) >= self.center_accuracy_sq):
