@@ -549,3 +549,28 @@ def test_negative_xy():
     phot = psfphot(data, init_params=sources)
     assert_equal(phot['x_init'], sources['x_0'])
     assert_equal(phot['y_init'], sources['y_0'])
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_out_of_bounds_centroids():
+    sources = Table()
+    sources['id'] = np.arange(8) + 1
+    sources['flux'] = 1
+    sources['x_0'] = [-1.4, 34.5, 14.2, -0.7, 34.5, 14.2, 51.3, 52.0]
+    sources['y_0'] = [13, -0.2, -1.6, 40, 51.1, 50.9, 12.2, 42.3]
+    sources['sigma'] = 3.1
+
+    shape = (51, 51)
+    data = make_gaussian_prf_sources_image(shape, sources)
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=3.1)
+    fit_shape = (11, 11)
+    psfphot = PSFPhotometry(psf_model, fit_shape,
+                            aperture_radius=10)
+
+    phot = psfphot(data, init_params=sources)
+
+    # at least one of the best-fit centroids should be
+    # out of the bounds of the dataset, producing a
+    # masked value in the `cfit` column:
+    assert np.any(np.isnan(phot['cfit']))

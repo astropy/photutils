@@ -750,7 +750,7 @@ class PSFPhotometry:
                     if cen_in_data:
                         cen_residual = data[ycen, xcen] - model(xcen, ycen)
                     else:
-                        cen_residual = np.ma.masked
+                        cen_residual = np.nan
                 else:
                     # find residual at (xcen, ycen)
                     cen_residual = -residual[cen_idx_]
