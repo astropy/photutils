@@ -25,7 +25,7 @@ from photutils.segmentation.core import SegmentationImage
 from photutils.utils._convolution import _filter_data
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _moments, _moments_central
-from photutils.utils._optional_deps import HAS_TQDM
+from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
 
@@ -431,12 +431,6 @@ class SourceCatalog:
             'fluxfrac': {'method': 'subpixel', 'subpixels': 5},
             'cen_win': {'method': 'subpixel', 'subpixels': 11}
         }
-
-    def _progress_bar(self, iterable, desc=''):
-        if self.progress_bar and HAS_TQDM:
-            from tqdm.auto import tqdm  # pragma: no cover
-            iterable = tqdm(iterable, desc=desc)
-        return iterable
 
     @property
     def _properties(self):
@@ -1368,9 +1362,13 @@ class SourceCatalog:
         radius_hl[mask] = min_radius
         kwargs = self._apermask_kwargs['cen_win']
 
+        labels = self.labels
+        if self.progress_bar:
+            desc = 'centroid_win'
+            labels = add_progress_bar(labels, desc=desc)  # pragma: no cover
+
         xcen_win = []
         ycen_win = []
-        labels = self._progress_bar(self.labels, 'centroid_win')
         for label, xcen, ycen, rad_hl in zip(labels, self._xcentroid,
                                              self._ycentroid, radius_hl):
 
@@ -1545,8 +1543,11 @@ class SourceCatalog:
             #   - maximum value is at the edge of the data
             warnings.simplefilter('ignore', AstropyUserWarning)
 
-            cutouts = self._progress_bar(self._data_cutouts,
-                                         'centroid_quad')
+            cutouts = self._data_cutouts
+            if self.progress_bar:
+                desc = 'centroid_quad'
+                cutouts = add_progress_bar(cutouts, desc=desc)  # pragma: no cover
+
             for data, mask in zip(cutouts, self._cutout_total_masks):
                 try:
                     centroid = centroid_quadratic(data, mask=mask,
@@ -2992,8 +2993,12 @@ class SourceCatalog:
             cxy = (cxy,)
             cyy = (cyy,)
 
+        labels = self.labels
+        if self.progress_bar:
+            desc = 'kron_radius'
+            labels = add_progress_bar(labels, desc=desc)  # pragma: no cover
+
         kron_radius = []
-        labels = self._progress_bar(self.labels, 'kron_radius')
         for (label, aperture, cxx_, cxy_, cyy_) in zip(labels, apertures,
                                                        cxx, cxy, cyy):
             if aperture is None:
@@ -3292,9 +3297,12 @@ class SourceCatalog:
         flux, fluxerr : 1D `~numpy.ndaray`
             The flux and flux error arrays.
         """
+        labels = self.labels
+        if self.progress_bar:
+            labels = add_progress_bar(labels, desc=desc)  # pragma: no cover
+
         flux = []
         fluxerr = []
-        labels = self._progress_bar(self.labels, desc=desc)
         for label, aperture, bkg in zip(labels, apertures,
                                         self._local_background):
             # return NaN for completely masked sources or sources where
@@ -3520,8 +3528,12 @@ class SourceCatalog:
         max_radius = self._max_circular_kron_radius
         kwargs = self._apermask_kwargs['fluxfrac']
 
+        labels = self.labels
+        if self.progress_bar:
+            desc = 'fluxfrac_radius prep'
+            labels = add_progress_bar(labels, desc=desc)  # pragma: no cover
+
         args = []
-        labels = self._progress_bar(self.labels, 'fluxfrac_radius prep')
         for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
                 labels, self._xcentroid, self._ycentroid,
                 kron_flux, self._local_background, max_radius):
@@ -3579,9 +3591,12 @@ class SourceCatalog:
 
         from scipy.optimize import root_scalar
 
+        args = self._fluxfrac_optimizer_args
+        if self.progress_bar:
+            desc = 'fluxfrac_radius'
+            args = add_progress_bar(args, desc=desc)  # pragma: no cover
+
         radius = []
-        args = self._progress_bar(self._fluxfrac_optimizer_args,
-                                  'fluxfrac_radius')
         for fluxfrac_args in args:
             if fluxfrac_args is None:
                 radius.append(np.nan)
