@@ -25,6 +25,7 @@ from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._round import py2intround
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['PSFPhotometry', 'IterativePSFPhotometry']
@@ -464,8 +465,8 @@ class PSFPhotometry:
         npixfit = []
         cen_index = []
         for row in sources:
-            xcen = int(row[self._xinit_name] + 0.5)
-            ycen = int(row[self._yinit_name] + 0.5)
+            xcen = py2intround(row[self._xinit_name])
+            ycen = py2intround(row[self._yinit_name])
 
             try:
                 slc_lg, _ = overlap_slices(data.shape, self.fit_shape,
@@ -734,8 +735,8 @@ class PSFPhotometry:
                     zip(self.fit_results['fit_models'], fit_residuals,
                         cen_idx)):
                 source = source_tbl[index]
-                xcen = int(source[self._xinit_name] + 0.5)
-                ycen = int(source[self._yinit_name] + 0.5)
+                xcen = py2intround(source[self._xinit_name])
+                ycen = py2intround(source[self._yinit_name])
                 flux_fit = source['flux_fit']
                 qfit.append(np.sum(np.abs(residual)) / flux_fit)
 
