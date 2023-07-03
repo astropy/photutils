@@ -22,8 +22,8 @@ from photutils.aperture import CircularAperture
 from photutils.background import LocalBackground
 from photutils.psf.groupstars import GroupStarsBase
 from photutils.utils._misc import _get_meta
-from photutils.utils._optional_deps import HAS_TQDM
 from photutils.utils._parameters import as_pair
+from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -302,18 +302,6 @@ class PSFPhotometry:
         Flatten a list of lists.
         """
         return list(chain.from_iterable(iterable))
-
-    def _add_progress_bar(self, iterable, desc=None):
-        if self.progress_bar and HAS_TQDM:
-            try:  # pragma: no cover
-                from ipywidgets import FloatProgress  # noqa: F401
-                from tqdm.auto import tqdm
-            except ImportError:  # pragma: no cover
-                from tqdm import tqdm
-
-            iterable = tqdm(iterable, desc=desc)  # pragma: no cover
-
-        return iterable
 
     def _get_aper_fluxes(self, data, mask, init_params):
         xpos = init_params[self._xinit_name]
@@ -617,7 +605,9 @@ class PSFPhotometry:
         sources = init_params.group_by('group_id')
         self._ungroup_indices = np.argsort(sources['id'].value)
         sources = sources.groups
-        sources = self._add_progress_bar(sources, desc='Fit source/group')
+        if self.progress_bar:
+            desc = 'Fit source/group'
+            sources = add_progress_bar(sources, desc=desc)  # pragma: no cover
 
         fit_models = []
         fit_infos = []
@@ -979,8 +969,9 @@ class PSFPhotometry:
         data = np.zeros(shape)
         xname, yname = self._get_psf_param_names()[0][0:2]
 
-        desc = 'Model image'
-        fit_models = self._add_progress_bar(fit_models, desc=desc)
+        if self.progress_bar:
+            desc = 'Model image'
+            fit_models = add_progress_bar(fit_models, desc=desc)  # pragma: no cover
 
         # fit_models must be a list of individual, not grouped, PSF
         # models, i.e., there should be one PSF model (which may be
@@ -1306,9 +1297,9 @@ class IterativePSFPhotometry:
         data = np.zeros(shape)
         xname, yname = self.fit_results[0]._get_psf_param_names()[0][0:2]
 
-        desc = 'Model image'
-        fit_models = self.fit_results[0]._add_progress_bar(fit_models,
-                                                           desc=desc)
+        if self.psfphot.progress_bar:
+            desc = 'Model image'
+            fit_models = add_progress_bar(fit_models, desc=desc)  # pragma: no cover
 
         # fit_models must be a list of individual, not grouped, PSF
         # models, i.e., there should be one PSF model (which may be
