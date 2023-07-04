@@ -12,8 +12,8 @@ from astropy.modeling.fitting import LevMarLSQFitter, SimplexLSQFitter
 from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Table
+from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.utils.introspection import minversion
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
 from photutils.background import MMMBackground, StdBackgroundRMS
@@ -487,11 +487,20 @@ def test_default_aperture_radius():
                                                    bkg_estimator=None,
                                                    psf_model=prf,
                                                    fitshape=7, niters=2)
-    # Test for init_guesses is not None, but lacks a flux_0 column
-    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
-                                                'could not be determined'):
-        results = iter_phot(image=img, init_guesses=intab)
-    assert_allclose(results['flux_fit'], f0, rtol=0.05)
+
+    if not minversion(pytest, '8.0.0.dev0'):
+        match1 = 'aperture_radius is None and could not be determined'
+        with pytest.warns(AstropyUserWarning, match=match1):
+            results = iter_phot(image=img, init_guesses=intab)
+            assert_allclose(results['flux_fit'], f0, rtol=0.05)
+    else:
+        # Test for init_guesses is not None, but lacks a flux_0 column
+        match1 = 'aperture_radius is None and could not be determined'
+        match2 = 'Both init_guesses and finder are different than None'
+        with pytest.warns(AstropyUserWarning, match=match1):
+            with pytest.warns(AstropyUserWarning, match=match2):
+                results = iter_phot(image=img, init_guesses=intab)
+                assert_allclose(results['flux_fit'], f0, rtol=0.05)
 
     iter_phot = IterativelySubtractedPSFPhotometry(finder=tophatfinder,
                                                    group_maker=DAOGroup(2),
@@ -792,10 +801,22 @@ def test_re_use_result_as_initial_guess():
     result_table['x'] = result_table['x_fit']
     result_table['y'] = result_table['y_fit']
     result_table['flux'] = result_table['flux_fit']
-    with pytest.warns(AstropyUserWarning, match='Both init_guesses and finder '
-                      'are different than None'):
-        second_result = dao_phot_obj(image, init_guesses=result_table)
-    assert second_result
+
+    if not minversion(pytest, '8.0.0.dev0'):
+        match1 = 'Both init_guesses and finder are different than None'
+        with pytest.warns(AstropyUserWarning, match=match1):
+            second_result = dao_phot_obj(image, init_guesses=result_table)
+            assert second_result
+    else:
+        match1 = 'Both init_guesses and finder are different than None'
+        match2 = 'init_guesses contains a "group_id" column'
+        match3 = 'The fit may be unsuccessful; check fit_info'
+        with pytest.warns(AstropyUserWarning, match=match1):
+            with pytest.warns(AstropyUserWarning, match=match2):
+                with pytest.warns(AstropyUserWarning, match=match3):
+                    second_result = dao_phot_obj(image,
+                                                 init_guesses=result_table)
+                    assert second_result
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
