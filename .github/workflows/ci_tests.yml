@@ -31,12 +31,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: '3.8'
-            tox_env: 'py38-test-alldeps'
-            allow_failure: false
-            prefix: ''
-
-          - os: ubuntu-latest
             python: '3.9'
             tox_env: 'py39-test-alldeps'
             allow_failure: false
@@ -56,44 +50,44 @@ jobs:
             prefix: ''
 
           - os: macos-latest
-            python: '3.10'
-            tox_env: 'py310-test-alldeps'
+            python: '3.11'
+            tox_env: 'py311-test-alldeps'
             allow_failure: false
             prefix: ''
 
           - os: windows-latest
-            python: '3.10'
-            tox_env: 'py310-test-alldeps'
+            python: '3.11'
+            tox_env: 'py311-test-alldeps'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'py310-test'
+            python: '3.11'
+            tox_env: 'py311-test'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.10'
+            python: '3.11'
             tox_env: 'codestyle'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.10'
+            python: '3.11'
             tox_env: 'pep517'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.10'
+            python: '3.11'
             tox_env: 'bandit'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.8'
-            tox_env: 'py38-test-alldeps-astropylts-numpy118'
+            python: '3.9'
+            tox_env: 'py39-test-alldeps-astropylts-numpy121'
             allow_failure: false
             prefix: ''
 

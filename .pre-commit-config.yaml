@@ -55,7 +55,7 @@ repos:
     rev: v3.8.0
     hooks:
       - id: pyupgrade
-        args: ["--py38-plus"]
+        args: ["--py39-plus"]
         exclude: ".*(extern.*)$"
 
   - repo: https://github.com/pycqa/isort
