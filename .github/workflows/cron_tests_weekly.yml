@@ -1,4 +1,4 @@
-name: Cron Tests
+name: Weekly Cron Tests
 
 on:
   schedule:
