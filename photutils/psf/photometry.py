@@ -741,8 +741,16 @@ class PSFPhotometry:
                 qfit.append(np.sum(np.abs(residual)) / flux_fit)
 
                 if np.isnan(cen_idx_):
-                    # calculate residual at central pixel
-                    cen_residual = data[ycen, xcen] - model(xcen, ycen)
+                    # calculate residual at central pixel if the central pixel
+                    # is within the bounds of the ``data``, otherwise mask it:
+                    cen_in_data = (
+                        0 <= ycen <= data.shape[0] - 1 and
+                        0 <= xcen <= data.shape[1] - 1
+                    )
+                    if cen_in_data:
+                        cen_residual = data[ycen, xcen] - model(xcen, ycen)
+                    else:
+                        cen_residual = np.nan
                 else:
                     # find residual at (xcen, ycen)
                     cen_residual = -residual[cen_idx_]
