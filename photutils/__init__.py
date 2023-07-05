@@ -79,8 +79,7 @@ def __getattr__(attr):
         obj, message = __depr_attrs__[attr]
         warnings.warn(message, DeprecationWarning, stacklevel=2)
         return obj
-    raise AttributeError('module {!r} has no attribute {!r}'
-                         .format(__name__, attr))
+    raise AttributeError(f'module {__name__!r} has no attribute {attr!r}')
 
 
 # Set the bibtex entry to the article referenced in CITATION.rst.
