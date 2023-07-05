@@ -744,8 +744,8 @@ class PSFPhotometry:
                     # calculate residual at central pixel if the central pixel
                     # is within the bounds of the ``data``, otherwise mask it:
                     cen_in_data = (
-                        0 <= ycen <= data.shape[0] - 1 and
-                        0 <= xcen <= data.shape[1] - 1
+                        0 <= ycen <= data.shape[0] - 1
+                        and 0 <= xcen <= data.shape[1] - 1
                     )
                     if cen_in_data:
                         cen_residual = data[ycen, xcen] - model(xcen, ycen)
