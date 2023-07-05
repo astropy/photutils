@@ -9,6 +9,8 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
+from astropy.utils import minversion
+from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.datasets import get_path, make_noise_image
 from photutils.isophote.ellipse import Ellipse
@@ -91,8 +93,21 @@ class TestEllipse:
         # This should result in failure since the real galaxy
         # image is off-center by a large offset.
         ellipse = Ellipse(OFFSET_GALAXY)
-        with pytest.warns(RuntimeWarning, match='Degrees of freedom'):
-            isophote_list = ellipse.fit_image()
+
+        if not minversion(pytest, '8.0.0.dev0'):
+            match1 = 'Degrees of freedom'
+            with pytest.warns(RuntimeWarning, match=match1):
+                isophote_list = ellipse.fit_image()
+        else:
+            match1 = 'Degrees of freedom'
+            match2 = 'Mean of empty slice'
+            match3 = 'invalid value encountered'
+            match4 = 'No meaningful fit was possible'
+            with pytest.warns(RuntimeWarning, match=match1):
+                with pytest.warns(RuntimeWarning, match=match2):
+                    with pytest.warns(RuntimeWarning, match=match3):
+                        with pytest.warns(AstropyUserWarning, match=match4):
+                            isophote_list = ellipse.fit_image()
 
         assert len(isophote_list) == 0
 
