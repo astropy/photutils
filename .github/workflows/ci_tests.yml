@@ -87,7 +87,7 @@ jobs:
 
           - os: ubuntu-latest
             python: '3.9'
-            tox_env: 'py39-test-alldeps-astropylts-numpy121'
+            tox_env: 'py39-test-alldeps-astropylts-numpy122'
             allow_failure: false
             prefix: ''
 
