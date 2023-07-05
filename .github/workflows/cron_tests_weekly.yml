@@ -4,6 +4,12 @@ on:
   schedule:
     # run every Monday at 5am UTC
     - cron: '0 5 * * 1'
+  pull_request:
+    # We also want this workflow triggered if the 'Extra CI' label is added
+    # or present when PR is updated
+    types:
+      - synchronize
+      - labeled
   push:
     tags:
       - '*'
@@ -15,6 +21,7 @@ concurrency:
 
 env:
   TOXARGS: '-v'
+  IS_CRON: 'true'
 
 permissions:
   contents: read
@@ -23,8 +30,10 @@ jobs:
   cron-test:
     name: ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
+    if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'Extra CI')))
     continue-on-error: ${{ matrix.allow_failure }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -33,23 +42,82 @@ jobs:
             allow_failure: false
 
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python ${{ matrix.python }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python }}
-    - name: Install base dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install tox
-    - name: Print Python, pip, setuptools, and tox versions
-      run: |
-        python -c "import sys; print(f'Python {sys.version}')"
-        python -c "import pip; print(f'pip {pip.__version__}')"
-        python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
-        python -c "import tox; print(f'tox {tox.__version__}')"
-    - name: Run tests
-      run: tox -e ${{ matrix.tox_env }} -- ${{ matrix.toxposargs }}
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install base dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install tox
+      - name: Print Python, pip, setuptools, and tox versions
+        run: |
+          python -c "import sys; print(f'Python {sys.version}')"
+          python -c "import pip; print(f'pip {pip.__version__}')"
+          python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
+          python -c "import tox; print(f'tox {tox.__version__}')"
+      - name: Run tests
+        run: tox -e ${{ matrix.tox_env }} -- ${{ matrix.toxposargs }}
+
+
+  test_more_architectures:
+    # The following architectures are emulated and are therefore slow, so
+    # we include them just in the weekly cron. These also serve as a test
+    # of using system libraries and using pytest directly.
+
+    runs-on: ubuntu-20.04
+    name: Python 3.10
+    if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'Extra CI')))
+    env:
+      ARCH_ON_CI: ${{ matrix.arch }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+          - arch: s390x
+          - arch: ppc64le
+          - arch: armv7
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: uraimo/run-on-arch-action@v2
+        name: Run tests
+        id: build
+        with:
+          arch: ${{ matrix.arch }}
+          distro: ubuntu_latest
+
+          shell: /bin/bash
+          env: |
+            ARCH_ON_CI: ${{ env.ARCH_ON_CI }}
+            IS_CRON: ${{ env.IS_CRON }}
+
+          install: |
+            apt-get update -q -y
+            apt-get install -q -y git \
+                                  g++ \
+                                  pkg-config \
+                                  python3 \
+                                  python3-configobj \
+                                  python3-numpy \
+                                  python3-astropy \
+                                  python3-ply \
+                                  python3-venv \
+                                  cython3 \
+                                  libwcs7 \
+                                  wcslib-dev \
+                                  liberfa1
+
+          run: |
+            python3 -m venv --system-site-packages tests
+            source tests/bin/activate
+            ASTROPY_USE_SYSTEM_ALL=1 pip3 install -e .[test]
+            python3 -m pytest
