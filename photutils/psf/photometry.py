@@ -65,8 +65,7 @@ class PSFPhotometry:
         ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_0'``, and ``'x0'``.
         If `None`, then the initial (x, y) model positions must be input
         using the ``init_params`` keyword when calling the class. The
-        (x, y) values in ``init_params`` override this keyword *only for
-        the first iteration*.
+        (x, y) values in ``init_params`` override this keyword.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group stars. Typically, grouped stars are
