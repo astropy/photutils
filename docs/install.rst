@@ -25,7 +25,7 @@ Photutils also optionally depends on other packages for some features:
   deblending segmented sources.
 
 * `scikit-learn <https://scikit-learn.org/>`_ 1.0 or later:  Used in
-  `~photutils.psf.DBSCANGroup` to create star groups.
+  `~photutils.psf.SourceGrouper` to create star groups.
 
 * `gwcs <https://github.com/spacetelescope/gwcs>`_ 0.18 or later:
   Used in `~photutils.datasets.make_gwcs` to create a simple celestial
