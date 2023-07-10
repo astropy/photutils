@@ -130,8 +130,9 @@ def test_psf_photometry_niters(sigma_psf, sources):
     for iter_phot_obj in phot_obj:
         iter_phot_obj.niters = None
 
-        result_tab = iter_phot_obj(image)
-        residual_image = iter_phot_obj.get_residual_image()
+        with pytest.warns(AstropyDeprecationWarning):
+            result_tab = iter_phot_obj(image)
+            residual_image = iter_phot_obj.get_residual_image()
 
         assert (result_tab['x_0_unc'] < 1.96 * sigma_psf
                 / np.sqrt(sources['flux'])).all()
@@ -182,8 +183,9 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
     phot_objs = make_psf_photometry_objs(std, sigma_psf)
 
     for phot_proc in phot_objs:
-        result_tab = phot_proc(image)
-        residual_image = phot_proc.get_residual_image()
+        with pytest.warns(AstropyDeprecationWarning):
+            result_tab = phot_proc(image)
+            residual_image = phot_proc.get_residual_image()
         assert (result_tab['x_0_unc'] < 1.96 * sigma_psf
                 / np.sqrt(sources['flux'])).all()
         assert (result_tab['y_0_unc'] < 1.96 * sigma_psf
@@ -205,8 +207,9 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
                                                 sources['y_0']])
         cp_pos = pos.copy()
 
-        result_tab = phot_proc(image, init_guesses=pos)
-        residual_image = phot_proc.get_residual_image()
+        with pytest.warns(AstropyDeprecationWarning):
+            result_tab = phot_proc(image, init_guesses=pos)
+            residual_image = phot_proc.get_residual_image()
         assert 'x_0_unc' not in result_tab.colnames
         assert 'y_0_unc' not in result_tab.colnames
         assert (result_tab['flux_unc'] < 1.96
@@ -354,7 +357,8 @@ def test_aperture_radius():
 
     psf_model = PSFModelWithFWHM()
     basic_phot_obj.psf_model = psf_model
-    basic_phot_obj(image)
+    with pytest.warns(AstropyDeprecationWarning):
+        basic_phot_obj(image)
     assert_equal(basic_phot_obj.aperture_radius, psf_model.fwhm.value)
 
 
@@ -380,7 +384,8 @@ def test_define_fit_param_names(actual_pars_to_set, actual_pars_to_output,
     basic_phot_obj = make_psf_photometry_objs()[0]
     basic_phot_obj.psf_model = psf_model
 
-    basic_phot_obj._define_fit_param_names()
+    with pytest.warns(AstropyDeprecationWarning):
+        basic_phot_obj._define_fit_param_names()
     assert_equal(basic_phot_obj._pars_to_set, actual_pars_to_set)
     assert_equal(basic_phot_obj._pars_to_output, actual_pars_to_output)
 
@@ -983,7 +988,8 @@ def test_psf_photometry_oneiter_uncert(sigma_psf, sources):
             uncertainty = (
                 uncertainty_scale_factor * np.std(image) * np.ones_like(image)
             )
-            result_tab = phot_proc(image, uncertainty=uncertainty)
+            with pytest.warns(AstropyDeprecationWarning):
+                result_tab = phot_proc(image, uncertainty=uncertainty)
             flux_uncert.append(np.array(result_tab['flux_unc']))
 
     for uncert_0, uncert_1 in zip(flux_uncertainties_0, flux_uncertainties_1):
