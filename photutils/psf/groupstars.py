@@ -12,7 +12,7 @@ from astropy.utils.decorators import deprecated
 __all__ = ['DAOGroup', 'DBSCANGroup', 'GroupStarsBase']
 
 
-@deprecated('1.9.0', alternative='photutils.psf.SourceGrouper')
+@deprecated('1.9.0', alternative='`photutils.psf.SourceGrouper`')
 class GroupStarsBase(metaclass=abc.ABCMeta):
     """
     This base class provides the basic interface for subclasses that
@@ -61,7 +61,7 @@ class GroupStarsBase(metaclass=abc.ABCMeta):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
-@deprecated('1.9.0', alternative='photutils.psf.SourceGrouper')
+@deprecated('1.9.0', alternative='`photutils.psf.SourceGrouper`')
 class DAOGroup(GroupStarsBase):
     """
     This class implements the DAOGROUP algorithm presented by
@@ -177,7 +177,7 @@ class DAOGroup(GroupStarsBase):
         return np.asarray(starlist[distance_criteria]['id'])
 
 
-@deprecated('1.9.0', alternative='photutils.psf.SourceGrouper')
+@deprecated('1.9.0', alternative='`photutils.psf.SourceGrouper`')
 class DBSCANGroup(GroupStarsBase):
     """
     Class to create star groups according to a distance criteria using

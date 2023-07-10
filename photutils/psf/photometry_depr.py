@@ -28,7 +28,7 @@ __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']
 
 
-@deprecated('1.9.0', alternative='photutils.psf.PSFPhotometry')
+@deprecated('1.9.0', alternative='`photutils.psf.PSFPhotometry`')
 class BasicPSFPhotometry:
     """
     This class implements a PSF photometry algorithm that can find
@@ -687,7 +687,7 @@ class BasicPSFPhotometry:
         return param_tab
 
 
-@deprecated('1.9.0', alternative='photutils.psf.PSFPhotometry')
+@deprecated('1.9.0', alternative='`photutils.psf.IterativePSFPhotometry`')
 class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     """
     This class implements an iterative algorithm to perform point spread
@@ -984,7 +984,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         return output_table
 
 
-@deprecated('1.9.0', alternative='photutils.psf.PSFPhotometry')
+@deprecated('1.9.0', alternative='`photutils.psf.IterativePSFPhotometry`')
 class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
     """
     This class implements  an iterative algorithm based on the DAOPHOT
