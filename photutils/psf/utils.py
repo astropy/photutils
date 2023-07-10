@@ -7,6 +7,7 @@ import numpy as np
 from astropy.modeling.models import Const2D, Identity, Shift
 from astropy.nddata.utils import add_array, extract_array
 from astropy.table import QTable
+from astropy.utils.decorators import deprecated
 
 __all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf']
 
@@ -129,6 +130,7 @@ def prepare_psf_model(psfmodel, *, xname=None, yname=None, fluxname=None,
     return outmod
 
 
+@deprecated('1.9.0')
 def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
     """
     Construct a joint PSF model which consists of a sum of PSF's templated on
@@ -173,6 +175,7 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
     return group_psf
 
 
+@deprecated('1.9.0')
 def _extract_psf_fitting_names(psf):
     """
     Determine the names of the x coordinate, y coordinate, and flux from
