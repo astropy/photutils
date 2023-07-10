@@ -376,6 +376,7 @@ def test_grouper(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.skipif(not HAS_SKLEARN, reason='sklearn is required')
 def test_local_bkg(test_data):
     data, error, sources = test_data
 

@@ -15,13 +15,14 @@ from numpy.testing import assert_allclose
 
 from photutils.datasets import make_100gaussians_image
 from photutils.segmentation import SourceFinder, make_2dgaussian_kernel
-from photutils.utils._optional_deps import HAS_SCIPY
+from photutils.utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE
 from photutils.utils.depths import ImageDepth
 
 bool_vals = (True, False)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 class TestImageDepth:
     def setup_class(self):
         bkg = 5.0

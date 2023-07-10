@@ -550,7 +550,12 @@ find additional stars:
 
 .. doctest-requires:: scipy
 
+    >>> from photutils.background import LocalBackground, MMMBackground
     >>> from photutils.psf import IterativePSFPhotometry
+    >>> fit_shape = (5, 5)
+    >>> finder = DAOStarFinder(10.0, 2.0)
+    >>> bkgstat = MMMBackground()
+    >>> localbkg_estimator = LocalBackground(5, 10, bkgstat)
     >>> init_params = QTable()
     >>> init_params['x'] = [33, 13, 64]
     >>> init_params['y'] = [12, 15, 22]
