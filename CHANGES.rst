@@ -37,6 +37,19 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Deprecated the PSF photometry classes ``BasicPSFPhotometry``,
+    ``IterativelySubtractedPSFPhotometry``, and
+    ``DAOPhotPSFPhotometry``. Use the new ``PSFPhotometry`` or
+    ``IterativePSFPhotometry`` class instead. [#1578]
+
+  - Deprecated the ``DAOGroup``, ``DBSCANGroup``, and ``GroupStarsBase``
+    classes. Use the new ``SourceGrouper`` class instead. [#1578]
+
+  - Deprecated the ``get_grouped_psf_model`` and ``subtract_psf``
+    function. [#1578]
+
 
 1.8.0 (2023-05-17)
 ------------------
