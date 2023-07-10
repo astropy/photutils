@@ -207,6 +207,7 @@ def _extract_psf_fitting_names(psf):
     return xname, yname, fluxname
 
 
+@deprecated('1.9.0')
 def subtract_psf(data, psf, posflux, *, subshape=None):
     """
     Subtract PSF/PRFs from an image.

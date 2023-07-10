@@ -253,9 +253,10 @@ def test_get_grouped_psf_model_submodel_names(prf_model):
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_subtract_psf():
     """Test subtract_psf."""
-    psf = IntegratedGaussianPRF(sigma=1.0)
-    posflux = INTAB.copy()
-    for n in posflux.colnames:
-        posflux.rename_column(n, n.split('_')[0] + '_fit')
-    residuals = subtract_psf(image, psf, posflux)
-    assert np.max(np.abs(residuals)) < 0.0052
+    with pytest.warns(AstropyDeprecationWarning):
+        psf = IntegratedGaussianPRF(sigma=1.0)
+        posflux = INTAB.copy()
+        for n in posflux.colnames:
+            posflux.rename_column(n, n.split('_')[0] + '_fit')
+        residuals = subtract_psf(image, psf, posflux)
+        assert np.max(np.abs(residuals)) < 0.0052
