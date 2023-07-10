@@ -11,6 +11,7 @@ from astropy.nddata import StdDevUncertainty
 from astropy.nddata.utils import NoOverlapError, overlap_slices
 from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
 from astropy.table import Column, QTable, hstack, vstack
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture, aperture_photometry
@@ -27,6 +28,7 @@ __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']
 
 
+@deprecated('1.9.0', alternative='photutils.psf.PSFPhotometry')
 class BasicPSFPhotometry:
     """
     This class implements a PSF photometry algorithm that can find
@@ -685,6 +687,7 @@ class BasicPSFPhotometry:
         return param_tab
 
 
+@deprecated('1.9.0', alternative='photutils.psf.PSFPhotometry')
 class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     """
     This class implements an iterative algorithm to perform point spread
@@ -981,6 +984,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         return output_table
 
 
+@deprecated('1.9.0', alternative='photutils.psf.PSFPhotometry')
 class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
     """
     This class implements  an iterative algorithm based on the DAOPHOT
