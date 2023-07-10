@@ -24,7 +24,8 @@ from photutils.segmentation.detect import detect_sources
 from photutils.segmentation.finder import SourceFinder
 from photutils.segmentation.utils import make_2dgaussian_kernel
 from photutils.utils._convolution import _filter_data
-from photutils.utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB, HAS_SCIPY
+from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
+                                            HAS_SCIPY, HAS_SKIMAGE)
 from photutils.utils.cutouts import CutoutImage
 
 
@@ -776,6 +777,7 @@ class TestSourceCatalog:
         aper = obj.make_kron_apertures()
         assert isinstance(aper, EllipticalAperture)
 
+    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_make_cutouts(self):
         data = make_100gaussians_image()
         bkg_estimator = MedianBackground()
@@ -835,6 +837,7 @@ class TestSourceCatalog:
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_kron_params():
     data = make_100gaussians_image()
     bkg_estimator = MedianBackground()
@@ -889,6 +892,7 @@ def test_kron_params():
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win():
     g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
     g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)

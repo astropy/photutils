@@ -14,7 +14,7 @@ from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils.footprints import circular_footprint
 
 __all__ = ['ImageDepth']
-__doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['scipy']}
+__doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['scipy', 'skimage']}
 
 
 class ImageDepth:
