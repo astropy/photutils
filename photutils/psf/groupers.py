@@ -74,14 +74,15 @@ class SourceGrouper:
         Returns
         -------
         result : 1D int `~numpy.ndarray`
-            A 1D array of the group numbers, in the same order as the
-            input x and y coordinates.
+            A 1D array of the groups, in the same order as the input x
+            and y coordinates.
         """
-        return self.group_sources(x, y)
+        return self._group_sources(x, y)
 
-    def group_sources(self, x, y):
+    def _group_sources(self, x, y):
         """
-        Classify sources into groups.
+        Group sources into clusters based on a minimum distance
+        criteria.
 
         Parameters
         ----------
