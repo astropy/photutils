@@ -204,17 +204,6 @@ def _extract_psf_fitting_names(psf):
     return xname, yname, fluxname
 
 
-def _call_fitter(fitter, psf, x, y, data, weights):
-    """
-    Not all fitters have to support a weight array. This function
-    includes the weight in the fitter call only if really needed.
-    """
-    if np.all(weights == 1.0):
-        return fitter(psf, x, y, data)
-    else:
-        return fitter(psf, x, y, data, weights=weights)
-
-
 def subtract_psf(data, psf, posflux, *, subshape=None):
     """
     Subtract PSF/PRFs from an image.
