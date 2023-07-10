@@ -9,7 +9,8 @@ import pytest
 from astropy.modeling.fitting import LMLSQFitter, SimplexLSQFitter
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, Table
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background import LocalBackground, MMMBackground
@@ -53,8 +54,8 @@ def test_inputs():
 
     match = 'Invalid grouper class. Please use SourceGrouper.'
     with pytest.raises(ValueError, match=match):
-        grouper = DAOGroup(1)
-        _ = PSFPhotometry(model, 1, grouper=grouper)
+        with pytest.warns(AstropyDeprecationWarning):
+            _ = PSFPhotometry(model, 1, grouper=DAOGroup(1))
 
     match = 'localbkg_estimator must be a LocalBackground instance'
     with pytest.raises(ValueError, match=match):
