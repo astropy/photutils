@@ -7,6 +7,7 @@ import numpy as np
 from astropy.modeling.models import Const2D, Identity, Shift
 from astropy.nddata.utils import add_array, extract_array
 from astropy.table import QTable
+from astropy.utils.decorators import deprecated
 
 __all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf']
 
@@ -129,6 +130,63 @@ def prepare_psf_model(psfmodel, *, xname=None, yname=None, fluxname=None,
     return outmod
 
 
+def _interpolate_missing_data(data, mask, method='cubic'):
+    """
+    Interpolate missing data as identified by the ``mask`` keyword.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        An array containing the 2D image.
+
+    mask : 2D bool `~numpy.ndarray`
+        A 2D boolean mask array with the same shape as the input
+        ``data``, where a `True` value indicates the corresponding
+        element of ``data`` is masked.  The masked data points are
+        those that will be interpolated.
+
+    method : {'cubic', 'nearest'}, optional
+        The method of used to interpolate the missing data:
+
+        * ``'cubic'``:  Masked data are interpolated using 2D cubic
+            splines.  This is the default.
+
+        * ``'nearest'``:  Masked data are interpolated using
+            nearest-neighbor interpolation.
+
+    Returns
+    -------
+    data_interp : 2D `~numpy.ndarray`
+        The interpolated 2D image.
+    """
+    from scipy import interpolate
+
+    data_interp = np.array(data, copy=True)
+
+    if len(data_interp.shape) != 2:
+        raise ValueError("'data' must be a 2D array.")
+
+    if mask.shape != data.shape:
+        raise ValueError("'mask' and 'data' must have the same shape.")
+
+    y, x = np.indices(data_interp.shape)
+    xy = np.dstack((x[~mask].ravel(), y[~mask].ravel()))[0]
+    z = data_interp[~mask].ravel()
+
+    if method == 'nearest':
+        interpol = interpolate.NearestNDInterpolator(xy, z)
+    elif method == 'cubic':
+        interpol = interpolate.CloughTocher2DInterpolator(xy, z)
+    else:
+        raise ValueError('Unsupported interpolation method.')
+
+    xy_missing = np.dstack((x[mask].ravel(), y[mask].ravel()))[0]
+    data_interp[mask] = interpol(xy_missing)
+
+    return data_interp
+
+
+@deprecated('1.9.0')
 def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
     """
     Construct a joint PSF model which consists of a sum of PSF's templated on
@@ -173,6 +231,7 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
     return group_psf
 
 
+@deprecated('1.9.0')
 def _extract_psf_fitting_names(psf):
     """
     Determine the names of the x coordinate, y coordinate, and flux from
@@ -204,17 +263,7 @@ def _extract_psf_fitting_names(psf):
     return xname, yname, fluxname
 
 
-def _call_fitter(fitter, psf, x, y, data, weights):
-    """
-    Not all fitters have to support a weight array. This function
-    includes the weight in the fitter call only if really needed.
-    """
-    if np.all(weights == 1.0):
-        return fitter(psf, x, y, data)
-    else:
-        return fitter(psf, x, y, data, weights=weights)
-
-
+@deprecated('1.9.0')
 def subtract_psf(data, psf, posflux, *, subshape=None):
     """
     Subtract PSF/PRFs from an image.
@@ -286,59 +335,3 @@ def subtract_psf(data, psf, posflux, *, subshape=None):
             subbeddata = add_array(subbeddata, -psf(x, y), (y_0, x_0))
 
     return subbeddata
-
-
-def _interpolate_missing_data(data, mask, method='cubic'):
-    """
-    Interpolate missing data as identified by the ``mask`` keyword.
-
-    Parameters
-    ----------
-    data : 2D `~numpy.ndarray`
-        An array containing the 2D image.
-
-    mask : 2D bool `~numpy.ndarray`
-        A 2D boolean mask array with the same shape as the input
-        ``data``, where a `True` value indicates the corresponding
-        element of ``data`` is masked.  The masked data points are
-        those that will be interpolated.
-
-    method : {'cubic', 'nearest'}, optional
-        The method of used to interpolate the missing data:
-
-        * ``'cubic'``:  Masked data are interpolated using 2D cubic
-            splines.  This is the default.
-
-        * ``'nearest'``:  Masked data are interpolated using
-            nearest-neighbor interpolation.
-
-    Returns
-    -------
-    data_interp : 2D `~numpy.ndarray`
-        The interpolated 2D image.
-    """
-    from scipy import interpolate
-
-    data_interp = np.array(data, copy=True)
-
-    if len(data_interp.shape) != 2:
-        raise ValueError("'data' must be a 2D array.")
-
-    if mask.shape != data.shape:
-        raise ValueError("'mask' and 'data' must have the same shape.")
-
-    y, x = np.indices(data_interp.shape)
-    xy = np.dstack((x[~mask].ravel(), y[~mask].ravel()))[0]
-    z = data_interp[~mask].ravel()
-
-    if method == 'nearest':
-        interpol = interpolate.NearestNDInterpolator(xy, z)
-    elif method == 'cubic':
-        interpol = interpolate.CloughTocher2DInterpolator(xy, z)
-    else:
-        raise ValueError('Unsupported interpolation method.')
-
-    xy_missing = np.dstack((x[mask].ravel(), y[mask].ravel()))[0]
-    data_interp[mask] = interpol(xy_missing)
-
-    return data_interp

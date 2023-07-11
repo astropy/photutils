@@ -8,6 +8,7 @@ import pytest
 from astropy.convolution.utils import discretize_model
 from astropy.modeling.models import Gaussian2D
 from astropy.table import Table
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
 from photutils.psf.groupstars import DAOGroup
@@ -149,60 +150,61 @@ def test_prepare_psf_model_offset():
     """
     Regression test to ensure the offset is in the correct direction.
     """
-    norm = False
-    sigma = 3.0
-    amplitude = 1.0 / (2 * np.pi * sigma**2)
-    xcen = ycen = 0.0
-    psf0 = Gaussian2D(amplitude, xcen, ycen, sigma, sigma)
-    psf1 = prepare_psf_model(psf0, xname='x_mean', yname='y_mean',
-                             renormalize_psf=norm)
-    psf2 = prepare_psf_model(psf0, renormalize_psf=norm)
-    psf3 = prepare_psf_model(psf0, xname='x_mean', renormalize_psf=norm)
-    psf4 = prepare_psf_model(psf0, yname='y_mean', renormalize_psf=norm)
+    with pytest.warns(AstropyDeprecationWarning):
+        norm = False
+        sigma = 3.0
+        amplitude = 1.0 / (2 * np.pi * sigma**2)
+        xcen = ycen = 0.0
+        psf0 = Gaussian2D(amplitude, xcen, ycen, sigma, sigma)
+        psf1 = prepare_psf_model(psf0, xname='x_mean', yname='y_mean',
+                                 renormalize_psf=norm)
+        psf2 = prepare_psf_model(psf0, renormalize_psf=norm)
+        psf3 = prepare_psf_model(psf0, xname='x_mean', renormalize_psf=norm)
+        psf4 = prepare_psf_model(psf0, yname='y_mean', renormalize_psf=norm)
 
-    yy, xx = np.mgrid[0:101, 0:101]
-    psf = psf1.copy()
-    xval = 48
-    yval = 52
-    flux = 14.51
-    psf.x_mean_2 = xval
-    psf.y_mean_2 = yval
-    data = psf(xx, yy) * flux
+        yy, xx = np.mgrid[0:101, 0:101]
+        psf = psf1.copy()
+        xval = 48
+        yval = 52
+        flux = 14.51
+        psf.x_mean_2 = xval
+        psf.y_mean_2 = yval
+        data = psf(xx, yy) * flux
 
-    group_maker = DAOGroup(2)
-    bkg_estimator = None
-    fitshape = 7
-    init_guesses = Table([[46.1], [57.3], [7.1]],
-                         names=['x_0', 'y_0', 'flux_0'])
+        group_maker = DAOGroup(2)
+        bkg_estimator = None
+        fitshape = 7
+        init_guesses = Table([[46.1], [57.3], [7.1]],
+                             names=['x_0', 'y_0', 'flux_0'])
 
-    phot1 = BasicPSFPhotometry(group_maker=group_maker,
-                               bkg_estimator=bkg_estimator, fitshape=fitshape,
-                               psf_model=psf1)
-    tbl1 = phot1(image=data, init_guesses=init_guesses)
+        phot1 = BasicPSFPhotometry(group_maker=group_maker,
+                                   bkg_estimator=bkg_estimator,
+                                   fitshape=fitshape, psf_model=psf1)
+        tbl1 = phot1(image=data, init_guesses=init_guesses)
 
-    phot2 = BasicPSFPhotometry(group_maker=group_maker,
-                               bkg_estimator=bkg_estimator, fitshape=fitshape,
-                               psf_model=psf2)
-    tbl2 = phot2(image=data, init_guesses=init_guesses)
+        phot2 = BasicPSFPhotometry(group_maker=group_maker,
+                                   bkg_estimator=bkg_estimator,
+                                   fitshape=fitshape, psf_model=psf2)
+        tbl2 = phot2(image=data, init_guesses=init_guesses)
 
-    phot3 = BasicPSFPhotometry(group_maker=group_maker,
-                               bkg_estimator=bkg_estimator, fitshape=fitshape,
-                               psf_model=psf3)
-    tbl3 = phot3(image=data, init_guesses=init_guesses)
+        phot3 = BasicPSFPhotometry(group_maker=group_maker,
+                                   bkg_estimator=bkg_estimator,
+                                   fitshape=fitshape, psf_model=psf3)
+        tbl3 = phot3(image=data, init_guesses=init_guesses)
 
-    phot4 = BasicPSFPhotometry(group_maker=group_maker,
-                               bkg_estimator=bkg_estimator, fitshape=fitshape,
-                               psf_model=psf4)
-    tbl4 = phot4(image=data, init_guesses=init_guesses)
+        phot4 = BasicPSFPhotometry(group_maker=group_maker,
+                                   bkg_estimator=bkg_estimator,
+                                   fitshape=fitshape, psf_model=psf4)
+        tbl4 = phot4(image=data, init_guesses=init_guesses)
 
-    assert_allclose((tbl1['x_fit'][0], tbl1['y_fit'][0], tbl1['flux_fit'][0]),
-                    (xval, yval, flux))
-    assert_allclose((tbl2['x_fit'][0], tbl2['y_fit'][0], tbl2['flux_fit'][0]),
-                    (xval, yval, flux))
-    assert_allclose((tbl3['x_fit'][0], tbl3['y_fit'][0], tbl3['flux_fit'][0]),
-                    (xval, yval, flux))
-    assert_allclose((tbl4['x_fit'][0], tbl4['y_fit'][0], tbl4['flux_fit'][0]),
-                    (xval, yval, flux))
+        assert_allclose((tbl1['x_fit'][0], tbl1['y_fit'][0],
+                         tbl1['flux_fit'][0]), (xval, yval, flux))
+        assert_allclose((tbl2['x_fit'][0], tbl2['y_fit'][0],
+                         tbl2['flux_fit'][0]), (xval, yval, flux))
+        assert_allclose((tbl3['x_fit'][0], tbl3['y_fit'][0],
+                         tbl3['flux_fit'][0]), (xval, yval, flux))
+        assert_allclose((tbl4['x_fit'][0], tbl4['y_fit'][0],
+                         tbl4['flux_fit'][0]), (xval, yval, flux))
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -212,7 +214,8 @@ def test_get_grouped_psf_model():
                 data=[[1, 2], [3, 4], [0.5, 1]])
     pars_to_set = {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux'}
 
-    gpsf = get_grouped_psf_model(igp, tab, pars_to_set)
+    with pytest.warns(AstropyDeprecationWarning):
+        gpsf = get_grouped_psf_model(igp, tab, pars_to_set)
 
     assert gpsf.x_0_0 == 1
     assert gpsf.y_0_1 == 4
@@ -238,20 +241,22 @@ def test_get_grouped_psf_model_submodel_names(prf_model):
                 data=[[1, 2], [3, 4], [0.5, 1]])
     pars_to_set = {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux'}
 
-    gpsf = get_grouped_psf_model(prf_model, tab, pars_to_set)
-    # There should be two submodels one named 0 and one named 1
-    assert len([submodel for submodel in gpsf.traverse_postorder()
-                if submodel.name == 0]) == 1
-    assert len([submodel for submodel in gpsf.traverse_postorder()
-                if submodel.name == 1]) == 1
+    with pytest.warns(AstropyDeprecationWarning):
+        gpsf = get_grouped_psf_model(prf_model, tab, pars_to_set)
+        # There should be two submodels one named 0 and one named 1
+        assert len([submodel for submodel in gpsf.traverse_postorder()
+                    if submodel.name == 0]) == 1
+        assert len([submodel for submodel in gpsf.traverse_postorder()
+                    if submodel.name == 1]) == 1
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_subtract_psf():
     """Test subtract_psf."""
-    psf = IntegratedGaussianPRF(sigma=1.0)
-    posflux = INTAB.copy()
-    for n in posflux.colnames:
-        posflux.rename_column(n, n.split('_')[0] + '_fit')
-    residuals = subtract_psf(image, psf, posflux)
-    assert np.max(np.abs(residuals)) < 0.0052
+    with pytest.warns(AstropyDeprecationWarning):
+        psf = IntegratedGaussianPRF(sigma=1.0)
+        posflux = INTAB.copy()
+        for n in posflux.colnames:
+            posflux.rename_column(n, n.split('_')[0] + '_fit')
+        residuals = subtract_psf(image, psf, posflux)
+        assert np.max(np.abs(residuals)) < 0.0052
