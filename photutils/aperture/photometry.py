@@ -20,7 +20,7 @@ __all__ = ['aperture_photometry']
 
 def aperture_photometry(data, apertures, error=None, mask=None,
                         method='exact', subpixels=5, wcs=None,
-                        progressbar=None):
+                        progressbar=False):
     """
     Perform aperture photometry on the input data by summing the flux
     within the given aperture(s).
