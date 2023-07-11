@@ -18,7 +18,8 @@ __all__ = ['aperture_photometry']
 
 
 def aperture_photometry(data, apertures, error=None, mask=None,
-                        method='exact', subpixels=5, wcs=None):
+                        method='exact', subpixels=5, wcs=None,
+                        progressbar=None):
     """
     Perform aperture photometry on the input data by summing the flux
     within the given aperture(s).
@@ -95,6 +96,11 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`). Used only if the input
         ``apertures`` contains a `SkyAperture` object.
+
+    progressbar : progressbar
+        A progressbar (optional) to show progress over the apertures.
+        Could be an `astropy.utils.console.ProgressBar` or a `tqdm`
+        progressbar.
 
     Returns
     -------
@@ -218,9 +224,12 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         else:
             tbl['sky_center'] = skycoord_pos
 
+    if progressbar is None:
+        progressbar = lambda x: x
+
     sum_key_main = 'aperture_sum'
     sum_err_key_main = 'aperture_sum_err'
-    for i, aper in enumerate(apertures):
+    for i, aper in progressbar(enumerate(apertures)):
         aper_sum, aper_sum_err = aper.do_photometry(data, error=error,
                                                     mask=mask, method=method,
                                                     subpixels=subpixels)
