@@ -13,6 +13,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture.core import Aperture, SkyAperture
 from photutils.utils._misc import _get_version_info
+from photutils.utils._progress_bars import add_progress_bar
 
 __all__ = ['aperture_photometry']
 
@@ -224,12 +225,13 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         else:
             tbl['sky_center'] = skycoord_pos
 
-    if progressbar is None:
-        progressbar = lambda x: x
+    if progressbar:
+        desc = 'Aperture'
+        fit_models = add_progress_bar(apertures, desc=desc)  # pragma: no cover
 
     sum_key_main = 'aperture_sum'
     sum_err_key_main = 'aperture_sum_err'
-    for i, aper in progressbar(enumerate(apertures)):
+    for i, aper in enumerate(apertures):
         aper_sum, aper_sum_err = aper.do_photometry(data, error=error,
                                                     mask=mask, method=method,
                                                     subpixels=subpixels)
