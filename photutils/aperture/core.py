@@ -15,6 +15,7 @@ from astropy.utils import lazyproperty
 
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.utils._wcs_helpers import _pixel_scale_angle_at_skycoord
+from photutils.utils._progress_bars import add_progress_bar
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture']
 
