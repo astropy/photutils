@@ -309,7 +309,7 @@ class PSFPhotometry:
         ypos = init_params[self._yinit_name]
         apertures = CircularAperture(zip(xpos, ypos), r=self.aperture_radius)
         flux, _ = apertures.do_photometry(data, mask=mask,
-                                          progressbar=self.progress_bar)
+                                          progress_bar=self.progress_bar)
         return flux
 
     def _prepare_init_params(self, data, unit, mask, init_params):

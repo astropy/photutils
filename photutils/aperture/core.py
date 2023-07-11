@@ -438,7 +438,7 @@ class PixelAperture(Aperture):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
     def do_photometry(self, data, error=None, mask=None, method='exact',
-                      subpixels=5, progressbar=False):
+                      subpixels=5, progress_bar=False):
         """
         Perform aperture photometry on the input data.
 
@@ -542,7 +542,7 @@ class PixelAperture(Aperture):
         if self.isscalar:
             apermasks = (apermasks,)
 
-        if progressbar:
+        if progress_bar:
             desc = 'Aperture Mask'
             fit_models = add_progress_bar(apermasks, desc=desc)  # pragma: no cover
 
