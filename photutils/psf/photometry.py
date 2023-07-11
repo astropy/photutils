@@ -51,8 +51,11 @@ class PSFPhotometry:
         The rectangular shape around the center of a star that will
         be used to define the PSF-fitting data. If ``fit_shape`` is a
         scalar then a square shape of size ``fit_shape`` will be used.
-        If ``fit_shape`` has two elements, they must be in ``(ny, nx)``
-        order. Each element of ``fit_shape`` must be an odd number.
+        If ``fit_shape`` has two elements, they must be in ``(ny,
+        nx)`` order. Each element of ``fit_shape`` must be an odd
+        number. In general, ``fit_shape`` should be set to a small size
+        (e.g., ``(5, 5)``) that covers the region with the highest flux
+        signal-to-noise.
 
     finder : callable or `~photutils.detection.StarFinderBase` or `None`, optional
         A callable used to identify stars in an image. The
@@ -94,7 +97,7 @@ class PSFPhotometry:
     aperture_radius : float, optional
         The radius of the circular aperture used to estimate the initial
         flux of each source. The ``flux_init`` values in ``init_params``
-        override this keyword *only for the first iteration*.
+        override this keyword.
 
     progress_bar : bool, optional
         Whether to display a progress bar when fitting the sources
