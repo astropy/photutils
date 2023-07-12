@@ -697,13 +697,14 @@ class GriddedPSFModel(Fittable2DModel):
         shape should be (N_psf, PSF_ny, PSF_nx)).  The meta
         attribute must be `dict` containing the following:
 
-            * ``'grid_xypos'``:  A list of the (x, y) grid positions of
-              each reference PSF.  The order of positions should match
-              the first axis of the 3D `~numpy.ndarray` of PSFs.  In
-              other words, ``grid_xypos[i]`` should be the (x, y)
-              position of the reference PSF defined in ``data[i]``.
-            * ``'oversampling'``:  The integer oversampling factor of the
-               PSF.
+            * ``'grid_xypos'``: A list of the (x, y) grid positions of
+              each reference PSF. The order of positions should match the
+              first axis of the 3D `~numpy.ndarray` of PSFs. In other
+              words, ``grid_xypos[i]`` should be the (x, y) position of
+              the reference PSF defined in ``data[i]``.
+
+            * ``'oversampling'``: The integer oversampling factor of the
+              PSF.
 
         The meta attribute may contain other properties such as the
         telescope, instrument, detector, and filter of the PSF.
