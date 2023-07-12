@@ -18,14 +18,14 @@ New Features
 
 - ``photutils.datasets``
 
-  - Added new ``make_test_psf_data`` function. [#1558]
+  - Added new ``make_test_psf_data`` function. [#1558, #1582]
 
 - ``photutils.psf``
 
   - Propagate measurement uncertainties in PSF fitting. [#1543]
 
   - Added new ``PSFPhotometry``, ``IterativePSFPhotometry``, and
-    ``SourceGrouper`` classes. [#1558,#1581]
+    ``SourceGrouper`` classes. [#1558, #1581]
 
 Bug Fixes
 ^^^^^^^^^

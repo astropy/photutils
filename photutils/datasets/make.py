@@ -1053,8 +1053,8 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
         yy, xx = np.mgrid[slc_lg]
         data[slc_lg] += psf_model(xx, yy)
 
-    sources.rename_column('x_0', 'x_true')
-    sources.rename_column('y_0', 'y_true')
-    sources.rename_column('flux', 'flux_true')
+    sources.rename_column('x_0', 'x')
+    sources.rename_column('y_0', 'y')
+    sources.rename_column('flux', 'flux')
 
     return data, sources
