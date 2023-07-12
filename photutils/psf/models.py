@@ -720,27 +720,7 @@ class GriddedPSFModel(Fittable2DModel):
     def __init__(self, data, *, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, fill_value=0.0):
 
-        if not isinstance(data, NDData):
-            raise TypeError('data must be an NDData instance.')
-
-        if data.data.ndim != 3:
-            raise ValueError('The NDData data attribute must be a 3D numpy '
-                             'ndarray')
-
-        if 'grid_xypos' not in data.meta:
-            raise ValueError('"grid_xypos" must be in the nddata meta '
-                             'dictionary.')
-        if len(data.meta['grid_xypos']) != data.data.shape[0]:
-            raise ValueError('The length of grid_xypos must match the number '
-                             'of input PSFs.')
-
-        if 'oversampling' not in data.meta:
-            raise ValueError('"oversampling" must be in the nddata meta '
-                             'dictionary.')
-        if not np.isscalar(data.meta['oversampling']):
-            raise ValueError('oversampling must be a scalar value')
-
-        self._data_input = data
+        self._data_input = self._validate_data(data)
         self.data = data.data
         self.meta = data.meta
         self.grid_xypos = data.meta['grid_xypos']
@@ -769,6 +749,30 @@ class GriddedPSFModel(Fittable2DModel):
             self._compute_local_model_uncached)
 
         super().__init__(flux, x_0, y_0)
+
+    @staticmethod
+    def _validate_data(data):
+        if not isinstance(data, NDData):
+            raise TypeError('data must be an NDData instance.')
+
+        if data.data.ndim != 3:
+            raise ValueError('The NDData data attribute must be a 3D numpy '
+                             'ndarray')
+
+        if 'grid_xypos' not in data.meta:
+            raise ValueError('"grid_xypos" must be in the nddata meta '
+                             'dictionary.')
+        if len(data.meta['grid_xypos']) != data.data.shape[0]:
+            raise ValueError('The length of grid_xypos must match the number '
+                             'of input PSFs.')
+
+        if 'oversampling' not in data.meta:
+            raise ValueError('"oversampling" must be in the nddata meta '
+                             'dictionary.')
+        if not np.isscalar(data.meta['oversampling']):
+            raise ValueError('oversampling must be a scalar value')
+
+        return data
 
     def copy(self):
         """
