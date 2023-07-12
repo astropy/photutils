@@ -434,7 +434,7 @@ def test_fit_warning(test_data):
     match = r'One or more fit\(s\) may not have converged.'
     with pytest.warns(AstropyUserWarning, match=match):
         _ = psfphot(data)
-        assert len(psfphot.fit_error_indices) > 0
+        assert len(psfphot.fit_results['fit_error_indices']) > 0
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
