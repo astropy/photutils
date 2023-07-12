@@ -135,13 +135,11 @@ class PSFPhotometry:
         self.finder_results = []
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
-        self._ungroup_indices = []
 
     def _reset_results(self):
         self.finder_results = []
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
-        self._ungroup_indices = []
 
     def _validate_grouper(self, grouper, name):
         # remove this check when GroupStarsBase subclasses are removed
@@ -527,7 +525,7 @@ class PSFPhotometry:
         """
         Reorder the list from group-id to source-id order.
         """
-        return [iterable[i] for i in self._ungroup_indices]
+        return [iterable[i] for i in self._group_results['ungroup_indices']]
 
     def _ungroup(self, iterable):
         """
@@ -606,7 +604,8 @@ class PSFPhotometry:
             kwargs = {}
 
         sources = init_params.group_by('group_id')
-        self._ungroup_indices = np.argsort(sources['id'].value)
+        ungroup_idx = np.argsort(sources['id'].value)
+        self._group_results['ungroup_indices'] = ungroup_idx
         sources = sources.groups
         if self.progress_bar:
             desc = 'Fit source/group'
