@@ -6,7 +6,7 @@ This module provides models for doing PSF/PRF-fitting photometry.
 import copy
 import itertools
 import warnings
-from functools import lru_cache
+from functools import cache
 
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
@@ -742,11 +742,9 @@ class GriddedPSFModel(Fittable2DModel):
         self._ref_indices = None
         self._psf_interp = None
 
-        # NOTE: replace @lru_cache with @cache for Python 3.9+;
-        # Here we avoid decorating the instance method with
-        # @lru_cache/cache to prevent memory leaks
-        self._compute_local_model = lru_cache(maxsize=128)(
-            self._compute_local_model_uncached)
+        # Here we avoid decorating the instance method with @cache to
+        # prevent memory leaks
+        self._compute_local_model = cache(self._compute_local_model_uncached)
 
         super().__init__(flux, x_0, y_0)
 
