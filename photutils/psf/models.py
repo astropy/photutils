@@ -6,7 +6,7 @@ This module provides models for doing PSF/PRF-fitting photometry.
 import copy
 import itertools
 import warnings
-from functools import lru_cache
+from functools import cache
 
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
@@ -720,6 +720,31 @@ class GriddedPSFModel(Fittable2DModel):
     def __init__(self, data, *, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, fill_value=0.0):
 
+        self._data_input = self._validate_data(data)
+        self.data = data.data
+        self.meta = data.meta
+        self.grid_xypos = data.meta['grid_xypos']
+        self.oversampling = data.meta['oversampling']
+        self.fill_value = fill_value
+
+        self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
+        self._xgrid = np.unique(self._grid_xpos)  # also sorts values
+        self._ygrid = np.unique(self._grid_ypos)  # also sorts values
+        if (len(list(itertools.product(self._xgrid, self._ygrid)))
+                != len(self.grid_xypos)):
+            raise ValueError('"grid_xypos" must form a regular grid.')
+
+        self._ref_indices = None
+        self._psf_interp = None
+
+        # Here we avoid decorating the instance method with @cache to
+        # prevent memory leaks
+        self._compute_local_model = cache(self._compute_local_model_uncached)
+
+        super().__init__(flux, x_0, y_0)
+
+    @staticmethod
+    def _validate_data(data):
         if not isinstance(data, NDData):
             raise TypeError('data must be an NDData instance.')
 
@@ -740,35 +765,7 @@ class GriddedPSFModel(Fittable2DModel):
         if not np.isscalar(data.meta['oversampling']):
             raise ValueError('oversampling must be a scalar value')
 
-        self._data_input = data
-        self.data = data.data
-        self.meta = data.meta
-        self.grid_xypos = data.meta['grid_xypos']
-        self.oversampling = data.meta['oversampling']
-        self._fill_value = fill_value
-
-        self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
-        self._xgrid = np.unique(self._grid_xpos)  # also sorts values
-        self._ygrid = np.unique(self._grid_ypos)  # also sorts values
-
-        if (len(list(itertools.product(self._xgrid, self._ygrid)))
-                != len(self.grid_xypos)):
-            raise ValueError('"grid_xypos" must form a regular grid.')
-
-        self._xgrid_min = self._xgrid[0]
-        self._xgrid_max = self._xgrid[-1]
-        self._ygrid_min = self._ygrid[0]
-        self._ygrid_max = self._ygrid[-1]
-        self._ref_indices = None
-        self._psf_interp = None
-
-        # NOTE: replace @lru_cache with @cache for Python 3.9+;
-        # Here we avoid decorating the instance method with
-        # @lru_cache/cache to prevent memory leaks
-        self._compute_local_model = lru_cache(maxsize=128)(
-            self._compute_local_model_uncached)
-
-        super().__init__(flux, x_0, y_0)
+        return data
 
     def copy(self):
         """
@@ -779,7 +776,7 @@ class GriddedPSFModel(Fittable2DModel):
         """
         return self.__class__(self._data_input, flux=self.flux.value,
                               x_0=self.x_0.value, y_0=self.y_0.value,
-                              fill_value=self._fill_value)
+                              fill_value=self.fill_value)
 
     def deepcopy(self):
         """
@@ -902,8 +899,8 @@ class GriddedPSFModel(Fittable2DModel):
         """
         Return `FittableImageModel` for interpolated PSF at some (x_0, y_0).
         """
-        if (x_0 < self._xgrid_min or x_0 > self._xgrid_max
-                or y_0 < self._ygrid_min or y_0 > self._ygrid_max):
+        if (x_0 < self._xgrid[0] or x_0 > self._xgrid[-1]
+                or y_0 < self._ygrid[0] or y_0 > self._ygrid[-1]):
             # position is outside of the grid, so simply use the
             # closest reference PSF
             self._ref_index = np.argsort(np.hypot(self._grid_xpos - x_0,
