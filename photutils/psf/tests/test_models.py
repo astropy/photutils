@@ -285,6 +285,19 @@ class TestGriddedPSFModel:
         assert 88.3 < orients[0] < 88.4
         assert 64.0 < orients[3] < 64.2
 
+    def test_copy(self, psfmodel):
+        flux = psfmodel.flux.value
+        new_model = psfmodel.copy()
+        new_model.flux = 100
+        assert new_model.flux.value != flux
+        assert new_model._data_input is psfmodel._data_input
+
+    def test_deepcopy(self, psfmodel):
+        flux = psfmodel.flux.value
+        new_model = psfmodel.deepcopy()
+        new_model.flux = 100
+        assert new_model.flux.value != flux
+
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestIntegratedGaussianPRF:
