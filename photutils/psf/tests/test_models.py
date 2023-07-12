@@ -17,73 +17,77 @@ from photutils.segmentation import SourceCatalog, detect_sources
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
+@pytest.fixture(name='gmodel')
+def fixture_gmodel():
+    return Gaussian2D(x_stddev=3, y_stddev=3)
+
+
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestFittableImageModel:
-    def setup_class(self):
-        self.gm = Gaussian2D(x_stddev=3, y_stddev=3)
+    """
+    Tests for FittableImageModel.
+    """
 
-    def test_fittable_image_model(self):
+    def test_fittable_image_model(self, gmodel):
         yy, xx = np.mgrid[-2:3, -2:3]
-        model_nonorm = FittableImageModel(self.gm(xx, yy))
+        model_nonorm = FittableImageModel(gmodel(xx, yy))
 
-        assert_allclose(model_nonorm(0, 0), self.gm(0, 0))
-        assert_allclose(model_nonorm(1, 1), self.gm(1, 1))
-        assert_allclose(model_nonorm(-2, 1), self.gm(-2, 1))
+        assert_allclose(model_nonorm(0, 0), gmodel(0, 0))
+        assert_allclose(model_nonorm(1, 1), gmodel(1, 1))
+        assert_allclose(model_nonorm(-2, 1), gmodel(-2, 1))
 
         # subpixel should *not* match, but be reasonably close
         # in this case good to ~0.1% seems to be fine
-        assert_allclose(model_nonorm(0.5, 0.5), self.gm(0.5, 0.5), rtol=.001)
-        assert_allclose(model_nonorm(-0.5, 1.75), self.gm(-0.5, 1.75),
+        assert_allclose(model_nonorm(0.5, 0.5), gmodel(0.5, 0.5), rtol=.001)
+        assert_allclose(model_nonorm(-0.5, 1.75), gmodel(-0.5, 1.75),
                         rtol=.001)
 
-        model_norm = FittableImageModel(self.gm(xx, yy), normalize=True)
-        assert not np.allclose(model_norm(0, 0), self.gm(0, 0))
+        model_norm = FittableImageModel(gmodel(xx, yy), normalize=True)
+        assert not np.allclose(model_norm(0, 0), gmodel(0, 0))
         assert_allclose(np.sum(model_norm(xx, yy)), 1)
 
-        model_norm2 = FittableImageModel(self.gm(xx, yy), normalize=True,
+        model_norm2 = FittableImageModel(gmodel(xx, yy), normalize=True,
                                          normalization_correction=2)
-        assert not np.allclose(model_norm2(0, 0), self.gm(0, 0))
+        assert not np.allclose(model_norm2(0, 0), gmodel(0, 0))
         assert_allclose(model_norm(0, 0), model_norm2(0, 0) * 2)
         assert_allclose(np.sum(model_norm2(xx, yy)), 0.5)
 
-    def test_fittable_image_model_oversampling(self):
+    def test_fittable_image_model_oversampling(self, gmodel):
         oversamp = 3  # oversampling factor
         yy, xx = np.mgrid[-3:3.00001:(1 / oversamp), -3:3.00001:(1 / oversamp)]
 
-        im = self.gm(xx, yy)
+        im = gmodel(xx, yy)
         assert im.shape[0] > 7
 
         model_oversampled = FittableImageModel(im, oversampling=oversamp)
-        assert_allclose(model_oversampled(0, 0), self.gm(0, 0))
-        assert_allclose(model_oversampled(1, 1), self.gm(1, 1))
-        assert_allclose(model_oversampled(-2, 1), self.gm(-2, 1))
-        assert_allclose(model_oversampled(0.5, 0.5), self.gm(0.5, 0.5),
+        assert_allclose(model_oversampled(0, 0), gmodel(0, 0))
+        assert_allclose(model_oversampled(1, 1), gmodel(1, 1))
+        assert_allclose(model_oversampled(-2, 1), gmodel(-2, 1))
+        assert_allclose(model_oversampled(0.5, 0.5), gmodel(0.5, 0.5),
                         rtol=.001)
-        assert_allclose(model_oversampled(-0.5, 1.75), self.gm(-0.5, 1.75),
+        assert_allclose(model_oversampled(-0.5, 1.75), gmodel(-0.5, 1.75),
                         rtol=.001)
 
         # without oversampling the same tests should fail except for at
         # the origin
         model_wrongsampled = FittableImageModel(im)
-        assert_allclose(model_wrongsampled(0, 0), self.gm(0, 0))
-        assert not np.allclose(model_wrongsampled(1, 1), self.gm(1, 1))
-        assert not np.allclose(model_wrongsampled(-2, 1), self.gm(-2, 1))
-        assert not np.allclose(model_wrongsampled(0.5, 0.5),
-                               self.gm(0.5, 0.5), rtol=.001)
+        assert_allclose(model_wrongsampled(0, 0), gmodel(0, 0))
+        assert not np.allclose(model_wrongsampled(1, 1), gmodel(1, 1))
+        assert not np.allclose(model_wrongsampled(-2, 1), gmodel(-2, 1))
+        assert not np.allclose(model_wrongsampled(0.5, 0.5), gmodel(0.5, 0.5),
+                               rtol=.001)
         assert not np.allclose(model_wrongsampled(-0.5, 1.75),
-                               self.gm(-0.5, 1.75), rtol=.001)
+                               gmodel(-0.5, 1.75), rtol=.001)
 
-    def test_centering_oversampled(self):
-        gm = Gaussian2D(x_stddev=2, y_stddev=3)
-
+    def test_centering_oversampled(self, gmodel):
         oversamp = 3
         yy, xx = np.mgrid[-3:3.00001:(1 / oversamp), -3:3.00001:(1 / oversamp)]
 
-        model_oversampled = FittableImageModel(gm(xx, yy),
+        model_oversampled = FittableImageModel(gmodel(xx, yy),
                                                oversampling=oversamp)
 
-        valcen = gm(0, 0)
-        val36 = gm(0.66, 0.66)
+        valcen = gmodel(0, 0)
+        val36 = gmodel(0.66, 0.66)
 
         assert_allclose(valcen, model_oversampled(0, 0))
         assert_allclose(val36, model_oversampled(0.66, 0.66), rtol=1.0e-6)
@@ -111,83 +115,91 @@ class TestFittableImageModel:
                 FittableImageModel(data, oversampling=oversampling)
 
 
+@pytest.fixture(name='psfmodel')
+def fixture_griddedpsf_data():
+    psfs = []
+    y, x = np.mgrid[0:101, 0:101]
+    for i in range(16):
+        theta = i * 10.0 * np.pi / 180.0
+        g = Gaussian2D(1, 50, 50, 10, 5, theta=theta)
+        m = g(x, y)
+        psfs.append(m)
+
+    xgrid = [0, 40, 160, 200]
+    ygrid = [0, 60, 140, 200]
+    grid_xypos = list(product(xgrid, ygrid))
+
+    meta = {}
+    meta['grid_xypos'] = grid_xypos
+    meta['oversampling'] = 4
+
+    nddata = NDData(psfs, meta=meta)
+    psfmodel = GriddedPSFModel(nddata)
+
+    return psfmodel
+
+
 class TestGriddedPSFModel:
-    def setup_class(self):
-        psfs = []
-        y, x = np.mgrid[0:101, 0:101]
-        for i in range(16):
-            theta = i * 10.0 * np.pi / 180.0
-            g = Gaussian2D(1, 50, 50, 10, 5, theta=theta)
-            m = g(x, y)
-            psfs.append(m)
+    """
+    Tests for GriddPSFModel.
+    """
 
-        xgrid = [0, 40, 160, 200]
-        ygrid = [0, 60, 140, 200]
-        grid_xypos = list(product(xgrid, ygrid))
-
-        meta = {}
-        meta['grid_xypos'] = grid_xypos
-        meta['oversampling'] = 4
-        self.nddata = NDData(psfs, meta=meta)
-        self.psfmodel = GriddedPSFModel(self.nddata)
-
-    def test_gridded_psf_model(self):
+    def test_gridded_psf_model(self, psfmodel):
         keys = ['grid_xypos', 'oversampling']
         for key in keys:
-            assert key in self.psfmodel.meta
-        assert len(self.psfmodel.meta) == 2
-        assert len(self.psfmodel.meta['grid_xypos']) == 16
-        assert self.psfmodel.oversampling == 4
-        assert (self.psfmodel.meta['oversampling']
-                == self.psfmodel.oversampling)
-        assert self.psfmodel.data.shape == (16, 101, 101)
+            assert key in psfmodel.meta
+        assert len(psfmodel.meta) == 2
+        assert len(psfmodel.meta['grid_xypos']) == 16
+        assert psfmodel.oversampling == 4
+        assert psfmodel.meta['oversampling'] == psfmodel.oversampling
+        assert psfmodel.data.shape == (16, 101, 101)
 
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-    def test_gridded_psf_model_basic_eval(self):
+    def test_gridded_psf_model_basic_eval(self, psfmodel):
         y, x = np.mgrid[0:100, 0:100]
-        psf = self.psfmodel.evaluate(x=x, y=y, flux=100, x_0=40, y_0=60)
+        psf = psfmodel.evaluate(x=x, y=y, flux=100, x_0=40, y_0=60)
         assert psf.shape == (100, 100)
 
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-    def test_gridded_psf_model_eval_outside_grid(self):
+    def test_gridded_psf_model_eval_outside_grid(self, psfmodel):
         y, x = np.mgrid[-50:50, -50:50]
-        psf1 = self.psfmodel.evaluate(x=x, y=y, flux=100, x_0=0, y_0=0)
+        psf1 = psfmodel.evaluate(x=x, y=y, flux=100, x_0=0, y_0=0)
         y, x = np.mgrid[-60:40, -60:40]
-        psf2 = self.psfmodel.evaluate(x=x, y=y, flux=100, x_0=-10, y_0=-10)
+        psf2 = psfmodel.evaluate(x=x, y=y, flux=100, x_0=-10, y_0=-10)
         assert_allclose(psf1, psf2)
 
         y, x = np.mgrid[150:250, 150:250]
-        psf3 = self.psfmodel.evaluate(x=x, y=y, flux=100, x_0=200, y_0=200)
+        psf3 = psfmodel.evaluate(x=x, y=y, flux=100, x_0=200, y_0=200)
         y, x = np.mgrid[170:270, 170:270]
-        psf4 = self.psfmodel.evaluate(x=x, y=y, flux=100, x_0=220, y_0=220)
+        psf4 = psfmodel.evaluate(x=x, y=y, flux=100, x_0=220, y_0=220)
         assert_allclose(psf3, psf4)
 
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-    def test_gridded_psf_model_interp(self):
+    def test_gridded_psf_model_interp(self, psfmodel):
         # test xyref length
         with pytest.raises(TypeError):
-            self.psfmodel._bilinear_interp([1, 1], 1, 1, 1)
+            psfmodel._bilinear_interp([1, 1], 1, 1, 1)
 
         # test if refxy points form a rectangle
         with pytest.raises(ValueError):
             xyref = [[0, 0], [0, 1], [1, 0], [2, 2]]
             zref = np.ones((4, 4, 4))
-            self.psfmodel._bilinear_interp(xyref, zref, 1, 1)
+            psfmodel._bilinear_interp(xyref, zref, 1, 1)
 
         # test if xi and yi are outside of xyref
         xyref = [[0, 0], [0, 1], [1, 0], [1, 1]]
         zref = np.ones((4, 4, 4))
         with pytest.raises(ValueError):
-            self.psfmodel._bilinear_interp(xyref, zref, 100, 1)
+            psfmodel._bilinear_interp(xyref, zref, 100, 1)
         with pytest.raises(ValueError):
-            self.psfmodel._bilinear_interp(xyref, zref, 1, 100)
+            psfmodel._bilinear_interp(xyref, zref, 1, 100)
 
         # test non-scalar xi and yi
         idx = [0, 1, 4, 5]
-        xyref = np.array(self.psfmodel.grid_xypos)[idx]
-        psfs = self.psfmodel.data[idx, :, :]
-        val1 = self.psfmodel._bilinear_interp(xyref, psfs, 10, 20)
-        val2 = self.psfmodel._bilinear_interp(xyref, psfs, [10], [20])
+        xyref = np.array(psfmodel.grid_xypos)[idx]
+        psfs = psfmodel.data[idx, :, :]
+        val1 = psfmodel._bilinear_interp(xyref, psfs, 10, 20)
+        val2 = psfmodel._bilinear_interp(xyref, psfs, [10], [20])
         assert_allclose(val1, val2)
 
     def test_gridded_psf_model_invalid_inputs(self):
@@ -235,18 +247,17 @@ class TestGriddedPSFModel:
             GriddedPSFModel(nddata)
 
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-    def test_gridded_psf_model_eval(self):
+    def test_gridded_psf_model_eval(self, psfmodel):
         """
         Create a simulated image using GriddedPSFModel and test
         the properties of the generated sources.
         """
-
         shape = (200, 200)
         data = np.zeros(shape)
-        eval_xshape = (np.ceil(self.psfmodel.data.shape[2]
-                               / self.psfmodel.oversampling)).astype(int)
-        eval_yshape = (np.ceil(self.psfmodel.data.shape[1]
-                               / self.psfmodel.oversampling)).astype(int)
+        eval_xshape = (np.ceil(psfmodel.data.shape[2]
+                               / psfmodel.oversampling)).astype(int)
+        eval_yshape = (np.ceil(psfmodel.data.shape[1]
+                               / psfmodel.oversampling)).astype(int)
 
         xx = [40, 50, 160, 160]
         yy = [60, 150, 50, 140]
@@ -263,8 +274,8 @@ class TestGriddedPSFModel:
             y1 = min(y1, shape[0])
 
             y, x = np.mgrid[y0:y1, x0:x1]
-            data[y, x] += self.psfmodel.evaluate(x=x, y=y, flux=zzi, x_0=xxi,
-                                                 y_0=yyi)
+            data[y, x] += psfmodel.evaluate(x=x, y=y, flux=zzi, x_0=xxi,
+                                            y_0=yyi)
 
         segm = detect_sources(data, 0.0, 5)
         cat = SourceCatalog(data, segm)
@@ -274,9 +285,26 @@ class TestGriddedPSFModel:
         assert 88.3 < orients[0] < 88.4
         assert 64.0 < orients[3] < 64.2
 
+    def test_copy(self, psfmodel):
+        flux = psfmodel.flux.value
+        new_model = psfmodel.copy()
+        new_model.flux = 100
+        assert new_model.flux.value != flux
+        assert new_model._data_input is psfmodel._data_input
+
+    def test_deepcopy(self, psfmodel):
+        flux = psfmodel.flux.value
+        new_model = psfmodel.deepcopy()
+        new_model.flux = 100
+        assert new_model.flux.value != flux
+
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestIntegratedGaussianPRF:
+    """
+    Tests for IntegratedGaussianPRF.
+    """
+
     widths = [0.001, 0.01, 0.1, 1]
     sigmas = [0.5, 1.0, 2.0, 10.0, 12.34]
 
@@ -305,6 +333,10 @@ class TestIntegratedGaussianPRF:
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestPRFAdapter:
+    """
+    Tests for PRFAdapter.
+    """
+
     def normalize_moffat(self, mof):
         # this is the analytic value needed to get a total flux of 1
         mof = mof.copy()
@@ -312,10 +344,12 @@ class TestPRFAdapter:
         return mof
 
     @pytest.mark.parametrize("adapterkwargs", [
-        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
-        dict(xname=None, yname=None, fluxname=None, renormalize_psf=False),
-        dict(xname='x_0', yname='y_0', fluxname='amplitude',
-             renormalize_psf=False)])
+        {'xname': 'x_0', 'yname': 'y_0', 'fluxname': None,
+         'renormalize_psf': False},
+        {'xname': None, 'yname': None, 'fluxname': None,
+         'renormalize_psf': False},
+        {'xname': 'x_0', 'yname': 'y_0', 'fluxname': 'amplitude',
+         'renormalize_psf': False}])
     def test_create_eval_prfadapter(self, adapterkwargs):
         mof = Moffat2D(gamma=1, alpha=4.8)
         prf = PRFAdapter(mof, **adapterkwargs)
@@ -327,10 +361,12 @@ class TestPRFAdapter:
         prf(0, 0)
 
     @pytest.mark.parametrize("adapterkwargs", [
-        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=True),
-        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
-        dict(xname=None, yname=None, fluxname=None, renormalize_psf=False)
-    ])
+        {'xname': 'x_0', 'yname': 'y_0', 'fluxname': None,
+         'renormalize_psf': True},
+        {'xname': 'x_0', 'yname': 'y_0', 'fluxname': None,
+         'renormalize_psf': False},
+        {'xname': None, 'yname': None, 'fluxname': None,
+         'renormalize_psf': False}])
     def test_prfadapter_integrates(self, adapterkwargs):
         from scipy.integrate import dblquad
 
@@ -352,8 +388,10 @@ class TestPRFAdapter:
         assert_allclose(np.sum(evalmod), integrand, atol=itol * 10)
 
     @pytest.mark.parametrize("adapterkwargs", [
-        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
-        dict(xname=None, yname=None, fluxname=None, renormalize_psf=False)])
+        {'xname': 'x_0', 'yname': 'y_0', 'fluxname': None,
+         'renormalize_psf': False},
+        {'xname': None, 'yname': None, 'fluxname': None,
+         'renormalize_psf': False}])
     def test_prfadapter_sizematch(self, adapterkwargs):
         from scipy.integrate import dblquad
 
@@ -371,7 +409,7 @@ class TestPRFAdapter:
         eval11 = prf1(xg1, yg1)
         eval22 = prf2(xg2, yg2)
 
-        integrand, itol = dblquad(mof1, -2, 2, lambda x: -2, lambda x: 2)
+        _, itol = dblquad(mof1, -2, 2, lambda x: -2, lambda x: 2)
         # it's a bit of a guess that the above itol is appropriate, but
         # it should be close
         assert_allclose(np.sum(eval11), np.sum(eval22), atol=itol * 100)

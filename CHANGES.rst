@@ -25,7 +25,7 @@ New Features
   - Propagate measurement uncertainties in PSF fitting. [#1543]
 
   - Added new ``PSFPhotometry``, ``IterativePSFPhotometry``, and
-    ``SourceGrouper`` classes. [#1558]
+    ``SourceGrouper`` classes. [#1558,#1581]
 
 Bug Fixes
 ^^^^^^^^^

@@ -133,17 +133,13 @@ class PSFPhotometry:
 
         # reset these attributes for each __call__ (see _reset_results)
         self.finder_results = []
-        self.fit_error_indices = []
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
-        self._ungroup_indices = []
 
     def _reset_results(self):
         self.finder_results = []
-        self.fit_error_indices = []
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
-        self._ungroup_indices = []
 
     def _validate_grouper(self, grouper, name):
         # remove this check when GroupStarsBase subclasses are removed
@@ -243,7 +239,7 @@ class PSFPhotometry:
             raise ValueError('init_param must contain valid column names '
                              'for the x and y source positions')
 
-        init_params = init_params.copy()
+        init_params = init_params.copy()  # preserve input init_params
         if xcolname != self._xinit_name:
             init_params.rename_column(xcolname, self._xinit_name)
         if ycolname != self._yinit_name:
@@ -529,7 +525,7 @@ class PSFPhotometry:
         """
         Reorder the list from group-id to source-id order.
         """
-        return [iterable[i] for i in self._ungroup_indices]
+        return [iterable[i] for i in self._group_results['ungroup_indices']]
 
     def _ungroup(self, iterable):
         """
@@ -537,6 +533,23 @@ class PSFPhotometry:
         """
         iterable = self._flatten(iterable)
         return self._order_by_id(iterable)
+
+    def _get_fit_error_indices(self):
+        indices = []
+        for index, fit_info in enumerate(self.fit_results['fit_infos']):
+            ierr = fit_info.get('ierr', None)
+            # check if in good flags defined by scipy
+            if ierr is not None:
+                # scipy.optimize.leastsq
+                if ierr not in (1, 2, 3, 4):
+                    indices.append(index)
+            else:
+                # scipy.optimize.least_squares
+                status = fit_info.get('status', None)
+                if status is not None and status in (-1, 0):
+                    indices.append(index)
+
+        return np.array(indices, dtype=int)
 
     def _make_fit_results(self, models, infos):
         psf_nsub = self.psf_model.n_submodels
@@ -580,25 +593,9 @@ class PSFPhotometry:
         self.fit_results['fit_models'] = fit_models
         self.fit_results['fit_infos'] = fit_infos
         self.fit_results['fit_param_errs'] = fit_param_errs
+        self.fit_results['fit_error_indices'] = self._get_fit_error_indices()
 
         return fit_models
-
-    def _set_fit_error_indices(self):
-        indices = []
-        for index, fit_info in enumerate(self.fit_results['fit_infos']):
-            ierr = fit_info.get('ierr', None)
-            # check if in good flags defined by scipy
-            if ierr is not None:
-                # scipy.optimize.leastsq
-                if ierr not in (1, 2, 3, 4):
-                    indices.append(index)
-            else:
-                # scipy.optimize.least_squares
-                status = fit_info.get('status', None)
-                if status is not None and status in (-1, 0):
-                    indices.append(index)
-
-        self.fit_error_indices = np.array(indices, dtype=int)
 
     def _fit_sources(self, data, init_params, *, error=None, mask=None):
         if self.fitter_maxiters is not None:
@@ -607,7 +604,8 @@ class PSFPhotometry:
             kwargs = {}
 
         sources = init_params.group_by('group_id')
-        self._ungroup_indices = np.argsort(sources['id'].value)
+        ungroup_idx = np.argsort(sources['id'].value)
+        self._group_results['ungroup_indices'] = ungroup_idx
         sources = sources.groups
         if self.progress_bar:
             desc = 'Fit source/group'
@@ -650,7 +648,6 @@ class PSFPhotometry:
 
         # split the groups and return objects in source-id order
         fit_models = self._make_fit_results(fit_models, fit_infos)
-        self._set_fit_error_indices()
 
         return fit_models
 
@@ -772,7 +769,7 @@ class PSFPhotometry:
             if row['flux_fit'] <= 0:
                 flags[index] += 4
 
-        flags[self.fit_error_indices] += 8
+        flags[self.fit_results['fit_error_indices']] += 8
 
         try:
             for index, fit_info in enumerate(self.fit_results['fit_infos']):
@@ -953,7 +950,7 @@ class PSFPhotometry:
             meta[attr] = getattr(self, attr)
         source_tbl.meta = meta
 
-        if len(self.fit_error_indices) > 0:
+        if len(self.fit_results['fit_error_indices']) > 0:
             warnings.warn('One or more fit(s) may not have converged. Please '
                           'check the "flags" column in the output table.',
                           AstropyUserWarning)

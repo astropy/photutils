@@ -691,19 +691,20 @@ class GriddedPSFModel(Fittable2DModel):
     Parameters
     ----------
     data : `~astropy.nddata.NDData`
-        An `~astropy.nddata.NDData` object containing the grid of
-        reference PSF arrays.  The data attribute must contain a 3D
-        `~numpy.ndarray` containing a stack of the 2D PSFs (the data
-        shape should be (N_psf, PSF_ny, PSF_nx)).  The meta
-        attribute must be `dict` containing the following:
+        A `~astropy.nddata.NDData` object containing the grid of
+        reference PSF arrays. The data attribute must contain a 3D
+        `~numpy.ndarray` containing a stack of the 2D PSFs with a shape
+        of ``(N_psf, PSF_ny, PSF_nx)``. The meta attribute must be
+        `dict` containing the following:
 
-            * ``'grid_xypos'``:  A list of the (x, y) grid positions of
-              each reference PSF.  The order of positions should match
-              the first axis of the 3D `~numpy.ndarray` of PSFs.  In
-              other words, ``grid_xypos[i]`` should be the (x, y)
-              position of the reference PSF defined in ``data[i]``.
-            * ``'oversampling'``:  The integer oversampling factor of the
-               PSF.
+            * ``'grid_xypos'``: A list of the (x, y) grid positions of
+              each reference PSF. The order of positions should match the
+              first axis of the 3D `~numpy.ndarray` of PSFs. In other
+              words, ``grid_xypos[i]`` should be the (x, y) position of
+              the reference PSF defined in ``data[i]``.
+
+            * ``'oversampling'``: The integer oversampling factor of the
+              PSF.
 
         The meta attribute may contain other properties such as the
         telescope, instrument, detector, and filter of the PSF.
@@ -739,7 +740,8 @@ class GriddedPSFModel(Fittable2DModel):
         if not np.isscalar(data.meta['oversampling']):
             raise ValueError('oversampling must be a scalar value')
 
-        self.data = np.array(data.data, copy=True, dtype=float)
+        self._data_input = data
+        self.data = data.data
         self.meta = data.meta
         self.grid_xypos = data.meta['grid_xypos']
         self.oversampling = data.meta['oversampling']
@@ -767,6 +769,23 @@ class GriddedPSFModel(Fittable2DModel):
             self._compute_local_model_uncached)
 
         super().__init__(flux, x_0, y_0)
+
+    def copy(self):
+        """
+        Return a copy of this model.
+
+        Note that the PSF grid data is not copied. Use the `deepcopy`
+        method if you want to copy the PSF grid data.
+        """
+        return self.__class__(self._data_input, flux=self.flux.value,
+                              x_0=self.x_0.value, y_0=self.y_0.value,
+                              fill_value=self._fill_value)
+
+    def deepcopy(self):
+        """
+        Return a deep copy of this model.
+        """
+        return copy.deepcopy(self)
 
     @staticmethod
     def _find_start_idx(data, x):
