@@ -691,11 +691,11 @@ class GriddedPSFModel(Fittable2DModel):
     Parameters
     ----------
     data : `~astropy.nddata.NDData`
-        An `~astropy.nddata.NDData` object containing the grid of
-        reference PSF arrays.  The data attribute must contain a 3D
-        `~numpy.ndarray` containing a stack of the 2D PSFs (the data
-        shape should be (N_psf, PSF_ny, PSF_nx)).  The meta
-        attribute must be `dict` containing the following:
+        A `~astropy.nddata.NDData` object containing the grid of
+        reference PSF arrays. The data attribute must contain a 3D
+        `~numpy.ndarray` containing a stack of the 2D PSFs with a shape
+        of ``(N_psf, PSF_ny, PSF_nx)``. The meta attribute must be
+        `dict` containing the following:
 
             * ``'grid_xypos'``: A list of the (x, y) grid positions of
               each reference PSF. The order of positions should match the
