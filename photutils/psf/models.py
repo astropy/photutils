@@ -739,7 +739,8 @@ class GriddedPSFModel(Fittable2DModel):
         if not np.isscalar(data.meta['oversampling']):
             raise ValueError('oversampling must be a scalar value')
 
-        self.data = np.array(data.data, copy=True, dtype=float)
+        self._data_input = data
+        self.data = data.data
         self.meta = data.meta
         self.grid_xypos = data.meta['grid_xypos']
         self.oversampling = data.meta['oversampling']
@@ -767,6 +768,23 @@ class GriddedPSFModel(Fittable2DModel):
             self._compute_local_model_uncached)
 
         super().__init__(flux, x_0, y_0)
+
+    def copy(self):
+        """
+        Return a copy of this model.
+
+        Note that the PSF grid data is not copied. Use the `deepcopy`
+        method if you want to copy the PSF grid data.
+        """
+        return self.__class__(self._data_input, flux=self.flux.value,
+                              x_0=self.x_0.value, y_0=self.y_0.value,
+                              fill_value=self._fill_value)
+
+    def deepcopy(self):
+        """
+        Return a deep copy of this model.
+        """
+        return copy.deepcopy(self)
 
     @staticmethod
     def _find_start_idx(data, x):

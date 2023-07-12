@@ -239,7 +239,7 @@ class PSFPhotometry:
             raise ValueError('init_param must contain valid column names '
                              'for the x and y source positions')
 
-        init_params = init_params.copy()
+        init_params = init_params.copy()  # preserve input init_params
         if xcolname != self._xinit_name:
             init_params.rename_column(xcolname, self._xinit_name)
         if ycolname != self._yinit_name:
