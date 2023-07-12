@@ -725,7 +725,7 @@ class GriddedPSFModel(Fittable2DModel):
         self.meta = data.meta
         self.grid_xypos = data.meta['grid_xypos']
         self.oversampling = data.meta['oversampling']
-        self._fill_value = fill_value
+        self.fill_value = fill_value
 
         self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
         self._xgrid = np.unique(self._grid_xpos)  # also sorts values
@@ -783,7 +783,7 @@ class GriddedPSFModel(Fittable2DModel):
         """
         return self.__class__(self._data_input, flux=self.flux.value,
                               x_0=self.x_0.value, y_0=self.y_0.value,
-                              fill_value=self._fill_value)
+                              fill_value=self.fill_value)
 
     def deepcopy(self):
         """
