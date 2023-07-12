@@ -730,15 +730,10 @@ class GriddedPSFModel(Fittable2DModel):
         self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
         self._xgrid = np.unique(self._grid_xpos)  # also sorts values
         self._ygrid = np.unique(self._grid_ypos)  # also sorts values
-
         if (len(list(itertools.product(self._xgrid, self._ygrid)))
                 != len(self.grid_xypos)):
             raise ValueError('"grid_xypos" must form a regular grid.')
 
-        self._xgrid_min = self._xgrid[0]
-        self._xgrid_max = self._xgrid[-1]
-        self._ygrid_min = self._ygrid[0]
-        self._ygrid_max = self._ygrid[-1]
         self._ref_indices = None
         self._psf_interp = None
 
@@ -904,8 +899,8 @@ class GriddedPSFModel(Fittable2DModel):
         """
         Return `FittableImageModel` for interpolated PSF at some (x_0, y_0).
         """
-        if (x_0 < self._xgrid_min or x_0 > self._xgrid_max
-                or y_0 < self._ygrid_min or y_0 > self._ygrid_max):
+        if (x_0 < self._xgrid[0] or x_0 > self._xgrid[-1]
+                or y_0 < self._ygrid[0] or y_0 > self._ygrid[-1]):
             # position is outside of the grid, so simply use the
             # closest reference PSF
             self._ref_index = np.argsort(np.hypot(self._grid_xpos - x_0,
