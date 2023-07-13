@@ -916,14 +916,14 @@ class GriddedPSFModel(Fittable2DModel):
             psf_interp = self._bilinear_interp(xyref, psfs, x_0, y_0)
 
         # Construct the model using the interpolated supersampled data
-        psfmodel = FittableImageModel(psf_interp,
-                                      oversampling=self.oversampling)
-        return psfmodel
+        return psf_interp
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
         Evaluate the `GriddedPSFModel` for the input parameters.
         """
+        from scipy.interpolate import RectBivariateSpline
+
         # NOTE: the astropy base Model.__call__() method converts scalar
         # inputs to size-1 arrays before calling evaluate().
         if not np.isscalar(flux):
@@ -936,11 +936,30 @@ class GriddedPSFModel(Fittable2DModel):
         # Calculate the local (interpolated) PSF at (x_0, y_0) from the
         # grid of PSF models. Only the integer part of the position is
         # input so that the local model can be cached.
-        psfmodel = self._compute_local_model(int(x_0), int(y_0))
+        psf_image = self._compute_local_model(int(x_0), int(y_0))
 
         # now evaluate the PSF at the (x_0, y_0) subpixel position on
         # the input (x, y) values
-        return psfmodel.evaluate(x, y, flux, x_0, y_0)
+        xi = self.oversampling * (np.asarray(x, dtype=float) - x_0)
+        yi = self.oversampling * (np.asarray(y, dtype=float) - y_0)
+        ny, nx = psf_image.shape
+        # define origin at the PSF image center
+        xi += (nx - 1) / 2
+        yi += (ny - 1) / 2
+
+        x = np.arange(nx, dtype=float)
+        y = np.arange(ny, dtype=float)
+        interpolator = RectBivariateSpline(x, y, psf_image.T, kx=3, ky=3, s=0)
+        evaluated_model = flux * interpolator.ev(xi, yi)
+
+        if self.fill_value is not None:
+            # find indices of pixels that are outside the input pixel
+            # grid and set these pixels to the fill_value
+            invalid = (((xi < 0) | (xi > nx - 1))
+                       | ((yi < 0) | (yi > ny - 1)))
+            evaluated_model[invalid] = self.fill_value
+
+        return evaluated_model
 
 
 class IntegratedGaussianPRF(Fittable2DModel):
