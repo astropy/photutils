@@ -111,7 +111,7 @@ jobs:
                                   python3-astropy \
                                   python3-scipy \
                                   python3-skimage \
-                                  python3-sklearn \                       
+                                  python3-sklearn \
                                   python3-ply \
                                   python3-venv \
                                   cython3 \
