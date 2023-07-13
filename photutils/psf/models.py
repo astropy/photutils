@@ -735,7 +735,6 @@ class GriddedPSFModel(Fittable2DModel):
             raise ValueError('"grid_xypos" must form a regular grid.')
 
         self._ref_indices = None
-        self._psf_interp = None
 
         # Here we avoid decorating the instance method with @lru_cache
         # to prevent memory leaks; we set maxsize=128 to prevent the
@@ -907,17 +906,17 @@ class GriddedPSFModel(Fittable2DModel):
             # closest reference PSF
             self._ref_index = np.argsort(np.hypot(self._grid_xpos - x_0,
                                                   self._grid_ypos - y_0))[0]
-            self._psf_interp = self.data[self._ref_index, :, :]
+            psf_interp = self.data[self._ref_index, :, :]
         else:
             # find the four bounding reference PSFs and interpolate
             self._ref_indices = self._find_bounding_points(x_0, y_0)
             xyref = np.array(self.grid_xypos)[self._ref_indices]
             psfs = self.data[self._ref_indices, :, :]
 
-            self._psf_interp = self._bilinear_interp(xyref, psfs, x_0, y_0)
+            psf_interp = self._bilinear_interp(xyref, psfs, x_0, y_0)
 
         # Construct the model using the interpolated supersampled data
-        psfmodel = FittableImageModel(self._psf_interp,
+        psfmodel = FittableImageModel(psf_interp,
                                       oversampling=self.oversampling)
         return psfmodel
 
