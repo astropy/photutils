@@ -19,6 +19,7 @@ from astropy.wcs import WCS
 
 from photutils.psf import IntegratedGaussianPRF
 from photutils.utils._misc import _get_version_info
+from photutils.utils._progress_bars import add_progress_bar
 
 __all__ = ['apply_poisson_noise', 'make_noise_image',
            'make_random_models_table', 'make_random_gaussians_table',
@@ -983,7 +984,8 @@ def _make_nonoverlap_coords(xrange, yrange, ncoords, min_separation, seed=0):
 
 
 def make_test_psf_data(shape, psf_model, psf_shape, nsources,
-                       flux_range=(100, 1000), min_separation=1, seed=0):
+                       flux_range=(100, 1000), min_separation=1, seed=0,
+                       progress_bar=False):
     """
     Make an example image containing PSF model images.
 
@@ -1017,6 +1019,13 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
         then fresh, unpredictable entropy will be pulled from the OS.
 
+    progress_bar : bool, optional
+        Whether to display a progress bar when creating the sources. The
+        progress bar requires that the `tqdm <https://tqdm.github.io/>`_
+        optional dependency be installed. Note that the progress
+        bar does not currently work in the Jupyter console due to
+        limitations in ``tqdm``.
+
     Returns
     -------
     data : 2D `~numpy.ndarray`
@@ -1044,7 +1053,13 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
     sources['flux'] = flux
 
     data = np.zeros(shape, dtype=float)
-    for source in sources:
+
+    sources_iter = sources
+    if progress_bar:  # pragma: no cover
+        desc = 'Adding sources'
+        sources_iter = add_progress_bar(sources, desc=desc)
+
+    for source in sources_iter:
         for param in ('x_0', 'y_0', 'flux'):
             setattr(psf_model, param, source[param])
         xcen = source['x_0']

@@ -18,7 +18,7 @@ New Features
 
 - ``photutils.datasets``
 
-  - Added new ``make_test_psf_data`` function. [#1558, #1582]
+  - Added new ``make_test_psf_data`` function. [#1558, #1582, #1585]
 
 - ``photutils.psf``
 
