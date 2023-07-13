@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 from astropy.modeling.models import Moffat2D
 from astropy.table import Table
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
 from photutils.datasets import (apply_poisson_noise, make_4gaussians_image,
@@ -15,7 +16,9 @@ from photutils.datasets import (apply_poisson_noise, make_4gaussians_image,
                                 make_gaussian_sources_image, make_gwcs,
                                 make_model_sources_image, make_noise_image,
                                 make_random_gaussians_table,
-                                make_random_models_table, make_wcs)
+                                make_random_models_table, make_test_psf_data,
+                                make_wcs)
+from photutils.psf import IntegratedGaussianPRF
 from photutils.utils._optional_deps import HAS_GWCS, HAS_SCIPY
 
 SOURCE_TABLE = Table()
@@ -203,3 +206,27 @@ def test_make_wcs_compare():
 
     assert_allclose(sc1.ra, sc2.ra)
     assert_allclose(sc1.dec, sc2.dec)
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_make_test_psf_data():
+    psf_model = IntegratedGaussianPRF(flux=100, sigma=1.5)
+    psf_shape = (5, 5)
+    nsources = 10
+    shape = (100, 100)
+    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
+                                           nsources, flux_range=(500, 1000),
+                                           min_separation=10, seed=0)
+
+    assert isinstance(data, np.ndarray)
+    assert data.shape == shape
+    assert isinstance(true_params, Table)
+    assert len(true_params) == nsources
+    assert true_params['x'].min() >= 0
+    assert true_params['y'].min() >= 0
+
+    match = 'Unable to produce'
+    with pytest.warns(AstropyUserWarning, match=match):
+        nsources = 100
+        make_test_psf_data(shape, psf_model, psf_shape, nsources,
+                           flux_range=(500, 1000), min_separation=10, seed=0)
