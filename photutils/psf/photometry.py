@@ -630,6 +630,10 @@ class PSFPhotometry:
                 try:
                     fit_model = self.fitter(psf_model, xi, yi, cutout,
                                             weights=weights, **kwargs)
+                    try:
+                        fit_model.clear_cache()
+                    except AttributeError:
+                        pass
                 except TypeError as exc:
                     msg = ('The number of data points is less than the '
                            'number of fit parameters. This is likely due '
