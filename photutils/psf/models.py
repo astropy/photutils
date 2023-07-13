@@ -786,6 +786,18 @@ class GriddedPSFModel(Fittable2DModel):
         """
         return copy.deepcopy(self)
 
+    def clear_cache(self):
+        """
+        Clear the internal cache.
+        """
+        self._calc_interpolator.cache_clear()
+
+    def _cache_info(self):
+        """
+        Return information about the internal cache.
+        """
+        return self._calc_interpolator.cache_info()
+
     @staticmethod
     def _find_start_idx(data, x):
         """
