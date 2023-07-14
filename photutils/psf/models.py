@@ -722,7 +722,7 @@ class GriddedPSFModel(Fittable2DModel):
 
         self._data_input = self._validate_data(data)
         self.data = data.data
-        self.meta = data.meta
+        self._meta = data.meta  # use _meta to avoid the meta descriptor
         self.grid_xypos = data.meta['grid_xypos']
         self.oversampling = data.meta['oversampling']
         self.fill_value = fill_value
@@ -734,14 +734,14 @@ class GriddedPSFModel(Fittable2DModel):
                 != len(self.grid_xypos)):
             raise ValueError('"grid_xypos" must form a regular grid.')
 
-        self._ref_indices = None
-        self._psf_interp = None
+        self._xidx = np.arange(self.data.shape[2], dtype=float)
+        self._yidx = np.arange(self.data.shape[1], dtype=float)
 
         # Here we avoid decorating the instance method with @lru_cache
         # to prevent memory leaks; we set maxsize=128 to prevent the
         # cache from growing too large.
-        self._compute_local_model = lru_cache(maxsize=128)(
-            self._compute_local_model_uncached)
+        self._calc_interpolator = lru_cache(maxsize=128)(
+            self._calc_interpolator_uncached)
 
         super().__init__(flux, x_0, y_0)
 
@@ -785,6 +785,18 @@ class GriddedPSFModel(Fittable2DModel):
         Return a deep copy of this model.
         """
         return copy.deepcopy(self)
+
+    def clear_cache(self):
+        """
+        Clear the internal cache.
+        """
+        self._calc_interpolator.cache_clear()
+
+    def _cache_info(self):
+        """
+        Return information about the internal cache.
+        """
+        return self._calc_interpolator.cache_info()
 
     @staticmethod
     def _find_start_idx(data, x):
@@ -897,29 +909,35 @@ class GriddedPSFModel(Fittable2DModel):
 
         return np.sum(data * weights[:, None, None], axis=0) / norm
 
-    def _compute_local_model_uncached(self, x_0, y_0):
+    def _calc_interpolator_uncached(self, x_0, y_0):
         """
-        Return `FittableImageModel` for interpolated PSF at some (x_0, y_0).
+        Return the local interpolation function for the PSF model at
+        (x_0, y_0).
+
+        Note that the interpolator will be cached by _calc_interpolator.
+        It can be cleared by calling the clear_cache method.
         """
+        from scipy.interpolate import RectBivariateSpline
+
         if (x_0 < self._xgrid[0] or x_0 > self._xgrid[-1]
                 or y_0 < self._ygrid[0] or y_0 > self._ygrid[-1]):
             # position is outside of the grid, so simply use the
             # closest reference PSF
-            self._ref_index = np.argsort(np.hypot(self._grid_xpos - x_0,
-                                                  self._grid_ypos - y_0))[0]
-            self._psf_interp = self.data[self._ref_index, :, :]
+            ref_index = np.argsort(np.hypot(self._grid_xpos - x_0,
+                                            self._grid_ypos - y_0))[0]
+            psf_image = self.data[ref_index, :, :]
         else:
             # find the four bounding reference PSFs and interpolate
-            self._ref_indices = self._find_bounding_points(x_0, y_0)
-            xyref = np.array(self.grid_xypos)[self._ref_indices]
-            psfs = self.data[self._ref_indices, :, :]
+            ref_indices = self._find_bounding_points(x_0, y_0)
+            xyref = np.array(self.grid_xypos)[ref_indices]
+            psfs = self.data[ref_indices, :, :]
 
-            self._psf_interp = self._bilinear_interp(xyref, psfs, x_0, y_0)
+            psf_image = self._bilinear_interp(xyref, psfs, x_0, y_0)
 
-        # Construct the model using the interpolated supersampled data
-        psfmodel = FittableImageModel(self._psf_interp,
-                                      oversampling=self.oversampling)
-        return psfmodel
+        interpolator = RectBivariateSpline(self._xidx, self._yidx,
+                                           psf_image.T, kx=3, ky=3, s=0)
+
+        return interpolator
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
@@ -934,14 +952,31 @@ class GriddedPSFModel(Fittable2DModel):
         if not np.isscalar(y_0):
             y_0 = y_0[0]
 
-        # Calculate the local (interpolated) PSF at (x_0, y_0) from the
-        # grid of PSF models. Only the integer part of the position is
-        # input so that the local model can be cached.
-        psfmodel = self._compute_local_model(int(x_0), int(y_0))
+        # Calculate the local interpolation function for the PSF at
+        # (x_0, y_0). Only the integer part of the position is input in
+        # order to have effective caching.
+        interpolator = self._calc_interpolator(int(x_0), int(y_0))
 
         # now evaluate the PSF at the (x_0, y_0) subpixel position on
         # the input (x, y) values
-        return psfmodel.evaluate(x, y, flux, x_0, y_0)
+        xi = self.oversampling * (np.asarray(x, dtype=float) - x_0)
+        yi = self.oversampling * (np.asarray(y, dtype=float) - y_0)
+
+        # define origin at the PSF image center
+        ny, nx = self.data.shape[1:]
+        xi += (nx - 1) / 2
+        yi += (ny - 1) / 2
+
+        evaluated_model = flux * interpolator.ev(xi, yi)
+
+        if self.fill_value is not None:
+            # find indices of pixels that are outside the input pixel
+            # grid and set these pixels to the fill_value
+            invalid = (((xi < 0) | (xi > nx - 1))
+                       | ((yi < 0) | (yi > ny - 1)))
+            evaluated_model[invalid] = self.fill_value
+
+        return evaluated_model
 
 
 class IntegratedGaussianPRF(Fittable2DModel):

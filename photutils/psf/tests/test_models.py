@@ -298,6 +298,23 @@ class TestGriddedPSFModel:
         new_model.flux = 100
         assert new_model.flux.value != flux
 
+    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+    def test_cache(self, psfmodel):
+        for x, y in psfmodel.grid_xypos:
+            psfmodel.x_0 = x
+            psfmodel.y_0 = y
+            psfmodel(0, 0)
+            psfmodel(1, 1)
+
+        assert psfmodel._cache_info().hits == 16
+        assert psfmodel._cache_info().misses == 16
+        assert psfmodel._cache_info().currsize == 16
+
+        psfmodel.clear_cache()
+        assert psfmodel._cache_info().hits == 0
+        assert psfmodel._cache_info().misses == 0
+        assert psfmodel._cache_info().currsize == 0
+
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestIntegratedGaussianPRF:
