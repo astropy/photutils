@@ -839,12 +839,14 @@ def test_re_use_result_as_initial_guess():
     if PYTEST_LT_80:
         ctx2 = nullcontext()
         ctx3 = nullcontext()
+        ctx4 = nullcontext()
     else:
         match2 = 'init_guesses contains a "group_id" column'
         match3 = 'The fit may be unsuccessful; check fit_info'
         ctx2 = pytest.warns(AstropyUserWarning, match=match2)
         ctx3 = pytest.warns(AstropyUserWarning, match=match3)
-    with ctx1, ctx2, ctx3:
+        ctx4 = pytest.warns(AstropyDeprecationWarning)
+    with ctx1, ctx2, ctx3, ctx4:
         second_result = dao_phot_obj(image, init_guesses=result_table)
         assert second_result
 

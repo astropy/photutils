@@ -4,12 +4,12 @@ Tests for the ellipse module.
 """
 
 import math
+from contextlib import nullcontext
 
 import numpy as np
 import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
-from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.datasets import get_path, make_noise_image
@@ -17,6 +17,7 @@ from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.tests.helper import PYTEST_LT_80
 from photutils.utils._optional_deps import HAS_SCIPY
 
 # define an off-center position and a tilted sma
@@ -94,22 +95,22 @@ class TestEllipse:
         # image is off-center by a large offset.
         ellipse = Ellipse(OFFSET_GALAXY)
 
-        if not minversion(pytest, '8.0.0.dev0'):
-            match1 = 'Degrees of freedom'
-            with pytest.warns(RuntimeWarning, match=match1):
-                isophote_list = ellipse.fit_image()
+        match1 = 'Degrees of freedom'
+        ctx1 = pytest.warns(RuntimeWarning, match=match1)
+        if PYTEST_LT_80:
+            ctx2 = nullcontext()
+            ctx3 = nullcontext()
+            ctx4 = nullcontext()
         else:
-            match1 = 'Degrees of freedom'
             match2 = 'Mean of empty slice'
             match3 = 'invalid value encountered'
             match4 = 'No meaningful fit was possible'
-            with pytest.warns(RuntimeWarning, match=match1):
-                with pytest.warns(RuntimeWarning, match=match2):
-                    with pytest.warns(RuntimeWarning, match=match3):
-                        with pytest.warns(AstropyUserWarning, match=match4):
-                            isophote_list = ellipse.fit_image()
-
-        assert len(isophote_list) == 0
+            ctx2 = pytest.warns(RuntimeWarning, match=match2)
+            ctx3 = pytest.warns(RuntimeWarning, match=match3)
+            ctx4 = pytest.warns(AstropyUserWarning, match=match4)
+        with ctx1, ctx2, ctx3, ctx4:
+            isophote_list = ellipse.fit_image()
+            assert len(isophote_list) == 0
 
     def test_offcenter_fit(self):
         # A first guess ellipse that is roughly centered on the
