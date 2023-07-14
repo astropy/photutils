@@ -5,15 +5,16 @@ Tests for IRAFStarFinder.
 
 import itertools
 import os.path as op
+from contextlib import nullcontext
 
 import numpy as np
 import pytest
 from astropy.table import Table
-from astropy.utils import minversion
 from numpy.testing import assert_allclose
 
 from photutils.datasets import make_100gaussians_image
 from photutils.detection.irafstarfinder import IRAFStarFinder
+from photutils.tests.helper import PYTEST_LT_80
 from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -82,22 +83,17 @@ class TestIRAFStarFinder:
         assert len(tbl) == 4
 
     def test_irafstarfind_largesky(self):
-        if not minversion(pytest, '8.0.0.dev0'):
-            match1 = 'Sources were found, but none pass'
-            with pytest.warns(NoDetectionsWarning, match=match1):
-                starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0,
-                                            sky=100.0)
-                tbl = starfinder(DATA)
-                assert tbl is None
+        match1 = 'Sources were found, but none pass'
+        ctx1 = pytest.warns(NoDetectionsWarning, match=match1)
+        if PYTEST_LT_80:
+            ctx2 = nullcontext()
         else:
-            match1 = 'Sources were found, but none pass'
             match2 = 'invalid value encountered in divide'
-            with pytest.warns(NoDetectionsWarning, match=match1):
-                with pytest.warns(RuntimeWarning, match=match2):
-                    starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0,
-                                                sky=100.0)
-                    tbl = starfinder(DATA)
-                    assert tbl is None
+            ctx2 = pytest.warns(RuntimeWarning, match=match2)
+        with ctx1, ctx2:
+            starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.0)
+            tbl = starfinder(DATA)
+            assert tbl is None
 
     def test_irafstarfind_peakmax_filtering(self):
         """

@@ -4,11 +4,11 @@ Tests for the model module.
 """
 
 import warnings
+from contextlib import nullcontext
 
 import numpy as np
 import pytest
 from astropy.io import fits
-from astropy.utils import minversion
 from astropy.utils.data import get_pkg_data_filename
 
 from photutils.datasets import get_path
@@ -16,6 +16,7 @@ from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.model import build_ellipse_model
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.tests.helper import PYTEST_LT_80
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
@@ -78,22 +79,19 @@ def test_model_minimum_radius():
         g.find_center(data)
         ellipse = Ellipse(data, geometry=g)
 
-        if not minversion(pytest, '8.0.0.dev0'):
-            match1 = 'Degrees of freedom'
-            with pytest.warns(RuntimeWarning, match=match1):
-                isophote_list = ellipse.fit_image(sma0=40, minsma=0,
-                                                  maxsma=350.0, step=0.4,
-                                                  nclip=3)
+        match1 = 'Degrees of freedom'
+        ctx1 = pytest.warns(RuntimeWarning, match=match1)
+        if PYTEST_LT_80:
+            ctx2 = nullcontext()
+            ctx3 = nullcontext()
         else:
-            match1 = 'Degrees of freedom'
             match2 = 'Mean of empty slice'
             match3 = 'invalid value encountered'
-            with pytest.warns(RuntimeWarning, match=match1):
-                with pytest.warns(RuntimeWarning, match=match2):
-                    with pytest.warns(RuntimeWarning, match=match3):
-                        isophote_list = ellipse.fit_image(sma0=40, minsma=0,
-                                                          maxsma=350.0,
-                                                          step=0.4, nclip=3)
+            ctx2 = pytest.warns(RuntimeWarning, match=match2)
+            ctx3 = pytest.warns(RuntimeWarning, match=match3)
+        with ctx1, ctx2, ctx3:
+            isophote_list = ellipse.fit_image(sma0=40, minsma=0,
+                                              maxsma=350.0, step=0.4, nclip=3)
 
         model = build_ellipse_model(data.shape, isophote_list,
                                     fill=np.mean(data[0:50, 0:50]))
