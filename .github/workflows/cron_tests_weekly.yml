@@ -62,3 +62,67 @@ jobs:
           python -c "import tox; print(f'tox {tox.__version__}')"
       - name: Run tests
         run: tox -e ${{ matrix.tox_env }} -- ${{ matrix.toxposargs }}
+
+
+  test_more_architectures:
+    # The following architectures are emulated and are therefore slow, so
+    # we include them just in the weekly cron. These also serve as a test
+    # of using system libraries and using pytest directly.
+
+    runs-on: ubuntu-20.04
+    name: Python 3.11
+    if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Extra CI')))
+    env:
+      ARCH_ON_CI: ${{ matrix.arch }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+          - arch: s390x
+          - arch: ppc64le
+          - arch: armv7
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: uraimo/run-on-arch-action@v2
+        name: Run tests
+        id: build
+        with:
+          arch: ${{ matrix.arch }}
+          distro: ubuntu_rolling
+
+          shell: /bin/bash
+          env: |
+            ARCH_ON_CI: ${{ env.ARCH_ON_CI }}
+            IS_CRON: ${{ env.IS_CRON }}
+
+          install: |
+            apt-get update -q -y
+            apt-get install -q -y git \
+                                  g++ \
+                                  pkg-config \
+                                  python3 \
+                                  python3-configobj \
+                                  python3-numpy \
+                                  python3-astropy \
+                                  python3-scipy \
+                                  python3-skimage \
+                                  python3-sklearn \
+                                  python3-ply \
+                                  python3-venv \
+                                  cython3 \
+                                  libwcs7 \
+                                  wcslib-dev \
+                                  liberfa1
+
+          run: |
+            echo "LONG_BIT="$(getconf LONG_BIT)
+            python3 -m venv --system-site-packages tests
+            source tests/bin/activate
+            ASTROPY_USE_SYSTEM_ALL=1 pip3 install -e .[test]
+            pip3 list
+            python3 -m pytest
