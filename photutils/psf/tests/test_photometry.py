@@ -378,6 +378,24 @@ def test_grouper(test_data):
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.skipif(not HAS_SKLEARN, reason='sklearn is required')
+def test_large_group_warning():
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=1.0)
+    grouper = SourceGrouper(min_separation=50)
+    psf_shape = (5, 5)
+    fit_shape = (5, 5)
+    nsources = 50
+    shape = (301, 301)
+    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
+                                           nsources, flux_range=(500, 700),
+                                           min_separation=10, seed=0)
+    match = 'Some groups have more than'
+    with pytest.warns(AstropyUserWarning, match=match):
+        psfphot = PSFPhotometry(psf_model, fit_shape, grouper=grouper)
+        psfphot(data, init_params=true_params)
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.skipif(not HAS_SKLEARN, reason='sklearn is required')
 def test_local_bkg(test_data):
     data, error, sources = test_data
 
