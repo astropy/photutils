@@ -47,10 +47,10 @@ as a shorthand for the general approach.
 PSF Photometry
 --------------
 
-Photutils provides a modular set of tools to perform PSF photometry for
-different science cases. These are implemented as separate classes to do
-sub-tasks of PSF photometry. It also provides high-level classes that
-connect these pieces together.
+Photutils provides a modular set of tools to perform PSF photometry
+for different science cases. The tools are implemented as classes that
+perform various subtasks of PSF photometry. High-level classes are also
+provided to connect these pieces together.
 
 The two main PSF-photometry classes are `~photutils.psf.PSFPhotometry`
 and `~photutils.psf.IterativePSFPhotometry`.
@@ -76,19 +76,19 @@ subpackage, e.g., `~photutils.detection.DAOStarFinder`,
 `~photutils.detection.StarFinder`.
 
 After finding sources, one can optionally apply a clustering algorithm
-in order to label the sources according to groups using the ``grouper``
-keyword. Usually, those groups are formed by a distance criterion,
-which is the case of the grouping algorithm proposed by Stetson. Stars
-that grouped are fit simultaneously. The reason behind the construction
-of groups and not fitting all stars simultaneously is illustrated as
-follows: imagine that one would like to fit 300 stars and the model
-for each star has three parameters to be fitted. If one constructs a
-single model to fit the 300 stars simultaneously, then the optimization
-algorithm will have to search for the solution in a 900-dimensional
-space, which is computationally expensive and error-prone. Reducing
-the number of stars in groups effectively reduces the dimension of the
-parameter space, which facilitates the optimization process. For more
-details see :ref:`psf-grouping`.
+to group overlapping sources using the ``grouper`` keyword. Usually,
+groups are formed by a distance criterion, which is the case of the
+grouping algorithm proposed by Stetson. Stars that grouped are fit
+simultaneously. The reason behind the construction of groups and not
+fitting all stars simultaneously is illustrated as follows: imagine
+that one would like to fit 300 stars and the model for each star has
+three parameters to be fitted. If one constructs a single model to fit
+the 300 stars simultaneously, then the optimization algorithm will
+have to search for the solution in a 900-dimensional space, which
+is computationally expensive and error-prone. Having smaller groups
+of stars effectively reduces the dimension of the parameter space,
+which facilitates the optimization process. For more details see
+:ref:`psf-grouping`.
 
 The local background around each source can optionally be subtracted
 using the ``localbkg_estimator`` keyword. This keyword accepts a
@@ -100,12 +100,21 @@ The size of the annulus and the statistic function can be configured in
 The next step is to fit the sources and/or groups. This
 task is performed using an astropy fitter, for example
 `~astropy.modeling.fitting.LevMarLSQFitter`, input via the ``fitter``
-keyword.
+keyword. The shape of the region to be fitted can be configured using
+the ``fit_shape`` parameter. In general, fit_shape should be set to
+a small size (e.g., (5, 5)) that covers the central star region with
+the highest flux signal-to-noise. The initial positions are derived
+from the ``finder`` algorithm. The initial flux values for the fit
+are derived from measuring the flux in a circular aperture with
+radius ``aperture_radius``. The initial positions and fluxes can be
+alternatively input via the ``init_params`` keyword when calling the
+class.
 
 After sources are fitted, a model image of the fit
 sources or a residual image can be generated using the
 :meth:`~photutils.psf.PSFPhotometry.make_model_image` and
-:meth:`~photutils.psf.PSFPhotometry.make_residual_image` methods.
+:meth:`~photutils.psf.PSFPhotometry.make_residual_image` methods,
+respectively.
 
 For `~photutils.psf.IterativePSFPhotometry`, the above steps can be
 repeated until no additional sources are detected (or until a maximum
@@ -116,15 +125,16 @@ The `~photutils.psf.PSFPhotometry` and
 in which the PSF-fitting steps described above are performed, but
 all the stages can be turned on or off or replaced with different
 implementations as the user desires. This makes the tools very flexible.
-One can also bypass several of the steps by directly inputing an astropy
-table of the initial parameters for the source centers, fluxes, group
-identifiers, and local backgrounds. This is also useful is one is
-interested in fitting only one or a few sources in an image.
+One can also bypass several of the steps by directly inputing to
+``init_params`` an astropy table containing the initial parameters for
+the source centers, fluxes, group identifiers, and local backgrounds.
+This is also useful if one is interested in fitting only one or a few
+sources in an image.
 
 Example Usage
 -------------
 
-Let's start with a simple example with simulated stars whose PSF is
+Let's start with a simple example using simulated stars whose PSF is
 assumed to be Gaussian. We'll create a synthetic image using tools
 provided by the :ref:`photutils.datasets <datasets>` module:
 
@@ -161,7 +171,7 @@ Let's plot the image:
                                            min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
-    plt.imshow(data)
+    plt.imshow(data, origin='lower')
     plt.title('Simulated Data')
     plt.colorbar()
 
@@ -176,8 +186,10 @@ background-subtracted prior to using the photometry classes. See
 image. This is not needed for our synthetic image because it does not
 include background.
 
-We'll use the `~photutils.detection.DAOStarFinder` class for source
-detection. We'll fit the central 5x5 pixel region of each star using a
+We'll use the `~photutils.detection.DAOStarFinder` class for
+source detection. We'll estimate the initial fluxes of each
+source using a circular apertures with a radius 4 pixels.
+We'll fit the central 5x5 pixel region of each star using an
 `~photutils.psf.IntegratedGaussianPRF` PSF model. We first create an
 instance of the `~photutils.psf.PSFPhotometry` class:
 
@@ -279,7 +291,7 @@ and plot it:
     phot = psfphot(data, error=error)
 
     resid = psfphot.make_residual_image(data, (25, 25))
-    plt.imshow(resid)
+    plt.imshow(resid, origin='lower')
     plt.title('Residual Image')
     plt.colorbar()
 
@@ -405,11 +417,11 @@ the location of the star that was fit and subtracted.
     phot = psfphot(data, error=error, init_params=init_params)
 
     resid = psfphot.make_residual_image(data, (25, 25))
-    plt.imshow(resid)
+    plt.imshow(resid, origin='lower')
 
     resid = psfphot.make_residual_image(data, (25, 25))
     aper = CircularAperture(zip(init_params['x'], init_params['y']), r=4)
-    plt.imshow(resid)
+    plt.imshow(resid, origin='lower')
     aper.plot(color='red')
 
     plt.title('Residual Image')
@@ -434,9 +446,9 @@ do that by setting the ``fixed`` attribute on the model parameters:
     >>> psf_model2.fixed
     {'flux': False, 'x_0': True, 'y_0': True, 'sigma': True}
 
-Now when the model is fit the (x, y) position will be fixed at its
-initial position for every source. Let's just fit a single source
-(defined in ``init_params``):
+Now when the model is fit, the flux will be varied but, the (x, y)
+position will be fixed at its initial position for every source. Let's
+just fit a single source (defined in ``init_params``):
 
 .. doctest-requires:: scipy
 
@@ -494,6 +506,10 @@ two stars). The stars in each group were simultaneously fit.
       9        6          2
      10        5          2
 
+Care should be taken in defining the star groups. As noted above,
+simulataneouly fitting very large star groups is computationally
+expensive and error-prone.
+
 
 Local Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -534,6 +550,9 @@ The local background values are output in the table:
       8    0.0544
       9   -0.1431
      10   -0.0414
+
+The local background values can also be input directly using the
+``init_params`` keyword.
 
 
 Iterative PSF Photometry
