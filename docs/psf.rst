@@ -69,7 +69,7 @@ crowded-field stellar photometry.
 
 The star-finding step is controlled by the ``finder``
 keyword, where one inputs a callable function or class
-instance. Typically this would be one of the star-detection
+instance. Typically, this would be one of the star-detection
 classes implemented in the `photutils.detection`
 subpackage, e.g., `~photutils.detection.DAOStarFinder`,
 `~photutils.detection.IRAFStarFinder`, or
@@ -101,11 +101,11 @@ The next step is to fit the sources and/or groups. This
 task is performed using an astropy fitter, for example
 `~astropy.modeling.fitting.LevMarLSQFitter`, input via the ``fitter``
 keyword. The shape of the region to be fitted can be configured using
-the ``fit_shape`` parameter. In general, fit_shape should be set to
-a small size (e.g., (5, 5)) that covers the central star region with
-the highest flux signal-to-noise. The initial positions are derived
-from the ``finder`` algorithm. The initial flux values for the fit
-are derived from measuring the flux in a circular aperture with
+the ``fit_shape`` parameter. In general, ``fit_shape`` should be set
+to a small size (e.g., (5, 5)) that covers the central star region
+with the highest flux signal-to-noise. The initial positions are
+derived from the ``finder`` algorithm. The initial flux values for the
+fit are derived from measuring the flux in a circular aperture with
 radius ``aperture_radius``. The initial positions and fluxes can be
 alternatively input via the ``init_params`` keyword when calling the
 class.
@@ -125,7 +125,7 @@ The `~photutils.psf.PSFPhotometry` and
 in which the PSF-fitting steps described above are performed, but
 all the stages can be turned on or off or replaced with different
 implementations as the user desires. This makes the tools very flexible.
-One can also bypass several of the steps by directly inputing to
+One can also bypass several of the steps by directly inputting to
 ``init_params`` an astropy table containing the initial parameters for
 the source centers, fluxes, group identifiers, and local backgrounds.
 This is also useful if one is interested in fitting only one or a few
@@ -188,9 +188,9 @@ include background.
 
 We'll use the `~photutils.detection.DAOStarFinder` class for
 source detection. We'll estimate the initial fluxes of each
-source using a circular apertures with a radius 4 pixels.
-We'll fit the central 5x5 pixel region of each star using an
-`~photutils.psf.IntegratedGaussianPRF` PSF model. We first create an
+source using a circular aperture with a radius 4 pixels. The
+central 5x5 pixel region of each star will be fit using an
+`~photutils.psf.IntegratedGaussianPRF` PSF model. First, let's create an
 instance of the `~photutils.psf.PSFPhotometry` class:
 
 .. doctest-requires:: scipy
@@ -234,8 +234,8 @@ fit, the group size, quality-of-fit metrics, and flags. See the
 `~photutils.psf.PSFPhotometry` documentation for descriptions of the
 output columns.
 
-The full table cannot be shown here as it has a large number of columns,
-but let's print the source ID along with the fit x, y, and flux values:
+The full table cannot be shown here as it has many columns, but let's
+print the source ID along with the fit x, y, and flux values:
 
 .. doctest-requires:: scipy
 
@@ -507,8 +507,9 @@ two stars). The stars in each group were simultaneously fit.
      10        5          2
 
 Care should be taken in defining the star groups. As noted above,
-simulataneouly fitting very large star groups is computationally
-expensive and error-prone.
+simultaneously fitting very large star groups is computationally
+expensive and error-prone. A warning will be raised if the number of
+sources in a group exceeds 25.
 
 
 Local Background Subtraction
