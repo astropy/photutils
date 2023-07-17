@@ -62,15 +62,14 @@ Let's plot the result:
     plt.imshow(kernel, cmap='Greys_r', origin='lower')
     plt.colorbar()
 
-We quickly observe that the result is not as expected.  This is
-because of high-frequency noise in the Fourier transforms (even though
-these are noiseless PSFs, there is floating-point noise in the
-ratios).  Using the Fourier ratio method, one must filter the
-high-frequency noise from the Fourier ratios.  This is performed by
-inputing a `window function
-<https://en.wikipedia.org/wiki/Window_function>`_, which may be a
-function or a callable object.  In general, the user will need to
-exercise some care when defining a window function.  For more
+We quickly observe that the result is not as expected. This is because
+of high-frequency noise in the Fourier transforms (even though these
+are noiseless PSFs, there is floating-point noise in the ratios). Using
+the Fourier ratio method, one must filter the high-frequency noise
+from the Fourier ratios. This is performed by inputting a `window
+function <https://en.wikipedia.org/wiki/Window_function>`_, which
+may be a function or a callable object. In general, the user will
+need to exercise some care when defining a window function. For more
 information, please see `Aniano et al. 2011`_.
 
 Photutils provides the following window classes:
@@ -283,7 +282,7 @@ Let's display the matching kernel result:
 
 The Spitzer/IRAC channel 1 image could then be convolved with this
 matching kernel to produce an image with the same resolution as the
-channel 4 image.
+channel-4 image.
 
 
 Reference/API

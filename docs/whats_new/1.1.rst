@@ -52,7 +52,7 @@ in the new `~photutils.segmentation.SourceCatalog` class, e.g.,
     * 'source_sum' -> 'segment_flux'
     * 'source_sum_err' -> 'segment_fluxerr'
 
-Also the 'centroid' and 'cutout_centroid' properties now return
+Also, the 'centroid' and 'cutout_centroid' properties now return
 centroids in (x, y) order to be consistent with the tools in
 ``photutils.centroid``.
 

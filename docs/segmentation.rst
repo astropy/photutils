@@ -328,7 +328,7 @@ The source properties can be accessed using
 `~photutils.segmentation.SourceCatalog` attributes or
 output to an Astropy `~astropy.table.QTable` using the
 :meth:`~photutils.segmentation.SourceCatalog.to_table` method. Please
-see :class:`~photutils.segmentation.SourceCatalog` for the the many
+see :class:`~photutils.segmentation.SourceCatalog` for the many
 properties that can be calculated for each source. More properties are
 likely to be added in the future.
 

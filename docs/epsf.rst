@@ -24,20 +24,20 @@ Photutils provides tools for building an ePSF following the
 prescription of `Anderson and King (2000; PASP 112, 1360)
 <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
 and subsequent enhancements detailed mainly
-in `Anderson (2016; WFC3 ISR 2016-12
+in `Anderson (2016; WFC3 ISR 2016-12)
 <https://ui.adsabs.harvard.edu/abs/2016wfc..rept...12A/abstract>`_. The
 process involves iterating between the ePSF itself and the stars used to
 build it.
 
 To begin, we must first define a sample of stars used to build the
-ePSF.  Ideally these stars should be bright (high S/N) and isolated to
-prevent contamination from nearby stars.  One may use the star-finding
+ePSF. Ideally these stars should be bright (high S/N) and isolated to
+prevent contamination from nearby stars. One may use the star-finding
 tools in Photutils (e.g., :class:`~photutils.detection.DAOStarFinder`
-or :class:`~photutils.detection.IRAFStarFinder`) to identify an
-initial sample of stars.  However, the step of creating a good sample
-of stars will also likely require visual inspection and manual
-selection to ensure stars are sufficiently isolated and of good
-quality (e.g., no cosmic rays, detector artifacts, etc.).
+or :class:`~photutils.detection.IRAFStarFinder`) to identify an initial
+sample of stars. However, the step of creating a good sample of stars
+generally requires visual inspection and manual selection to ensure
+stars are sufficiently isolated and of good quality (e.g., no cosmic
+rays, detector artifacts, etc.).
 
 Let's start by loading a simulated HST/WFC3 image in the F160W band::
 
@@ -234,15 +234,14 @@ from which we'll build our ePSF.  Let's show the first 25 of them:
         ax[i].imshow(stars[i], norm=norm, origin='lower', cmap='viridis')
 
 With the star cutouts in hand, we are ready to construct the ePSF with
-the :class:`~photutils.psf.EPSFBuilder` class.  We'll create an ePSF
-with an oversampling factor of 4.0.  Here we limit the maximum number
-of iterations to 3 (to limit it's run time), but in practice one
-should use about 10 or more iterations.  The
-:class:`~photutils.psf.EPSFBuilder` class has many other options to
-control the ePSF build process, including changing the centering
-function, the smoothing kernel, and the centering accuracy.  Please
-see the :class:`~photutils.psf.EPSFBuilder` documentation for further
-details.
+the :class:`~photutils.psf.EPSFBuilder` class. We'll create an ePSF
+with an oversampling factor of 4.0. Here we limit the maximum number of
+iterations to 3 (to limit its run time), but in practice one should use
+about 10 or more iterations. The :class:`~photutils.psf.EPSFBuilder`
+class has many other options to control the ePSF build process,
+including changing the centering function, the smoothing kernel, and the
+centering accuracy. Please see the :class:`~photutils.psf.EPSFBuilder`
+documentation for further details.
 
 We first initialize an :class:`~photutils.psf.EPSFBuilder` instance
 with our desired parameters and then input the cutouts of our selected

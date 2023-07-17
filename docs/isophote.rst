@@ -194,7 +194,7 @@ position as a function of the semimajor axis length:
 
 We can build an elliptical model image from the
 `~photutils.isophote.IsophoteList` object using the
-:func:`~photutils.isophote.build_ellipse_model` function ( NOTE: this
+:func:`~photutils.isophote.build_ellipse_model` function (NOTE: this
 function requires `scipy <https://www.scipy.org/>`_):
 
 .. doctest-requires:: scipy
@@ -203,8 +203,8 @@ function requires `scipy <https://www.scipy.org/>`_):
     >>> model_image = build_ellipse_model(data.shape, isolist)
     >>> residual = data - model_image
 
-Finally, let's plot the original data, overplotted with some of the
-isophotes, the elliptical model image, and the residual image:
+Finally, let's plot the original data, overplotted with some isophotes,
+the elliptical model image, and the residual image:
 
 .. plot::
 

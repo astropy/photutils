@@ -29,7 +29,7 @@ image plane:
 
 .. math::
 
-    {\delta}_{\Theta} = \frac {2 A_{2} (1 - {\epsilon})} {I' a_0 [(1 - {\epsilon}) ^ 2 - 1 ]}
+    {\delta}_{\Theta} = \frac {2 A_{2} (1 - {\epsilon})} {I' a_0 [(1 - {\epsilon}) ^ 2 - 1]}
 
 where :math:`\epsilon` is the ellipticity, :math:`\Theta` is the
 position angle, :math:`A_i` and :math:`B_i` are the harmonic
@@ -161,7 +161,7 @@ smoother samples in those cases.
 
 Tests performed with artificial images showed that cosmic rays and
 defective pixels can be very effectively removed from the fit by a
-combination of median sampling and sigma-clipping.
+combination of median sampling and sigma clipping.
 
 
 6. How reliable are the fluxes computed by the `~photutils.isophote.Ellipse` algorithm?

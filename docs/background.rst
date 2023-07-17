@@ -215,7 +215,7 @@ and ``maxiters=10``. Sigma clipping can be turned off by setting
 
 After the background level has been determined in each of the boxes, the
 low-resolution background image can be median filtered, with a window
-of size of ``filter_size``, to suppress local under- or overestimations
+of size of ``filter_size``, to suppress local under or over estimations
 (e.g., due to bright galaxies in a particular box). Likewise, the median
 filter can be applied only to those boxes where the background level is
 above a specified threshold (``filter_threshold``).
