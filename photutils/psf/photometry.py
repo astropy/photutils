@@ -79,7 +79,8 @@ class PSFPhotometry:
         in which a given source belongs. If `None`, then no grouping
         is performed, i.e. each source is fit independently. The
         ``group_id`` values in ``init_params`` override this keyword
-        *only for the first iteration*.
+        *only for the first iteration*. A warning is raised if any group
+        size is larger than 25 sources.
 
     fitter : `~astropy.modeling.fitting.Fitter`, optional
         The fitter object used to perform the fit of the model to the
@@ -911,6 +912,15 @@ class PSFPhotometry:
             # TODO: raise warning
             return None
 
+        _, counts = np.unique(init_params['group_id'], return_counts=True)
+        if max(counts) > 25:
+            warnings.warn('Some groups have more than 25 sources. Fitting '
+                          'such groups may take a long time and be '
+                          'error-prone. You may want to consider using '
+                          'different `SourceGrouper` parameters or '
+                          'changing the "group_id" column in "init_params".',
+                          AstropyUserWarning)
+
         fit_models = self._fit_sources(data, init_params, error=error,
                                        mask=mask)
 
@@ -1064,8 +1074,11 @@ class IterativePSFPhotometry:
         The rectangular shape around the center of a star that will
         be used to define the PSF-fitting data. If ``fit_shape`` is a
         scalar then a square shape of size ``fit_shape`` will be used.
-        If ``fit_shape`` has two elements, they must be in ``(ny, nx)``
-        order. Each element of ``fit_shape`` must be an odd number.
+        If ``fit_shape`` has two elements, they must be in ``(ny,
+        nx)`` order. Each element of ``fit_shape`` must be an odd
+        number. In general, ``fit_shape`` should be set to a small size
+        (e.g., ``(5, 5)``) that covers the region with the highest flux
+        signal-to-noise.
 
     finder : callable or `~photutils.detection.StarFinderBase`
         A callable used to identify stars in an image. The
@@ -1090,7 +1103,8 @@ class IterativePSFPhotometry:
         in which a given source belongs. If `None`, then no grouping
         is performed, i.e. each source is fit independently. The
         ``group_id`` values in ``init_params`` override this keyword
-        *only for the first iteration*.
+        *only for the first iteration*. A warning is raised if any group
+        size is larger than 25 sources.
 
     fitter : `~astropy.modeling.fitting.Fitter`, optional
         The fitter object used to perform the fit of the model to the

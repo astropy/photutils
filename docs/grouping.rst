@@ -15,11 +15,11 @@ Stetson, in his seminal paper (`Stetson 1987, PASP 99, 191
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_),
 provided a simple and powerful grouping algorithm to decide whether
 the profile of a given star extends into the fitting region of any
-other star. Stetson defines this in terms of a "critical separation"
+other star. The paper defines this in terms of a "critical separation"
 parameter, which is defined as the minimal distance that any two stars
-must be separated by in order to be in different groups. Stetson gives
-intuitive reasoning to suggest that the critical separation may be
-defined as a multiple of the stellar full width at half maximum (FWHM).
+must be separated by in order to be in different groups. The critical
+separation is generally defined as a multiple of the stellar full width
+at half maximum (FWHM).
 
 
 Getting Started
@@ -53,7 +53,10 @@ sources and the latter will make an actual image using that table::
     >>> shape = (size, size)
     >>> data = make_gaussian_sources_image(shape, stars)
 
-Now let's display the image:
+``stars`` is an astropy `~astropy.table.Table` of parameters defining
+the position and shape of the stars.
+
+Let's display the image:
 
 .. doctest-skip::
 
@@ -83,9 +86,6 @@ Now let's display the image:
 
     plt.imshow(data, origin='lower', interpolation='nearest')
     plt.show()
-
-``stars`` is an astropy `~astropy.table.Table` of parameters defining
-the position and shape of the stars.
 
 Now, let's find the stellar groups. We start by creating
 a `~photutils.psf.SourceGrouper` object. Here we set the
