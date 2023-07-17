@@ -44,7 +44,7 @@ Example Usage
 -------------
 
 A variety of implementations of this block already exist in ``photutils``. A
-canononical example is the mode estimation algorithm ``3 * median - 2 * mean``.
+canonical example is the mode estimation algorithm ``3 * median - 2 * mean``.
 This can be done on an array called  ``image_data`` by using the block like so::
 
     from photutils.background import ModeEstimatorBackground

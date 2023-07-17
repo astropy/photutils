@@ -1,9 +1,9 @@
 Pixel Coordinate Conventions
 ----------------------------
 
-In Photutils, integer pixel coordinates fall at the center of pixels and
-they are 0-indexed, matching the Python 0-based indexing. That means the
-first pixel is considered pixel ``0``, but pixel coordinate ``0`` is
+In Photutils, integer pixel coordinates fall at the center of pixels,
+and they are 0-indexed, matching the Python 0-based indexing. That means
+the first pixel is considered pixel ``0``, but pixel coordinate ``0`` is
 the *center* of that pixel. Hence, the first pixel spans pixel values
 ``-0.5`` to ``0.5``.
 

@@ -156,12 +156,12 @@ Aperture and Pixel Overlap
 --------------------------
 
 The overlap of the aperture with the data pixels can be handled in
-different ways.  For the default method (``method='exact'``), the
-exact intersection of the aperture with each pixel is calculated.  The
+different ways.  The default method (``method='exact'``) calculates the
+exact intersection of the aperture with each pixel.  The
 other options, ``'center'`` and ``'subpixel'``, are faster, but with
-the expense of less precision.  For ``'center'``, a pixel is
+the expense of less precision.  With ``'center'``, a pixel is
 considered to be entirely in or out of the aperture depending on
-whether its center is in or out of the aperture.  For ``'subpixel'``,
+whether its center is in or out of the aperture.  With ``'subpixel'``,
 pixels are divided into a number of subpixels, which are in or out of
 the aperture based on their centers.  For this method, the number of
 subpixels needs to be set with the ``subpixels`` keyword.
@@ -282,7 +282,7 @@ like :attr:`~photutils.aperture.ApertureStats.centroid`,
 :attr:`~photutils.aperture.ApertureStats.semiminor_sigma`,
 :attr:`~photutils.aperture.ApertureStats.orientation`, and
 :attr:`~photutils.aperture.ApertureStats.eccentricity`. Please see
-:class:`~photutils.aperture.ApertureStats` for the the complete
+:class:`~photutils.aperture.ApertureStats` for the complete
 list of properties that can be calculated. The properties can be
 accessed using `~photutils.aperture.ApertureStats` attributes
 or output to an Astropy `~astropy.table.QTable` using the
@@ -552,7 +552,7 @@ apertures is::
     >>> print(apersum_bkgsub)  # doctest: +FLOAT_CMP
     [750.80166351 346.51586233 872.75150158]
 
-Note that if you want to compute all of the source properties (i.e., in
+Note that if you want to compute all the source properties (i.e., in
 addition to only :attr:`~photutils.aperture.ApertureStats.sum`) on the
 local-background-subtracted data, you may input the *per-pixel* local
 background values to :class:`~photutils.aperture.ApertureStats` via the

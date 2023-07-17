@@ -113,7 +113,7 @@ build environment by `pip`_.
 On Linux, using the package manager for your distribution will usually be
 the easiest route.
 
-On MacOS X you will need the `XCode`_ command-line tools, which can be
+On macOS you will need the `XCode`_ command-line tools, which can be
 installed using::
 
     xcode-select --install
