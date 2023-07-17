@@ -6,6 +6,11 @@ build:
     - graphviz
   tools:
     python: "3.11"
+  jobs:
+    post_checkout:
+      - git fetch --shallow-since=2023-05-01 || true
+    pre_install:
+      - git update-index --assume-unchanged docs/conf.py
 
 sphinx:
   builder: html
