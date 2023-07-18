@@ -4,10 +4,11 @@ This subpackage contains tools to perform point-spread-function (PSF)
 photometry.
 """
 
-from . import (epsf, epsf_stars, groupers, groupstars, models, photometry,
-               photometry_depr, utils)
+from . import (epsf, epsf_stars, griddedpsfmodel, groupers, groupstars,
+               models, photometry, photometry_depr, utils)
 from .epsf import *  # noqa: F401, F403
 from .epsf_stars import *  # noqa: F401, F403
+from .griddedpsfmodel import *  # noqa: F401, F403
 from .groupers import *  # noqa: F401, F403
 from .groupstars import *  # noqa: F401, F403
 from .matching import *  # noqa: F401, F403
@@ -20,6 +21,7 @@ from .utils import *  # noqa: F401, F403
 __all__ = []
 __all__.extend(epsf.__all__)
 __all__.extend(epsf_stars.__all__)
+__all__.extend(griddedpsfmodel.__all__)
 __all__.extend(groupers.__all__)
 __all__.extend(groupstars.__all__)
 __all__.extend(models.__all__)
