@@ -4,7 +4,9 @@ This module provides models for doing PSF/PRF-fitting photometry.
 """
 
 import copy
+import io
 import itertools
+import os
 from functools import lru_cache
 from itertools import product
 
@@ -75,6 +77,7 @@ class GriddedPSFModel(Fittable2DModel):
         self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
         self._xgrid = np.unique(self._grid_xpos)  # also sorts values
         self._ygrid = np.unique(self._grid_ypos)  # also sorts values
+        self.meta['grid_shape'] = (len(self._ygrid), len(self._xgrid))
         if (len(list(itertools.product(self._xgrid, self._ygrid)))
                 != len(self.grid_xypos)):
             raise ValueError('"grid_xypos" must form a regular grid.')
@@ -117,13 +120,12 @@ class GriddedPSFModel(Fittable2DModel):
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
         cls_info = []
-        if ('instrument' in self.meta
-                and (instrument := self.meta['instrument']) != ''):
-            cls_info.append(('Instrument', instrument))
-        if ('detector' in self.meta
-                and (detector := self.meta['detector']) != ''):
-            if detector != '':
-                cls_info.append(('Detector', detector))
+
+        keys = ('STDPSF', 'instrument', 'detector', 'filter', 'grid_shape')
+        for key in keys:
+            if key in self.meta:
+                name = key.capitalize() if key != 'STDPSF' else key
+                cls_info.append((name, self.meta[key]))
 
         cls_info.extend([('Number of ePSFs', len(self.grid_xypos)),
                          ('ePSF shape (oversampled pixels)',
@@ -363,12 +365,10 @@ def stdpsf_reader(filename, oversampling=4, sci_exten=None, filter_name=None):
     nypsfs = header['NYPSFS']
     data_ny, data_nx = data.shape[1:]
 
-    nircam_sw = False
     if 'IPSFX01' in header:
         xgrid = [header[f'IPSFX{i:02d}'] for i in range(1, nxpsfs + 1)]
         ygrid = [header[f'JPSFY{i:02d}'] for i in range(1, nypsfs + 1)]
     elif 'IPSFXA5' in header:
-        nircam_sw = True
         xgrid = [int(n) for n in header['IPSFXA5'].split()] * 4
         ygrid = [int(n) for n in header['JPSFYA5'].split()] * 2
     else:
@@ -378,17 +378,17 @@ def stdpsf_reader(filename, oversampling=4, sci_exten=None, filter_name=None):
     xgrid = np.array(xgrid) - 1
     ygrid = np.array(ygrid) - 1
 
-    # nypsfs, nxpsfs
-    # (6, 6) # WFPC2, split
-    # (1, 1)  # ACS/HRC
-    # (10, 9) # ACS/WFC, split
-    # (3, 3) # WFC3/IR
-    # (8, 7) # WFC3/UVIS, split
-    # (5, 5) # NIRISS
-    # (5, 5) # NIRCam LW
-    # (10, 20) # NIRCam SW, split
-    # ?  # MIRI
-
+    # (nypsfs, nxpsfs)
+    # (6, 6)   # WFPC2, 4 det
+    # (1, 1)   # ACS/HRC
+    # (10, 9)  # ACS/WFC, 2 det
+    # (3, 3)   # WFC3/IR
+    # (8, 7)   # WFC3/UVIS, 2 det
+    # (5, 5)   # NIRISS
+    # (5, 5)   # NIRCam SW
+    # (10, 20) # NIRCam SW, 8 det
+    # (5, 5)   # NIRCam LW
+    # (3, 3)   # MIRI
     if npsfs in (90, 56):  # ACS/WFC or WFC3/UVIS data (2 chips)
         if sci_exten is None:
             raise ValueError('sci_exten must be specified for ACS/WFC '
@@ -403,6 +403,7 @@ def stdpsf_reader(filename, oversampling=4, sci_exten=None, filter_name=None):
             ygrid -= 2048
 
         data = data.reshape((2, npsfs // 2, data_ny, data_nx))[sci_exten - 1]
+        nypsfs //= 2
 
     if npsfs == 36:
         raise NotImplementedError('WFPC2 PSFs not yet supported.')
@@ -413,17 +414,71 @@ def stdpsf_reader(filename, oversampling=4, sci_exten=None, filter_name=None):
     # product iterates over the last input first
     xy_grid = [yx[::-1] for yx in product(ygrid, xgrid)]
 
-    # TODO
-    detector = 'NIRCam' if nircam_sw else ''
-
     meta = {'grid_xypos': xy_grid,
-            'oversampling': oversampling,
-            'detector': detector,
-            }
+            'oversampling': oversampling}
+
+    # try to get metadata
+    file_meta = _get_metadata(filename, npsfs, sci_exten)
+    if file_meta is not None:
+        meta.update(file_meta)
 
     nddata = NDData(data, meta=meta)
 
     return GriddedPSFModel(nddata)
+
+
+def _get_metadata(filename, npsfs, sci_exten):
+    if isinstance(filename, io.FileIO):
+        filename = filename.name
+
+    parts = os.path.basename(filename).strip('.fits').split('_')
+    if len(parts) not in (3, 4):
+        return None  # filename from astropy download_file
+
+    detector, filter_name = parts[1:3]
+    detector_map = {'WFPC2': ['HST/WFPC2', 'WFPC2'],
+                    'ACSHRC': ['HST/ACS', 'HRC'],
+                    'ACSWFC': ['HST/ACS', 'WFC'],
+                    'WFC3UV': ['HST/WFC3', 'UVIS'],
+                    'WFC3IR': ['HST/WFC3', 'IR'],
+                    'NRCSW': ['JWST/NIRCam', 'NRCSW'],
+                    'NRCA1': ['JWST/NIRCam', 'A1'],
+                    'NRCA2': ['JWST/NIRCam', 'A2'],
+                    'NRCA3': ['JWST/NIRCam', 'A3'],
+                    'NRCA4': ['JWST/NIRCam', 'A4'],
+                    'NRCB1': ['JWST/NIRCam', 'B1'],
+                    'NRCB2': ['JWST/NIRCam', 'B2'],
+                    'NRCB3': ['JWST/NIRCam', 'B3'],
+                    'NRCB4': ['JWST/NIRCam', 'B4'],
+                    'NRCAL': ['JWST/NIRCam', 'A5'],
+                    'NRCBL': ['JWST/NIRCam', 'B5'],
+                    'NIRISS': ['JWST/NIRISS', 'NIRISS'],
+                    'MIRI': ['JWST/MIRI', 'MIRIM']}
+
+    try:
+        inst_det = detector_map[detector]
+    except KeyError:
+        raise ValueError(f'Unknown detector {detector}.')
+
+    if inst_det[1] in ('WFC', 'UVIS'):
+        chip = 2 if sci_exten == 1 else 1
+        inst_det[1] = f'{inst_det[1]}{chip}'
+
+    if inst_det[1] == 'WFPC2':
+        wfpc2_map = {1: 'PC', 2: 'WF2', 3: 'WF3', 4: 'WF4'}
+        inst_det[1] = wfpc2_map[sci_exten]
+
+    if inst_det[1] == 'NRCSW':
+        sw_map = {1: 'A1', 2: 'A2', 3: 'A3', 4: 'A4',
+                  5: 'B1', 6: 'B2', 7: 'B3', 8: 'B4'}
+        inst_det[1] = sw_map[sci_exten]
+
+    meta = {'STDPSF': filename,
+            'instrument': inst_det[0],
+            'detector': inst_det[1],
+            'filter': filter_name}
+
+    return meta
 
 
 with registry.delay_doc_updates(GriddedPSFModel):
