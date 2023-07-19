@@ -114,6 +114,31 @@ class GriddedPSFModel(Fittable2DModel):
 
         return data
 
+    def __str__(self):
+        cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
+        cls_info = []
+        if ('instrument' in self.meta
+                and (instrument := self.meta['instrument']) != ''):
+            cls_info.append(('Instrument', instrument))
+        if ('detector' in self.meta
+                and (detector := self.meta['detector']) != ''):
+            if detector != '':
+                cls_info.append(('Detector', detector))
+
+        cls_info.extend([('Number of ePSFs', len(self.grid_xypos)),
+                         ('ePSF shape (oversampled pixels)',
+                          self.data.shape[1:]),
+                         ('Oversampling', self.oversampling),
+                         ])
+
+        with np.printoptions(threshold=25, edgeitems=5):
+            fmt = [f'{key}: {val}' for key, val in cls_info]
+
+        return f'{cls_name}\n' + '\n'.join(fmt)
+
+    def __repr__(self):
+        return self.__str__()
+
     def copy(self):
         """
         Return a copy of this model.
