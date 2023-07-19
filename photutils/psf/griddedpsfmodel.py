@@ -18,7 +18,7 @@ from astropy.io.fits.verify import VerifyWarning
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData
 
-__all__ = ['GriddedPSFModel']
+__all__ = ['GriddedPSFModel', 'stdpsf_reader']
 
 
 class GriddedPSFModelRead(registry.UnifiedReadWrite):
@@ -32,16 +32,16 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
 
 class GriddedPSFModel(Fittable2DModel):
     """
-    A fittable 2D model containing a grid PSF models defined at specific
-    locations that are interpolated to evaluate a PSF at an arbitrary
-    (x, y) position.
+    A fittable 2D model containing a grid ePSF models defined at
+    specific locations that are interpolated to evaluate a ePSF at an
+    arbitrary (x, y) position.
 
     Parameters
     ----------
     data : `~astropy.nddata.NDData`
         A `~astropy.nddata.NDData` object containing the grid of
-        reference PSF arrays. The data attribute must contain a 3D
-        `~numpy.ndarray` containing a stack of the 2D PSFs with a shape
+        reference ePSF arrays. The data attribute must contain a 3D
+        `~numpy.ndarray` containing a stack of the 2D ePSFs with a shape
         of ``(N_psf, PSF_ny, PSF_nx)``. The meta attribute must be
         `dict` containing the following:
 
@@ -56,6 +56,13 @@ class GriddedPSFModel(Fittable2DModel):
 
         The meta attribute may contain other properties such as the
         telescope, instrument, detector, and filter of the PSF.
+
+    Methods
+    -------
+    read(\\*args, \\**kwargs)
+        Class method to create a `GriddedPSFModel` instance from a
+        STDPSF FITS file. This method uses :func:`stdpsf_reader` with
+        the provided parameters.
     """
 
     flux = Parameter(description='Intensity scaling factor for the PSF '
@@ -354,10 +361,47 @@ class GriddedPSFModel(Fittable2DModel):
         return evaluated_model
 
 
-def stdpsf_reader(filename, oversampling=4, sci_exten=None, filter_name=None):
+def stdpsf_reader(filename, sci_exten=None):
     """
     Generate a `~photutils.psf.GriddedPSFModel` from a STScI
-    standard-format PSF file.
+    standard-format PSF (STDPSF) FITS file.
+
+    .. note::
+        Instead of being used directly, this function is intended to be
+        used as the `GriddedPSFModel` ``read`` method, e.g.,
+        ``model = GriddedPSFModel.read(filename)``.
+
+    STDPSF files are FITS files that contain a 3D array of ePSFs with
+    the header detailing where the fiducial ePSFs are located in the
+    detector coordinate frame.
+
+    The oversampling factor for STDPSF FITS files is assumed to be 4.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the STDPDF FITS file. A URL can also be used.
+
+    sci_exten : `None` or int, optional
+        For STDPSF files that contain ePSF grids for multiple detectors,
+        one will need to identify the detector using the science
+        extension number of the data for that detector found in the
+        calibrated (FLT) FITS file.
+
+        For ACS/WFC, the options are 1 (WFC2) or 2 (WFC1). For
+        WFC3/UVIS, the options are 1 (UVIS2) or 2 (UVIS1). For these two
+        instruments, detector 1 is above detector 2 in the y direction.
+        However, in the FLT FITS files, the (sci, 1) extension
+        corresponds to detector 2 and the (sci, 2) extension corresponds
+        to detector 1.
+
+        This keyword is ignored for STDPSF files that do not contain
+        ePSF grids for multiple detectors.
+
+    Returns
+    -------
+    model : `~photutils.psf.GriddedPSFModel`
+        The gridded PSF model.
     """
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', VerifyWarning)
@@ -419,6 +463,7 @@ def stdpsf_reader(filename, oversampling=4, sci_exten=None, filter_name=None):
     # product iterates over the last input first
     xy_grid = [yx[::-1] for yx in product(ygrid, xgrid)]
 
+    oversampling = 4
     meta = {'grid_xypos': xy_grid,
             'oversampling': oversampling}
 
