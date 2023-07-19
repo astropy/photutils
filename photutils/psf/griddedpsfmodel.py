@@ -6,8 +6,10 @@ This module provides models for doing PSF/PRF-fitting photometry.
 import copy
 import itertools
 from functools import lru_cache
+from itertools import product
 
 import numpy as np
+from astropy.io import fits
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData
 
@@ -309,3 +311,80 @@ class GriddedPSFModel(Fittable2DModel):
             evaluated_model[invalid] = self.fill_value
 
         return evaluated_model
+
+
+def stdpsf_reader(filename, oversampling=4, sci_exten=None, filter_name=None):
+    """
+    Generate a `~photutils.psf.GriddedPSFModel` from a STScI
+    standard-format PSF file.
+    """
+    with fits.open(filename, ignore_missing_end=True) as hdulist:
+        header = hdulist[0].header
+        data = hdulist[0].data
+
+    npsfs = header['NAXIS3']
+    nxpsfs = header['NXPSFS']
+    nypsfs = header['NYPSFS']
+    data_ny, data_nx = data.shape[1:]
+
+    nircam_sw = False
+    if 'IPSFX01' in header:
+        xgrid = [header[f'IPSFX{i:02d}'] for i in range(1, nxpsfs + 1)]
+        ygrid = [header[f'JPSFY{i:02d}'] for i in range(1, nypsfs + 1)]
+    elif 'IPSFXA5' in header:
+        nircam_sw = True
+        xgrid = [int(n) for n in header['IPSFXA5'].split()] * 4
+        ygrid = [int(n) for n in header['JPSFYA5'].split()] * 2
+    else:
+        raise ValueError('Unknown standard-format PSF file.')
+
+    # STDPDF FITS positions are 1-indexed
+    xgrid = np.array(xgrid) - 1
+    ygrid = np.array(ygrid) - 1
+
+    # nypsfs, nxpsfs
+    # (6, 6) # WFPC2, split
+    # (1, 1)  # ACS/HRC
+    # (10, 9) # ACS/WFC, split
+    # (3, 3) # WFC3/IR
+    # (8, 7) # WFC3/UVIS, split
+    # (5, 5) # NIRISS
+    # (5, 5) # NIRCam LW
+    # (10, 20) # NIRCam SW, split
+    # ?  # MIRI
+
+    if npsfs in (90, 56):  # ACS/WFC or WFC3/UVIS data (2 chips)
+        if sci_exten is None:
+            raise ValueError('sci_exten must be specified for ACS/WFC '
+                             'and WFC3/UVIS PSFs.')
+        if sci_exten not in (1, 2):
+            raise ValueError('sci_exten must be 1 or 2.')
+
+        # ACS/WFC1 and WFC3/UVIS1 chip1 (sci, 2) are above chip2 (sci, 1)
+        # in y-pixel coordinates
+        ygrid = ygrid.reshape((2, ygrid.shape[0] // 2))[sci_exten - 1]
+        if sci_exten == 2:
+            ygrid -= 2048
+
+        data = data.reshape((2, npsfs // 2, data_ny, data_nx))[sci_exten - 1]
+
+    if npsfs == 36:
+        raise NotImplementedError('WFPC2 PSFs not yet supported.')
+
+    if npsfs == 200:
+        raise NotImplementedError('NIRCam SW PSFs not yet supported.')
+
+    # product iterates over the last input first
+    xy_grid = [yx[::-1] for yx in product(ygrid, xgrid)]
+
+    # TODO
+    detector = 'NIRCam' if nircam_sw else ''
+
+    meta = {'grid_xypos': xy_grid,
+            'oversampling': oversampling,
+            'detector': detector,
+            }
+
+    nddata = NDData(data, meta=meta)
+
+    return GriddedPSFModel(nddata)
