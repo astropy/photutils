@@ -7,11 +7,14 @@ import copy
 import io
 import itertools
 import os
+import warnings
 from functools import lru_cache
 from itertools import product
 
 import numpy as np
 from astropy.io import fits, registry
+from astropy.io.fits import HDUList
+from astropy.io.fits.verify import VerifyWarning
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData
 
@@ -356,9 +359,11 @@ def stdpsf_reader(filename, oversampling=4, sci_exten=None, filter_name=None):
     Generate a `~photutils.psf.GriddedPSFModel` from a STScI
     standard-format PSF file.
     """
-    with fits.open(filename, ignore_missing_end=True) as hdulist:
-        header = hdulist[0].header
-        data = hdulist[0].data
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', VerifyWarning)
+        with fits.open(filename, ignore_missing_end=True) as hdulist:
+            header = hdulist[0].header
+            data = hdulist[0].data
 
     npsfs = header['NAXIS3']
     nxpsfs = header['NXPSFS']
@@ -481,7 +486,26 @@ def _get_metadata(filename, npsfs, sci_exten):
     return meta
 
 
+def is_fits(origin, filepath, fileobj, *args, **kwargs):
+    """
+    Determine whether `origin` is a FITS file.
+
+    Parameters
+    ----------
+    origin : str or readable file-like
+        Path or file object containing a potential FITS file.
+
+    Returns
+    -------
+    is_fits : bool
+        Returns `True` if the given file is a FITS file.
+    """
+    if filepath is not None:
+        extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
+        return filepath.lower().endswith(extens)
+    return isinstance(args[0], HDUList)
+
+
 with registry.delay_doc_updates(GriddedPSFModel):
     registry.register_reader('stdpsf', GriddedPSFModel, stdpsf_reader)
-    registry.register_identifier('stdpsf', GriddedPSFModel,
-                                 fits.connect.is_fits)
+    registry.register_identifier('stdpsf', GriddedPSFModel, is_fits)
