@@ -9,11 +9,20 @@ from functools import lru_cache
 from itertools import product
 
 import numpy as np
-from astropy.io import fits
+from astropy.io import fits, registry
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData
 
 __all__ = ['GriddedPSFModel']
+
+
+class GriddedPSFModelRead(registry.UnifiedReadWrite):
+    def __init__(self, instance, cls):
+        super().__init__(instance, cls, "read", registry=None)
+        # uses default global registry
+
+    def __call__(self, *args, **kwargs):
+        return self.registry.read(self._cls, *args, **kwargs)
 
 
 class GriddedPSFModel(Fittable2DModel):
@@ -50,6 +59,8 @@ class GriddedPSFModel(Fittable2DModel):
                     'where the model is evaluated.', default=0.0)
     y_0 = Parameter(description='y position in the output coordinate grid '
                     'where the model is evaluated.', default=0.0)
+
+    read = registry.UnifiedReadWriteMethod(GriddedPSFModelRead)
 
     def __init__(self, data, *, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, fill_value=0.0):
@@ -388,3 +399,9 @@ def stdpsf_reader(filename, oversampling=4, sci_exten=None, filter_name=None):
     nddata = NDData(data, meta=meta)
 
     return GriddedPSFModel(nddata)
+
+
+with registry.delay_doc_updates(GriddedPSFModel):
+    registry.register_reader('stdpsf', GriddedPSFModel, stdpsf_reader)
+    registry.register_identifier('stdpsf', GriddedPSFModel,
+                                 fits.connect.is_fits)
