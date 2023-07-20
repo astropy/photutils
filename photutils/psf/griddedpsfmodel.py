@@ -418,8 +418,14 @@ def stdpsf_reader(filename, sci_exten=None):
         xgrid = [header[f'IPSFX{i:02d}'] for i in range(1, nxpsfs + 1)]
         ygrid = [header[f'JPSFY{i:02d}'] for i in range(1, nypsfs + 1)]
     elif 'IPSFXA5' in header:
-        xgrid = [int(n) for n in header['IPSFXA5'].split()] * 4
-        ygrid = [int(n) for n in header['JPSFYA5'].split()] * 2
+        xgrid = []
+        ygrid = []
+        xkeys = ('IPSFXA5', 'IPSFXB5', 'IPSFXC5', 'IPSFXD5')
+        for xkey in xkeys:
+            xgrid.extend([int(n) for n in header[xkey].split()])
+        ykeys = ('JPSFYA5', 'JPSFYB5')
+        for ykey in ykeys:
+            ygrid.extend([int(n) for n in header[ykey].split()])
     else:
         raise ValueError('Unknown standard-format PSF file.')
 
@@ -466,10 +472,10 @@ def stdpsf_reader(filename, sci_exten=None):
         ii = np.arange(npsfs).reshape((nypsfs, nxpsfs))
         nxdet = 2
         nydet = 2
-        nxg = nxpsfs // nxdet
-        nyg = nypsfs // nydet
+        nxpsfs //= nxdet
+        nypsfs //= nydet
         ndet = nxdet * nydet
-        ii = reshape_as_blocks(ii, (nydet, nxdet))
+        ii = reshape_as_blocks(ii, (nypsfs, nxpsfs))
         ii = ii.reshape(ndet, npsfs // ndet)
 
         # WFPC2 FITS exten -> index
@@ -480,20 +486,52 @@ def stdpsf_reader(filename, sci_exten=None):
 
         det_size = 800
         if det_idx == 0:
-            xgrid = xgrid[:nxg]
-            ygrid = ygrid[:nyg]
+            xgrid = xgrid[:nxpsfs]
+            ygrid = ygrid[:nypsfs]
         if det_idx == 1:
-            xgrid = xgrid[nxg:] - det_size
-            ygrid = ygrid[:nyg]
+            xgrid = xgrid[nxpsfs:] - det_size
+            ygrid = ygrid[:nypsfs]
         if det_idx == 2:
-            xgrid = xgrid[:nxg]
-            ygrid = ygrid[nyg:] - det_size
+            xgrid = xgrid[:nxpsfs]
+            ygrid = ygrid[nypsfs:] - det_size
         if det_idx == 3:
-            xgrid = xgrid[nxg:] - det_size
-            ygrid = ygrid[nyg:] - det_size
+            xgrid = xgrid[nxpsfs:] - det_size
+            ygrid = ygrid[nypsfs:] - det_size
 
-    if npsfs == 200:
-        raise NotImplementedError('NIRCam SW PSFs not yet supported.')
+    if npsfs == 200:  # NIRCam SW data (8 chips)
+        if sci_exten is None:
+            raise ValueError('sci_exten must be specified for NRCSW PSFs')
+        if sci_exten not in range(1, 9):
+            raise ValueError('sci_exten must be between 1 and 8, inclusive')
+
+        # det (ext:idx)
+        # A2 (2:4)  A4 (4:5)  B3 (7:6)  B1 (5:7)
+        # A1 (1:0)  A3 (3:1)  B4 (8:2)  B2 (6:3)
+        ii = np.arange(npsfs).reshape((nypsfs, nxpsfs))
+        nxdet = 4
+        nydet = 2
+        nxpsfs //= nxdet
+        nypsfs //= nydet
+        ndet = nxdet * nydet
+        ii = reshape_as_blocks(ii, (nypsfs, nxpsfs))
+        ii = ii.reshape(ndet, npsfs // ndet)
+
+        # WFPC2 FITS exten -> index
+        det_map = {1: 0, 3: 1, 8: 2, 6: 3, 2: 4, 4: 5, 7: 6, 5: 7}
+        det_idx = det_map[sci_exten]
+        idx = ii[det_idx]
+        data = data[idx]
+
+        det_size = 2048
+        xp = det_idx % 4
+        i0 = xp * nxpsfs
+        i1 = i0 + nxpsfs
+        xgrid = xgrid[i0:i1] - xp * det_size
+
+        if det_idx < 4:
+            ygrid = ygrid[:nypsfs]
+        else:
+            ygrid = ygrid[nypsfs:] - det_size
 
     # product iterates over the last input first
     xy_grid = [yx[::-1] for yx in product(ygrid, xgrid)]
