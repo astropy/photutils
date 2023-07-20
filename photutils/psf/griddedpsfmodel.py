@@ -16,7 +16,7 @@ from astropy.io import fits, registry
 from astropy.io.fits import HDUList
 from astropy.io.fits.verify import VerifyWarning
 from astropy.modeling import Fittable2DModel, Parameter
-from astropy.nddata import NDData
+from astropy.nddata import NDData, reshape_as_blocks
 
 __all__ = ['GriddedPSFModel', 'stdpsf_reader']
 
@@ -454,8 +454,43 @@ def stdpsf_reader(filename, sci_exten=None):
         data = data.reshape((2, npsfs // 2, data_ny, data_nx))[sci_exten - 1]
         nypsfs //= 2
 
-    if npsfs == 36:
-        raise NotImplementedError('WFPC2 PSFs not yet supported.')
+    if npsfs == 36:  # WFPC2 data (4 chips)
+        if sci_exten is None:
+            raise ValueError('sci_exten must be specified for WFPC2 PSFs')
+        if sci_exten not in range(1, 5):
+            raise ValueError('sci_exten must be between 1 and 4, inclusive')
+
+        # det (ext:idx)
+        # WF2 (2:2)  PC (1:3)
+        # WF3 (3:0)  WF4 (4:1)
+        ii = np.arange(npsfs).reshape((nypsfs, nxpsfs))
+        nxdet = 2
+        nydet = 2
+        nxg = nxpsfs // nxdet
+        nyg = nypsfs // nydet
+        ndet = nxdet * nydet
+        ii = reshape_as_blocks(ii, (nydet, nxdet))
+        ii = ii.reshape(ndet, npsfs // ndet)
+
+        # WFPC2 FITS exten -> index
+        det_map = {1: 3, 2: 2, 3: 0, 4: 1}
+        det_idx = det_map[sci_exten]
+        idx = ii[det_idx]
+        data = data[idx]
+
+        det_size = 800
+        if det_idx == 0:
+            xgrid = xgrid[:nxg]
+            ygrid = ygrid[:nyg]
+        if det_idx == 1:
+            xgrid = xgrid[nxg:] - det_size
+            ygrid = ygrid[:nyg]
+        if det_idx == 2:
+            xgrid = xgrid[:nxg]
+            ygrid = ygrid[nyg:] - det_size
+        if det_idx == 3:
+            xgrid = xgrid[nxg:] - det_size
+            ygrid = ygrid[nyg:] - det_size
 
     if npsfs == 200:
         raise NotImplementedError('NIRCam SW PSFs not yet supported.')
