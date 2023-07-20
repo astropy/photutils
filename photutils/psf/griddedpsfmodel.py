@@ -441,7 +441,7 @@ def stdpsf_reader(filename, sci_exten=None):
     # (8, 7)   # WFC3/UVIS, 2 det
     # (5, 5)   # NIRISS
     # (5, 5)   # NIRCam SW
-    # (10, 20) # NIRCam SW, 8 det
+    # (10, 20) # NIRCam SW (NRCSW), 8 det
     # (5, 5)   # NIRCam LW
     # (3, 3)   # MIRI
     if npsfs in (90, 56):  # ACS/WFC or WFC3/UVIS data (2 chips)
@@ -466,37 +466,20 @@ def stdpsf_reader(filename, sci_exten=None):
         if sci_exten not in range(1, 5):
             raise ValueError('sci_exten must be between 1 and 4, inclusive')
 
+        nxdet = 2
+        nydet = 2
+        det_size = 800
+
         # det (ext:idx)
         # WF2 (2:2)  PC (1:3)
         # WF3 (3:0)  WF4 (4:1)
-        ii = np.arange(npsfs).reshape((nypsfs, nxpsfs))
-        nxdet = 2
-        nydet = 2
-        nxpsfs //= nxdet
-        nypsfs //= nydet
-        ndet = nxdet * nydet
-        ii = reshape_as_blocks(ii, (nypsfs, nxpsfs))
-        ii = ii.reshape(ndet, npsfs // ndet)
-
-        # WFPC2 FITS exten -> index
         det_map = {1: 3, 2: 2, 3: 0, 4: 1}
-        det_idx = det_map[sci_exten]
-        idx = ii[det_idx]
-        data = data[idx]
 
-        det_size = 800
-        if det_idx == 0:
-            xgrid = xgrid[:nxpsfs]
-            ygrid = ygrid[:nypsfs]
-        if det_idx == 1:
-            xgrid = xgrid[nxpsfs:] - det_size
-            ygrid = ygrid[:nypsfs]
-        if det_idx == 2:
-            xgrid = xgrid[:nxpsfs]
-            ygrid = ygrid[nypsfs:] - det_size
-        if det_idx == 3:
-            xgrid = xgrid[nxpsfs:] - det_size
-            ygrid = ygrid[nypsfs:] - det_size
+        data, xgrid, ygrid = _split_detectors(data, xgrid, ygrid, npsfs,
+                                              nypsfs, nxpsfs, nxdet, nydet,
+                                              det_size, det_map, sci_exten)
+        nxpsfs = xgrid.shape[0]
+        nypsfs = ygrid.shape[0]
 
     if npsfs == 200:  # NIRCam SW data (8 chips)
         if sci_exten is None:
@@ -504,34 +487,20 @@ def stdpsf_reader(filename, sci_exten=None):
         if sci_exten not in range(1, 9):
             raise ValueError('sci_exten must be between 1 and 8, inclusive')
 
+        nxdet = 4
+        nydet = 2
+        det_size = 2048
+
         # det (ext:idx)
         # A2 (2:4)  A4 (4:5)  B3 (7:6)  B1 (5:7)
         # A1 (1:0)  A3 (3:1)  B4 (8:2)  B2 (6:3)
-        ii = np.arange(npsfs).reshape((nypsfs, nxpsfs))
-        nxdet = 4
-        nydet = 2
-        nxpsfs //= nxdet
-        nypsfs //= nydet
-        ndet = nxdet * nydet
-        ii = reshape_as_blocks(ii, (nypsfs, nxpsfs))
-        ii = ii.reshape(ndet, npsfs // ndet)
-
-        # WFPC2 FITS exten -> index
         det_map = {1: 0, 3: 1, 8: 2, 6: 3, 2: 4, 4: 5, 7: 6, 5: 7}
-        det_idx = det_map[sci_exten]
-        idx = ii[det_idx]
-        data = data[idx]
 
-        det_size = 2048
-        xp = det_idx % 4
-        i0 = xp * nxpsfs
-        i1 = i0 + nxpsfs
-        xgrid = xgrid[i0:i1] - xp * det_size
-
-        if det_idx < 4:
-            ygrid = ygrid[:nypsfs]
-        else:
-            ygrid = ygrid[nypsfs:] - det_size
+        data, xgrid, ygrid = _split_detectors(data, xgrid, ygrid, npsfs,
+                                              nypsfs, nxpsfs, nxdet, nydet,
+                                              det_size, det_map, sci_exten)
+        nxpsfs = xgrid.shape[0]
+        nypsfs = ygrid.shape[0]
 
     # product iterates over the last input first
     xy_grid = [yx[::-1] for yx in product(ygrid, xgrid)]
@@ -548,6 +517,33 @@ def stdpsf_reader(filename, sci_exten=None):
     nddata = NDData(data, meta=meta)
 
     return GriddedPSFModel(nddata)
+
+
+def _split_detectors(data, xgrid, ygrid, npsfs, nypsfs, nxpsfs, nxdet,
+                     nydet, det_size, det_map, sci_exten):
+    ii = np.arange(npsfs).reshape((nypsfs, nxpsfs))
+    nxpsfs //= nxdet
+    nypsfs //= nydet
+    ndet = nxdet * nydet
+    ii = reshape_as_blocks(ii, (nypsfs, nxpsfs))
+    ii = ii.reshape(ndet, npsfs // ndet)
+
+    # sci_exten -> index
+    det_idx = det_map[sci_exten]
+    idx = ii[det_idx]
+    data = data[idx]
+
+    xp = det_idx % nxdet
+    i0 = xp * nxpsfs
+    i1 = i0 + nxpsfs
+    xgrid = xgrid[i0:i1] - xp * det_size
+
+    if det_idx < nxdet:
+        ygrid = ygrid[:nypsfs]
+    else:
+        ygrid = ygrid[nypsfs:] - det_size
+
+    return data, xgrid, ygrid
 
 
 def _get_metadata(filename, npsfs, sci_exten):
