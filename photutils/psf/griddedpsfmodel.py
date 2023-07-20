@@ -361,7 +361,7 @@ class GriddedPSFModel(Fittable2DModel):
         return evaluated_model
 
 
-def stdpsf_reader(filename, sci_exten=None):
+def stdpsf_reader(filename, detector_id=None):
     """
     Generate a `~photutils.psf.GriddedPSFModel` from a STScI
     standard-format PSF (STDPSF) FITS file.
@@ -382,21 +382,32 @@ def stdpsf_reader(filename, sci_exten=None):
     filename : str
         The name of the STDPDF FITS file. A URL can also be used.
 
-    sci_exten : `None` or int, optional
+    detector_id : `None` or int, optional
         For STDPSF files that contain ePSF grids for multiple detectors,
-        one will need to identify the detector using the science
-        extension number of the data for that detector found in the
-        calibrated (FLT) FITS file.
+        one will need to identify the detector for which to extract the
+        ePSF grid. This keyword is ignored for STDPSF files that do not
+        contain ePSF grids for multiple detectors.
 
-        For ACS/WFC, the options are 1 (WFC2) or 2 (WFC1). For
-        WFC3/UVIS, the options are 1 (UVIS2) or 2 (UVIS1). For these two
-        instruments, detector 1 is above detector 2 in the y direction.
-        However, in the FLT FITS files, the (sci, 1) extension
-        corresponds to detector 2 and the (sci, 2) extension corresponds
-        to detector 1.
+        For WFPC2, the detector value (int) should be:
 
-        This keyword is ignored for STDPSF files that do not contain
-        ePSF grids for multiple detectors.
+            - 1: PC, 2: WF2, 3: WF3, 4: WF4
+
+        For ACS/WFC and WFC3/UVIS, the detector value should be:
+
+            - 1: WFC2, UVIS2 (sci, 1)
+            - 2: WFC1, UVIS1 (sci, 2)
+
+        Note that for these two instruments, detector 1 is above
+        detector 2 in the y direction. However, in the FLT FITS files,
+        the (sci, 1) extension corresponds to detector 2 (WFC2, UVIS2)
+        and the (sci, 2) extension corresponds to detector 1 (WFC1,
+        UVIS1).
+
+        For NIRCam NRCSW files that contain ePSF grids for all 8 SW
+        detectors, the detector value should be:
+
+            - 1: A1, 2: A2, 3: A3, 4: A4
+            - 5: B1, 6: B2, 7: B3, 8: B4
 
     Returns
     -------
@@ -445,26 +456,26 @@ def stdpsf_reader(filename, sci_exten=None):
     # (5, 5)   # NIRCam LW
     # (3, 3)   # MIRI
     if npsfs in (90, 56):  # ACS/WFC or WFC3/UVIS data (2 chips)
-        if sci_exten is None:
-            raise ValueError('sci_exten must be specified for ACS/WFC '
+        if detector_id is None:
+            raise ValueError('detector_id must be specified for ACS/WFC '
                              'and WFC3/UVIS PSFs.')
-        if sci_exten not in (1, 2):
-            raise ValueError('sci_exten must be 1 or 2.')
+        if detector_id not in (1, 2):
+            raise ValueError('detector_id must be 1 or 2.')
 
         # ACS/WFC1 and WFC3/UVIS1 chip1 (sci, 2) are above chip2 (sci, 1)
         # in y-pixel coordinates
-        ygrid = ygrid.reshape((2, ygrid.shape[0] // 2))[sci_exten - 1]
-        if sci_exten == 2:
+        ygrid = ygrid.reshape((2, ygrid.shape[0] // 2))[detector_id - 1]
+        if detector_id == 2:
             ygrid -= 2048
 
-        data = data.reshape((2, npsfs // 2, data_ny, data_nx))[sci_exten - 1]
+        data = data.reshape((2, npsfs // 2, data_ny, data_nx))[detector_id - 1]
         nypsfs //= 2
 
     if npsfs == 36:  # WFPC2 data (4 chips)
-        if sci_exten is None:
-            raise ValueError('sci_exten must be specified for WFPC2 PSFs')
-        if sci_exten not in range(1, 5):
-            raise ValueError('sci_exten must be between 1 and 4, inclusive')
+        if detector_id is None:
+            raise ValueError('detector_id must be specified for WFPC2 PSFs')
+        if detector_id not in range(1, 5):
+            raise ValueError('detector_id must be between 1 and 4, inclusive')
 
         nxdet = 2
         nydet = 2
@@ -477,15 +488,15 @@ def stdpsf_reader(filename, sci_exten=None):
 
         data, xgrid, ygrid = _split_detectors(data, xgrid, ygrid, npsfs,
                                               nypsfs, nxpsfs, nxdet, nydet,
-                                              det_size, det_map, sci_exten)
+                                              det_size, det_map, detector_id)
         nxpsfs = xgrid.shape[0]
         nypsfs = ygrid.shape[0]
 
     if npsfs == 200:  # NIRCam SW data (8 chips)
-        if sci_exten is None:
-            raise ValueError('sci_exten must be specified for NRCSW PSFs')
-        if sci_exten not in range(1, 9):
-            raise ValueError('sci_exten must be between 1 and 8, inclusive')
+        if detector_id is None:
+            raise ValueError('detector_id must be specified for NRCSW PSFs')
+        if detector_id not in range(1, 9):
+            raise ValueError('detector_id must be between 1 and 8, inclusive')
 
         nxdet = 4
         nydet = 2
@@ -498,7 +509,7 @@ def stdpsf_reader(filename, sci_exten=None):
 
         data, xgrid, ygrid = _split_detectors(data, xgrid, ygrid, npsfs,
                                               nypsfs, nxpsfs, nxdet, nydet,
-                                              det_size, det_map, sci_exten)
+                                              det_size, det_map, detector_id)
         nxpsfs = xgrid.shape[0]
         nypsfs = ygrid.shape[0]
 
@@ -510,7 +521,7 @@ def stdpsf_reader(filename, sci_exten=None):
             'oversampling': oversampling}
 
     # try to get metadata
-    file_meta = _get_metadata(filename, npsfs, sci_exten)
+    file_meta = _get_metadata(filename, npsfs, detector_id)
     if file_meta is not None:
         meta.update(file_meta)
 
@@ -520,7 +531,7 @@ def stdpsf_reader(filename, sci_exten=None):
 
 
 def _split_detectors(data, xgrid, ygrid, npsfs, nypsfs, nxpsfs, nxdet,
-                     nydet, det_size, det_map, sci_exten):
+                     nydet, det_size, det_map, detector_id):
     ii = np.arange(npsfs).reshape((nypsfs, nxpsfs))
     nxpsfs //= nxdet
     nypsfs //= nydet
@@ -528,8 +539,8 @@ def _split_detectors(data, xgrid, ygrid, npsfs, nypsfs, nxpsfs, nxdet,
     ii = reshape_as_blocks(ii, (nypsfs, nxpsfs))
     ii = ii.reshape(ndet, npsfs // ndet)
 
-    # sci_exten -> index
-    det_idx = det_map[sci_exten]
+    # detector_id -> index
+    det_idx = det_map[detector_id]
     idx = ii[det_idx]
     data = data[idx]
 
@@ -546,7 +557,7 @@ def _split_detectors(data, xgrid, ygrid, npsfs, nypsfs, nxpsfs, nxdet,
     return data, xgrid, ygrid
 
 
-def _get_metadata(filename, npsfs, sci_exten):
+def _get_metadata(filename, npsfs, detector_id):
     if isinstance(filename, io.FileIO):
         filename = filename.name
 
@@ -579,18 +590,18 @@ def _get_metadata(filename, npsfs, sci_exten):
     except KeyError:
         raise ValueError(f'Unknown detector {detector}.')
 
-    if inst_det[1] in ('WFC', 'UVIS'):
-        chip = 2 if sci_exten == 1 else 1
-        inst_det[1] = f'{inst_det[1]}{chip}'
-
     if inst_det[1] == 'WFPC2':
         wfpc2_map = {1: 'PC', 2: 'WF2', 3: 'WF3', 4: 'WF4'}
-        inst_det[1] = wfpc2_map[sci_exten]
+        inst_det[1] = wfpc2_map[detector_id]
+
+    if inst_det[1] in ('WFC', 'UVIS'):
+        chip = 2 if detector_id == 1 else 1
+        inst_det[1] = f'{inst_det[1]}{chip}'
 
     if inst_det[1] == 'NRCSW':
         sw_map = {1: 'A1', 2: 'A2', 3: 'A3', 4: 'A4',
                   5: 'B1', 6: 'B2', 7: 'B3', 8: 'B4'}
-        inst_det[1] = sw_map[sci_exten]
+        inst_det[1] = sw_map[detector_id]
 
     meta = {'STDPSF': filename,
             'instrument': inst_det[0],
