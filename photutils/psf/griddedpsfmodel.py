@@ -360,6 +360,50 @@ class GriddedPSFModel(Fittable2DModel):
 
         return evaluated_model
 
+    def plot_grid(self, meandiff=False, norm=None, cmap=None,
+                  interpolation='nearest', figsize=(10, 8), zoom=True,
+                  **kwargs):
+        """
+        Plot the PSF grid.
+        """
+        import matplotlib.pyplot as plt
+
+        data = self.data
+        if meandiff:
+            data = self.data - np.mean(self.data, axis=0)
+
+        nrows, ncols = self.meta['grid_shape']
+        fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+        if kwargs:
+            plt.subplots_adjust(**kwargs)
+
+        ax = np.atleast_1d(ax)  # handle case of only 1 ePSF
+        ax = np.flipud(ax)      # plot first row at the bottom
+        ax = ax.ravel()
+
+        npsfs = data.shape[0]
+        for i in range(npsfs):
+            im = ax[i].imshow(data[i], norm=norm, cmap=cmap,
+                              interpolation=interpolation, origin='lower')
+            ax[i].xaxis.set_visible(False)
+            ax[i].yaxis.set_visible(False)
+            ax[i].set_title(f'{self.grid_xypos[i]}', fontsize='medium')
+
+            if zoom:
+                ax[i].use_sticky_edges = False
+                ax[i].margins(x=-0.25, y=-0.25)
+
+        title1 = (f"{self.meta.get('instrument', '')} "
+                  f"{self.meta.get('detector', '')} "
+                  f"{self.meta.get('filter', '')}")
+        if meandiff:
+            title1 += ' (PSF differences from mean)'
+        title2 = f'Oversampling: {self.oversampling}'
+        plt.suptitle(f'{title1}\n{title2}', fontsize='medium')
+        fig.colorbar(im, ax=ax, shrink=0.93)
+
+        return
+
 
 def stdpsf_reader(filename, detector_id=None):
     """
