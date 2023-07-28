@@ -29,6 +29,8 @@ New Features
 
   - Added a ``GriddedPSFModel`` ``fill_value`` attribute, [#1583]
 
+  - Added a function to make GriddedPSFModel from EPSFs [#1584]
+
 Bug Fixes
 ^^^^^^^^^
 

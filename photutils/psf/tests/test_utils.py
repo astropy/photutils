@@ -14,8 +14,8 @@ from numpy.testing import assert_allclose
 from photutils.psf.groupstars import DAOGroup
 from photutils.psf.models import IntegratedGaussianPRF
 from photutils.psf.photometry_depr import BasicPSFPhotometry
-from photutils.psf.utils import (get_grouped_psf_model, prepare_psf_model,
-                                 subtract_psf)
+from photutils.psf.utils import (get_grouped_psf_model, grid_from_epsfs,
+                                 prepare_psf_model, subtract_psf)
 from photutils.utils._optional_deps import HAS_SCIPY
 
 PSF_SIZE = 11
@@ -260,3 +260,103 @@ def test_subtract_psf():
             posflux.rename_column(n, n.split('_')[0] + '_fit')
         residuals = subtract_psf(image, psf, posflux)
         assert np.max(np.abs(residuals)) < 0.0052
+
+class TestGridFromEPSFs:
+    """Tests for `photutils.psf.utils.grid_from_epsfs`."""
+
+    def setup_class(self, cutout_size=25):
+        # make a set of 4 EPSF models
+
+        self.cutout_size = cutout_size
+
+        # make simulated image
+        hdu = datasets.load_simulated_hst_star_image()
+        data = hdu.data
+
+        # break up the image into four quadrants
+        q1 = data[0:500, 0:500]
+        q2 = data[0:500, 500:1000]
+        q3 = data[500:1000, 0:500]
+        q4 = data[500:1000, 500:1000]
+
+        # select some starts from each quadrant to use to build the epsf
+        quad_stars = {'q1': {'data': q1, 'fiducial': (0., 0.), 'epsf': None},
+                      'q2': {'data': q2, 'fiducial': (1000., 1000.), 'epsf': None},
+                      'q3': {'data': q3, 'fiducial': (1000., 0.), 'epsf': None},
+                      'q4': {'data': q4, 'fiducial': (0., 1000.), 'epsf': None}}
+
+        for q in ['q1', 'q2', 'q3', 'q4']:
+            quad_data = quad_stars[q]['data']
+            peaks_tbl = find_peaks(quad_data, threshold=500.)
+
+            # filter out sources near edge
+            size = cutout_size
+            hsize = (size - 1) / 2
+            x = peaks_tbl['x_peak']
+            y = peaks_tbl['y_peak']
+            mask = ((x > hsize) & (x < (quad_data.shape[1] - 1 - hsize))
+                    & (y > hsize) & (y < (quad_data.shape[0] - 1 - hsize)))
+
+            stars_tbl = Table()
+            stars_tbl['x'] = peaks_tbl['x_peak'][mask]
+            stars_tbl['y'] = peaks_tbl['y_peak'][mask]
+
+            stars = extract_stars(NDData(quad_data), stars_tbl,
+                                  size=cutout_size)
+
+            epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+                                       progress_bar=False)
+            epsf, fitted_stars = epsf_builder(stars)
+
+            # set x_0, y_0 to fiducial point
+            epsf.y_0 = quad_stars[q]['fiducial'][0]
+            epsf.x_0 = quad_stars[q]['fiducial'][1]
+
+            quad_stars[q]['epsf'] = epsf
+
+        self.epsfs = [quad_stars[x]['epsf'] for x in quad_stars]
+        self.fiducials = [quad_stars[x]['fiducial'] for x in quad_stars]
+
+    def test_basic_test_grid_from_epsfs(self):
+
+        psf_grid = grid_from_epsfs(self.epsfs)
+
+        assert np.all(psf_grid.oversampling == self.epsfs[0].oversampling)
+        assert psf_grid.data.shape == (4, psf_grid.oversampling * 25 + 1,
+                                       psf_grid.oversampling * 25 + 1)
+
+    def test_fiducials(self):
+        """Test both options for setting PSF locations"""
+
+        # default option x_0 and y_0s on input EPSFs
+        psf_grid = grid_from_epsfs(self.epsfs)
+
+        assert psf_grid.meta['grid_xypos'] == [(0.0, 0.0), (1000.0, 1000.0),
+                                               (0.0, 1000.0), (1000.0, 0.0)]
+
+        # or pass in a list
+        fiducials = [(250.0, 250.0), (750.0, 750.0),
+                     (250.0, 750.0), (750.0, 250.0)]
+
+        psf_grid = grid_from_epsfs(self.epsfs, fiducials=fiducials)
+        assert psf_grid.meta['grid_xypos'] == fiducials
+
+    def test_meta(self):
+        """Test the option for setting 'meta'"""
+
+        keys = ['grid_xypos', 'oversampling', 'fill_value']
+
+        # when 'meta' isn't provided, there should be just three keys
+        psf_grid = grid_from_epsfs(self.epsfs)
+        assert list(psf_grid.meta.keys()) == keys
+
+        # when meta is provided, those new keys should exist and anything
+        # in the list above should be overwritten
+        meta = {'grid_xypos': 0.0, 'oversampling': 0.0,
+                'fill_value': -999, 'extra_key': 'extra'}
+        psf_grid = grid_from_epsfs(self.epsfs, meta=meta)
+        assert list(psf_grid.meta.keys()) == keys + ['extra_key']
+        assert psf_grid.meta['grid_xypos'].sort() == self.fiducials.sort()
+        assert psf_grid.meta['oversampling'] == 4
+        assert psf_grid.meta['fill_value'] == 0.0
+
