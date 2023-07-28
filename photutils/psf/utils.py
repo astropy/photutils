@@ -339,6 +339,7 @@ def subtract_psf(data, psf, posflux, *, subshape=None):
 
     return subbeddata
 
+
 def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
 
     """
@@ -490,4 +491,3 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     grid = GriddedPSFModel(data, fill_value=fill_value)
 
     return grid
-

@@ -261,6 +261,7 @@ def test_subtract_psf():
         residuals = subtract_psf(image, psf, posflux)
         assert np.max(np.abs(residuals)) < 0.0052
 
+
 class TestGridFromEPSFs:
     """Tests for `photutils.psf.utils.grid_from_epsfs`."""
 
@@ -359,4 +360,3 @@ class TestGridFromEPSFs:
         assert psf_grid.meta['grid_xypos'].sort() == self.fiducials.sort()
         assert psf_grid.meta['oversampling'] == 4
         assert psf_grid.meta['fill_value'] == 0.0
-
