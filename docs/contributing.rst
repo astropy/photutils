@@ -35,4 +35,4 @@ experience necessary):
 
 * `Coding Guidelines <https://docs.astropy.org/en/latest/development/codeguide.html>`_
 
-* `Developer Documentation <https://docs.astropy.org/en/latest/#developer-documentation>`_
+* `Developer Documentation <https://docs.astropy.org/en/latest/development/index.html>`_
