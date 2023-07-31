@@ -5,7 +5,7 @@ on:
     # run at 6am UTC on Tue-Fri (complete tests are run every Monday)
     - cron: '0 6 * * 2-5'
   pull_request:
-    # We also want this workflow triggered if the 'Extra CI' label is added
+    # We also want this workflow triggered if the 'Daily CI' label is added
     # or present when PR is updated
     types:
       - synchronize
@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   tests:
-    if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Extra CI')))
+    if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Daily CI')))
     name: ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.allow_failure }}

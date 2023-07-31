@@ -5,7 +5,7 @@ on:
     # run every Monday at 5am UTC
     - cron: '0 5 * * 1'
   pull_request:
-    # We also want this workflow triggered if the 'Extra CI' label is added
+    # We also want this workflow triggered if the 'Weekly CI' label is added
     # or present when PR is updated
     types:
       - synchronize
@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   tests:
-    if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Extra CI')))
+    if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Weekly CI')))
     name: ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.allow_failure }}
@@ -70,8 +70,8 @@ jobs:
     # of using system libraries and using pytest directly.
 
     runs-on: ubuntu-20.04
-    name: Python 3.11
-    if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Extra CI')))
+    name: More architectures
+    if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Arch CI')))
     env:
       ARCH_ON_CI: ${{ matrix.arch }}
 
