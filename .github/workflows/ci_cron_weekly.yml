@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 jobs:
-  cron-test-weekly:
+  tests:
     if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Extra CI')))
     name: ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
