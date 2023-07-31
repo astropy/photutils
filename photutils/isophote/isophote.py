@@ -795,7 +795,7 @@ def _get_properties(isophote_list):
     for an_item in isophote_list.__class__.__dict__:
         p_type = isophote_list.__class__.__dict__[an_item]
         # Exclude the sample property
-        if type(p_type) == property and 'sample' not in an_item:
+        if isinstance(p_type, property) and 'sample' not in an_item:
             properties[str(an_item)] = str(an_item)
     return properties
 
