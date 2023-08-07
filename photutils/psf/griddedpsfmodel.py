@@ -17,6 +17,7 @@ from astropy.io.fits import HDUList
 from astropy.io.fits.verify import VerifyWarning
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData, reshape_as_blocks
+from astropy.visualization import simple_norm
 
 __all__ = ['GriddedPSFModel', 'stdpsf_reader']
 
@@ -360,49 +361,145 @@ class GriddedPSFModel(Fittable2DModel):
 
         return evaluated_model
 
-    def plot_grid(self, meandiff=False, norm=None, cmap=None,
-                  interpolation='nearest', figsize=(10, 8), zoom=True,
-                  **kwargs):
+    def _reshape_grid(self, data):
+        """
+        Reshape the 3D ePSF grid as a 2D array of horizontally and
+        vertically stacked PSFs.
+        """
+        nypsfs = self._ygrid.shape[0]
+        nxpsfs = self._xgrid.shape[0]
+        ny, nx = self.data.shape[1:]
+        data.shape = (nypsfs, nxpsfs, ny, nx)
+
+        return data.transpose([0, 2, 1, 3]).reshape(nypsfs * ny, nxpsfs * nx)
+
+    def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
+                  deltas=False, cmap=None, dividers=True,
+                  divider_color='darkgray', divider_ls='-', figsize=None):
         """
         Plot the PSF grid.
+
+        Parameters
+        ----------
+        ax : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
+        vmax_scale : float, optional
+            Scale factor to increase or decrease the display stretch
+            limits. This value is multiplied by the peak ePSF value
+            to determine the plotting ``vmax``. The defaults are 1.0
+            for plotting the ePSF data and 0.03 for plotting the ePSF
+            difference data (``deltas=True``). If ``deltas=True``,
+            the ``vmin`` is set to ``-vmax``. If ``deltas=False`` the
+            ``vmin`` is set to ``vmax`` / 1e4.
+
+        peak_norm : bool, optional
+            Whether to normalize the ePSF data by the peak value. The
+            default shows the ePSF flux per pixel.
+
+        deltas : bool, optional
+            Set to `True` to show the differences between each ePSF
+            and the average ePSF.
+
+        cmap : str or `matplotlib.colors.Colormap`, optional
+            The colormap to use. The default is `None`, which uses
+            the 'viridis' colormap for plotting ePSF data and the
+            'gray_r' colormap for plotting the ePSF difference data
+            (``deltas=True``).
+
+        show_dividers : bool, optional
+            Whether to show divider lines between the ePSFs.
+
+        divider_color, divider_ls : str, optional
+            Matplotlib display options for the divider lines between
+            ePSFs.
+
+        figsize : (float, float), optional
+            The figure (width, height) in inches.
         """
         import matplotlib.pyplot as plt
+        from matplotlib import cm
 
-        data = self.data
-        if meandiff:
-            data = self.data - np.mean(self.data, axis=0)
+        data = self.data.copy()
+        if deltas:
+            data -= np.mean(data, axis=0)
+        data = self._reshape_grid(data)
 
-        nrows, ncols = self.meta['grid_shape']
-        fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
-        if kwargs:
-            plt.subplots_adjust(**kwargs)
+        if ax is None:
+            plt.figure(figsize=figsize)
+            ax = plt.gca()
 
-        ax = np.atleast_1d(ax)  # handle case of only 1 ePSF
-        ax = np.flipud(ax)      # plot first row at the bottom
-        ax = ax.ravel()
+        if peak_norm:  # normalize relative to peak
+            data /= data.max()
 
-        npsfs = data.shape[0]
-        for i in range(npsfs):
-            im = ax[i].imshow(data[i], norm=norm, cmap=cmap,
-                              interpolation=interpolation, origin='lower')
-            ax[i].xaxis.set_visible(False)
-            ax[i].yaxis.set_visible(False)
-            ax[i].set_title(f'{self.grid_xypos[i]}', fontsize='medium')
+        if deltas:
+            if cmap is None:
+                cmap = cm.gray_r.copy()
 
-            if zoom:
-                ax[i].use_sticky_edges = False
-                ax[i].margins(x=-0.25, y=-0.25)
+            if vmax_scale is None:
+                vmax_scale = 0.03
+            vmax = data.max() * vmax_scale
+            vmin = -vmax
+            norm = simple_norm(data, 'linear', min_cut=vmin, max_cut=vmax)
+        else:
+            if cmap is None:
+                cmap = cm.viridis.copy()
 
-        title1 = (f"{self.meta.get('instrument', '')} "
-                  f"{self.meta.get('detector', '')} "
-                  f"{self.meta.get('filter', '')}")
-        if meandiff:
-            title1 += ' (PSF differences from mean)'
-        title2 = f'Oversampling: {self.oversampling}'
-        plt.suptitle(f'{title1}\n{title2}', fontsize='medium')
-        fig.colorbar(im, ax=ax, shrink=0.93)
+            if vmax_scale is None:
+                vmax_scale = 1.0
+            vmax = data.max() * vmax_scale
+            vmin = vmax / 1.0e4
+            norm = simple_norm(data, 'log', min_cut=vmin, max_cut=vmax,
+                               log_a=1.0e4)
 
-        return
+        # Set up the coordinate axes to later set tick labels based on
+        # detector ePSF coordinates. This sets up axes to have, behind the
+        # scenes, the ePSFs centered at integer coords 0, 1, 2, 3 etc.
+        # extent = (left, right, bottom, top)
+        nypsfs = self._ygrid.shape[0]
+        nxpsfs = self._xgrid.shape[0]
+        extent = [-0.5, nxpsfs - 0.5, -0.5, nypsfs - 0.5]
+
+        ax.imshow(data, extent=extent, norm=norm, cmap=cmap, origin='lower')
+
+        # Use the axes set up above to set appropriate tick labels
+        ax.set_xticks(np.arange(nxpsfs))
+        ax.set_xticklabels(self._xgrid)
+        ax.set_xlabel('ePSF location in detector X pixels')
+        ax.set_yticks(np.arange(nypsfs))
+        ax.set_yticklabels(self._ygrid)
+        ax.set_ylabel('ePSF location in detector Y pixels')
+
+        if dividers:
+            for ix in range(nxpsfs):
+                ax.axvline(ix + 0.5, color=divider_color, ls=divider_ls)
+            for iy in range(nypsfs):
+                ax.axhline(iy + 0.5, color=divider_color, ls=divider_ls)
+
+        title = (f"{self.meta.get('instrument', '')} "
+                 f"{self.meta.get('detector', '')} "
+                 f"{self.meta.get('filter', '')}")
+        if title != '':
+            # add extra space at end
+            title += ' '
+
+        if deltas:
+            ax.set_title(f'{title}ePSFs – average ePSF')
+            if peak_norm:
+                label = 'Difference relative to average ePSF peak'
+            else:
+                label = 'Difference relative to average ePSF values'
+        else:
+            ax.set_title(f'{title}ePSFs')
+            if peak_norm:
+                label = 'Scale relative to ePSF peak pixel'
+            else:
+                label = 'ePSF flux per pixel'
+
+        cbar = plt.colorbar(label=label, mappable=ax.images[0])
+        if not deltas:
+            cbar.ax.set_yscale('log')
 
 
 def stdpsf_reader(filename, detector_id=None):
@@ -450,8 +547,8 @@ def stdpsf_reader(filename, detector_id=None):
         For NIRCam NRCSW files that contain ePSF grids for all 8 SW
         detectors, the detector value should be:
 
-            - 1: A1, 2: A2, 3: A3, 4: A4
-            - 5: B1, 6: B2, 7: B3, 8: B4
+            * 1: A1, 2: A2, 3: A3, 4: A4
+            * 5: B1, 6: B2, 7: B3, 8: B4
 
     Returns
     -------
@@ -565,7 +662,7 @@ def stdpsf_reader(filename, detector_id=None):
             'oversampling': oversampling}
 
     # try to get metadata
-    file_meta = _get_metadata(filename, npsfs, detector_id)
+    file_meta = _get_metadata(filename, detector_id)
     if file_meta is not None:
         meta.update(file_meta)
 
@@ -601,7 +698,7 @@ def _split_detectors(data, xgrid, ygrid, npsfs, nypsfs, nxpsfs, nxdet,
     return data, xgrid, ygrid
 
 
-def _get_metadata(filename, npsfs, detector_id):
+def _get_metadata(filename, detector_id):
     if isinstance(filename, io.FileIO):
         filename = filename.name
 
