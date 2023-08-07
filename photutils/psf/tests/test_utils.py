@@ -12,8 +12,8 @@ from astropy.table import Table
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
-from photutils.detection import find_peaks
 from photutils import datasets
+from photutils.detection import find_peaks
 from photutils.psf import EPSFBuilder, extract_stars
 from photutils.psf.groupstars import DAOGroup
 from photutils.psf.models import IntegratedGaussianPRF

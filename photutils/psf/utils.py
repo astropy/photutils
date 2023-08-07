@@ -9,6 +9,7 @@ from astropy.nddata import NDData
 from astropy.nddata.utils import add_array, extract_array
 from astropy.table import QTable
 from astropy.utils.decorators import deprecated
+
 from photutils.psf.models import EPSFModel, GriddedPSFModel
 
 __all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf',
