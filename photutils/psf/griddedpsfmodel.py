@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides models for doing PSF/PRF-fitting photometry.
+This module defines the GriddedPSFModel and related tools.
 """
 
 import copy
@@ -20,9 +20,47 @@ from astropy.nddata import NDData, reshape_as_blocks
 from astropy.visualization import simple_norm
 
 __all__ = ['GriddedPSFModel', 'stdpsf_reader']
+__doctest_skip__ = ['GriddedPSFModelRead']
 
 
 class GriddedPSFModelRead(registry.UnifiedReadWrite):
+    """
+    Read and parse a STDPSF FITS file into a `GriddedPSFModel` instance.
+
+    This class enables the astropy unified I/O layer for
+    `GriddedPSFModel`. This allows easily reading a file in many
+    supported data formats using syntax such as::
+
+      >>> from photutils.psf import GriddedPSFModel
+      >>> psf_model = GriddedPSFModel.read('STDPSF_ACSWFC_F814W.fits')
+
+    Get help on the available readers for `GriddedPSFModel` using the
+    ``help()`` method::
+
+      >>> # Get help reading Table and list supported formats
+      >>> GriddedPSFModel.read.help()
+
+      >>> # Get detailed help on the STSPSF FITS reader
+      >>> GriddedPSFModel.read.help('stdpsf')
+
+      >>> # Print list of available formats
+      >>> GriddedPSFModel.read.list_formats()
+
+    Parameters
+    ----------
+    *args : tuple, optional
+        Positional arguments passed through to data reader. If supplied
+        the first argument is typically the input filename.
+    format : str
+        File format specifier.
+    **kwargs : dict, optional
+        Keyword arguments passed through to data reader.
+
+    Returns
+    -------
+    out : `~photutils.psf.GriddedPSFModel`
+        A gridded ePSF Model corresponding to FITS file contents.
+    """
     def __init__(self, instance, cls):
         super().__init__(instance, cls, "read", registry=None)
         # uses default global registry
@@ -33,9 +71,11 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
 
 class GriddedPSFModel(Fittable2DModel):
     """
-    A fittable 2D model containing a grid ePSF models defined at
-    specific locations that are interpolated to evaluate a ePSF at an
-    arbitrary (x, y) position.
+    A fittable 2D model containing a grid ePSF models.
+
+    The ePSF models are defined at fiducial detector locations and are
+    bilinearly interpolated to calculate an ePSF model at an arbitrary
+    (x, y) detector position.
 
     Parameters
     ----------
@@ -43,20 +83,20 @@ class GriddedPSFModel(Fittable2DModel):
         A `~astropy.nddata.NDData` object containing the grid of
         reference ePSF arrays. The data attribute must contain a 3D
         `~numpy.ndarray` containing a stack of the 2D ePSFs with a shape
-        of ``(N_psf, PSF_ny, PSF_nx)``. The meta attribute must be
+        of ``(N_psf, ePSF_ny, ePSF_nx)``. The meta attribute must be
         `dict` containing the following:
 
             * ``'grid_xypos'``: A list of the (x, y) grid positions of
-              each reference PSF. The order of positions should match the
-              first axis of the 3D `~numpy.ndarray` of PSFs. In other
+              each reference ePSF. The order of positions should match the
+              first axis of the 3D `~numpy.ndarray` of ePSFs. In other
               words, ``grid_xypos[i]`` should be the (x, y) position of
-              the reference PSF defined in ``data[i]``.
+              the reference ePSF defined in ``data[i]``.
 
             * ``'oversampling'``: The integer oversampling factor of the
-              PSF.
+              ePSF.
 
         The meta attribute may contain other properties such as the
-        telescope, instrument, detector, and filter of the PSF.
+        telescope, instrument, detector, and filter of the ePSF.
 
     Methods
     -------
@@ -66,7 +106,7 @@ class GriddedPSFModel(Fittable2DModel):
         the provided parameters.
     """
 
-    flux = Parameter(description='Intensity scaling factor for the PSF '
+    flux = Parameter(description='Intensity scaling factor for the ePSF '
                      'model.', default=1.0)
     x_0 = Parameter(description='x position in the output coordinate grid '
                     'where the model is evaluated.', default=0.0)
@@ -118,7 +158,7 @@ class GriddedPSFModel(Fittable2DModel):
                              'dictionary.')
         if len(data.meta['grid_xypos']) != data.data.shape[0]:
             raise ValueError('The length of grid_xypos must match the number '
-                             'of input PSFs.')
+                             'of input ePSFs.')
 
         if 'oversampling' not in data.meta:
             raise ValueError('"oversampling" must be in the nddata meta '
@@ -156,8 +196,8 @@ class GriddedPSFModel(Fittable2DModel):
         """
         Return a copy of this model.
 
-        Note that the PSF grid data is not copied. Use the `deepcopy`
-        method if you want to copy the PSF grid data.
+        Note that the ePSF grid data is not copied. Use the `deepcopy`
+        method if you want to copy the ePSF grid data.
         """
         return self.__class__(self._data_input, flux=self.flux.value,
                               x_0=self.x_0.value, y_0=self.y_0.value,
@@ -220,9 +260,9 @@ class GriddedPSFModel(Fittable2DModel):
         Parameters
         ----------
         x, y : float
-            The ``(x, y)`` position where the PSF is to be evaluated.
+            The ``(x, y)`` position where the ePSF is to be evaluated.
             The position must be inside the region defined by the grid
-            of PSF positions.
+            of ePSF positions.
 
         Returns
         -------
@@ -294,7 +334,7 @@ class GriddedPSFModel(Fittable2DModel):
 
     def _calc_interpolator_uncached(self, x_0, y_0):
         """
-        Return the local interpolation function for the PSF model at
+        Return the local interpolation function for the ePSF model at
         (x_0, y_0).
 
         Note that the interpolator will be cached by _calc_interpolator.
@@ -305,12 +345,12 @@ class GriddedPSFModel(Fittable2DModel):
         if (x_0 < self._xgrid[0] or x_0 > self._xgrid[-1]
                 or y_0 < self._ygrid[0] or y_0 > self._ygrid[-1]):
             # position is outside of the grid, so simply use the
-            # closest reference PSF
+            # closest reference ePSF
             ref_index = np.argsort(np.hypot(self._grid_xpos - x_0,
                                             self._grid_ypos - y_0))[0]
             psf_image = self.data[ref_index, :, :]
         else:
-            # find the four bounding reference PSFs and interpolate
+            # find the four bounding reference ePSFs and interpolate
             ref_indices = self._find_bounding_points(x_0, y_0)
             xyref = np.array(self.grid_xypos)[ref_indices]
             psfs = self.data[ref_indices, :, :]
@@ -335,17 +375,17 @@ class GriddedPSFModel(Fittable2DModel):
         if not np.isscalar(y_0):
             y_0 = y_0[0]
 
-        # Calculate the local interpolation function for the PSF at
+        # Calculate the local interpolation function for the ePSF at
         # (x_0, y_0). Only the integer part of the position is input in
         # order to have effective caching.
         interpolator = self._calc_interpolator(int(x_0), int(y_0))
 
-        # now evaluate the PSF at the (x_0, y_0) subpixel position on
+        # now evaluate the ePSF at the (x_0, y_0) subpixel position on
         # the input (x, y) values
         xi = self.oversampling * (np.asarray(x, dtype=float) - x_0)
         yi = self.oversampling * (np.asarray(y, dtype=float) - y_0)
 
-        # define origin at the PSF image center
+        # define origin at the ePSF image center
         ny, nx = self.data.shape[1:]
         xi += (nx - 1) / 2
         yi += (ny - 1) / 2
@@ -364,7 +404,7 @@ class GriddedPSFModel(Fittable2DModel):
     def _reshape_grid(self, data):
         """
         Reshape the 3D ePSF grid as a 2D array of horizontally and
-        vertically stacked PSFs.
+        vertically stacked ePSFs.
         """
         nypsfs = self._ygrid.shape[0]
         nxpsfs = self._xgrid.shape[0]
@@ -377,7 +417,7 @@ class GriddedPSFModel(Fittable2DModel):
                   deltas=False, cmap=None, dividers=True,
                   divider_color='darkgray', divider_ls='-', figsize=None):
         """
-        Plot the PSF grid.
+        Plot the grid of ePSF models.
 
         Parameters
         ----------
@@ -386,13 +426,13 @@ class GriddedPSFModel(Fittable2DModel):
             current `~matplotlib.axes.Axes` instance is used.
 
         vmax_scale : float, optional
-            Scale factor to increase or decrease the display stretch
-            limits. This value is multiplied by the peak ePSF value
-            to determine the plotting ``vmax``. The defaults are 1.0
-            for plotting the ePSF data and 0.03 for plotting the ePSF
-            difference data (``deltas=True``). If ``deltas=True``,
-            the ``vmin`` is set to ``-vmax``. If ``deltas=False`` the
-            ``vmin`` is set to ``vmax`` / 1e4.
+            Scale factor to apply to the image stretch limits. This
+            value is multiplied by the peak ePSF value to determine the
+            plotting ``vmax``. The defaults are 1.0 for plotting the
+            ePSF data and 0.03 for plotting the ePSF difference data
+            (``deltas=True``). If ``deltas=True``, the ``vmin`` is set
+            to ``-vmax``. If ``deltas=False`` the ``vmin`` is set to
+            ``vmax`` / 1e4.
 
         peak_norm : bool, optional
             Whether to normalize the ePSF data by the peak value. The
@@ -412,8 +452,9 @@ class GriddedPSFModel(Fittable2DModel):
             Whether to show divider lines between the ePSFs.
 
         divider_color, divider_ls : str, optional
-            Matplotlib display options for the divider lines between
-            ePSFs.
+            Matplotlib color and linestyle options for the divider
+            lines between ePSFs. These keywords have no effect unless
+            ``show_dividers=True``.
 
         figsize : (float, float), optional
             The figure (width, height) in inches.
@@ -505,7 +546,7 @@ class GriddedPSFModel(Fittable2DModel):
 def stdpsf_reader(filename, detector_id=None):
     """
     Generate a `~photutils.psf.GriddedPSFModel` from a STScI
-    standard-format PSF (STDPSF) FITS file.
+    standard-format ePSF (STDPSF) FITS file.
 
     .. note::
         Instead of being used directly, this function is intended to be
@@ -553,7 +594,7 @@ def stdpsf_reader(filename, detector_id=None):
     Returns
     -------
     model : `~photutils.psf.GriddedPSFModel`
-        The gridded PSF model.
+        The gridded ePSF model.
     """
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', VerifyWarning)
@@ -579,7 +620,7 @@ def stdpsf_reader(filename, detector_id=None):
         for ykey in ykeys:
             ygrid.extend([int(n) for n in header[ykey].split()])
     else:
-        raise ValueError('Unknown standard-format PSF file.')
+        raise ValueError('Unknown standard-format ePSF file.')
 
     # STDPDF FITS positions are 1-indexed
     xgrid = np.array(xgrid) - 1
@@ -599,7 +640,7 @@ def stdpsf_reader(filename, detector_id=None):
     if npsfs in (90, 56):  # ACS/WFC or WFC3/UVIS data (2 chips)
         if detector_id is None:
             raise ValueError('detector_id must be specified for ACS/WFC '
-                             'and WFC3/UVIS PSFs.')
+                             'and WFC3/UVIS ePSFs.')
         if detector_id not in (1, 2):
             raise ValueError('detector_id must be 1 or 2.')
 
@@ -614,7 +655,7 @@ def stdpsf_reader(filename, detector_id=None):
 
     if npsfs == 36:  # WFPC2 data (4 chips)
         if detector_id is None:
-            raise ValueError('detector_id must be specified for WFPC2 PSFs')
+            raise ValueError('detector_id must be specified for WFPC2 ePSFs')
         if detector_id not in range(1, 5):
             raise ValueError('detector_id must be between 1 and 4, inclusive')
 
@@ -635,7 +676,7 @@ def stdpsf_reader(filename, detector_id=None):
 
     if npsfs == 200:  # NIRCam SW data (8 chips)
         if detector_id is None:
-            raise ValueError('detector_id must be specified for NRCSW PSFs')
+            raise ValueError('detector_id must be specified for NRCSW ePSFs')
         if detector_id not in range(1, 9):
             raise ValueError('detector_id must be between 1 and 8, inclusive')
 
@@ -673,6 +714,16 @@ def stdpsf_reader(filename, detector_id=None):
 
 def _split_detectors(data, xgrid, ygrid, npsfs, nypsfs, nxpsfs, nxdet,
                      nydet, det_size, det_map, detector_id):
+    """
+    Split an ePSF array into individual detectors.
+
+    In particular::
+
+        * HST WFPC2 STDPSF file contains 4 detectors
+        * HST ACS/WFC STDPSF file contains 2 detectors
+        * HST WFC3/UVIS STDPSF file contains 2 detectors
+        * JWST NIRCam "NRCSW" STDPSF file contains 8 detectors
+    """
     ii = np.arange(npsfs).reshape((nypsfs, nxpsfs))
     nxpsfs //= nxdet
     nypsfs //= nydet
@@ -699,6 +750,9 @@ def _split_detectors(data, xgrid, ygrid, npsfs, nypsfs, nxpsfs, nxdet,
 
 
 def _get_metadata(filename, detector_id):
+    """
+    Get metadata from the filename and ``detector_id``.
+    """
     if isinstance(filename, io.FileIO):
         filename = filename.name
 
