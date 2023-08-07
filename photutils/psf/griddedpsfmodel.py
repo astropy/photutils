@@ -19,8 +19,143 @@ from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData, reshape_as_blocks
 from astropy.visualization import simple_norm
 
-__all__ = ['GriddedPSFModel', 'stdpsf_reader']
+__all__ = ['GriddedPSFModel', 'ModelGridPlotMixin', 'stdpsf_reader']
 __doctest_skip__ = ['GriddedPSFModelRead']
+
+
+class ModelGridPlotMixin:
+    """
+    Mixin class to plot a grid of ePSF models.
+    """
+
+    def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
+                  deltas=False, cmap=None, dividers=True,
+                  divider_color='darkgray', divider_ls='-', figsize=None):
+        """
+        Plot the grid of ePSF models.
+
+        Parameters
+        ----------
+        ax : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
+        vmax_scale : float, optional
+            Scale factor to apply to the image stretch limits. This
+            value is multiplied by the peak ePSF value to determine the
+            plotting ``vmax``. The defaults are 1.0 for plotting the
+            ePSF data and 0.03 for plotting the ePSF difference data
+            (``deltas=True``). If ``deltas=True``, the ``vmin`` is set
+            to ``-vmax``. If ``deltas=False`` the ``vmin`` is set to
+            ``vmax`` / 1e4.
+
+        peak_norm : bool, optional
+            Whether to normalize the ePSF data by the peak value. The
+            default shows the ePSF flux per pixel.
+
+        deltas : bool, optional
+            Set to `True` to show the differences between each ePSF
+            and the average ePSF.
+
+        cmap : str or `matplotlib.colors.Colormap`, optional
+            The colormap to use. The default is `None`, which uses
+            the 'viridis' colormap for plotting ePSF data and the
+            'gray_r' colormap for plotting the ePSF difference data
+            (``deltas=True``).
+
+        show_dividers : bool, optional
+            Whether to show divider lines between the ePSFs.
+
+        divider_color, divider_ls : str, optional
+            Matplotlib color and linestyle options for the divider
+            lines between ePSFs. These keywords have no effect unless
+            ``show_dividers=True``.
+
+        figsize : (float, float), optional
+            The figure (width, height) in inches.
+        """
+        import matplotlib.pyplot as plt
+        from matplotlib import cm
+
+        data = self.data.copy()
+        if deltas:
+            data -= np.mean(data, axis=0)
+        data = self._reshape_grid(data)
+
+        if ax is None:
+            plt.figure(figsize=figsize)
+            ax = plt.gca()
+
+        if peak_norm:  # normalize relative to peak
+            data /= data.max()
+
+        if deltas:
+            if cmap is None:
+                cmap = cm.gray_r.copy()
+
+            if vmax_scale is None:
+                vmax_scale = 0.03
+            vmax = data.max() * vmax_scale
+            vmin = -vmax
+            norm = simple_norm(data, 'linear', min_cut=vmin, max_cut=vmax)
+        else:
+            if cmap is None:
+                cmap = cm.viridis.copy()
+
+            if vmax_scale is None:
+                vmax_scale = 1.0
+            vmax = data.max() * vmax_scale
+            vmin = vmax / 1.0e4
+            norm = simple_norm(data, 'log', min_cut=vmin, max_cut=vmax,
+                               log_a=1.0e4)
+
+        # Set up the coordinate axes to later set tick labels based on
+        # detector ePSF coordinates. This sets up axes to have, behind the
+        # scenes, the ePSFs centered at integer coords 0, 1, 2, 3 etc.
+        # extent = (left, right, bottom, top)
+        nypsfs = self._ygrid.shape[0]
+        nxpsfs = self._xgrid.shape[0]
+        extent = [-0.5, nxpsfs - 0.5, -0.5, nypsfs - 0.5]
+
+        ax.imshow(data, extent=extent, norm=norm, cmap=cmap, origin='lower')
+
+        # Use the axes set up above to set appropriate tick labels
+        ax.set_xticks(np.arange(nxpsfs))
+        ax.set_xticklabels(self._xgrid)
+        ax.set_xlabel('ePSF location in detector X pixels')
+        ax.set_yticks(np.arange(nypsfs))
+        ax.set_yticklabels(self._ygrid)
+        ax.set_ylabel('ePSF location in detector Y pixels')
+
+        if dividers:
+            for ix in range(nxpsfs):
+                ax.axvline(ix + 0.5, color=divider_color, ls=divider_ls)
+            for iy in range(nypsfs):
+                ax.axhline(iy + 0.5, color=divider_color, ls=divider_ls)
+
+        title = (f"{self.meta.get('instrument', '')} "
+                 f"{self.meta.get('detector', '')} "
+                 f"{self.meta.get('filter', '')}")
+        if title != '':
+            # add extra space at end
+            title += ' '
+
+        if deltas:
+            ax.set_title(f'{title}ePSFs – average ePSF')
+            if peak_norm:
+                label = 'Difference relative to average ePSF peak'
+            else:
+                label = 'Difference relative to average ePSF values'
+        else:
+            ax.set_title(f'{title}ePSFs')
+            if peak_norm:
+                label = 'Scale relative to ePSF peak pixel'
+            else:
+                label = 'ePSF flux per pixel'
+
+        cbar = plt.colorbar(label=label, mappable=ax.images[0])
+        if not deltas:
+            cbar.ax.set_yscale('log')
 
 
 class GriddedPSFModelRead(registry.UnifiedReadWrite):
@@ -69,7 +204,7 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
         return self.registry.read(self._cls, *args, **kwargs)
 
 
-class GriddedPSFModel(Fittable2DModel):
+class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     """
     A fittable 2D model containing a grid ePSF models.
 
@@ -412,135 +547,6 @@ class GriddedPSFModel(Fittable2DModel):
         data.shape = (nypsfs, nxpsfs, ny, nx)
 
         return data.transpose([0, 2, 1, 3]).reshape(nypsfs * ny, nxpsfs * nx)
-
-    def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
-                  deltas=False, cmap=None, dividers=True,
-                  divider_color='darkgray', divider_ls='-', figsize=None):
-        """
-        Plot the grid of ePSF models.
-
-        Parameters
-        ----------
-        ax : `matplotlib.axes.Axes` or `None`, optional
-            The matplotlib axes on which to plot.  If `None`, then the
-            current `~matplotlib.axes.Axes` instance is used.
-
-        vmax_scale : float, optional
-            Scale factor to apply to the image stretch limits. This
-            value is multiplied by the peak ePSF value to determine the
-            plotting ``vmax``. The defaults are 1.0 for plotting the
-            ePSF data and 0.03 for plotting the ePSF difference data
-            (``deltas=True``). If ``deltas=True``, the ``vmin`` is set
-            to ``-vmax``. If ``deltas=False`` the ``vmin`` is set to
-            ``vmax`` / 1e4.
-
-        peak_norm : bool, optional
-            Whether to normalize the ePSF data by the peak value. The
-            default shows the ePSF flux per pixel.
-
-        deltas : bool, optional
-            Set to `True` to show the differences between each ePSF
-            and the average ePSF.
-
-        cmap : str or `matplotlib.colors.Colormap`, optional
-            The colormap to use. The default is `None`, which uses
-            the 'viridis' colormap for plotting ePSF data and the
-            'gray_r' colormap for plotting the ePSF difference data
-            (``deltas=True``).
-
-        show_dividers : bool, optional
-            Whether to show divider lines between the ePSFs.
-
-        divider_color, divider_ls : str, optional
-            Matplotlib color and linestyle options for the divider
-            lines between ePSFs. These keywords have no effect unless
-            ``show_dividers=True``.
-
-        figsize : (float, float), optional
-            The figure (width, height) in inches.
-        """
-        import matplotlib.pyplot as plt
-        from matplotlib import cm
-
-        data = self.data.copy()
-        if deltas:
-            data -= np.mean(data, axis=0)
-        data = self._reshape_grid(data)
-
-        if ax is None:
-            plt.figure(figsize=figsize)
-            ax = plt.gca()
-
-        if peak_norm:  # normalize relative to peak
-            data /= data.max()
-
-        if deltas:
-            if cmap is None:
-                cmap = cm.gray_r.copy()
-
-            if vmax_scale is None:
-                vmax_scale = 0.03
-            vmax = data.max() * vmax_scale
-            vmin = -vmax
-            norm = simple_norm(data, 'linear', min_cut=vmin, max_cut=vmax)
-        else:
-            if cmap is None:
-                cmap = cm.viridis.copy()
-
-            if vmax_scale is None:
-                vmax_scale = 1.0
-            vmax = data.max() * vmax_scale
-            vmin = vmax / 1.0e4
-            norm = simple_norm(data, 'log', min_cut=vmin, max_cut=vmax,
-                               log_a=1.0e4)
-
-        # Set up the coordinate axes to later set tick labels based on
-        # detector ePSF coordinates. This sets up axes to have, behind the
-        # scenes, the ePSFs centered at integer coords 0, 1, 2, 3 etc.
-        # extent = (left, right, bottom, top)
-        nypsfs = self._ygrid.shape[0]
-        nxpsfs = self._xgrid.shape[0]
-        extent = [-0.5, nxpsfs - 0.5, -0.5, nypsfs - 0.5]
-
-        ax.imshow(data, extent=extent, norm=norm, cmap=cmap, origin='lower')
-
-        # Use the axes set up above to set appropriate tick labels
-        ax.set_xticks(np.arange(nxpsfs))
-        ax.set_xticklabels(self._xgrid)
-        ax.set_xlabel('ePSF location in detector X pixels')
-        ax.set_yticks(np.arange(nypsfs))
-        ax.set_yticklabels(self._ygrid)
-        ax.set_ylabel('ePSF location in detector Y pixels')
-
-        if dividers:
-            for ix in range(nxpsfs):
-                ax.axvline(ix + 0.5, color=divider_color, ls=divider_ls)
-            for iy in range(nypsfs):
-                ax.axhline(iy + 0.5, color=divider_color, ls=divider_ls)
-
-        title = (f"{self.meta.get('instrument', '')} "
-                 f"{self.meta.get('detector', '')} "
-                 f"{self.meta.get('filter', '')}")
-        if title != '':
-            # add extra space at end
-            title += ' '
-
-        if deltas:
-            ax.set_title(f'{title}ePSFs – average ePSF')
-            if peak_norm:
-                label = 'Difference relative to average ePSF peak'
-            else:
-                label = 'Difference relative to average ePSF values'
-        else:
-            ax.set_title(f'{title}ePSFs')
-            if peak_norm:
-                label = 'Scale relative to ePSF peak pixel'
-            else:
-                label = 'ePSF flux per pixel'
-
-        cbar = plt.colorbar(label=label, mappable=ax.images[0])
-        if not deltas:
-            cbar.ax.set_yscale('log')
 
 
 def stdpsf_reader(filename, detector_id=None):
