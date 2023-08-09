@@ -103,6 +103,8 @@ class ModelGridPlotMixin:
         data = self._reshape_grid(data)
 
         if ax is None:
+            if figsize is None and self.meta.get('detector', '') == 'NRCSW':
+                figsize = (20, 8)
             plt.figure(figsize=figsize)
             ax = plt.gca()
 
@@ -141,11 +143,16 @@ class ModelGridPlotMixin:
         ax.imshow(data, extent=extent, norm=norm, cmap=cmap, origin='lower')
 
         # Use the axes set up above to set appropriate tick labels
+        xticklabels = self._xgrid
+        yticklabels = self._ygrid
+        if self.meta.get('detector', '') == 'NRCSW':
+            xticklabels = list(xticklabels[0:5]) * 4
+            yticklabels = list(yticklabels[0:5]) * 2
         ax.set_xticks(np.arange(nxpsfs))
-        ax.set_xticklabels(self._xgrid)
+        ax.set_xticklabels(xticklabels)
         ax.set_xlabel('ePSF location in detector X pixels')
         ax.set_yticks(np.arange(nypsfs))
-        ax.set_yticklabels(self._ygrid)
+        ax.set_yticklabels(yticklabels)
         ax.set_ylabel('ePSF location in detector Y pixels')
 
         if dividers:
@@ -177,6 +184,23 @@ class ModelGridPlotMixin:
         cbar = plt.colorbar(label=label, mappable=ax.images[0])
         if not deltas:
             cbar.ax.set_yscale('log')
+
+        if self.meta.get('detector', '') == 'NRCSW':
+            # NIRCam NRCSW STDPSF files constain all detectors.
+            # The plot gets extra divider lines and SCA name labels.
+            nxpsfs = len(self._xgrid)
+            nypsfs = len(self._ygrid)
+            plt.axhline(nypsfs / 2 - 0.5, color='orange')
+            for i in range(1, 4):
+                ax.axvline(nxpsfs / 4 * i - 0.5, color='orange')
+
+            det_labels = [['A1', 'A3', 'B4', 'B2'], ['A2', 'A4', 'B3', 'B1']]
+            for i in range(2):
+                for j in range(4):
+                    ax.text(j * nxpsfs / 4 - 0.45,
+                            (i + 1) * nypsfs / 2 - 0.55,
+                            det_labels[i][j], color='orange',
+                            verticalalignment='top', fontsize=12)
 
 
 class GriddedPSFModelRead(registry.UnifiedReadWrite):
