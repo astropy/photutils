@@ -91,7 +91,15 @@ class ModelGridPlotMixin:
 
         data = self.data.copy()
         if deltas:
-            data -= np.mean(data, axis=0)
+            # Compute mean ignoring any blank (all zeros) ePSFs.
+            # This is the case for MIRI with its non-square FOV.
+            mask = np.zeros(data.shape[0], dtype=bool)
+            for i, arr in enumerate(data):
+                if np.count_nonzero(arr) == 0:
+                    mask[i] = True
+            data -= np.mean(data[~mask], axis=0)
+            data[mask] = 0.0
+
         data = self._reshape_grid(data)
 
         if ax is None:
@@ -773,7 +781,7 @@ def _get_metadata(filename, detector_id):
             inst_det[1] = sw_map[detector_id]
 
         meta['instrument'] = inst_det[0]
-        meta['detector'] = inst_det[1],
+        meta['detector'] = inst_det[1]
 
     return meta
 
