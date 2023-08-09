@@ -27,6 +27,18 @@ class ModelGridPlotMixin:
     Mixin class to plot a grid of ePSF models.
     """
 
+    def _reshape_grid(self, data):
+        """
+        Reshape the 3D ePSF grid as a 2D array of horizontally and
+        vertically stacked ePSFs.
+        """
+        nypsfs = self._ygrid.shape[0]
+        nxpsfs = self._xgrid.shape[0]
+        ny, nx = self.data.shape[1:]
+        data.shape = (nypsfs, nxpsfs, ny, nx)
+
+        return data.transpose([0, 2, 1, 3]).reshape(nypsfs * ny, nxpsfs * nx)
+
     def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
                   deltas=False, cmap=None, dividers=True,
                   divider_color='darkgray', divider_ls='-', figsize=None):
@@ -536,18 +548,6 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         return evaluated_model
 
-    def _reshape_grid(self, data):
-        """
-        Reshape the 3D ePSF grid as a 2D array of horizontally and
-        vertically stacked ePSFs.
-        """
-        nypsfs = self._ygrid.shape[0]
-        nxpsfs = self._xgrid.shape[0]
-        ny, nx = self.data.shape[1:]
-        data.shape = (nypsfs, nxpsfs, ny, nx)
-
-        return data.transpose([0, 2, 1, 3]).reshape(nypsfs * ny, nxpsfs * nx)
-
 
 def _read_stdpsf(filename):
     with warnings.catch_warnings():
@@ -729,47 +729,50 @@ def _get_metadata(filename, detector_id):
         return None  # filename from astropy download_file
 
     detector, filter_name = parts[1:3]
-    detector_map = {'WFPC2': ['HST/WFPC2', 'WFPC2'],
-                    'ACSHRC': ['HST/ACS', 'HRC'],
-                    'ACSWFC': ['HST/ACS', 'WFC'],
-                    'WFC3UV': ['HST/WFC3', 'UVIS'],
-                    'WFC3IR': ['HST/WFC3', 'IR'],
-                    'NRCSW': ['JWST/NIRCam', 'NRCSW'],
-                    'NRCA1': ['JWST/NIRCam', 'A1'],
-                    'NRCA2': ['JWST/NIRCam', 'A2'],
-                    'NRCA3': ['JWST/NIRCam', 'A3'],
-                    'NRCA4': ['JWST/NIRCam', 'A4'],
-                    'NRCB1': ['JWST/NIRCam', 'B1'],
-                    'NRCB2': ['JWST/NIRCam', 'B2'],
-                    'NRCB3': ['JWST/NIRCam', 'B3'],
-                    'NRCB4': ['JWST/NIRCam', 'B4'],
-                    'NRCAL': ['JWST/NIRCam', 'A5'],
-                    'NRCBL': ['JWST/NIRCam', 'B5'],
-                    'NIRISS': ['JWST/NIRISS', 'NIRISS'],
-                    'MIRI': ['JWST/MIRI', 'MIRIM']}
-
-    try:
-        inst_det = detector_map[detector]
-    except KeyError:
-        raise ValueError(f'Unknown detector {detector}.')
-
-    if inst_det[1] == 'WFPC2':
-        wfpc2_map = {1: 'PC', 2: 'WF2', 3: 'WF3', 4: 'WF4'}
-        inst_det[1] = wfpc2_map[detector_id]
-
-    if inst_det[1] in ('WFC', 'UVIS'):
-        chip = 2 if detector_id == 1 else 1
-        inst_det[1] = f'{inst_det[1]}{chip}'
-
-    if inst_det[1] == 'NRCSW':
-        sw_map = {1: 'A1', 2: 'A2', 3: 'A3', 4: 'A4',
-                  5: 'B1', 6: 'B2', 7: 'B3', 8: 'B4'}
-        inst_det[1] = sw_map[detector_id]
-
     meta = {'STDPSF': filename,
-            'instrument': inst_det[0],
-            'detector': inst_det[1],
+            'detector': detector,
             'filter': filter_name}
+
+    if detector_id is not None:
+        detector_map = {'WFPC2': ['HST/WFPC2', 'WFPC2'],
+                        'ACSHRC': ['HST/ACS', 'HRC'],
+                        'ACSWFC': ['HST/ACS', 'WFC'],
+                        'WFC3UV': ['HST/WFC3', 'UVIS'],
+                        'WFC3IR': ['HST/WFC3', 'IR'],
+                        'NRCSW': ['JWST/NIRCam', 'NRCSW'],
+                        'NRCA1': ['JWST/NIRCam', 'A1'],
+                        'NRCA2': ['JWST/NIRCam', 'A2'],
+                        'NRCA3': ['JWST/NIRCam', 'A3'],
+                        'NRCA4': ['JWST/NIRCam', 'A4'],
+                        'NRCB1': ['JWST/NIRCam', 'B1'],
+                        'NRCB2': ['JWST/NIRCam', 'B2'],
+                        'NRCB3': ['JWST/NIRCam', 'B3'],
+                        'NRCB4': ['JWST/NIRCam', 'B4'],
+                        'NRCAL': ['JWST/NIRCam', 'A5'],
+                        'NRCBL': ['JWST/NIRCam', 'B5'],
+                        'NIRISS': ['JWST/NIRISS', 'NIRISS'],
+                        'MIRI': ['JWST/MIRI', 'MIRIM']}
+
+        try:
+            inst_det = detector_map[detector]
+        except KeyError:
+            raise ValueError(f'Unknown detector {detector}.')
+
+        if inst_det[1] == 'WFPC2':
+            wfpc2_map = {1: 'PC', 2: 'WF2', 3: 'WF3', 4: 'WF4'}
+            inst_det[1] = wfpc2_map[detector_id]
+
+        if inst_det[1] in ('WFC', 'UVIS'):
+            chip = 2 if detector_id == 1 else 1
+            inst_det[1] = f'{inst_det[1]}{chip}'
+
+        if inst_det[1] == 'NRCSW':
+            sw_map = {1: 'A1', 2: 'A2', 3: 'A3', 4: 'A4',
+                      5: 'B1', 6: 'B2', 7: 'B3', 8: 'B4'}
+            inst_det[1] = sw_map[detector_id]
+
+        meta['instrument'] = inst_det[0]
+        meta['detector'] = inst_det[1],
 
     return meta
 
