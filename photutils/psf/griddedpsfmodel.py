@@ -18,8 +18,9 @@ from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData, reshape_as_blocks
 from astropy.visualization import simple_norm
 
-__all__ = ['GriddedPSFModel', 'ModelGridPlotMixin', 'stdpsf_reader']
-__doctest_skip__ = ['GriddedPSFModelRead']
+__all__ = ['GriddedPSFModel', 'ModelGridPlotMixin', 'stdpsf_reader',
+           'STDPSFGrid']
+__doctest_skip__ = ['GriddedPSFModelRead', 'STDPSFGrid']
 
 
 class ModelGridPlotMixin:
@@ -885,6 +886,73 @@ def is_fits(origin, filepath, fileobj, *args, **kwargs):
         extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
         return filepath.lower().endswith(extens)
     return isinstance(args[0], HDUList)
+
+
+class STDPSFGrid(ModelGridPlotMixin):
+    """
+    Class to read and plot "STDPSF" format ePSF model grids.
+
+    STDPSF files are FITS files that contain a 3D array of ePSFs with
+    the header detailing where the fiducial ePSFs are located in the
+    detector coordinate frame.
+
+    The oversampling factor for STDPSF FITS files is assumed to be 4.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the STDPDF FITS file. A URL can also be used.
+
+    Examples
+    --------
+    >>> psfgrid = STDPSFGrid.read('STDPSF_ACSWFC_F814W.fits')
+    >>> psfgrid.plot_grid()
+    """
+
+    def __init__(self, filename):
+        grid_data = _read_stdpsf(filename)
+        self.data = grid_data['data']
+        self._xgrid = grid_data['xgrid']
+        self._ygrid = grid_data['ygrid']
+        xy_grid = [yx[::-1] for yx in itertools.product(self._ygrid,
+                                                        self._xgrid)]
+        oversampling = 4
+        self.grid_xypos = xy_grid
+        self.oversampling = oversampling
+        meta = {'grid_xypos': xy_grid,
+                'oversampling': oversampling}
+
+        # try to get additional metadata from the filename because this
+        # information is not currently available in the FITS headers
+        file_meta = _get_metadata(filename, None)
+        if file_meta is not None:
+            meta.update(file_meta)
+
+        self.meta = meta
+
+    def __str__(self):
+        cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
+        cls_info = []
+
+        keys = ('STDPSF', 'detector', 'filter')
+        for key in keys:
+            if key in self.meta:
+                name = key.capitalize() if key != 'STDPSF' else key
+                cls_info.append((name, self.meta[key]))
+
+        cls_info.extend([('Number of ePSFs', len(self.grid_xypos)),
+                         ('ePSF shape (oversampled pixels)',
+                          self.data.shape[1:]),
+                         ('Oversampling', self.oversampling),
+                         ])
+
+        with np.printoptions(threshold=25, edgeitems=5):
+            fmt = [f'{key}: {val}' for key, val in cls_info]
+
+        return f'{cls_name}\n' + '\n'.join(fmt)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 with registry.delay_doc_updates(GriddedPSFModel):
