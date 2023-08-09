@@ -9,7 +9,6 @@ import itertools
 import os
 import warnings
 from functools import lru_cache
-from itertools import product
 
 import numpy as np
 from astropy.io import fits, registry
@@ -87,7 +86,8 @@ class ModelGridPlotMixin:
             ax = plt.gca()
 
         if peak_norm:  # normalize relative to peak
-            data /= data.max()
+            if data.max() != 0:
+                data /= data.max()
 
         if deltas:
             if cmap is None:
@@ -549,59 +549,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         return data.transpose([0, 2, 1, 3]).reshape(nypsfs * ny, nxpsfs * nx)
 
 
-def stdpsf_reader(filename, detector_id=None):
-    """
-    Generate a `~photutils.psf.GriddedPSFModel` from a STScI
-    standard-format ePSF (STDPSF) FITS file.
-
-    .. note::
-        Instead of being used directly, this function is intended to be
-        used as the `GriddedPSFModel` ``read`` method, e.g.,
-        ``model = GriddedPSFModel.read(filename)``.
-
-    STDPSF files are FITS files that contain a 3D array of ePSFs with
-    the header detailing where the fiducial ePSFs are located in the
-    detector coordinate frame.
-
-    The oversampling factor for STDPSF FITS files is assumed to be 4.
-
-    Parameters
-    ----------
-    filename : str
-        The name of the STDPDF FITS file. A URL can also be used.
-
-    detector_id : `None` or int, optional
-        For STDPSF files that contain ePSF grids for multiple detectors,
-        one will need to identify the detector for which to extract the
-        ePSF grid. This keyword is ignored for STDPSF files that do not
-        contain ePSF grids for multiple detectors.
-
-        For WFPC2, the detector value (int) should be:
-
-            - 1: PC, 2: WF2, 3: WF3, 4: WF4
-
-        For ACS/WFC and WFC3/UVIS, the detector value should be:
-
-            - 1: WFC2, UVIS2 (sci, 1)
-            - 2: WFC1, UVIS1 (sci, 2)
-
-        Note that for these two instruments, detector 1 is above
-        detector 2 in the y direction. However, in the FLT FITS files,
-        the (sci, 1) extension corresponds to detector 2 (WFC2, UVIS2)
-        and the (sci, 2) extension corresponds to detector 1 (WFC1,
-        UVIS1).
-
-        For NIRCam NRCSW files that contain ePSF grids for all 8 SW
-        detectors, the detector value should be:
-
-            * 1: A1, 2: A2, 3: A3, 4: A4
-            * 5: B1, 6: B2, 7: B3, 8: B4
-
-    Returns
-    -------
-    model : `~photutils.psf.GriddedPSFModel`
-        The gridded ePSF model.
-    """
+def _read_stdpsf(filename):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', VerifyWarning)
         with fits.open(filename, ignore_missing_end=True) as hdulist:
@@ -611,7 +559,6 @@ def stdpsf_reader(filename, detector_id=None):
     npsfs = header['NAXIS3']
     nxpsfs = header['NXPSFS']
     nypsfs = header['NYPSFS']
-    data_ny, data_nx = data.shape[1:]
 
     if 'IPSFX01' in header:
         xgrid = [header[f'IPSFX{i:02d}'] for i in range(1, nxpsfs + 1)]
@@ -643,83 +590,18 @@ def stdpsf_reader(filename, detector_id=None):
     # (10, 20) # NIRCam SW (NRCSW), 8 det
     # (5, 5)   # NIRCam LW
     # (3, 3)   # MIRI
-    if npsfs in (90, 56):  # ACS/WFC or WFC3/UVIS data (2 chips)
-        if detector_id is None:
-            raise ValueError('detector_id must be specified for ACS/WFC '
-                             'and WFC3/UVIS ePSFs.')
-        if detector_id not in (1, 2):
-            raise ValueError('detector_id must be 1 or 2.')
 
-        # ACS/WFC1 and WFC3/UVIS1 chip1 (sci, 2) are above chip2 (sci, 1)
-        # in y-pixel coordinates
-        ygrid = ygrid.reshape((2, ygrid.shape[0] // 2))[detector_id - 1]
-        if detector_id == 2:
-            ygrid -= 2048
+    grid_data = {'data': data,
+                 'npsfs': npsfs,
+                 'nxpsfs': nxpsfs,
+                 'nypsfs': nypsfs,
+                 'xgrid': xgrid,
+                 'ygrid': ygrid}
 
-        data = data.reshape((2, npsfs // 2, data_ny, data_nx))[detector_id - 1]
-        nypsfs //= 2
-
-    if npsfs == 36:  # WFPC2 data (4 chips)
-        if detector_id is None:
-            raise ValueError('detector_id must be specified for WFPC2 ePSFs')
-        if detector_id not in range(1, 5):
-            raise ValueError('detector_id must be between 1 and 4, inclusive')
-
-        nxdet = 2
-        nydet = 2
-        det_size = 800
-
-        # det (ext:idx)
-        # WF2 (2:2)  PC (1:3)
-        # WF3 (3:0)  WF4 (4:1)
-        det_map = {1: 3, 2: 2, 3: 0, 4: 1}
-
-        data, xgrid, ygrid = _split_detectors(data, xgrid, ygrid, npsfs,
-                                              nypsfs, nxpsfs, nxdet, nydet,
-                                              det_size, det_map, detector_id)
-        nxpsfs = xgrid.shape[0]
-        nypsfs = ygrid.shape[0]
-
-    if npsfs == 200:  # NIRCam SW data (8 chips)
-        if detector_id is None:
-            raise ValueError('detector_id must be specified for NRCSW ePSFs')
-        if detector_id not in range(1, 9):
-            raise ValueError('detector_id must be between 1 and 8, inclusive')
-
-        nxdet = 4
-        nydet = 2
-        det_size = 2048
-
-        # det (ext:idx)
-        # A2 (2:4)  A4 (4:5)  B3 (7:6)  B1 (5:7)
-        # A1 (1:0)  A3 (3:1)  B4 (8:2)  B2 (6:3)
-        det_map = {1: 0, 3: 1, 8: 2, 6: 3, 2: 4, 4: 5, 7: 6, 5: 7}
-
-        data, xgrid, ygrid = _split_detectors(data, xgrid, ygrid, npsfs,
-                                              nypsfs, nxpsfs, nxdet, nydet,
-                                              det_size, det_map, detector_id)
-        nxpsfs = xgrid.shape[0]
-        nypsfs = ygrid.shape[0]
-
-    # product iterates over the last input first
-    xy_grid = [yx[::-1] for yx in product(ygrid, xgrid)]
-
-    oversampling = 4
-    meta = {'grid_xypos': xy_grid,
-            'oversampling': oversampling}
-
-    # try to get metadata
-    file_meta = _get_metadata(filename, detector_id)
-    if file_meta is not None:
-        meta.update(file_meta)
-
-    nddata = NDData(data, meta=meta)
-
-    return GriddedPSFModel(nddata)
+    return grid_data
 
 
-def _split_detectors(data, xgrid, ygrid, npsfs, nypsfs, nxpsfs, nxdet,
-                     nydet, det_size, det_map, detector_id):
+def _split_detectors(grid_data, detector_data, detector_id):
     """
     Split an ePSF array into individual detectors.
 
@@ -730,6 +612,17 @@ def _split_detectors(data, xgrid, ygrid, npsfs, nypsfs, nxpsfs, nxdet,
         * HST WFC3/UVIS STDPSF file contains 2 detectors
         * JWST NIRCam "NRCSW" STDPSF file contains 8 detectors
     """
+    data = grid_data['data']
+    npsfs = grid_data['npsfs']
+    nxpsfs = grid_data['nxpsfs']
+    nypsfs = grid_data['nypsfs']
+    xgrid = grid_data['xgrid']
+    ygrid = grid_data['ygrid']
+    nxdet = detector_data['nxdet']
+    nydet = detector_data['nydet']
+    det_map = detector_data['det_map']
+    det_size = detector_data['det_size']
+
     ii = np.arange(npsfs).reshape((nypsfs, nxpsfs))
     nxpsfs //= nxdet
     nypsfs //= nydet
@@ -753,6 +646,75 @@ def _split_detectors(data, xgrid, ygrid, npsfs, nypsfs, nxpsfs, nxdet,
         ygrid = ygrid[nypsfs:] - det_size
 
     return data, xgrid, ygrid
+
+
+def _split_wfc_uvis(grid_data, detector_id):
+    if detector_id is None:
+        raise ValueError('detector_id must be specified for ACS/WFC and '
+                         'WFC3/UVIS ePSFs.')
+    if detector_id not in (1, 2):
+        raise ValueError('detector_id must be 1 or 2.')
+
+    # ACS/WFC1 and WFC3/UVIS1 chip1 (sci, 2) are above chip2 (sci, 1)
+    # in y-pixel coordinates
+    xgrid = grid_data['xgrid']
+    ygrid = grid_data['ygrid']
+    ygrid = ygrid.reshape((2, ygrid.shape[0] // 2))[detector_id - 1]
+    if detector_id == 2:
+        ygrid -= 2048
+
+    npsfs = grid_data['npsfs']
+    data = grid_data['data']
+    data_ny, data_nx = data.shape[1:]
+    data = data.reshape((2, npsfs // 2, data_ny, data_nx))[detector_id - 1]
+
+    return data, xgrid, ygrid
+
+
+def _split_wfpc2(grid_data, detector_id):
+    if detector_id is None:
+        raise ValueError('detector_id must be specified for WFPC2 ePSFs')
+    if detector_id not in range(1, 5):
+        raise ValueError('detector_id must be between 1 and 4, inclusive')
+
+    nxdet = 2
+    nydet = 2
+    det_size = 800
+
+    # det (exten:idx)
+    # WF2 (2:2)  PC (1:3)
+    # WF3 (3:0)  WF4 (4:1)
+    det_map = {1: 3, 2: 2, 3: 0, 4: 1}
+
+    detector_data = {'nxdet': nxdet,
+                     'nydet': nydet,
+                     'det_size': det_size,
+                     'det_map': det_map}
+
+    return _split_detectors(grid_data, detector_data, detector_id)
+
+
+def _split_nrcsw(grid_data, detector_id):
+    if detector_id is None:
+        raise ValueError('detector_id must be specified for NRCSW ePSFs')
+    if detector_id not in range(1, 9):
+        raise ValueError('detector_id must be between 1 and 8, inclusive')
+
+    nxdet = 4
+    nydet = 2
+    det_size = 2048
+
+    # det (ext:idx)
+    # A2 (2:4)  A4 (4:5)  B3 (7:6)  B1 (5:7)
+    # A1 (1:0)  A3 (3:1)  B4 (8:2)  B2 (6:3)
+    det_map = {1: 0, 3: 1, 8: 2, 6: 3, 2: 4, 4: 5, 7: 6, 5: 7}
+
+    detector_data = {'nxdet': nxdet,
+                     'nydet': nydet,
+                     'det_size': det_size,
+                     'det_map': det_map}
+
+    return _split_detectors(grid_data, detector_data, detector_id)
 
 
 def _get_metadata(filename, detector_id):
@@ -810,6 +772,96 @@ def _get_metadata(filename, detector_id):
             'filter': filter_name}
 
     return meta
+
+
+def stdpsf_reader(filename, detector_id=None):
+    """
+    Generate a `~photutils.psf.GriddedPSFModel` from a STScI
+    standard-format ePSF (STDPSF) FITS file.
+
+    .. note::
+        Instead of being used directly, this function is intended to be
+        used as the `GriddedPSFModel` ``read`` method, e.g.,
+        ``model = GriddedPSFModel.read(filename)``.
+
+    STDPSF files are FITS files that contain a 3D array of ePSFs with
+    the header detailing where the fiducial ePSFs are located in the
+    detector coordinate frame.
+
+    The oversampling factor for STDPSF FITS files is assumed to be 4.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the STDPDF FITS file. A URL can also be used.
+
+    detector_id : `None` or int, optional
+        For STDPSF files that contain ePSF grids for multiple detectors,
+        one will need to identify the detector for which to extract the
+        ePSF grid. This keyword is ignored for STDPSF files that do not
+        contain ePSF grids for multiple detectors.
+
+        For WFPC2, the detector value (int) should be:
+
+            - 1: PC, 2: WF2, 3: WF3, 4: WF4
+
+        For ACS/WFC and WFC3/UVIS, the detector value should be:
+
+            - 1: WFC2, UVIS2 (sci, 1)
+            - 2: WFC1, UVIS1 (sci, 2)
+
+        Note that for these two instruments, detector 1 is above
+        detector 2 in the y direction. However, in the FLT FITS files,
+        the (sci, 1) extension corresponds to detector 2 (WFC2, UVIS2)
+        and the (sci, 2) extension corresponds to detector 1 (WFC1,
+        UVIS1).
+
+        For NIRCam NRCSW files that contain ePSF grids for all 8 SW
+        detectors, the detector value should be:
+
+            * 1: A1, 2: A2, 3: A3, 4: A4
+            * 5: B1, 6: B2, 7: B3, 8: B4
+
+    Returns
+    -------
+    model : `~photutils.psf.GriddedPSFModel`
+        The gridded ePSF model.
+    """
+    grid_data = _read_stdpsf(filename)
+
+    npsfs = grid_data['npsfs']
+    if npsfs in (90, 56, 36, 200):
+        if npsfs in (90, 56):  # ACS/WFC or WFC3/UVIS data (2 chips)
+            data, xgrid, ygrid = _split_wfc_uvis(grid_data, detector_id)
+        elif npsfs == 36:  # WFPC2 data (4 chips)
+            data, xgrid, ygrid = _split_wfpc2(grid_data, detector_id)
+        elif npsfs == 200:  # NIRCam SW data (8 chips)
+            data, xgrid, ygrid = _split_nrcsw(grid_data, detector_id)
+        else:
+            raise ValueError('Unknown detector or STDPSF format')
+    else:
+        data = grid_data['data']
+        xgrid = grid_data['xgrid']
+        ygrid = grid_data['ygrid']
+
+    # itertools.product iterates over the last input first
+    xy_grid = [yx[::-1] for yx in itertools.product(ygrid, xgrid)]
+
+    oversampling = 4
+    nxpsfs = xgrid.shape[0]
+    nypsfs = ygrid.shape[0]
+    meta = {'grid_xypos': xy_grid,
+            'oversampling': oversampling,
+            'nxpsfs': nxpsfs,
+            'nypsfs': nypsfs}
+
+    # try to get additional metadata from the filename because this
+    # information is not currently available in the FITS headers
+    file_meta = _get_metadata(filename, detector_id)
+    if file_meta is not None:
+        meta.update(file_meta)
+
+    return GriddedPSFModel(NDData(data, meta=meta))
 
 
 def is_fits(origin, filepath, fileobj, *args, **kwargs):
