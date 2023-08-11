@@ -12,12 +12,12 @@ from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
 from numpy.testing import assert_allclose
 
-from photutils.psf import GriddedPSFModel
+from photutils.psf import GriddedPSFModel, STDPSFGrid
 from photutils.segmentation import SourceCatalog, detect_sources
 from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY
 
 # the first file has a single detector, the rest have multiple detectors
-FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits'
+FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits',
              'STDPSF_ACSWFC_F814W_mock.fits',
              'STDPSF_NRCSW_F150W_mock.fits',
              'STDPSF_WFC3UV_F814W_mock.fits',
@@ -272,3 +272,25 @@ class TestGriddedPSFModel:
         model = psfmodel.deepcopy()
         model.data[0] = 0.0
         model.plot_grid(deltas=True)
+
+
+@pytest.mark.parametrize('filename', FILENAMES)
+def test_stdpsfgrid(filename):
+    filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
+    psfgrid = STDPSFGrid(filename)
+    assert 'grid_xypos' in psfgrid.meta
+    assert 'oversampling' in psfgrid.meta
+    assert psfgrid.oversampling == 4
+    assert psfgrid.data.shape[0] == len(psfgrid.meta['grid_xypos'])
+
+    psfgrid.plot_grid()
+
+
+def test_stdpsfgrid_repr_str():
+    filename = FILENAMES[0]
+    filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
+    psfgrid = STDPSFGrid(filename)
+    assert repr(psfgrid) == str(psfgrid)
+    keys = ('STDPSF', 'Number of ePSFs', 'ePSF shape', 'Oversampling')
+    for key in keys:
+        assert key in repr(psfgrid)
