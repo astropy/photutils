@@ -26,10 +26,9 @@ Getting Started
 ---------------
 
 Photutils provides the :class:`~photutils.psf.SourceGrouper`
-class to group stars. The class is based on the `Density-Based
-Spatial Clustering of Applications with Noise (DBSCAN)
-<https://en.wikipedia.org/wiki/DBSCAN>`_ algorithm and requires
-`scikit-learn <https://scikit-learn.org/>`_ to be installed.
+class to group stars. The groups are formed using hierarchical
+agglomerative clustering with a distance criterion, calling the
+`scipy.cluster.hierarchy.fclusterdata` function.
 
 First, let's make some Gaussian sources using
 `~photutils.datasets.make_random_gaussians_table` and
@@ -94,7 +93,7 @@ calculated from the 2D Gaussian standard deviation used to generate
 the stars. In general one will need to measure the FWHM of the stellar
 profiles.
 
-.. doctest-requires:: sklearn
+.. doctest-requires:: scipy
 
     >>> from astropy.stats import gaussian_sigma_to_fwhm
     >>> from photutils.psf import SourceGrouper
@@ -107,7 +106,7 @@ Here will use the known positions of the stars when we generated the
 image. In general, one can use a star finder (:ref:`source_detection`)
 to find the sources.
 
-.. doctest-requires:: sklearn
+.. doctest-requires:: scipy
 
    >>> import numpy as np
    >>> x = np.array(stars['x_mean'])
@@ -120,7 +119,7 @@ index are in the same group.
 
 For example, to find all the stars in group 3:
 
-.. doctest-requires:: sklearn
+.. doctest-requires:: scipy
 
    >>> mask = groups == 3
    >>> x[mask], y[mask]

@@ -24,11 +24,13 @@ New Features
 
   - Propagate measurement uncertainties in PSF fitting. [#1543]
 
-  - Added new ``PSFPhotometry``, ``IterativePSFPhotometry``, and
-    ``SourceGrouper`` classes. [#1558, #1559, #1563, #1566, #1567,
-    #1581, #1586, #1590, #1594, #1603, #1604]
+  - Added new ``PSFPhotometry`` and ``IterativePSFPhotometry`` classes
+    for performing PSF-fitting photometry. [#1558, #1559, #1563, #1566,
+    #1567, #1581, #1586, #1590, #1594, #1603, #1604]
 
-  - Added a ``GriddedPSFModel`` ``fill_value`` attribute, [#1583]
+  - Added a new ``SourceGrouper`` class. [#1558, #1605]
+
+  - Added a ``GriddedPSFModel`` ``fill_value`` attribute. [#1583]
 
   - Added a ``grid_from_epsfs`` function to make a ``GriddedPSFModel``
     from ePSFs. [#1596]

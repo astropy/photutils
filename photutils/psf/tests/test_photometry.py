@@ -20,7 +20,7 @@ from photutils.detection import DAOStarFinder
 from photutils.psf import (IntegratedGaussianPRF, IterativePSFPhotometry,
                            PSFPhotometry, SourceGrouper)
 from photutils.psf.photometry_depr import DAOGroup
-from photutils.utils._optional_deps import HAS_SCIPY, HAS_SKLEARN
+from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
@@ -359,7 +359,6 @@ def test_psf_photometry_init_params_columns(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.skipif(not HAS_SKLEARN, reason='sklearn is required')
 def test_grouper(test_data):
     data, error, sources = test_data
 
@@ -377,7 +376,6 @@ def test_grouper(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.skipif(not HAS_SKLEARN, reason='sklearn is required')
 def test_large_group_warning():
     psf_model = IntegratedGaussianPRF(flux=1, sigma=1.0)
     grouper = SourceGrouper(min_separation=50)
@@ -395,7 +393,6 @@ def test_large_group_warning():
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.skipif(not HAS_SKLEARN, reason='sklearn is required')
 def test_local_bkg(test_data):
     data, error, sources = test_data
 
