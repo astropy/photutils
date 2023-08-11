@@ -508,7 +508,7 @@ class PSFPhotometry:
         cutout = self._flatten(cutout)
 
         self._group_results['npixfit'].append(npixfit)
-        self._group_results['cen_res_idx'].append(cen_index)
+        self._group_results['psfcenter_indices'].append(cen_index)
 
         return yi, xi, cutout
 
@@ -705,8 +705,11 @@ class PSFPhotometry:
         return table[colnames]
 
     def _calc_fit_metrics(self, data, source_tbl):
-        cen_idx = self._ungroup(self._group_results['cen_res_idx'])
-        self.fit_results['cen_res_idx'] = cen_idx
+        # Keep cen_idx as a list because it can have NaNs with the ints.
+        # If NaNs are present, turning it into an array will convert the
+        # ints to floats, which cannot be used as slices.
+        cen_idx = self._ungroup(self._group_results['psfcenter_indices'])
+        self.fit_results['psfcenter_indices'] = cen_idx
 
         split_index = []
         for npixfit in self._group_results['npixfit']:
@@ -950,11 +953,11 @@ class PSFPhotometry:
                                  'different lengths')
             source_tbl = hstack((source_tbl, param_errors))
 
-        npixfit = self._ungroup(self._group_results['npixfit'])
+        npixfit = np.array(self._ungroup(self._group_results['npixfit']))
         self.fit_results['npixfit'] = npixfit
         source_tbl['npixfit'] = npixfit
 
-        nmodels = self._ungroup(self._group_results['nmodels'])
+        nmodels = np.array(self._ungroup(self._group_results['nmodels']))
         self.fit_results['nmodels'] = nmodels
         source_tbl['group_size'] = nmodels
 
