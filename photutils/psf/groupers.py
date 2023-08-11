@@ -3,6 +3,8 @@
 This module provides classes to perform grouping of stars.
 """
 
+from collections import defaultdict
+
 import numpy as np
 
 __all__ = ['SourceGrouper']
@@ -71,11 +73,5 @@ class SourceGrouper:
 
         # reorder the group_ids so that that unique group_ids start from 1
         # and increase (this matches the output of DBSCAN)
-        mapping = {}
-        i = 1
-        for group in group_id:
-            if group not in mapping:
-                mapping[group] = i
-                i += 1
-
+        mapping = defaultdict(lambda: len(mapping) + 1)
         return np.array([mapping[group] for group in group_id])
