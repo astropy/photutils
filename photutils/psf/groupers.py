@@ -13,10 +13,9 @@ class SourceGrouper:
     Class to group sources into clusters based on a minimum separation
     distance.
 
-    This class uses the `"Density-based Spatial Clustering
-    of Applications with Noise" clustering algorithm
-    <https://scikit-learn.org/stable/modules/clustering.html#dbscan>`_
-    from `scikit-learn <https://scikit-learn.org/>`_.
+    The groups are formed using hierarchical agglomerative
+    clustering with a distance criterion, calling the
+    `scipy.cluster.hierarchy.fclusterdata` function.
 
     Parameters
     ----------
@@ -24,41 +23,9 @@ class SourceGrouper:
         The minimum distance (in pixels) such that any two sources
         separated by less than this distance will be placed in the same
         group if the ``min_size`` criteria is also met.
-
-    min_size : int, optional
-        The minimum number of sources necessary to form a group.
-
-    metric : str or callable (default='euclidean'), optional
-        The metric to use when calculating distance between each pair of
-        sources.
-
-    algorithm : {'auto', 'ball_tree', 'kd_tree', 'brute'}, optional
-        The algorithm to use to find nearest neighbors.
-
-    leaf_size : int, optional (default = 30)
-        The leaf size passed to the BallTree or cKDTree function.
-        Changing ``leaf_size`` will not affect the results of a query,
-        but can significantly impact the speed of a query and the memory
-        required to store the constructed tree.
-
-    References
-    ----------
-    [1] scikit-learn DBSCAN.
-        https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html
-
-    Notes
-    -----
-    ``min_separation`` corresponds to ``eps`` in `sklearn.cluster.DBSCAN
-    <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.D
-    BSCAN.html>`_.
     """
-    def __init__(self, min_separation, *, min_size=1, metric='euclidean',
-                 algorithm='auto', leaf_size=30):
+    def __init__(self, min_separation):
         self.min_separation = min_separation
-        self.min_size = min_size
-        self.metric = metric
-        self.algorithm = algorithm
-        self.leaf_size = leaf_size
 
     def __call__(self, x, y):
         """
@@ -96,12 +63,19 @@ class SourceGrouper:
             A 1D array of the groups, in the same order as the input x
             and y coordinates.
         """
-        from sklearn.cluster import DBSCAN
+        from scipy.cluster.hierarchy import fclusterdata
 
         xypos = np.transpose((x, y))
-        dbscan = DBSCAN(eps=self.min_separation, min_samples=self.min_size,
-                        metric=self.metric, algorithm=self.algorithm,
-                        leaf_size=self.leaf_size)
-        group_id = dbscan.fit(xypos).labels_ + 1
+        group_id = fclusterdata(xypos, t=self.min_separation,
+                                criterion='distance')
 
-        return group_id
+        # reorder the group_ids so that that unique group_ids start from 1
+        # and increase (this matches the output of DBSCAN)
+        mapping = {}
+        i = 1
+        for group in group_id:
+            if group not in mapping:
+                mapping[group] = i
+                i += 1
+
+        return np.array([mapping[group] for group in group_id])
