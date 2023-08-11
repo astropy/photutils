@@ -612,6 +612,14 @@ class PSFPhotometry:
             desc = 'Fit source/group'
             sources = add_progress_bar(sources, desc=desc)  # pragma: no cover
 
+        # Save the fit_info results for these keys if they are present.
+        # Some of these keys are returned only by some fitters. These
+        # keys contain the fit residuals (fvec or fun), the parameter
+        # covariance matrix (param_cov), and the fit status (ierr,
+        # message) or (status).
+        fit_info_keys = ('fvec', 'fun', 'param_cov', 'ierr', 'message',
+                         'status')
+
         fit_models = []
         fit_infos = []
         nmodels = []
@@ -642,7 +650,11 @@ class PSFPhotometry:
                            'mask.')
                     raise ValueError(msg) from exc
 
-                fit_info = self.fitter.fit_info.copy()
+                fit_info = {}
+                for key in fit_info_keys:
+                    value = self.fitter.fit_info.get(key, None)
+                    if value is not None:
+                        fit_info[key] = value
 
             fit_models.append(fit_model)
             fit_infos.append(fit_info)
