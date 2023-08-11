@@ -26,7 +26,7 @@ New Features
 
   - Added new ``PSFPhotometry``, ``IterativePSFPhotometry``, and
     ``SourceGrouper`` classes. [#1558, #1559, #1563, #1566, #1567,
-    #1581, #1586, #1590, #1594, #1603]
+    #1581, #1586, #1590, #1594, #1603, #1604]
 
   - Added a ``GriddedPSFModel`` ``fill_value`` attribute, [#1583]
 
