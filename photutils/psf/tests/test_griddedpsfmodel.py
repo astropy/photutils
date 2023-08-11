@@ -273,6 +273,7 @@ class TestGriddedPSFModel:
         model.plot_grid(deltas=True)
 
 
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 @pytest.mark.parametrize('filename', FILENAMES)
 def test_stdpsfgrid(filename):
     filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
