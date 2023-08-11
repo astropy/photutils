@@ -31,6 +31,16 @@ New Features
 
   - Added a function to make a ``GriddedPSFModel`` from ePSFs. [#1596]
 
+  - Added a ``read`` method to ``GriddedPSFModel`` for reading "STDPSF"
+    FITS files containing grids of ePSF models. [#1557]
+
+  - Added a ``plot_grid`` method to ``GriddedPSFModel`` for plotting
+    ePSF grids. [#1557]
+
+  - Added a ``STDPSFGrid`` class for reading "STDPSF" FITS files
+    containing grids of ePSF models and plotting the ePSF grids. [#1557]
+
+
 Bug Fixes
 ^^^^^^^^^
 

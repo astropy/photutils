@@ -10,8 +10,6 @@ from astropy.nddata.utils import add_array, extract_array
 from astropy.table import QTable
 from astropy.utils.decorators import deprecated
 
-from photutils.psf.models import EPSFModel, GriddedPSFModel
-
 __all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf',
            'grid_from_epsfs']
 
@@ -342,7 +340,6 @@ def subtract_psf(data, psf, posflux, *, subshape=None):
 
 
 def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
-
     """
     Create a GriddedPSFModel from a list of EPSFModels.
 
@@ -377,9 +374,11 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
 
     Returns
     -------
-    GriddedPSFModel: `photutils.psf.models.GriddedPSFModel`
+    GriddedPSFModel: `photutils.psf.GriddedPSFModel`
         The gridded PSF model created from the input EPSFs.
     """
+    # prevent circular imports
+    from photutils.psf import EPSFModel, GriddedPSFModel
 
     x_0s = []  # optional, to store fiducial from input if `grid_xypos` is None
     y_0s = []

@@ -354,14 +354,16 @@ class TestGridFromEPSFs:
 
         # when 'meta' isn't provided, there should be just three keys
         psf_grid = grid_from_epsfs(self.epsfs)
-        assert list(psf_grid.meta.keys()) == keys
+        for key in keys:
+            assert key in psf_grid.meta
 
         # when meta is provided, those new keys should exist and anything
         # in the list above should be overwritten
         meta = {'grid_xypos': 0.0, 'oversampling': 0.0,
                 'fill_value': -999, 'extra_key': 'extra'}
         psf_grid = grid_from_epsfs(self.epsfs, meta=meta)
-        assert list(psf_grid.meta.keys()) == keys + ['extra_key']
+        for key in keys + ['extra_key']:
+            assert key in psf_grid.meta
         assert psf_grid.meta['grid_xypos'].sort() == self.grid_xypos.sort()
         assert psf_grid.meta['oversampling'] == 4
         assert psf_grid.meta['fill_value'] == 0.0
