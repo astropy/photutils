@@ -951,7 +951,8 @@ class STDPSFGrid(ModelGridPlotMixin):
         oversampling = 4
         self.grid_xypos = xy_grid
         self.oversampling = oversampling
-        meta = {'grid_xypos': xy_grid,
+        meta = {'grid_shape': (len(self._ygrid), len(self._xgrid)),
+                'grid_xypos': xy_grid,
                 'oversampling': oversampling}
 
         # try to get additional metadata from the filename because this
@@ -966,7 +967,7 @@ class STDPSFGrid(ModelGridPlotMixin):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
         cls_info = []
 
-        keys = ('STDPSF', 'detector', 'filter')
+        keys = ('STDPSF', 'detector', 'filter', 'grid_shape')
         for key in keys:
             if key in self.meta:
                 name = key.capitalize() if key != 'STDPSF' else key
