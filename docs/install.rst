@@ -9,36 +9,36 @@ Photutils has the following strict requirements:
 
 * `Python <https://www.python.org/>`_ 3.9 or later
 
-* `Numpy <https://numpy.org/>`_ 1.22 or later
+* `NumPy <https://numpy.org/>`_ 1.22 or later
 
 * `Astropy`_ 5.0 or later
 
 Photutils also optionally depends on other packages for some features:
 
-* `Scipy <https://www.scipy.org/>`_ 1.7.0 or later:  To power a variety of
+* `SciPy <https://scipy.org/>`_ 1.7.0 or later:  To power a variety of
   features in several modules (strongly recommended).
 
-* `matplotlib <https://matplotlib.org/>`_ 3.5.0 or later:  To power a
+* `Matplotlib <https://matplotlib.org/>`_ 3.5.0 or later:  To power a
   variety of plotting features (e.g., plotting apertures).
 
 * `scikit-image <https://scikit-image.org/>`_ 0.19.0 or later: Used for
   deblending segmented sources.
 
-* `scikit-learn <https://scikit-learn.org/>`_ 1.0 or later:  Used in
-  `~photutils.psf.SourceGrouper` to create star groups.
+* `scikit-learn <https://scikit-learn.org/>`_ 1.0 or later: Used in the
+  deprecated `~photutils.psf.DBSCANGroup` class to create star groups.
 
-* `gwcs <https://github.com/spacetelescope/gwcs>`_ 0.18 or later:
+* `GWCS <https://gwcs.readthedocs.io/en/stable/>`_ 0.18 or later:
   Used in `~photutils.datasets.make_gwcs` to create a simple celestial
   gwcs object.
 
-* `bottleneck <https://github.com/pydata/bottleneck>`_: Improves the
+* `Bottleneck <https://github.com/pydata/bottleneck>`_: Improves the
   performance of sigma clipping and other functionality that may require
   computing statistics on arrays with NaN values.
 
 * `tqdm <https://tqdm.github.io/>`_: Used to display optional progress
   bars.
 
-* `rasterio <https://rasterio.readthedocs.io/>`_: Used for converting
+* `Rasterio <https://rasterio.readthedocs.io/>`_: Used for converting
   source segments into polygon objects.
 
 * `Shapely <https://shapely.readthedocs.io/>`_: Used for converting
