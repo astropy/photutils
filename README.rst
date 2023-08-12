@@ -26,14 +26,14 @@ the following acknowledgment::
 
     This research made use of Photutils, an Astropy package for
     detection and photometry of astronomical sources (Bradley et al.
-    20XX).
+    <YEAR>).
 
-where (Bradley et al. 20XX) is a citation to the `Zenodo record
-<https://doi.org/10.5281/zenodo.596036>`_ of the Photutils version
-that was used.  We also encourage citations in the main text wherever
-appropriate.  Please see the `CITATION
-<https://github.com/astropy/photutils/blob/main/photutils/CITATION.rst>`_
-file for details and an example BibTeX entry.
+where (Bradley et al. <YEAR>) is a citation to the `Zenodo record
+<https://doi.org/10.5281/zenodo.596036>`_ of the Photutils
+version that was used. We also encourage citations in the
+main text wherever appropriate. Please see the `CITATION
+<https://github.com/astropy/photutils/blob/main/photutils/CITATION.rst>`
+_ file for details and an example BibTeX entry.
 
 
 License

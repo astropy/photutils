@@ -9,35 +9,35 @@ the following acknowledgment:
 
     This research made use of Photutils, an Astropy package for
     detection and photometry of astronomical sources (Bradley et al.
-    20XX).
+    <YEAR>).
 
-where (Bradley et al. 20XX) is a citation to the `Zenodo record
+where (Bradley et al. <YEAR>) is a citation to the `Zenodo record
 <https://doi.org/10.5281/zenodo.596036>`_ of the Photutils version
 that was used. We also encourage citations in the main text wherever
 appropriate.
 
-All Photutils versions and citation formats can be found at
+BibTex files for all Photutils versions can be found at
 https://doi.org/10.5281/zenodo.596036. For example, for Photutils
-v1.5.0 one would cite Bradley et al. 2022 with the BibTeX entry
-(https://zenodo.org/record/6825092/export/hx):
+v1.8.0 one should cite Bradley et al. 2023 with the BibTeX entry
+(https://zenodo.org/record/7946442/export/hx):
 
 .. code-block:: text
 
-    @software{larry_bradley_2022_6825092,
+    @software{larry_bradley_2023_7946442,
     author       = {Larry Bradley and
-                    Brigitta Sipőcz and
+                    Brigitta Sip{\H o}cz and
                     Thomas Robitaille and
                     Erik Tollerud and
-                    Zé Vinícius and
+                    Z\`e Vin{\'{\i}}cius and
                     Christoph Deil and
                     Kyle Barbary and
                     Tom J Wilson and
                     Ivo Busko and
                     Axel Donath and
-                    Hans Moritz Günther and
+                    Hans Moritz G{\"u}nther and
                     Mihai Cara and
                     P. L. Lim and
-                    Sebastian Meßlinger and
+                    Sebastian Me{\ss}linger and
                     Simon Conseil and
                     Azalee Bostroem and
                     Michael Droettboom and
@@ -54,11 +54,11 @@ v1.5.0 one would cite Bradley et al. 2022 with the BibTeX entry
                     Yoonsoo P. Bach and
                     Bruno Quint and
                     Harrison Souchereau},
-    title        = {astropy/photutils: 1.5.0},
-    month        = jul,
-    year         = 2022,
+    title        = {astropy/photutils: 1.8.0},
+    month        = may,
+    year         = 2023,
     publisher    = {Zenodo},
-    version      = {1.5.0},
-    doi          = {10.5281/zenodo.6825092},
-    url          = {https://doi.org/10.5281/zenodo.6825092}
+    version      = {1.8.0},
+    doi          = {10.5281/zenodo.7946442},
+    url          = {https://doi.org/10.5281/zenodo.7946442}
     }
