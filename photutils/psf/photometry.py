@@ -1038,7 +1038,7 @@ class PSFPhotometry:
 
         psf_shape : 2 tuple of int
             The shape of region around the center of the fit model to
-            render in the output image.
+            subtract.
 
         Returns
         -------
@@ -1134,6 +1134,14 @@ class IterativePSFPhotometry:
         flux of each source. The ``flux_init`` values in ``init_params``
         override this keyword *only for the first iteration*.
 
+    sub_shape : `None`, int, or length-2 array_like
+        The rectangular shape around the center of a star that will be
+        used when subtracting the fitted PSF models. If ``sub_shape`` is
+        a scalar then a square shape of size ``sub_shape`` will be used.
+        If ``sub_shape`` has two elements, they must be in ``(ny, nx)``
+        order. Each element of ``sub_shape`` must be an odd number. If
+        `None`, then ``sub_shape`` is set to ``fit_shape``.
+
     progress_bar : bool, optional
         Whether to display a progress bar when fitting the sources
         (or groups). The progress bar requires that the `tqdm
@@ -1145,7 +1153,7 @@ class IterativePSFPhotometry:
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
                  fitter=LevMarLSQFitter(), fitter_maxiters=100, maxiters=3,
                  localbkg_estimator=None, aperture_radius=None,
-                 progress_bar=False):
+                 sub_shape=None, progress_bar=False):
 
         if finder is None:
             raise ValueError('finder cannot be None for '
@@ -1165,6 +1173,10 @@ class IterativePSFPhotometry:
                                      progress_bar=progress_bar)
 
         self.fit_results = []
+        if sub_shape is None:
+            sub_shape = fit_shape
+        self.sub_shape = as_pair('sub_shape', sub_shape, lower_bound=(0, 1),
+                                 check_odd=True)
 
     @staticmethod
     def _validate_maxiters(maxiters):
@@ -1273,10 +1285,10 @@ class IterativePSFPhotometry:
         while iter_num <= self.maxiters and phot_tbl is not None:
             if iter_num == 2:
                 residual_data = self.psfphot.make_residual_image(
-                    data, self.psfphot.fit_shape)
+                    data, self.sub_shape)
             else:
                 residual_data = self.psfphot.make_residual_image(
-                    residual_data, self.psfphot.fit_shape)
+                    residual_data, self.sub_shape)
 
             resid.append(residual_data)
 
@@ -1373,7 +1385,7 @@ class IterativePSFPhotometry:
 
         psf_shape : 2 tuple of int
             The shape of region around the center of the fit model to
-            render in the output image.
+            subtract.
 
         Returns
         -------
