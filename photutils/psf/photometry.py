@@ -136,11 +136,13 @@ class PSFPhotometry:
         self.finder_results = []
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
+        self._fit_models = None
 
     def _reset_results(self):
         self.finder_results = []
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
+        self._fit_models = None
 
     def _validate_grouper(self, grouper, name):
         # remove this check when GroupStarsBase subclasses are removed
@@ -296,13 +298,6 @@ class PSFPhotometry:
                 mask = None
 
         return mask
-
-    @staticmethod
-    def _flatten(iterable):
-        """
-        Flatten a list of lists.
-        """
-        return list(chain.from_iterable(iterable))
 
     def _get_aper_fluxes(self, data, mask, init_params):
         xpos = init_params[self._xinit_name]
@@ -503,9 +498,9 @@ class PSFPhotometry:
 
         # flatten the lists, which may contain arrays of different lengths
         # due to masking
-        xi = self._flatten(xi)
-        yi = self._flatten(yi)
-        cutout = self._flatten(cutout)
+        xi = _flatten(xi)
+        yi = _flatten(yi)
+        cutout = _flatten(cutout)
 
         self._group_results['npixfit'].append(npixfit)
         self._group_results['psfcenter_indices'].append(cen_index)
@@ -532,7 +527,7 @@ class PSFPhotometry:
         """
         Expand a list of lists (groups) and reorder in source-id order.
         """
-        iterable = self._flatten(iterable)
+        iterable = _flatten(iterable)
         return self._order_by_id(iterable)
 
     def _get_fit_error_indices(self):
@@ -591,7 +586,7 @@ class PSFPhotometry:
         fit_infos = self._order_by_id(fit_infos)
         fit_param_errs = np.array(self._order_by_id(fit_param_errs))
 
-        self.fit_results['fit_models'] = fit_models
+        self._fit_models = fit_models
         self.fit_results['fit_infos'] = fit_infos
         self.fit_results['fit_param_errs'] = fit_param_errs
         self.fit_results['fit_error_indices'] = self._get_fit_error_indices()
@@ -696,7 +691,7 @@ class PSFPhotometry:
         colnames = list(param_map.values())
 
         # add missing error columns
-        nsources = len(self.fit_results['fit_models'])
+        nsources = len(self._fit_models)
         for colname in colnames:
             if colname not in table.colnames:
                 table[colname] = [np.nan] * nsources
@@ -751,8 +746,7 @@ class PSFPhotometry:
             qfit = []
             cfit = []
             for index, (model, residual, cen_idx_) in enumerate(
-                    zip(self.fit_results['fit_models'], fit_residuals,
-                        cen_idx)):
+                    zip(self._fit_models, fit_residuals, cen_idx)):
                 source = source_tbl[index]
                 xcen = py2intround(source[self._xinit_name])
                 ycen = py2intround(source[self._yinit_name])
@@ -1004,7 +998,7 @@ class PSFPhotometry:
         array : 2D `~numpy.ndarray`
             The rendered image from the fit PSF models.
         """
-        fit_models = self.fit_results['fit_models']
+        fit_models = self._fit_models
 
         data = np.zeros(shape)
         xname, yname = self._get_psf_param_names()[0][0:2]
@@ -1336,11 +1330,11 @@ class IterativePSFPhotometry:
         fit_models = []
         local_bkgs = []
         for psfphot in self.fit_results:
-            fit_models.append(psfphot.fit_results['fit_models'])
+            fit_models.append(psfphot._fit_models)
             local_bkgs.append(psfphot.fit_results['local_bkg'])
 
-        fit_models = self.fit_results[0]._flatten(fit_models)
-        local_bkgs = self.fit_results[0]._flatten(local_bkgs)
+        fit_models = _flatten(fit_models)
+        local_bkgs = _flatten(local_bkgs)
 
         data = np.zeros(shape)
         xname, yname = self.fit_results[0]._get_psf_param_names()[0][0:2]
@@ -1395,9 +1389,17 @@ class IterativePSFPhotometry:
             if isinstance(data, u.Quantity):
                 unit = data.unit
                 data = data.value
-            residual = data - self.make_model_image(data.shape, psf_shape)
+            residual = -self.make_model_image(data.shape, psf_shape)
+            residual += data
 
             if unit is not None:
                 residual <<= unit
 
         return residual
+
+
+def _flatten(iterable):
+    """
+    Flatten a list of lists.
+    """
+    return list(chain.from_iterable(iterable))
