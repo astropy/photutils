@@ -341,7 +341,7 @@ returned from the ``fitter`` for each source:
 .. doctest-requires:: scipy
 
     >>> psfphot.fit_results.keys()
-    dict_keys(['local_bkg', 'fit_models', 'fit_infos', 'fit_param_errs', 'fit_error_indices', 'npixfit', 'nmodels', 'psfcenter_indices', 'fit_residuals'])
+    dict_keys(['local_bkg', 'fit_infos', 'fit_param_errs', 'fit_error_indices', 'npixfit', 'nmodels', 'psfcenter_indices', 'fit_residuals'])
 
 As an example, let's print the covariance matrix of the fit parameters
 for the first source (note that not all astropy fitters will return a
