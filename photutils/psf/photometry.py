@@ -136,11 +136,13 @@ class PSFPhotometry:
         self.finder_results = []
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
+        self._fit_models = None
 
     def _reset_results(self):
         self.finder_results = []
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
+        self._fit_models = None
 
     def _validate_grouper(self, grouper, name):
         # remove this check when GroupStarsBase subclasses are removed
@@ -591,7 +593,7 @@ class PSFPhotometry:
         fit_infos = self._order_by_id(fit_infos)
         fit_param_errs = np.array(self._order_by_id(fit_param_errs))
 
-        self.fit_results['fit_models'] = fit_models
+        self._fit_models = fit_models
         self.fit_results['fit_infos'] = fit_infos
         self.fit_results['fit_param_errs'] = fit_param_errs
         self.fit_results['fit_error_indices'] = self._get_fit_error_indices()
@@ -696,7 +698,7 @@ class PSFPhotometry:
         colnames = list(param_map.values())
 
         # add missing error columns
-        nsources = len(self.fit_results['fit_models'])
+        nsources = len(self._fit_models)
         for colname in colnames:
             if colname not in table.colnames:
                 table[colname] = [np.nan] * nsources
@@ -751,8 +753,7 @@ class PSFPhotometry:
             qfit = []
             cfit = []
             for index, (model, residual, cen_idx_) in enumerate(
-                    zip(self.fit_results['fit_models'], fit_residuals,
-                        cen_idx)):
+                    zip(self._fit_models, fit_residuals, cen_idx)):
                 source = source_tbl[index]
                 xcen = py2intround(source[self._xinit_name])
                 ycen = py2intround(source[self._yinit_name])
@@ -1004,7 +1005,7 @@ class PSFPhotometry:
         array : 2D `~numpy.ndarray`
             The rendered image from the fit PSF models.
         """
-        fit_models = self.fit_results['fit_models']
+        fit_models = self._fit_models
 
         data = np.zeros(shape)
         xname, yname = self._get_psf_param_names()[0][0:2]
@@ -1336,7 +1337,7 @@ class IterativePSFPhotometry:
         fit_models = []
         local_bkgs = []
         for psfphot in self.fit_results:
-            fit_models.append(psfphot.fit_results['fit_models'])
+            fit_models.append(psfphot._fit_models)
             local_bkgs.append(psfphot.fit_results['local_bkg'])
 
         fit_models = self.fit_results[0]._flatten(fit_models)
