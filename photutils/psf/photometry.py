@@ -1389,7 +1389,8 @@ class IterativePSFPhotometry:
             if isinstance(data, u.Quantity):
                 unit = data.unit
                 data = data.value
-            residual = data - self.make_model_image(data.shape, psf_shape)
+            residual = -self.make_model_image(data.shape, psf_shape)
+            residual += data
 
             if unit is not None:
                 residual <<= unit
