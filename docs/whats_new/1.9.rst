@@ -1,0 +1,85 @@
+.. doctest-skip-all
+
+****************************
+What's New in Photutils 1.9?
+****************************
+
+Here we highlight some of the new functionality of the 1.9 release. In
+addition to these major changes, Photutils 1.9 includes a large number
+of smaller improvements and bug fixes, which are described in the full
+:ref:`changelog`.
+
+
+Improved PSF Photometry classes
+-------------------------------
+
+The `~photutils.psf.PSFPhotometry` and
+`~photutils.psf.IterativePSFPhotometry` classes were added
+to perform PSF photometry. They represent a complete rewrite
+of the previous `~photutils.psf.BasicPSFPhotometry` and
+`~photutils.psf.IterativelySubtractedPSFPhotometry` classes, but have
+a similar API and functionality. The new classes are more flexible and
+significantly faster than the previous classes. The new classes also
+allow the input of error arrays, which will be used as weights in the
+fitting. When using astropy 5.3+, these errors will also be propagated
+to the model fit parameters.
+
+Some other features of the new classes include:
+
+  * The source grouper is optional
+  * The output table is always in source ID order (not group ID order)
+  * Added two quality-of-fit metrics to the output table
+  * Added more information (columns and metadata) in the output table, including a flags column
+  * Fit warnings are not emitted for each source. A single warning is emitted at the end of fitting.
+  * Fixes issues with source masking
+  * The initial parameters table is more flexible for the x, y, and flux column names
+  * Supports `~astropy.nddata.NDData` objects
+  * Supports units
+  * Allows access to the fitter details (e.g., fit info, parameter covariances)
+  * Allows access to the finder results
+  * Adds a local background subtraction option
+
+The old PSF photometry classes (`~photutils.psf.BasicPSFPhotometry`,
+`~photutils.psf.IterativelySubtractedPSFPhotometry`, and
+`~photutils.psf.DAOPhotPSFPhotometry`) are still available in this
+release, but are deprecated. They will be removed in a future release.
+
+
+New ``SourceGrouper`` class
+---------------------------
+
+The `~photutils.psf.SourceGrouper` class was added to group sources
+using hierarchical agglomerative clustering with a distance criterion.
+This class is used by the new `~photutils.psf.PSFPhotometry` and
+`~photutils.psf.IterativePSFPhotometry` classes.
+
+The old source grouping classes (`~photutils.psf.DAOGroup` and
+`~photutils.psf.DBSCANGroup`) are still available in this release, but
+are deprecated. They will be removed in a future release.
+
+
+New ``LocalBackground`` class
+-----------------------------
+
+The `~photutils.background.LocalBackground` class was added to compute a
+local background using a circular annulus aperture.
+
+
+Reading and plotting Gridded PSF Models
+---------------------------------------
+
+A read method was added to the `~photutils.psf.GriddedPSFModel`
+class to read STDPSF FITS files containing grids of ePSF models. The
+`~photutils.psf.GriddedPSFModel` class also has a new ``plot_grid``
+method to plot the ePSF models.
+
+Similarly, the `~photutils.psf.STDPSFGrid` class was added to read
+STDPSF FITS files. This class can read and plot multi-detector ePSF
+grids. Note that it is merely a container for STDPDF files. It cannot be
+used as a PSF model in the photometry classes.
+
+
+Other changes
+=============
+
+Please see the :ref:`changelog` for the complete list of changes.
