@@ -1,4 +1,4 @@
-1.9.0 (unreleased)
+1.9.0 (2023-08-14)
 ------------------
 
 General
@@ -6,7 +6,7 @@ General
 
 - The minimum required Python is now 3.9. [#1569]
 
-- The minimum required Numpy is now 1.22. [#1572]
+- The minimum required NumPy is now 1.22. [#1572]
 
 New Features
 ^^^^^^^^^^^^
