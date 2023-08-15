@@ -82,18 +82,8 @@ repository is called ``upstream``.
 
 #. Go to `Read the Docs
    <https://readthedocs.org/projects/photutils/versions/>`_ and check
-   that the "stable" docs correspond to the new released version.
-   Deactivate any older released versions (i.e., uncheck "Active").
-
-#. After the release, the conda-forge bot (``regro-cf-autotick-bot``)
-   will automatically create a pull request to the `Photutils feedstock
-   repository <https://github.com/conda-forge/photutils-feedstock>`_.
-   The ``meta.yaml`` recipe may need to be edited to update
-   dependencies or versions. Modify (if necessary), review,
-   and merge the PR to create the `conda-forge package
-   <https://anaconda.org/conda-forge/photutils>`_. The `Astropy conda
-   channel <https://anaconda.org/astropy/photutils>`_ will automatically
-   mirror the package from conda-forge.
+   that the "stable" docs correspond to the new released version. Hide
+   any older released versions (i.e., check "Hidden").
 
 #. Update ``CHANGES.rst``. After releasing a minor (bugfix) version,
    update its release date. After releasing a major version, add a new
@@ -120,14 +110,15 @@ repository is called ``upstream``.
         git commit -m'Add version <x.y.z> to the changelog'
         git push upstream main
 
-#. After releasing a major version, tag this new commit with the
-   development version of the next major version and push the tag to
-   the upstream repo. This is needed if the latest package release is
-   the first bugfix release tagged on a bugfix branch (not the main
-   branch)::
-
-        git tag -a <x.y.z.dev> -m'<x.y.z.dev>'
-        git push upstream <x.y.z.dev>
+#. After the release, the conda-forge bot (``regro-cf-autotick-bot``)
+   will automatically create a pull request to the `Photutils feedstock
+   repository <https://github.com/conda-forge/photutils-feedstock>`_.
+   The ``meta.yaml`` recipe may need to be edited to update
+   dependencies or versions. Modify (if necessary), review,
+   and merge the PR to create the `conda-forge package
+   <https://anaconda.org/conda-forge/photutils>`_. The `Astropy conda
+   channel <https://anaconda.org/astropy/photutils>`_ will automatically
+   mirror the package from conda-forge.
 
 
 .. _manual_tests:
