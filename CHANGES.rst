@@ -13,6 +13,11 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.segmentation``
+
+  - Removed the deprecated ``kernel`` keyword from ``SourceCatalog``.
+    [#1613]
+
 
 1.9.0 (2023-08-14)
 ------------------
