@@ -14,7 +14,6 @@ import numpy as np
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import (BoundingBox, CircularAperture,
@@ -22,7 +21,6 @@ from photutils.aperture import (BoundingBox, CircularAperture,
 from photutils.background import SExtractorBackground
 from photutils.centroids import centroid_quadratic
 from photutils.segmentation.core import SegmentationImage
-from photutils.utils._convolution import _filter_data
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _moments, _moments_central
 from photutils.utils._progress_bars import add_progress_bar
@@ -104,12 +102,13 @@ class SourceCatalog:
 
     convolved_data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The 2D array used to calculate the source centroid and
-        morphological properties. The user should input the convolved
-        data directly instead of using the deprecated ``kernel``
-        keyword. If ``convolved_data`` is input, then the ``kernel``
-        keyword will be ignored. If both ``convolved_data`` and
-        ``kernel`` are `None`, then the unconvolved ``data`` will be
-        used instead. Non-finite ``convolved_data`` values (NaN and
+        morphological properties. Typically, ``convolved_data``
+        should be the input ``data`` array convolved by the
+        same smoothing kernel that was applied to the detection
+        image when deriving the source segments (e.g., see
+        :func:`~photutils.segmentation.detect_sources`). If
+        ``convolved_data`` is `None`, then the unconvolved ``data`` will
+        be used instead. Non-finite ``convolved_data`` values (NaN and
         inf) are not automatically masked, unless they are at the same
         position of non-finite values in the input ``data`` array. Such
         pixels can be masked using the ``mask`` keyword.
@@ -135,9 +134,6 @@ class SourceCatalog:
         values (NaN and inf) in the input ``data`` are automatically
         masked.
 
-    kernel : 2D `~numpy.ndarray` or `~astropy.convolution.Kernel2D`, optional
-        Deprecated. Please input a convolved image directly into the
-        ``convolved_data`` keyword.
 
         The 2D kernel used to filter the data prior to calculating
         the source centroid and morphological parameters. The
@@ -291,16 +287,10 @@ class SourceCatalog:
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
 
-    @deprecated_renamed_argument('kernel', None, '1.8', message='"kernel" was '
-                                 'deprecated in version 1.8 and will be '
-                                 'removed in version 1.9. Instead, please '
-                                 'input a convolved image directly into the '
-                                 '"convolved_data" parameter.')
     def __init__(self, data, segment_img, *, convolved_data=None, error=None,
-                 mask=None, kernel=None, background=None, wcs=None,
-                 localbkg_width=0, apermask_method='correct',
-                 kron_params=(2.5, 1.4, 0.0), detection_cat=None,
-                 progress_bar=False):
+                 mask=None, background=None, wcs=None, localbkg_width=0,
+                 apermask_method='correct', kron_params=(2.5, 1.4, 0.0),
+                 detection_cat=None, progress_bar=False):
 
         arrays, unit = process_quantities(
             (data, convolved_data, error, background),
@@ -313,7 +303,6 @@ class SourceCatalog:
         self._segment_img = self._validate_segment_img(segment_img)
         self._error = self._validate_array(error, 'error')
         self._mask = self._validate_array(mask, 'mask')
-        self._kernel = kernel
         self._background = self._validate_array(background, 'background')
         self.wcs = wcs
         self.localbkg_width = self._validate_localbkg_width(localbkg_width)
@@ -339,10 +328,7 @@ class SourceCatalog:
                 setattr(self, attr, getattr(self._detection_cat, attr))
 
         if convolved_data is None:
-            if kernel is None:
-                self._convolved_data = self._data
-            else:
-                self._convolved_data = self._convolve_data()
+            self._convolved_data = self._data
 
         self._apermask_kwargs = {
             'circ': {'method': 'exact'},
@@ -478,11 +464,11 @@ class SourceCatalog:
 
         # attributes defined in __init__ that are copied directly to the
         # new class
-        init_attr = ('_data', '_segment_img', '_error', '_mask', '_kernel',
-                     '_background', 'wcs', '_data_unit', '_convolved_data',
-                     'localbkg_width', 'apermask_method', 'kron_params',
-                     'default_columns', '_extra_properties', 'meta',
-                     '_apermask_kwargs', 'progress_bar')
+        init_attr = ('_data', '_segment_img', '_error', '_mask', '_background',
+                     'wcs', '_data_unit', '_convolved_data', 'localbkg_width',
+                     'apermask_method', 'kron_params', 'default_columns',
+                     '_extra_properties', 'meta', '_apermask_kwargs',
+                     'progress_bar')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -712,13 +698,6 @@ class SourceCatalog:
         # preserve the order of self.extra_properties
         self.extra_properties.remove(new_name)
         self.extra_properties.insert(idx, new_name)
-
-    def _convolve_data(self):
-        """
-        Convolve the input data with the input kernel.
-        """
-        return _filter_data(self._data, self._kernel, mode='constant',
-                            fill_value=0.0, check_normalization=True)
 
     @lazyproperty
     def _null_objects(self):
