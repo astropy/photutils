@@ -8,8 +8,10 @@ import pytest
 from numpy.testing import assert_equal
 
 from photutils.psf.groupers import SourceGrouper
+from photutils.utils._optional_deps import HAS_SCIPY
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_grouper_empty():
     """
     Test case when there are no sources.
@@ -22,6 +24,7 @@ def test_grouper_empty():
         grouper(xx, yy)
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_grouper_one_source():
     """
     Test case when there is only one source.
@@ -34,6 +37,7 @@ def test_grouper_one_source():
     assert_equal(groups, gg)
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_grouper_inputs():
     xx = np.array([1, 2, 3, 4])
     yy = np.array([1, 2])
@@ -43,6 +47,7 @@ def test_grouper_inputs():
         grouper(xx, yy)
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_isolated_sources():
     """
     Test case when all sources are isolated.
@@ -57,6 +62,7 @@ def test_isolated_sources():
     assert_equal(groups, gg)
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_grouper_one():
     """
         +---------+--------+---------+---------+--------+---------+
@@ -96,6 +102,7 @@ def test_grouper_one():
     assert_equal(groups, gg)
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_grouper_two():
     """
         +--------------+--------------+-------------+--------------+
@@ -130,6 +137,7 @@ def test_grouper_two():
     assert_equal(groups, gg)
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_grouper_three():
     """
       1 +--+-------+--------+--------+--------+-------+--------+--+
@@ -164,6 +172,7 @@ def test_grouper_three():
     assert_equal(groups, gg)
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_grouper_four():
     """
         +-+---------+---------+---------+---------+-+
@@ -197,6 +206,7 @@ def test_grouper_four():
     assert_equal(groups, gg)
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_grouper_five():
     """
         +--+--------+--------+-------+--------+--------+--------+--+
@@ -241,6 +251,7 @@ def test_grouper_five():
     assert_equal(groups, gg)
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_grouper_six():
     """
         +------+----------+----------+----------+----------+------+
