@@ -10,6 +10,12 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Fixed a bug where ``SourceGrouper`` would fail if only one source
+    was input. [#1617]
+
+
 API Changes
 ^^^^^^^^^^^
 
