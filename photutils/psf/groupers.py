@@ -67,6 +67,15 @@ class SourceGrouper:
         """
         from scipy.cluster.hierarchy import fclusterdata
 
+        x = np.atleast_1d(x)
+        y = np.atleast_1d(y)
+        if x.shape != y.shape:
+            raise ValueError('x and y must have the same shape')
+        if x.shape == (0,):  # no sources
+            raise ValueError('x and y must not be empty')
+        if x.shape == (1,):  # single source -> single group
+            return np.array([1])
+
         xypos = np.transpose((x, y))
         group_id = fclusterdata(xypos, t=self.min_separation,
                                 criterion='distance')
