@@ -17,7 +17,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import tomli
+if sys.version_info < (3, 11):
+    import tomli as tomllib
+else:
+    import tomllib
 
 try:
     from sphinx_astropy.conf.v1 import *  # noqa: F403
@@ -28,7 +31,7 @@ except ImportError:
 
 # Get configuration information from setup.cfg
 with open(Path(__file__).parent.parent / 'pyproject.toml', 'rb') as configuration_file:
-    configuration = tomli.load(configuration_file)
+    configuration = tomllib.load(configuration_file)
 metadata = configuration['metadata']
 
 # -- General configuration ----------------------------------------------------
