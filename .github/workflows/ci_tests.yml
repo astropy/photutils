@@ -93,7 +93,7 @@ jobs:
 
           - os: ubuntu-latest
             python: '3.11'
-            tox_env: 'py311-test-alldeps-devdeps'
+            tox_env: 'py311-test-devdeps'
             toxposargs: --remote-data=any
             allow_failure: true
             prefix: '(Allowed failure)'
