@@ -139,7 +139,7 @@ class EllipseFitter:
         # build the resulting Isophote in cases where iterations run to
         # the maximum allowed (maxit), or the maximum number of flagged
         # data points (fflag) is reached.
-        minimum_amplitude_value = np.Inf
+        minimum_amplitude_value = np.inf
         minimum_amplitude_sample = None
 
         # these must be passed throughout the execution chain.
