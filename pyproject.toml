@@ -122,6 +122,9 @@ photutils = [
 "photutils.isophote.tests" = [
     "data/*",
 ]
+"photutils.psf.tests" = [
+    "data/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = [
