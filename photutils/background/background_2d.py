@@ -12,7 +12,6 @@ from astropy.nddata import NDData
 from astropy.stats import SigmaClip
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.lib.index_tricks import index_exp
 
 from photutils.aperture import RectangularAperture
 from photutils.background.core import SExtractorBackground, StdBackgroundRMS
@@ -306,7 +305,7 @@ class Background2D:
                 self.nboxes = data.shape // self.box_size
             elif self.edge_method == 'crop':
                 crop_size = self.nboxes * self.box_size
-                crop_slc = index_exp[0:crop_size[0], 0:crop_size[1]]
+                crop_slc = np.index_exp[0:crop_size[0], 0:crop_size[1]]
                 data = self.data[crop_slc]
             else:
                 raise ValueError('edge_method must be "pad" or "crop"')
