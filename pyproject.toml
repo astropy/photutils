@@ -72,7 +72,7 @@ docs = [
     "gwcs>=0.18",
     "rasterio",
     "shapely",
-    "tomli; python-version <\"3.11\"",
+    "tomli; \"python-version\" < \"3.11\"",
 ]
 
 [build-system]
@@ -87,7 +87,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
-write_to = 'photutils/version.py'
+write_to = "photutils/version.py"
 write_to_template = """
 # Note that we need to fall back to the hard-coded version if either
 # setuptools_scm can't be imported or setuptools_scm can't determine the
@@ -181,6 +181,7 @@ skip_glob = [
 ]
 known_first_party = [
     "photutils",
+    "extension_helpers",
 ]
 use_parentheses = true
 
