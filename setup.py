@@ -59,9 +59,3 @@ if 'build_docs' in sys.argv or 'build_sphinx' in sys.argv:
     print(DOCS_HELP)
     sys.exit(1)
 
-# Import these after the above checks to ensure they are printed even if
-# extensions_helpers is not installed
-from extension_helpers import get_extensions  # noqa: E402
-from setuptools import setup  # noqa: E402
-
-setup(ext_modules=get_extensions())

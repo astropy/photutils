@@ -188,3 +188,5 @@ use_parentheses = true
 edit-on-github = false
 github-project = 'astropy/photutils'
 
+[tool.extension-helpers]
+use_extension_helpers = true
