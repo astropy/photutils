@@ -72,7 +72,7 @@ docs = [
     "gwcs>=0.18",
     "rasterio",
     "shapely",
-    "tomli; \"python-version\" < \"3.11\"",
+    "tomli; python-version < '3.11'",
 ]
 
 [build-system]
