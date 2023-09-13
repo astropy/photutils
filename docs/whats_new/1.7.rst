@@ -24,12 +24,11 @@ Converting ``SegmentationImage`` segments to polygons
 =====================================================
 
 The ``SegmentationImage`` class now has a ``polygons`` attribute, which
-returns a list of `Shapely <https://shapely.readthedocs.io/>`_ polygons
-representing each source segment. It also now has a ``to_patches`` and
-a ``plot_patches`` method, which returns or plots, respectively, a list
-of `matplotlib.patches.Polygon` objects. These features require that
-both the `Rasterio <https://rasterio.readthedocs.io/>`_ and `Shapely
-<https://shapely.readthedocs.io/>`_ optional dependencies are installed.
+returns a list of `Shapely`_ polygons representing each source segment.
+It also now has a ``to_patches`` and a ``plot_patches`` method, which
+returns or plots, respectively, a list of `matplotlib.patches.Polygon`
+objects. These features require that both the `Rasterio`_ and `Shapely`_
+optional dependencies are installed.
 
 
 ``ApertureStats`` local background
@@ -57,3 +56,6 @@ Other changes
 =============
 
 Please see the :ref:`changelog` for the complete list of changes.
+
+.. _Rasterio: https://rasterio.readthedocs.io/en/stable/
+.. _Shapely: https://shapely.readthedocs.io/en/stable/

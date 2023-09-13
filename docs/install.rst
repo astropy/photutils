@@ -38,10 +38,10 @@ Photutils also optionally depends on other packages for some features:
 * `tqdm <https://tqdm.github.io/>`_: Used to display optional progress
   bars.
 
-* `Rasterio <https://rasterio.readthedocs.io/>`_: Used for converting
+* `Rasterio <https://rasterio.readthedocs.io/en/stable/>`_: Used for converting
   source segments into polygon objects.
 
-* `Shapely <https://shapely.readthedocs.io/>`_: Used for converting
+* `Shapely <https://shapely.readthedocs.io/en/stable/>`_: Used for converting
   source segments into polygon objects.
 
 Photutils depends on `pytest-astropy
@@ -88,7 +88,7 @@ Using conda
 -----------
 
 Photutils can be installed with `conda`_ if you have installed
-`Anaconda <https://www.anaconda.com/products/individual>`_ or
+`Anaconda <https://www.anaconda.com/download>`_ or
 `Miniconda <https://docs.conda.io/en/latest/miniconda.html>`_.  To
 install Photutils using the `conda-forge Anaconda channel
 <https://anaconda.org/conda-forge/photutils>`_, run::

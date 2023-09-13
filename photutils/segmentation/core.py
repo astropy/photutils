@@ -1180,8 +1180,8 @@ class SegmentationImage:
     @lazyproperty
     def polygons(self):
         """
-        A list of `Shapely <https://shapely.readthedocs.io/>`_ polygons
-        representing each source segment.
+        A list of `Shapely <https://shapely.readthedocs.io/en/stable/>`_
+        polygons representing each source segment.
         """
         from shapely.geometry import shape
 
@@ -1386,7 +1386,7 @@ class Segment:
 
     polygon : Shapely polygon, optional
         The outline of the segment as a `Shapely
-        <https://shapely.readthedocs.io/>`_ polygon.
+        <https://shapely.readthedocs.io/en/stable/>`_ polygon.
     """
 
     def __init__(self, segment_data, label, slices, bbox, area, *,
