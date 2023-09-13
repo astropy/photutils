@@ -5,7 +5,7 @@
 
 import importlib
 
-# This list is a duplicate of the dependencies in setup.cfg "all".
+# This list is a duplicate of the dependencies in pyproject.toml "all".
 # Note that in some cases the package names are different from the
 # pip-install name (e.g.k scikit-image -> skimage).
 optional_deps = ['scipy', 'matplotlib', 'skimage', 'sklearn', 'gwcs',
