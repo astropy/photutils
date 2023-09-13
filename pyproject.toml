@@ -191,7 +191,7 @@ use_parentheses = true
 
 [tool.build-sphinx]
 edit-on-github = false
-github-project = 'astropy/photutils'
+github_project = 'astropy/photutils'
 
 [tool.extension-helpers]
 use_extension_helpers = true
