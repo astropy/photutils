@@ -1,7 +1,7 @@
 [project]
 name = "photutils"
 description = "An Astropy package for source detection and photometry"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
     { name = "Photutils Developers", email = "photutils.team@gmail.com" },
 ]
@@ -60,7 +60,7 @@ all = [
     "shapely",
 ]
 test = [
-    "pytest-astropy",
+    "pytest-astropy>=0.10",
 ]
 docs = [
     "sphinx",
@@ -78,8 +78,7 @@ docs = [
 [build-system]
 requires = [
     "setuptools>=61.2",
-    "setuptools_scm[toml]>=3.4",
-    "wheel",
+    "setuptools_scm[toml]>=6.2",
     "cython>=0.29.30",
     "oldest-supported-numpy",
     "extension-helpers",
@@ -147,6 +146,8 @@ filterwarnings = [
     "ignore:numpy\\.ndarray size changed:RuntimeWarning",
     # numpy 1.24 deprecation from skimage (can remove for skimage >= 0.20)
     "ignore:`np.bool8` is a deprecated alias for `np.bool_`:DeprecationWarning",
+    # TEMP: remove when matplotlib nightly fixes the row_stack deprecations
+    "ignore:`row_stack` alias is deprecated:DeprecationWarning",
 ]
 
 [tool.coverage.run]
