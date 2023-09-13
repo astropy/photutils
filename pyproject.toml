@@ -171,3 +171,10 @@ known_first_party = [
     'extension_helpers',
 ]
 use_parentheses = true
+
+[tool.black]
+force-exclude = """
+(
+  .*
+)
+"""
