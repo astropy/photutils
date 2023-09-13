@@ -149,7 +149,7 @@ The source detection and masking procedure can be iterated further. Even
 with one iteration we are within 0.2% of the true background value and
 1.5% of the true background RMS.
 
-.. _scipy: https://www.scipy.org/
+.. _scipy: https://scipy.org/
 
 
 2D Background and Noise Estimation
