@@ -4,7 +4,7 @@ Photutils
 
 |PyPI Version| |Conda Version| |PyPI Downloads| |Astropy|
 
-|CI Status| |CircleCI Status| |Codecov Status| |Latest RTD Status|
+|CI Status| |Codecov Status| |Latest RTD Status|
 
 Photutils is an `Astropy`_ package for detection and photometry of
 astronomical sources.
@@ -72,10 +72,6 @@ for details.
 .. |Codecov Status| image:: https://img.shields.io/codecov/c/github/astropy/photutils?logo=codecov
     :target: https://codecov.io/gh/astropy/photutils
     :alt: Coverage Status
-
-.. |CircleCI Status| image:: https://img.shields.io/circleci/build/github/astropy/photutils/main?logo=circleci&label=CircleCI
-    :target: https://circleci.com/gh/astropy/photutils
-    :alt: CircleCI Status
 
 .. |Stable RTD Status| image:: https://img.shields.io/readthedocs/photutils/latest.svg?logo=read%20the%20docs&logoColor=white&label=Docs&version=stable
     :target: https://photutils.readthedocs.io/en/stable/
