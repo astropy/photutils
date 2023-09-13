@@ -29,10 +29,10 @@ except ImportError:
           'be installed')
     sys.exit(1)
 
-# Get configuration information from setup.cfg
-with open(Path(__file__).parent.parent / 'pyproject.toml', 'rb') as configuration_file:
-    configuration = tomllib.load(configuration_file)
-metadata = configuration['project']
+# Get configuration information from pyproject.toml
+with (Path(__file__).parents[1] / 'pyproject.toml').open('rb') as fh:
+    conf = tomllib.load(fh)
+    project_meta = conf['project']
 
 # -- General configuration ----------------------------------------------------
 # By default, highlight as Python 3.
@@ -66,8 +66,8 @@ rst_epilog = """
 toc_object_entries = False
 
 # -- Project information ------------------------------------------------------
-project = metadata['name']
-author = metadata['authors'][0]['name']
+project = project_meta['name']
+author = project_meta['authors'][0]['name']
 copyright = f'2011-{datetime.utcnow().year}, {author}'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -147,7 +147,7 @@ man_pages = [('index', project.lower(), project + ' Documentation',
               [author], 1)]
 
 # -- Resolving issue number to links in changelog -----------------------------
-github_project = configuration['tool']['build-sphinx']['github_project']
+github_project = conf['tool']['build-sphinx']['github_project']
 github_issues_url = f'https://github.com/{github_project}/issues/'
 
 # -- Turn on nitpicky mode for sphinx (to warn about references not found) ----
