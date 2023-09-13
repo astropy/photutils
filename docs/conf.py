@@ -32,7 +32,7 @@ except ImportError:
 # Get configuration information from setup.cfg
 with open(Path(__file__).parent.parent / 'pyproject.toml', 'rb') as configuration_file:
     configuration = tomllib.load(configuration_file)
-metadata = configuration['metadata']
+metadata = configuration['project']
 
 # -- General configuration ----------------------------------------------------
 # By default, highlight as Python 3.
