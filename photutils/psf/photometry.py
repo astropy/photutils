@@ -1124,6 +1124,10 @@ class IterativePSFPhotometry:
         The maximum number of iterations in which the ``fitter`` is
         called for each source.
 
+    maxiters : int, optional
+        The maximum number of PSF-fitting/subtraction iterations to
+        perform.
+
     localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
         The object used to estimate the local background around each
         source.  If `None`, then no local background is subtracted.  The
