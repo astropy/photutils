@@ -43,7 +43,7 @@ documentation = 'https://photutils.readthedocs.io/en/stable/'
 
 [project.optional-dependencies]
 all = [
-    'scipy>=1.7.0',
+    'scipy>=1.7.2',
     'matplotlib>=3.5',
     'scikit-image>=0.19',
     'scikit-learn>=1.0',
