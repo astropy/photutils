@@ -38,14 +38,14 @@ jobs:
 
           - os: ubuntu-latest
             python: '3.10'
-            tox_env: 'py310-test-alldeps-cov'
-            toxposargs: --remote-data=any
+            tox_env: 'py310-test-alldeps'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
             python: '3.11'
-            tox_env: 'py311-test-alldeps'
+            tox_env: 'py311-test-alldeps-cov'
+            toxposargs: --remote-data=any
             allow_failure: false
             prefix: ''
 
