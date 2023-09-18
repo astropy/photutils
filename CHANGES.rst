@@ -4,6 +4,8 @@
 General
 ^^^^^^^
 
+- The minimum required Astropy is now 5.1. [#1627]
+
 New Features
 ^^^^^^^^^^^^
 

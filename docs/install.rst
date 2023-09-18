@@ -11,17 +11,17 @@ Photutils has the following strict requirements:
 
 * `NumPy <https://numpy.org/>`_ 1.22 or later
 
-* `Astropy`_ 5.0 or later
+* `Astropy`_ 5.1 or later
 
 Photutils also optionally depends on other packages for some features:
 
-* `SciPy <https://scipy.org/>`_ 1.7.0 or later:  To power a variety of
+* `SciPy <https://scipy.org/>`_ 1.7.2 or later:  To power a variety of
   features in several modules (strongly recommended).
 
-* `Matplotlib <https://matplotlib.org/>`_ 3.5.0 or later:  To power a
+* `Matplotlib <https://matplotlib.org/>`_ 3.5 or later:  To power a
   variety of plotting features (e.g., plotting apertures).
 
-* `scikit-image <https://scikit-image.org/>`_ 0.19.0 or later: Used for
+* `scikit-image <https://scikit-image.org/>`_ 0.19 or later: Used for
   deblending segmented sources.
 
 * `scikit-learn <https://scikit-learn.org/>`_ 1.0 or later: Used in the
