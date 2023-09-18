@@ -83,11 +83,11 @@ release = package.__version__
 
 # -- Options for HTML output --------------------------------------------------
 # The global astropy configuration uses a custom theme,
-# 'bootstrap-astropy', which is installed along with astropy. A different
-# theme can be used or the options for this theme can be modified by
-# overriding some of the variables set in the global configuration. The
-# variables set in the global configuration are listed below, commented
-# out.
+# 'bootstrap-astropy', which is installed along with astropy. A
+# different theme can be used or the options for this theme can be
+# modified by overriding some of the variables set in the global
+# configuration. The variables set in the global configuration are
+# listed below, commented out.
 
 # Add any paths that contain custom themes here, relative to this
 # directory.
@@ -114,8 +114,8 @@ html_theme_options = {
 # html_logo = ''
 
 # The name of an image file (within the static path) to use as favicon
-# of the docs. This file should be a Windows icon file (.ico) being 16x16
-# or 32x32 pixels large.
+# of the docs. This file should be a Windows icon file (.ico) being
+# 16x16 or 32x32 pixels large.
 html_favicon = os.path.join('_static', 'favicon.ico')
 
 # A "Last built" timestamp is inserted at every page bottom, using the
