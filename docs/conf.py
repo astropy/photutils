@@ -50,7 +50,6 @@ del intersphinx_mapping['h5py']  # noqa: F405
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns.append('_templates')  # noqa: F405
 # Exclude template PSF block specification documentation
 exclude_patterns.append('psf_spec/*')  # noqa: F405
 

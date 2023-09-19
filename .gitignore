@@ -41,6 +41,7 @@ pip-wheel-metadata
 # Other
 .cache
 .tox
+.tmp
 .*.sw[op]
 *~
 

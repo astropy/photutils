@@ -18,8 +18,8 @@ repository is called ``upstream``.
    For a bugfix release, check out the ``A.B.x`` branch. Use ``git
    cherry-pick <hash>`` (or ``git cherry-pick -m1 <hash>`` for merge
    commits) to backport fixes to the bugfix branch. Also, be sure to
-   push all changes to the repository so that CI can run on the
-   bugfix branch.
+   push all changes to the repository so that CI can run on the bugfix
+   branch.
 
 #. Ensure that `CI tests <https://github.com/astropy/photutils/actions>`_
    are passing for the branch you are going to
