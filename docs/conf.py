@@ -50,9 +50,9 @@ del intersphinx_mapping['h5py']  # noqa: F405
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns.append('_templates')  # noqa: F405
 # Exclude template PSF block specification documentation
 exclude_patterns.append('psf_spec/*')  # noqa: F405
+
 
 plot_formats = ['png', 'hires.png', 'pdf', 'svg']
 
@@ -70,9 +70,9 @@ project = project_meta['name']
 author = project_meta['authors'][0]['name']
 copyright = f'2011-{datetime.utcnow().year}, {author}'
 
-# The version info for the project you're documenting, acts as replacement for
-# |version| and |release|, also used in various other places throughout the
-# built documents.
+# The version info for the project you're documenting, acts as
+# replacement for |version| and |release|, also used in various other
+# places throughout the built documents.
 __import__(project)
 package = sys.modules[project]
 

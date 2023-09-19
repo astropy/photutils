@@ -25,15 +25,12 @@ def pytest_configure(config):
         # Customize the following lines to add/remove entries from the
         # list of packages for which version numbers are displayed when
         # running the tests.
-        PYTEST_HEADER_MODULES['Cython'] = 'Cython'
-        PYTEST_HEADER_MODULES['Numpy'] = 'numpy'
-        PYTEST_HEADER_MODULES['Astropy'] = 'astropy'
-        PYTEST_HEADER_MODULES['Scipy'] = 'scipy'
-        PYTEST_HEADER_MODULES['Matplotlib'] = 'matplotlib'
-        PYTEST_HEADER_MODULES['scikit-image'] = 'skimage'
-        PYTEST_HEADER_MODULES['scikit-learn'] = 'sklearn'
-        PYTEST_HEADER_MODULES.pop('Pandas', None)
-        PYTEST_HEADER_MODULES.pop('h5py', None)
+        PYTEST_HEADER_MODULES.clear()
+        deps = ['NumPy', 'SciPy', 'Matplotlib', 'Astropy', 'scikit-image',
+                'scikit-learn', 'GWCS', 'Bottleneck', 'tqdm', 'Rasterio',
+                'Shapely']
+        for dep in deps:
+            PYTEST_HEADER_MODULES[dep] = dep.lower()
 
         from photutils import __version__
         TESTED_VERSIONS['photutils'] = __version__
