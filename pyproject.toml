@@ -38,8 +38,8 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = 'https://github.com/astropy/photutils'
-documentation = 'https://photutils.readthedocs.io/en/stable/'
+Homepage = 'https://github.com/astropy/photutils'
+Documentation = 'https://photutils.readthedocs.io/en/stable/'
 
 [project.optional-dependencies]
 all = [
@@ -68,8 +68,7 @@ requires = [
     'setuptools>=61.2',
     'setuptools_scm>=6.2',
     'cython>=0.29.36',
-    'numpy<1.26.0b1; python_version<"3.12"',
-    'numpy>=1.26.0b1; python_version>="3.12"',
+    'numpy',
     'extension-helpers',
 ]
 build-backend = 'setuptools.build_meta'
@@ -126,8 +125,6 @@ filterwarnings = [
     'ignore:numpy.ndarray size changed:RuntimeWarning',
     # numpy 1.24 deprecation from skimage (can remove for skimage >= 0.20)
     'ignore:`np.bool8` is a deprecated alias for `np.bool_`:DeprecationWarning',
-    # TEMP: remove when matplotlib nightly fixes the row_stack deprecations
-    'ignore:`row_stack` alias is deprecated:DeprecationWarning',
 ]
 
 [tool.coverage.run]
