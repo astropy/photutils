@@ -4,6 +4,12 @@ on:
   schedule:
     # run every Monday at 5am UTC
     - cron: '0 5 * * 1'
+  pull_request:
+    # We also want this workflow triggered if the 'Build all wheels'
+    # label is added or present when PR is updated
+    types:
+      - synchronize
+      - labeled
   push:
     branches:
       - '*'
@@ -12,9 +18,6 @@ on:
       - '!*dev*'
       - '!*pre*'
       - '!*post*'
-  # allow manual wheel building with a PR label
-  pull_request:
-  # allow manual wheel building from the Actions UI
   workflow_dispatch:
 
 permissions:
