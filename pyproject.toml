@@ -120,7 +120,7 @@ addopts = '--color=yes --doctest-rst'
 xfail_strict = true
 remote_data_strict = true
 filterwarnings = [
-    'error',
+    'error',  # turn warnings into exceptions
     'ignore:numpy.ufunc size changed:RuntimeWarning',
     'ignore:numpy.ndarray size changed:RuntimeWarning',
     # numpy 1.24 deprecation from skimage (can remove for skimage >= 0.20)
