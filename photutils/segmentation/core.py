@@ -1063,10 +1063,10 @@ class SegmentationImage:
         Parameters
         ----------
         size : int or tuple of int, optional
-            The size along each axis of the footprint used for the
-            source dilation. If ``size`` is a scalar, then a square
-            footprint of ``size`` will be used. If ``size`` has two
-            elements, they must be in ``(ny, nx)`` order. ``size``
+            The size along each axis of the rectangular footprint used
+            for the source dilation. If ``size`` is a scalar, then a
+            square footprint of ``size`` will be used. If ``size`` has
+            two elements, they must be in ``(ny, nx)`` order. ``size``
             should have odd values for each axis. To perform source
             dilation, either ``size`` or ``footprint`` must be defined.
             If they are both defined, then ``footprint`` overrides
