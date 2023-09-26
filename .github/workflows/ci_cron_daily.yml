@@ -44,6 +44,14 @@ jobs:
             tox_env: 'py311-test-devdeps'
             toxposargs: --remote-data=any
             allow_failure: true
+            prefix: '(Allowed failure)'
+
+          - os: ubuntu-latest
+            python: '3.12-dev'
+            tox_env: 'py312-test-devdeps312'
+            toxposargs: --remote-data=any
+            allow_failure: true
+            prefix: '(Allowed failure)'
 
     steps:
     - name: Check out repository

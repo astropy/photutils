@@ -125,6 +125,8 @@ filterwarnings = [
     'ignore:numpy.ndarray size changed:RuntimeWarning',
     # numpy 1.24 deprecation from skimage (can remove for skimage >= 0.20)
     'ignore:`np.bool8` is a deprecated alias for `np.bool_`:DeprecationWarning',
+    # python 3.12 deprecation in matplotlib 3.9dev
+    'ignore:datetime.datetime.utcfromtimestamp\(\) is deprecated:DeprecationWarning',
 ]
 
 [tool.coverage.run]
