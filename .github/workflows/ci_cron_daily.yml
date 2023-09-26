@@ -28,7 +28,7 @@ permissions:
 jobs:
   tests:
     if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Daily CI')))
-    name: ${{ matrix.os }}, ${{ matrix.tox_env }}
+    name: ${{ matrix.prefix }} ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.allow_failure }}
     strategy:
@@ -38,6 +38,7 @@ jobs:
             python: '3.11'
             tox_env: 'linkcheck'
             allow_failure: false
+            prefix: ''
 
           - os: ubuntu-latest
             python: '3.11'
