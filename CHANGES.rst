@@ -17,6 +17,11 @@ Bug Fixes
   - Fixed a bug where ``SourceGrouper`` would fail if only one source
     was input. [#1617]
 
+- ``photutils.segmentation``
+
+  - Fixed an issue where ``deblend_sources`` and ``SourceFinder`` would
+    raise an error if the ``contrast`` keyword was set to 1 (meaning no
+    deblending). [#1636]
 
 API Changes
 ^^^^^^^^^^^
