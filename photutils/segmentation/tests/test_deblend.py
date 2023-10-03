@@ -113,6 +113,25 @@ class TestDeblendSources:
                                 progress_bar=False)
         assert segm2.nlabels == nlabels
 
+    def test_deblend_contrast_levels(self):
+        # regression test for case where contrast = 1.0
+        y, x = np.mgrid[0:51, 0:151]
+        y0 = 25
+        data = (Gaussian2D(9.5, 16, y0, 5, 5)(x, y)
+                + Gaussian2D(51, 30, y0, 3, 3)(x, y)
+                + Gaussian2D(30, 42, y0, 5, 5)(x, y)
+                + Gaussian2D(80, 66, y0, 8, 8)(x, y)
+                + Gaussian2D(71, 88, y0, 8, 8)(x, y)
+                + Gaussian2D(18, 119, y0, 7, 7)(x, y))
+
+        npixels = 5
+        segm = detect_sources(data, 1.0, npixels)
+        for contrast in np.arange(1, 11) / 10.0:
+            segm3 = deblend_sources(data, segm, npixels, mode='linear',
+                                    nlevels=32, contrast=contrast,
+                                    progress_bar=False)
+            assert segm3.nlabels >= 1
+
     def test_deblend_connectivity(self):
         data = np.zeros((51, 51))
         data[15:36, 15:36] = 10.0

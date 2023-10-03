@@ -138,6 +138,9 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     if contrast < 0 or contrast > 1:
         raise ValueError('contrast must be >= 0 and <= 1')
 
+    if contrast == 1:  # no deblending
+        return segment_img.copy()
+
     if mode not in ('exponential', 'linear', 'sinh'):
         raise ValueError('mode must be "exponential", "linear", or "sinh"')
 
@@ -461,15 +464,18 @@ class _Deblender:
                                 connectivity=self.footprint)
 
             labels = np.unique(markers[markers != 0])
-            flux_frac = (sum_labels(self.source_data, markers, index=labels)
-                         / self.source_sum)
-            remove_marker = any(flux_frac < self.contrast)
+            if labels.size == 1:  # only 1 source left
+                remove_marker = False
+            else:
+                flux_frac = sum_labels(self.source_data, markers,
+                                       index=labels) / self.source_sum
+                remove_marker = any(flux_frac < self.contrast)
 
-            if remove_marker:
-                # remove only the faintest source (one at a time) because
-                # several faint sources could combine to meet the contrast
-                # criterion
-                markers[markers == labels[np.argmin(flux_frac)]] = 0.0
+                if remove_marker:
+                    # remove only the faintest source (one at a time)
+                    # because several faint sources could combine to meet
+                    # the contrast criterion
+                    markers[markers == labels[np.argmin(flux_frac)]] = 0.0
 
         return markers
 
