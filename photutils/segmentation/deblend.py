@@ -138,6 +138,9 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     if contrast < 0 or contrast > 1:
         raise ValueError('contrast must be >= 0 and <= 1')
 
+    if contrast == 1:  # no deblending
+        return segment_img.copy()
+
     if mode not in ('exponential', 'linear', 'sinh'):
         raise ValueError('mode must be "exponential", "linear", or "sinh"')
 
