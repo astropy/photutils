@@ -99,7 +99,7 @@ jobs:
             prefix: '(Allowed failure)'
 
           - os: ubuntu-latest
-            python: '3.12-dev'
+            python: '3.12'
             tox_env: 'py312-test-devdeps312'
             toxposargs: --remote-data=any
             allow_failure: true
