@@ -1147,7 +1147,8 @@ class SegmentationImage:
                 return mask
             else:
                 size = as_pair('size', size, check_odd=False)
-                footprint = np.ones(size)
+                footprint = np.ones(size, dtype=bool)
+        footprint = footprint.astype(bool)
 
         if np.all(footprint):
             # With a rectangular footprint, scipy grey_dilation is
@@ -1157,8 +1158,15 @@ class SegmentationImage:
             from scipy.ndimage import grey_dilation
             return grey_dilation(mask, footprint=footprint)
         else:
-            from scipy.ndimage import binary_dilation
-            return binary_dilation(mask, structure=footprint)
+            # Binary dilation is very slow, especially for large
+            # footprints. The following is a faster implementation
+            # using fast Fourier transforms (FFTs) that gives identical
+            # results to binary_dilation. Based on the following paper:
+            # "Dilation and Erosion of Gray Images with Spherical
+            # Masks", J. Kukal, D. Majerova, A. Prochazka (Jan 2007).
+            # https://www.researchgate.net/publication/238778666_DILATION_AND_EROSION_OF_GRAY_IMAGES_WITH_SPHERICAL_MASKS
+            from scipy.signal import fftconvolve
+            return fftconvolve(mask, footprint, 'same') > 0.5
 
     @lazyproperty
     def _geo_polygons(self):

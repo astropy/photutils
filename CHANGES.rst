@@ -9,6 +9,11 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.segmentation``
+
+  - The ``SegmentationImage`` ``make_source_mask`` method now uses a
+    much faster implementation of binary dilation. [#1638]
+
 Bug Fixes
 ^^^^^^^^^
 
