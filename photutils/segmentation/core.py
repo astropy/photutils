@@ -1147,7 +1147,8 @@ class SegmentationImage:
                 return mask
             else:
                 size = as_pair('size', size, check_odd=False)
-                footprint = np.ones(size)
+                footprint = np.ones(size, dtype=bool)
+        footprint = footprint.astype(bool)
 
         if np.all(footprint):
             # With a rectangular footprint, scipy grey_dilation is
