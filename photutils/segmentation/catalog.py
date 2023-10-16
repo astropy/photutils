@@ -952,7 +952,8 @@ class SourceCatalog:
         else:
             table_columns = np.atleast_1d(columns)
 
-        tbl = QTable(meta=self.meta)
+        tbl = QTable()
+        tbl.meta.update(self.meta)  # keep tbl.meta type
         for column in table_columns:
             values = getattr(self, column)
 

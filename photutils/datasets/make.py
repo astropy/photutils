@@ -236,7 +236,8 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     rng = np.random.default_rng(seed)
 
     meta = {'version': _get_version_info()}
-    sources = QTable(meta=meta)
+    sources = QTable()
+    sources.meta.update(meta)  # keep sources.meta type
     for param_name, (lower, upper) in param_ranges.items():
         # Generate a column for every item in param_ranges, even if it
         # is not in the model (e.g., flux). However, such columns will be

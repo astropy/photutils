@@ -202,7 +202,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     calling_args = f"method='{method}', subpixels={subpixels}"
     meta['aperture_photometry_args'] = calling_args
 
-    tbl = QTable(meta=meta)
+    tbl = QTable()
+    tbl.meta.update(meta)  # keep tbl.meta type
 
     positions = np.atleast_2d(apertures[0].positions)
     tbl['id'] = np.arange(positions.shape[0], dtype=int) + 1

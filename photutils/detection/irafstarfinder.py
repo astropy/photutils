@@ -530,7 +530,8 @@ class _IRAFStarFinderCatalog:
 
     def to_table(self, columns=None):
         meta = {'version': _get_version_info()}
-        table = QTable(meta=meta)
+        table = QTable()
+        table.meta.update(meta)  # keep table.meta type
         if columns is None:
             columns = self.default_columns
         for column in columns:

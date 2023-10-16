@@ -823,7 +823,8 @@ def _isophote_list_to_table(isophote_list, columns='main'):
     """
     properties = {}
     meta = {'version': _get_version_info()}
-    isotable = QTable(meta=meta)
+    isotable = QTable()
+    isotable.meta.update(meta)  # keep isotable.meta type
 
     # main_properties: `List`
     # A list of main parameters matching the original names of
