@@ -12,7 +12,7 @@ from astropy.table import QTable
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture.core import Aperture, SkyAperture
-from photutils.utils._misc import _get_version_info
+from photutils.utils._misc import _get_meta
 
 __all__ = ['aperture_photometry']
 
@@ -196,13 +196,12 @@ def aperture_photometry(data, apertures, error=None, mask=None,
                              'positions.')
 
     # define output table meta data
-    meta = {}
-    meta['name'] = 'Aperture photometry results'
-    meta['version'] = _get_version_info()
+    meta = _get_meta()
     calling_args = f"method='{method}', subpixels={subpixels}"
     meta['aperture_photometry_args'] = calling_args
 
-    tbl = QTable(meta=meta)
+    tbl = QTable()
+    tbl.meta.update(meta)  # keep tbl.meta type
 
     positions = np.atleast_2d(apertures[0].positions)
     tbl['id'] = np.arange(positions.shape[0], dtype=int) + 1

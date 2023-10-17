@@ -42,7 +42,7 @@ def _get_date(utc=False):
     Parameters
     ----------
     utz : bool, optional
-        Whether to use the UTZ timezone instead of the local timezone.
+        Whether to use the UTC timezone instead of the local timezone.
 
     Returns
     -------
@@ -63,4 +63,4 @@ def _get_meta(utc=False):
     date/time.
     """
     return {'date': _get_date(utc=utc),
-            'version': _get_version_info()}
+            'versions': _get_version_info()}

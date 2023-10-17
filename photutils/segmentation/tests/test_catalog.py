@@ -3,6 +3,8 @@
 Tests for the catalog module.
 """
 
+from io import StringIO
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -806,9 +808,20 @@ class TestSourceCatalog:
 
     def test_meta(self):
         meta = self.cat.meta
-        attrs = ('localbkg_width', 'apermask_method', 'kron_params')
-        for attr in attrs:
+        date_ver_meta = ['date', 'versions']
+        attrs = ['localbkg_width', 'apermask_method', 'kron_params']
+        for attr in date_ver_meta + attrs:
             assert attr in meta
+        assert list(meta.keys())[0:2] == date_ver_meta
+
+        tbl = self.cat.to_table()
+        assert tbl.meta == self.cat.meta
+
+        out = StringIO()
+        tbl.write(out, format='ascii.ecsv')
+        tbl2 = QTable.read(out.getvalue(), format='ascii.ecsv')
+        # check order of meta keys
+        assert list(tbl2.meta.keys()) == list(tbl.meta.keys())
 
     def test_semode(self):
         self.cat._set_semode()

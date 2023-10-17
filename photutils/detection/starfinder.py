@@ -13,7 +13,7 @@ from astropy.utils import lazyproperty
 
 from photutils.detection.core import StarFinderBase
 from photutils.utils._convolution import _filter_data
-from photutils.utils._misc import _get_version_info
+from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _moments, _moments_central
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -387,8 +387,8 @@ class _StarFinderCatalog:
         return cat
 
     def to_table(self, columns=None):
-        meta = {'version': _get_version_info()}
-        table = QTable(meta=meta)
+        table = QTable()
+        table.meta.update(_get_meta())  # keep table.meta type
         if columns is None:
             columns = self.default_columns
         for column in columns:
