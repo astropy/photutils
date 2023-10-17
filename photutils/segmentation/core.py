@@ -1244,7 +1244,8 @@ class SegmentationImage:
 
         return patches
 
-    def plot_patches(self, *, ax=None, origin=(0, 0), labels=None, **kwargs):
+    def plot_patches(self, *, ax=None, origin=(0, 0), scale=1.0, labels=None,
+                     **kwargs):
         """
         Plot the `~matplotlib.patches.Polygon` objects for the source
         segments on a matplotlib `~matplotlib.axes.Axes` instance.
@@ -1258,6 +1259,9 @@ class SegmentationImage:
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
+
+        scale : float, optional
+            The size scale factor applied to the polygons.
 
         labels: int or array of int, optional
             The label numbers whose polygons are to be ploted. If
@@ -1297,7 +1301,7 @@ class SegmentationImage:
         if ax is None:
             ax = plt.gca()
 
-        patches = self.to_patches(origin=origin, **kwargs)
+        patches = self.to_patches(origin=origin, scale=scale, **kwargs)
         if labels is not None:
             patches = np.array(patches)
             indices = self.get_indices(labels)
