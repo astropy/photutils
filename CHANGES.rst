@@ -14,6 +14,9 @@ New Features
   - The ``SegmentationImage`` ``make_source_mask`` method now uses a
     much faster implementation of binary dilation. [#1638]
 
+  - Added a ``scale`` keyword to the ``SegmentationImage.to_patches()``
+    method to scale the sizes of the polygon patches. [#1641]
+
 Bug Fixes
 ^^^^^^^^^
 
