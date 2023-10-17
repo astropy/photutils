@@ -1198,7 +1198,7 @@ class SegmentationImage:
             polygons.append(shape(geo_poly[0]))
         return polygons
 
-    def to_patches(self, *, origin=(0, 0), **kwargs):
+    def to_patches(self, *, origin=(0, 0), scale=1.0, **kwargs):
         """
         Return a list of `~matplotlib.patches.Polygon` objects
         representing each source segment.
@@ -1210,7 +1210,11 @@ class SegmentationImage:
         ----------
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
-            image.
+            image. This effectively translates the position of the
+            polygons.
+
+        scale : float, optional
+            The size scale factor applied to the polygons.
 
         **kwargs : `dict`
             Any keyword arguments accepted by
@@ -1222,10 +1226,20 @@ class SegmentationImage:
         patch_kwargs = {'edgecolor': 'white', 'facecolor': 'none'}
         patch_kwargs.update(kwargs)
 
+        # This is the shapely equivalent for patches instead of using
+        # self._geo_polygons below.
+        # patches = []
+        # for poly in self.polygons:
+        #     x = np.array(poly.exterior.coords.xy[0])
+        #     y = np.array(poly.exterior.coords.xy[1])
+        #     xy = np.column_stack((x, y)) - origin - np.array((0.5, 0.5))
+        #     patches.append(Polygon(xy, **patch_kwargs))
+
         patches = []
         for geo_poly in self._geo_polygons:
             xy = (np.array(geo_poly[0]['coordinates'][0]) - origin
                   - np.array((0.5, 0.5)))
+            xy *= scale
             patches.append(Polygon(xy, **patch_kwargs))
 
         return patches

@@ -413,6 +413,12 @@ class TestSegmentationImage:
         assert isinstance(patches[0], Polygon)
         assert patches[0].get_edgecolor() == (0, 0, 1, 1)
 
+        scale = 2.0
+        patches2 = self.segm.to_patches(scale=scale)
+        v1 = patches[0].get_verts()
+        v2 = patches2[0].get_verts()
+        assert_allclose(v2, v1 * scale)
+
         patches = self.segm.plot_patches(edgecolor='red')
         assert isinstance(patches[0], Polygon)
         assert patches[0].get_edgecolor() == (1, 0, 0, 1)
