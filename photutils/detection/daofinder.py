@@ -13,7 +13,7 @@ from astropy.utils import lazyproperty
 
 from photutils.detection.core import StarFinderBase, _StarFinderKernel
 from photutils.utils._convolution import _filter_data
-from photutils.utils._misc import _get_version_info
+from photutils.utils._misc import _get_meta
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['DAOStarFinder']
@@ -691,9 +691,8 @@ class _DAOStarFinderCatalog:
         return cat
 
     def to_table(self, columns=None):
-        meta = {'version': _get_version_info()}
         table = QTable()
-        table.meta.update(meta)  # keep table.meta type
+        table.meta.update(_get_meta())  # keep table.meta type
         if columns is None:
             columns = self.default_columns
         for column in columns:

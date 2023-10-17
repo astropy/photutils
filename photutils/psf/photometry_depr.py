@@ -20,7 +20,7 @@ from photutils.detection import DAOStarFinder
 from photutils.psf.groupstars import DAOGroup
 from photutils.psf.utils import (_extract_psf_fitting_names,
                                  get_grouped_psf_model, subtract_psf)
-from photutils.utils._misc import _get_version_info
+from photutils.utils._misc import _get_meta
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -452,7 +452,7 @@ class BasicPSFPhotometry:
                 else:
                     star_groups.add_column(col, name=name, copy=True)
 
-        star_groups.meta = {'version': _get_version_info()}
+        star_groups.meta = _get_meta()
 
         return star_groups
 
@@ -905,7 +905,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                                                progress_bar=progress_bar,
                                                uncertainty=uncertainty)
 
-        output_table.meta = {'version': _get_version_info()}
+        output_table.meta = _get_meta()
 
         return QTable(output_table)
 

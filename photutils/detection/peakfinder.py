@@ -9,7 +9,7 @@ import warnings
 import numpy as np
 from astropy.table import QTable
 
-from photutils.utils._misc import _get_version_info
+from photutils.utils._misc import _get_meta
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['find_peaks']
@@ -175,10 +175,10 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         return None
 
     # construct the output table
-    meta = {'version': _get_version_info()}
     colnames = ['x_peak', 'y_peak', 'peak_value']
     coldata = [x_peaks, y_peaks, peak_values]
-    table = QTable(coldata, names=colnames, meta=meta)
+    table = QTable(coldata, names=colnames)
+    table.meta.update(_get_meta())  # keep table.meta type
 
     if wcs is not None:
         skycoord_peaks = wcs.pixel_to_world(x_peaks, y_peaks)
