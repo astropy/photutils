@@ -63,4 +63,4 @@ def _get_meta(utc=False):
     date/time.
     """
     return {'date': _get_date(utc=utc),
-            'version': _get_version_info()}
+            'versions': _get_version_info()}
