@@ -1214,7 +1214,7 @@ class SegmentationImage:
             polygons.
 
         scale : float, optional
-            The size scale factor applied to the polygons.
+            The scale factor applied to the polygon vertices.
 
         **kwargs : `dict`
             Any keyword arguments accepted by
@@ -1261,7 +1261,7 @@ class SegmentationImage:
             image.
 
         scale : float, optional
-            The size scale factor applied to the polygons.
+            The scale factor applied to the polygon vertices.
 
         labels: int or array of int, optional
             The label numbers whose polygons are to be ploted. If
