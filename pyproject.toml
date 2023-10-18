@@ -127,6 +127,8 @@ filterwarnings = [
     'ignore:`np.bool8` is a deprecated alias for `np.bool_`:DeprecationWarning',
     # python 3.12 deprecation in matplotlib 3.9dev
     'ignore:datetime.datetime.utcfromtimestamp\(\) is deprecated:DeprecationWarning',
+    # NumPy 2.0dev deprecations
+    "ignore:.*numpy\\.core.*:DeprecationWarning",
 ]
 
 [tool.coverage.run]
