@@ -15,7 +15,7 @@ New Features
     much faster implementation of binary dilation. [#1638]
 
   - Added a ``scale`` keyword to the ``SegmentationImage.to_patches()``
-    method to scale the sizes of the polygon patches. [#1641]
+    method to scale the sizes of the polygon patches. [#1641, #1646]
 
 Bug Fixes
 ^^^^^^^^^
@@ -30,6 +30,9 @@ Bug Fixes
   - Fixed an issue where ``deblend_sources`` and ``SourceFinder`` would
     raise an error if the ``contrast`` keyword was set to 1 (meaning no
     deblending). [#1636]
+
+  - Fixed an issue where the vertices of the ``SegmentationImage``
+    ``polygons`` were shifted by 0.5 pixels in both x and y. [#1646]
 
 API Changes
 ^^^^^^^^^^^
