@@ -1176,11 +1176,15 @@ class SegmentationImage:
         Each item in the list is tuple of (polygon, value) where the
         polygon is a GeoJSON-like dict and the value is the label from
         the segmentation image.
+
+        Note that the coordinates of these polygon vertices are in a
+        reference frame with the (0, 0) origin at the *lower-left*
+        corner of the lower-left pixel.
         """
         from rasterio.features import shapes
 
         polygons = list(shapes(self.data.astype('int32'), connectivity=8))
-        polygons.sort(key=lambda x: x[1])
+        polygons.sort(key=lambda x: x[1])  # sort in label order
 
         # do not include polygons for background (label = 0)
         return polygons[1:]
@@ -1191,11 +1195,16 @@ class SegmentationImage:
         A list of `Shapely <https://shapely.readthedocs.io/en/stable/>`_
         polygons representing each source segment.
         """
+        from shapely import transform
         from shapely.geometry import shape
 
         polygons = []
         for geo_poly in self._geo_polygons:
             polygons.append(shape(geo_poly[0]))
+        # shift the vertices so that the (0, 0) origin is at the
+        # center of the lower-left pixel
+        polygons = transform(polygons, lambda x: x - [0.5, 0.5])
+
         return polygons
 
     def to_patches(self, *, origin=(0, 0), scale=1.0, **kwargs):
@@ -1226,20 +1235,11 @@ class SegmentationImage:
         patch_kwargs = {'edgecolor': 'white', 'facecolor': 'none'}
         patch_kwargs.update(kwargs)
 
-        # This is the shapely equivalent for patches instead of using
-        # self._geo_polygons below.
-        # patches = []
-        # for poly in self.polygons:
-        #     x = np.array(poly.exterior.coords.xy[0])
-        #     y = np.array(poly.exterior.coords.xy[1])
-        #     xy = np.column_stack((x, y)) - origin - np.array((0.5, 0.5))
-        #     patches.append(Polygon(xy, **patch_kwargs))
-
         patches = []
-        for geo_poly in self._geo_polygons:
-            xy = (np.array(geo_poly[0]['coordinates'][0]) - origin
-                  - np.array((0.5, 0.5)))
-            xy *= scale
+        for poly in self.polygons:
+            xy = np.array(poly.exterior.coords)
+            xy = scale * (xy + 0.5) - 0.5
+            xy -= origin
             patches.append(Polygon(xy, **patch_kwargs))
 
         return patches
