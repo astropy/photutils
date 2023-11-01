@@ -9,6 +9,10 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.morphology``
+
+  - Added a ``wcs`` keyword to ``data_properties``. [#1648]
+
 - ``photutils.segmentation``
 
   - The ``SegmentationImage`` ``make_source_mask`` method now uses a
