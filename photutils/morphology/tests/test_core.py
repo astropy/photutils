@@ -7,7 +7,8 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from photutils.morphology.core import data_properties
+from photutils.datasets import make_wcs
+from photutils.morphology import data_properties
 from photutils.utils._optional_deps import HAS_SKIMAGE
 
 XCS = [25.7]
@@ -34,6 +35,10 @@ def test_data_properties():
     assert_allclose([0.5, 0.0], result2, rtol=0, atol=1.0e-6)
     assert props.area.value == 4.0
     assert props2.area.value == 2.0
+
+    wcs = make_wcs(data.shape)
+    props = data_properties(data, mask=None, wcs=wcs)
+    assert props.sky_centroid is not None
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
