@@ -9,7 +9,7 @@ import numpy as np
 __all__ = ['data_properties']
 
 
-def data_properties(data, mask=None, background=None):
+def data_properties(data, mask=None, background=None, wcs=None):
     """
     Calculate the morphological properties (and centroid) of a 2D array
     (e.g., an image cutout of an object) using image moments.
@@ -33,6 +33,13 @@ def data_properties(data, mask=None, background=None):
         get subtracted from the input ``data``, which should already be
         background-subtracted.
 
+    wcs : WCS object or `None`, optional
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). If `None`, then all
+        sky-based properties will be set to `None`.
+
     Returns
     -------
     result : `~photutils.segmentation.SourceCatalog` instance
@@ -49,4 +56,4 @@ def data_properties(data, mask=None, background=None):
             background = np.zeros(data.shape) + background
 
     return SourceCatalog(data, segment_image, mask=mask,
-                         background=background)[0]
+                         background=background, wcs=wcs)[0]
