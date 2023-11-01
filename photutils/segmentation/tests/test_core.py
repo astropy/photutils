@@ -404,6 +404,16 @@ class TestSegmentationImage:
         assert len(polygons) == self.segm.nlabels
         assert isinstance(polygons[0], Polygon)
 
+        data = np.zeros((5, 5), dtype=int)
+        data[2, 2] = 10
+        segm = SegmentationImage(data)
+        polygons = segm.polygons
+        assert len(polygons) == 1
+        verts = np.array(polygons[0].exterior.coords)
+        expected_verts = np.array([[1.5, 1.5], [1.5, 2.5], [2.5, 2.5],
+                                   [2.5, 1.5], [1.5, 1.5]])
+        assert_equal(verts, expected_verts)
+
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_patches(self):
@@ -417,7 +427,8 @@ class TestSegmentationImage:
         patches2 = self.segm.to_patches(scale=scale)
         v1 = patches[0].get_verts()
         v2 = patches2[0].get_verts()
-        assert_allclose(v2, v1 * scale)
+        v3 = scale * (v1 + 0.5) - 0.5
+        assert_allclose(v2, v3)
 
         patches = self.segm.plot_patches(edgecolor='red')
         assert isinstance(patches[0], Polygon)
