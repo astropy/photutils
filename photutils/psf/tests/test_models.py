@@ -154,7 +154,7 @@ class TestPRFAdapter:
         mof.amplitude = (mof.alpha - 1) / (np.pi * mof.gamma**2)
         return mof
 
-    @pytest.mark.parametrize("adapterkwargs", [
+    @pytest.mark.parametrize('adapterkwargs', [
         {'xname': 'x_0', 'yname': 'y_0', 'fluxname': None,
          'renormalize_psf': False},
         {'xname': None, 'yname': None, 'fluxname': None,
@@ -171,7 +171,7 @@ class TestPRFAdapter:
         prf.flux = 1.2
         prf(0, 0)
 
-    @pytest.mark.parametrize("adapterkwargs", [
+    @pytest.mark.parametrize('adapterkwargs', [
         {'xname': 'x_0', 'yname': 'y_0', 'fluxname': None,
          'renormalize_psf': True},
         {'xname': 'x_0', 'yname': 'y_0', 'fluxname': None,
@@ -198,7 +198,7 @@ class TestPRFAdapter:
                                   lambda x: 1.5)
         assert_allclose(np.sum(evalmod), integrand, atol=itol * 10)
 
-    @pytest.mark.parametrize("adapterkwargs", [
+    @pytest.mark.parametrize('adapterkwargs', [
         {'xname': 'x_0', 'yname': 'y_0', 'fluxname': None,
          'renormalize_psf': False},
         {'xname': None, 'yname': None, 'fluxname': None,

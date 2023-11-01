@@ -170,7 +170,7 @@ nitpick_ignore = []
 nitpick_filename = 'nitpick-exceptions.txt'
 if os.path.isfile(nitpick_filename):
     for line in open(nitpick_filename):
-        if line.strip() == "" or line.startswith("#"):
+        if line.strip() == '' or line.startswith('#'):
             continue
         dtype, target = line.split(None, 1)
         target = target.strip()

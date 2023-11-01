@@ -137,7 +137,7 @@ class FittableImageModel(Fittable2DModel):
 
         if normalization_correction <= 0:
             raise ValueError("'normalization_correction' must be strictly "
-                             "positive.")
+                             'positive.')
         self._normalization_correction = normalization_correction
         self._normalization_constant = 1.0 / self._normalization_correction
 
@@ -150,7 +150,7 @@ class FittableImageModel(Fittable2DModel):
         self._ny, self._nx = self._data.shape
         self._shape = self._data.shape
         if self._data.size < 1:
-            raise ValueError("Image data array cannot be zero-sized.")
+            raise ValueError('Image data array cannot be zero-sized.')
 
         # set the origin of the coordinate system in image's pixel grid:
         self.origin = origin
@@ -225,9 +225,9 @@ class FittableImageModel(Fittable2DModel):
             else:
                 self._normalization_constant = 1.0
                 self._normalization_status = 1
-                warnings.warn("Overflow encountered while computing "
-                              "normalization constant. Normalization "
-                              "constant will be set to 1.", NonNormalizable)
+                warnings.warn('Overflow encountered while computing '
+                              'normalization constant. Normalization '
+                              'constant will be set to 1.', NonNormalizable)
 
         else:
             self._normalization_status = 2
@@ -335,8 +335,8 @@ class FittableImageModel(Fittable2DModel):
         elif hasattr(origin, '__iter__') and len(origin) == 2:
             self._x_origin, self._y_origin = origin
         else:
-            raise TypeError("Parameter 'origin' must be either None or an "
-                            "iterable with two elements.")
+            raise TypeError('Parameter "origin" must be either None or an '
+                            'iterable with two elements.')
 
     @property
     def x_origin(self):
@@ -426,8 +426,8 @@ class FittableImageModel(Fittable2DModel):
                 degx = int(degree)
                 degy = int(degree)
             if degx < 0 or degy < 0:
-                raise ValueError("Interpolator degree must be a non-negative "
-                                 "integer")
+                raise ValueError('Interpolator degree must be a non-negative '
+                                 'integer')
         else:
             degx = 3
             degy = 3
@@ -588,8 +588,8 @@ class EPSFModel(FittableImageModel):
         elif (hasattr(origin, '__iter__') and len(origin) == 2):
             self._x_origin, self._y_origin = origin
         else:
-            raise TypeError("Parameter 'origin' must be either None or an "
-                            "iterable with two elements.")
+            raise TypeError('Parameter "origin" must be either None or an '
+                            'iterable with two elements.')
 
     def compute_interpolator(self, **kwargs):
         """
@@ -640,8 +640,8 @@ class EPSFModel(FittableImageModel):
                 degx = int(degree)
                 degy = int(degree)
             if degx < 0 or degy < 0:
-                raise ValueError("Interpolator degree must be a non-negative "
-                                 "integer")
+                raise ValueError('Interpolator degree must be a non-negative '
+                                 'integer')
         else:
             degx = 3
             degy = 3

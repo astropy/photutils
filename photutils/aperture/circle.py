@@ -431,8 +431,8 @@ class SkyCircularAnnulus(SkyAperture):
 
     def __init__(self, positions, r_in, r_out):
         if r_in.unit.physical_type != r_out.unit.physical_type:
-            raise ValueError("r_in and r_out should either both be angles "
-                             "or in pixels.")
+            raise ValueError('r_in and r_out should either both be angles '
+                             'or in pixels.')
 
         self.positions = positions
         self.r_in = r_in

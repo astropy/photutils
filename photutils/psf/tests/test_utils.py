@@ -48,7 +48,7 @@ for x, y, flux in INTAB:
                               mode='oversample')
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope='module')
 def moffimg():
     """
     This fixture requires scipy so don't call it from non-scipy tests
@@ -93,7 +93,7 @@ def test_moffat_fitting(moffimg):
 
 # we set the tolerances in flux to be 2-3% because the shape paraameters of
 # the guessed version are known to be wrong.
-@pytest.mark.parametrize("prepkwargs,tols", [
+@pytest.mark.parametrize('prepkwargs,tols', [
                          (dict(xname='x_0', yname='y_0', fluxname=None,
                                renormalize_psf=True), (1e-3, 0.02)),
                          (dict(xname=None, yname=None, fluxname=None,

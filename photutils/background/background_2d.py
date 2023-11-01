@@ -373,7 +373,7 @@ class Background2D:
 
     def _sigmaclip_boxes(self):
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=AstropyUserWarning)
+            warnings.simplefilter('ignore', category=AstropyUserWarning)
             if self.sigma_clip is not None:
                 self._box_data = self.sigma_clip(self._box_data, axis=1,
                                                  masked=False)

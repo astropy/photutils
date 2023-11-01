@@ -242,7 +242,7 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
         A gridded ePSF Model corresponding to FITS file contents.
     """
     def __init__(self, instance, cls):
-        super().__init__(instance, cls, "read", registry=None)
+        super().__init__(instance, cls, 'read', registry=None)
         # uses default global registry
 
     def __call__(self, *args, **kwargs):

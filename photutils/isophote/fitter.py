@@ -162,7 +162,7 @@ class EllipseFitter:
             # This may result in an infinite loop.
             if len(values[2]) < 1:
                 s = str(sample.geometry.sma)
-                log.warning("Too small sample to warrant a fit. SMA is " + s)
+                log.warning('Too small sample to warrant a fit. SMA is ' + s)
                 sample.geometry.fix = fixed_parameters
                 return Isophote(sample, i + 1, False, 3)
 
