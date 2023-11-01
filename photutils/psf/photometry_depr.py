@@ -509,7 +509,7 @@ class BasicPSFPhotometry:
         unc_tab = QTable()
         for param, isfixed in self.psf_model.fixed.items():
             if not isfixed:
-                unc_tab.add_column(Column(name=param + "_unc"))
+                unc_tab.add_column(Column(name=param + '_unc'))
 
         y, x = np.indices(image.shape)
 
@@ -616,7 +616,7 @@ class BasicPSFPhotometry:
         unc_tab = QTable()
         for param_name in self.psf_model.param_names:
             if not self.psf_model.fixed[param_name]:
-                unc_tab.add_column(Column(name=param_name + "_unc",
+                unc_tab.add_column(Column(name=param_name + '_unc',
                                           data=np.empty(star_group_size)))
 
         k = 0
@@ -819,10 +819,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     @finder.setter
     def finder(self, value):
         if value is None:
-            raise ValueError("finder cannot be None for "
-                             "IterativelySubtractedPSFPhotometry - you may "
-                             "want to use BasicPSFPhotometry. Please see the "
-                             "Detection section on photutils documentation.")
+            raise ValueError('finder cannot be None for '
+                             'IterativelySubtractedPSFPhotometry - you may '
+                             'want to use BasicPSFPhotometry. Please see the '
+                             'Detection section on photutils documentation.')
         self._finder = value
 
     def do_photometry(self, image, *, mask=None, init_guesses=None,

@@ -114,7 +114,7 @@ sources3['iter_detected'] = [1, 2]
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
+@pytest.mark.parametrize('sigma_psf, sources', [(sigma_psfs[2], sources3)])
 def test_psf_photometry_niters(sigma_psf, sources):
     img_shape = (32, 32)
     # generate image with read-out noise (Gaussian) and
@@ -161,7 +161,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
                             'different than None')
 @pytest.mark.filterwarnings('ignore:No sources were found')
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.parametrize("sigma_psf, sources",
+@pytest.mark.parametrize('sigma_psf, sources',
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2)])
 def test_psf_photometry_oneiter(sigma_psf, sources):
@@ -378,8 +378,8 @@ PARS_TO_OUTPUT_1 = PARS_TO_OUTPUT_0.copy()
 PARS_TO_OUTPUT_1['sigma_fit'] = 'sigma'
 
 
-@pytest.mark.parametrize("actual_pars_to_set, actual_pars_to_output,"
-                         "is_sigma_fixed", [(PARS_TO_SET_0, PARS_TO_OUTPUT_0,
+@pytest.mark.parametrize('actual_pars_to_set, actual_pars_to_output,'
+                         'is_sigma_fixed', [(PARS_TO_SET_0, PARS_TO_OUTPUT_0,
                                              True),
                                             (PARS_TO_SET_1, PARS_TO_OUTPUT_1,
                                              False)])
@@ -558,7 +558,7 @@ def test_psf_photometry_gaussian():
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.parametrize("renormalize_psf", (True, False))
+@pytest.mark.parametrize('renormalize_psf', (True, False))
 def test_psf_photometry_gaussian2(renormalize_psf):
     """
     Test psf_photometry with Gaussian PSF model from Astropy.
@@ -633,7 +633,7 @@ def test_psf_fitting_data_on_edge():
 @pytest.mark.filterwarnings('ignore:Both init_guesses and finder '
                             'are different than None')
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
+@pytest.mark.parametrize('sigma_psf, sources', [(sigma_psfs[2], sources3)])
 def test_psf_extra_output_cols(sigma_psf, sources):
     """
     Test the handling of a non-None extra_output_cols
@@ -966,7 +966,7 @@ def test_subshape_invalid():
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.skipif(not minversion(astropy, '5.3'),
                     reason='astropy 5.3 is required')
-@pytest.mark.parametrize("sigma_psf, sources",
+@pytest.mark.parametrize('sigma_psf, sources',
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2)])
 def test_psf_photometry_oneiter_uncert(sigma_psf, sources):

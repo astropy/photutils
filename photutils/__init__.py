@@ -91,7 +91,7 @@ def _get_bibtex():
         refs = citation.read().split('@software')[1:]
         if len(refs) == 0:
             return ''
-        bibtexreference = f"@software{refs[0]}"
+        bibtexreference = f'@software{refs[0]}'
     return bibtexreference
 
 

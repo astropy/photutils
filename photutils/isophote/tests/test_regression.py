@@ -87,8 +87,8 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
     isophote_list = ellipse.fit_image()
     # isophote_list = ellipse.fit_image(sclip=2.0, nclip=3)
 
-    fmt = ("%5.2f  %6.1f    %8.3f %8.3f %8.3f        %9.5f  %6.2f   "
-           "%6.2f %6.2f   %5.2f   %4d  %3d  %3d  %2d")
+    fmt = ('%5.2f  %6.1f    %8.3f %8.3f %8.3f        %9.5f  %6.2f   '
+           '%6.2f %6.2f   %5.2f   %4d  %3d  %3d  %2d')
 
     for row in range(nrows):
         try:
@@ -154,18 +154,18 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
         stop_d = 0 if stop_i == stop_t else -1
 
         if verbose:
-            print("* data " + fmt % (sma_i, intens_i, int_err_i, pix_stddev_i,
+            print('* data ' + fmt % (sma_i, intens_i, int_err_i, pix_stddev_i,
                                      rms_i, ellip_i, pa_i, x0_i, y0_i, rerr_i,
                                      ndata_i, nflag_i, niter_i, stop_i))
-            print("  ref  " + fmt % (sma_t, intens_t, int_err_t, pix_stddev_t,
+            print('  ref  ' + fmt % (sma_t, intens_t, int_err_t, pix_stddev_t,
                                      rms_t, ellip_t, pa_t, x0_t, y0_t, rerr_t,
                                      ndata_t, nflag_t, niter_t, stop_t))
-            print("  diff " + fmt % (sma_d, intens_d, int_err_d, pix_stddev_d,
+            print('  diff ' + fmt % (sma_d, intens_d, int_err_d, pix_stddev_d,
                                      rms_d, ellip_d, pa_d, x0_d, y0_d, rerr_d,
                                      ndata_d, nflag_d, niter_d, stop_d))
             print()
 
-        if name == "synth_highsnr" and integrmode == BILINEAR:
+        if name == 'synth_highsnr' and integrmode == BILINEAR:
             assert abs(x0_d) <= 0.21
             assert abs(y0_d) <= 0.21
 
