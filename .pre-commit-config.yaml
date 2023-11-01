@@ -29,6 +29,8 @@ repos:
         # source.
       - id: detect-private-key
         # Checks for the existence of private keys.
+      - id: double-quote-string-fixer
+        # Replace double-quoted strings with single-quoted strings.
       - id: end-of-file-fixer
         # Makes sure files end in a newline and only a newline.
         exclude: ".*(svg.*|extern.*)$"
