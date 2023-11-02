@@ -1323,8 +1323,8 @@ class SegmentationImage:
         Display the segmentation image in a matplotlib
         `~matplotlib.axes.Axes` instance.
 
-        The segmentation image will be displayed with no interpolation
-        and with the origin set to "lower".
+        The segmentation image will be displayed with "nearest"
+        interpolation and with the origin set to "lower".
 
         Parameters
         ----------
@@ -1372,7 +1372,10 @@ class SegmentationImage:
                              [7, 7, 0, 5, 5, 5],
                              [7, 7, 0, 0, 5, 5]])
             segm = SegmentationImage(data)
-            segm.imshow(figsize=(5, 5))
+
+            fig, ax = plt.subplots()
+            im = segm.imshow(ax=ax)
+            fig.colorbar(im, ax=ax)
         """
         import matplotlib.pyplot as plt
 
@@ -1382,7 +1385,8 @@ class SegmentationImage:
             cmap = self.cmap
 
         return ax.imshow(self.data, cmap=cmap, interpolation='nearest',
-                         origin='lower', alpha=alpha)
+                         origin='lower', alpha=alpha, vmin=-0.5,
+                         vmax=self.max_label + 0.5)
 
 
 class Segment:
