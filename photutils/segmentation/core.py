@@ -501,6 +501,20 @@ class SegmentationImage:
                                background_color=background_color,
                                seed=seed)
 
+    def reset_cmap(self, seed=None):
+        """
+        Reset the colormap (`cmap` attribute) to a new random colormap.
+
+        Parameters
+        ----------
+        seed : int, optional
+            A seed to initialize the `numpy.random.BitGenerator`. If
+            `None`, then fresh, unpredictable entropy will be pulled
+            from the OS. Separate function calls with the same ``seed``
+            will generate the same colormap.
+        """
+        self.cmap = self.make_cmap(background_color='#000000ff', seed=seed)
+
     @lazyproperty
     def cmap(self):
         """
