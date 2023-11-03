@@ -21,6 +21,16 @@ New Features
   - Added a ``scale`` keyword to the ``SegmentationImage.to_patches()``
     method to scale the sizes of the polygon patches. [#1641, #1646]
 
+  - Improved the ``SegmentationImage`` ``imshow`` method to ensure that
+    labels are plotted with unique colors. [#1649]
+
+  - Added a ``imshow_map`` method to ``SegmentationImage`` for plotting
+    segmentation images with a small number of non-consecutive labels.
+    [#1649]
+
+  - Added a ``reset_cmap`` method to ``SegmentationImage`` for resetting
+    the colormap to a new random colormap. [#1649]
+
 Bug Fixes
 ^^^^^^^^^
 
