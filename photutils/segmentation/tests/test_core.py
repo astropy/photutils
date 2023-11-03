@@ -194,6 +194,13 @@ class TestSegmentationImage:
             _ = segm.bbox
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_reset_cmap(self):
+        segm = self.segm.copy()
+        cmap = segm.cmap.copy()
+        segm.reset_cmap(seed=123)
+        assert not np.array_equal(cmap.colors, segm.cmap.colors)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_make_cmap(self):
         cmap = self.segm.make_cmap()
         assert len(cmap.colors) == (self.segm.max_label + 1)
@@ -393,6 +400,9 @@ class TestSegmentationImage:
         from matplotlib.image import AxesImage
 
         axim = self.segm.imshow(figsize=(5, 5))
+        assert isinstance(axim, AxesImage)
+
+        axim, cbar = self.segm.imshow_map(figsize=(5, 5))
         assert isinstance(axim, AxesImage)
 
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
