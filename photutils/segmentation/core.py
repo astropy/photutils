@@ -424,6 +424,50 @@ class SegmentationImage:
                 raise ValueError(f'label {bad_labels} is invalid')
             raise ValueError(f'labels {bad_labels} are invalid')
 
+    def _make_cmap(self, ncolors, background_color='#000000ff', seed=None):
+        """
+        Define a matplotlib colormap consisting of (random) muted
+        colors.
+
+        This is useful for plotting the segmentation array.
+
+        Parameters
+        ----------
+        ncolors : int
+            The number of the colors in the colormap.
+
+        background_color : Matplotlib color, optional
+            The color of the first color in the colormap.
+            The color may be specified using any of
+            the `Matplotlib color formats
+            <https://matplotlib.org/stable/tutorials/colors/colors.html>`_.
+            This color will be used as the background color (label = 0)
+            when plotting the segmentation image. The default color is
+            black with alpha=1.0 ('#000000ff').
+
+        seed : int, optional
+            A seed to initialize the `numpy.random.BitGenerator`. If
+            `None`, then fresh, unpredictable entropy will be pulled
+            from the OS. Separate function calls with the same ``seed``
+            will generate the same colormap.
+
+        Returns
+        -------
+        cmap : `matplotlib.colors.ListedColormap`
+            The matplotlib colormap with colors in RGBA format.
+        """
+        if self.nlabels == 0:
+            return None
+
+        from matplotlib import colors
+
+        cmap = make_random_cmap(ncolors, seed=seed)
+
+        if background_color is not None:
+            cmap.colors[0] = colors.to_rgba(background_color)
+
+        return cmap
+
     def make_cmap(self, background_color='#000000ff', seed=None):
         """
         Define a matplotlib colormap consisting of (random) muted
@@ -453,17 +497,9 @@ class SegmentationImage:
         cmap : `matplotlib.colors.ListedColormap`
             The matplotlib colormap with colors in RGBA format.
         """
-        if self.nlabels == 0:
-            return None
-
-        from matplotlib import colors
-
-        cmap = make_random_cmap(self.max_label + 1, seed=seed)
-
-        if background_color is not None:
-            cmap.colors[0] = colors.to_rgba(background_color)
-
-        return cmap
+        return self._make_cmap(self.max_label + 1,
+                               background_color=background_color,
+                               seed=seed)
 
     @lazyproperty
     def cmap(self):
@@ -1387,6 +1423,120 @@ class SegmentationImage:
         return ax.imshow(self.data, cmap=cmap, interpolation='nearest',
                          origin='lower', alpha=alpha, vmin=-0.5,
                          vmax=self.max_label + 0.5)
+
+    def imshow_map(self, ax=None, figsize=None, dpi=None, cmap=None,
+                   alpha=None, max_labels=25, cbar_labelsize=None):
+        """
+        Display the segmentation image in a matplotlib
+        `~matplotlib.axes.Axes` instance with a colorbar.
+
+        This method is useful for displaying segmentation images that
+        have a small number of labels (e.g., from a cutout) that are
+        not consecutive. It maps the labels to be consecutive integers
+        starting from 1 before plotting. The plotted image values are
+        not the label values, but the colorbar tick labels are used to
+        show the original labels.
+
+        The segmentation image will be displayed with "nearest"
+        interpolation and with the origin set to "lower".
+
+        Parameters
+        ----------
+        ax : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot. If `None`, then a new
+            `~matplotlib.axes.Axes` instance will be created.
+
+        figsize : 2-tuple of floats or `None`, optional
+            The figure dimension (width, height) in inches when creating
+            a new Axes. This keyword is ignored if ``axes`` is input.
+
+        dpi : float or `None`, optional
+            The figure dots per inch when creating a new Axes. This
+            keyword is ignored if ``axes`` is input.
+
+        cmap : `matplotlib.colors.Colormap`, str, or `None`, optional
+            The `~matplotlib.colors.Colormap` instance or a registered
+            matplotlib colormap name used to map scalar data to colors.
+            If `None`, then the colormap defined by the `cmap` attribute
+            will be used.
+
+        alpha : float, array_like, or `None`, optional
+            The alpha blending value, between 0 (transparent) and 1
+            (opaque). If alpha is an array, the alpha blending values
+            are applied pixel by pixel, and alpha must have the same
+            shape as the segmentation image.
+
+        max_labels: int, optional
+            The maximum number of labels to display in the colorbar. If
+            the number of labels is greater than ``max_labels``, then
+            the colorbar will not be displayed.
+
+        cbar_labelsize : `None` or float, optional
+            The font size of the colorbar tick labels.
+
+        Returns
+        -------
+        result : `matplotlib.image.AxesImage`
+            An image attached to an `matplotlib.axes.Axes`.
+        cbar_info : tuple or `None`
+            The colorbar information as a tuple containing the
+            `~matplotlib.colorbar.Colorbar` instance, a `~numpy.ndarray`
+            of tick positions, and a `~numpy.ndarray` of tick labels.
+            `None` is returned if the colorbar was not plotted.
+
+        Examples
+        --------
+        .. plot::
+            :include-source:
+
+            import numpy as np
+            from photutils.segmentation import SegmentationImage
+
+            data = np.array([[1, 1, 0, 0, 4, 4],
+                             [0, 0, 0, 0, 0, 4],
+                             [0, 0, 3, 3, 0, 0],
+                             [7, 0, 0, 0, 0, 5],
+                             [7, 7, 0, 5, 5, 5],
+                             [7, 7, 0, 0, 5, 5]])
+            data *= 1000
+            segm = SegmentationImage(data)
+
+            fig, ax = plt.subplots()
+            im, cbar = segm.imshow_map(ax=ax)
+        """
+        import matplotlib.pyplot as plt
+        from matplotlib.colors import ListedColormap
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=figsize, dpi=dpi)
+
+        data, idx = np.unique(self.data, return_inverse=True)
+        idx = idx.reshape(self.data.shape)
+        vmin = -0.5
+        vmax = np.max(idx) + 0.5
+
+        # keep the original cmap colors for the labels
+        if cmap is None:
+            cmap = ListedColormap(self.cmap.colors[data])
+
+        im = ax.imshow(idx, cmap=cmap, interpolation='nearest', origin='lower',
+                       alpha=alpha, vmin=vmin, vmax=vmax)
+
+        cbar_info = None
+        cbar_labels = np.hstack((0, self.labels))
+        if len(cbar_labels) <= max_labels:
+            cbar_ticks = np.arange(len(cbar_labels))
+            cbar = plt.colorbar(im, ax=ax, ticks=cbar_ticks)
+            cbar.ax.set_yticklabels(cbar_labels)
+            if cbar_labelsize is not None:
+                cbar.ax.yaxis.set_tick_params(labelsize=cbar_labelsize)
+            cbar_info = (cbar, cbar_ticks, cbar_labels)
+        else:
+            warnings.warn('The colorbar was not plotted because the number of '
+                          f'labels is greater than {max_labels=}.',
+                          AstropyUserWarning)
+
+        return im, cbar_info
 
 
 class Segment:
