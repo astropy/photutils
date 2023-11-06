@@ -823,7 +823,7 @@ class PSFPhotometry:
             model parameters for each source. If the x and y values are
             not input, then the ``finder`` keyword must be defined. If
             the flux values are not input, then the ``aperture_radius``
-            keyword must be defined. Note that the initital flux
+            keyword must be defined. Note that the initial flux
             values refer to the model flux parameters and are not
             corrected for local background values (computed using
             ``localbkg_estimator`` or input in a ``local_bkg`` column)
@@ -861,7 +861,7 @@ class PSFPhotometry:
               * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
                 error of the source x center
               * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit, and
-                error of the soruce y center
+                error of the source y center
               * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
                 fit, and error of the source flux
               * ``npixfit`` : the number of unmasked pixels used to fit
@@ -1253,7 +1253,7 @@ class IterativePSFPhotometry:
               * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
                 error of the source x center
               * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit, and
-                error of the soruce y center
+                error of the source y center
               * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
                 fit, and error of the source flux
               * ``npixfit`` : the number of unmasked pixels used to fit

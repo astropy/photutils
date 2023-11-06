@@ -82,6 +82,14 @@ repos:
     hooks:
       - id: yesqa
 
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.6
+    hooks:
+      - id: codespell
+        args: ["--write-changes", "--ignore-words-list", "exten, conver, fom"]
+        additional_dependencies:
+          - tomli
+
   # - repo: https://github.com/MarcoGorelli/absolufy-imports
   #   rev: v0.3.1
   #   hooks:

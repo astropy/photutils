@@ -426,7 +426,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
 
             flux = epsf.flux
 
-            # if theres a unit, those should also all be the same
+            # if there's a unit, those should also all be the same
             try:
                 dat_unit = epsf.data.unit
             except AttributeError:

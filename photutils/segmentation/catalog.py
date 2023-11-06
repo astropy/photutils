@@ -1479,7 +1479,7 @@ class SourceCatalog:
         The window centroid is computed using an iterative algorithm
         to derive a more accurate centroid. It is equivalent to
         `SourceExtractor`_'s XWIN_IMAGE and YWIN_IMAGE parameters. See
-        `centroid_win` for futher details about the algorithm.
+        `centroid_win` for further details about the algorithm.
         """
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.centroid_win - origin
@@ -1490,7 +1490,7 @@ class SourceCatalog:
     def cutout_centroid_quad(self):
         """
         The ``(x, y)`` centroid coordinate, relative to the cutout data,
-        calculated by fitting a 2D quadratic polynomical to the unmasked
+        calculated by fitting a 2D quadratic polynomial to the unmasked
         pixels in the source segment.
 
         Notes
@@ -1552,7 +1552,7 @@ class SourceCatalog:
     def centroid_quad(self):
         """
         The ``(x, y)`` centroid coordinate, calculated by fitting a 2D
-        quadratic polynomical to the unmasked pixels in the source
+        quadratic polynomial to the unmasked pixels in the source
         segment.
 
         Notes
@@ -1581,7 +1581,7 @@ class SourceCatalog:
     def xcentroid_quad(self):
         """
         The ``x`` coordinate of the centroid (`centroid_quad`),
-        calculated by fitting a 2D quadratic polynomical to the unmasked
+        calculated by fitting a 2D quadratic polynomial to the unmasked
         pixels in the source segment.
         """
         if self.isscalar:
@@ -1596,7 +1596,7 @@ class SourceCatalog:
     def ycentroid_quad(self):
         """
         The ``y`` coordinate of the centroid (`centroid_quad`),
-        calculated by fitting a 2D quadratic polynomical to the unmasked
+        calculated by fitting a 2D quadratic polynomial to the unmasked
         pixels in the source segment.
         """
         if self.isscalar:
@@ -1659,7 +1659,7 @@ class SourceCatalog:
     def sky_centroid_quad(self):
         """
         The sky coordinate of the centroid (`centroid_quad`), calculated
-        by fitting a 2D quadratic polynomical to the unmasked pixels in
+        by fitting a 2D quadratic polynomial to the unmasked pixels in
         the source segment.
 
         The output coordinate frame is the same as the input ``wcs``.
