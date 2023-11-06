@@ -186,7 +186,7 @@ class ModelGridPlotMixin:
             cbar.ax.set_yscale('log')
 
         if self.meta.get('detector', '') == 'NRCSW':
-            # NIRCam NRCSW STDPSF files constain all detectors.
+            # NIRCam NRCSW STDPSF files contain all detectors.
             # The plot gets extra divider lines and SCA name labels.
             nxpsfs = len(self._xgrid)
             nypsfs = len(self._ygrid)

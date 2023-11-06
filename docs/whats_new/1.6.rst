@@ -16,7 +16,7 @@ New centroids available in SourceCatalog
 New centroids were added to the
 :class:`~photutils.segmentation.SourceCatalog` class, including
 iteratively-calculated "windowed" centroids and centroids calculated by
-fitting a 2D quadratic polynomical to the unmasked pixels in the source
+fitting a 2D quadratic polynomial to the unmasked pixels in the source
 segment.
 
 The "windowed" centroids are equivalent the SourceExtractors
@@ -52,7 +52,7 @@ New ImageDepth class
 ====================
 
 A new :class:`~photutils.utils.ImageDepth` class was added to compute
-the limitiing fluxes and magnitudes of an image.o
+the limiting fluxes and magnitudes of an image.
 
 
 ApertureStats

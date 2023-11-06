@@ -17,7 +17,7 @@ __all__ = ['ProfileBase']
 
 class ProfileBase(metaclass=abc.ABCMeta):
     """
-    Abtract base class for profile classes.
+    Abstract base class for profile classes.
 
     Parameters
     ----------

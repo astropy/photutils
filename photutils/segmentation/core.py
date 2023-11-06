@@ -1314,7 +1314,7 @@ class SegmentationImage:
             The scale factor applied to the polygon vertices.
 
         labels: int or array of int, optional
-            The label numbers whose polygons are to be ploted. If
+            The label numbers whose polygons are to be plotted. If
             `None`, the polygons for all labels will be plotted.
 
         **kwargs : `dict`
