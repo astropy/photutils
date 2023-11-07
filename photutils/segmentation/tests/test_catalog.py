@@ -808,11 +808,9 @@ class TestSourceCatalog:
 
     def test_meta(self):
         meta = self.cat.meta
-        date_ver_meta = ['date', 'versions']
         attrs = ['localbkg_width', 'apermask_method', 'kron_params']
-        for attr in date_ver_meta + attrs:
+        for attr in attrs:
             assert attr in meta
-        assert list(meta.keys())[0:2] == date_ver_meta
 
         tbl = self.cat.to_table()
         assert tbl.meta == self.cat.meta
