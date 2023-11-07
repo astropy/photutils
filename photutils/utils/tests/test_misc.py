@@ -11,11 +11,11 @@ from photutils.utils._misc import _get_meta
 @pytest.mark.parametrize('utc', (False, True))
 def test_get_meta(utc):
     meta = _get_meta(utc)
-    keys = ('date', 'versions')
+    keys = ('date', 'version')
     for key in keys:
         assert key in meta
 
-    versions = meta['versions']
+    versions = meta['version']
     assert isinstance(versions, dict)
     keys = ('Python', 'photutils', 'astropy', 'numpy', 'scipy', 'skimage',
             'sklearn', 'matplotlib', 'gwcs', 'bottleneck')
