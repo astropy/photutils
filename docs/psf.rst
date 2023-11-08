@@ -107,8 +107,8 @@ with the highest flux signal-to-noise. The initial positions are
 derived from the ``finder`` algorithm. The initial flux values for the
 fit are derived from measuring the flux in a circular aperture with
 radius ``aperture_radius``. The initial positions and fluxes can be
-alternatively input via the ``init_params`` keyword when calling the
-class.
+alternatively input in a table via the ``init_params`` keyword when
+calling the class.
 
 After sources are fitted, a model image of the fit
 sources or a residual image can be generated using the
