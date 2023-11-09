@@ -15,6 +15,11 @@ __all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf',
 
 
 class _InverseShift(Shift):
+    """
+    A model that is the inverse of the normal
+    `astropy.modeling.functional_models.Shift` model.
+    """
+
     @staticmethod
     def evaluate(x, offset):
         return x - offset
@@ -26,6 +31,94 @@ class _InverseShift(Shift):
         """
         d_offset = -np.ones_like(x)
         return [d_offset]
+
+
+def _integrate_model(model, x_name=None, y_name=None, dx=50, dy=50,
+                     subsample=100, use_dblquad=False):
+    """
+    Integrate a model over a 2D grid.
+
+    By default, the model is discretized on a grid of size ``dx``
+    x ``dy`` from the model center with a subsampling factor of
+    ``subsample``. The model is then integrated over the grid using
+    trapezoidal integration.
+
+    If the ``use_dblquad`` keyword is set to `True`, then the model is
+    integrated using `scipy.integrate.dblquad`. This is *much* slower
+    than the default integration of the evaluated model, but it is more
+    accurate. Also, note that the ``dblquad`` integration can sometimes
+    fail, e.g., return zero for a non-zero model. This can happen when
+    the model function is sharply localized relative to the size of the
+    integration interval.
+
+    Parameters
+    ----------
+    model : `~astropy.modeling.Fittable2DModel`
+        The Astropy 2D model.
+
+    x_name : str or `None`, optional
+        The name of the ``model`` parameter that corresponds to the
+        x-axis center of the PSF. This parameter is required if
+        ``use_dblquad`` is `False` and ignored if ``use_dblquad`` is
+        `True`.
+
+    y_name : str or `None`, optional
+        The name of the ``model`` parameter that corresponds to the
+        y-axis center of the PSF. This parameter is required if
+        ``use_dblquad`` is `False` and ignored if ``use_dblquad`` is
+        `True`.
+
+    dx, dy : odd int, optional
+        The size of the integration grid in x and y. Must be odd.
+        These keywords are ignored if ``use_dblquad`` is `True`.
+
+    subsample : int, optional
+        The subsampling factor for the integration grid along each axis.
+        Each pixel will be sampled ``subsample`` x ``subsample`` times.
+        This keyword is ignored if ``use_dblquad`` is `True`.
+
+    use_dblquad : bool, optional
+        If `True`, then use `scipy.integrate.dblquad` to integrate the
+        model. This is *much* slower than the default integration of
+        the evaluated model, but it is more accurate.
+
+    Returns
+    -------
+    integral : float
+        The integral of the model over the 2D grid.
+    """
+    if use_dblquad:
+        from scipy.integrate import dblquad
+
+        return dblquad(model, -np.inf, np.inf, -np.inf, np.inf)[0]
+
+    from scipy.integrate import trapezoid
+
+    if dx <= 0 or dy <= 0:
+        raise ValueError('dx and dy must be > 0')
+    if subsample < 1:
+        raise ValueError('subsample must be >= 1')
+
+    xc = getattr(model, x_name)
+    yc = getattr(model, y_name)
+
+    if not np.any(np.isfinite((xc.value, yc.value))):
+        raise ValueError('model x and y position must be finite')
+
+    hx = (dx - 1) / 2
+    hy = (dy - 1) / 2
+    nxpts = int(dx * subsample)
+    nypts = int(dy * subsample)
+    xvals = np.linspace(xc - hx, xc + hx, nxpts)
+    yvals = np.linspace(yc - hy, yc + hy, nypts)
+
+    # evaluate the model on the subsampled grid
+    data = model(xvals.reshape(-1, 1), yvals.reshape(1, -1))
+
+    # now integrate over the subsampled grid (first over x, then over y)
+    int_func = trapezoid
+
+    return int_func([int_func(row, xvals) for row in data], yvals)
 
 
 def prepare_psf_model(psfmodel, *, xname=None, yname=None, fluxname=None,
