@@ -85,6 +85,20 @@ class ModelGridPlotMixin:
 
         figsize : (float, float), optional
             The figure (width, height) in inches.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            The matplotlib figure object. This will be the current
+            figure if ``ax=None``. Use ``fig.savefig()`` to save the
+            figure to a file.
+
+            Note that when calling this method in a notebook, if you do
+            not store the return value of this function, the figure will
+            be displayed twice due to the REPL automatically displaying
+            the return value of the last function call. Alternatively,
+            you can append a semicolon to the end of the function call
+            to suppress the display of the return value.
         """
         import matplotlib.pyplot as plt
         from matplotlib import cm
@@ -105,8 +119,9 @@ class ModelGridPlotMixin:
         if ax is None:
             if figsize is None and self.meta.get('detector', '') == 'NRCSW':
                 figsize = (20, 8)
-            plt.figure(figsize=figsize)
-            ax = plt.gca()
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = plt.gcf()
 
         if peak_norm:  # normalize relative to peak
             if data.max() != 0:
@@ -214,6 +229,10 @@ class ModelGridPlotMixin:
                             (i + 1) * nypsfs / 2 - 0.55,
                             det_labels[i][j], color='orange',
                             verticalalignment='top', fontsize=12)
+
+        fig.tight_layout()
+
+        return fig
 
 
 class GriddedPSFModelRead(registry.UnifiedReadWrite):
