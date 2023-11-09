@@ -11,7 +11,7 @@ from itertools import chain
 
 import astropy.units as u
 import numpy as np
-from astropy.modeling import Fittable2DModel
+from astropy.modeling import Model
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import (NDData, NoOverlapError, StdDevUncertainty,
                             overlap_slices)
@@ -44,9 +44,11 @@ class PSFPhotometry:
     Parameters
     ----------
     psf_model : `astropy.modeling.Fittable2DModel`
-        The PSF model to fit to the data. The model needs to have
-        three parameters named ``x_0``, ``y_0``, and ``flux``,
-        corresponding to the center (x, y) position and flux.
+        The PSF model to fit to the data. The model must have parameters
+        named ``x_0``, ``y_0``, and ``flux``, corresponding to the
+        center (x, y) position and flux, or it must have 'x_name',
+        'y_name', and 'flux_name' attributes that map to the x, y, and
+        flux parameters (i.e., a model output from `prepare_psf_model`).
 
     fit_shape : int or length-2 array_like
         The rectangular shape around the center of a star that will
@@ -114,8 +116,8 @@ class PSFPhotometry:
                  localbkg_estimator=None, aperture_radius=None,
                  progress_bar=False):
 
-        self.psf_model = self._validate_model(psf_model)
-        self._unfixed_params = self._get_unfixed_params()
+        self.psf_model = psf_model
+        self._validate_psf_model()
 
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(0, 1),
                                  check_odd=True)
@@ -147,13 +149,67 @@ class PSFPhotometry:
                              'SourceGrouper.')
         return self._validate_callable(grouper, name)
 
-    @staticmethod
-    def _validate_model(psf_model):
-        # TODO: also allow output of prepare_psf_model (CompoundModel)
-        #       when prepare_psf_model is fixed
-        if not isinstance(psf_model, Fittable2DModel):
-            raise TypeError('psf_model must be an astropy Fittable2DModel')
-        return psf_model
+    @lazyproperty
+    def _psf_param_names(self):
+        """
+        The PSF model parameters corresponding to x, y, and flux.
+        """
+        params1 = ('x_0', 'y_0', 'flux')
+        params2 = ('x_name', 'y_name', 'flux_name')
+        params3 = ('xname', 'yname', 'fluxname')  # deprecated
+        if all(name in self.psf_model.param_names for name in params1):
+            model_params = params1
+        elif all(hasattr(self.psf_model, name) for name in params2):
+            model_params = []
+            for name in params2:
+                model_params.append(getattr(self.psf_model, name))
+            model_params = tuple(model_params)
+        elif all(hasattr(self.psf_model, name) for name in params3):
+            model_params = []
+            for name in params3:
+                model_params.append(getattr(self.psf_model, name))
+            model_params = tuple(model_params)
+        else:
+            msg = 'Invalid PSF model - could not find PSF parameter names.'
+            raise ValueError(msg)
+
+        return model_params
+
+    @lazyproperty
+    def _fitted_psf_param_names(self):
+        """
+        All PSF model parameters that are fit.
+        """
+        fitted_params = []
+        for key, val in self.psf_model.fixed.items():
+            if not val:
+                fitted_params.append(key)
+        return fitted_params
+
+    @lazyproperty
+    def _extra_psf_param_names(self):
+        """
+        PSF model parameters that are fit, but do not correspond to x,
+        y, or flux.
+        """
+        extra_params = []
+        for key in self._fitted_psf_param_names:
+            if key not in self._psf_param_names:
+                extra_params.append(key)
+        return extra_params
+
+    def _validate_psf_model(self):
+        """
+        Validate the input PSF model.
+
+        The PSF model must have parameters called 'x_0', 'y_0', and
+        'flux' or it must have 'x_name', 'y_name', and 'flux_name'
+        attributes (i.e., output from `prepare_psf_model`). Otherwise, a
+        `ValueError` is raised.
+        """
+        if not isinstance(self.psf_model, Model):
+            raise TypeError('psf_model must be an Astropy Model subclass.')
+        _ = self._psf_param_names
 
     @staticmethod
     def _validate_callable(obj, name):
@@ -194,13 +250,6 @@ class PSFPhotometry:
             if data_shape is not None and array.shape != data_shape:
                 raise ValueError(f'data and {name} must have the same shape.')
         return array
-
-    def _get_unfixed_params(self):
-        unfixed_params = []
-        for param in self.psf_model.param_names:
-            if not self.psf_model.fixed[param]:
-                unfixed_params.append(param)
-        return unfixed_params
 
     @lazyproperty
     def _init_colnames(self):
@@ -373,19 +422,17 @@ class PSFPhotometry:
         if 'group_id' not in init_params.colnames:
             init_params['group_id'] = init_params['id']
 
-        extra_params = self._get_psf_param_names()[1]
-        param_map = self._param_map()[0]
-
         extra_param_cols = []
-        for extra_param in extra_params:
-            for key, val in param_map.items():
+        init_param_map = self._param_maps['init']
+        for extra_param in self._extra_psf_param_names:
+            for key, val in init_param_map.items():
                 if val == extra_param:
                     extra_param_cols.append(key)
 
         for extra_col in extra_param_cols:
             if extra_col not in init_params.colnames:
                 init_params[extra_col] = getattr(self.psf_model,
-                                                 param_map[extra_col])
+                                                 init_param_map[extra_col])
 
         # order init_params columns
         colname_order = ['id', 'group_id', 'local_bkg',
@@ -396,66 +443,48 @@ class PSFPhotometry:
 
         return init_params
 
-    def _get_psf_param_names(self):
+    @lazyproperty
+    def _param_maps(self):
         """
-        Get the names of the PSF model parameters corresponding to x, y,
-        and flux.
+        Map x, y, and flux column names to the PSF model parameter names.
 
-        The PSF model must either define 'xname', 'yname', and
-        'fluxname' attributes (checked first) or have parameters called
-        'x_0', 'y_0', and 'flux'. Otherwise, a `ValueError` is raised.
+        Also include any extra PSF model parameters that are fit, but do
+        not correspond to x, y, or flux.
+
+        The column names include the ``_init``, ``_fit``, and ``_err``
+        suffixes for each parameter.
         """
-        keys = [('xname', 'x_0'), ('yname', 'y_0'), ('fluxname', 'flux')]
-        names = []
-        for key in keys:
-            try:
-                name = getattr(self.psf_model, key[0])
-            except AttributeError as exc:
-                if key[1] in self.psf_model.param_names:
-                    name = key[1]
-                else:
-                    msg = 'Could not find PSF parameter names'
-                    raise ValueError(msg) from exc
+        init_param_map = {}
+        init_param_map[self._init_colnames['x']] = self._psf_param_names[0]
+        init_param_map[self._init_colnames['y']] = self._psf_param_names[1]
+        init_param_map[self._init_colnames['flux']] = self._psf_param_names[2]
 
-            names.append(name)
-
-        extra_params = []
-        for key in self._unfixed_params:
-            if key not in names:
-                extra_params.append(key)
-
-        return tuple(names), tuple(extra_params)
-
-    def _param_map(self):
-        psf_param_names, extra_params = self._get_psf_param_names()
-        xname, yname, fluxname = psf_param_names
-
-        param_map = {}
-        param_map[self._init_colnames['x']] = xname
-        param_map[self._init_colnames['y']] = yname
-        param_map[self._init_colnames['flux']] = fluxname
-
-        for extra_param in extra_params:
-            param_map[f'{extra_param}_init'] = extra_param
+        for extra_param in self._extra_psf_param_names:
+            init_param_map[f'{extra_param}_init'] = extra_param
 
         init_suffix = self._init_colnames['suffix']
         fit_param_map = {val: key.replace(init_suffix, '_fit')
-                         for key, val in param_map.items()}
+                         for key, val in init_param_map.items()}
         err_param_map = {val: key.replace(init_suffix, '_err')
-                         for key, val in param_map.items()}
+                         for key, val in init_param_map.items()}
 
-        return param_map, fit_param_map, err_param_map
+        param_maps = {}
+        param_maps['init'] = init_param_map
+        param_maps['fit'] = fit_param_map
+        param_maps['err'] = err_param_map
+
+        return param_maps
 
     def _make_psf_model(self, sources):
         """
         Make a PSF model to fit a single source or several sources within
         a group.
         """
-        param_map = self._param_map()[0]
+        init_param_map = self._param_maps['init']
 
         for index, source in enumerate(sources):
             model = self.psf_model.copy()
-            for param, model_param in param_map.items():
+            for param, model_param in init_param_map.items():
                 value = source[param]
                 if isinstance(value, u.Quantity):
                     value = value.value  # psf model cannot be fit with units
@@ -570,15 +599,15 @@ class PSFPhotometry:
         fit_models = []
         fit_infos = []
         fit_param_errs = []
-        nparam = len(self._unfixed_params)
+        nfitparam = len(self._fitted_psf_param_names)
         for model, info in zip(models, infos):
             model_nsub = model.n_submodels
 
             param_cov = info.get('param_cov', None)
             if param_cov is None:
-                if nparam == 0:  # model params are all fixed
-                    nparam = 3
-                param_err = np.array([np.nan] * nparam * model_nsub)
+                if nfitparam == 0:  # model params are all fixed
+                    nfitparam = 3
+                param_err = np.array([np.nan] * nfitparam * model_nsub)
             else:
                 param_err = np.sqrt(np.diag(param_cov))
 
@@ -593,7 +622,7 @@ class PSFPhotometry:
             fit_models.extend(self._split_compound_model(model, psf_nsub))
             nsources = model_nsub // psf_nsub
             fit_infos.extend([info] * nsources)  # views
-            fit_param_errs.extend(self._split_param_errs(param_err, nparam))
+            fit_param_errs.extend(self._split_param_errs(param_err, nfitparam))
 
         if len(fit_models) != len(fit_infos):
             raise ValueError('fit_models and fit_infos have different lengths')
@@ -681,17 +710,17 @@ class PSFPhotometry:
         return fit_models
 
     def _model_params_to_table(self, models):
-        param_map = self._param_map()[1]
+        fit_param_map = self._param_maps['fit']
 
         params = []
         for model in models:
             mparams = []
-            for model_param in param_map.keys():
+            for model_param in fit_param_map.keys():
                 mparams.append(getattr(model, model_param).value)
             params.append(mparams)
         vals = np.transpose(params)
 
-        colnames = param_map.values()
+        colnames = fit_param_map.values()
         table = QTable()
         for index, colname in enumerate(colnames):
             table[colname] = vals[index]
@@ -699,13 +728,13 @@ class PSFPhotometry:
         return table
 
     def _param_errors_to_table(self):
-        param_map = self._param_map()[2]
+        err_param_map = self._param_maps['err']
         table = QTable()
-        for index, name in enumerate(self._unfixed_params):
-            colname = param_map[name]
+        for index, name in enumerate(self._fitted_psf_param_names):
+            colname = err_param_map[name]
             table[colname] = self.fit_results['fit_param_errs'][:, index]
 
-        colnames = list(param_map.values())
+        colnames = list(err_param_map.values())
 
         # add missing error columns
         nsources = len(self._fit_models)
@@ -1018,7 +1047,7 @@ class PSFPhotometry:
         fit_models = self._fit_models
 
         data = np.zeros(shape)
-        xname, yname = self._get_psf_param_names()[0][0:2]
+        xname, yname = self._psf_param_names[0:2]
 
         if self.progress_bar:
             desc = 'Model image'
@@ -1370,7 +1399,7 @@ class IterativePSFPhotometry:
         local_bkgs = _flatten(local_bkgs)
 
         data = np.zeros(shape)
-        xname, yname = self.fit_results[0]._get_psf_param_names()[0][0:2]
+        xname, yname = self.fit_results[0]._psf_param_names[0:2]
 
         if self.psfphot.progress_bar:
             desc = 'Model image'

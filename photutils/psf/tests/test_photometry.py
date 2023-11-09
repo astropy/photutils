@@ -28,7 +28,7 @@ from photutils.utils.exceptions import NoDetectionsWarning
 def test_inputs():
     model = IntegratedGaussianPRF(sigma=1.0)
 
-    match = 'psf_model must be an astropy Fittable2DModel'
+    match = 'psf_model must be an Astropy Model subclass'
     with pytest.raises(TypeError, match=match):
         _ = PSFPhotometry(1, 3)
 
