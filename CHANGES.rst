@@ -13,6 +13,11 @@ New Features
 
   - Added a ``wcs`` keyword to ``data_properties``. [#1648]
 
+- ``photutils.psf``
+
+  - The ``GriddedPSFModel`` ``plot_grid`` method now returns a
+    ``matplotlib.figure.Figure`` object. [#1653]
+
 - ``photutils.segmentation``
 
   - The ``SegmentationImage`` ``make_source_mask`` method now uses a
