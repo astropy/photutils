@@ -143,8 +143,8 @@ class ModelGridPlotMixin:
         ax.imshow(data, extent=extent, norm=norm, cmap=cmap, origin='lower')
 
         # Use the axes set up above to set appropriate tick labels
-        xticklabels = self._xgrid
-        yticklabels = self._ygrid
+        xticklabels = self._xgrid.astype(int)
+        yticklabels = self._ygrid.astype(int)
         if self.meta.get('detector', '') == 'NRCSW':
             xticklabels = list(xticklabels[0:5]) * 4
             yticklabels = list(yticklabels[0:5]) * 2
