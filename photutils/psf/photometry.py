@@ -16,6 +16,7 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import (NDData, NoOverlapError, StdDevUncertainty,
                             overlap_slices)
 from astropy.table import QTable, Table, hstack, vstack
+from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
@@ -114,6 +115,8 @@ class PSFPhotometry:
                  progress_bar=False):
 
         self.psf_model = self._validate_model(psf_model)
+        self._unfixed_params = self._get_unfixed_params()
+
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(0, 1),
                                  check_odd=True)
         self.grouper = self._validate_grouper(grouper, 'grouper')
@@ -124,13 +127,6 @@ class PSFPhotometry:
         self.fitter_maxiters = self._validate_maxiters(fitter_maxiters)
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
-
-        self._init_colnames = self._define_init_colnames()
-        self._xinit_name = self._init_colnames['x_valid'][0]
-        self._yinit_name = self._init_colnames['y_valid'][0]
-        self._fluxinit_name = self._init_colnames['flux_valid'][0]
-
-        self._unfixed_params = self._get_unfixed_params()
 
         # reset these attributes for each __call__ (see _reset_results)
         self.finder_results = []
@@ -206,70 +202,89 @@ class PSFPhotometry:
                 unfixed_params.append(param)
         return unfixed_params
 
-    @staticmethod
-    def _define_init_colnames():
+    @lazyproperty
+    def _init_colnames(self):
+        """
+        A dictionary of column names for the initial x, y, and flux values
+        reported in the output table.
+        """
+        init_colnames = {}
+        init_colnames['x'] = 'x_init'
+        init_colnames['y'] = 'y_init'
+        init_colnames['flux'] = 'flux_init'
+        init_colnames['suffix'] = '_init'
+        return init_colnames
+
+    @lazyproperty
+    def _valid_colnames(self):
+        """
+        A dictionary of valid column names for the input ``init_params``
+        table.
+
+        These lists are searched in order.
+        """
         xy_suffixes = ('_init', 'init', 'centroid', '_centroid', '_peak', '',
                        'cen', '_cen', 'pos', '_pos', '_0', '0')
         x_valid = ['x' + i for i in xy_suffixes]
         y_valid = ['y' + i for i in xy_suffixes]
 
-        init_colnames = {}
-        init_colnames['x_valid'] = x_valid
-        init_colnames['y_valid'] = y_valid
-        init_colnames['flux_valid'] = ('flux_init', 'flux_0', 'flux0', 'flux',
-                                       'source_sum', 'segment_flux',
-                                       'kron_flux')
+        valid_colnames = {}
+        valid_colnames['x'] = x_valid
+        valid_colnames['y'] = y_valid
+        valid_colnames['flux'] = ('flux_init', 'flux_0', 'flux0', 'flux',
+                                  'source_sum', 'segment_flux', 'kron_flux')
 
-        return init_colnames
+        return valid_colnames
 
     def _find_column_name(self, key, colnames):
         name = ''
-        valid_names = self._init_colnames[key]
+        valid_names = self._valid_colnames[key]
         for valid_name in valid_names:
             if valid_name in colnames:
                 name = valid_name
         return name
 
-    def _validate_params(self, init_params, unit):
+    def _validate_init_params(self, init_params, flux_unit):
         if init_params is None:
             return init_params
 
         if not isinstance(init_params, Table):
             raise TypeError('init_params must be an astropy Table')
 
-        xcolname = self._find_column_name('x_valid', init_params.colnames)
-        ycolname = self._find_column_name('y_valid', init_params.colnames)
+        xcolname = self._find_column_name('x', init_params.colnames)
+        ycolname = self._find_column_name('y', init_params.colnames)
         if not xcolname or not ycolname:
             raise ValueError('init_param must contain valid column names '
                              'for the x and y source positions')
 
         init_params = init_params.copy()  # preserve input init_params
-        if xcolname != self._xinit_name:
-            init_params.rename_column(xcolname, self._xinit_name)
-        if ycolname != self._yinit_name:
-            init_params.rename_column(ycolname, self._yinit_name)
+        xinit_name = self._init_colnames['x']
+        yinit_name = self._init_colnames['y']
+        if xcolname != xinit_name:
+            init_params.rename_column(xcolname, xinit_name)
+        if ycolname != yinit_name:
+            init_params.rename_column(ycolname, yinit_name)
 
-        fluxcolname = self._find_column_name('flux_valid',
-                                             init_params.colnames)
-
+        fluxcolname = self._find_column_name('flux', init_params.colnames)
         if fluxcolname:
-            if fluxcolname != self._fluxinit_name:
-                init_params.rename_column(fluxcolname, self._fluxinit_name)
+            fluxinit_name = self._init_colnames['flux']
+            if fluxcolname != fluxinit_name:
+                init_params.rename_column(fluxcolname, fluxinit_name)
 
-            init_flux = init_params[self._fluxinit_name]
+            init_flux = init_params[fluxinit_name]
             if isinstance(init_flux, u.Quantity):
-                if unit is None:
+                if flux_unit is None:
                     raise ValueError('init_params flux column has '
                                      'units, but the input data does not '
                                      'have units.')
                 try:
-                    init_params[self._fluxinit_name] = init_flux.to(unit)
+                    init_params[fluxinit_name] = init_flux.to(flux_unit)
                 except u.UnitConversionError as exc:
                     raise ValueError('init_params flux column has '
                                      'units that are incompatible with '
                                      'the input data units.') from exc
             else:
-                if unit is not None:
+                if flux_unit is not None:
                     raise ValueError('The input data has units, but the '
                                      'init_params flux column does not have '
                                      'units.')
@@ -301,8 +316,8 @@ class PSFPhotometry:
         return mask
 
     def _get_aper_fluxes(self, data, mask, init_params):
-        xpos = init_params[self._xinit_name]
-        ypos = init_params[self._yinit_name]
+        xpos = init_params[self._init_colnames['x']]
+        ypos = init_params[self._init_colnames['y']]
         apertures = CircularAperture(zip(xpos, ypos), r=self.aperture_radius)
         flux, _ = apertures.do_photometry(data, mask=mask)
         return flux
@@ -320,8 +335,8 @@ class PSFPhotometry:
 
             init_params = QTable()
             init_params['id'] = np.arange(len(sources)) + 1
-            init_params[self._xinit_name] = sources['xcentroid']
-            init_params[self._yinit_name] = sources['ycentroid']
+            init_params[self._init_colnames['x']] = sources['xcentroid']
+            init_params[self._init_colnames['y']] = sources['ycentroid']
 
         else:
             colnames = init_params.colnames
@@ -337,18 +352,18 @@ class PSFPhotometry:
                 local_bkg = np.zeros(len(init_params))
             else:
                 local_bkg = self.localbkg_estimator(
-                    data, init_params[self._xinit_name],
-                    init_params[self._yinit_name], mask=mask)
+                    data, init_params[self._init_colnames['x']],
+                    init_params[self._init_colnames['y']], mask=mask)
             init_params['local_bkg'] = local_bkg
 
         self.fit_results['local_bkg'] = init_params['local_bkg'].value
 
-        if self._fluxinit_name not in init_params.colnames:
+        if self._init_colnames['flux'] not in init_params.colnames:
             flux = self._get_aper_fluxes(data, mask, init_params)
             flux -= init_params['local_bkg']
             if unit is not None:
                 flux <<= unit
-            init_params[self._fluxinit_name] = flux
+            init_params[self._init_colnames['flux']] = flux
 
         if self.grouper is not None:
             init_params['group_id'] = self.grouper(
@@ -373,8 +388,9 @@ class PSFPhotometry:
                                                  param_map[extra_col])
 
         # order init_params columns
-        colname_order = ['id', 'group_id', 'local_bkg', self._xinit_name,
-                         self._yinit_name, self._fluxinit_name]
+        colname_order = ['id', 'group_id', 'local_bkg',
+                         self._init_colnames['x'], self._init_colnames['y'],
+                         self._init_colnames['flux']]
         colname_order.extend(extra_param_cols)
         init_params = init_params[colname_order]
 
@@ -415,14 +431,14 @@ class PSFPhotometry:
         xname, yname, fluxname = psf_param_names
 
         param_map = {}
-        param_map[self._xinit_name] = xname
-        param_map[self._yinit_name] = yname
-        param_map[self._fluxinit_name] = fluxname
+        param_map[self._init_colnames['x']] = xname
+        param_map[self._init_colnames['y']] = yname
+        param_map[self._init_colnames['flux']] = fluxname
 
         for extra_param in extra_params:
             param_map[f'{extra_param}_init'] = extra_param
 
-        init_suffix = self._xinit_name[1:]
+        init_suffix = self._init_colnames['suffix']
         fit_param_map = {val: key.replace(init_suffix, '_fit')
                          for key, val in param_map.items()}
         err_param_map = {val: key.replace(init_suffix, '_err')
@@ -460,8 +476,8 @@ class PSFPhotometry:
         npixfit = []
         cen_index = []
         for row in sources:
-            xcen = py2intround(row[self._xinit_name])
-            ycen = py2intround(row[self._yinit_name])
+            xcen = py2intround(row[self._init_colnames['x']])
+            ycen = py2intround(row[self._init_colnames['y']])
 
             try:
                 slc_lg, _ = overlap_slices(data.shape, self.fit_shape,
@@ -749,8 +765,8 @@ class PSFPhotometry:
             for index, (model, residual, cen_idx_) in enumerate(
                     zip(self._fit_models, fit_residuals, cen_idx)):
                 source = source_tbl[index]
-                xcen = py2intround(source[self._xinit_name])
-                ycen = py2intround(source[self._yinit_name])
+                xcen = py2intround(source[self._init_colnames['x']])
+                ycen = py2intround(source[self._init_colnames['y']])
                 flux_fit = source['flux_fit']
                 qfit.append(np.sum(np.abs(residual)) / flux_fit)
 
@@ -907,11 +923,11 @@ class PSFPhotometry:
         data = self._validate_array(data, 'data')
         mask = self._validate_array(mask, 'mask', data_shape=data.shape)
         mask = self._make_mask(data, mask)
-        init_params = self._validate_params(init_params, unit)  # also copies
+        init_params = self._validate_init_params(init_params, unit)  # copies
 
         if (self.aperture_radius is None
             and (init_params is None
-                 or self._fluxinit_name not in init_params.colnames)):
+                 or self._init_colnames['flux'] not in init_params.colnames)):
             raise ValueError('aperture_radius must be defined if init_params '
                              'is not input or if a flux column is not in '
                              'init_params')
