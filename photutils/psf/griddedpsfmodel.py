@@ -161,15 +161,28 @@ class ModelGridPlotMixin:
             for iy in range(nypsfs):
                 ax.axhline(iy + 0.5, color=divider_color, ls=divider_ls)
 
-        title = (f"{self.meta.get('instrument', '')} "
-                 f"{self.meta.get('detector', '')} "
-                 f"{self.meta.get('filter', '')}")
+        instrument = self.meta.get('instrument', '')
+        if not instrument:
+            # WebbPSF output
+            instrument = self.meta.get('instrume', '')
+        detector = self.meta.get('detector', '')
+        filtername = self.meta.get('filter', '')
+
+        # WebbPSF outputs a tuple with the comment in the second element
+        if isinstance(instrument, (tuple, list, np.ndarray)):
+            instrument = instrument[0]
+        if isinstance(detector, (tuple, list, np.ndarray)):
+            detector = detector[0]
+        if isinstance(filtername, (tuple, list, np.ndarray)):
+            filtername = filtername[0]
+
+        title = f'{instrument} {detector} {filtername}'
         if title != '':
             # add extra space at end
             title += ' '
 
         if deltas:
-            ax.set_title(f'{title}ePSFs – average ePSF')
+            ax.set_title(f'{title}(ePSFs − average ePSF)')
             if peak_norm:
                 label = 'Difference relative to average ePSF peak'
             else:
