@@ -12,14 +12,13 @@ from functools import lru_cache
 
 import numpy as np
 from astropy.io import fits, registry
-from astropy.io.fits import HDUList
 from astropy.io.fits.verify import VerifyWarning
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData, reshape_as_blocks
 from astropy.visualization import simple_norm
 
 __all__ = ['GriddedPSFModel', 'ModelGridPlotMixin', 'stdpsf_reader',
-           'STDPSFGrid']
+           'webbpsf_reader', 'STDPSFGrid']
 __doctest_skip__ = ['GriddedPSFModelRead', 'STDPSFGrid']
 
 
@@ -237,14 +236,14 @@ class ModelGridPlotMixin:
 
 class GriddedPSFModelRead(registry.UnifiedReadWrite):
     """
-    Read and parse a STDPSF FITS file into a `GriddedPSFModel` instance.
+    Read and parse a FITS file into a `GriddedPSFModel` instance.
 
     This class enables the astropy unified I/O layer for
-    `GriddedPSFModel`. This allows easily reading a file in many
+    `GriddedPSFModel`. This allows easily reading a file in different
     supported data formats using syntax such as::
 
       >>> from photutils.psf import GriddedPSFModel
-      >>> psf_model = GriddedPSFModel.read('STDPSF_ACSWFC_F814W.fits')
+      >>> psf_model = GriddedPSFModel.read('filename.fits', format=format)
 
     Get help on the available readers for `GriddedPSFModel` using the
     ``help()`` method::
@@ -254,6 +253,9 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
 
       >>> # Get detailed help on the STSPSF FITS reader
       >>> GriddedPSFModel.read.help('stdpsf')
+
+      >>> # Get detailed help on the WebbPSF FITS reader
+      >>> GriddedPSFModel.read.help('webbpsf')
 
       >>> # Print list of available formats
       >>> GriddedPSFModel.read.list_formats()
@@ -271,7 +273,7 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
     Returns
     -------
     out : `~photutils.psf.GriddedPSFModel`
-        A gridded ePSF Model corresponding to FITS file contents.
+        A gridded ePSF model corresponding to FITS file contents.
     """
     def __init__(self, instance, cls):
         super().__init__(instance, cls, 'read', registry=None)
@@ -621,9 +623,12 @@ def _read_stdpsf(filename):
             header = hdulist[0].header
             data = hdulist[0].data
 
-    npsfs = header['NAXIS3']
-    nxpsfs = header['NXPSFS']
-    nypsfs = header['NYPSFS']
+    try:
+        npsfs = header['NAXIS3']
+        nxpsfs = header['NXPSFS']
+        nypsfs = header['NYPSFS']
+    except KeyError as exc:
+        raise ValueError('Invalid STDPDF FITS file.') from exc
 
     if 'IPSFX01' in header:
         xgrid = [header[f'IPSFX{i:02d}'] for i in range(1, nxpsfs + 1)]
@@ -638,7 +643,7 @@ def _read_stdpsf(filename):
         for ykey in ykeys:
             ygrid.extend([int(n) for n in header[ykey].split()])
     else:
-        raise ValueError('Unknown standard-format ePSF file.')
+        raise ValueError('Unknown STDPSF FITS file.')
 
     # STDPDF FITS positions are 1-indexed
     xgrid = np.array(xgrid) - 1
@@ -820,8 +825,8 @@ def _get_metadata(filename, detector_id):
 
         try:
             inst_det = detector_map[detector]
-        except KeyError:
-            raise ValueError(f'Unknown detector {detector}.')
+        except KeyError as exc:
+            raise ValueError(f'Unknown detector {detector}.') from exc
 
         if inst_det[1] == 'WFPC2':
             wfpc2_map = {1: 'PC', 2: 'WF2', 3: 'WF3', 4: 'WF4'}
@@ -849,8 +854,8 @@ def stdpsf_reader(filename, detector_id=None):
 
     .. note::
         Instead of being used directly, this function is intended to be
-        used as the `GriddedPSFModel` ``read`` method, e.g.,
-        ``model = GriddedPSFModel.read(filename)``.
+        used via the `GriddedPSFModel` ``read`` method, e.g.,
+        ``model = GriddedPSFModel.read(filename, format='stdpsf')``.
 
     STDPSF files are FITS files that contain a 3D array of ePSFs with
     the header detailing where the fiducial ePSFs are located in the
@@ -932,9 +937,73 @@ def stdpsf_reader(filename, detector_id=None):
     return GriddedPSFModel(NDData(data, meta=meta))
 
 
-def is_fits(origin, filepath, fileobj, *args, **kwargs):
+def webbpsf_reader(filename):
     """
-    Determine whether `origin` is a FITS file.
+    Generate a `~photutils.psf.GriddedPSFModel` from a WebbPSF
+    FITS file containing a PSF grid.
+
+    .. note::
+        Instead of being used directly, this function is intended to be
+        used via the `GriddedPSFModel` ``read`` method, e.g., ``model =
+        GriddedPSFModel.read(filename, format='webbpsf')``.
+
+    The WebbPSF FITS file contain a 3D array of ePSFs with the header
+    detailing where the fiducial ePSFs are located in the detector
+    coordinate frame.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the WebbPSF FITS file. A URL can also be used.
+
+    Returns
+    -------
+    model : `~photutils.psf.GriddedPSFModel`
+        The gridded ePSF model.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', VerifyWarning)
+        with fits.open(filename, ignore_missing_end=True) as hdulist:
+            header = hdulist[0].header
+            data = hdulist[0].data
+
+    # handle the case of only one 2D PSF
+    data = np.atleast_3d(data)
+
+    if not any('DET_YX' in key for key in header.keys()):
+        raise ValueError('Invalid WebbPSF FITS file; missing "DET_YX{}" '
+                         'header keys.')
+    if 'OVERSAMP' not in header.keys():
+        raise ValueError('Invalid WebbPSF FITS file; missing "OVERSAMP" '
+                         'header key.')
+
+    # convert header to meta dict
+    header = header.copy(strip=True)
+    header.pop('HISTORY', None)
+    header.pop('COMMENT', None)
+    header.pop('', None)
+    meta = dict(header)
+    meta = {key.lower(): meta[key] for key in meta}  # user lower-case keys
+
+    # define grid_xypos from DET_YX{} FITS header keywords
+    xypos = []
+    for key in meta.keys():
+        if 'det_yx' in key:
+            vals = header[key].lstrip('(').rstrip(')').split(',')
+            xypos.append((float(vals[0]), float(vals[1])))
+    meta['grid_xypos'] = xypos
+
+    if 'oversampling' not in meta:
+        meta['oversampling'] = meta['oversamp']
+
+    ndd = NDData(data, meta=meta)
+
+    return GriddedPSFModel(ndd)
+
+
+def is_stdpsf(origin, filepath, fileobj, *args, **kwargs):
+    """
+    Determine whether `origin` is a STDPSF FITS file.
 
     Parameters
     ----------
@@ -943,13 +1012,51 @@ def is_fits(origin, filepath, fileobj, *args, **kwargs):
 
     Returns
     -------
-    is_fits : bool
-        Returns `True` if the given file is a FITS file.
+    is_stdpsf : bool
+        Returns `True` if the given file is a STDPSF FITS file.
     """
     if filepath is not None:
         extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
-        return filepath.lower().endswith(extens)
-    return isinstance(args[0], HDUList)
+        isfits = filepath.lower().endswith(extens)
+        if isfits:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', VerifyWarning)
+                header = fits.getheader(filepath)
+            keys = ('NAXIS3', 'NXPSFS', 'NYPSFS')
+            for key in keys:
+                if key not in header:
+                    return False
+            return True
+    return False
+
+
+def is_webbpsf(origin, filepath, fileobj, *args, **kwargs):
+    """
+    Determine whether `origin` is a WebbPSF FITS file.
+
+    Parameters
+    ----------
+    origin : str or readable file-like
+        Path or file object containing a potential FITS file.
+
+    Returns
+    -------
+    is_webbpsf : bool
+        Returns `True` if the given file is a WebbPSF FITS file.
+    """
+    if filepath is not None:
+        extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
+        isfits = filepath.lower().endswith(extens)
+        if isfits:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', VerifyWarning)
+                header = fits.getheader(filepath)
+            keys = ('NAXIS3', 'OVERSAMP', 'DET_YX0')
+            for key in keys:
+                if key not in header:
+                    return False
+            return True
+    return False
 
 
 class STDPSFGrid(ModelGridPlotMixin):
@@ -1022,4 +1129,6 @@ class STDPSFGrid(ModelGridPlotMixin):
 
 with registry.delay_doc_updates(GriddedPSFModel):
     registry.register_reader('stdpsf', GriddedPSFModel, stdpsf_reader)
-    registry.register_identifier('stdpsf', GriddedPSFModel, is_fits)
+    registry.register_identifier('stdpsf', GriddedPSFModel, is_stdpsf)
+    registry.register_reader('webbpsf', GriddedPSFModel, webbpsf_reader)
+    registry.register_identifier('webbpsf', GriddedPSFModel, is_webbpsf)
