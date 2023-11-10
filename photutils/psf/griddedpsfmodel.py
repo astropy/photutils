@@ -19,7 +19,7 @@ from astropy.nddata import NDData, reshape_as_blocks
 from astropy.visualization import simple_norm
 
 __all__ = ['GriddedPSFModel', 'ModelGridPlotMixin', 'stdpsf_reader',
-           'STDPSFGrid']
+           'webbpsf_reader', 'STDPSFGrid']
 __doctest_skip__ = ['GriddedPSFModelRead', 'STDPSFGrid']
 
 
@@ -930,6 +930,69 @@ def stdpsf_reader(filename, detector_id=None):
         meta.update(file_meta)
 
     return GriddedPSFModel(NDData(data, meta=meta))
+
+
+def webbpsf_reader(filename):
+    """
+    Generate a `~photutils.psf.GriddedPSFModel` from a WebbPSF
+    FITS file containing a PSF grid.
+
+    .. note::
+        Instead of being used directly, this function is intended to be
+        used via the `GriddedPSFModel` ``read`` method, e.g., ``model =
+        GriddedPSFModel.read(filename, format='webbpsf')``.
+
+    The WebbPSF FITS file contain a 3D array of ePSFs with the header
+    detailing where the fiducial ePSFs are located in the detector
+    coordinate frame.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the WebbPSF FITS file. A URL can also be used.
+
+    Returns
+    -------
+    model : `~photutils.psf.GriddedPSFModel`
+        The gridded ePSF model.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', VerifyWarning)
+        with fits.open(filename, ignore_missing_end=True) as hdulist:
+            header = hdulist[0].header
+            data = hdulist[0].data
+
+    # handle the case of only one 2D PSF
+    data = np.atleast_3d(data)
+
+    if not any('DET_YX' in key for key in header.keys()):
+        raise KeyError('FITS header is missing "DET_YX{}" keys that store '
+                       'PSF detector locations.')
+    if 'OVERSAMP' not in header.keys():
+        raise KeyError('FITS header is missing the "OVERSAMP" key')
+
+    # convert header to meta dict
+    header = header.copy(strip=True)
+    header.pop('HISTORY', None)
+    header.pop('COMMENT', None)
+    header.pop('', None)
+    meta = dict(header)
+    meta = {key.lower(): meta[key] for key in meta}  # user lower-case keys
+
+    # define grid_xypos from DET_YX{} FITS header keywords
+    xypos = []
+    for key in meta.keys():
+        if 'det_yx' in key:
+            vals = header[key].lstrip('(').rstrip(')').split(',')
+            xypos.append((float(vals[0]), float(vals[1])))
+    meta['grid_xypos'] = xypos
+
+    if 'oversampling' not in meta:
+        meta['oversampling'] = meta['oversamp']
+
+    ndd = NDData(data, meta=meta)
+
+    return GriddedPSFModel(ndd)
 
 
 def is_fits(origin, filepath, fileobj, *args, **kwargs):
