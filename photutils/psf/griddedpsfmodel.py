@@ -197,7 +197,7 @@ class ModelGridPlotMixin:
             title += ' '
 
         if deltas:
-            ax.set_title(f'{title}(ePSFs − average ePSF)')
+            ax.set_title(f'{title}(ePSFs − <ePSF>)')
             if peak_norm:
                 label = 'Difference relative to average ePSF peak'
             else:
