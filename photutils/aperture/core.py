@@ -630,7 +630,7 @@ class PixelAperture(Aperture):
         xy_positions[:, 0] -= origin[0]
         xy_positions[:, 1] -= origin[1]
 
-        patch_params = self._default_patch_properties
+        patch_params = self._default_patch_properties.copy()
         patch_params.update(kwargs)
 
         return xy_positions, patch_params

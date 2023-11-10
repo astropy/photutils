@@ -42,6 +42,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Fixed an issue where the aperture ``plot`` method ``**kwargs`` were
+    not reset to the default values when called multiple times. [#1655]
+
 - ``photutils.psf``
 
   - Fixed a bug where ``SourceGrouper`` would fail if only one source
