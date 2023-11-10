@@ -85,6 +85,20 @@ class ModelGridPlotMixin:
 
         figsize : (float, float), optional
             The figure (width, height) in inches.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            The matplotlib figure object. This will be the current
+            figure if ``ax=None``. Use ``fig.savefig()`` to save the
+            figure to a file.
+
+            Note that when calling this method in a notebook, if you do
+            not store the return value of this function, the figure will
+            be displayed twice due to the REPL automatically displaying
+            the return value of the last function call. Alternatively,
+            you can append a semicolon to the end of the function call
+            to suppress the display of the return value.
         """
         import matplotlib.pyplot as plt
         from matplotlib import cm
@@ -105,8 +119,9 @@ class ModelGridPlotMixin:
         if ax is None:
             if figsize is None and self.meta.get('detector', '') == 'NRCSW':
                 figsize = (20, 8)
-            plt.figure(figsize=figsize)
-            ax = plt.gca()
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = plt.gcf()
 
         if peak_norm:  # normalize relative to peak
             if data.max() != 0:
@@ -143,8 +158,8 @@ class ModelGridPlotMixin:
         ax.imshow(data, extent=extent, norm=norm, cmap=cmap, origin='lower')
 
         # Use the axes set up above to set appropriate tick labels
-        xticklabels = self._xgrid
-        yticklabels = self._ygrid
+        xticklabels = self._xgrid.astype(int)
+        yticklabels = self._ygrid.astype(int)
         if self.meta.get('detector', '') == 'NRCSW':
             xticklabels = list(xticklabels[0:5]) * 4
             yticklabels = list(yticklabels[0:5]) * 2
@@ -161,15 +176,28 @@ class ModelGridPlotMixin:
             for iy in range(nypsfs):
                 ax.axhline(iy + 0.5, color=divider_color, ls=divider_ls)
 
-        title = (f"{self.meta.get('instrument', '')} "
-                 f"{self.meta.get('detector', '')} "
-                 f"{self.meta.get('filter', '')}")
+        instrument = self.meta.get('instrument', '')
+        if not instrument:
+            # WebbPSF output
+            instrument = self.meta.get('instrume', '')
+        detector = self.meta.get('detector', '')
+        filtername = self.meta.get('filter', '')
+
+        # WebbPSF outputs a tuple with the comment in the second element
+        if isinstance(instrument, (tuple, list, np.ndarray)):
+            instrument = instrument[0]
+        if isinstance(detector, (tuple, list, np.ndarray)):
+            detector = detector[0]
+        if isinstance(filtername, (tuple, list, np.ndarray)):
+            filtername = filtername[0]
+
+        title = f'{instrument} {detector} {filtername}'
         if title != '':
             # add extra space at end
             title += ' '
 
         if deltas:
-            ax.set_title(f'{title}ePSFs – average ePSF')
+            ax.set_title(f'{title}(ePSFs − average ePSF)')
             if peak_norm:
                 label = 'Difference relative to average ePSF peak'
             else:
@@ -201,6 +229,10 @@ class ModelGridPlotMixin:
                             (i + 1) * nypsfs / 2 - 0.55,
                             det_labels[i][j], color='orange',
                             verticalalignment='top', fontsize=12)
+
+        fig.tight_layout()
+
+        return fig
 
 
 class GriddedPSFModelRead(registry.UnifiedReadWrite):
