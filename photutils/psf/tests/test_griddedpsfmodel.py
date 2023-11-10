@@ -17,11 +17,16 @@ from photutils.segmentation import SourceCatalog, detect_sources
 from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY
 
 # the first file has a single detector, the rest have multiple detectors
-FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits',
-             'STDPSF_ACSWFC_F814W_mock.fits',
-             'STDPSF_NRCSW_F150W_mock.fits',
-             'STDPSF_WFC3UV_F814W_mock.fits',
-             'STDPSF_WFPC2_F814W_mock.fits')
+STDPSF_FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits',
+                    'STDPSF_ACSWFC_F814W_mock.fits',
+                    'STDPSF_NRCSW_F150W_mock.fits',
+                    'STDPSF_WFC3UV_F814W_mock.fits',
+                    'STDPSF_WFPC2_F814W_mock.fits')
+
+WEBBPSF_FILENAMES = ('nircam_nrca1_f200w_fovp101_samp4_npsf16_mock.fits',
+                     'nircam_nrca1_f200w_fovp101_samp4_npsf4_mock.fits',
+                     'nircam_nrca5_f444w_fovp101_samp4_npsf4_mock.fits',
+                     'nircam_nrcb4_f150w_fovp101_samp4_npsf1_mock.fits')
 
 
 @pytest.fixture(name='psfmodel')
@@ -229,7 +234,7 @@ class TestGriddedPSFModel:
         for key in keys:
             assert key in repr(psfmodel)
 
-    def test_read(self):
+    def test_read_stdpsf(self):
         """
         Test STDPSF read for a single detector.
         """
@@ -241,16 +246,22 @@ class TestGriddedPSFModel:
         assert psfmodel.meta['oversampling'] == psfmodel.oversampling
 
     @pytest.mark.parametrize(('filename', 'detector_id'),
-                             list(product(FILENAMES[1:], (1, 2))))
-    def test_read_multi_detector(self, filename, detector_id):
+                             list(product(STDPSF_FILENAMES[1:], (1, 2))))
+    def test_read_stdpsf_multi_detector(self, filename, detector_id):
         """
         Test STDPSF read for a multiple detectors.
         """
         filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-        psfmodel = GriddedPSFModel.read(filename, detector_id=detector_id)
+        psfmodel = GriddedPSFModel.read(filename, detector_id=detector_id,
+                                        format='stdpsf')
         assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
         assert psfmodel.oversampling == 4
         assert psfmodel.meta['oversampling'] == psfmodel.oversampling
+
+        # test format auto-detect
+        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
+        psfmodel = GriddedPSFModel.read(filename, detector_id=detector_id)
+        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
 
         match = 'detector_id must be specified'
         with pytest.raises(ValueError, match=match):
@@ -259,6 +270,21 @@ class TestGriddedPSFModel:
         match = 'detector_id must be '
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel.read(filename, detector_id=-1)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    @pytest.mark.parametrize('filename', WEBBPSF_FILENAMES)
+    def test_read_webbpsf(self, filename):
+        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
+        psfmodel = GriddedPSFModel.read(filename, format='webbpsf')
+        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
+        assert psfmodel.oversampling == 4
+        assert psfmodel.meta['oversampling'] == psfmodel.oversampling
+        psfmodel.plot_grid()
+
+        # test format auto-detect
+        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
+        psfmodel = GriddedPSFModel.read(filename)
+        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot(self, psfmodel):
@@ -274,7 +300,7 @@ class TestGriddedPSFModel:
 
 
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
-@pytest.mark.parametrize('filename', FILENAMES)
+@pytest.mark.parametrize('filename', STDPSF_FILENAMES)
 def test_stdpsfgrid(filename):
     filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
     psfgrid = STDPSFGrid(filename)
@@ -287,7 +313,7 @@ def test_stdpsfgrid(filename):
 
 
 def test_stdpsfgrid_repr_str():
-    filename = FILENAMES[0]
+    filename = STDPSF_FILENAMES[0]
     filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
     psfgrid = STDPSFGrid(filename)
     assert repr(psfgrid) == str(psfgrid)
