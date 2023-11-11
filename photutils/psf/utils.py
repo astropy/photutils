@@ -10,8 +10,8 @@ from astropy.nddata.utils import add_array, extract_array
 from astropy.table import QTable
 from astropy.utils.decorators import deprecated
 
-__all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf',
-           'grid_from_epsfs']
+__all__ = ['make_psf_model', 'prepare_psf_model', 'get_grouped_psf_model',
+           'subtract_psf', 'grid_from_epsfs']
 
 
 class _InverseShift(Shift):
@@ -119,6 +119,160 @@ def _integrate_model(model, x_name=None, y_name=None, dx=50, dy=50,
     int_func = trapezoid
 
     return int_func([int_func(row, xvals) for row in data], yvals)
+
+
+def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
+                   normalize=True, dx=50, dy=50, subsample=100,
+                   use_dblquad=False):
+    """
+    Make a PSF model that can be used with the PSF photometry classes
+    (`PSFPhotometry` or `IterativePSFPhotometry`) from an Astropy
+    fittable 2D model.
+
+    If the ``x_name``, ``y_name``, or ``flux_name`` keywords are input,
+    this function will map the those ``model`` parameter names to
+    ``x_0``, ``y_0``, or ``flux``, respectively.
+
+    If any of these keywords are `None`, then a new parameter will be
+    added to the model corresponding to the missing parameter. The new
+    position parameters will be set to 0, and the new flux parameter
+    will be set to 1.
+
+    The output PSF model will have ``x_name``, ``y_name``, and
+    ``flux_name`` attributes that contain the name of the corresponding
+    model parameter.
+
+    .. note::
+
+        This function is needed only in cases where the 2D PSF model
+        does not have ``x_0``, ``y_0``, and ``flux`` parameters.
+
+        It is *not* needed for any of the PSF models provided
+        by Photutils (e.g., `~photutils.psf.GriddedPSFModel`,
+        `~photutils.psf.IntegratedGaussianPRF`).
+
+    Parameters
+    ----------
+    model : `~astropy.modeling.Fittable2DModel`
+        An Astropy fittable 2D model to use as a PSF.
+
+    x_name : `str` or `None`, optional
+        The name of the ``model`` parameter that corresponds to the x
+        center of the PSF. If `None`, the model will be assumed to be
+        centered at x=0, and a new model parameter called ``xpos_0``
+        will be added for the x position.
+
+    y_name : `str` or `None`, optional
+        The name of the ``model`` parameter that corresponds to the
+        y center of the PSF. If `None`, the model will be assumed
+        to be centered at y=0, and a new parameter called ``ypos_1``
+        will be added for the y position.
+
+    flux_name : `str` or `None`, optional
+        The name of the ``model`` parameter that corresponds to the
+        total flux of a source. If `None`, a new model parameter called
+        ``flux_3`` will be added for model flux.
+
+    normalize : bool, optional
+        If `True`, the input ``model`` will be integrated and rescaled
+        so that its sum integrates to 1. This normalization occurs only
+        once for the input ``model``. If the total flux of ``model``
+        somehow depends on (x, y) position, then one will need to
+        correct the fitted model fluxes for this effect.
+
+    dx, dy : odd int, optional
+        The size of the integration grid in x and y for normalization.
+        Must be odd. These keywords are ignored if ``normalize`` is
+        `False` or ``use_dblquad`` is `True`.
+
+    subsample : int, optional
+        The subsampling factor for the integration grid along each axis
+        for normalization. Each pixel will be sampled ``subsample`` x
+        ``subsample`` times. This keyword is ignored if ``normalize`` is
+        `False` or ``use_dblquad`` is `True`.
+
+    use_dblquad : bool, optional
+        If `True`, then use `scipy.integrate.dblquad` to integrate the
+        model for normalization. This is *much* slower than the default
+        integration of the evaluated model, but it is more accurate.
+        This keyword is ignored if ``normalize`` is `False`.
+
+    Returns
+    -------
+    result : `~astropy.modeling.CompoundModel`
+        A PSF model that can be used with the PSF photometry classes.
+        The returned model will always be an Astropy compound model.
+
+    Notes
+    -----
+    By default, the model is discretized on a grid of size ``dx``
+    x ``dy`` from the model center with a subsampling factor of
+    ``subsample``. The model is then integrated over the grid using
+    trapezoidal integration.
+
+    If the ``use_dblquad`` keyword is set to `True`, then the model is
+    integrated using `scipy.integrate.dblquad`. This is *much* slower
+    than the default integration of the evaluated model, but it is more
+    accurate. Also, note that the ``dblquad`` integration can sometimes
+    fail, e.g., return zero for a non-zero model. This can happen when
+    the model function is sharply localized relative to the size of the
+    integration interval.
+    """
+    if x_name is None:
+        x_model = _InverseShift(0, name='x_position')
+        # "offset" is the _InverseShift parameter name; the x inverse
+        # shift model is the 1st component
+        x_name = 'offset_0'
+    else:
+        x_model = Identity(1)
+        x_name += '_2'  # the PSF ``model`` is the 3rd component
+
+    if y_name is None:
+        y_model = _InverseShift(0, name='y_position')
+        # "offset" is the _InverseShift parameter name; the y inverse
+        # shift model is the 2nd component
+        y_name = 'offset_1'
+    else:
+        y_model = Identity(1)
+        y_name += '_2'  # the PSF ``model`` is the 3rd component
+
+    x_model.fittable = True
+    y_model.fittable = True
+    psf_model = (x_model & y_model) | model.copy()
+    psf_model[2].name = 'psf_model'
+
+    if flux_name is None:
+        psf_model *= Const2D(1.0, name='flux')
+        # "amplitude" is the Const2D parameter name; the flux scaling is
+        # the 4th component
+        flux_name = 'amplitude_3'
+    else:
+        flux_name += '_2'  # the PSF ``model`` is the 3rd component
+
+    if normalize:
+        integral = _integrate_model(psf_model, x_name=x_name, y_name=y_name,
+                                    dx=dx, dy=dy, subsample=subsample,
+                                    use_dblquad=use_dblquad)
+
+        if integral == 0:
+            raise ValueError('The integrated model flux is zero.')
+
+        psf_model *= Const2D(1.0 / integral, name='normalization_scaling')
+
+    # fix all the output model parameters that are not x, y, or flux
+    for name in psf_model.param_names:
+        psf_model.fixed[name] = name not in (x_name, y_name, flux_name)
+
+    # set the parameter names for the PSF photometry classes
+    psf_model.x_name = x_name
+    psf_model.y_name = y_name
+    psf_model.flux_name = flux_name
+
+    psf_model.x_0 = getattr(psf_model, x_name)
+    psf_model.y_0 = getattr(psf_model, y_name)
+    psf_model.flux = getattr(psf_model, flux_name)
+
+    return psf_model
 
 
 def prepare_psf_model(psfmodel, *, xname=None, yname=None, fluxname=None,
