@@ -33,6 +33,62 @@ class _InverseShift(Shift):
         return [d_offset]
 
 
+def _interpolate_missing_data(data, mask, method='cubic'):
+    """
+    Interpolate missing data as identified by the ``mask`` keyword.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        An array containing the 2D image.
+
+    mask : 2D bool `~numpy.ndarray`
+        A 2D boolean mask array with the same shape as the input
+        ``data``, where a `True` value indicates the corresponding
+        element of ``data`` is masked.  The masked data points are
+        those that will be interpolated.
+
+    method : {'cubic', 'nearest'}, optional
+        The method of used to interpolate the missing data:
+
+        * ``'cubic'``:  Masked data are interpolated using 2D cubic
+            splines.  This is the default.
+
+        * ``'nearest'``:  Masked data are interpolated using
+            nearest-neighbor interpolation.
+
+    Returns
+    -------
+    data_interp : 2D `~numpy.ndarray`
+        The interpolated 2D image.
+    """
+    from scipy import interpolate
+
+    data_interp = np.array(data, copy=True)
+
+    if len(data_interp.shape) != 2:
+        raise ValueError("'data' must be a 2D array.")
+
+    if mask.shape != data.shape:
+        raise ValueError("'mask' and 'data' must have the same shape.")
+
+    y, x = np.indices(data_interp.shape)
+    xy = np.dstack((x[~mask].ravel(), y[~mask].ravel()))[0]
+    z = data_interp[~mask].ravel()
+
+    if method == 'nearest':
+        interpol = interpolate.NearestNDInterpolator(xy, z)
+    elif method == 'cubic':
+        interpol = interpolate.CloughTocher2DInterpolator(xy, z)
+    else:
+        raise ValueError('Unsupported interpolation method.')
+
+    xy_missing = np.dstack((x[mask].ravel(), y[mask].ravel()))[0]
+    data_interp[mask] = interpol(xy_missing)
+
+    return data_interp
+
+
 def _integrate_model(model, x_name=None, y_name=None, dx=50, dy=50,
                      subsample=100, use_dblquad=False):
     """
@@ -379,62 +435,6 @@ def prepare_psf_model(psfmodel, *, xname=None, yname=None, fluxname=None,
     return outmod
 
 
-def _interpolate_missing_data(data, mask, method='cubic'):
-    """
-    Interpolate missing data as identified by the ``mask`` keyword.
-
-    Parameters
-    ----------
-    data : 2D `~numpy.ndarray`
-        An array containing the 2D image.
-
-    mask : 2D bool `~numpy.ndarray`
-        A 2D boolean mask array with the same shape as the input
-        ``data``, where a `True` value indicates the corresponding
-        element of ``data`` is masked.  The masked data points are
-        those that will be interpolated.
-
-    method : {'cubic', 'nearest'}, optional
-        The method of used to interpolate the missing data:
-
-        * ``'cubic'``:  Masked data are interpolated using 2D cubic
-            splines.  This is the default.
-
-        * ``'nearest'``:  Masked data are interpolated using
-            nearest-neighbor interpolation.
-
-    Returns
-    -------
-    data_interp : 2D `~numpy.ndarray`
-        The interpolated 2D image.
-    """
-    from scipy import interpolate
-
-    data_interp = np.array(data, copy=True)
-
-    if len(data_interp.shape) != 2:
-        raise ValueError("'data' must be a 2D array.")
-
-    if mask.shape != data.shape:
-        raise ValueError("'mask' and 'data' must have the same shape.")
-
-    y, x = np.indices(data_interp.shape)
-    xy = np.dstack((x[~mask].ravel(), y[~mask].ravel()))[0]
-    z = data_interp[~mask].ravel()
-
-    if method == 'nearest':
-        interpol = interpolate.NearestNDInterpolator(xy, z)
-    elif method == 'cubic':
-        interpol = interpolate.CloughTocher2DInterpolator(xy, z)
-    else:
-        raise ValueError('Unsupported interpolation method.')
-
-    xy_missing = np.dstack((x[mask].ravel(), y[mask].ravel()))[0]
-    data_interp[mask] = interpol(xy_missing)
-
-    return data_interp
-
-
 @deprecated('1.9.0')
 def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
     """
@@ -590,34 +590,35 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     """
     Create a GriddedPSFModel from a list of EPSFModels.
 
-    Given a list of EPSFModels, this function will return a GriddedPSFModel.
-    The fiducial points for each input EPSFModel can either be set on each
-    individual model by setting the 'x_0' and 'y_0' attributes, or provided as
-    a list of tuples (``grid_xypos``). If a ``grid_xypos`` list is provided, it
-    must match the length of input EPSFs. In either case, the fiducial points
-    must be on a grid.
+    Given a list of EPSFModels, this function will return a
+    GriddedPSFModel. The fiducial points for each input EPSFModel can
+    either be set on each individual model by setting the 'x_0' and
+    'y_0' attributes, or provided as a list of tuples (``grid_xypos``).
+    If a ``grid_xypos`` list is provided, it must match the length of
+    input EPSFs. In either case, the fiducial points must be on a grid.
 
-    Optionally, a ``meta`` dictionary may be provided for the
-    output GriddedPSFModel. If this dictionary contains the keys 'grid_xypos',
+    Optionally, a ``meta`` dictionary may be provided for the output
+    GriddedPSFModel. If this dictionary contains the keys 'grid_xypos',
     'oversampling', or 'fill_value', they will be overridden.
 
-    Note: If set on the input EPSFModel (x_0, y_0), then ``origin`` must be the
-    same for each input EPSF. Additionally data units and dimensions must be
-    for each input EPSF, and values for ``flux`` and ``oversampling``, and
-    ``fill_value`` must match as well.
+    Note: If set on the input EPSFModel (x_0, y_0), then ``origin``
+    must be the same for each input EPSF. Additionally data units and
+    dimensions must be for each input EPSF, and values for ``flux`` and
+    ``oversampling``, and ``fill_value`` must match as well.
 
     Parameters
     ----------
     epsfs : list of `photutils.psf.models.EPSFModel`
         A list of EPSFModels representing the individual PSFs.
     grid_xypos : list, optional
-        A list of fiducial points (x_0, y_0) for each PSF.
-        If not provided, the x_0 and y_0 of each input EPSF will be considered
+        A list of fiducial points (x_0, y_0) for each PSF. If not
+        provided, the x_0 and y_0 of each input EPSF will be considered
         the fiducial point for that PSF. Default is None.
     meta : dict, optional
-        Additional metadata for the GriddedPSFModel. Note that, if they exist
-        in the supplied ``meta``, any values under the keys ``grid_xypos`` ,
-        ``oversampling``, or ``fill_value`` will be overridden. Default is None.
+        Additional metadata for the GriddedPSFModel. Note that, if
+        they exist in the supplied ``meta``, any values under the keys
+        ``grid_xypos`` , ``oversampling``, or ``fill_value`` will be
+        overridden. Default is None.
 
     Returns
     -------
@@ -627,7 +628,8 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     # prevent circular imports
     from photutils.psf import EPSFModel, GriddedPSFModel
 
-    x_0s = []  # optional, to store fiducial from input if `grid_xypos` is None
+    # optional, to store fiducial from input if `grid_xypos` is None
+    x_0s = []
     y_0s = []
     data_arrs = []
     oversampling = None
@@ -636,10 +638,12 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     origin = None
     flux = None
 
-    # make sure, if provided, that ``grid_xypos`` is the same length as ``epsfs``
+    # make sure, if provided, that ``grid_xypos`` is the same length as
+    # ``epsfs``
     if grid_xypos is not None:
         if len(grid_xypos) != len(epsfs):
-            raise ValueError('``grid_xypos`` must be the same length as ``epsfs``.')
+            raise ValueError('``grid_xypos`` must be the same length as '
+                             '``epsfs``.')
 
     # loop over input once
     for i, epsf in enumerate(epsfs):
@@ -660,7 +664,8 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
                 oversampling = epsf.oversampling
             else:
                 if epsf.oversampling[0] != epsf.oversampling[1]:
-                    raise ValueError('Oversampling must be the same in x and y.')
+                    raise ValueError('Oversampling must be the same in x and '
+                                     'y.')
                 oversampling = epsf.oversampling[0]
 
             # same for fill value and flux, grid will have a single value
@@ -684,36 +689,38 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
                 if epsf.oversampling != oversampling:
                     raise ValueError('All input EPSFModels must have the same '
                                      'value for ``oversampling``.')
-                else:
-                    if epsf.oversampling[0] != epsf.oversampling[1] != oversampling:
-                        raise ValueError('All input EPSFModels must have the '
-                                         'same value for ``oversampling``.')
+                if (epsf.oversampling[0] != epsf.oversampling[1]
+                        != oversampling):
+                    raise ValueError('All input EPSFModels must have the '
+                                     'same value for ``oversampling``.')
 
             if epsf.fill_value != fill_value:
-                raise ValueError('All input EPSFModels must have the same value '
-                                 'for ``fill_value``.')
+                raise ValueError('All input EPSFModels must have the same '
+                                 'value for ``fill_value``.')
 
             if epsf.data.ndim != data_arrs[0].ndim:
-                raise ValueError('All input EPSFModels must have data with the '
-                                 'same dimensions.')
+                raise ValueError('All input EPSFModels must have data with '
+                                 'the same dimensions.')
 
             try:
                 unitt = epsf.data_unit
                 if unitt != dat_unit:
                     raise ValueError('All input data must have the same unit.')
-            except AttributeError:
+            except AttributeError as exc:
                 if dat_unit is not None:
-                    raise ValueError('All input data must have the same unit.')
+                    raise ValueError('All input data must have the same '
+                                     'unit.') from exc
 
             if epsf.flux != flux:
-                raise ValueError('All input EPSFModels must have the same value '
-                                 'for ``flux``.')
+                raise ValueError('All input EPSFModels must have the same '
+                                 'value for ``flux``.')
 
         if grid_xypos is None:  # get gridxy_pos from x_0, y_0 if not provided
             x_0s.append(epsf.x_0.value)
             y_0s.append(epsf.y_0.value)
 
-            # also check that origin is the same, if using x_0s and y_0s from input
+            # also check that origin is the same, if using x_0s and y_0s
+            # from input
             if epsf.origin != origin:
                 raise ValueError('If using ``x_0``, ``y_0`` as fiducial point,'
                                  '``origin`` must match for each input EPSF.')
