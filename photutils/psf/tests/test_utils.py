@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from astropy.convolution.utils import discretize_model
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.modeling.models import Gaussian2D, Moffat2D
+from astropy.modeling.models import Const2D, Gaussian2D, Moffat2D
 from astropy.nddata import NDData
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyDeprecationWarning
@@ -18,7 +18,9 @@ from photutils.detection import find_peaks
 from photutils.psf import (BasicPSFPhotometry, DAOGroup, EPSFBuilder,
                            IntegratedGaussianPRF, extract_stars,
                            get_grouped_psf_model, grid_from_epsfs,
-                           prepare_psf_model, subtract_psf)
+                           make_psf_model, prepare_psf_model, subtract_psf)
+from photutils.psf.utils import (_integrate_model, _interpolate_missing_data,
+                                 _InverseShift)
 from photutils.utils._optional_deps import HAS_SCIPY
 
 PSF_SIZE = 11
@@ -45,6 +47,65 @@ for x, y, flux in SOURCES:
                        x, y, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
     image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
                               mode='oversample')
+
+
+def test_InverseShift():
+    model = _InverseShift(10)
+    assert model(1) == -9.0
+    assert model(-10) == -20.0
+    assert model.fit_deriv(10)[0] == -1.0
+
+
+def test_interpolate_missing_data():
+    data = np.arange(100).reshape(10, 10)
+    mask = np.zeros_like(data, dtype=bool)
+    mask[5, 5] = True
+
+    data_int = _interpolate_missing_data(data, mask, method='nearest')
+    assert 54 <= data_int[5, 5] <= 56
+
+    data_int = _interpolate_missing_data(data, mask, method='cubic')
+    assert data_int[5, 5] == 55
+
+    match = "'data' must be a 2D array."
+    with pytest.raises(ValueError, match=match):
+        _interpolate_missing_data(np.arange(10), mask)
+
+    match = "'mask' and 'data' must have the same shape."
+    with pytest.raises(ValueError, match=match):
+        _interpolate_missing_data(data, mask[1:, :])
+
+    match = 'Unsupported interpolation method'
+    with pytest.raises(ValueError, match=match):
+        _interpolate_missing_data(data, mask, method='invalid')
+
+
+def test_integrate_model():
+    model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(0.0)
+    integral = _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0')
+    assert integral == 0.0
+
+    integral = _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                                use_dblquad=True)
+    assert integral == 0.0
+
+    match = 'dx and dy must be > 0'
+    with pytest.raises(ValueError, match=match):
+        _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                         dx=-10, dy=10)
+    with pytest.raises(ValueError, match=match):
+        _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                         dx=10, dy=-10)
+
+    match = 'subsample must be >= 1'
+    with pytest.raises(ValueError, match=match):
+        _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                         subsample=-1)
+
+    match = 'model x and y positions must be finite'
+    with pytest.raises(ValueError, match=match):
+        model = Gaussian2D(1, np.inf, 5, 1, 1)
+        _integrate_model(model, x_name='x_mean', y_name='y_mean')
 
 
 @pytest.fixture(scope='module')
@@ -76,6 +137,71 @@ def test_moffat_fitting(moffat_source):
     fitter = LevMarLSQFitter()
     fit = fitter(guess_moffat, xx, yy, data)
     assert_allclose(fit.parameters, model.parameters, rtol=0.01, atol=0.0005)
+
+
+# we set the tolerances in flux to be 2-3% because the guessed model
+# parameters are known to be wrong
+@pytest.mark.parametrize('kwargs, tols',
+                         [({'x_name': 'x_0', 'y_name': 'y_0',
+                            'flux_name': None, 'normalize': True},
+                           (1e-3, 0.02)),
+                          ({'x_name': None, 'y_name': None, 'flux_name': None,
+                            'normalize': True}, (1e-3, 0.02)),
+                          ({'x_name': None, 'y_name': None, 'flux_name': None,
+                            'normalize': False}, (1e-3, 0.03)),
+                          ({'x_name': 'x_0', 'y_name': 'y_0',
+                            'flux_name': 'amplitude', 'normalize': False},
+                           (1e-3, None))])
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_make_psf_model(moffat_source, kwargs, tols):
+    model, (xx, yy, data) = moffat_source
+
+    # a close-but-wrong "guessed Moffat"
+    guess_moffat = Moffat2D(x_0=0.1, y_0=-0.05, gamma=1.01,
+                            amplitude=model.amplitude * 1.01, alpha=4.79)
+    if kwargs['normalize']:
+        # definitely very wrong, so this ensures the re-normalization
+        # works
+        guess_moffat.amplitude = 5.0
+
+    if kwargs['x_name'] is None:
+        guess_moffat.x_0 = 0
+    if kwargs['y_name'] is None:
+        guess_moffat.y_0 = 0
+
+    psf_model = make_psf_model(guess_moffat, **kwargs)
+    fitter = LevMarLSQFitter()
+    fit_model = fitter(psf_model, xx, yy, data)
+    xytol, fluxtol = tols
+
+    if xytol is not None:
+        assert np.abs(getattr(fit_model, fit_model.x_name)) < xytol
+        assert np.abs(getattr(fit_model, fit_model.y_name)) < xytol
+    if fluxtol is not None:
+        assert np.abs(1.0 - getattr(fit_model, fit_model.flux_name)) < fluxtol
+
+    # ensure the model parameters did not change
+    assert fit_model[2].gamma == guess_moffat.gamma
+    assert fit_model[2].alpha == guess_moffat.alpha
+    if kwargs['flux_name'] is None:
+        assert fit_model[2].amplitude == guess_moffat.amplitude
+
+
+def test_make_psf_model_offset():
+    """
+    Test to ensure the offset is in the correct direction.
+    """
+    from astropy.modeling.models import Moffat2D
+
+    moffat = Moffat2D(x_0=0, y_0=0, alpha=4.8)
+    psfmod1 = make_psf_model(moffat.copy(), x_name='x_0', y_name='y_0',
+                             normalize=False)
+    psfmod2 = make_psf_model(moffat.copy(), normalize=False)
+    moffat.x_0 = 10
+    psfmod1.x_0_2 = 10
+    psfmod2.offset_0 = 10
+
+    assert moffat(10, 0) == psfmod1(10, 0) == psfmod2(10, 0) == 1.0
 
 
 # we set the tolerances in flux to be 2-3% because the shape parameters of

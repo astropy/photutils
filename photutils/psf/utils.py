@@ -158,8 +158,8 @@ def _integrate_model(model, x_name=None, y_name=None, dx=50, dy=50,
     xc = getattr(model, x_name)
     yc = getattr(model, y_name)
 
-    if not np.any(np.isfinite((xc.value, yc.value))):
-        raise ValueError('model x and y position must be finite')
+    if np.any(~np.isfinite((xc.value, yc.value))):
+        raise ValueError('model x and y positions must be finite')
 
     hx = (dx - 1) / 2
     hy = (dy - 1) / 2
