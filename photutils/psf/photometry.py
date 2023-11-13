@@ -216,8 +216,9 @@ class PSFPhotometry:
         init_colnames = {}
         init_colnames['x_valid'] = x_valid
         init_colnames['y_valid'] = y_valid
-        init_colnames['flux_valid'] = ('flux_init', 'flux', 'source_sum',
-                                       'segment_flux', 'kron_flux')
+        init_colnames['flux_valid'] = ('flux_init', 'flux_0', 'flux0', 'flux',
+                                       'source_sum', 'segment_flux',
+                                       'kron_flux')
 
         return init_colnames
 
