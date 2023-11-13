@@ -19,7 +19,7 @@ from photutils.datasets import (make_gaussian_prf_sources_image,
                                 make_noise_image, make_test_psf_data)
 from photutils.detection import DAOStarFinder
 from photutils.psf import (IntegratedGaussianPRF, IterativePSFPhotometry,
-                           PSFPhotometry, SourceGrouper, prepare_psf_model)
+                           PSFPhotometry, SourceGrouper, make_psf_model)
 from photutils.psf.photometry_depr import DAOGroup
 from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -599,17 +599,17 @@ def test_out_of_bounds_centroids():
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-def test_prepare_psf_model():
-    norm = False
+def test_make_psf_model():
+    normalize = False
     sigma = 3.0
     amplitude = 1.0 / (2 * np.pi * sigma**2)
     xcen = ycen = 0.0
     psf0 = Gaussian2D(amplitude, xcen, ycen, sigma, sigma)
-    psf1 = prepare_psf_model(psf0, xname='x_mean', yname='y_mean',
-                             renormalize_psf=norm)
-    psf2 = prepare_psf_model(psf0, renormalize_psf=norm)
-    psf3 = prepare_psf_model(psf0, xname='x_mean', renormalize_psf=norm)
-    psf4 = prepare_psf_model(psf0, yname='y_mean', renormalize_psf=norm)
+    psf1 = make_psf_model(psf0, x_name='x_mean', y_name='y_mean',
+                          normalize=normalize)
+    psf2 = make_psf_model(psf0, normalize=normalize)
+    psf3 = make_psf_model(psf0, x_name='x_mean', normalize=normalize)
+    psf4 = make_psf_model(psf0, y_name='y_mean', normalize=normalize)
 
     yy, xx = np.mgrid[0:101, 0:101]
     psf = psf1.copy()
@@ -620,19 +620,19 @@ def test_prepare_psf_model():
     psf.y_mean_2 = yval
     data = psf(xx, yy) * flux
 
-    fitshape = 7
+    fit_shape = 7
     init_params = Table([[46.1], [57.3], [7.1]],
                         names=['x_0', 'y_0', 'flux_0'])
-    phot1 = PSFPhotometry(psf1, fitshape, aperture_radius=None)
+    phot1 = PSFPhotometry(psf1, fit_shape, aperture_radius=None)
     tbl1 = phot1(data, init_params=init_params)
 
-    phot2 = PSFPhotometry(psf2, fitshape, aperture_radius=None)
+    phot2 = PSFPhotometry(psf2, fit_shape, aperture_radius=None)
     tbl2 = phot2(data, init_params=init_params)
 
-    phot3 = PSFPhotometry(psf3, fitshape, aperture_radius=None)
+    phot3 = PSFPhotometry(psf3, fit_shape, aperture_radius=None)
     tbl3 = phot3(data, init_params=init_params)
 
-    phot4 = PSFPhotometry(psf4, fitshape, aperture_radius=None)
+    phot4 = PSFPhotometry(psf4, fit_shape, aperture_radius=None)
     tbl4 = phot4(data, init_params=init_params)
 
     assert_allclose((tbl1['x_fit'][0], tbl1['y_fit'][0],
