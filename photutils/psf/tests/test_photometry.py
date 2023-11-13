@@ -7,6 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.fitting import LMLSQFitter, SimplexLSQFitter
+from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, Table
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
@@ -18,7 +19,7 @@ from photutils.datasets import (make_gaussian_prf_sources_image,
                                 make_noise_image, make_test_psf_data)
 from photutils.detection import DAOStarFinder
 from photutils.psf import (IntegratedGaussianPRF, IterativePSFPhotometry,
-                           PSFPhotometry, SourceGrouper)
+                           PSFPhotometry, SourceGrouper, prepare_psf_model)
 from photutils.psf.photometry_depr import DAOGroup
 from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -28,7 +29,7 @@ from photutils.utils.exceptions import NoDetectionsWarning
 def test_inputs():
     model = IntegratedGaussianPRF(sigma=1.0)
 
-    match = 'psf_model must be an astropy Fittable2DModel'
+    match = 'psf_model must be an Astropy Model subclass'
     with pytest.raises(TypeError, match=match):
         _ = PSFPhotometry(1, 3)
 
@@ -595,3 +596,50 @@ def test_out_of_bounds_centroids():
     # out of the bounds of the dataset, producing a
     # masked value in the `cfit` column:
     assert np.any(np.isnan(phot['cfit']))
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_prepare_psf_model():
+    norm = False
+    sigma = 3.0
+    amplitude = 1.0 / (2 * np.pi * sigma**2)
+    xcen = ycen = 0.0
+    psf0 = Gaussian2D(amplitude, xcen, ycen, sigma, sigma)
+    psf1 = prepare_psf_model(psf0, xname='x_mean', yname='y_mean',
+                             renormalize_psf=norm)
+    psf2 = prepare_psf_model(psf0, renormalize_psf=norm)
+    psf3 = prepare_psf_model(psf0, xname='x_mean', renormalize_psf=norm)
+    psf4 = prepare_psf_model(psf0, yname='y_mean', renormalize_psf=norm)
+
+    yy, xx = np.mgrid[0:101, 0:101]
+    psf = psf1.copy()
+    xval = 48
+    yval = 52
+    flux = 14.51
+    psf.x_mean_2 = xval
+    psf.y_mean_2 = yval
+    data = psf(xx, yy) * flux
+
+    fitshape = 7
+    init_params = Table([[46.1], [57.3], [7.1]],
+                        names=['x_0', 'y_0', 'flux_0'])
+    phot1 = PSFPhotometry(psf1, fitshape, aperture_radius=None)
+    tbl1 = phot1(data, init_params=init_params)
+
+    phot2 = PSFPhotometry(psf2, fitshape, aperture_radius=None)
+    tbl2 = phot2(data, init_params=init_params)
+
+    phot3 = PSFPhotometry(psf3, fitshape, aperture_radius=None)
+    tbl3 = phot3(data, init_params=init_params)
+
+    phot4 = PSFPhotometry(psf4, fitshape, aperture_radius=None)
+    tbl4 = phot4(data, init_params=init_params)
+
+    assert_allclose((tbl1['x_fit'][0], tbl1['y_fit'][0],
+                     tbl1['flux_fit'][0]), (xval, yval, flux))
+    assert_allclose((tbl2['x_fit'][0], tbl2['y_fit'][0],
+                     tbl2['flux_fit'][0]), (xval, yval, flux))
+    assert_allclose((tbl3['x_fit'][0], tbl3['y_fit'][0],
+                     tbl3['flux_fit'][0]), (xval, yval, flux))
+    assert_allclose((tbl4['x_fit'][0], tbl4['y_fit'][0],
+                     tbl4['flux_fit'][0]), (xval, yval, flux))

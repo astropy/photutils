@@ -24,6 +24,9 @@ New Features
   - Added "flux_0" and "flux0" as allowed flux column names in the
     ``init_params`` table input to the PSF photometry objects. [#1656]
 
+  - PSF models output from ``prepare_psf_model`` can now be input into
+    the PSF photometry classes. [#1657]
+
 - ``photutils.segmentation``
 
   - The ``SegmentationImage`` ``make_source_mask`` method now uses a
