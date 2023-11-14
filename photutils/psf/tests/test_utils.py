@@ -252,38 +252,39 @@ def test_prepare_psf_model(moffat_source, prepkwargs, tols):
     """
     Test that prepare_psf_model behaves as expected for fitting.
     """
-    model, (xx, yy, data) = moffat_source
-    fitter = LevMarLSQFitter()
+    with pytest.warns(AstropyDeprecationWarning):
+        model, (xx, yy, data) = moffat_source
+        fitter = LevMarLSQFitter()
 
-    # a close-but-wrong "guessed Moffat"
-    guess_moffat = Moffat2D(x_0=.1, y_0=-.05, gamma=1.01,
-                            amplitude=model.amplitude * 1.01, alpha=4.79)
-    if prepkwargs['renormalize_psf']:
-        # definitely very wrong, so this ensures the re-normalization
-        # works
-        guess_moffat.amplitude = 5.0
+        # a close-but-wrong "guessed Moffat"
+        guess_moffat = Moffat2D(x_0=.1, y_0=-.05, gamma=1.01,
+                                amplitude=model.amplitude * 1.01, alpha=4.79)
+        if prepkwargs['renormalize_psf']:
+            # definitely very wrong, so this ensures the re-normalization
+            # works
+            guess_moffat.amplitude = 5.0
 
-    if prepkwargs['xname'] is None:
-        guess_moffat.x_0 = 0
-    if prepkwargs['yname'] is None:
-        guess_moffat.y_0 = 0
+        if prepkwargs['xname'] is None:
+            guess_moffat.x_0 = 0
+        if prepkwargs['yname'] is None:
+            guess_moffat.y_0 = 0
 
-    psfmod = prepare_psf_model(guess_moffat, **prepkwargs)
-    xytol, fluxtol = tols
+        psfmod = prepare_psf_model(guess_moffat, **prepkwargs)
+        xytol, fluxtol = tols
 
-    fit_psfmod = fitter(psfmod, xx, yy, data)
+        fit_psfmod = fitter(psfmod, xx, yy, data)
 
-    if xytol is not None:
-        assert np.abs(getattr(fit_psfmod, fit_psfmod.xname)) < xytol
-        assert np.abs(getattr(fit_psfmod, fit_psfmod.yname)) < xytol
-    if fluxtol is not None:
-        assert np.abs(1 - getattr(fit_psfmod, fit_psfmod.fluxname)) < fluxtol
+        if xytol is not None:
+            assert np.abs(getattr(fit_psfmod, fit_psfmod.xname)) < xytol
+            assert np.abs(getattr(fit_psfmod, fit_psfmod.yname)) < xytol
+        if fluxtol is not None:
+            assert np.abs(1 - getattr(fit_psfmod, fit_psfmod.fluxname)) < fluxtol
 
-    # ensure the model parameters did not change
-    assert fit_psfmod.psfmodel.gamma == guess_moffat.gamma
-    assert fit_psfmod.psfmodel.alpha == guess_moffat.alpha
-    if prepkwargs['fluxname'] is None:
-        assert fit_psfmod.psfmodel.amplitude == guess_moffat.amplitude
+        # ensure the model parameters did not change
+        assert fit_psfmod.psfmodel.gamma == guess_moffat.gamma
+        assert fit_psfmod.psfmodel.alpha == guess_moffat.alpha
+        if prepkwargs['fluxname'] is None:
+            assert fit_psfmod.psfmodel.amplitude == guess_moffat.amplitude
 
 
 @pytest.mark.filterwarnings('ignore:aperture_radius is None and could not '
@@ -371,9 +372,11 @@ def test_get_grouped_psf_model():
 def prf_model(request):
     # use this instead of pytest.mark.parameterize as we use scipy and
     # it still calls that even if not HAS_SCIPY is set...
-    prfs = [IntegratedGaussianPRF(sigma=1.2),
-            Gaussian2D(x_stddev=2),
-            prepare_psf_model(Gaussian2D(x_stddev=2), renormalize_psf=False)]
+    with pytest.warns(AstropyDeprecationWarning):
+        prfs = [IntegratedGaussianPRF(sigma=1.2),
+                Gaussian2D(x_stddev=2),
+                prepare_psf_model(Gaussian2D(x_stddev=2),
+                                  renormalize_psf=False)]
     return prfs[request.param]
 
 

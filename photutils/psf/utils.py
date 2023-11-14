@@ -365,6 +365,7 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     return psf_model
 
 
+@deprecated('1.9.0', alternative='make_psf_model')
 def prepare_psf_model(psfmodel, *, xname=None, yname=None, fluxname=None,
                       renormalize_psf=True):
     """
