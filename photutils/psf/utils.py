@@ -3,7 +3,10 @@
 This module provides utilities for PSF-fitting photometry.
 """
 
+import re
+
 import numpy as np
+from astropy.modeling import CompoundModel
 from astropy.modeling.models import Const2D, Identity, Shift
 from astropy.nddata import NDData
 from astropy.nddata.utils import add_array, extract_array
@@ -177,6 +180,18 @@ def _integrate_model(model, x_name=None, y_name=None, dx=50, dy=50,
     return int_func([int_func(row, xvals) for row in data], yvals)
 
 
+def _shift_model_param(model, param_name, shift=2):
+    if isinstance(model, CompoundModel):
+        # for CompoundModel, add "shift" to the parameter suffix
+        out = re.search(r'(.*)_([\d]*)$', param_name)
+        new_name = out.groups()[0] + '_' + str(int(out.groups()[1]) + 2)
+    else:
+        # simply add the shift to the parameter name
+        new_name = param_name + '_' + str(shift)
+
+    return new_name
+
+
 def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
                    normalize=True, dx=50, dy=50, subsample=100,
                    use_dblquad=False):
@@ -274,36 +289,45 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     the model function is sharply localized relative to the size of the
     integration interval.
     """
+    input_model = model.copy()
+
     if x_name is None:
         x_model = _InverseShift(0, name='x_position')
-        # "offset" is the _InverseShift parameter name; the x inverse
-        # shift model is the 1st component
+        # "offset" is the _InverseShift parameter name;
+        # the x inverse shift model is always the first submodel
         x_name = 'offset_0'
     else:
+        if x_name not in input_model.param_names:
+            raise ValueError(f'{x_name!r} parameter name not found in the '
+                             'input model.')
+
         x_model = Identity(1)
-        x_name += '_2'  # the PSF ``model`` is the 3rd component
+        x_name = _shift_model_param(input_model, x_name, shift=2)
 
     if y_name is None:
         y_model = _InverseShift(0, name='y_position')
-        # "offset" is the _InverseShift parameter name; the y inverse
-        # shift model is the 2nd component
+        # "offset" is the _InverseShift parameter name;
+        # the y inverse shift model is always the second submodel
         y_name = 'offset_1'
     else:
+        if y_name not in input_model.param_names:
+            raise ValueError(f'{y_name!r} parameter name not found in the '
+                             'input model.')
+
         y_model = Identity(1)
-        y_name += '_2'  # the PSF ``model`` is the 3rd component
+        y_name = _shift_model_param(input_model, y_name, shift=2)
 
     x_model.fittable = True
     y_model.fittable = True
-    psf_model = (x_model & y_model) | model.copy()
-    psf_model[2].name = 'psf_model'
+    psf_model = (x_model & y_model) | input_model
 
     if flux_name is None:
         psf_model *= Const2D(1.0, name='flux')
-        # "amplitude" is the Const2D parameter name; the flux scaling is
-        # the 4th component
-        flux_name = 'amplitude_3'
+        # "amplitude" is the Const2D parameter name;
+        # the flux scaling is always the last component
+        flux_name = psf_model.param_names[-1]
     else:
-        flux_name += '_2'  # the PSF ``model`` is the 3rd component
+        flux_name = _shift_model_param(input_model, flux_name, shift=2)
 
     if normalize:
         integral = _integrate_model(psf_model, x_name=x_name, y_name=y_name,
@@ -311,7 +335,8 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
                                     use_dblquad=use_dblquad)
 
         if integral == 0:
-            raise ValueError('The integrated model flux is zero.')
+            raise ValueError('Cannot normalize the model because the '
+                             'integrated flux is zero.')
 
         psf_model *= Const2D(1.0 / integral, name='normalization_scaling')
 
@@ -319,11 +344,20 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     for name in psf_model.param_names:
         psf_model.fixed[name] = name not in (x_name, y_name, flux_name)
 
+    # final check that the x, y, and flux parameter names are in the
+    # output model
+    names = (x_name, y_name, flux_name)
+    for name in names:
+        if name not in psf_model.param_names:
+            raise ValueError(f'{name!r} parameter name not found in the '
+                             'output model.')
+
     # set the parameter names for the PSF photometry classes
     psf_model.x_name = x_name
     psf_model.y_name = y_name
     psf_model.flux_name = flux_name
 
+    # set aliases
     psf_model.x_0 = getattr(psf_model, x_name)
     psf_model.y_0 = getattr(psf_model, y_name)
     psf_model.flux = getattr(psf_model, flux_name)
