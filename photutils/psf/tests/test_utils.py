@@ -6,7 +6,8 @@ Tests for the utils module.
 import numpy as np
 import pytest
 from astropy.convolution.utils import discretize_model
-from astropy.modeling.models import Gaussian2D
+from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.models import Const2D, Gaussian2D, Moffat2D
 from astropy.nddata import NDData
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyDeprecationWarning
@@ -14,12 +15,12 @@ from numpy.testing import assert_allclose
 
 from photutils import datasets
 from photutils.detection import find_peaks
-from photutils.psf import EPSFBuilder, extract_stars
-from photutils.psf.groupstars import DAOGroup
-from photutils.psf.models import IntegratedGaussianPRF
-from photutils.psf.photometry_depr import BasicPSFPhotometry
-from photutils.psf.utils import (get_grouped_psf_model, grid_from_epsfs,
-                                 prepare_psf_model, subtract_psf)
+from photutils.psf import (BasicPSFPhotometry, DAOGroup, EPSFBuilder,
+                           IntegratedGaussianPRF, extract_stars,
+                           get_grouped_psf_model, grid_from_epsfs,
+                           make_psf_model, prepare_psf_model, subtract_psf)
+from photutils.psf.utils import (_integrate_model, _interpolate_missing_data,
+                                 _InverseShift)
 from photutils.utils._optional_deps import HAS_SCIPY
 
 PSF_SIZE = 11
@@ -27,9 +28,9 @@ GAUSSIAN_WIDTH = 1.0
 IMAGE_SIZE = 101
 
 # Position and FLUXES of test sources
-INTAB = Table([[50.0, 23, 12, 86], [50.0, 83, 80, 84],
-               [np.pi * 10, 3.654, 20.0, 80 / np.sqrt(3)]],
-              names=['x_0', 'y_0', 'flux_0'])
+SOURCES = Table([[50.0, 23, 12, 86], [50.0, 83, 80, 84],
+                 [np.pi * 10, 3.654, 20.0, 80 / np.sqrt(3)]],
+                names=['x_0', 'y_0', 'flux_0'])
 
 # Create test psf
 psf_model = Gaussian2D(1.0 / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
@@ -41,59 +42,202 @@ test_psf = discretize_model(psf_model, (0, PSF_SIZE), (0, PSF_SIZE),
 image = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
 
 # Add sources to test image
-for x, y, flux in INTAB:
+for x, y, flux in SOURCES:
     model = Gaussian2D(flux / (2 * np.pi * GAUSSIAN_WIDTH ** 2),
                        x, y, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
     image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
                               mode='oversample')
 
 
-@pytest.fixture(scope='module')
-def moffimg():
-    """
-    This fixture requires scipy so don't call it from non-scipy tests
-    """
-    from astropy.modeling.models import Moffat2D
-    from scipy import integrate
-
-    mof = Moffat2D(alpha=4.8)
-
-    # this is the analytic value needed to get a total flux of 1
-    mof.amplitude = (mof.alpha - 1) / (np.pi * mof.gamma**2)
-
-    # first make sure it really is normalized
-    assert (1 - integrate.dblquad(mof, -10, 10,
-                                  lambda x: -10, lambda x: 10)[0]) < 1e-6
-
-    # now create an "image" of the PSF
-    xg, yg = np.meshgrid(*([np.linspace(-2, 2, 100)] * 2))
-
-    return mof, (xg, yg, mof(xg, yg))
+def test_InverseShift():
+    model = _InverseShift(10)
+    assert model(1) == -9.0
+    assert model(-10) == -20.0
+    assert model.fit_deriv(10)[0] == -1.0
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-def test_moffat_fitting(moffimg):
+def test_interpolate_missing_data():
+    data = np.arange(100).reshape(10, 10)
+    mask = np.zeros_like(data, dtype=bool)
+    mask[5, 5] = True
+
+    data_int = _interpolate_missing_data(data, mask, method='nearest')
+    assert 54 <= data_int[5, 5] <= 56
+
+    data_int = _interpolate_missing_data(data, mask, method='cubic')
+    assert data_int[5, 5] == 55
+
+    match = "'data' must be a 2D array."
+    with pytest.raises(ValueError, match=match):
+        _interpolate_missing_data(np.arange(10), mask)
+
+    match = "'mask' and 'data' must have the same shape."
+    with pytest.raises(ValueError, match=match):
+        _interpolate_missing_data(data, mask[1:, :])
+
+    match = 'Unsupported interpolation method'
+    with pytest.raises(ValueError, match=match):
+        _interpolate_missing_data(data, mask, method='invalid')
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_integrate_model():
+    model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(0.0)
+    integral = _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0')
+    assert integral == 0.0
+
+    integral = _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                                use_dblquad=True)
+    assert integral == 0.0
+
+    match = 'dx and dy must be > 0'
+    with pytest.raises(ValueError, match=match):
+        _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                         dx=-10, dy=10)
+    with pytest.raises(ValueError, match=match):
+        _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                         dx=10, dy=-10)
+
+    match = 'subsample must be >= 1'
+    with pytest.raises(ValueError, match=match):
+        _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                         subsample=-1)
+
+    match = 'model x and y positions must be finite'
+    with pytest.raises(ValueError, match=match):
+        model = Gaussian2D(1, np.inf, 5, 1, 1)
+        _integrate_model(model, x_name='x_mean', y_name='y_mean')
+
+
+@pytest.fixture(scope='module')
+def moffat_source():
+    model = Moffat2D(alpha=4.8)
+
+    # this is the analytic value needed to get a total flux of 1
+    model.amplitude = (model.alpha - 1.0) / (np.pi * model.gamma**2)
+
+    # make sure it really is normalized
+    # assert (1.0 - integrate.dblquad(model, -10, 10, -10, 10)[0]) < 1e-6
+
+    xx, yy = np.meshgrid(*([np.linspace(-2, 2, 100)] * 2))
+
+    return model, (xx, yy, model(xx, yy))
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_moffat_fitting(moffat_source):
     """
-    Test that the Moffat to be fit in test_psf_adapter is behaving correctly
+    Test fitting with a Moffat2D model.
     """
-    from astropy.modeling.fitting import LevMarLSQFitter
+    model, (xx, yy, data) = moffat_source
+
+    # initial Moffat2D model close to the original
+    guess_moffat = Moffat2D(x_0=0.1, y_0=-0.05, gamma=1.05,
+                            amplitude=model.amplitude * 1.06, alpha=4.75)
+
+    fitter = LevMarLSQFitter()
+    fit = fitter(guess_moffat, xx, yy, data)
+    assert_allclose(fit.parameters, model.parameters, rtol=0.01, atol=0.0005)
+
+
+# we set the tolerances in flux to be 2-3% because the guessed model
+# parameters are known to be wrong
+@pytest.mark.parametrize('kwargs, tols',
+                         [({'x_name': 'x_0', 'y_name': 'y_0',
+                            'flux_name': None, 'normalize': True},
+                           (1e-3, 0.02)),
+                          ({'x_name': None, 'y_name': None, 'flux_name': None,
+                            'normalize': True}, (1e-3, 0.02)),
+                          ({'x_name': None, 'y_name': None, 'flux_name': None,
+                            'normalize': False}, (1e-3, 0.03)),
+                          ({'x_name': 'x_0', 'y_name': 'y_0',
+                            'flux_name': 'amplitude', 'normalize': False},
+                           (1e-3, None))])
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_make_psf_model(moffat_source, kwargs, tols):
+    model, (xx, yy, data) = moffat_source
+
+    # a close-but-wrong "guessed Moffat"
+    guess_moffat = Moffat2D(x_0=0.1, y_0=-0.05, gamma=1.01,
+                            amplitude=model.amplitude * 1.01, alpha=4.79)
+    if kwargs['normalize']:
+        # definitely very wrong, so this ensures the re-normalization
+        # works
+        guess_moffat.amplitude = 5.0
+
+    if kwargs['x_name'] is None:
+        guess_moffat.x_0 = 0
+    if kwargs['y_name'] is None:
+        guess_moffat.y_0 = 0
+
+    psf_model = make_psf_model(guess_moffat, **kwargs)
+    fitter = LevMarLSQFitter()
+    fit_model = fitter(psf_model, xx, yy, data)
+    xytol, fluxtol = tols
+
+    if xytol is not None:
+        assert np.abs(getattr(fit_model, fit_model.x_name)) < xytol
+        assert np.abs(getattr(fit_model, fit_model.y_name)) < xytol
+    if fluxtol is not None:
+        assert np.abs(1.0 - getattr(fit_model, fit_model.flux_name)) < fluxtol
+
+    # ensure the model parameters did not change
+    assert fit_model[2].gamma == guess_moffat.gamma
+    assert fit_model[2].alpha == guess_moffat.alpha
+    if kwargs['flux_name'] is None:
+        assert fit_model[2].amplitude == guess_moffat.amplitude
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_make_psf_model_compound():
+    model = (Const2D(0.0) + Const2D(1.0) + Gaussian2D(1, 5, 5, 1, 1)
+             * Const2D(1.0) * Const2D(1.0))
+    psf_model = make_psf_model(model, x_name='x_mean_2', y_name='y_mean_2',
+                               normalize=True)
+    assert psf_model.x_name == 'x_mean_4'
+    assert psf_model.y_name == 'y_mean_4'
+    assert psf_model.flux_name == 'amplitude_7'
+
+
+def test_make_psf_model_inputs():
+    model = Gaussian2D(1, 5, 5, 1, 1)
+    match = 'parameter name not found in the input model'
+    with pytest.raises(ValueError, match=match):
+        make_psf_model(model, x_name='x_mean_0', y_name='y_mean')
+    with pytest.raises(ValueError, match=match):
+        make_psf_model(model, x_name='x_mean', y_name='y_mean_10')
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_make_psf_model_integral():
+    model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(0.0)
+    match = 'Cannot normalize the model because the integrated flux is zero'
+    with pytest.raises(ValueError, match=match):
+        make_psf_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                       normalize=True)
+
+
+def test_make_psf_model_offset():
+    """
+    Test to ensure the offset is in the correct direction.
+    """
     from astropy.modeling.models import Moffat2D
 
-    mof, (xg, yg, img) = moffimg
+    moffat = Moffat2D(x_0=0, y_0=0, alpha=4.8)
+    psfmod1 = make_psf_model(moffat.copy(), x_name='x_0', y_name='y_0',
+                             normalize=False)
+    psfmod2 = make_psf_model(moffat.copy(), normalize=False)
+    moffat.x_0 = 10
+    psfmod1.x_0_2 = 10
+    psfmod2.offset_0 = 10
 
-    # a closeish-but-wrong "guessed Moffat"
-    guess_moffat = Moffat2D(x_0=.1, y_0=-.05, gamma=1.05,
-                            amplitude=mof.amplitude * 1.06, alpha=4.75)
-
-    f = LevMarLSQFitter()
-
-    fit_mof = f(guess_moffat, xg, yg, img)
-    assert_allclose(fit_mof.parameters, mof.parameters, rtol=0.01, atol=0.0005)
+    assert moffat(10, 0) == psfmod1(10, 0) == psfmod2(10, 0) == 1.0
 
 
-# we set the tolerances in flux to be 2-3% because the shape paraameters of
+# we set the tolerances in flux to be 2-3% because the shape parameters of
 # the guessed version are known to be wrong.
-@pytest.mark.parametrize('prepkwargs,tols', [
+@pytest.mark.parametrize('prepkwargs, tols', [
                          (dict(xname='x_0', yname='y_0', fluxname=None,
                                renormalize_psf=True), (1e-3, 0.02)),
                          (dict(xname=None, yname=None, fluxname=None,
@@ -104,47 +248,43 @@ def test_moffat_fitting(moffimg):
                                renormalize_psf=False), (1e-3, None)),
                          ])
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-def test_prepare_psf_model(moffimg, prepkwargs, tols):
+def test_prepare_psf_model(moffat_source, prepkwargs, tols):
     """
-    Test that prepare_psf_model behaves as expected for fitting (don't worry
-    about full-on psf photometry for now)
+    Test that prepare_psf_model behaves as expected for fitting.
     """
+    with pytest.warns(AstropyDeprecationWarning):
+        model, (xx, yy, data) = moffat_source
+        fitter = LevMarLSQFitter()
 
-    from astropy.modeling.fitting import LevMarLSQFitter
-    from astropy.modeling.models import Moffat2D
+        # a close-but-wrong "guessed Moffat"
+        guess_moffat = Moffat2D(x_0=.1, y_0=-.05, gamma=1.01,
+                                amplitude=model.amplitude * 1.01, alpha=4.79)
+        if prepkwargs['renormalize_psf']:
+            # definitely very wrong, so this ensures the re-normalization
+            # works
+            guess_moffat.amplitude = 5.0
 
-    mof, (xg, yg, img) = moffimg
-    f = LevMarLSQFitter()
+        if prepkwargs['xname'] is None:
+            guess_moffat.x_0 = 0
+        if prepkwargs['yname'] is None:
+            guess_moffat.y_0 = 0
 
-    # a close-but-wrong "guessed Moffat"
-    guess_moffat = Moffat2D(x_0=.1, y_0=-.05, gamma=1.01,
-                            amplitude=mof.amplitude * 1.01, alpha=4.79)
-    if prepkwargs['renormalize_psf']:
-        # definitely very wrong, so this ensures the re-normalization
-        # stuff works
-        guess_moffat.amplitude = 5.0
+        psfmod = prepare_psf_model(guess_moffat, **prepkwargs)
+        xytol, fluxtol = tols
 
-    if prepkwargs['xname'] is None:
-        guess_moffat.x_0 = 0
-    if prepkwargs['yname'] is None:
-        guess_moffat.y_0 = 0
+        fit_psfmod = fitter(psfmod, xx, yy, data)
 
-    psfmod = prepare_psf_model(guess_moffat, **prepkwargs)
-    xytol, fluxtol = tols
+        if xytol is not None:
+            assert np.abs(getattr(fit_psfmod, fit_psfmod.xname)) < xytol
+            assert np.abs(getattr(fit_psfmod, fit_psfmod.yname)) < xytol
+        if fluxtol is not None:
+            assert np.abs(1 - getattr(fit_psfmod, fit_psfmod.fluxname)) < fluxtol
 
-    fit_psfmod = f(psfmod, xg, yg, img)
-
-    if xytol is not None:
-        assert np.abs(getattr(fit_psfmod, fit_psfmod.xname)) < xytol
-        assert np.abs(getattr(fit_psfmod, fit_psfmod.yname)) < xytol
-    if fluxtol is not None:
-        assert np.abs(1 - getattr(fit_psfmod, fit_psfmod.fluxname)) < fluxtol
-
-    # ensure the amplitude and shape parameters did *not* change
-    assert fit_psfmod.psfmodel.gamma == guess_moffat.gamma
-    assert fit_psfmod.psfmodel.alpha == guess_moffat.alpha
-    if prepkwargs['fluxname'] is None:
-        assert fit_psfmod.psfmodel.amplitude == guess_moffat.amplitude
+        # ensure the model parameters did not change
+        assert fit_psfmod.psfmodel.gamma == guess_moffat.gamma
+        assert fit_psfmod.psfmodel.alpha == guess_moffat.alpha
+        if prepkwargs['fluxname'] is None:
+            assert fit_psfmod.psfmodel.amplitude == guess_moffat.amplitude
 
 
 @pytest.mark.filterwarnings('ignore:aperture_radius is None and could not '
@@ -232,15 +372,19 @@ def test_get_grouped_psf_model():
 def prf_model(request):
     # use this instead of pytest.mark.parameterize as we use scipy and
     # it still calls that even if not HAS_SCIPY is set...
-    prfs = [IntegratedGaussianPRF(sigma=1.2),
-            Gaussian2D(x_stddev=2),
-            prepare_psf_model(Gaussian2D(x_stddev=2), renormalize_psf=False)]
+    with pytest.warns(AstropyDeprecationWarning):
+        prfs = [IntegratedGaussianPRF(sigma=1.2),
+                Gaussian2D(x_stddev=2),
+                prepare_psf_model(Gaussian2D(x_stddev=2),
+                                  renormalize_psf=False)]
     return prfs[request.param]
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_get_grouped_psf_model_submodel_names(prf_model):
-    """Verify that submodel tagging works"""
+    """
+    Verify that submodel tagging works.
+    """
     tab = Table(names=['x_0', 'y_0', 'flux_0'],
                 data=[[1, 2], [3, 4], [0.5, 1]])
     pars_to_set = {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux'}
@@ -256,10 +400,9 @@ def test_get_grouped_psf_model_submodel_names(prf_model):
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_subtract_psf():
-    """Test subtract_psf."""
     with pytest.warns(AstropyDeprecationWarning):
         psf = IntegratedGaussianPRF(sigma=1.0)
-        posflux = INTAB.copy()
+        posflux = SOURCES.copy()
         for n in posflux.colnames:
             posflux.rename_column(n, n.split('_')[0] + '_fit')
         residuals = subtract_psf(image, psf, posflux)
@@ -268,7 +411,9 @@ def test_subtract_psf():
 
 @pytest.mark.remote_data
 class TestGridFromEPSFs:
-    """Tests for `photutils.psf.utils.grid_from_epsfs`."""
+    """
+    Tests for `photutils.psf.utils.grid_from_epsfs`.
+    """
 
     def setup_class(self, cutout_size=25):
         # make a set of 4 EPSF models
@@ -287,9 +432,12 @@ class TestGridFromEPSFs:
 
         # select some starts from each quadrant to use to build the epsf
         quad_stars = {'q1': {'data': q1, 'fiducial': (0., 0.), 'epsf': None},
-                      'q2': {'data': q2, 'fiducial': (1000., 1000.), 'epsf': None},
-                      'q3': {'data': q3, 'fiducial': (1000., 0.), 'epsf': None},
-                      'q4': {'data': q4, 'fiducial': (0., 1000.), 'epsf': None}}
+                      'q2': {'data': q2, 'fiducial': (1000., 1000.),
+                             'epsf': None},
+                      'q3': {'data': q3, 'fiducial': (1000., 0.),
+                             'epsf': None},
+                      'q4': {'data': q4, 'fiducial': (0., 1000.),
+                             'epsf': None}}
 
         for q in ['q1', 'q2', 'q3', 'q4']:
             quad_data = quad_stars[q]['data']
@@ -324,7 +472,6 @@ class TestGridFromEPSFs:
         self.grid_xypos = [quad_stars[x]['fiducial'] for x in quad_stars]
 
     def test_basic_test_grid_from_epsfs(self):
-
         psf_grid = grid_from_epsfs(self.epsfs)
 
         assert np.all(psf_grid.oversampling == self.epsfs[0].oversampling)
@@ -332,8 +479,9 @@ class TestGridFromEPSFs:
                                        psf_grid.oversampling * 25 + 1)
 
     def test_grid_xypos(self):
-        """Test both options for setting PSF locations"""
-
+        """
+        Test both options for setting PSF locations.
+        """
         # default option x_0 and y_0s on input EPSFs
         psf_grid = grid_from_epsfs(self.epsfs)
 
@@ -348,8 +496,9 @@ class TestGridFromEPSFs:
         assert psf_grid.meta['grid_xypos'] == grid_xypos
 
     def test_meta(self):
-        """Test the option for setting 'meta'"""
-
+        """
+        Test the option for setting 'meta'.
+        """
         keys = ['grid_xypos', 'oversampling', 'fill_value']
 
         # when 'meta' isn't provided, there should be just three keys

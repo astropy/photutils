@@ -27,6 +27,9 @@ New Features
   - PSF models output from ``prepare_psf_model`` can now be input into
     the PSF photometry classes. [#1657]
 
+  - Added ``make_psf_model`` function for making a PSF model from a
+    2D Astropy model. Compound models are also supported. [#1658]
+
 - ``photutils.segmentation``
 
   - The ``SegmentationImage`` ``make_source_mask`` method now uses a
@@ -77,6 +80,11 @@ API Changes
 
 - The order of the metadata in a table is now preserved when writing to
   a file. [#1640]
+
+- ``photutils.psf``
+
+  - Deprecated the ``prepare_psf_model`` function. Use the new
+    ``make_psf_model`` function instead. [#1658]
 
 - ``photutils.segmentation``
 
