@@ -56,6 +56,7 @@ def test_InverseShift():
     assert model.fit_deriv(10)[0] == -1.0
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_interpolate_missing_data():
     data = np.arange(100).reshape(10, 10)
     mask = np.zeros_like(data, dtype=bool)
@@ -80,6 +81,7 @@ def test_interpolate_missing_data():
         _interpolate_missing_data(data, mask, method='invalid')
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_integrate_model():
     model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(0.0)
     integral = _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0')
@@ -187,6 +189,7 @@ def test_make_psf_model(moffat_source, kwargs, tols):
         assert fit_model[2].amplitude == guess_moffat.amplitude
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model_compound():
     model = (Const2D(0.0) + Const2D(1.0) + Gaussian2D(1, 5, 5, 1, 1)
              * Const2D(1.0) * Const2D(1.0))
@@ -206,6 +209,7 @@ def test_make_psf_model_inputs():
         make_psf_model(model, x_name='x_mean', y_name='y_mean_10')
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model_integral():
     model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(0.0)
     match = 'Cannot normalize the model because the integrated flux is zero'
