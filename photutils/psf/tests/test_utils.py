@@ -187,6 +187,33 @@ def test_make_psf_model(moffat_source, kwargs, tols):
         assert fit_model[2].amplitude == guess_moffat.amplitude
 
 
+def test_make_psf_model_compound():
+    model = (Const2D(0.0) + Const2D(1.0) + Gaussian2D(1, 5, 5, 1, 1)
+             * Const2D(1.0) * Const2D(1.0))
+    psf_model = make_psf_model(model, x_name='x_mean_2', y_name='y_mean_2',
+                               normalize=True)
+    assert psf_model.x_name == 'x_mean_4'
+    assert psf_model.y_name == 'y_mean_4'
+    assert psf_model.flux_name == 'amplitude_7'
+
+
+def test_make_psf_model_inputs():
+    model = Gaussian2D(1, 5, 5, 1, 1)
+    match = 'parameter name not found in the input model'
+    with pytest.raises(ValueError, match=match):
+        make_psf_model(model, x_name='x_mean_0', y_name='y_mean')
+    with pytest.raises(ValueError, match=match):
+        make_psf_model(model, x_name='x_mean', y_name='y_mean_10')
+
+
+def test_make_psf_model_integral():
+    model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(0.0)
+    match = 'Cannot normalize the model because the integrated flux is zero'
+    with pytest.raises(ValueError, match=match):
+        make_psf_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                       normalize=True)
+
+
 def test_make_psf_model_offset():
     """
     Test to ensure the offset is in the correct direction.
