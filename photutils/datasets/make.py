@@ -20,6 +20,7 @@ from astropy.wcs import WCS
 
 from photutils.psf import IntegratedGaussianPRF
 from photutils.utils._misc import _get_meta
+from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 
 __all__ = ['apply_poisson_noise', 'make_noise_image',
@@ -1071,11 +1072,20 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
         elif model_ndim == 2:
             model_shape = psf_model.data.shape
 
+        try:
+            oversampling = psf_model.oversampling
+        except AttributeError:
+            oversampling = 1
+            pass
+        oversampling = as_pair('oversampling', oversampling)
+
+        model_shape = tuple(np.array(model_shape) // oversampling)
+
         if not np.all(psf_shape == model_shape):
             psf_shape = tuple(np.min([model_shape, psf_shape], axis=0))
-            warnings.warn('The input psf_shape is larger than the size of the PSF '
-                          f'model. The psf_shape was changed to {psf_shape!r}.',
-                          AstropyUserWarning)
+            warnings.warn('The input psf_shape is larger than the size of the '
+                          'evaluated PSF model. The psf_shape was changed to '
+                          f'{psf_shape!r}.', AstropyUserWarning)
 
     elif model_bbox is not None:
         ixmin = math.floor(model_bbox['x'].lower + 0.5)
