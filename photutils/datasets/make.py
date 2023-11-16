@@ -4,6 +4,7 @@ This module provides tools for making example datasets for examples and
 tests.
 """
 
+import math
 import warnings
 
 import astropy.units as u
@@ -1052,13 +1053,52 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
     sources['y_0'] = y
     sources['flux'] = flux
 
-    data = np.zeros(shape, dtype=float)
+    try:
+        model_ndim = psf_model.data.ndim
+    except AttributeError:
+        model_ndim = None
+        pass
+
+    try:
+        model_bbox = psf_model.bounding_box
+    except NotImplementedError:
+        model_bbox = None
+        pass
+
+    if model_ndim is not None:
+        if model_ndim == 3:
+            model_shape = psf_model.data.shape[1:]
+        elif model_ndim == 2:
+            model_shape = psf_model.data.shape
+
+        if not np.all(psf_shape == model_shape):
+            psf_shape = tuple(np.min([model_shape, psf_shape], axis=0))
+            warnings.warn('The input psf_shape is larger than the size of the PSF '
+                          f'model. The psf_shape was changed to {psf_shape!r}.',
+                          AstropyUserWarning)
+
+    elif model_bbox is not None:
+        ixmin = math.floor(model_bbox['x'].lower + 0.5)
+        ixmax = math.ceil(model_bbox['x'].upper + 0.5)
+        iymin = math.floor(model_bbox['y'].lower + 0.5)
+        iymax = math.ceil(model_bbox['y'].upper + 0.5)
+        model_shape = (iymax - iymin, ixmax - ixmin)
+
+        if not np.all(psf_shape == model_shape):
+            psf_shape = tuple(np.min([model_shape, psf_shape], axis=0))
+            warnings.warn('The input psf_shape is larger than the bounding box '
+                          'size of the PSF model. The psf_shape was changed to '
+                          f'{psf_shape!r}.', AstropyUserWarning)
+
+    else:
+        model_shape = psf_shape
 
     sources_iter = sources
     if progress_bar:  # pragma: no cover
         desc = 'Adding sources'
         sources_iter = add_progress_bar(sources, desc=desc)
 
+    data = np.zeros(shape, dtype=float)
     for source in sources_iter:
         for param in ('x_0', 'y_0', 'flux'):
             setattr(psf_model, param, source[param])
