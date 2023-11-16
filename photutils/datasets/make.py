@@ -952,6 +952,61 @@ def make_imagehdu(data, wcs=None):
     return fits.ImageHDU(data, header=header)
 
 
+def _define_psf_shape(psf_model, psf_shape):
+    """
+    Define the shape of the model to evaluate, including the
+    oversampling.
+    """
+    try:
+        model_ndim = psf_model.data.ndim
+    except AttributeError:
+        model_ndim = None
+        pass
+
+    try:
+        model_bbox = psf_model.bounding_box
+    except NotImplementedError:
+        model_bbox = None
+        pass
+
+    if model_ndim is not None:
+        if model_ndim == 3:
+            model_shape = psf_model.data.shape[1:]
+        elif model_ndim == 2:
+            model_shape = psf_model.data.shape
+
+        try:
+            oversampling = psf_model.oversampling
+        except AttributeError:
+            oversampling = 1
+            pass
+        oversampling = as_pair('oversampling', oversampling)
+
+        model_shape = tuple(np.array(model_shape) // oversampling)
+
+        if np.any(psf_shape > model_shape):
+            psf_shape = tuple(np.min([model_shape, psf_shape], axis=0))
+            warnings.warn('The input psf_shape is larger than the size of the '
+                          'evaluated PSF model (including oversampling). The '
+                          f'psf_shape was changed to {psf_shape!r}.',
+                          AstropyUserWarning)
+
+    elif model_bbox is not None:
+        ixmin = math.floor(model_bbox['x'].lower + 0.5)
+        ixmax = math.ceil(model_bbox['x'].upper + 0.5)
+        iymin = math.floor(model_bbox['y'].lower + 0.5)
+        iymax = math.ceil(model_bbox['y'].upper + 0.5)
+        model_shape = (iymax - iymin, ixmax - ixmin)
+
+        if np.any(psf_shape > model_shape):
+            psf_shape = tuple(np.min([model_shape, psf_shape], axis=0))
+            warnings.warn('The input psf_shape is larger than the bounding box '
+                          'size of the PSF model. The psf_shape was changed to '
+                          f'{psf_shape!r}.', AstropyUserWarning)
+
+    return psf_shape
+
+
 def _make_nonoverlap_coords(xrange, yrange, ncoords, min_separation, seed=0):
     from scipy.spatial import KDTree
 
@@ -1036,6 +1091,8 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
     table : `~astropy.table.Table`
         A table containing the parameters of the generated sources.
     """
+    psf_shape = _define_psf_shape(psf_model, psf_shape)
+
     hshape = (np.array(psf_shape) - 1) // 2
     xrange = (hshape[1], shape[1] - hshape[1])
     yrange = (hshape[0], shape[0] - hshape[0])
@@ -1053,55 +1110,6 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
     sources['x_0'] = x
     sources['y_0'] = y
     sources['flux'] = flux
-
-    try:
-        model_ndim = psf_model.data.ndim
-    except AttributeError:
-        model_ndim = None
-        pass
-
-    try:
-        model_bbox = psf_model.bounding_box
-    except NotImplementedError:
-        model_bbox = None
-        pass
-
-    if model_ndim is not None:
-        if model_ndim == 3:
-            model_shape = psf_model.data.shape[1:]
-        elif model_ndim == 2:
-            model_shape = psf_model.data.shape
-
-        try:
-            oversampling = psf_model.oversampling
-        except AttributeError:
-            oversampling = 1
-            pass
-        oversampling = as_pair('oversampling', oversampling)
-
-        model_shape = tuple(np.array(model_shape) // oversampling)
-
-        if not np.all(psf_shape == model_shape):
-            psf_shape = tuple(np.min([model_shape, psf_shape], axis=0))
-            warnings.warn('The input psf_shape is larger than the size of the '
-                          'evaluated PSF model. The psf_shape was changed to '
-                          f'{psf_shape!r}.', AstropyUserWarning)
-
-    elif model_bbox is not None:
-        ixmin = math.floor(model_bbox['x'].lower + 0.5)
-        ixmax = math.ceil(model_bbox['x'].upper + 0.5)
-        iymin = math.floor(model_bbox['y'].lower + 0.5)
-        iymax = math.ceil(model_bbox['y'].upper + 0.5)
-        model_shape = (iymax - iymin, ixmax - ixmin)
-
-        if not np.all(psf_shape == model_shape):
-            psf_shape = tuple(np.min([model_shape, psf_shape], axis=0))
-            warnings.warn('The input psf_shape is larger than the bounding box '
-                          'size of the PSF model. The psf_shape was changed to '
-                          f'{psf_shape!r}.', AstropyUserWarning)
-
-    else:
-        model_shape = psf_shape
 
     sources_iter = sources
     if progress_bar:  # pragma: no cover
