@@ -1040,9 +1040,9 @@ def _make_nonoverlap_coords(xrange, yrange, ncoords, min_separation, seed=0):
     return xycoords
 
 
-def make_test_psf_data(shape, psf_model, psf_shape, nsources,
+def make_test_psf_data(shape, psf_model, psf_shape, nsources, *,
                        flux_range=(100, 1000), min_separation=1, seed=0,
-                       progress_bar=False):
+                       border_size=None, progress_bar=False):
     """
     Make an example image containing PSF model images.
 
@@ -1076,6 +1076,13 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
         then fresh, unpredictable entropy will be pulled from the OS.
 
+    border_size : tuple of 2 int, optional
+        The (ny, nx) size of the border around the image where no
+        sources will be generated (i.e., the source center will not be
+        located within the border). If `None`, then a border size equal
+        to half the (y, x) size of the evaluated PSF model (i.e., taking
+        into account oversampling) will be used.
+
     progress_bar : bool, optional
         Whether to display a progress bar when creating the sources. The
         progress bar requires that the `tqdm <https://tqdm.github.io/>`_
@@ -1093,7 +1100,10 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
     """
     psf_shape = _define_psf_shape(psf_model, psf_shape)
 
-    hshape = (np.array(psf_shape) - 1) // 2
+    if border_size is None:
+        hshape = (np.array(psf_shape) - 1) // 2
+    else:
+        hshape = border_size
     xrange = (hshape[1], shape[1] - hshape[1])
     yrange = (hshape[0], shape[0] - hshape[0])
 
