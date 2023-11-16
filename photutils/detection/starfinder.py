@@ -33,7 +33,8 @@ class StarFinder(StarFinderBase):
         A 2D array of the PSF kernel.
 
     min_separation : float, optional
-        The minimum separation for detected objects in pixels.
+        The minimum separation (in pixels) for detected objects. Note
+        that large values may result in long run times.
 
     exclude_border : bool, optional
         Whether to exclude sources found within half the size of the

@@ -119,10 +119,14 @@ class DAOStarFinder(StarFinderBase):
             pixel values are negative. Therefore, setting ``peakmax`` to a
             non-positive value would result in exclusion of all objects.
 
-    xycoords : `None` or Nx2 `~numpy.ndarray`
+    xycoords : `None` or Nx2 `~numpy.ndarray`, optional
         The (x, y) pixel coordinates of the approximate centroid
         positions of identified sources. If ``xycoords`` are input, the
         algorithm will skip the source-finding step.
+
+    min_separation : float, optional
+        The minimum separation (in pixels) for detected objects. Note
+        that large values may result in long run times.
 
     See Also
     --------
@@ -157,7 +161,8 @@ class DAOStarFinder(StarFinderBase):
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
                  sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
                  roundhi=1.0, sky=0.0, exclude_border=False,
-                 brightest=None, peakmax=None, xycoords=None):
+                 brightest=None, peakmax=None, xycoords=None,
+                 min_separation=0.0):
 
         if not np.isscalar(threshold):
             raise TypeError('threshold must be a scalar value.')
@@ -178,6 +183,10 @@ class DAOStarFinder(StarFinderBase):
         self.exclude_border = exclude_border
         self.brightest = self._validate_brightest(brightest)
         self.peakmax = peakmax
+
+        if min_separation < 0:
+            raise ValueError('min_separation must be >= 0')
+        self.min_separation = min_separation
 
         if xycoords is not None:
             xycoords = np.asarray(xycoords)
@@ -208,6 +217,7 @@ class DAOStarFinder(StarFinderBase):
         if self.xycoords is None:
             xypos = self._find_stars(convolved_data, self.kernel,
                                      self.threshold_eff, mask=mask,
+                                     min_separation=self.min_separation,
                                      exclude_border=self.exclude_border)
         else:
             xypos = self.xycoords
