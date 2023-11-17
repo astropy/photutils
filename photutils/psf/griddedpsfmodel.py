@@ -293,12 +293,13 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
     Parameters
     ----------
-    data : `~astropy.nddata.NDData`
+    nddata : `~astropy.nddata.NDData`
         A `~astropy.nddata.NDData` object containing the grid of
         reference ePSF arrays. The data attribute must contain a 3D
         `~numpy.ndarray` containing a stack of the 2D ePSFs with a shape
-        of ``(N_psf, ePSF_ny, ePSF_nx)``. The meta attribute must be
-        `dict` containing the following:
+        of ``(N_psf, ePSF_ny, ePSF_nx)``.
+
+        The meta attribute must be `dict` containing the following:
 
             * ``'grid_xypos'``: A list of the (x, y) grid positions of
               each reference ePSF. The order of positions should match the
@@ -318,6 +319,11 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         Class method to create a `GriddedPSFModel` instance from a
         STDPSF FITS file. This method uses :func:`stdpsf_reader` with
         the provided parameters.
+
+    Notes
+    -----
+    Internally, the grid of ePSFs will be arranged and stored such that
+    it is sorted first by y and then by x.
     """
 
     flux = Parameter(description='Intensity scaling factor for the ePSF '
@@ -329,14 +335,13 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
     read = registry.UnifiedReadWriteMethod(GriddedPSFModelRead)
 
-    def __init__(self, data, *, flux=flux.default, x_0=x_0.default,
+    def __init__(self, nddata, *, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, fill_value=0.0):
 
-        self._data_input = self._validate_data(data)
-        self.data = data.data
-        self._meta = data.meta  # use _meta to avoid the meta descriptor
-        self.grid_xypos = data.meta['grid_xypos']
-        self.oversampling = data.meta['oversampling']
+        self._data_input = self._validate_data(nddata)
+        self.data, self.grid_xypos = self._define_grid(nddata)
+        self._meta = nddata.meta  # use _meta to avoid the meta descriptor
+        self.oversampling = nddata.meta['oversampling']
         self.fill_value = fill_value
 
         self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
@@ -381,6 +386,32 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
             raise ValueError('oversampling must be a scalar value')
 
         return data
+
+    def _define_grid(self, nddata):
+        """
+        Sort the input ePSF data into a regular grid where the ePSFs are
+        sorted first by y and then by x.
+
+        Parameters
+        ----------
+        nddata : `~astropy.nddata.NDData`
+            The input NDData object containing the ePSF data.
+
+        Returns
+        -------
+        data : 3D `~numpy.ndarray`
+            The 3D array of ePSFs.
+        grid_xypos : array of (x, y) pairs
+            The (x, y) positions of the ePSFs, sorted first by y and
+            then by x.
+        """
+        grid_xypos = np.array(nddata.meta['grid_xypos'])
+        # sort by y and then by x
+        idx = np.lexsort((grid_xypos[:, 0], grid_xypos[:, 1]))
+        grid_xypos = grid_xypos[idx]
+        data = nddata.data[idx]
+
+        return data, grid_xypos
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
@@ -566,7 +597,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         else:
             # find the four bounding reference ePSFs and interpolate
             ref_indices = self._find_bounding_points(x_0, y_0)
-            xyref = np.array(self.grid_xypos)[ref_indices]
+            xyref = self.grid_xypos[ref_indices]
             psfs = self.data[ref_indices, :, :]
 
             psf_image = self._bilinear_interp(xyref, psfs, x_0, y_0)
