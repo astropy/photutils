@@ -61,6 +61,10 @@ Bug Fixes
   - Fixed a bug where ``SourceGrouper`` would fail if only one source
     was input. [#1617]
 
+  - Fixed a bug in ``GriddedPSFModel`` ``plot_grid`` where the grid
+    could be plotted incorrectly if the input ``xygrid`` was not sorted
+    in y then x order. [#1661]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where ``deblend_sources`` and ``SourceFinder`` would
@@ -85,6 +89,10 @@ API Changes
 
   - Deprecated the ``prepare_psf_model`` function. Use the new
     ``make_psf_model`` function instead. [#1658]
+
+  - The ``GriddedPSFModel`` now stores the ePSF grid such that it is
+    first sorted by y then by x. As a result, the order of the ``data``
+    and ``xygrid`` attributes may be different. [#1661]
 
 - ``photutils.segmentation``
 
