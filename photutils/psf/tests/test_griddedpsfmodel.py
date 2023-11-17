@@ -62,10 +62,15 @@ class TestGriddedPSFModel:
         keys = ['grid_xypos', 'oversampling']
         for key in keys:
             assert key in psfmodel.meta
-        assert len(psfmodel.meta['grid_xypos']) == 16
+        grid_xypos = psfmodel.grid_xypos
+        assert len(grid_xypos) == 16
         assert psfmodel.oversampling == 4
         assert psfmodel.meta['oversampling'] == psfmodel.oversampling
         assert psfmodel.data.shape == (16, 101, 101)
+
+        idx = np.lexsort((grid_xypos[:, 0], grid_xypos[:, 1]))
+        xypos = grid_xypos[idx]
+        assert_allclose(xypos, grid_xypos)
 
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_basic_eval(self, psfmodel):
