@@ -78,6 +78,11 @@ class TestGriddedPSFModel:
         psf = psfmodel.evaluate(x=x, y=y, flux=100, x_0=40, y_0=60)
         assert psf.shape == (100, 100)
 
+        z2, y2, x2 = np.mgrid[0:100, 0:100, 0:100]
+        match = 'x and y must be 1D or 2D'
+        with pytest.raises(ValueError, match=match):
+            psfmodel.evaluate(x=x2, y=y2, flux=100, x_0=40, y_0=60)
+
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_eval_outside_grid(self, psfmodel):
         y, x = np.mgrid[-50:50, -50:50]

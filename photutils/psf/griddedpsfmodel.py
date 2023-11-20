@@ -291,6 +291,9 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     bilinearly interpolated to calculate an ePSF model at an arbitrary
     (x, y) detector position.
 
+    When evaluating this model, it cannot be called with x and y arrays
+    that have greater than 2 dimensions.
+
     Parameters
     ----------
     nddata : `~astropy.nddata.NDData`
@@ -611,6 +614,9 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         """
         Evaluate the `GriddedPSFModel` for the input parameters.
         """
+        if x.ndim > 2:
+            raise ValueError('x and y must be 1D or 2D.')
+
         # NOTE: the astropy base Model.__call__() method converts scalar
         # inputs to size-1 arrays before calling evaluate().
         if not np.isscalar(flux):
