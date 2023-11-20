@@ -94,6 +94,9 @@ API Changes
     first sorted by y then by x. As a result, the order of the ``data``
     and ``xygrid`` attributes may be different. [#1661]
 
+  - A ``ValueError`` is raised if ``GriddedPSFModel`` is called with x
+    and y arrays that have more than 2 dimensions. [#1662]
+
 - ``photutils.segmentation``
 
   - Removed the deprecated ``kernel`` keyword from ``SourceCatalog``.
