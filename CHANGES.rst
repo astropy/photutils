@@ -64,6 +64,11 @@ New Features
   - Added a ``reset_cmap`` method to ``SegmentationImage`` for resetting
     the colormap to a new random colormap. [#1649]
 
+- ``photutils.utils``
+
+  - Improved the generation of random aperture positions in
+    ``ImageDepth``. [#1666]
+
 Bug Fixes
 ^^^^^^^^^
 
