@@ -35,6 +35,10 @@ New Features
   - Added ``make_psf_model`` function for making a PSF model from a
     2D Astropy model. Compound models are also supported. [#1658]
 
+  - The ``GriddedPSFModel`` oversampling can now be different in the x
+    and y directions. The ``oversampling`` attribute is now stored as
+    a 1D ``numpy.ndarray`` with two elements. [#1664]
+
 - ``photutils.segmentation``
 
   - The ``SegmentationImage`` ``make_source_mask`` method now uses a
@@ -98,6 +102,9 @@ API Changes
   - The ``GriddedPSFModel`` now stores the ePSF grid such that it is
     first sorted by y then by x. As a result, the order of the ``data``
     and ``xygrid`` attributes may be different. [#1661]
+
+  - The ``oversampling`` attribute is now stored as a 1D
+    ``numpy.ndarray`` with two elements. [#1664]
 
   - A ``ValueError`` is raised if ``GriddedPSFModel`` is called with x
     and y arrays that have more than 2 dimensions. [#1662]
