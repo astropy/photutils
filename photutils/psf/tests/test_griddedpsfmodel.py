@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils.psf import GriddedPSFModel, STDPSFGrid
 from photutils.segmentation import SourceCatalog, detect_sources
@@ -64,8 +64,8 @@ class TestGriddedPSFModel:
             assert key in psfmodel.meta
         grid_xypos = psfmodel.grid_xypos
         assert len(grid_xypos) == 16
-        assert psfmodel.oversampling == 4
-        assert psfmodel.meta['oversampling'] == psfmodel.oversampling
+        assert_equal(psfmodel.oversampling, [4, 4])
+        assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
         assert psfmodel.data.shape == (16, 101, 101)
 
         idx = np.lexsort((grid_xypos[:, 0], grid_xypos[:, 1]))
@@ -143,8 +143,7 @@ class TestGriddedPSFModel:
             GriddedPSFModel(nddata)
 
         # check grid_xypos length
-        meta = {'grid_xypos': [[0, 0], [1, 0], [1, 0]],
-                'oversampling': 4}
+        meta = {'grid_xypos': [[0, 0], [1, 0], [1, 0]], 'oversampling': 4}
         nddata = NDData(data, meta=meta)
         with pytest.raises(ValueError):
             GriddedPSFModel(nddata)
@@ -162,13 +161,6 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError):
             GriddedPSFModel(nddata)
 
-        # check oversampling is a scalar
-        meta = {'grid_xypos': [[0, 0], [0, 1], [1, 0], [1, 1]],
-                'oversampling': [4, 4]}
-        nddata = NDData(data, meta=meta)
-        with pytest.raises(ValueError):
-            GriddedPSFModel(nddata)
-
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_eval(self, psfmodel):
         """
@@ -178,9 +170,9 @@ class TestGriddedPSFModel:
         shape = (200, 200)
         data = np.zeros(shape)
         eval_xshape = (np.ceil(psfmodel.data.shape[2]
-                               / psfmodel.oversampling)).astype(int)
+                               / psfmodel.oversampling[1])).astype(int)
         eval_yshape = (np.ceil(psfmodel.data.shape[1]
-                               / psfmodel.oversampling)).astype(int)
+                               / psfmodel.oversampling[0])).astype(int)
 
         xx = [40, 50, 160, 160]
         yy = [60, 150, 50, 140]
@@ -213,7 +205,7 @@ class TestGriddedPSFModel:
         new_model = psfmodel.copy()
         new_model.flux = 100
         assert new_model.flux.value != flux
-        assert new_model._data_input is psfmodel._data_input
+        assert new_model._nddata is psfmodel._nddata
 
     def test_deepcopy(self, psfmodel):
         flux = psfmodel.flux.value
@@ -244,6 +236,12 @@ class TestGriddedPSFModel:
         for key in keys:
             assert key in repr(psfmodel)
 
+    def test_gridded_psf_oversampling(self, psfmodel):
+        nddata = psfmodel._nddata
+        nddata.meta['oversampling'] = [4, 4]
+        psfmodel2 = GriddedPSFModel(nddata)
+        assert_equal(psfmodel2.oversampling, psfmodel.oversampling)
+
     def test_read_stdpsf(self):
         """
         Test STDPSF read for a single detector.
@@ -252,8 +250,8 @@ class TestGriddedPSFModel:
         filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
         psfmodel = GriddedPSFModel.read(filename)
         assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-        assert psfmodel.oversampling == 4
-        assert psfmodel.meta['oversampling'] == psfmodel.oversampling
+        assert_equal(psfmodel.oversampling, [4, 4])
+        assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
 
     @pytest.mark.parametrize(('filename', 'detector_id'),
                              list(product(STDPSF_FILENAMES[1:], (1, 2))))
@@ -265,8 +263,8 @@ class TestGriddedPSFModel:
         psfmodel = GriddedPSFModel.read(filename, detector_id=detector_id,
                                         format='stdpsf')
         assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-        assert psfmodel.oversampling == 4
-        assert psfmodel.meta['oversampling'] == psfmodel.oversampling
+        assert_equal(psfmodel.oversampling, [4, 4])
+        assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
 
         # test format auto-detect
         filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
@@ -287,8 +285,8 @@ class TestGriddedPSFModel:
         filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
         psfmodel = GriddedPSFModel.read(filename, format='webbpsf')
         assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-        assert psfmodel.oversampling == 4
-        assert psfmodel.meta['oversampling'] == psfmodel.oversampling
+        assert_equal(psfmodel.oversampling, [4, 4])
+        assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
         psfmodel.plot_grid()
 
         # test format auto-detect
@@ -316,7 +314,7 @@ def test_stdpsfgrid(filename):
     psfgrid = STDPSFGrid(filename)
     assert 'grid_xypos' in psfgrid.meta
     assert 'oversampling' in psfgrid.meta
-    assert psfgrid.oversampling == 4
+    assert_equal(psfgrid.oversampling, [4, 4])
     assert psfgrid.data.shape[0] == len(psfgrid.meta['grid_xypos'])
 
     psfgrid.plot_grid()
