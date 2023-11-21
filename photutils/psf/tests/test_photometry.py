@@ -131,7 +131,7 @@ def test_inputs():
 @pytest.fixture(name='test_data')
 def fixture_test_data():
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
-    psf_shape = (9, 9)  # max shape
+    psf_shape = (9, 9)
     nsources = 10
     shape = (101, 101)
     data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
@@ -376,8 +376,8 @@ def test_grouper(test_data):
     phot = psfphot(data, error=error)
     assert isinstance(phot, QTable)
     assert len(phot) == len(sources)
-    assert_equal(phot['group_id'], (1, 1, 2, 2, 3, 4, 5, 6, 6, 5))
-    assert_equal(phot['group_size'], (2, 2, 2, 2, 1, 1, 2, 2, 2, 2))
+    assert_equal(phot['group_id'], (1, 2, 3, 4, 5, 5, 5, 6, 6, 7))
+    assert_equal(phot['group_size'], (1, 1, 1, 1, 3, 3, 3, 2, 2, 1))
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -486,8 +486,8 @@ def test_iterative_psf_photometry(test_data):
     finder = DAOStarFinder(10.0, 2.0)
 
     init_params = QTable()
-    init_params['x'] = [33, 13, 64]
-    init_params['y'] = [12, 15, 22]
+    init_params['x'] = [54, 29, 80]
+    init_params['y'] = [8, 26, 29]
     psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                      localbkg_estimator=localbkg_estimator,
                                      aperture_radius=4)
