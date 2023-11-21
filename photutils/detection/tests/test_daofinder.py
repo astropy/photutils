@@ -182,3 +182,17 @@ class TestDAOStarFinder:
         xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
         with pytest.raises(ValueError):
             DAOStarFinder(threshold=10, fwhm=1.5, xycoords=xycoords)
+
+    def test_min_separation(self):
+        threshold = 5
+        fwhm = 1.0
+        finder1 = DAOStarFinder(threshold, fwhm, sigma_radius=1.5)
+        tbl1 = finder1(DATA)
+        finder2 = DAOStarFinder(threshold, fwhm, sigma_radius=1.5,
+                                min_separation=3.0)
+        tbl2 = finder2(DATA)
+        assert len(tbl1) > len(tbl2)
+
+        match = 'min_separation must be >= 0'
+        with pytest.raises(ValueError, match=match):
+            DAOStarFinder(threshold=10, fwhm=1.5, min_separation=-1.0)

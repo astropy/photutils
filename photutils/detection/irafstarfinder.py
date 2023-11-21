@@ -40,8 +40,10 @@ class IRAFStarFinder(StarFinderBase):
         kernel in units of pixels.
 
     minsep_fwhm : float, optional
-        The minimum separation for detected objects in units of
-        ``fwhm``.
+        The separation (in units of ``fwhm``) for detected objects. The
+        minimum separation is calculated as ``int((fwhm * minsep_fwhm) +
+        0.5)`` and is clipped to a minimum value of 2. Note that large
+        values may result in long run times.
 
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units of sigma
@@ -87,10 +89,16 @@ class IRAFStarFinder(StarFinderBase):
             pixel values are negative. Therefore, setting ``peakmax`` to a
             non-positive value would result in exclusion of all objects.
 
-    xycoords : `None` or Nx2 `~numpy.ndarray`
+    xycoords : `None` or Nx2 `~numpy.ndarray`, optional
         The (x, y) pixel coordinates of the approximate centroid
         positions of identified sources. If ``xycoords`` are input, the
         algorithm will skip the source-finding step.
+
+    min_separation : `None` or float, optional
+        The minimum separation (in pixels) for detected objects. If
+        `None` then ``minsep_fwhm`` will be used, otherwise this keyword
+        overrides ``minsep_fwhm``. Note that large values may result in
+        long run times.
 
     Notes
     -----
@@ -131,7 +139,7 @@ class IRAFStarFinder(StarFinderBase):
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
                  sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
                  exclude_border=False, brightest=None, peakmax=None,
-                 xycoords=None):
+                 xycoords=None, min_separation=None):
 
         if not np.isscalar(threshold):
             raise TypeError('threshold must be a scalar value.')
@@ -160,7 +168,14 @@ class IRAFStarFinder(StarFinderBase):
 
         self.kernel = _StarFinderKernel(self.fwhm, ratio=1.0, theta=0.0,
                                         sigma_radius=self.sigma_radius)
-        self.min_separation = max(2, int((self.fwhm * self.minsep_fwhm) + 0.5))
+
+        if min_separation is not None:
+            if min_separation < 0:
+                raise ValueError('min_separation must be >= 0')
+            self.min_separation = min_separation
+        else:
+            self.min_separation = max(2, int((self.fwhm * self.minsep_fwhm)
+                                             + 0.5))
 
     @staticmethod
     def _validate_brightest(brightest):
@@ -472,8 +487,12 @@ class _IRAFStarFinderCatalog:
 
     @lazyproperty
     def roundness(self):
-        return np.sqrt(self.mu_diff**2
-                       + 4.0 * self.moments_central[:, 1, 1]**2) / self.mu_sum
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return (np.sqrt(self.mu_diff**2
+                            + 4.0 * self.moments_central[:, 1, 1]**2)
+                    / self.mu_sum)
 
     @lazyproperty
     def sharpness(self):

@@ -69,7 +69,7 @@ class StarFinderBase(metaclass=abc.ABCMeta):
         .. _starfind: https://iraf.net/irafhelp.php?val=starfind
         """
         # define a local footprint for the peak finder
-        if min_separation == 0:  # daofind
+        if min_separation == 0.0:  # DAOStarFinder
             if isinstance(kernel, np.ndarray):
                 footprint = np.ones(kernel.shape)
             else:

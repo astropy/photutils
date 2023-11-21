@@ -150,3 +150,22 @@ class TestIRAFStarFinder:
         xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
         with pytest.raises(ValueError):
             IRAFStarFinder(threshold=10, fwhm=1.5, xycoords=xycoords)
+
+    def test_min_separation(self):
+        threshold = 5
+        fwhm = 1.0
+        starfinder1 = IRAFStarFinder(threshold, fwhm, sigma_radius=1.5)
+        tbl1 = starfinder1(DATA)
+        starfinder2 = IRAFStarFinder(threshold, fwhm, sigma_radius=1.5,
+                                     min_separation=3.0)
+        tbl2 = starfinder2(DATA)
+        assert np.all(tbl1 == tbl2)
+
+        starfinder3 = IRAFStarFinder(threshold, fwhm, sigma_radius=1.5,
+                                     min_separation=2.0)
+        tbl3 = starfinder3(DATA)
+        assert len(tbl3) > len(tbl2)
+
+        match = 'min_separation must be >= 0'
+        with pytest.raises(ValueError, match=match):
+            IRAFStarFinder(threshold=10, fwhm=1.5, min_separation=-1.0)
