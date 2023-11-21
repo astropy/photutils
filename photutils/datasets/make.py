@@ -1008,39 +1008,6 @@ def _define_psf_shape(psf_model, psf_shape):
     return psf_shape
 
 
-def _make_nonoverlap_coords(xrange, yrange, ncoords, min_separation, seed=0):
-    from scipy.spatial import KDTree
-
-    rng = np.random.default_rng(seed)
-
-    xycoords = np.zeros((0, 2))
-    niter = 1
-
-    while xycoords.shape[0] < ncoords:
-        if niter > 20:
-            break
-
-        x_new = rng.uniform(xrange[0], xrange[1], ncoords)
-        y_new = rng.uniform(yrange[0], yrange[1], ncoords)
-        new_xycoords = np.transpose((x_new, y_new))
-        if niter == 1:
-            xycoords = new_xycoords
-        else:
-            xycoords = np.vstack((xycoords, new_xycoords))
-
-        dist, _ = KDTree(xycoords).query(xycoords, k=[2])
-        mask = (dist >= min_separation).squeeze()
-        xycoords = xycoords[mask]
-        niter += 1
-
-    xycoords = xycoords[0:ncoords]
-    if len(xycoords) < ncoords:
-        warnings.warn(f'Unable to produce {ncoords!r} coordinates.',
-                      AstropyUserWarning)
-
-    return xycoords
-
-
 def make_test_psf_data(shape, psf_model, psf_shape, nsources, *,
                        flux_range=(100, 1000), min_separation=1, seed=0,
                        border_size=None, progress_bar=False):
