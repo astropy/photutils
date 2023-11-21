@@ -9,6 +9,11 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.detection``
+
+  - Added a ``min_separation`` keyword to ``DAOStarFinder`` and
+    ``IRAFStarFinder``. [#1663]
+
 - ``photutils.morphology``
 
   - Added a ``wcs`` keyword to ``data_properties``. [#1648]
