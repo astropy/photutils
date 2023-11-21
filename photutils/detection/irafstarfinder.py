@@ -487,8 +487,12 @@ class _IRAFStarFinderCatalog:
 
     @lazyproperty
     def roundness(self):
-        return np.sqrt(self.mu_diff**2
-                       + 4.0 * self.moments_central[:, 1, 1]**2) / self.mu_sum
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return (np.sqrt(self.mu_diff**2
+                            + 4.0 * self.moments_central[:, 1, 1]**2)
+                    / self.mu_sum)
 
     @lazyproperty
     def sharpness(self):
