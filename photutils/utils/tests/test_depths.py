@@ -48,7 +48,7 @@ class TestImageDepth:
         if overlap:
             exp_limits = (66.60324687694235, 19.341261496655026)
         else:
-            exp_limits = (67.65345151009167, 19.324275104703975)
+            exp_limits = (68.60472024061636, 19.30911500577945)
 
         data = self.data
         fluxlim = exp_limits[0]
@@ -82,7 +82,7 @@ class TestImageDepth:
         with pytest.raises(ValueError):
             depth(self.data, mask)
 
-        depth = ImageDepth(radius, nsigma=5.0, napers=200, niters=2,
+        depth = ImageDepth(radius, nsigma=5.0, napers=250, niters=2,
                            overlap=False, seed=123, zeropoint=23.9,
                            progress_bar=False)
         mask = np.zeros(self.data.shape)
