@@ -10,6 +10,7 @@ import numpy as np
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.utils._coords import apply_separation
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils.footprints import circular_footprint
 
@@ -143,7 +144,7 @@ class ImageDepth:
     ...                    progress_bar=False)
     >>> limits = depth(data, mask)
     >>> print(limits)  # doctest: +FLOAT_CMP
-    (67.24989263150033, 19.330771011755676)
+    (68.0112578151062, 19.318547982855563)
 
     .. plot::
         :include-source:
@@ -270,7 +271,11 @@ class ImageDepth:
             if self.overlap:
                 xycoords = self._make_coords(all_xycoords, napers)
             else:
-                xycoords = self._make_nonoverlap_coords(all_xycoords, napers)
+                # cut the number of coords (only need to input ~10x)
+                xycoords = self._make_coords(all_xycoords, napers * 10)
+                min_separation = self.aper_radius * 2.0
+                xycoords = apply_separation(xycoords, min_separation)
+                xycoords = xycoords[0:self.napers]
 
             apers = CircularAperture(xycoords, r=self.aper_radius)
             apertures.append(apers)
@@ -507,69 +512,5 @@ class ImageDepth:
 
         shift = self.rng.uniform(-0.5, 0.5, size=xycoords.shape)
         xycoords += shift
-
-        return xycoords
-
-    def _make_nonoverlap_coords(self, init_xycoords, napers):
-        """
-        Randomly choose ``napers`` (without replacement) coordinates
-        from the input ``xycoords`` that do not overlap.
-
-        Parameters
-        ----------
-        xycoords : 2xN `~numpy.ndarray`
-            The (x, y) coordinates.
-        napers : int
-            The number of aperture to make.
-
-        Returns
-        --------
-        xycoords : 2xN `~numpy.ndarray`
-            The (x, y) coordinates.
-        """
-        from scipy.spatial import KDTree
-
-        minsep = self.aper_radius * 2.0
-        xycoords = np.zeros((0, 2))  # placeholder for while loop
-
-        # attempt to generate all the coordinates at once; this will
-        # work only for non-crowded blank areas
-        niter = 1
-        while xycoords.shape[0] < self.napers:
-            if niter > 10:
-                break
-
-            new_xycoords = self._make_coords(init_xycoords, napers)
-            if niter == 1:
-                xycoords = new_xycoords
-            else:
-                xycoords = np.vstack((xycoords, new_xycoords))
-
-            dist, _ = KDTree(xycoords).query(xycoords, k=[2])
-            mask = (dist >= minsep).squeeze()
-            xycoords = xycoords[mask]
-            niter += 1
-
-        # add new coordinates one by one (slower)
-        napers = len(init_xycoords)
-        if xycoords.shape[0] < self.napers:
-            new_xycoords = self._make_coords(init_xycoords, napers)
-            if xycoords.shape[0] == 0:
-                xycoords = new_xycoords[0]
-                new_xycoords = new_xycoords[1:]
-
-            count = 1
-            while (xycoords.shape[0] < self.napers
-                   and count < self.overlap_maxiters):
-                idx = self.rng.choice(new_xycoords.shape[0], 1, replace=False)
-                new_xy = new_xycoords[idx, :]
-                dist, _ = KDTree(new_xy).query(xycoords, 1)
-                if np.min(dist) > minsep:
-                    xycoords = np.vstack((xycoords, new_xy))
-                    count = 0
-                else:
-                    count += 1
-
-        xycoords = xycoords[0:self.napers]
 
         return xycoords
