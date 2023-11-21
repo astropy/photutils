@@ -11,7 +11,7 @@ from astropy.modeling.models import Const2D, Gaussian2D, Moffat2D
 from astropy.nddata import NDData
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyDeprecationWarning
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils import datasets
 from photutils.detection import find_peaks
@@ -475,8 +475,8 @@ class TestGridFromEPSFs:
         psf_grid = grid_from_epsfs(self.epsfs)
 
         assert np.all(psf_grid.oversampling == self.epsfs[0].oversampling)
-        assert psf_grid.data.shape == (4, psf_grid.oversampling * 25 + 1,
-                                       psf_grid.oversampling * 25 + 1)
+        assert psf_grid.data.shape == (4, psf_grid.oversampling[0] * 25 + 1,
+                                       psf_grid.oversampling[1] * 25 + 1)
 
     def test_grid_xypos(self):
         """
@@ -514,5 +514,5 @@ class TestGridFromEPSFs:
         for key in keys + ['extra_key']:
             assert key in psf_grid.meta
         assert psf_grid.meta['grid_xypos'].sort() == self.grid_xypos.sort()
-        assert psf_grid.meta['oversampling'] == 4
+        assert_equal(psf_grid.meta['oversampling'], [4, 4])
         assert psf_grid.meta['fill_value'] == 0.0

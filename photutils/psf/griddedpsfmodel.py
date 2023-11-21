@@ -17,6 +17,8 @@ from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData, reshape_as_blocks
 from astropy.visualization import simple_norm
 
+from photutils.utils._parameters import as_pair
+
 __all__ = ['GriddedPSFModel', 'ModelGridPlotMixin', 'stdpsf_reader',
            'webbpsf_reader', 'STDPSFGrid']
 __doctest_skip__ = ['GriddedPSFModelRead', 'STDPSFGrid']
@@ -310,8 +312,10 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
               words, ``grid_xypos[i]`` should be the (x, y) position of
               the reference ePSF defined in ``data[i]``.
 
-            * ``'oversampling'``: The integer oversampling factor of the
-              ePSF.
+            * ``'oversampling'``: The integer oversampling factor(s) of
+              the ePSF. If ``oversampling`` is a scalar then it will be
+              used for both axes. If ``oversampling`` has two elements,
+              they must be in ``(y, x)`` order.
 
         The meta attribute may contain other properties such as the
         telescope, instrument, detector, and filter of the ePSF.
@@ -341,10 +345,13 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     def __init__(self, nddata, *, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, fill_value=0.0):
 
-        self._data_input = self._validate_data(nddata)
+        self._nddata = self._validate_data(nddata)
         self.data, self.grid_xypos = self._define_grid(nddata)
         self._meta = nddata.meta  # use _meta to avoid the meta descriptor
-        self.oversampling = nddata.meta['oversampling']
+        self.oversampling = as_pair('oversampling',
+                                    nddata.meta['oversampling'],
+                                    lower_bound=(0, 1))
+
         self.fill_value = fill_value
 
         self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
@@ -385,8 +392,6 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         if 'oversampling' not in data.meta:
             raise ValueError('"oversampling" must be in the nddata meta '
                              'dictionary.')
-        if not np.isscalar(data.meta['oversampling']):
-            raise ValueError('oversampling must be a scalar value')
 
         return data
 
@@ -429,8 +434,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         cls_info.extend([('Number of ePSFs', len(self.grid_xypos)),
                          ('ePSF shape (oversampled pixels)',
                           self.data.shape[1:]),
-                         ('Oversampling', self.oversampling),
-                         ])
+                         ('Oversampling', tuple(self.oversampling))])
 
         with np.printoptions(threshold=25, edgeitems=5):
             fmt = [f'{key}: {val}' for key, val in cls_info]
@@ -447,7 +451,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         Note that the ePSF grid data is not copied. Use the `deepcopy`
         method if you want to copy the ePSF grid data.
         """
-        return self.__class__(self._data_input, flux=self.flux.value,
+        return self.__class__(self._nddata, flux=self.flux.value,
                               x_0=self.x_0.value, y_0=self.y_0.value,
                               fill_value=self.fill_value)
 
@@ -633,8 +637,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         # now evaluate the ePSF at the (x_0, y_0) subpixel position on
         # the input (x, y) values
-        xi = self.oversampling * (np.asarray(x, dtype=float) - x_0)
-        yi = self.oversampling * (np.asarray(y, dtype=float) - y_0)
+        xi = self.oversampling[1] * (np.asarray(x, dtype=float) - x_0)
+        yi = self.oversampling[0] * (np.asarray(y, dtype=float) - y_0)
 
         # define origin at the ePSF image center
         ny, nx = self.data.shape[1:]
@@ -957,7 +961,7 @@ def stdpsf_reader(filename, detector_id=None):
     # itertools.product iterates over the last input first
     xy_grid = [yx[::-1] for yx in itertools.product(ygrid, xgrid)]
 
-    oversampling = 4
+    oversampling = 4  # assumption for STDPSF files
     nxpsfs = xgrid.shape[0]
     nypsfs = ygrid.shape[0]
     meta = {'grid_xypos': xy_grid,
@@ -1124,9 +1128,10 @@ class STDPSFGrid(ModelGridPlotMixin):
         self._ygrid = grid_data['ygrid']
         xy_grid = [yx[::-1] for yx in itertools.product(self._ygrid,
                                                         self._xgrid)]
-        oversampling = 4
+        oversampling = 4  # assumption for STDPSF files
         self.grid_xypos = xy_grid
-        self.oversampling = oversampling
+        self.oversampling = as_pair('oversampling', oversampling,
+                                    lower_bound=(0, 1))
         meta = {'grid_shape': (len(self._ygrid), len(self._xgrid)),
                 'grid_xypos': xy_grid,
                 'oversampling': oversampling}
@@ -1152,8 +1157,7 @@ class STDPSFGrid(ModelGridPlotMixin):
         cls_info.extend([('Number of ePSFs', len(self.grid_xypos)),
                          ('ePSF shape (oversampled pixels)',
                           self.data.shape[1:]),
-                         ('Oversampling', self.oversampling),
-                         ])
+                         ('Oversampling', self.oversampling)])
 
         with np.printoptions(threshold=25, edgeitems=5):
             fmt = [f'{key}: {val}' for key, val in cls_info]

@@ -692,16 +692,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
         data_arrs.append(epsf.data)
 
         if i == 0:
-            # EPSFModel allows a tuple for oversampling factor in x, y,
-            # but GriddedPSFModel requires it to be a single scalar value.
-            # Keep this condition for now by checking that x and y match
-            if np.isscalar(epsf.oversampling):
-                oversampling = epsf.oversampling
-            else:
-                if epsf.oversampling[0] != epsf.oversampling[1]:
-                    raise ValueError('Oversampling must be the same in x and '
-                                     'y.')
-                oversampling = epsf.oversampling[0]
+            oversampling = epsf.oversampling
 
             # same for fill value and flux, grid will have a single value
             # so it should be the same for all input, and error if not.
@@ -720,14 +711,9 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
                 pass  # just keep as None
 
         else:
-            if np.isscalar(epsf.oversampling):
-                if epsf.oversampling != oversampling:
-                    raise ValueError('All input EPSFModels must have the same '
-                                     'value for ``oversampling``.')
-                if (epsf.oversampling[0] != epsf.oversampling[1]
-                        != oversampling):
-                    raise ValueError('All input EPSFModels must have the '
-                                     'same value for ``oversampling``.')
+            if np.any(epsf.oversampling != oversampling):
+                raise ValueError('All input EPSFModels must have the same '
+                                 'value for ``oversampling``.')
 
             if epsf.fill_value != fill_value:
                 raise ValueError('All input EPSFModels must have the same '
