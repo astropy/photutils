@@ -131,7 +131,7 @@ def test_inputs():
 @pytest.fixture(name='test_data')
 def fixture_test_data():
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
-    psf_shape = (25, 25)
+    psf_shape = (9, 9)  # max shape
     nsources = 10
     shape = (101, 101)
     data, true_params = make_test_psf_data(shape, psf_model, psf_shape,

@@ -19,6 +19,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 
 from photutils.psf import IntegratedGaussianPRF
+from photutils.utils._coords import make_random_xycoords
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
@@ -1107,9 +1108,9 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources, *,
     xrange = (hshape[1], shape[1] - hshape[1])
     yrange = (hshape[0], shape[0] - hshape[0])
 
-    xycoords = _make_nonoverlap_coords(xrange, yrange, nsources,
-                                       min_separation=min_separation,
-                                       seed=seed)
+    xycoords = make_random_xycoords(nsources, xrange, yrange,
+                                    min_separation=min_separation,
+                                    seed=seed)
     x, y = np.transpose(xycoords)
 
     rng = np.random.default_rng(seed)

@@ -2,9 +2,11 @@
 """
 This module provides tools for generating random (x, y) coordinates.
 """
+import warnings
 from collections import defaultdict
 
 import numpy as np
+from astropy.utils.exceptions import AstropyUserWarning
 from scipy.spatial import KDTree
 
 
@@ -73,5 +75,9 @@ def make_random_xycoords(size, x_range, y_range, min_separation=0.0,
 
     xycoords = apply_separation(xycoords, min_separation)
     xycoords = xycoords[:size]
+
+    if len(xycoords) < size:
+        warnings.warn(f'Unable to produce {size!r} coordinates.',
+                      AstropyUserWarning)
 
     return xycoords
