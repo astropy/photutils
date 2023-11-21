@@ -9,6 +9,13 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.datasets``
+
+  - Added a ``border_size`` keyword to ``make_test_psf_data``. [#1665]
+
+  - Improved the generation of random PSF positions in
+    ``make_test_psf_data``. [#1665]
+
 - ``photutils.detection``
 
   - Added a ``min_separation`` keyword to ``DAOStarFinder`` and

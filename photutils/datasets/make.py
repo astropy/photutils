@@ -4,6 +4,7 @@ This module provides tools for making example datasets for examples and
 tests.
 """
 
+import math
 import warnings
 
 import astropy.units as u
@@ -18,7 +19,9 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 
 from photutils.psf import IntegratedGaussianPRF
+from photutils.utils._coords import make_random_xycoords
 from photutils.utils._misc import _get_meta
+from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 
 __all__ = ['apply_poisson_noise', 'make_noise_image',
@@ -950,42 +953,64 @@ def make_imagehdu(data, wcs=None):
     return fits.ImageHDU(data, header=header)
 
 
-def _make_nonoverlap_coords(xrange, yrange, ncoords, min_separation, seed=0):
-    from scipy.spatial import KDTree
+def _define_psf_shape(psf_model, psf_shape):
+    """
+    Define the shape of the model to evaluate, including the
+    oversampling.
+    """
+    try:
+        model_ndim = psf_model.data.ndim
+    except AttributeError:
+        model_ndim = None
+        pass
 
-    rng = np.random.default_rng(seed)
+    try:
+        model_bbox = psf_model.bounding_box
+    except NotImplementedError:
+        model_bbox = None
+        pass
 
-    xycoords = np.zeros((0, 2))
-    niter = 1
+    if model_ndim is not None:
+        if model_ndim == 3:
+            model_shape = psf_model.data.shape[1:]
+        elif model_ndim == 2:
+            model_shape = psf_model.data.shape
 
-    while xycoords.shape[0] < ncoords:
-        if niter > 20:
-            break
+        try:
+            oversampling = psf_model.oversampling
+        except AttributeError:
+            oversampling = 1
+            pass
+        oversampling = as_pair('oversampling', oversampling)
 
-        x_new = rng.uniform(xrange[0], xrange[1], ncoords)
-        y_new = rng.uniform(yrange[0], yrange[1], ncoords)
-        new_xycoords = np.transpose((x_new, y_new))
-        if niter == 1:
-            xycoords = new_xycoords
-        else:
-            xycoords = np.vstack((xycoords, new_xycoords))
+        model_shape = tuple(np.array(model_shape) // oversampling)
 
-        dist, _ = KDTree(xycoords).query(xycoords, k=[2])
-        mask = (dist >= min_separation).squeeze()
-        xycoords = xycoords[mask]
-        niter += 1
+        if np.any(psf_shape > model_shape):
+            psf_shape = tuple(np.min([model_shape, psf_shape], axis=0))
+            warnings.warn('The input psf_shape is larger than the size of the '
+                          'evaluated PSF model (including oversampling). The '
+                          f'psf_shape was changed to {psf_shape!r}.',
+                          AstropyUserWarning)
 
-    xycoords = xycoords[0:ncoords]
-    if len(xycoords) < ncoords:
-        warnings.warn(f'Unable to produce {ncoords!r} coordinates.',
-                      AstropyUserWarning)
+    elif model_bbox is not None:
+        ixmin = math.floor(model_bbox['x'].lower + 0.5)
+        ixmax = math.ceil(model_bbox['x'].upper + 0.5)
+        iymin = math.floor(model_bbox['y'].lower + 0.5)
+        iymax = math.ceil(model_bbox['y'].upper + 0.5)
+        model_shape = (iymax - iymin, ixmax - ixmin)
 
-    return xycoords
+        if np.any(psf_shape > model_shape):
+            psf_shape = tuple(np.min([model_shape, psf_shape], axis=0))
+            warnings.warn('The input psf_shape is larger than the bounding box '
+                          'size of the PSF model. The psf_shape was changed to '
+                          f'{psf_shape!r}.', AstropyUserWarning)
+
+    return psf_shape
 
 
-def make_test_psf_data(shape, psf_model, psf_shape, nsources,
+def make_test_psf_data(shape, psf_model, psf_shape, nsources, *,
                        flux_range=(100, 1000), min_separation=1, seed=0,
-                       progress_bar=False):
+                       border_size=None, progress_bar=False):
     """
     Make an example image containing PSF model images.
 
@@ -1019,6 +1044,13 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
         then fresh, unpredictable entropy will be pulled from the OS.
 
+    border_size : tuple of 2 int, optional
+        The (ny, nx) size of the border around the image where no
+        sources will be generated (i.e., the source center will not be
+        located within the border). If `None`, then a border size equal
+        to half the (y, x) size of the evaluated PSF model (i.e., taking
+        into account oversampling) will be used.
+
     progress_bar : bool, optional
         Whether to display a progress bar when creating the sources. The
         progress bar requires that the `tqdm <https://tqdm.github.io/>`_
@@ -1034,13 +1066,18 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
     table : `~astropy.table.Table`
         A table containing the parameters of the generated sources.
     """
-    hshape = (np.array(psf_shape) - 1) // 2
+    psf_shape = _define_psf_shape(psf_model, psf_shape)
+
+    if border_size is None:
+        hshape = (np.array(psf_shape) - 1) // 2
+    else:
+        hshape = border_size
     xrange = (hshape[1], shape[1] - hshape[1])
     yrange = (hshape[0], shape[0] - hshape[0])
 
-    xycoords = _make_nonoverlap_coords(xrange, yrange, nsources,
-                                       min_separation=min_separation,
-                                       seed=seed)
+    xycoords = make_random_xycoords(nsources, xrange, yrange,
+                                    min_separation=min_separation,
+                                    seed=seed)
     x, y = np.transpose(xycoords)
 
     rng = np.random.default_rng(seed)
@@ -1052,13 +1089,12 @@ def make_test_psf_data(shape, psf_model, psf_shape, nsources,
     sources['y_0'] = y
     sources['flux'] = flux
 
-    data = np.zeros(shape, dtype=float)
-
     sources_iter = sources
     if progress_bar:  # pragma: no cover
         desc = 'Adding sources'
         sources_iter = add_progress_bar(sources, desc=desc)
 
+    data = np.zeros(shape, dtype=float)
     for source in sources_iter:
         for param in ('x_0', 'y_0', 'flux'):
             setattr(psf_model, param, source[param])

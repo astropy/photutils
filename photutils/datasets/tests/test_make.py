@@ -229,4 +229,4 @@ def test_make_test_psf_data():
     with pytest.warns(AstropyUserWarning, match=match):
         nsources = 100
         make_test_psf_data(shape, psf_model, psf_shape, nsources,
-                           flux_range=(500, 1000), min_separation=10, seed=0)
+                           flux_range=(500, 1000), min_separation=100, seed=0)
