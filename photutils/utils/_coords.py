@@ -7,10 +7,11 @@ from collections import defaultdict
 
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
-from scipy.spatial import KDTree
 
 
 def apply_separation(xycoords, min_separation):
+    from scipy.spatial import KDTree
+
     tree = KDTree(xycoords)
     pairs = tree.query_pairs(min_separation, output_type='ndarray')
 
