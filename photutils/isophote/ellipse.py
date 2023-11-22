@@ -49,7 +49,7 @@ class Ellipse:
         prematurely. Note that once the object centerer runs
         successfully, the (x, y) coordinates in the ``geometry``
         attribute (an `~photutils.isophote.EllipseGeometry` instance)
-        are modified in place.  The default is 0.1
+        are modified in place.  The default is 0.1.
 
     Notes
     -----

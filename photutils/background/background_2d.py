@@ -669,7 +669,7 @@ class Background2D:
             The marker to use to mark the center of the boxes.  Default
             is '+'.
 
-        markersize: float, optional
+        markersize : float, optional
             The marker size in points**2. The default is
             ``matplotlib.rcParams['lines.markersize'] ** 2``. If set to
             0, then the box center markers will not be plotted.

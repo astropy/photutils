@@ -134,15 +134,6 @@ class SourceCatalog:
         values (NaN and inf) in the input ``data`` are automatically
         masked.
 
-
-        The 2D kernel used to filter the data prior to calculating
-        the source centroid and morphological parameters. The
-        kernel should be the same one used in defining the
-        source segments, i.e., the detection image (e.g., see
-        :func:`~photutils.segmentation.detect_sources`). If `None`, then
-        the unfiltered ``data`` will be used instead. This keyword is
-        ignored if ``convolved_data`` is input (recommended).
-
     background : float, 2D `~numpy.ndarray`, or `~astropy.units.Quantity`, optional
         The background level that was *previously* present in the input
         ``data``. ``background`` may either be a scalar value or a 2D
@@ -666,7 +657,7 @@ class SourceCatalog:
 
         Parameters
         ----------
-        name : list of str
+        names : list of str
             The names of the properties to remove.
         """
         names = np.atleast_1d(names)
@@ -840,7 +831,8 @@ class SourceCatalog:
     @lazyproperty
     def _moment_data_cutouts(self):
         """
-        A list of 2D `~numpy.ndarray` cutouts from the (convolved) data
+        A list of 2D `~numpy.ndarray` cutouts from the (convolved) data.
+
         The following pixels are set to zero in these arrays:
 
             * pixels outside of the source segment

@@ -276,7 +276,7 @@ class EPSFStars:
 
     Parameters
     ----------
-    star_list : list of `EPSFStar` or `LinkedEPSFStar` objects
+    stars_list : list of `EPSFStar` or `LinkedEPSFStar` objects
         A list of `EPSFStar` and/or `LinkedEPSFStar` objects.
     """
 
@@ -434,7 +434,7 @@ class LinkedEPSFStar(EPSFStars):
 
     Parameters
     ----------
-    star_list : list of `EPSFStar` objects
+    stars_list : list of `EPSFStar` objects
         A list of `EPSFStar` objects for the same physical star.  Each
         `EPSFStar` object must have a valid ``wcs_large`` attribute to
         convert between pixel and sky coordinates.

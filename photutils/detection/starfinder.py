@@ -55,16 +55,16 @@ class StarFinder(StarFinderBase):
             pixel values are negative. Therefore, setting ``peakmax`` to
             a non-positive value would result in excluding all objects.
 
+    See Also
+    --------
+    DAOStarFinder, IRAFStarFinder
+
     Notes
     -----
     For the convolution step, this routine sets pixels beyond the image
     borders to 0.0.
 
     The source properties are calculated using image moments.
-
-    See Also
-    --------
-    DAOStarFinder, IRAFStarFinder
     """
 
     def __init__(self, threshold, kernel, min_separation=5.0,
@@ -169,11 +169,11 @@ class _StarFinderCatalog:
     data : 2D `~numpy.ndarray`
         The 2D image.
 
-    xypos: Nx2 `numpy.ndarray`
+    xypos : Nx2 `numpy.ndarray`
         A Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
-    shape:  tuple of int
+    shape :  tuple of int
         The shape of the stars cutouts. The shape in both dimensions
         must be odd and match the shape of the smoothing kernel.
     """

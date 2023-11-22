@@ -1313,7 +1313,7 @@ class SegmentationImage:
         scale : float, optional
             The scale factor applied to the polygon vertices.
 
-        labels: int or array of int, optional
+        labels : int or array of int, optional
             The label numbers whose polygons are to be plotted. If
             `None`, the polygons for all labels will be plotted.
 
@@ -1480,7 +1480,7 @@ class SegmentationImage:
             are applied pixel by pixel, and alpha must have the same
             shape as the segmentation image.
 
-        max_labels: int, optional
+        max_labels : int, optional
             The maximum number of labels to display in the colorbar. If
             the number of labels is greater than ``max_labels``, then
             the colorbar will not be displayed.

@@ -39,16 +39,16 @@ class IRAFStarFinder(StarFinderBase):
         The full-width half-maximum (FWHM) of the 2D circular Gaussian
         kernel in units of pixels.
 
+    sigma_radius : float, optional
+        The truncation radius of the Gaussian kernel in units of sigma
+        (standard deviation) [``1 sigma = FWHM /
+        2.0*sqrt(2.0*log(2.0))``].
+
     minsep_fwhm : float, optional
         The separation (in units of ``fwhm``) for detected objects. The
         minimum separation is calculated as ``int((fwhm * minsep_fwhm) +
         0.5)`` and is clipped to a minimum value of 2. Note that large
         values may result in long run times.
-
-    sigma_radius : float, optional
-        The truncation radius of the Gaussian kernel in units of sigma
-        (standard deviation) [``1 sigma = FWHM /
-        2.0*sqrt(2.0*log(2.0))``].
 
     sharplo : float, optional
         The lower bound on sharpness for object detection.
@@ -100,6 +100,10 @@ class IRAFStarFinder(StarFinderBase):
         overrides ``minsep_fwhm``. Note that large values may result in
         long run times.
 
+    See Also
+    --------
+    DAOStarFinder
+
     Notes
     -----
     For the convolution step, this routine sets pixels beyond the image
@@ -124,10 +128,6 @@ class IRAFStarFinder(StarFinderBase):
 
     * `~photutils.detection.IRAFStarFinder` calculates the objects'
       centroid, roundness, and sharpness using image moments.
-
-    See Also
-    --------
-    DAOStarFinder
 
     References
     ----------
@@ -277,7 +277,7 @@ class _IRAFStarFinderCatalog:
     convolved_data : 2D `~numpy.ndarray`
         The convolved 2D image.
 
-    xypos: Nx2 `numpy.ndarray`
+    xypos : Nx2 `numpy.ndarray`
         A Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 

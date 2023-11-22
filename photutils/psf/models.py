@@ -189,9 +189,11 @@ class FittableImageModel(Fittable2DModel):
     def _compute_normalization(self, normalize=True):
         r"""
         Helper function that computes (corrected) normalization factor
-        of the original image data. This quantity is computed as the
-        inverse "raw image norm" (or total "flux" of model's image)
-        corrected by the ``normalization_correction``:
+        of the original image data.
+
+        This quantity is computed as the inverse "raw image norm"
+        (or total "flux" of model's image) corrected by the
+        ``normalization_correction``:
 
         .. math::
             N = 1/(\Phi * C),
@@ -260,7 +262,9 @@ class FittableImageModel(Fittable2DModel):
     @property
     def normalization_status(self):
         """
-        Get normalization status. Possible status values are:
+        Get normalization status.
+
+        Possible status values are:
 
         - 0: **Performed**. Model has been successfully normalized at
              user's request.
@@ -364,6 +368,8 @@ class FittableImageModel(Fittable2DModel):
 
     def _store_interpolator_kwargs(self, **kwargs):
         """
+        Store interpolator keyword arguments.
+
         This function should be called in a subclass whenever model's
         interpolator is (re-)computed.
         """
@@ -700,7 +706,7 @@ class IntegratedGaussianPRF(Fittable2DModel):
     sigma : float
         Width of the Gaussian PSF.
     flux : float, optional
-        Total integrated flux over the entire PSF
+        Total integrated flux over the entire PSF.
     x_0 : float, optional
         Position of the peak in x direction.
     y_0 : float, optional
@@ -774,7 +780,7 @@ class PRFAdapter(Fittable2DModel):
     Parameters
     ----------
     psfmodel : a 2D model
-        The model to assume as representative of the PSF
+        The model to assume as representative of the PSF.
     renormalize_psf : bool
         If True, the model will be integrated from -inf to inf and
         re-scaled so that the total integrates to 1.  Note that this

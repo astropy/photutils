@@ -41,7 +41,7 @@ def _get_date(utc=False):
 
     Parameters
     ----------
-    utz : bool, optional
+    utc : bool, optional
         Whether to use the UTC timezone instead of the local timezone.
 
     Returns

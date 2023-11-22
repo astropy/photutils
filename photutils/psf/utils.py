@@ -519,7 +519,9 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
 def _extract_psf_fitting_names(psf):
     """
     Determine the names of the x coordinate, y coordinate, and flux from
-    a model.  Returns (xname, yname, fluxname)
+    a model.
+
+    Returns (xname, yname, fluxname).
     """
     if hasattr(psf, 'xname'):
         xname = psf.xname
@@ -572,7 +574,7 @@ def subtract_psf(data, psf, posflux, *, subshape=None):
     Returns
     -------
     subdata : same shape and type as ``data``
-        The image with the PSF subtracted
+        The image with the PSF subtracted.
     """
     if data.ndim != 2:
         raise ValueError(f'{data.ndim}-d array not supported. Only 2-d '
