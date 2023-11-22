@@ -7,6 +7,16 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.datasets``
+
+  - Improved the performance of ``make_test_psf_data`` when generating
+    random coordinates with a minimum separation. [#1668]
+
+- ``photutils.utils``
+
+  - Improved the performance of ``ImageDepth`` when generating
+    random coordinates with a minimum separation. [#1668]
+
 Bug Fixes
 ^^^^^^^^^
 

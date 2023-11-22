@@ -18,22 +18,19 @@ def apply_separation(xycoords, min_separation):
     # create a dictionary of nearest neighbors (within min_separation)
     nn = {}
     nn = defaultdict(set)
-    for p1, p2 in xycoords[pairs]:
-        nn[tuple(p1)].add(tuple(p2))
-        nn[tuple(p2)].add(tuple(p1))
+    for i, j in pairs:
+        nn[i].add(j)
+        nn[j].add(i)
 
-    keep = []
-    discard = set()
-    for xycoord in xycoords:
-        xycoord = tuple(xycoord)
-        if xycoord not in discard:
-            keep.append(xycoord)
+    keep_idx = []
+    discard_idx = set()
+    for idx in range(xycoords.shape[0]):
+        if idx not in discard_idx:
+            keep_idx.append(idx)
             # remove nearest neighbors from the output
-            neighbors = nn.get(xycoord, None)
-            if neighbors is not None:
-                discard.update(neighbors)
+            discard_idx.update(nn.get(idx, set()))
 
-    return np.array(keep)
+    return xycoords[keep_idx]
 
 
 def make_random_xycoords(size, x_range, y_range, min_separation=0.0,
