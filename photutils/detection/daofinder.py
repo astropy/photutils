@@ -299,7 +299,7 @@ class _DAOStarFinderCatalog:
     convolved_data : 2D `~numpy.ndarray`
         The convolved 2D image.
 
-    xypos: Nx2 `numpy.ndarray`
+    xypos : Nx2 `numpy.ndarray`
         A Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
@@ -315,6 +315,8 @@ class _DAOStarFinderCatalog:
         calculate the source peak value, flux, and magnitude.  The
         default is 0.
 
+    References
+    ----------
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
     """
 

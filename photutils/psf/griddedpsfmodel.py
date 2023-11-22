@@ -76,7 +76,7 @@ class ModelGridPlotMixin:
             'gray_r' colormap for plotting the ePSF difference data
             (``deltas=True``).
 
-        show_dividers : bool, optional
+        dividers : bool, optional
             Whether to show divider lines between the ePSFs.
 
         divider_color, divider_ls : str, optional

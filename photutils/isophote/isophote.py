@@ -304,7 +304,7 @@ class Isophote:
         """
         Compute parameter errors based on the diagonal of the covariance
         matrix of the four harmonic coefficients for harmonics n=1 and
-        n=2.0
+        n=2.0.
         """
         try:
             coeffs, covariance = fit_first_and_second_harmonics(
@@ -760,6 +760,13 @@ class IsophoteList:
         Convert an `~photutils.isophote.IsophoteList` instance to a
         `~astropy.table.QTable` with the main isophote parameters.
 
+        Parameters
+        ----------
+        columns : list of str
+            A list of properties to export from the isophote list. If
+            ``columns`` is 'all' or 'main', it will pick all or few of the
+            main properties.
+
         Returns
         -------
         result : `~astropy.table.QTable`
@@ -812,7 +819,7 @@ def _isophote_list_to_table(isophote_list, columns='main'):
         A list of isophotes.
 
     columns : list of str
-        A list of properties to export from the isophote_list. If
+        A list of properties to export from the ``isophote_list``. If
         ``columns`` is 'all' or 'main', it will pick all or few of the
         main properties.
 

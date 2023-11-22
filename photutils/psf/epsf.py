@@ -46,7 +46,7 @@ class EPSFFitter:
         must have odd values and be greater than or equal to 3 for both
         axes. If `None`, the fitter will use the entire star image.
 
-    fitter_kwargs : dict-like, optional
+    **fitter_kwargs : dict-like, optional
         Any additional keyword arguments (except ``x``, ``y``, ``z``, or
         ``weights``) to be passed directly to the ``__call__()`` method
         of the input ``fitter``.

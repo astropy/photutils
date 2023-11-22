@@ -38,7 +38,7 @@ class EllipseSample:
         is 0.1.
     eps : float, optional
         The ellipticity of the ellipse.  The default is 0.2.
-    pa : float, optional
+    position_angle : float, optional
         The position angle of ellipse in relation to the positive x axis
         of the image array (rotating towards the positive y axis).  The
         default is 0.

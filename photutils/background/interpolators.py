@@ -34,7 +34,7 @@ class BkgZoomInterpolator:
 
     cval : float, optional
         The value used for points outside the boundaries of the input if
-        ``mode='constant'``. Default is 0.0
+        ``mode='constant'``. Default is 0.0.
 
     grid_mode : bool, optional
         If `True` (default), the samples are considered as the centers

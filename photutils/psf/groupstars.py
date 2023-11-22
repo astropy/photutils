@@ -78,14 +78,14 @@ class DAOGroup(GroupStarsBase):
         Distance, in units of pixels, such that any two stars separated by
         less than this distance will be placed in the same group.
 
+    See Also
+    --------
+    photutils.detection.DAOStarFinder
+
     Notes
     -----
     Assuming the psf fwhm to be known, ``crit_separation`` may be set to
     k*fwhm, for some positive real k.
-
-    See Also
-    --------
-    photutils.detection.DAOStarFinder
 
     References
     ----------
@@ -191,18 +191,13 @@ class DBSCANGroup(GroupStarsBase):
         by less than this distance will be placed in the same group.
     min_samples : int, optional (default=1)
         Minimum number of stars necessary to form a group.
-    metric : string or callable (default='euclidean')
+    metric : str or callable (default='euclidean')
         The metric to use when calculating distance between each pair of
         stars.
     algorithm : {'auto', 'ball_tree', 'kd_tree', 'brute'}, optional
         The algorithm to be used to actually find nearest neighbors.
     leaf_size : int, optional (default = 30)
         Leaf size passed to BallTree or cKDTree.
-
-    References
-    ----------
-    [1] Scikit Learn DBSCAN.
-        https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN
 
     Notes
     -----
@@ -216,6 +211,11 @@ class DBSCANGroup(GroupStarsBase):
       `photutils.psf.DBSCANGroup` when ``min_samples=1`` and
       ``metric=euclidean``.  Additionally, `photutils.psf.DBSCANGroup`
       may be faster than `photutils.psf.DAOGroup`.
+
+    References
+    ----------
+    [1] Scikit Learn DBSCAN.
+        https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN
     """
 
     def __init__(self, crit_separation, *, min_samples=1, metric='euclidean',
