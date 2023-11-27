@@ -200,6 +200,56 @@ def test_psf_photometry(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_psf_photometry_compound(test_data):
+    """
+    Test compound models output from ``make_psf_model``.
+    """
+    data, error, sources = test_data
+    x_stddev = y_stddev = 1.8
+    psf_func = Gaussian2D(amplitude=1, x_mean=0, y_mean=0, x_stddev=x_stddev,
+                          y_stddev=y_stddev)
+    psf_model = make_psf_model(psf_func, x_name='x_mean', y_name='y_mean')
+
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(5.0, 3.0)
+
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    phot = psfphot(data, error=error)
+    assert isinstance(phot, QTable)
+    assert len(phot) == len(sources)
+
+    # test results when fit does not converge (fitter_maxiters=10)
+    match = r'One or more fit\(s\) may not have converged.'
+    with pytest.warns(AstropyUserWarning, match=match):
+        psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                                aperture_radius=4, fitter_maxiters=10)
+        phot = psfphot(data, error=error)
+        columns1 = ['x_err', 'y_err', 'flux_err']
+        for column in columns1:
+            assert np.all(np.isnan(phot[column]))
+
+    # allow other parameters to vary
+    psf_model.x_stddev_2.fixed = False
+    psf_model.y_stddev_2.fixed = False
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4, fitter_maxiters=400)
+    phot = psfphot(data, error=error)
+    columns2 = ['x_stddev_2_init', 'y_stddev_2_init', 'x_stddev_2_fit',
+                'y_stddev_2_fit', 'x_stddev_2_err', 'y_stddev_2_err']
+    for column in columns2:
+        assert column in phot.colnames
+
+    # test results when fit does not converge (fitter_maxiters=10)
+    with pytest.warns(AstropyUserWarning, match=match):
+        psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                                aperture_radius=4, fitter_maxiters=10)
+        phot = psfphot(data, error=error)
+        for column in columns1 + ['x_stddev_2_err', 'y_stddev_2_err']:
+            assert np.all(np.isnan(phot[column]))
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_mask(test_data):
     data, error, sources = test_data
     data_orig = data.copy()
