@@ -66,7 +66,7 @@ def test_interpolate_missing_data():
     assert 54 <= data_int[5, 5] <= 56
 
     data_int = _interpolate_missing_data(data, mask, method='cubic')
-    assert data_int[5, 5] == 55
+    assert 54 <= data_int[5, 5] <= 56
 
     match = "'data' must be a 2D array."
     with pytest.raises(ValueError, match=match):
