@@ -602,17 +602,18 @@ class PSFPhotometry:
         nfitparam = len(self._fitted_psf_param_names)
         for model, info in zip(models, infos):
             model_nsub = model.n_submodels
+            npsf_models = model_nsub // psf_nsub
 
             param_cov = info.get('param_cov', None)
             if param_cov is None:
                 if nfitparam == 0:  # model params are all fixed
-                    nfitparam = 3
-                param_err = np.array([np.nan] * nfitparam * model_nsub)
+                    nfitparam = 3   # x_err, y_err, and flux_err are np.nan
+                param_err = np.array([np.nan] * nfitparam * npsf_models)
             else:
                 param_err = np.sqrt(np.diag(param_cov))
 
             # model is for a single source (which may be compound)
-            if model_nsub == psf_nsub:
+            if npsf_models == 1:
                 fit_models.append(model)
                 fit_infos.append(info)
                 fit_param_errs.append(param_err)
@@ -620,8 +621,7 @@ class PSFPhotometry:
 
             # model is a grouped model for multiple sources
             fit_models.extend(self._split_compound_model(model, psf_nsub))
-            nsources = model_nsub // psf_nsub
-            fit_infos.extend([info] * nsources)  # views
+            fit_infos.extend([info] * npsf_models)  # views
             fit_param_errs.extend(self._split_param_errs(param_err, nfitparam))
 
         if len(fit_models) != len(fit_infos):
