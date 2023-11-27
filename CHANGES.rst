@@ -20,6 +20,12 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Fixed an issue where PSF models produced by ``make_psf_model`` would
+    raise an error with ``PSFPhotometry`` if the fit did not converge.
+    [#1672]
+
 API Changes
 ^^^^^^^^^^^
 
