@@ -203,9 +203,19 @@ class TestGriddedPSFModel:
     def test_copy(self, psfmodel):
         flux = psfmodel.flux.value
         new_model = psfmodel.copy()
+
+        assert_equal(new_model.data, psfmodel.data)
+        assert_equal(new_model.grid_xypos, psfmodel.grid_xypos)
+
         new_model.flux = 100
         assert new_model.flux.value != flux
         assert new_model._nddata is psfmodel._nddata
+
+        new_model.x_0.fixed = True
+        new_model.y_0.fixed = True
+        new_model2 = new_model.copy()
+        assert new_model2.x_0.fixed
+        assert new_model.fixed == new_model2.fixed
 
     def test_deepcopy(self, psfmodel):
         flux = psfmodel.flux.value

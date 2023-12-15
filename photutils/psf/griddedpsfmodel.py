@@ -446,14 +446,29 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
     def copy(self):
         """
-        Return a copy of this model.
+        Return a copy of this model where only the model parameters are
+        copied.
 
-        Note that the ePSF grid data is not copied. Use the `deepcopy`
-        method if you want to copy the ePSF grid data.
+        All other copied model attributes are references to the
+        original model. This prevents copying the ePSF grid data, which
+        may contain a large array.
+
+        This method is useful if one is interested in only changing
+        the model parameters in a model copy. It is used in the PSF
+        photometry classes during model fitting.
+
+        Use the `deepcopy` method if you want to copy all of the model
+        attributes, including the ePSF grid data.
         """
-        return self.__class__(self._nddata, flux=self.flux.value,
-                              x_0=self.x_0.value, y_0=self.y_0.value,
-                              fill_value=self.fill_value)
+        newcls = object.__new__(self.__class__)
+
+        for key, val in self.__dict__.items():
+            if key in self.param_names:  # copy only the parameter values
+                newcls.__dict__[key] = copy.deepcopy(val)
+            else:
+                newcls.__dict__[key] = val
+
+        return newcls
 
     def deepcopy(self):
         """
