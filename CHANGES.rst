@@ -7,6 +7,11 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - An ``init_params`` table is now included in the ``PSFPhotometry``
+    ``fit_results`` dictionary. [#1681]
+
 - ``photutils.datasets``
 
   - Improved the performance of ``make_test_psf_data`` when generating
@@ -36,7 +41,7 @@ API Changes
 - ``photutils.psf``
 
   - The ``GridddedPSFModel`` string representations now include the
-    model ``flux``, ``x_0``, and ``y_0`` parameters. [$1680]
+    model ``flux``, ``x_0``, and ``y_0`` parameters. [#1680]
 
 
 1.10.0 (2023-11-21)
