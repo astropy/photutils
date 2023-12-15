@@ -161,6 +161,12 @@ def test_psf_photometry(test_data):
     assert isinstance(resid_data, np.ndarray)
     assert resid_data.shape == data.shape
 
+    keys = ('local_bkg', 'init_params', 'fit_infos', 'fit_param_errs',
+            'fit_error_indices', 'npixfit', 'nmodels', 'psfcenter_indices',
+            'fit_residuals')
+    for key in keys:
+        assert key in psfphot.fit_results
+
     unit = u.Jy
     photu = psfphot(data * unit, error=error * unit)
     assert photu['flux_init'].unit == unit

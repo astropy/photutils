@@ -962,6 +962,7 @@ class PSFPhotometry:
                              'init_params')
 
         init_params = self._prepare_init_params(data, unit, mask, init_params)
+        self.fit_results['init_params'] = init_params
 
         if init_params is None:  # no sources detected
             # TODO: raise warning
