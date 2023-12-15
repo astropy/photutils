@@ -26,6 +26,10 @@ Bug Fixes
     raise an error with ``PSFPhotometry`` if the fit did not converge.
     [#1672]
 
+  - Fixed an issue where ``GriddedPSFModel`` fixed model parameters were
+    not respected when copying the model or fitting with the PSF
+    photometry classes. [#1679]
+
 API Changes
 ^^^^^^^^^^^
 
