@@ -421,8 +421,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         return data, grid_xypos
 
-    def __str__(self):
-        cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
+    def _cls_info(self):
         cls_info = []
 
         keys = ('STDPSF', 'instrument', 'detector', 'filter', 'grid_shape')
@@ -435,14 +434,10 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
                          ('ePSF shape (oversampled pixels)',
                           self.data.shape[1:]),
                          ('Oversampling', tuple(self.oversampling))])
+        return cls_info
 
-        with np.printoptions(threshold=25, edgeitems=5):
-            fmt = [f'{key}: {val}' for key, val in cls_info]
-
-        return f'{cls_name}\n' + '\n'.join(fmt)
-
-    def __repr__(self):
-        return self.__str__()
+    def __str__(self):
+        return self._format_str(keywords=self._cls_info())
 
     def copy(self):
         """

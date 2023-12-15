@@ -33,6 +33,11 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - The ``GridddedPSFModel`` string representations now include the
+    model ``flux``, ``x_0``, and ``y_0`` parameters. [$1680]
+
 
 1.10.0 (2023-11-21)
 -------------------

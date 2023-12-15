@@ -240,11 +240,19 @@ class TestGriddedPSFModel:
         assert psfmodel._cache_info().misses == 0
         assert psfmodel._cache_info().currsize == 0
 
-    def test_repr_str(self, psfmodel):
-        assert repr(psfmodel) == str(psfmodel)
+    def test_repr(self, psfmodel):
+        model_repr = repr(psfmodel)
+        assert '<GriddedPSFModel(' in model_repr
+        for param in psfmodel.param_names:
+            assert param in model_repr
+
+    def test_str(self, psfmodel):
+        model_str = str(psfmodel)
         keys = ('Grid_shape', 'Number of ePSFs', 'ePSF shape', 'Oversampling')
         for key in keys:
-            assert key in repr(psfmodel)
+            assert key in model_str
+        for param in psfmodel.param_names:
+            assert param in model_str
 
     def test_gridded_psf_oversampling(self, psfmodel):
         nddata = psfmodel._nddata
