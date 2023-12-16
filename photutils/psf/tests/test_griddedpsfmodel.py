@@ -209,7 +209,6 @@ class TestGriddedPSFModel:
 
         new_model.flux = 100
         assert new_model.flux.value != flux
-        assert new_model._nddata is psfmodel._nddata
 
         new_model.x_0.fixed = True
         new_model.y_0.fixed = True
@@ -255,7 +254,7 @@ class TestGriddedPSFModel:
             assert param in model_str
 
     def test_gridded_psf_oversampling(self, psfmodel):
-        nddata = psfmodel._nddata
+        nddata = NDData(psfmodel.data, meta=psfmodel.meta)
         nddata.meta['oversampling'] = [4, 4]
         psfmodel2 = GriddedPSFModel(nddata)
         assert_equal(psfmodel2.oversampling, psfmodel.oversampling)

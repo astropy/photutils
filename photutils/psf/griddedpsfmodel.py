@@ -345,9 +345,10 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     def __init__(self, nddata, *, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, fill_value=0.0):
 
-        self._nddata = self._validate_data(nddata)
+        self._validate_data(nddata)
         self.data, self.grid_xypos = self._define_grid(nddata)
-        self._meta = nddata.meta  # use _meta to avoid the meta descriptor
+        # use _meta to avoid the meta descriptor
+        self._meta = nddata.meta.copy()
         self.oversampling = as_pair('oversampling',
                                     nddata.meta['oversampling'],
                                     lower_bound=(0, 1))
@@ -392,8 +393,6 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         if 'oversampling' not in data.meta:
             raise ValueError('"oversampling" must be in the nddata meta '
                              'dictionary.')
-
-        return data
 
     def _define_grid(self, nddata):
         """
@@ -459,7 +458,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         for key, val in self.__dict__.items():
             if key in self.param_names:  # copy only the parameter values
-                newcls.__dict__[key] = copy.deepcopy(val)
+                newcls.__dict__[key] = copy.copy(val)
             else:
                 newcls.__dict__[key] = val
 
