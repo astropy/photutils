@@ -76,14 +76,19 @@ class PixelPositions(ApertureAttribute):
         if isinstance(value, zip):
             value = tuple(value)
 
-        value = np.asanyarray(value).astype(float)  # np.ndarray
-        self._validate(value)
+        value = self._validate(value)  # np.ndarray
         # no need to reset if not already in the instance dict
         if self.name in instance.__dict__:
             self._reset_lazyproperties(instance)
         instance.__dict__[self.name] = value
 
     def _validate(self, value):
+        try:
+            value = np.asanyarray(value).astype(float)  # np.ndarray
+        except TypeError:
+            # value is a zip object containing Quantity objects
+            raise TypeError(f'{self.name!r} must not be a Quantity')
+
         if isinstance(value, u.Quantity):
             raise TypeError(f'{self.name!r} must not be a Quantity')
 
@@ -91,11 +96,13 @@ class PixelPositions(ApertureAttribute):
             raise ValueError(f'{self.name!r} must not contain any non-finite '
                              '(e.g., NaN or inf) positions')
 
-        value = np.atleast_2d(value)
-        if value.ndim > 2 or value.shape[1] != 2:
+        value_2d = np.atleast_2d(value)
+        if value_2d.ndim > 2 or value_2d.shape[1] != 2:
             raise ValueError(f'{self.name!r} must be a (x, y) pixel position '
                              'or a list or array of (x, y) pixel positions, '
                              'e.g., [(x1, y1), (x2, y2), (x3, y3)]')
+
+        return value
 
 
 class SkyCoordPositions(ApertureAttribute):

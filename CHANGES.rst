@@ -38,6 +38,12 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - ``PixelAperture`` instances now raise an informative error message
+    when ``positions`` is input as a ``zip`` object containing Astropy
+    ``Quantity`` objects. [#1682]
+
 - ``photutils.psf``
 
   - The ``GridddedPSFModel`` string representations now include the
