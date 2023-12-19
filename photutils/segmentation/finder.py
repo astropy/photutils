@@ -5,6 +5,7 @@ This module provides tools for detecting sources in an image.
 
 from photutils.segmentation.deblend import deblend_sources
 from photutils.segmentation.detect import detect_sources
+from photutils.utils._parameters import as_pair
 
 __all__ = ['SourceFinder']
 
@@ -25,10 +26,15 @@ class SourceFinder:
 
     Parameters
     ----------
-    npixels : int
+    npixels : int or array-like of 2 int
         The minimum number of connected pixels, each greater than a
-        specified threshold, that an object must have to be detected.
-        ``npixels`` must be a positive integer.
+        specified threshold, that an object must have to be detected. If
+        ``npixels`` is an integer, then the value will be used for both
+        source detection and deblending (which internally uses source
+        detection at multiple thresholds). If ``npixels`` contains two
+        values, then the first value will be used for source detection
+        and the second value used for source deblending. ``npixels``
+        values must be positive integers.
 
     connectivity : {4, 8}, optional
         The type of pixel connectivity used in determining how pixels
@@ -148,7 +154,7 @@ class SourceFinder:
     def __init__(self, npixels, *, connectivity=8, deblend=True, nlevels=32,
                  contrast=0.001, mode='exponential', relabel=True, nproc=1,
                  progress_bar=True):
-        self.npixels = npixels
+        self.npixels = as_pair('npixels', npixels, check_odd=False)
         self.deblend = deblend
         self.connectivity = connectivity
         self.nlevels = nlevels
@@ -188,14 +194,14 @@ class SourceFinder:
             value of zero is reserved for the background. If no sources are
             found then `None` is returned.
         """
-        segment_img = detect_sources(data, threshold, self.npixels, mask=mask,
-                                     connectivity=self.connectivity)
+        segment_img = detect_sources(data, threshold, self.npixels[0],
+                                     mask=mask, connectivity=self.connectivity)
         if segment_img is None:
             return None
 
         # source deblending requires scikit-image
         if self.deblend:
-            segment_img = deblend_sources(data, segment_img, self.npixels,
+            segment_img = deblend_sources(data, segment_img, self.npixels[1],
                                           nlevels=self.nlevels,
                                           contrast=self.contrast,
                                           mode=self.mode,

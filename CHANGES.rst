@@ -17,6 +17,12 @@ New Features
   - Improved the performance of ``make_test_psf_data`` when generating
     random coordinates with a minimum separation. [#1668]
 
+- ``photutils.segmentation``
+
+  - The ``SourceFinder`` ``npixels`` keyword can now be a tuple
+    corresponding to the values used for the source finder and source
+    deblender, respectively. [#1688]
+
 - ``photutils.utils``
 
   - Improved the performance of ``ImageDepth`` when generating
