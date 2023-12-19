@@ -7,6 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.convolution import convolve
+from astropy.modeling.models import Gaussian2D
 
 from photutils.datasets import make_100gaussians_image
 from photutils.segmentation.finder import SourceFinder
@@ -55,3 +56,18 @@ class TestSourceFinder:
                           match='No sources were found'):
             segm = finder(self.convolved_data, 1000)
             assert segm is None
+
+    def test_npixels_tuple(self):
+        g1 = Gaussian2D(10, 35, 45, 5, 5)
+        g2 = Gaussian2D(10, 50, 50, 5, 5)
+        g3 = Gaussian2D(10, 66, 55, 5, 5)
+        yy, xx = np.mgrid[0:101, 0:101]
+        data = g1(xx, yy) + g2(xx, yy) + g3(xx, yy)
+
+        sf1 = SourceFinder(npixels=200)
+        segm1 = sf1(data, threshold=0.1)
+        assert segm1.nlabels == 1
+
+        sf2 = SourceFinder(npixels=(200, 5))
+        segm2 = sf2(data, threshold=0.1)
+        assert segm2.nlabels == 3
