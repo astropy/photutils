@@ -1027,22 +1027,27 @@ class PSFPhotometry:
 
         return source_tbl
 
-    def make_model_image(self, shape, psf_shape):
+    def make_model_image(self, shape, psf_shape, include_bkg=True):
         """
         Create a 2D image from the fit PSF models and local background.
 
         Parameters
         ----------
-        shape : 2 tuple of int
+        shape : tuple of int
             The shape of the output array.
 
-        psf_shape : 2 tuple of int
+        psf_shape : tuple of int
             The shape of region around the center of the fit model to
             render in the output image.
 
+        include_bkg : bool, optional
+            Whether to include the local background in the rendered
+            output image.
+            Default is True.
+
         Returns
         -------
-        array : 2D `~numpy.ndarray`
+        array : `numpy.ndarray`
             The rendered image from the fit PSF models.
         """
         fit_models = self._fit_models
@@ -1063,15 +1068,19 @@ class PSFPhotometry:
             y0 = getattr(fit_model, yname).value
             try:
                 slc_lg, _ = overlap_slices(shape, psf_shape, (y0, x0),
-                                           mode='trim')
+                                            mode='trim')
             except NoOverlapError:
                 continue
             yy, xx = np.mgrid[slc_lg]
-            data[slc_lg] += (fit_model(xx, yy) + local_bkg)
+            if include_bkg:
+                model = (fit_model(xx, yy) + local_bkg)
+            else:
+                model = fit_model(xx, yy)
+            data[slc_lg] += model
 
         return data
 
-    def make_residual_image(self, data, psf_shape):
+    def make_residual_image(self, data, psf_shape, include_bkg=True):
         """
         Create a 2D residual image from the fit PSF models and local
         background.
@@ -1087,6 +1096,11 @@ class PSFPhotometry:
             The shape of region around the center of the fit model to
             subtract.
 
+        include_bkg : bool, optional
+            Whether to include the local background in the subtracted
+            model.
+            Default is True.
+
         Returns
         -------
         array : 2D `~numpy.ndarray`
@@ -1095,13 +1109,13 @@ class PSFPhotometry:
         """
         if isinstance(data, NDData):
             residual = deepcopy(data)
-            residual.data[:] = self.make_residual_image(data.data, psf_shape)
+            residual.data[:] = self.make_residual_image(data.data, psf_shape, include_bkg)
         else:
             unit = None
             if isinstance(data, u.Quantity):
                 unit = data.unit
                 data = data.value
-            residual = self.make_model_image(data.shape, psf_shape)
+            residual = self.make_model_image(data.shape, psf_shape, include_bkg)
             np.subtract(data, residual, out=residual)
 
             if unit is not None:
