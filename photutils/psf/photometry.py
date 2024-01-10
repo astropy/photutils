@@ -1033,10 +1033,10 @@ class PSFPhotometry:
 
         Parameters
         ----------
-        shape : tuple of int
+        shape : 2 tuple of int
             The shape of the output array.
 
-        psf_shape : tuple of int
+        psf_shape : 2 tuple of int
             The shape of region around the center of the fit model to
             render in the output image.
 
@@ -1047,7 +1047,7 @@ class PSFPhotometry:
 
         Returns
         -------
-        array : `numpy.ndarray`
+        array : 2D `~numpy.ndarray`
             The rendered image from the fit PSF models.
         """
         fit_models = self._fit_models
@@ -1068,7 +1068,7 @@ class PSFPhotometry:
             y0 = getattr(fit_model, yname).value
             try:
                 slc_lg, _ = overlap_slices(shape, psf_shape, (y0, x0),
-                                            mode='trim')
+                                           mode='trim')
             except NoOverlapError:
                 continue
             yy, xx = np.mgrid[slc_lg]
