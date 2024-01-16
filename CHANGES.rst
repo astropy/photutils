@@ -158,9 +158,6 @@ API Changes
 
 - The metadata in output tables now contains a timestamp. [#1640]
 
-- Package versions in table metadata are now stored in the "versions"
-  key. [#1640]
-
 - The order of the metadata in a table is now preserved when writing to
   a file. [#1640]
 
