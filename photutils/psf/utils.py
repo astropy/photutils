@@ -276,9 +276,9 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
 
     Notes
     -----
-    By default, the model is discretized on a grid of size ``dx``
-    x ``dy`` from the model center with a subsampling factor of
-    ``subsample``. The model is then integrated over the grid using
+    To normalize the model, by default it is discretized on a grid of
+    size ``dx`` x ``dy`` from the model center with a subsampling factor
+    of ``subsample``. The model is then integrated over the grid using
     trapezoidal integration.
 
     If the ``use_dblquad`` keyword is set to `True`, then the model is
