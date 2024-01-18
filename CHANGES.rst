@@ -55,6 +55,11 @@ API Changes
   - The ``GridddedPSFModel`` string representations now include the
     model ``flux``, ``x_0``, and ``y_0`` parameters. [#1680]
 
+- ``photutils.segmentation``
+
+  - The ``SourceCatalog`` ``get_label`` and ``get_labels`` methods now
+    raise a ``ValueError`` if any of the input labels are invalid. [#1694]
+
 
 1.10.0 (2023-11-21)
 -------------------
