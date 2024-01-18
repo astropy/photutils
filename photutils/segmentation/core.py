@@ -419,7 +419,7 @@ class SegmentationImage:
         # check if label is in the segmentation array
         bad_labels.update(np.setdiff1d(labels, self.labels))
 
-        if bad_labels:
+        if bad_labels:  # bad_labels is a set
             if len(bad_labels) == 1:
                 raise ValueError(f'label {bad_labels} is invalid')
             raise ValueError(f'labels {bad_labels} are invalid')
