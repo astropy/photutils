@@ -916,6 +916,7 @@ class SourceCatalog:
             A new `SourceCatalog` object containing only the sources with
             the input ``labels``.
         """
+        self._segment_img.check_labels(labels)
         sorter = np.argsort(self.labels)
         indices = sorter[np.searchsorted(self.labels, labels, sorter=sorter)]
         return self[indices]
