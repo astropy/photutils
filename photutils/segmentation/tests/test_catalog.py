@@ -258,6 +258,13 @@ class TestSourceCatalog:
             obj1 = self.cat[0]
             obj2 = obj1[0]
 
+        match = 'is invalid'
+        with pytest.raises(ValueError, match=match):
+            self.cat.get_label(1000)
+
+        with pytest.raises(ValueError, match=match):
+            self.cat.get_labels([1, 2, 1000])
+
     def test_iter(self):
         labels = []
         for obj in self.cat:
