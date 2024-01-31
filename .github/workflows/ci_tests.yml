@@ -55,6 +55,12 @@ jobs:
             allow_failure: false
             prefix: ''
 
+          - os: macos-14
+            python: '3.11'
+            tox_env: 'py311-test-alldeps'
+            allow_failure: false
+            prefix: 'M1'
+
           - os: windows-latest
             python: '3.11'
             tox_env: 'py311-test-alldeps'
