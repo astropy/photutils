@@ -10,6 +10,7 @@ from contextlib import nullcontext
 import numpy as np
 import pytest
 from astropy.table import Table
+from astropy.utils import minversion
 from numpy.testing import assert_allclose
 
 from photutils.datasets import make_100gaussians_image
@@ -88,7 +89,10 @@ class TestIRAFStarFinder:
         if PYTEST_LT_80:
             ctx2 = nullcontext()
         else:
-            match2 = 'invalid value encountered in divide'
+            if not minversion(np, '1.23'):
+                match2 = 'invalid value encountered in true_divide'
+            else:
+                match2 = 'invalid value encountered in divide'
             ctx2 = pytest.warns(RuntimeWarning, match=match2)
         with ctx1, ctx2:
             starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.0)
