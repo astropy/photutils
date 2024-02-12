@@ -1107,14 +1107,14 @@ class PSFPhotometry:
         """
         if isinstance(data, NDData):
             residual = deepcopy(data)
-            residual.data[:] = self.make_residual_image(data.data, psf_shape, 
+            residual.data[:] = self.make_residual_image(data.data, psf_shape,
                                                         include_localbkg=include_localbkg)
         else:
             unit = None
             if isinstance(data, u.Quantity):
                 unit = data.unit
                 data = data.value
-            residual = self.make_model_image(data.shape, psf_shape, 
+            residual = self.make_model_image(data.shape, psf_shape,
                                              include_localbkg=include_localbkg)
             np.subtract(data, residual, out=residual)
 
