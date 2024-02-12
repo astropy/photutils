@@ -1109,7 +1109,8 @@ class PSFPhotometry:
         """
         if isinstance(data, NDData):
             residual = deepcopy(data)
-            residual.data[:] = self.make_residual_image(data.data, psf_shape, include_bkg)
+            residual.data[:] = self.make_residual_image(data.data, psf_shape, 
+                                                        include_localbkg=include_localbkg)
         else:
             unit = None
             if isinstance(data, u.Quantity):
