@@ -1072,11 +1072,9 @@ class PSFPhotometry:
             except NoOverlapError:
                 continue
             yy, xx = np.mgrid[slc_lg]
-            if include_bkg:
-                model = (fit_model(xx, yy) + local_bkg)
-            else:
-                model = fit_model(xx, yy)
-            data[slc_lg] += model
+            data[slc_lg] += fit_model(xx, yy)
+            if include_localbkg:
+                data[slc_lg] += local_bkg
 
         return data
 
