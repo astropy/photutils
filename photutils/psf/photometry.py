@@ -1080,7 +1080,7 @@ class PSFPhotometry:
 
         return data
 
-    def make_residual_image(self, data, psf_shape, include_bkg=True):
+    def make_residual_image(self, data, psf_shape, include_localbkg=True):
         """
         Create a 2D residual image from the fit PSF models and local
         background.
