@@ -1096,7 +1096,7 @@ class PSFPhotometry:
             The shape of region around the center of the fit model to
             subtract.
 
-        include_bkg : bool, optional
+        include_localbkg : bool, optional
             Whether to include the local background in the subtracted
             model.
             Default is True.
