@@ -1027,7 +1027,7 @@ class PSFPhotometry:
 
         return source_tbl
 
-    def make_model_image(self, shape, psf_shape, include_bkg=True):
+    def make_model_image(self, shape, psf_shape, include_localbkg=True):
         """
         Create a 2D image from the fit PSF models and local background.
 
