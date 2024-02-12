@@ -1115,7 +1115,8 @@ class PSFPhotometry:
             if isinstance(data, u.Quantity):
                 unit = data.unit
                 data = data.value
-            residual = self.make_model_image(data.shape, psf_shape, include_bkg)
+            residual = self.make_model_image(data.shape, psf_shape, 
+                                             include_localbkg=include_localbkg)
             np.subtract(data, residual, out=residual)
 
             if unit is not None:
