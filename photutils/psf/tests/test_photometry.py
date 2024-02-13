@@ -206,6 +206,44 @@ def test_psf_photometry(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_model_residual_image(test_data):
+    data, error, _ = test_data
+
+    data = data + 10
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(16.0, 2.0)
+    bkgstat = MMMBackground()
+    localbkg_estimator = LocalBackground(5, 10, bkgstat)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4,
+                            localbkg_estimator=localbkg_estimator)
+    psfphot(data, error=error)
+
+    psf_shape = (25, 25)
+    model1 = psfphot.make_model_image(data.shape, psf_shape,
+                                      include_localbkg=False)
+    model2 = psfphot.make_model_image(data.shape, psf_shape,
+                                      include_localbkg=True)
+    resid1 = psfphot.make_residual_image(data, psf_shape,
+                                         include_localbkg=False)
+    resid2 = psfphot.make_residual_image(data, psf_shape,
+                                         include_localbkg=True)
+
+    x, y = 0, 100
+    assert model1[y, x] < 0.1
+    assert model2[y, x] > 9
+    assert resid1[y, x] > 9
+    assert resid2[y, x] < 0
+
+    x, y = 0, 80
+    assert model1[y, x] < 0.1
+    assert model2[y, x] > 18
+    assert resid1[y, x] > 9
+    assert resid2[y, x] < -9
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_compound(test_data):
     """
     Test compound models output from ``make_psf_model``.
