@@ -156,6 +156,7 @@ def test_psf_photometry(test_data):
     phot = psfphot(data, error=error)
     resid_data = psfphot.make_residual_image(data, fit_shape)
 
+    assert isinstance(psfphot.finder_results, QTable)
     assert isinstance(phot, QTable)
     assert len(phot) == len(sources)
     assert isinstance(resid_data, np.ndarray)
