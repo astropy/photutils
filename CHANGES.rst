@@ -58,6 +58,11 @@ API Changes
   - The ``GridddedPSFModel`` string representations now include the
     model ``flux``, ``x_0``, and ``y_0`` parameters. [#1680]
 
+  - The PSF photometry ``make_model_image`` and ``make_residual_image``
+    methods no longer include the local background by default. This is a
+    backwards-incompatible change. If the previous behavior is desired,
+    set ``include_localbkg=True``. [#1703]
+
 - ``photutils.segmentation``
 
   - The ``SourceCatalog`` ``get_label`` and ``get_labels`` methods now
