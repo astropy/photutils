@@ -10,6 +10,7 @@ import warnings
 import numpy as np
 from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
 
+from photutils.utils._repr import make_repr
 from photutils.utils._stats import nanmean, nanmedian, nanstd
 
 SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
@@ -41,8 +42,7 @@ class BackgroundBase(metaclass=abc.ABCMeta):
         self.sigma_clip = sigma_clip
 
     def __repr__(self):
-        return (f'<{self.__class__.__name__}'
-                f'(sigma_clip={repr(self.sigma_clip)})>')
+        return make_repr(self, ('sigma_clip',))
 
     def __call__(self, data, axis=None, masked=False):
         return self.calc_background(data, axis=axis, masked=masked)
@@ -97,8 +97,7 @@ class BackgroundRMSBase(metaclass=abc.ABCMeta):
         self.sigma_clip = sigma_clip
 
     def __repr__(self):
-        return (f'<{self.__class__.__name__}'
-                f'(sigma_clip={repr(self.sigma_clip)})>')
+        return make_repr(self, ('sigma_clip',))
 
     def __call__(self, data, axis=None, masked=False):
         return self.calc_background_rms(data, axis=axis, masked=masked)
@@ -289,6 +288,10 @@ class ModeEstimatorBackground(BackgroundBase):
         self.median_factor = median_factor
         self.mean_factor = mean_factor
 
+    def __repr__(self):
+        params = ('median_factor', 'mean_factor', 'sigma_clip')
+        return make_repr(self, params)
+
     def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis, masked=False)
@@ -475,6 +478,10 @@ class BiweightLocationBackground(BackgroundBase):
         super().__init__(**kwargs)
         self.c = c
         self.M = M
+
+    def __repr__(self):
+        params = ('c', 'M', 'sigma_clip')
+        return make_repr(self, params)
 
     def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
@@ -663,6 +670,10 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
         super().__init__(**kwargs)
         self.c = c
         self.M = M
+
+    def __repr__(self):
+        params = ('c', 'M', 'sigma_clip')
+        return make_repr(self, params)
 
     def calc_background_rms(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:

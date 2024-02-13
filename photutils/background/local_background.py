@@ -8,6 +8,7 @@ import numpy as np
 
 from photutils.aperture import CircularAnnulus
 from photutils.background import MedianBackground
+from photutils.utils._repr import make_repr
 
 __all__ = ['LocalBackground']
 
@@ -40,6 +41,10 @@ class LocalBackground:
         self.outer_radius = outer_radius
         self.bkg_estimator = bkg_estimator
         self._aperture = CircularAnnulus((0, 0), inner_radius, outer_radius)
+
+    def __repr__(self):
+        params = ('inner_radius', 'outer_radius', 'bkg_estimator')
+        return make_repr(self, params)
 
     def __call__(self, data, x, y, mask=None):
         """
