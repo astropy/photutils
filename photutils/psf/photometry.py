@@ -1027,9 +1027,10 @@ class PSFPhotometry:
 
         return source_tbl
 
-    def make_model_image(self, shape, psf_shape, include_localbkg=True):
+    def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
         """
-        Create a 2D image from the fit PSF models and local background.
+        Create a 2D image from the fit PSF models and optional local
+        background.
 
         Parameters
         ----------
@@ -1042,8 +1043,11 @@ class PSFPhotometry:
 
         include_localbkg : bool, optional
             Whether to include the local background in the rendered
-            output image.
-            Default is True.
+            output image. Note that the local background level is
+            included around each source over the region defined by
+            ``psf_shape``. Thus, regions where the ``psf_shape`` of
+            sources overlap will have the local background added
+            multiple times.
 
         Returns
         -------
@@ -1078,7 +1082,7 @@ class PSFPhotometry:
 
         return data
 
-    def make_residual_image(self, data, psf_shape, include_localbkg=True):
+    def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
         """
         Create a 2D residual image from the fit PSF models and local
         background.
@@ -1096,8 +1100,10 @@ class PSFPhotometry:
 
         include_localbkg : bool, optional
             Whether to include the local background in the subtracted
-            model.
-            Default is True.
+            model. Note that the local background level is subtracted
+            around each source over the region defined by ``psf_shape``.
+            Thus, regions where the ``psf_shape`` of sources overlap
+            will have the local background subtracted multiple times.
 
         Returns
         -------
@@ -1107,8 +1113,8 @@ class PSFPhotometry:
         """
         if isinstance(data, NDData):
             residual = deepcopy(data)
-            residual.data[:] = self.make_residual_image(data.data, psf_shape,
-                                                        include_localbkg=include_localbkg)
+            residual.data[:] = self.make_residual_image(
+                data.data, psf_shape, include_localbkg=include_localbkg)
         else:
             unit = None
             if isinstance(data, u.Quantity):
