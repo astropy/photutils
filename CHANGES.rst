@@ -12,6 +12,9 @@ New Features
   - An ``init_params`` table is now included in the ``PSFPhotometry``
     ``fit_results`` dictionary. [#1681]
 
+  - Added an ``include_localbkg`` keyword to the PSF photometry
+    ``make_model_image`` and ``make_residual_image`` methods. [#1691]
+
 - ``photutils.datasets``
 
   - Improved the performance of ``make_test_psf_data`` when generating
