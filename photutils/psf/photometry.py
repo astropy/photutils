@@ -1027,7 +1027,7 @@ class PSFPhotometry:
 
         return source_tbl
 
-    def make_model_image(self, shape, psf_shape):
+    def make_model_image(self, shape, psf_shape, include_localbkg=True):
         """
         Create a 2D image from the fit PSF models and local background.
 
@@ -1039,6 +1039,11 @@ class PSFPhotometry:
         psf_shape : 2 tuple of int
             The shape of region around the center of the fit model to
             render in the output image.
+
+        include_localbkg : bool, optional
+            Whether to include the local background in the rendered
+            output image.
+            Default is True.
 
         Returns
         -------
@@ -1067,11 +1072,13 @@ class PSFPhotometry:
             except NoOverlapError:
                 continue
             yy, xx = np.mgrid[slc_lg]
-            data[slc_lg] += (fit_model(xx, yy) + local_bkg)
+            data[slc_lg] += fit_model(xx, yy)
+            if include_localbkg:
+                data[slc_lg] += local_bkg
 
         return data
 
-    def make_residual_image(self, data, psf_shape):
+    def make_residual_image(self, data, psf_shape, include_localbkg=True):
         """
         Create a 2D residual image from the fit PSF models and local
         background.
@@ -1087,6 +1094,11 @@ class PSFPhotometry:
             The shape of region around the center of the fit model to
             subtract.
 
+        include_localbkg : bool, optional
+            Whether to include the local background in the subtracted
+            model.
+            Default is True.
+
         Returns
         -------
         array : 2D `~numpy.ndarray`
@@ -1095,13 +1107,15 @@ class PSFPhotometry:
         """
         if isinstance(data, NDData):
             residual = deepcopy(data)
-            residual.data[:] = self.make_residual_image(data.data, psf_shape)
+            residual.data[:] = self.make_residual_image(data.data, psf_shape,
+                                                        include_localbkg=include_localbkg)
         else:
             unit = None
             if isinstance(data, u.Quantity):
                 unit = data.unit
                 data = data.value
-            residual = self.make_model_image(data.shape, psf_shape)
+            residual = self.make_model_image(data.shape, psf_shape,
+                                             include_localbkg=include_localbkg)
             np.subtract(data, residual, out=residual)
 
             if unit is not None:
