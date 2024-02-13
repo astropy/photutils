@@ -666,31 +666,30 @@ class Background2D:
             current `~matplotlib.axes.Axes` instance is used.
 
         marker : str, optional
-            The marker to use to mark the center of the boxes.  Default
-            is '+'.
+            The `matplotlib marker
+            <https://matplotlib.org/stable/api/markers_api.html>`_ to
+            use to mark the center of the boxes.
 
         markersize : float, optional
-            The marker size in points**2. The default is
+            The box center marker size in ``points ** 2``
+            (typographical points are 1/72 inch) . The default is
             ``matplotlib.rcParams['lines.markersize'] ** 2``. If set to
             0, then the box center markers will not be plotted.
 
         color : str, optional
-            The color for the markers and the box outlines.  Default is
-            'blue'.
+            The color for the box center markers and outlines.
 
         alpha : float, optional
             The alpha blending value, between 0 (transparent) and 1
-            (opaque). The blending applies to both the box center
-            markers and the outlines.
+            (opaque), for the box center markers and outlines.
 
         outlines : bool, optional
-            Whether or not to plot the box outlines in addition to the
-            box centers.
+            Whether or not to plot the box outlines.
 
         **kwargs : `dict`
             Any keyword arguments accepted by
-            `matplotlib.patches.Patch`.  Used only if ``outlines`` is
-            True.
+            `matplotlib.patches.Patch`, which is used to draw the box
+            outlines. Used only if ``outlines`` is True.
         """
         import matplotlib.pyplot as plt
 
