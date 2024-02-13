@@ -63,6 +63,9 @@ API Changes
     backwards-incompatible change. If the previous behavior is desired,
     set ``include_localbkg=True``. [#1703]
 
+  - The PSF photometry ``finder_results`` attribute is now returned as a
+    ``QTable`` instead of a list of ``QTable``. [#1704]
+
 - ``photutils.segmentation``
 
   - The ``SourceCatalog`` ``get_label`` and ``get_labels`` methods now

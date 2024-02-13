@@ -314,13 +314,13 @@ astropy table):
 
 .. doctest-requires:: scipy
 
-    >>> psfphot.finder_results[0]['xcentroid'].info.format = '.4f'  # optional format
-    >>> psfphot.finder_results[0]['ycentroid'].info.format = '.4f'  # optional format
-    >>> psfphot.finder_results[0]['sharpness'].info.format = '.4f'  # optional format
-    >>> psfphot.finder_results[0]['peak'].info.format = '.4f'
-    >>> psfphot.finder_results[0]['flux'].info.format = '.4f'
-    >>> psfphot.finder_results[0]['mag'].info.format = '.4f'
-    >>> print(psfphot.finder_results[0])  # doctest: +FLOAT_CMP
+    >>> psfphot.finder_results['xcentroid'].info.format = '.4f'  # optional format
+    >>> psfphot.finder_results['ycentroid'].info.format = '.4f'  # optional format
+    >>> psfphot.finder_results['sharpness'].info.format = '.4f'  # optional format
+    >>> psfphot.finder_results['peak'].info.format = '.4f'
+    >>> psfphot.finder_results['flux'].info.format = '.4f'
+    >>> psfphot.finder_results['mag'].info.format = '.4f'
+    >>> print(psfphot.finder_results)  # doctest: +FLOAT_CMP
      id xcentroid ycentroid sharpness ... sky   peak    flux    mag
     --- --------- --------- --------- ... --- ------- ------- -------
       1   54.5300    7.7508    0.5996 ... 0.0 67.0314  8.7012 -2.3490
