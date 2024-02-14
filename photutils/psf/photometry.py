@@ -1225,14 +1225,13 @@ class IterativePSFPhotometry:
         The maximum number of PSF-fitting/subtraction iterations to
         perform.
 
-    mode : {'new', 'subtract'}, optional
+    mode : {'new', 'all'}, optional
         For the 'new' mode, `PSFPhotometry` is run in each iteration
         only on the new sources detected in the residual image. For the
         'all' mode, `PSFPhotometry` is run in each iteration on all the
         detected sources (from all previous iterations) on the original,
-        unsubtracted, data. For the 'all' mode, it is recommended that
-        one input a source ``grouper``. See the Notes section for more
-        details.
+        unsubtracted, data. For the 'all' mode, a source ``grouper``
+        must be input. See the Notes section for more details.
 
     localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
         The object used to estimate the local background around each
@@ -1275,10 +1274,10 @@ class IterativePSFPhotometry:
     first `PSFPhotometry` run and the new sources detected in the
     residual image is created. `PSFPhotometry` is then run on the
     original, unsubtracted, data with this combined source list. This
-    allows the optional source grouper to combine close sources to
-    be fit simultaneously, improving the fit. Again, the process is
-    repeated until no new sources are detected or a maximum number of
-    iterations is reached.
+    allows the source ``grouper`` (whichi is required for the 'all'
+    mode) to combine close sources to be fit simultaneously, improving
+    the fit. Again, the process is repeated until no new sources are
+    detected or a maximum number of iterations is reached.
     """
 
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
@@ -1302,9 +1301,13 @@ class IterativePSFPhotometry:
                                      progress_bar=progress_bar)
 
         self.maxiters = self._validate_maxiters(maxiters)
+
         if mode not in ['new', 'all']:
             raise ValueError('mode must be "new" or "all".')
+        if mode == 'all' and grouper is None:
+            raise ValueError('grouper must be input for the "all" mode.')
         self.mode = mode
+
         if sub_shape is None:
             sub_shape = fit_shape
         self.sub_shape = as_pair('sub_shape', sub_shape, lower_bound=(0, 1),
