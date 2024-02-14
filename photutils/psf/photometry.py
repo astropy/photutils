@@ -1469,14 +1469,22 @@ class IterativePSFPhotometry:
         array : 2D `~numpy.ndarray`
             The rendered image from the fit PSF models.
         """
-        fit_models = []
-        local_bkgs = []
-        for psfphot in self.fit_results:
-            fit_models.append(psfphot._fit_models)
-            local_bkgs.append(psfphot.fit_results['local_bkg'])
+        if self.mode == 'new':
+            # collect the fit models and local backgrounds from each
+            # iteration
+            fit_models = []
+            local_bkgs = []
+            for psfphot in self.fit_results:
+                fit_models.append(psfphot._fit_models)
+                local_bkgs.append(psfphot.fit_results['local_bkg'])
 
-        fit_models = _flatten(fit_models)
-        local_bkgs = _flatten(local_bkgs)
+            fit_models = _flatten(fit_models)
+            local_bkgs = _flatten(local_bkgs)
+        else:
+            # use only the fit models and local backgrounds from the
+            # final iteration, which includes all sources
+            fit_models = self.fit_results[-1]._fit_models
+            local_bkgs = self.fit_results[-1].fit_results['local_bkg']
 
         data = np.zeros(shape)
         xname, yname = self.fit_results[0]._psf_param_names[0:2]
