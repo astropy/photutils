@@ -29,3 +29,6 @@ def test_local_background():
 
     with pytest.raises(ValueError):
         _ = local_bkg(data, x[2], np.inf)
+
+    cls_repr = repr(local_bkg)
+    assert cls_repr.startswith(local_bkg.__class__.__name__)
