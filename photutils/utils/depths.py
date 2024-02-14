@@ -12,6 +12,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._coords import apply_separation
 from photutils.utils._progress_bars import add_progress_bar
+from photutils.utils._repr import make_repr
 from photutils.utils.footprints import circular_footprint
 
 __all__ = ['ImageDepth']
@@ -217,6 +218,12 @@ class ImageDepth:
         self.fluxes = []
         self.flux_limits = np.array([])
         self.mag_limits = np.array([])
+
+    def __repr__(self):
+        params = ('aper_radius', 'nsigma', 'mask_pad', 'napers', 'niters',
+                  'overlap', 'overlap_maxiters', 'seed', 'zeropoint',
+                  'sigma_clip', 'progress_bar')
+        return make_repr(self, params)
 
     def __call__(self, data, mask):
         """

@@ -18,6 +18,7 @@ from photutils.background.core import SExtractorBackground, StdBackgroundRMS
 from photutils.background.interpolators import BkgZoomInterpolator
 from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._parameters import as_pair
+from photutils.utils._repr import make_repr
 from photutils.utils._stats import nanmedian
 
 __all__ = ['Background2D']
@@ -228,6 +229,17 @@ class Background2D:
         self._bkgrms_stats = None
 
         self._prepare_box_data()
+
+        self._params = ('data', 'box_size', 'mask', 'coverage_mask',
+                        'fill_value', 'exclude_percentile', 'filter_size',
+                        'filter_threshold', 'edge_method', 'sigma_clip',
+                        'bkg_estimator', 'bkgrms_estimator', 'interpolator')
+
+    def __repr__(self):
+        return make_repr(self, self._params, ellipsis=('data',))
+
+    def __str__(self):
+        return make_repr(self, self._params, ellipsis=('data',), long=True)
 
     def _validate_array(self, array, name, shape=True):
         if name in ('mask', 'coverage_mask') and array is np.ma.nomask:

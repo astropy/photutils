@@ -6,6 +6,7 @@ This module provides tools for detecting sources in an image.
 from photutils.segmentation.deblend import deblend_sources
 from photutils.segmentation.detect import detect_sources
 from photutils.utils._parameters import as_pair
+from photutils.utils._repr import make_repr
 
 __all__ = ['SourceFinder']
 
@@ -163,6 +164,11 @@ class SourceFinder:
         self.relabel = relabel
         self.nproc = nproc
         self.progress_bar = progress_bar
+
+    def __repr__(self):
+        params = ('npixels', 'deblend', 'connectivity', 'nlevels', 'contrast',
+                  'mode', 'relabel', 'nproc', 'progress_bar')
+        return make_repr(self, params)
 
     def __call__(self, data, threshold, mask=None):
         """

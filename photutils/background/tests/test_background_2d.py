@@ -346,6 +346,12 @@ class TestBackground2D:
         assert_allclose(bkg.background_rms_median, 0.0)
         assert_allclose(bkg.background_mesh.shape, (4, 5))
 
+    def test_repr(self):
+        data = np.ones((300, 500))
+        bkg = Background2D(data, (74, 99), edge_method='crop')
+        cls_repr = repr(bkg)
+        assert cls_repr.startswith(f'{bkg.__class__.__name__}')
+
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_bkgzoominterp_clip():

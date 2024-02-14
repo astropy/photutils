@@ -71,3 +71,9 @@ class TestSourceFinder:
         sf2 = SourceFinder(npixels=(200, 5))
         segm2 = sf2(data, threshold=0.1)
         assert segm2.nlabels == 3
+
+    def test_repr(self):
+        finder = SourceFinder(npixels=self.npixels, deblend=False,
+                              progress_bar=False)
+        cls_repr = repr(finder)
+        assert cls_repr.startswith(finder.__class__.__name__)

@@ -6,6 +6,7 @@ This module defines interpolator classes for Background2D.
 import numpy as np
 
 from photutils.utils import ShepardIDWInterpolator
+from photutils.utils._repr import make_repr
 
 __all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator']
 
@@ -58,6 +59,10 @@ class BkgZoomInterpolator:
         self.cval = cval
         self.grid_mode = grid_mode
         self.clip = clip
+
+    def __repr__(self):
+        params = ('order', 'mode', 'cval', 'grid_mode', 'clip')
+        return make_repr(self, params)
 
     def __call__(self, mesh, bkg2d_obj):
         """
@@ -138,6 +143,10 @@ class BkgIDWInterpolator:
         self.n_neighbors = n_neighbors
         self.power = power
         self.reg = reg
+
+    def __repr__(self):
+        params = ('leafsize', 'n_neighbors', 'power', 'reg')
+        return make_repr(self, params)
 
     def __call__(self, mesh, bkg2d_obj):
         """
