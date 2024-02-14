@@ -1440,10 +1440,21 @@ class IterativePSFPhotometry:
             iter_detected = np.concatenate((iter_detected, iter_det))
 
             if self.mode == 'all':
+                # measure initial fluxes for the new sources from the
+                # residual data
+                flux = self.psfphot._get_aper_fluxes(residual_data, mask,
+                                                     new_sources)
+                unit = getattr(data, 'unit', None)
+                if unit is not None:
+                    flux <<= unit
+                fluxcol = self.psfphot._init_colnames['flux']
+                new_sources[fluxcol] = flux
+
                 # combine source tables and re-fit on the original data
-                orig_sources = phot_tbl['x_fit', 'y_fit', 'iter_detected']
+                orig_sources = phot_tbl['x_fit', 'y_fit', 'flux_fit']
                 orig_sources.rename_column('x_fit', xcol)
                 orig_sources.rename_column('y_fit', ycol)
+                orig_sources.rename_column('flux_fit', fluxcol)
                 init_params = vstack([orig_sources, new_sources])
 
                 residual_data = data
