@@ -840,6 +840,53 @@ class PSFPhotometry:
 
         return flags
 
+    def _prepare_fit_inputs(self, data, *, mask=None, error=None,
+                            init_params=None):
+        """
+        Prepare inputs for PSF fitting.
+
+        Tasks:
+            * Checks array input shapes and units.
+            * Calculates a total mask
+            * Validates inputs for init_params and aperture_radius
+            * Prepares initial parameters table
+              - Runs source finder if needed
+              - Runs aperture photometry if needed
+              - Runs local background estimation if needed
+              - Groups sources if needed
+        """
+        (data, error), unit = process_quantities((data, error),
+                                                 ('data', 'error'))
+        data = self._validate_array(data, 'data')
+        mask = self._validate_array(mask, 'mask', data_shape=data.shape)
+        mask = self._make_mask(data, mask)
+        init_params = self._validate_init_params(init_params, unit)  # copies
+
+        if (self.aperture_radius is None
+            and (init_params is None
+                 or self._init_colnames['flux'] not in init_params.colnames)):
+            raise ValueError('aperture_radius must be defined if init_params '
+                             'is not input or if a flux column is not in '
+                             'init_params')
+
+        init_params = self._prepare_init_params(data, unit, mask, init_params)
+        self.fit_results['init_params'] = init_params
+
+        if init_params is None:  # no sources detected
+            # TODO: raise warning
+            return None
+
+        _, counts = np.unique(init_params['group_id'], return_counts=True)
+        if max(counts) > 25:
+            warnings.warn('Some groups have more than 25 sources. Fitting '
+                          'such groups may take a long time and be '
+                          'error-prone. You may want to consider using '
+                          'different `SourceGrouper` parameters or '
+                          'changing the "group_id" column in "init_params".',
+                          AstropyUserWarning)
+
+        return data, mask, error, init_params, unit
+
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         """
         Perform PSF photometry.
@@ -947,36 +994,17 @@ class PSFPhotometry:
         # reset results from previous runs
         self._reset_results()
 
-        (data, error), unit = process_quantities((data, error),
-                                                 ('data', 'error'))
-        data = self._validate_array(data, 'data')
-        mask = self._validate_array(mask, 'mask', data_shape=data.shape)
-        mask = self._make_mask(data, mask)
-        init_params = self._validate_init_params(init_params, unit)  # copies
-
-        if (self.aperture_radius is None
-            and (init_params is None
-                 or self._init_colnames['flux'] not in init_params.colnames)):
-            raise ValueError('aperture_radius must be defined if init_params '
-                             'is not input or if a flux column is not in '
-                             'init_params')
-
-        init_params = self._prepare_init_params(data, unit, mask, init_params)
-        self.fit_results['init_params'] = init_params
-
-        if init_params is None:  # no sources detected
-            # TODO: raise warning
+        # Prepare fit inputs, including defining the initial source
+        # parameters. This also runs the source finder, aperture
+        # photometry, local background estimator, and source grouper, if
+        # needed.
+        fit_inputs = self._prepare_fit_inputs(data, mask=mask, error=error,
+                                              init_params=init_params)
+        if fit_inputs is None:
             return None
 
-        _, counts = np.unique(init_params['group_id'], return_counts=True)
-        if max(counts) > 25:
-            warnings.warn('Some groups have more than 25 sources. Fitting '
-                          'such groups may take a long time and be '
-                          'error-prone. You may want to consider using '
-                          'different `SourceGrouper` parameters or '
-                          'changing the "group_id" column in "init_params".',
-                          AstropyUserWarning)
-
+        # fit the sources
+        data, mask, error, init_params, unit = fit_inputs
         fit_models = self._fit_sources(data, init_params, error=error,
                                        mask=mask)
 
