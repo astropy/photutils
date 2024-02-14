@@ -136,3 +136,10 @@ class TestImageDepth:
             ImageDepth(12.4, nsigma=5.0, napers=500, niters=2,
                        mask_pad=-7.1, overlap=True, seed=123, zeropoint=23.9,
                        progress_bar=False)
+
+    def test_repr(self):
+        depth = ImageDepth(aper_radius=4, nsigma=5.0, napers=100, niters=2,
+                           overlap=False, seed=123, zeropoint=23.9,
+                           progress_bar=False)
+        cls_repr = repr(depth)
+        assert cls_repr.startswith(f'{depth.__class__.__name__}')
