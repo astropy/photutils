@@ -131,13 +131,13 @@ class PSFPhotometry:
         self.progress_bar = progress_bar
 
         # reset these attributes for each __call__ (see _reset_results)
-        self.finder_results = []
+        self.finder_results = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
         self._fit_models = None
 
     def _reset_results(self):
-        self.finder_results = []
+        self.finder_results = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
         self._fit_models = None
@@ -378,7 +378,7 @@ class PSFPhotometry:
                                  'is not input')
 
             sources = self.finder(data, mask=mask)
-            self.finder_results.append(sources)
+            self.finder_results = sources
             if sources is None:
                 return None
 
