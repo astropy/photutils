@@ -15,6 +15,9 @@ New Features
   - Added an ``include_localbkg`` keyword to the PSF photometry
     ``make_model_image`` and ``make_residual_image`` methods. [#1691]
 
+  - Significantly reduced the memory usage of PSF photometry when using
+    a ``GriddedPSFModel`` PSF model. [#1679]
+
 - ``photutils.datasets``
 
   - Improved the performance of ``make_test_psf_data`` when generating
