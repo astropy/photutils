@@ -840,6 +840,53 @@ class PSFPhotometry:
 
         return flags
 
+    def _prepare_fit_inputs(self, data, *, mask=None, error=None,
+                            init_params=None):
+        """
+        Prepare inputs for PSF fitting.
+
+        Tasks:
+            * Checks array input shapes and units.
+            * Calculates a total mask
+            * Validates inputs for init_params and aperture_radius
+            * Prepares initial parameters table
+              - Runs source finder if needed
+              - Runs aperture photometry if needed
+              - Runs local background estimation if needed
+              - Groups sources if needed
+        """
+        (data, error), unit = process_quantities((data, error),
+                                                 ('data', 'error'))
+        data = self._validate_array(data, 'data')
+        mask = self._validate_array(mask, 'mask', data_shape=data.shape)
+        mask = self._make_mask(data, mask)
+        init_params = self._validate_init_params(init_params, unit)  # copies
+
+        if (self.aperture_radius is None
+            and (init_params is None
+                 or self._init_colnames['flux'] not in init_params.colnames)):
+            raise ValueError('aperture_radius must be defined if init_params '
+                             'is not input or if a flux column is not in '
+                             'init_params')
+
+        init_params = self._prepare_init_params(data, unit, mask, init_params)
+        self.fit_results['init_params'] = init_params
+
+        if init_params is None:  # no sources detected
+            # TODO: raise warning
+            return None
+
+        _, counts = np.unique(init_params['group_id'], return_counts=True)
+        if max(counts) > 25:
+            warnings.warn('Some groups have more than 25 sources. Fitting '
+                          'such groups may take a long time and be '
+                          'error-prone. You may want to consider using '
+                          'different `SourceGrouper` parameters or '
+                          'changing the "group_id" column in "init_params".',
+                          AstropyUserWarning)
+
+        return data, mask, error, init_params, unit
+
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         """
         Perform PSF photometry.
@@ -947,36 +994,17 @@ class PSFPhotometry:
         # reset results from previous runs
         self._reset_results()
 
-        (data, error), unit = process_quantities((data, error),
-                                                 ('data', 'error'))
-        data = self._validate_array(data, 'data')
-        mask = self._validate_array(mask, 'mask', data_shape=data.shape)
-        mask = self._make_mask(data, mask)
-        init_params = self._validate_init_params(init_params, unit)  # copies
-
-        if (self.aperture_radius is None
-            and (init_params is None
-                 or self._init_colnames['flux'] not in init_params.colnames)):
-            raise ValueError('aperture_radius must be defined if init_params '
-                             'is not input or if a flux column is not in '
-                             'init_params')
-
-        init_params = self._prepare_init_params(data, unit, mask, init_params)
-        self.fit_results['init_params'] = init_params
-
-        if init_params is None:  # no sources detected
-            # TODO: raise warning
+        # Prepare fit inputs, including defining the initial source
+        # parameters. This also runs the source finder, aperture
+        # photometry, local background estimator, and source grouper, if
+        # needed.
+        fit_inputs = self._prepare_fit_inputs(data, mask=mask, error=error,
+                                              init_params=init_params)
+        if fit_inputs is None:
             return None
 
-        _, counts = np.unique(init_params['group_id'], return_counts=True)
-        if max(counts) > 25:
-            warnings.warn('Some groups have more than 25 sources. Fitting '
-                          'such groups may take a long time and be '
-                          'error-prone. You may want to consider using '
-                          'different `SourceGrouper` parameters or '
-                          'changing the "group_id" column in "init_params".',
-                          AstropyUserWarning)
-
+        # fit the sources
+        data, mask, error, init_params, unit = fit_inputs
         fit_models = self._fit_sources(data, init_params, error=error,
                                        mask=mask)
 
@@ -1134,11 +1162,13 @@ class IterativePSFPhotometry:
     """
     Class to iteratively perform PSF photometry.
 
-    This class implements a flexible PSF photometry algorithm that can
-    find sources in an image, group overlapping sources, fit the PSF
-    model to the sources, subtract the fit PSF models from the image,
-    and then repeat until no more stars are detected or a given number
-    of maximum iterations is reached.
+    This is a convenience class that iteratively calls the
+    `PSFPhotometry` class to perform PSF photometry on an input image.
+    It can be useful for crowded fields where faint stars are very
+    close to bright stars and are not detected in the first pass of
+    PSF photometry. For complex cases, one may need to manually run
+    `PSFPhotometry` in an iterative manner and inspect the residual
+    image after each iteration.
 
     Parameters
     ----------
@@ -1195,6 +1225,14 @@ class IterativePSFPhotometry:
         The maximum number of PSF-fitting/subtraction iterations to
         perform.
 
+    mode : {'new', 'all'}, optional
+        For the 'new' mode, `PSFPhotometry` is run in each iteration
+        only on the new sources detected in the residual image. For the
+        'all' mode, `PSFPhotometry` is run in each iteration on all the
+        detected sources (from all previous iterations) on the original,
+        unsubtracted, data. For the 'all' mode, a source ``grouper``
+        must be input. See the Notes section for more details.
+
     localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
         The object used to estimate the local background around each
         source.  If `None`, then no local background is subtracted.  The
@@ -1219,11 +1257,32 @@ class IterativePSFPhotometry:
         <https://tqdm.github.io/>`_ optional dependency be installed.
         Note that the progress bar does not currently work in the
         Jupyter console due to limitations in ``tqdm``.
+
+    Notes
+    -----
+    This class has two modes of operation: 'new' and 'all'. For both
+    modes, `PSFPhotometry` is first run on the data, a residual image
+    is created, and the source finder is run on the residual image to
+    detect any new sources.
+
+    In the 'new' mode, `PSFPhotometry` is then run on the residual image
+    to fit the PSF model to the new sources. The process is repeated
+    until no new sources are detected or a maximum number of iterations
+    is reached.
+
+    In the 'all' mode, a new source list combining the sources from
+    first `PSFPhotometry` run and the new sources detected in the
+    residual image is created. `PSFPhotometry` is then run on the
+    original, unsubtracted, data with this combined source list. This
+    allows the source ``grouper`` (whichi is required for the 'all'
+    mode) to combine close sources to be fit simultaneously, improving
+    the fit. Again, the process is repeated until no new sources are
+    detected or a maximum number of iterations is reached.
     """
 
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
                  fitter=LevMarLSQFitter(), fitter_maxiters=100, maxiters=3,
-                 localbkg_estimator=None, aperture_radius=None,
+                 mode='new', localbkg_estimator=None, aperture_radius=None,
                  sub_shape=None, progress_bar=False):
 
         if finder is None:
@@ -1234,8 +1293,6 @@ class IterativePSFPhotometry:
             raise ValueError('aperture_radius cannot be None for '
                              'IterativePSFPhotometry.')
 
-        self.maxiters = self._validate_maxiters(maxiters)
-
         self.psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                                      grouper=grouper, fitter=fitter,
                                      fitter_maxiters=fitter_maxiters,
@@ -1243,11 +1300,20 @@ class IterativePSFPhotometry:
                                      aperture_radius=aperture_radius,
                                      progress_bar=progress_bar)
 
-        self.fit_results = []
+        self.maxiters = self._validate_maxiters(maxiters)
+
+        if mode not in ['new', 'all']:
+            raise ValueError('mode must be "new" or "all".')
+        if mode == 'all' and grouper is None:
+            raise ValueError('grouper must be input for the "all" mode.')
+        self.mode = mode
+
         if sub_shape is None:
             sub_shape = fit_shape
         self.sub_shape = as_pair('sub_shape', sub_shape, lower_bound=(0, 1),
                                  check_odd=True)
+
+        self.fit_results = []
 
     @staticmethod
     def _validate_maxiters(maxiters):
@@ -1344,13 +1410,12 @@ class IterativePSFPhotometry:
         """
         phot_tbl = self.psfphot(data, mask=mask, error=error,
                                 init_params=init_params)
+        self.fit_results.append(deepcopy(self.psfphot))
         if phot_tbl is None:
             return None
-        self.fit_results.append(deepcopy(self.psfphot))
 
         phot_tbl['iter_detected'] = 1
-
-        resid = []
+        iter_detected = np.ones(len(phot_tbl), dtype=int)
 
         iter_num = 2
         while iter_num <= self.maxiters and phot_tbl is not None:
@@ -1361,34 +1426,70 @@ class IterativePSFPhotometry:
                 residual_data = self.psfphot.make_residual_image(
                     residual_data, self.sub_shape)
 
-            resid.append(residual_data)
-
             # do not warn if no sources are found beyond the first iteration
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', NoDetectionsWarning)
-                new_tbl = self.psfphot(residual_data, mask=mask, error=error,
-                                       init_params=None)
 
-            if new_tbl is None:  # no new sources detected
-                break
+                new_sources = self.psfphot.finder(residual_data, mask=mask)
+                if new_sources is None:  # no new sources detected
+                    break
 
+            xcol = self.psfphot._init_colnames['x']
+            ycol = self.psfphot._init_colnames['y']
+            new_sources = new_sources['xcentroid', 'ycentroid']
+            new_sources.rename_column('xcentroid', xcol)
+            new_sources.rename_column('ycentroid', ycol)
+            iter_det = np.ones(len(new_sources), dtype=int) * iter_num
+            iter_detected = np.concatenate((iter_detected, iter_det))
+
+            if self.mode == 'all':
+                # measure initial fluxes for the new sources from the
+                # residual data
+                flux = self.psfphot._get_aper_fluxes(residual_data, mask,
+                                                     new_sources)
+                unit = getattr(data, 'unit', None)
+                if unit is not None:
+                    flux <<= unit
+                fluxcol = self.psfphot._init_colnames['flux']
+                new_sources[fluxcol] = flux
+
+                # combine source tables and re-fit on the original data
+                orig_sources = phot_tbl['x_fit', 'y_fit', 'flux_fit']
+                orig_sources.rename_column('x_fit', xcol)
+                orig_sources.rename_column('y_fit', ycol)
+                orig_sources.rename_column('flux_fit', fluxcol)
+                init_params = vstack([orig_sources, new_sources])
+
+                residual_data = data
+            elif self.mode == 'new':
+                # fit new sources on the residual data
+                init_params = new_sources
+
+            new_tbl = self.psfphot(residual_data, mask=mask, error=error,
+                                   init_params=init_params)
+            self.psfphot.finder_results = new_sources
             self.fit_results.append(deepcopy(self.psfphot))
 
-            new_tbl['iter_detected'] = iter_num
-            new_tbl['id'] += np.max(phot_tbl['id'])
-            new_tbl['group_id'] += np.max(phot_tbl['group_id'])
-            new_tbl.meta = {}  # prevent merge conflicts
+            if self.mode == 'all':
+                new_tbl['iter_detected'] = iter_detected
+                phot_tbl = new_tbl
 
-            # combine tables
-            phot_tbl = vstack([phot_tbl, new_tbl])
+            elif self.mode == 'new':
+                # combine tables
+                new_tbl['iter_detected'] = iter_num
+                new_tbl['id'] += np.max(phot_tbl['id'])
+                new_tbl['group_id'] += np.max(phot_tbl['group_id'])
+                new_tbl.meta = {}  # prevent merge conflicts
+                phot_tbl = vstack([phot_tbl, new_tbl])
 
             iter_num += 1
 
         # re-order 'iter_detected' column
-        colnames = phot_tbl.colnames.copy()
-        colnames.insert(2, 'iter_detected')
-        colnames = colnames[:-1]
-        phot_tbl = phot_tbl[colnames]
+        if 'iter_detected' in phot_tbl.colnames:
+            colnames = phot_tbl.colnames.copy()
+            colnames.insert(2, 'iter_detected')
+            colnames = colnames[:-1]
+            phot_tbl = phot_tbl[colnames]
 
         return phot_tbl
 
@@ -1410,14 +1511,22 @@ class IterativePSFPhotometry:
         array : 2D `~numpy.ndarray`
             The rendered image from the fit PSF models.
         """
-        fit_models = []
-        local_bkgs = []
-        for psfphot in self.fit_results:
-            fit_models.append(psfphot._fit_models)
-            local_bkgs.append(psfphot.fit_results['local_bkg'])
+        if self.mode == 'new':
+            # collect the fit models and local backgrounds from each
+            # iteration
+            fit_models = []
+            local_bkgs = []
+            for psfphot in self.fit_results:
+                fit_models.append(psfphot._fit_models)
+                local_bkgs.append(psfphot.fit_results['local_bkg'])
 
-        fit_models = _flatten(fit_models)
-        local_bkgs = _flatten(local_bkgs)
+            fit_models = _flatten(fit_models)
+            local_bkgs = _flatten(local_bkgs)
+        else:
+            # use only the fit models and local backgrounds from the
+            # final iteration, which includes all sources
+            fit_models = self.fit_results[-1]._fit_models
+            local_bkgs = self.fit_results[-1].fit_results['local_bkg']
 
         data = np.zeros(shape)
         xname, yname = self.fit_results[0]._psf_param_names[0:2]
