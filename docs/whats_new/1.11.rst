@@ -1,0 +1,64 @@
+.. doctest-skip-all
+
+*****************************
+What's New in Photutils 1.11?
+*****************************
+
+Here we highlight some of the new functionality of the 1.11 release.
+In addition to these changes, Photutils 1.11 includes a large number
+of smaller improvements and bug fixes, which are described in the full
+:ref:`changelog`.
+
+
+``SourceFinder`` ``npixels`` tuple input
+----------------------------------------
+
+The `~photutils.segmentation.SourceFinder` ``npixels`` keyword can now
+be a tuple corresponding to the values used for the source finder and
+source deblender, respectively.
+
+
+``GriddedPSFModel`` Memory Usage
+--------------------------------
+
+The memory usage during PSF photometry when using a
+`~photutils.psf.GriddedPSFModel` PSF model has been significantly
+reduced. This is especially noticeable when fitting a large number of
+stars.
+
+
+New ``IterativePSFPhotometry`` ``mode`` keyword
+-----------------------------------------------
+
+A ``mode`` keyword was added to `~photutils.psf.IterativePSFPhotometry`
+for controlling the fitting mode. The ``mode`` keyword can
+be set to 'new' or 'all'.
+
+For the 'new' mode (default), PSF photometry is run in each
+iteration only on the new sources detected in the residual
+image. The 'new' mode preserves the previous behavior of
+`~photutils.psf.IterativePSFPhotometry`.
+
+For the 'all' mode, PSF photometry is run in each iteration on all
+the detected sources (from all previous iterations) on the original,
+unsubtracted, data. For the 'all' mode, a source grouper must be input.
+
+Initial tests indicate that the 'all' mode may give better results than
+the older 'new' method.
+
+
+New ``include_localbkg`` keyword
+--------------------------------
+
+The PSF photometry ``make_model_image`` and ``make_residual_image``
+methods no longer include the local background by default, which
+causes issues if the ``psf_shape`` of sources overlap. This is
+a backwards-incompatible change. These methods now accept an
+``include_localbkg`` keyword . If the previous behavior is desired, set
+``include_localbkg=True``.
+
+
+Other changes
+=============
+
+Please see the :ref:`changelog` for the complete list of changes.
