@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from astropy.modeling.fitting import LMLSQFitter, SimplexLSQFitter
 from astropy.modeling.models import Gaussian2D
-from astropy.nddata import NDData, StdDevUncertainty
+from astropy.nddata import NDData, StdDevUncertainty, overlap_slices
 from astropy.table import QTable, Table
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
@@ -617,6 +617,63 @@ def test_iterative_psf_photometry(test_data):
     with pytest.warns(NoDetectionsWarning):
         phot = psfphot(data, error=error)
         assert phot is None
+
+
+def make_psf_model_image(shape, psf_model, param_table, psf_shape):
+    model_params = param_table.colnames
+    data = np.zeros(shape, dtype=float)
+    for row in param_table:
+        for param in model_params:
+            setattr(psf_model, param, row[param])
+        xcen = row['x_0']
+        ycen = row['y_0']
+        slc_lg, _ = overlap_slices(shape, psf_shape, (ycen, xcen), mode='trim')
+        yy, xx = np.mgrid[slc_lg]
+        data[slc_lg] += psf_model(xx, yy)
+    return data
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_iterative_psf_photometry_all():
+    sources = QTable()
+    sources['x_0'] = [50, 45, 55, 27, 22, 77, 82]
+    sources['y_0'] = [50, 52, 48, 27, 30, 77, 79]
+    sources['flux'] = [1000, 100, 50, 1000, 100, 1000, 100]
+
+    shape = (101, 101)
+    psf_model = IntegratedGaussianPRF(flux=500, sigma=4.0)
+    psf_shape = (41, 41)
+    data = make_psf_model_image(shape, psf_model, sources, psf_shape)
+
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(0.2, 6.0)
+    sub_shape = psf_shape
+    grouper = SourceGrouper(10)
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                     grouper=grouper, aperture_radius=4,
+                                     sub_shape=sub_shape, mode='all',
+                                     maxiters=3)
+    phot = psfphot(data)
+
+    assert len(phot) == 7
+    assert_equal(phot['group_id'], [1, 2, 3, 1, 2, 2, 3])
+    assert_equal(phot['iter_detected'], [1, 1, 1, 2, 2, 2, 2])
+    assert_allclose(phot['flux_fit'], [1000, 1000, 1000, 100, 50, 100, 100])
+
+    resid = psfphot.make_residual_image(data, sub_shape)
+    assert_allclose(resid, 0, atol=1e-6)
+
+    match = 'mode must be "new" or "all".'
+    with pytest.raises(ValueError, match=match):
+        psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                         grouper=grouper, aperture_radius=4,
+                                         sub_shape=sub_shape, mode='invalid')
+
+    match = 'grouper must be input for the "all" mode'
+    with pytest.raises(ValueError, match=match):
+        psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                         grouper=None, aperture_radius=4,
+                                         sub_shape=sub_shape, mode='all')
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
