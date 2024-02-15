@@ -11,10 +11,9 @@ def make_repr(self, params, ellipsis=(), long=False):
 
     cls_info = []
     for param in params:
-        if param in ellipsis:
+        value = getattr(self, param)
+        if param in ellipsis and value is not None:
             value = '...'
-        else:
-            value = getattr(self, param)
         cls_info.append((param, value))
 
     if long:
