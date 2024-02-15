@@ -236,10 +236,12 @@ class Background2D:
                         'bkg_estimator', 'bkgrms_estimator', 'interpolator')
 
     def __repr__(self):
-        return make_repr(self, self._params, ellipsis=('data',))
+        ellipsis = ('data', 'mask', 'coverage_mask')
+        return make_repr(self, self._params, ellipsis=ellipsis)
 
     def __str__(self):
-        return make_repr(self, self._params, ellipsis=('data',), long=True)
+        ellipsis = ('data', 'mask', 'coverage_mask')
+        return make_repr(self, self._params, ellipsis=ellipsis, long=True)
 
     def _validate_array(self, array, name, shape=True):
         if name in ('mask', 'coverage_mask') and array is np.ma.nomask:
