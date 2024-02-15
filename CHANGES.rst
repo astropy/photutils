@@ -18,6 +18,9 @@ New Features
   - Significantly reduced the memory usage of PSF photometry when using
     a ``GriddedPSFModel`` PSF model. [#1679]
 
+  - Added a ``mode`` keyword to ``IterativePSFPhotometry`` for
+    controlling the fitting mode. [#1708]
+
 - ``photutils.datasets``
 
   - Improved the performance of ``make_test_psf_data`` when generating
