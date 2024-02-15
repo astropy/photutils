@@ -1274,7 +1274,7 @@ class IterativePSFPhotometry:
     first `PSFPhotometry` run and the new sources detected in the
     residual image is created. `PSFPhotometry` is then run on the
     original, unsubtracted, data with this combined source list. This
-    allows the source ``grouper`` (whichi is required for the 'all'
+    allows the source ``grouper`` (which is required for the 'all'
     mode) to combine close sources to be fit simultaneously, improving
     the fit. Again, the process is repeated until no new sources are
     detected or a maximum number of iterations is reached.
