@@ -8,7 +8,8 @@ import warnings
 
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
-from astropy.utils.exceptions import AstropyWarning
+from astropy.utils.decorators import deprecated
+from astropy.utils.exceptions import AstropyUserWarning, AstropyWarning
 
 from photutils.aperture import CircularAperture
 from photutils.utils._parameters import as_pair
@@ -17,6 +18,7 @@ __all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
            'IntegratedGaussianPRF', 'PRFAdapter']
 
 
+@deprecated('1.11.0', alternative='AstropyUserWarning')
 class NonNormalizable(AstropyWarning):
     """
     Used to indicate that a :py:class:`FittableImageModel` model is
@@ -229,7 +231,7 @@ class FittableImageModel(Fittable2DModel):
                 self._normalization_status = 1
                 warnings.warn('Overflow encountered while computing '
                               'normalization constant. Normalization '
-                              'constant will be set to 1.', NonNormalizable)
+                              'constant will be set to 1.', AstropyUserWarning)
 
         else:
             self._normalization_status = 2
@@ -572,7 +574,7 @@ class EPSFModel(FittableImageModel):
                 self._img_norm = 1
                 warnings.warn('Overflow encountered while computing '
                               'normalization constant. Normalization '
-                              'constant will be set to 1.', NonNormalizable)
+                              'constant will be set to 1.', AstropyUserWarning)
         else:
             self._normalization_status = 2
 
