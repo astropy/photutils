@@ -209,6 +209,7 @@ class TestBackground2D:
         mask = np.isnan(data)
         # Since NaNs are masked in the input mask, it should not raise a warning
         bkg = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask)
+        assert_equal(bkg.total_mask, mask)
         assert_allclose(bkg.background, DATA, rtol=1e-5)
 
     def test_masked_array(self):
