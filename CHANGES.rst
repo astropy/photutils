@@ -10,6 +10,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.background``
+
+  - No longer warn about NaNs in the data if those NaNs are masked in ``mask``
+    passed to ``Background2D``. [#1712]
+
 API Changes
 ^^^^^^^^^^^
 

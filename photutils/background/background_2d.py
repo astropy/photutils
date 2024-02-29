@@ -270,15 +270,18 @@ class Background2D:
 
         This method:
           * converts the data to float dtype (and makes a copy)
-          * automatically masks non-finite values
+          * automatically masks non-finite values that aren't already masked
           * replaces all masked values with NaN
           * converts MaskedArray to ndarray using NaN as masked values
         """
         # float array type is needed to insert nans into the array
         self.data = self.data.astype(float)  # makes a copy
 
-        # include non-finite values in the total mask
-        bad_mask = ~np.isfinite(self.data)
+        # add non-finite values not already masked to the total mask
+        if self.mask is not None:
+            bad_mask = ~np.isfinite(self.data) & ~self.mask
+        else:
+            bad_mask = ~np.isfinite(self.data)
         if np.any(bad_mask):
             if self.total_mask is None:
                 self.total_mask = bad_mask
