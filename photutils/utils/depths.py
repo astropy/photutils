@@ -194,8 +194,8 @@ class ImageDepth:
 
         if aper_radius <= 0:
             raise ValueError('aper_radius must be > 0')
-        if mask_pad <= 0:
-            raise ValueError('mask_pad must be > 0')
+        if mask_pad < 0:
+            raise ValueError('mask_pad must be >= 0')
 
         self.aper_radius = aper_radius
         self.nsigma = nsigma
