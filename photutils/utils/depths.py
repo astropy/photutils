@@ -187,7 +187,7 @@ class ImageDepth:
                             wspace=0.15)
     """
 
-    def __init__(self, aper_radius, *, nsigma=5.0, mask_pad=5, napers=1000,
+    def __init__(self, aper_radius, *, nsigma=5.0, mask_pad=0, napers=1000,
                  niters=10, overlap=True, overlap_maxiters=100, seed=None,
                  zeropoint=0.0, sigma_clip=SigmaClip(sigma=3.0, maxiters=10),
                  progress_bar=True):
