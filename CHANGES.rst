@@ -18,6 +18,11 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.utils``
+
+  - The default value for the ``ImageDepth`` ``mask_pad`` keyword is now
+    set to 0. [#1714]
+
 
 1.11.0 (2024-02-16)
 -------------------
