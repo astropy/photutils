@@ -141,8 +141,8 @@ class ImageDepth:
     >>> mask = segment_map.make_source_mask()
     >>> radius = 4
     >>> depth = ImageDepth(radius, nsigma=5.0, napers=500, niters=2,
-    ...                    overlap=False, seed=123, zeropoint=23.9,
-    ...                    progress_bar=False)
+    ...                    mask_pad=5, overlap=False, seed=123,
+    ...                    zeropoint=23.9, progress_bar=False)
     >>> limits = depth(data, mask)
     >>> print(limits)  # doctest: +FLOAT_CMP
     (68.0112578151062, 19.318547982855563)
