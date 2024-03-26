@@ -141,8 +141,8 @@ class ImageDepth:
     >>> mask = segment_map.make_source_mask()
     >>> radius = 4
     >>> depth = ImageDepth(radius, nsigma=5.0, napers=500, niters=2,
-    ...                    overlap=False, seed=123, zeropoint=23.9,
-    ...                    progress_bar=False)
+    ...                    mask_pad=5, overlap=False, seed=123,
+    ...                    zeropoint=23.9, progress_bar=False)
     >>> limits = depth(data, mask)
     >>> print(limits)  # doctest: +FLOAT_CMP
     (68.0112578151062, 19.318547982855563)
@@ -187,15 +187,15 @@ class ImageDepth:
                             wspace=0.15)
     """
 
-    def __init__(self, aper_radius, *, nsigma=5.0, mask_pad=5, napers=1000,
+    def __init__(self, aper_radius, *, nsigma=5.0, mask_pad=0, napers=1000,
                  niters=10, overlap=True, overlap_maxiters=100, seed=None,
                  zeropoint=0.0, sigma_clip=SigmaClip(sigma=3.0, maxiters=10),
                  progress_bar=True):
 
         if aper_radius <= 0:
             raise ValueError('aper_radius must be > 0')
-        if mask_pad <= 0:
-            raise ValueError('mask_pad must be > 0')
+        if mask_pad < 0:
+            raise ValueError('mask_pad must be >= 0')
 
         self.aper_radius = aper_radius
         self.nsigma = nsigma

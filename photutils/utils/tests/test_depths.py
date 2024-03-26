@@ -42,8 +42,8 @@ class TestImageDepth:
     def test_image_depth(self, units, overlap):
         radius = 4
         depth = ImageDepth(radius, nsigma=5.0, napers=100, niters=2,
-                           overlap=overlap, seed=123, zeropoint=23.9,
-                           progress_bar=False)
+                           mask_pad=5, overlap=overlap, seed=123,
+                           zeropoint=23.9, progress_bar=False)
 
         if overlap:
             exp_limits = (66.60324687694235, 19.341261496655026)
@@ -67,7 +67,7 @@ class TestImageDepth:
     def test_mask_none(self):
         radius = 4
         depth = ImageDepth(radius, nsigma=5.0, napers=100, niters=2,
-                           overlap=True, seed=123, zeropoint=23.9,
+                           mask_pad=5, overlap=True, seed=123, zeropoint=23.9,
                            progress_bar=False)
         limits = depth(self.data, mask=None)
         assert_allclose(limits, (65.21122793974521, 19.36419405467095))
@@ -75,7 +75,7 @@ class TestImageDepth:
     def test_many_apertures(self):
         radius = 4
         depth = ImageDepth(radius, nsigma=5.0, napers=5000, niters=2,
-                           overlap=True, seed=123, zeropoint=23.9,
+                           mask_pad=5, overlap=True, seed=123, zeropoint=23.9,
                            progress_bar=False)
         mask = np.zeros(self.data.shape)
         mask[:, 20:] = True
@@ -83,7 +83,7 @@ class TestImageDepth:
             depth(self.data, mask)
 
         depth = ImageDepth(radius, nsigma=5.0, napers=250, niters=2,
-                           overlap=False, seed=123, zeropoint=23.9,
+                           mask_pad=5, overlap=False, seed=123, zeropoint=23.9,
                            progress_bar=False)
         mask = np.zeros(self.data.shape)
         mask[:, 100:] = True
@@ -113,7 +113,7 @@ class TestImageDepth:
 
     def test_all_masked(self):
         radius = 4
-        depth = ImageDepth(radius, napers=500, niters=1,
+        depth = ImageDepth(radius, napers=500, niters=1, mask_pad=5,
                            overlap=True, seed=123, progress_bar=False)
         data = np.zeros(self.data.shape)
         mask = np.zeros(data.shape, dtype=bool)
