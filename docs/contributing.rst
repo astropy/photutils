@@ -19,11 +19,12 @@ stack trace if it is necessary.
 Contributing
 ------------
 
-Like the `Astropy`_ project, this package is made both by and for its
-users. We accept contributions at all levels, spanning the gamut from
-fixing a typo in the documentation to developing a major new feature. We
-welcome contributors who will abide by the `Python Software Foundation
-Code of Conduct <https://www.python.org/psf/conduct/>`_.
+Like the `Astropy`_ project, this package is made both by
+and for its users. We accept contributions at all levels,
+spanning the gamut from fixing a typo in the documentation to
+developing a major new feature. We welcome contributors who
+will abide by the `Python Software Foundation Code of Conduct
+<https://policies.python.org/python.org/code-of-conduct/>`_.
 
 This package follows the same workflow and coding guidelines as
 `Astropy`_. Please read the `Astropy Development documentation

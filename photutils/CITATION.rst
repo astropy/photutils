@@ -19,7 +19,7 @@ appropriate.
 BibTex files for all Photutils versions can be found at
 https://doi.org/10.5281/zenodo.596036. For example, for Photutils
 v1.8.0 one should cite Bradley et al. 2023 with the BibTeX entry
-(https://zenodo.org/record/7946442/export/hx):
+(https://zenodo.org/records/7946442/export/bibtex):
 
 .. code-block:: text
 
