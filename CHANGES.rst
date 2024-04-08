@@ -10,6 +10,8 @@ General
 
 - The minimum required SciPy is now 1.8. [#1719]
 
+- The minimum required scikit-image is now 0.20. [#1719]
+
 - The minimum required scikit-learn is now 1.1. [#1719]
 
 - The minimum required pytest-astropy is now 0.11. [#1719]
