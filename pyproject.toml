@@ -45,7 +45,7 @@ Documentation = 'https://photutils.readthedocs.io/en/stable/'
 all = [
     'scipy>=1.8',
     'matplotlib>=3.5',
-    'scikit-image>=0.19',
+    'scikit-image>=0.20',
     'scikit-learn>=1.1',
     'gwcs>=0.18',
     'bottleneck',
