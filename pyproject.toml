@@ -31,9 +31,9 @@ classifiers = [
     'Topic :: Scientific/Engineering :: Astronomy',
 ]
 dynamic = ['version']
-requires-python = '>=3.9'
+requires-python = '>=3.10'
 dependencies = [
-    'numpy>=1.22',
+    'numpy>=1.23',
     'astropy>=5.1',
 ]
 
@@ -43,10 +43,10 @@ Documentation = 'https://photutils.readthedocs.io/en/stable/'
 
 [project.optional-dependencies]
 all = [
-    'scipy>=1.7.2',
+    'scipy>=1.8',
     'matplotlib>=3.5',
     'scikit-image>=0.19',
-    'scikit-learn>=1.0',
+    'scikit-learn>=1.1',
     'gwcs>=0.18',
     'bottleneck',
     'tqdm',
@@ -54,12 +54,12 @@ all = [
     'shapely',
 ]
 test = [
-    'pytest-astropy>=0.10',
+    'pytest-astropy>=0.11',
 ]
 docs = [
     'photutils[all]',
     'sphinx',
-    'sphinx-astropy>=1.6',
+    'sphinx-astropy>=1.9',
     'tomli; python_version < "3.11"',
 ]
 
