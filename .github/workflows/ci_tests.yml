@@ -31,12 +31,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: '3.9'
-            tox_env: 'py39-test-alldeps'
-            allow_failure: false
-            prefix: ''
-
-          - os: ubuntu-latest
             python: '3.10'
             tox_env: 'py310-test-alldeps'
             allow_failure: false
@@ -44,56 +38,62 @@ jobs:
 
           - os: ubuntu-latest
             python: '3.11'
-            tox_env: 'py311-test-alldeps-cov'
+            tox_env: 'py311-test-alldeps'
+            allow_failure: false
+            prefix: ''
+
+          - os: ubuntu-latest
+            python: '3.12'
+            tox_env: 'py312-test-alldeps-cov'
             toxposargs: --remote-data=any
             allow_failure: false
             prefix: ''
 
           - os: macos-latest
-            python: '3.11'
-            tox_env: 'py311-test-alldeps'
+            python: '3.12'
+            tox_env: 'py312-test-alldeps'
             allow_failure: false
             prefix: ''
 
           - os: macos-14
-            python: '3.11'
-            tox_env: 'py311-test-alldeps'
+            python: '3.12'
+            tox_env: 'py312-test-alldeps'
             allow_failure: false
             prefix: 'M1'
 
           - os: windows-latest
-            python: '3.11'
-            tox_env: 'py311-test-alldeps'
+            python: '3.12'
+            tox_env: 'py312-test-alldeps'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.11'
-            tox_env: 'py311-test'
+            python: '3.12'
+            tox_env: 'py312-test'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.11'
+            python: '3.12'
             tox_env: 'codestyle'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.11'
+            python: '3.12'
             tox_env: 'pep517'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.11'
+            python: '3.12'
             tox_env: 'bandit'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.9'
-            tox_env: 'py39-test-oldestdeps'
+            python: '3.10'
+            tox_env: 'py310-test-oldestdeps'
             allow_failure: false
             prefix: ''
 
