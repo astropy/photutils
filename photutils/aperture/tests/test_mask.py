@@ -6,6 +6,7 @@ Tests for the mask module.
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.utils import minversion
 from numpy.testing import assert_allclose, assert_almost_equal
 
 from photutils.aperture.bounding_box import BoundingBox
@@ -13,6 +14,8 @@ from photutils.aperture.circle import CircularAnnulus, CircularAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.rectangle import RectangularAnnulus
 
+NUMPY_LT_2_0 = not minversion(np, '2.0.dev')
+COPY_IF_NEEDED = False if NUMPY_LT_2_0 else None
 POSITIONS = [(-20, -20), (-20, 20), (20, -20), (60, 60)]
 
 
@@ -29,6 +32,45 @@ def test_mask_array():
     mask = ApertureMask(mask_data, bbox)
     data = np.array(mask)
     assert_allclose(data, mask.data)
+
+
+def test_mask_copy():
+    bbox = BoundingBox(5, 15, 5, 15)
+
+    mask = ApertureMask(np.ones((10, 10)), bbox)
+    mask_copy = np.array(mask, copy=True)
+    mask_copy[0, 0] = 100.0
+    assert mask.data[0, 0] == 1.0
+
+    mask = ApertureMask(np.ones((10, 10)), bbox)
+    mask_copy = np.array(mask, copy=False)
+    mask_copy[0, 0] = 100.0
+    assert mask.data[0, 0] == 100.0
+
+    # no copy; copy=None returns a copy only if __array__ returns a copy
+    # copy=None was introduced in NumPy 2.0
+    mask = ApertureMask(np.ones((10, 10)), bbox)
+    mask_copy = np.array(mask, copy=COPY_IF_NEEDED)
+    mask_copy[0, 0] = 100.0
+    assert mask.data[0, 0] == 100.0
+
+    # needs to copy because of the dtype change
+    mask = ApertureMask(np.ones((10, 10)), bbox)
+    mask_copy = np.array(mask, copy=False, dtype=int)
+    mask_copy[0, 0] = 100
+    assert mask.data[0, 0] == 1.0
+
+    # no copy
+    mask = ApertureMask(np.ones((10, 10)), bbox)
+    mask_copy = np.asarray(mask)
+    mask_copy[0, 0] = 100.0
+    assert mask.data[0, 0] == 100.0
+
+    # needs to copy because of the dtype change
+    mask = ApertureMask(np.ones((10, 10)), bbox)
+    mask_copy = np.asarray(mask, dtype=int)
+    mask_copy[0, 0] = 100.0
+    assert mask.data[0, 0] == 1.0
 
 
 def test_mask_get_overlap_slices():
