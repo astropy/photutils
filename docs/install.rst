@@ -7,15 +7,15 @@ Requirements
 
 Photutils has the following strict requirements:
 
-* `Python <https://www.python.org/>`_ 3.9 or later
+* `Python <https://www.python.org/>`_ 3.10 or later
 
-* `NumPy <https://numpy.org/>`_ 1.22 or later
+* `NumPy <https://numpy.org/>`_ 1.23 or later
 
 * `Astropy`_ 5.1 or later
 
 Photutils also optionally depends on other packages for some features:
 
-* `SciPy <https://scipy.org/>`_ 1.7.2 or later:  To power a variety of
+* `SciPy <https://scipy.org/>`_ 1.8 or later:  To power a variety of
   features in several modules (strongly recommended).
 
 * `Matplotlib <https://matplotlib.org/>`_ 3.5 or later:  To power a
@@ -24,7 +24,7 @@ Photutils also optionally depends on other packages for some features:
 * `scikit-image <https://scikit-image.org/>`_ 0.19 or later: Used for
   deblending segmented sources.
 
-* `scikit-learn <https://scikit-learn.org/>`_ 1.0 or later: Used in the
+* `scikit-learn <https://scikit-learn.org/>`_ 1.1 or later: Used in the
   deprecated `~photutils.psf.DBSCANGroup` class to create star groups.
 
 * `GWCS <https://gwcs.readthedocs.io/en/stable/>`_ 0.18 or later:
@@ -45,7 +45,7 @@ Photutils also optionally depends on other packages for some features:
   source segments into polygon objects.
 
 Photutils depends on `pytest-astropy
-<https://github.com/astropy/pytest-astropy>`_ (0.10 or later) to run
+<https://github.com/astropy/pytest-astropy>`_ (0.11 or later) to run
 the test suite.
 
 
