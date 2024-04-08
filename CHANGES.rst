@@ -4,6 +4,21 @@
 General
 ^^^^^^^
 
+- The minimum required Python is now 3.10. [#1719]
+
+- The minimum required NumPy is now 1.23. [#1719]
+
+- The minimum required SciPy is now 1.8. [#1719]
+
+- The minimum required scikit-learn is now 1.1. [#1719]
+
+- The minimum required pytest-astropy is now 0.11. [#1719]
+
+- The minimum required sphinx-astropy is now 1.9. [#1719]
+
+- NumPy 2.0 is supported.
+
+
 New Features
 ^^^^^^^^^^^^
 
@@ -12,8 +27,8 @@ Bug Fixes
 
 - ``photutils.background``
 
-  - No longer warn about NaNs in the data if those NaNs are masked in ``mask``
-    passed to ``Background2D``. [#1712]
+  - No longer warn about NaNs in the data if those NaNs are masked in
+    ``mask`` passed to ``Background2D``. [#1712]
 
 API Changes
 ^^^^^^^^^^^
