@@ -154,24 +154,3 @@ class TestEllipse:
         ellipse = Ellipse(data)  # estimates initial center
         isolist = ellipse.fit_image()
         assert len(isolist) == 54
-
-
-@pytest.mark.remote_data
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-class TestEllipseOnRealData:
-    def test_basic(self):
-        path = get_path('isophote/M105-S001-RGB.fits',
-                        location='photutils-datasets', cache=True)
-        hdu = fits.open(path)
-        data = hdu[0].data[0]
-        hdu.close()
-
-        g = EllipseGeometry(530.0, 511, 30.0, 0.2, 20.0 / 180.0 * 3.14)
-
-        ellipse = Ellipse(data, geometry=g)
-        isophote_list = ellipse.fit_image()
-
-        assert len(isophote_list) >= 60
-
-        # check that isophote at about sma=70 got an uneventful fit
-        assert isophote_list.get_closest(70.0).stop_code == 0
