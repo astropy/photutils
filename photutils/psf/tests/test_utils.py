@@ -410,6 +410,7 @@ def test_subtract_psf():
 
 
 @pytest.mark.remote_data
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestGridFromEPSFs:
     """
     Tests for `photutils.psf.utils.grid_from_epsfs`.
