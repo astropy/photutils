@@ -1,0 +1,13 @@
+.. doctest-skip-all
+
+*****************************
+What's New in Photutils 1.12?
+*****************************
+
+The Photutils 1.12 release was made to support NumPy 2.0.
+
+
+Other changes
+=============
+
+Please see the :ref:`changelog` for the complete list of changes.

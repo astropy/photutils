@@ -5,7 +5,7 @@ What's New
 .. toctree::
     :maxdepth: 1
 
-    1.11.rst
+    1.12.rst
 
 
 Past Releases
@@ -18,6 +18,7 @@ functionality highlighted in these pages.
 .. toctree::
     :maxdepth: 1
 
+    1.11.rst
     1.10.rst
     1.9.rst
     1.8.rst
