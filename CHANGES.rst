@@ -1,4 +1,4 @@
-1.12.0 (unreleased)
+1.12.0 (2024-04-12)
 -------------------
 
 General
@@ -20,10 +20,6 @@ General
 
 - NumPy 2.0 is supported.
 
-
-New Features
-^^^^^^^^^^^^
-
 Bug Fixes
 ^^^^^^^^^
 
@@ -43,9 +39,6 @@ API Changes
 
 1.11.0 (2024-02-16)
 -------------------
-
-General
-^^^^^^^
 
 New Features
 ^^^^^^^^^^^^
