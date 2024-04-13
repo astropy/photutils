@@ -425,6 +425,7 @@ class TestSegmentationImage:
         assert_equal(verts, expected_verts)
 
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_patches(self):
         from matplotlib.patches import Polygon
