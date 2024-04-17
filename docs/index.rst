@@ -137,9 +137,3 @@ Developer Documentation
     :maxdepth: 1
 
     dev/releasing.rst
-
-
-.. toctree::
-    :hidden:
-
-    test_function.rst

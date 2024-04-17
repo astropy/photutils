@@ -44,10 +44,6 @@ Photutils also optionally depends on other packages for some features:
 * `Shapely <https://shapely.readthedocs.io/en/stable/>`_: Used for converting
   source segments into polygon objects.
 
-Photutils depends on `pytest-astropy
-<https://github.com/astropy/pytest-astropy>`_ (0.11 or later) to run
-the test suite.
-
 
 Installing the latest released version
 ======================================
@@ -151,19 +147,16 @@ latest development version from `GitHub`_::
 Testing an installed Photutils
 ==============================
 
-The easiest way to test your installed version of Photutils is running
-correctly is to use the :func:`photutils.test` function:
+To test your installed version of Photutils, you can run the test suite
+using the `pytest`_ command. Running the test suite requires installing
+the `pytest-astropy <https://github.com/astropy/pytest-astropy>`_ (0.11
+or later) package.
 
-.. doctest-skip::
+To run the test suite, use the following command::
 
-    >>> import photutils
-    >>> photutils.test()
+    pytest --pyargs photutils
 
-Note that this may not work if you start Python from within the
-Photutils source distribution directory.
-
-The tests should run and report any failures, which you can report to
-the `Photutils issue tracker
+Any test failures can be reported to the `Photutils issue tracker
 <https://github.com/astropy/photutils/issues>`_.
 
 
@@ -171,3 +164,4 @@ the `Photutils issue tracker
 .. _conda: https://docs.conda.io/en/latest/
 .. _GitHub: https://github.com/astropy/photutils
 .. _Xcode: https://developer.apple.com/xcode/
+.. _pytest: https://docs.pytest.org/en/latest/
