@@ -17,48 +17,49 @@ that was used. We also encourage citations in the main text wherever
 appropriate.
 
 BibTex files for all Photutils versions can be found at
-https://doi.org/10.5281/zenodo.596036. For example, for Photutils
-v1.8.0 one should cite Bradley et al. 2023 with the BibTeX entry
-(https://zenodo.org/records/7946442/export/bibtex):
+https://doi.org/10.5281/zenodo.596036.
+
+For example, for Photutils v1.12.0, one should
+cite Bradley et al. 2024 with the BibTeX entry
+(https://zenodo.org/records/10967176/export/bibtex):
 
 .. code-block:: text
 
-    @software{larry_bradley_2023_7946442,
-    author       = {Larry Bradley and
-                    Brigitta Sip{\H o}cz and
-                    Thomas Robitaille and
-                    Erik Tollerud and
-                    Z\`e Vin{\'{\i}}cius and
-                    Christoph Deil and
-                    Kyle Barbary and
-                    Tom J Wilson and
-                    Ivo Busko and
-                    Axel Donath and
-                    Hans Moritz G{\"u}nther and
-                    Mihai Cara and
-                    P. L. Lim and
-                    Sebastian Me{\ss}linger and
-                    Simon Conseil and
-                    Azalee Bostroem and
-                    Michael Droettboom and
-                    E. M. Bray and
-                    Lars Andersen Bratholm and
-                    Geert Barentsen and
-                    Matt Craig and
-                    Shivangee Rathi and
-                    Sergio Pascual and
-                    Gabriel Perren and
-                    Iskren Y. Georgiev and
-                    Miguel de Val-Borro and
-                    Wolfgang Kerzendorf and
-                    Yoonsoo P. Bach and
-                    Bruno Quint and
-                    Harrison Souchereau},
-    title        = {astropy/photutils: 1.8.0},
-    month        = may,
-    year         = 2023,
-    publisher    = {Zenodo},
-    version      = {1.8.0},
-    doi          = {10.5281/zenodo.7946442},
-    url          = {https://doi.org/10.5281/zenodo.7946442}
+    @software{larry_bradley_2024_10967176,
+      author       = {Larry Bradley and
+                      Brigitta Sip{\H o}cz and
+                      Thomas Robitaille and
+                      Erik Tollerud and
+                      Z\`e Vin{\'{\i}}cius and
+                      Christoph Deil and
+                      Kyle Barbary and
+                      Tom J Wilson and
+                      Ivo Busko and
+                      Axel Donath and
+                      Hans Moritz G{\"u}nther and
+                      Mihai Cara and
+                      P. L. Lim and
+                      Sebastian Me{\ss}linger and
+                      Zach Burnett and
+                      Simon Conseil and
+                      Michael Droettboom and
+                      Azalee Bostroem and
+                      E. M. Bray and
+                      Lars Andersen Bratholm and
+                      William Jamieson and
+                      Adam Ginsburg and
+                      Geert Barentsen and
+                      Matt Craig and
+                      Sergio Pascual and
+                      Shivangee Rathi and
+                      Marshall Perrin and
+                      Brett M. Morris and
+                      Gabriel Perren},
+      title        = {astropy/photutils: 1.12.0},
+      month        = apr,
+      year         = 2024,
+      publisher    = {Zenodo},
+      version      = {1.12.0},
+      doi          = {10.5281/zenodo.10967176},
+      url          = {https://doi.org/10.5281/zenodo.10967176}
     }
