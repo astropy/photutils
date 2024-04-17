@@ -175,10 +175,7 @@ to the upstream repository.
         <install and activate virtual environment>
         pip install '../<file>.tar.gz[all,test]'
         cd <any-directory-outside-of-photutils-source>
-        python
-        >>> import photutils
-        >>> photutils.__version__
-        >>> photutils.test(remote_data=True)
+        pytest --pyargs photutils --remote-data=any
 
 #. Go back to the package root directory and remove the generated files
    with::
