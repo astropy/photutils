@@ -1,0 +1,32 @@
+.. doctest-skip-all
+
+*****************************
+What's New in Photutils 1.13?
+*****************************
+
+Here we highlight some of the new functionality of the 1.13 release.
+In addition to these changes, Photutils 1.13 includes a large number
+of smaller improvements and bug fixes, which are described in the full
+:ref:`changelog`.
+
+
+Testing the installed version of Photutils
+==========================================
+
+To test your installed version of Photutils, you can run the test suite
+using the `pytest <https://docs.pytest.org/en/latest/>`_ command.
+Running the test suite requires installing the `pytest-astropy
+<https://github.com/astropy/pytest-astropy>`_ (0.11 or later) package.
+
+To run the test suite, use the following command::
+
+    pytest --pyargs photutils
+
+This method replaces the old method of running the test suite using the
+``photutils.test()`` Python function, which has been removed.
+
+
+Other changes
+=============
+
+Please see the :ref:`changelog` for the complete list of changes.

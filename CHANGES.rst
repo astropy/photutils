@@ -13,6 +13,9 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- The ``photutils.test`` function has been removed. Instead use the
+  ``pytest --pyarg photutils`` command. [#1725]
+
 
 1.12.0 (2024-04-12)
 -------------------

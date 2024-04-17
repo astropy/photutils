@@ -8,15 +8,17 @@ centroiding, and morphological measurements.
 
 import warnings
 
-# Affiliated packages may add whatever they like to this file, but
-# should keep this content at the top.
-from ._astropy_init import *  # noqa: F401, F403
-
 from . import aperture
 from . import background
 from . import detection
 from . import psf
 from . import segmentation
+
+try:
+    from .version import version as __version__
+except ImportError:
+    __version__ = ''
+
 
 # deprecations
 __depr__ = {}
