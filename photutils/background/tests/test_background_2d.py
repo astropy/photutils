@@ -174,11 +174,9 @@ class TestBackground2D:
         data[:50, :50] = np.nan
         mask = np.isnan(data)
 
-        with pytest.warns(AstropyUserWarning,
-                          match='Input data contains invalid values'):
-            bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
-                                coverage_mask=mask, fill_value=fill_value,
-                                bkg_estimator=MeanBackground())
+        bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
+                            coverage_mask=mask, fill_value=fill_value,
+                            bkg_estimator=MeanBackground())
         assert_equal(bkg1.background[:50, :50], fill_value)
         assert_equal(bkg1.background_rms[:50, :50], fill_value)
 
