@@ -174,11 +174,9 @@ class TestBackground2D:
         data[:50, :50] = np.nan
         mask = np.isnan(data)
 
-        with pytest.warns(AstropyUserWarning,
-                          match='Input data contains invalid values'):
-            bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
-                                coverage_mask=mask, fill_value=fill_value,
-                                bkg_estimator=MeanBackground())
+        bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
+                            coverage_mask=mask, fill_value=fill_value,
+                            bkg_estimator=MeanBackground())
         assert_equal(bkg1.background[:50, :50], fill_value)
         assert_equal(bkg1.background_rms[:50, :50], fill_value)
 
@@ -204,13 +202,29 @@ class TestBackground2D:
         assert_allclose(bkg.background, DATA, rtol=1e-5)
 
     def test_mask_with_already_masked_nans(self):
+        """
+        Test masked invalid values.
+        These tests should not issue a warning.
+        """
         data = DATA.copy()
         data[50, 25:50] = np.nan
         mask = np.isnan(data)
-        # Since NaNs are masked in the input mask, it should not raise a warning
+
         bkg = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask)
         assert_equal(bkg.total_mask, mask)
         assert_allclose(bkg.background, DATA, rtol=1e-5)
+
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1),
+                           coverage_mask=mask)
+        assert_equal(bkg.total_mask, mask)
+
+        mask = np.zeros(data.shape, dtype=bool)
+        coverage_mask = np.zeros(data.shape, dtype=bool)
+        mask[50, 25:30] = True
+        coverage_mask[50, 30:50] = True
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
+                           coverage_mask=coverage_mask)
+        assert_equal(bkg.total_mask, mask | coverage_mask)
 
     def test_masked_array(self):
         data = DATA.copy()

@@ -278,10 +278,12 @@ class Background2D:
         self.data = self.data.astype(float)  # makes a copy
 
         # add non-finite values not already masked to the total mask
-        if self.mask is not None:
-            bad_mask = ~np.isfinite(self.data) & ~self.mask
-        else:
-            bad_mask = ~np.isfinite(self.data)
+        bad_mask = np.isfinite(self.data)
+
+        if self.total_mask is not None:
+            bad_mask |= self.total_mask
+        bad_mask = np.invert(bad_mask, out=bad_mask)
+
         if np.any(bad_mask):
             if self.total_mask is None:
                 self.total_mask = bad_mask
