@@ -7,8 +7,11 @@ import warnings
 
 import astropy.units as u
 import numpy as np
+from astropy.utils import minversion
 
 __all__ = ['ApertureMask']
+
+COPY_IF_NEEDED = False if not minversion(np, '2.0.0.dev') else None
 
 
 class ApertureMask:
@@ -36,12 +39,12 @@ class ApertureMask:
         self.bbox = bbox
         self._mask = (self.data == 0)
 
-    def __array__(self, dtype=None, copy=None):
+    def __array__(self, dtype=None, copy=COPY_IF_NEEDED):
         """
         Array representation of the mask data array (e.g., for
         matplotlib).
         """
-        return np.asarray(self.data, dtype=dtype)
+        return np.array(self.data, dtype=dtype, copy=copy)
 
     @property
     def shape(self):
