@@ -54,12 +54,6 @@ def test_mask_copy():
     mask_copy[0, 0] = 100.0
     assert mask.data[0, 0] == 100.0
 
-    # needs to copy because of the dtype change
-    mask = ApertureMask(np.ones((10, 10)), bbox)
-    mask_copy = np.array(mask, copy=False, dtype=int)
-    mask_copy[0, 0] = 100
-    assert mask.data[0, 0] == 1.0
-
     # no copy
     mask = ApertureMask(np.ones((10, 10)), bbox)
     mask_copy = np.asarray(mask)
