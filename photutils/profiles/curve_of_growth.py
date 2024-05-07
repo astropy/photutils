@@ -226,6 +226,20 @@ class CurveOfGrowth(ProfileBase):
                          method=method, subpixels=subpixels)
 
     @lazyproperty
+    def radius(self):
+        """
+        The profile radius in pixels as a 1D `~numpy.ndarray`.
+
+        This is the same as the input ``radii``.
+
+        Note that these are the radii of the circular apertures used
+        to measure the profile. Thus, they are the radial values that
+        enclose the given flux. They can be used directly to measure the
+        encircled energy/flux at a given radius.
+        """
+        return self.radii
+
+    @lazyproperty
     def apertures(self):
         """
         A list of `~photutils.aperture.CircularAperture` objects used to

@@ -59,12 +59,12 @@ def test_radial_profile(profile_data):
 def test_radial_profile_inputs(profile_data):
     xycen, data, _, _ = profile_data
 
-    msg = 'minimum edge_radii must be >= 0'
+    msg = 'minimum radii must be >= 0'
     with pytest.raises(ValueError, match=msg):
         edge_radii = np.arange(-1, 10)
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
-    msg = 'edge_radii must be a 1D array and have at least two values'
+    msg = 'radii must be a 1D array and have at least two values'
     with pytest.raises(ValueError, match=msg):
         edge_radii = [1]
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)
@@ -72,7 +72,7 @@ def test_radial_profile_inputs(profile_data):
         edge_radii = np.arange(6).reshape(2, 3)
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
-    msg = 'edge_radii must be strictly increasing'
+    msg = 'radii must be strictly increasing'
     with pytest.raises(ValueError, match=msg):
         edge_radii = np.arange(10)[::-1]
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)

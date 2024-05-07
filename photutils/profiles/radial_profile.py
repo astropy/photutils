@@ -21,7 +21,7 @@ __doctest_requires__ = {('RadialProfile'): ['scipy']}
 class RadialProfile(ProfileBase):
     """
     Class to create a radial profile using concentric circular
-    apertures.
+    annulus apertures.
 
     The radial profile represents the azimuthally-averaged flux in
     circular annuli apertures as a function of radius.
@@ -29,6 +29,8 @@ class RadialProfile(ProfileBase):
     For this class, the input radii represent the edges of the radial
     bins. This differs from the `RadialProfile` class, where the inputs
     represent the centers of the radial bins.
+
+    The output `radius` attribute represents the bin centers.
 
     Parameters
     ----------
@@ -40,9 +42,9 @@ class RadialProfile(ProfileBase):
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
 
-    edge_radii : 1D float `numpy.ndarray`
-        An array of radii defining the edges of the radial bins.
-        ``edge_radii`` must be strictly increasing with a minimum value
+    radii : 1D float `numpy.ndarray`
+        An array of radii defining the *edges* of the radial bins.
+        ``radii`` must be strictly increasing with a minimum value
         greater than or equal to zero, and contain at least 2 values.
         The radial spacing does not need to be constant. The output
         `radius` attribute will be defined at the bin centers.
@@ -95,9 +97,9 @@ class RadialProfile(ProfileBase):
 
     Notes
     -----
-    If the minimum of ``edge_radii`` is zero, then a circular aperture
-    with radius equal to ``edge_radii[1]`` will be used for the
-    innermost aperture.
+    If the minimum of ``radii`` is zero, then a circular aperture
+    with radius equal to ``radii[1]`` will be used for the innermost
+    aperture.
 
     Examples
     --------
