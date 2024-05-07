@@ -28,11 +28,13 @@ class ProfileBase(metaclass=abc.ABCMeta):
         The ``(x, y)`` pixel coordinate of the source center.
 
     radii : 1D float `numpy.ndarray`
-        An array of radii defining the edges of the radial bins.
-        ``radii`` must be strictly increasing with a minimum value
-        greater than or equal to zero, and contain at least 2 values.
-        The radial spacing does not need to be constant. The output
-        `radius` attribute will be defined at the bin centers.
+        An array of radii defining the radial bins. ``radii``
+        must be strictly increasing with a minimum value greater
+        than or equal to zero, and contain at least 2 values.
+        The radial spacing does not need to be constant. For
+        `~photutils.profiles.RadialProfile`, the input radii are the
+        *edges* of the radial annulus bins, and the output `radius`
+        represents the bin centers.
 
     error : 2D `numpy.ndarray`, optional
         The 1-sigma errors of the input ``data``. ``error`` is assumed
@@ -93,18 +95,18 @@ class ProfileBase(metaclass=abc.ABCMeta):
         self.method = method
         self.subpixels = subpixels
 
-    def _validate_radii(self, edge_radii):
-        edge_radii = np.array(edge_radii)
-        if edge_radii.ndim != 1 or edge_radii.size < 2:
-            raise ValueError('edge_radii must be a 1D array and have at '
+    def _validate_radii(self, radii):
+        radii = np.array(radii)
+        if radii.ndim != 1 or radii.size < 2:
+            raise ValueError('radii must be a 1D array and have at '
                              'least two values')
-        if edge_radii.min() < 0:
-            raise ValueError('minimum edge_radii must be >= 0')
+        if radii.min() < 0:
+            raise ValueError('minimum radii must be >= 0')
 
-        if not np.all(edge_radii[1:] > edge_radii[:-1]):
-            raise ValueError('edge_radii must be strictly increasing')
+        if not np.all(radii[1:] > radii[:-1]):
+            raise ValueError('radii must be strictly increasing')
 
-        return edge_radii
+        return radii
 
     def _compute_mask(self, data, error, mask):
         """
@@ -134,7 +136,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         The profile radius in pixels as a 1D `~numpy.ndarray`.
         """
-        return self.radii
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @property
     @abc.abstractmethod
