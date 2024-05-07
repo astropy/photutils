@@ -7,8 +7,15 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.profiles``
+
+  - Added an ``unnormalize`` method to ``RadialProfile`` and
+    ``CurveOfGrowth`` to return the profile to the state before any
+    ``normalize`` calls were run. [#1732]
+
 Bug Fixes
 ^^^^^^^^^
+
 - ``photutils.background``
 
   - No longer warn about NaNs in the data if those NaNs are masked in
