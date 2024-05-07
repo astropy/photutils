@@ -97,15 +97,34 @@ def test_curve_of_growth_normalize(profile_data):
 
     radii = np.arange(1, 36)
     cg1 = CurveOfGrowth(data, xycen, radii, error=None, mask=None)
+    cg2 = CurveOfGrowth(data, xycen, radii, error=None, mask=None)
 
     profile1 = cg1.profile
     cg1.normalize()
     profile2 = cg1.profile
     assert np.mean(profile2) < np.mean(profile1)
 
+    cg1.unnormalize()
+    assert_allclose(cg1.profile, cg2.profile)
+
+    cg1.normalize(method='sum')
+    cg1.normalize(method='max')
+    cg1.unnormalize()
+    assert_allclose(cg1.profile, cg2.profile)
+
+    cg1.normalize(method='max')
+    cg1.normalize(method='sum')
+    cg1.normalize(method='max')
+    cg1.normalize(method='max')
+    cg1.unnormalize()
+    assert_allclose(cg1.profile, cg2.profile)
+
     cg1.normalize(method='sum')
     profile3 = cg1.profile
     assert np.mean(profile3) < np.mean(profile1)
+
+    cg1.unnormalize()
+    assert_allclose(cg1.profile, cg2.profile)
 
     with pytest.raises(ValueError):
         cg1.normalize(method='invalid')
