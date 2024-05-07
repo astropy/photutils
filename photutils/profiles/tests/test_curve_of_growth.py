@@ -135,6 +135,22 @@ def test_curve_of_growth_normalize(profile_data):
         cg1.normalize(method='max')
 
 
+def test_curve_of_growth_interp(profile_data):
+    xycen, data, error, _ = profile_data
+    radii = np.arange(1, 36)
+    cg1 = CurveOfGrowth(data, xycen, radii, error=None, mask=None)
+    cg1.normalize()
+    ee_radii = np.array([0, 5, 10, 20, 25, 50], dtype=float)
+    ee_vals = cg1.calc_ee_at_radius(ee_radii)
+    ee_expected = np.array([np.nan, 0.1176754, 0.39409357, 0.86635049,
+                            0.95805792, np.nan])
+    assert_allclose(ee_vals, ee_expected, rtol=1e-6)
+
+    rr = cg1.calc_radius_at_ee(ee_vals)
+    ee_radii[[0, -1]] = np.nan
+    assert_allclose(rr, ee_radii, rtol=1e-6)
+
+
 def test_curve_of_growth_inputs(profile_data):
     xycen, data, error, _ = profile_data
 
