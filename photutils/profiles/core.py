@@ -94,6 +94,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         self.mask = self._compute_mask(data, error, mask)
         self.method = method
         self.subpixels = subpixels
+        self.normalization_value = 1.0
 
     def _validate_radii(self, radii):
         radii = np.array(radii)
@@ -215,7 +216,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
             The method used to normalize the profile:
 
                 * 'max' (default):
-                  The profile is normalized such that its peak value is
+                  The profile is normalized such that its maximum value is
                   1.
                 * 'sum':
                   The profile is normalized such that its sum (integral)
@@ -226,14 +227,28 @@ class ProfileBase(metaclass=abc.ABCMeta):
         elif method == 'sum':
             normalization = np.nansum(self.profile)
         else:
-            raise ValueError('invalid method, must be "peak" or "integral"')
+            raise ValueError('invalid method, must be "max" or "sum"')
 
         if normalization == 0:
             warnings.warn('The profile cannot be normalized because the '
                           'max or sum is zero.', AstropyUserWarning)
         else:
+            # normalization_values accumulate if normalize is run
+            # multiple times (e.g., different methods)
+            self.normalization_value *= normalization
+
+            # need to use __dict__ as these are lazy properties
             self.__dict__['profile'] = self.profile / normalization
             self.__dict__['profile_error'] = self.profile_error / normalization
+
+    def unnormalize(self):
+        """
+        Unnormalize the profile back to the original state before any
+        calls to `normalize`.
+        """
+        self.__dict__['profile'] = self.profile * self.normalization_value
+        self.__dict__['profile_error'] = self.profile_error * self.normalization_value
+        self.normalization_value = 1.0
 
     def plot(self, ax=None, **kwargs):
         """
