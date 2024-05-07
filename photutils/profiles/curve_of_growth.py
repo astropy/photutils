@@ -270,3 +270,64 @@ class CurveOfGrowth(ProfileBase):
         radius as a 1D `~numpy.ndarray`.
         """
         return self._photometry[2]
+
+    def calc_ee_at_radius(self, radius):
+        """
+        Calculate the encircled energy at a given radius using a cubic
+        interpolator based on the profile data.
+
+        Note that this function assumes that input data has been
+        normalized such that the total enclosed flux is 1 for an
+        infinitely large radius. You can also use the `normalize` method
+        before calling this method to normalize the profile to be 1 at
+        the largest input `radii`.
+
+        Parameters
+        ----------
+        radius : float or 1D `~numpy.ndarray`
+            The circular radius/radii.
+
+        Returns
+        -------
+        ee : `~numpy.ndarray`
+            The encircled energy at each radius/radii.
+        """
+        from scipy.interpolate import interp1d
+
+        return interp1d(self.radius, self.profile, kind='cubic',
+                        bounds_error=False)(radius)
+
+    def calc_radius_at_ee(self, ee):
+        """
+        Calculate the radius at a given encircled energy using a cubic
+        interpolator based on the profile data.
+
+        Note that this function assumes that input data has been
+        normalized such that the total enclosed flux is 1 for an
+        infinitely large radius. You can also use the `normalize` method
+        before calling this method to normalize the profile to be 1 at
+        the largest input `radii`.
+
+        If the profile is not monotonically increasing, then the
+        returned radius will be the radius at the first occurrence of
+        the given encircled energy.
+
+        Parameters
+        ----------
+        ee : float or 1D `~numpy.ndarray`
+            The encircled energy.
+
+        Returns
+        -------
+        radius : `~numpy.ndarray`
+            The radius at each encircled energy.
+        """
+        from scipy.interpolate import interp1d
+
+        # need to remove repeated profiles values for interp1d
+        _, idx = np.unique(self.profile, return_index=True)
+        radius = self.radius[idx]
+        profile = self.profile[idx]
+
+        return interp1d(profile, radius, kind='cubic',
+                        bounds_error=False)(ee)
