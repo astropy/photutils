@@ -240,6 +240,7 @@ class RadialProfile(ProfileBase):
         plt.imshow(data, norm=norm)
         rp.apertures[5].plot(color='C0', lw=2)
         rp.apertures[10].plot(color='C1', lw=2)
+        rp.apertures[15].plot(color='C3', lw=2)
 
     Fit a 1D Gaussian to the radial profile and return the Gaussian
     model.

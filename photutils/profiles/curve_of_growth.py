@@ -213,6 +213,7 @@ class CurveOfGrowth(ProfileBase):
         plt.imshow(data, norm=norm)
         cog.apertures[5].plot(color='C0', lw=2)
         cog.apertures[10].plot(color='C1', lw=2)
+        cog.apertures[15].plot(color='C3', lw=2)
     """
 
     def __init__(self, data, xycen, radii, *, error=None, mask=None,
