@@ -213,6 +213,7 @@ class CurveOfGrowth(ProfileBase):
         plt.imshow(data, norm=norm)
         cog.apertures[5].plot(color='C0', lw=2)
         cog.apertures[10].plot(color='C1', lw=2)
+        cog.apertures[15].plot(color='C3', lw=2)
     """
 
     def __init__(self, data, xycen, radii, *, error=None, mask=None,
@@ -270,3 +271,77 @@ class CurveOfGrowth(ProfileBase):
         radius as a 1D `~numpy.ndarray`.
         """
         return self._photometry[2]
+
+    def calc_ee_at_radius(self, radius):
+        """
+        Calculate the encircled energy at a given radius using a cubic
+        interpolator based on the profile data.
+
+        Note that this function assumes that input data has been
+        normalized such that the total enclosed flux is 1 for an
+        infinitely large radius. You can also use the `normalize` method
+        before calling this method to normalize the profile to be 1 at
+        the largest input ``radii``.
+
+        Parameters
+        ----------
+        radius : float or 1D `~numpy.ndarray`
+            The circular radius/radii.
+
+        Returns
+        -------
+        ee : `~numpy.ndarray`
+            The encircled energy at each radius/radii. Returns NaN for
+            radii outside the range of the profile data.
+        """
+        from scipy.interpolate import PchipInterpolator
+
+        return PchipInterpolator(self.radius, self.profile,
+                                 extrapolate=False)(radius)
+
+    def calc_radius_at_ee(self, ee):
+        """
+        Calculate the radius at a given encircled energy using a cubic
+        interpolator based on the profile data.
+
+        Note that this function assumes that input data has been
+        normalized such that the total enclosed flux is 1 for an
+        infinitely large radius. You can also use the `normalize` method
+        before calling this method to normalize the profile to be 1 at
+        the largest input ``radii``.
+
+        This interpolator returns values only for regions where the
+        curve-of-growth profile is monotonically increasing.
+
+        Parameters
+        ----------
+        ee : float or 1D `~numpy.ndarray`
+            The encircled energy.
+
+        Returns
+        -------
+        radius : `~numpy.ndarray`
+            The radius at each encircled energy. Returns NaN for
+            encircled energies outside the range of the profile data.
+        """
+        from scipy.interpolate import PchipInterpolator
+
+        # restrict the profile to the monotonically increasing region;
+        # this is necessary for the interpolator
+        radius = self.radius
+        profile = self.profile
+        diff = np.diff(profile) <= 0
+        if np.any(diff):
+            idx = np.argmax(diff)  # first non-monotonic point
+            radius = radius[0:idx]
+            profile = profile[0:idx]
+
+        if len(radius) < 2:
+            raise ValueError('The curve-of-growth profile is not '
+                             'monotonically increasing even at the '
+                             'smallest radii -- cannot interpolate. Try '
+                             'using different input radii (especially the '
+                             'starting radii) and/or using the "exact" '
+                             'aperture overlap method.')
+
+        return PchipInterpolator(profile, radius, extrapolate=False)(ee)

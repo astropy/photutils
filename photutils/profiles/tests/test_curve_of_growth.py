@@ -12,7 +12,7 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture import CircularAperture
 from photutils.profiles import CurveOfGrowth
-from photutils.utils._optional_deps import HAS_MATPLOTLIB
+from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY
 
 
 @pytest.fixture(name='profile_data')
@@ -133,6 +133,31 @@ def test_curve_of_growth_normalize(profile_data):
     msg = 'The profile cannot be normalized'
     with pytest.warns(AstropyUserWarning, match=msg):
         cg1.normalize(method='max')
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_curve_of_growth_interp(profile_data):
+    xycen, data, error, _ = profile_data
+    radii = np.arange(1, 36)
+    cg1 = CurveOfGrowth(data, xycen, radii, error=None, mask=None)
+    cg1.normalize()
+    ee_radii = np.array([0, 5, 10, 20, 25, 50], dtype=float)
+    ee_vals = cg1.calc_ee_at_radius(ee_radii)
+    ee_expected = np.array([np.nan, 0.1176754, 0.39409357, 0.86635049,
+                            0.95805792, np.nan])
+    assert_allclose(ee_vals, ee_expected, rtol=1e-6)
+
+    rr = cg1.calc_radius_at_ee(ee_vals)
+    ee_radii[[0, -1]] = np.nan
+    assert_allclose(rr, ee_radii, rtol=1e-6)
+
+    radii = np.linspace(0.1, 36, 200)
+    cg1 = CurveOfGrowth(data, xycen, radii, error=None, mask=None,
+                        method='center')
+    ee_vals = cg1.calc_ee_at_radius(ee_radii)
+    match = 'The curve-of-growth profile is not monotonically increasing'
+    with pytest.raises(ValueError, match=match):
+        cg1.calc_radius_at_ee(ee_vals)
 
 
 def test_curve_of_growth_inputs(profile_data):

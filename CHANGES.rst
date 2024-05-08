@@ -13,6 +13,9 @@ New Features
     ``CurveOfGrowth`` to return the profile to the state before any
     ``normalize`` calls were run. [#1732]
 
+  - Added ``calc_ee_from_radius`` and ``calc_radius_from_ee`` methods to
+    ``CurveOfGrowth``. [#1733]
+
 Bug Fixes
 ^^^^^^^^^
 
