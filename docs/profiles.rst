@@ -372,6 +372,48 @@ list of the apertures. Let's plot a few of the circular apertures (the
     cog.apertures[15].plot(color='C3', lw=2)
 
 
+Encircled Energy
+^^^^^^^^^^^^^^^^
+
+Often, one is interested in the encircled energy (or flux) within
+a given radius, where the encircled energy is generally expressed
+as a normalized value between 0 and 1. If the curve of growth is
+monotonically increasing and normalized such that its maximum value is
+1 for an infinitely large radius, then the encircled energy is simply
+the value of the curve of growth at a given radius. To achieve this, one
+can input a normalized version of the ``data`` array (e.g., a normalized
+PSF) to the `~photutils.profiles.CurveOfGrowth` class. One can also
+use the :meth:`~photutils.profiles.CurveOfGrowth.normalize` method to
+normalize the curve of growth profile to be 1 at the largest input
+``radii`` value.
+
+If the curve of growth is normalized, the encircled energy at
+a given radius is simply the value of the curve of growth at
+that radius. The `~photutils.profiles.CurveOfGrowth` class
+provides two convenience methods to calculate the encircled
+energy at a given radius (or radii) and the radius corresponding
+to the given encircled energy (or energies). These methods are
+:meth:`~photutils.profiles.CurveOfGrowth.calc_ee_at_radius` and
+:meth:`~photutils.profiles.CurveOfGrowth.calc_radius_at_ee`,
+respectively. They are implemented as interpolation functions using the
+calculated curve-of-growth profile. The performance of these methods
+is dependent on the quality of the curve-of-growth profile (e.g., it's
+generally better to have a curve-of-growth profile with more radial
+bins):
+
+.. doctest-requires:: scipy
+
+    >>> cog.normalize(method='max')
+    >>> ee_vals = cog.calc_ee_at_radius([5, 10, 15])  # doctest: +FLOAT_CMP
+    >>> ee_vals
+    array([0.41923785, 0.87160376, 0.96902919])
+
+.. doctest-requires:: scipy
+
+    >>> cog.calc_radius_at_ee(ee_vals)  # doctest: +FLOAT_CMP
+    array([ 5., 10., 15.])
+
+
 Reference/API
 -------------
 
