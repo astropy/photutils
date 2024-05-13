@@ -88,9 +88,9 @@ class ShepardIDWInterpolator:
         >>> x = rng.random(100)  # 100 random values
         >>> y = np.sin(x)
         >>> f = idw(x, y)
-        >>> f(0.4)  # doctest: +FLOAT_CMP
+        >>> float(f(0.4))  # doctest: +FLOAT_CMP
         0.38937843420912366
-        >>> np.sin(0.4)  # doctest: +FLOAT_CMP
+        >>> float(np.sin(0.4))  # doctest: +FLOAT_CMP
         0.3894183423086505
 
         >>> xi = rng.random(4)  # 4 random values
@@ -110,9 +110,9 @@ class ShepardIDWInterpolator:
         >>> pos = rng.random((1000, 2))
         >>> val = np.sin(pos[:, 0] + pos[:, 1])
         >>> f = idw(pos, val)
-        >>> f([0.5, 0.6])  # doctest: +FLOAT_CMP
+        >>> float(f([0.5, 0.6]))  # doctest: +FLOAT_CMP
         0.8948257014687874
-        >>> np.sin(0.5 + 0.6)  # doctest: +FLOAT_CMP
+        >>> float(np.sin(0.5 + 0.6))  # doctest: +FLOAT_CMP
         0.8912073600614354
     """
 

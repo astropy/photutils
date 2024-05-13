@@ -144,8 +144,8 @@ class ImageDepth:
     ...                    mask_pad=5, overlap=False, seed=123,
     ...                    zeropoint=23.9, progress_bar=False)
     >>> limits = depth(data, mask)
-    >>> print(limits)  # doctest: +FLOAT_CMP
-    (68.0112578151062, 19.318547982855563)
+    >>> print(np.array(limits))  # doctest: +FLOAT_CMP
+    [68.01125782 19.31854798]
 
     .. plot::
         :include-source:
