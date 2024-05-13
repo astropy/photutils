@@ -52,13 +52,14 @@ As an example, let's load an image from the bundled datasets and select
 a subset of the image. We will estimate the background and background
 noise using sigma-clipped statistics::
 
+    >>> import numpy as np
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.datasets import load_star_image
     >>> hdu = load_star_image()  # doctest: +REMOTE_DATA
     >>> data = hdu.data[0:401, 0:401]  # doctest: +REMOTE_DATA
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)  # doctest: +REMOTE_DATA
-    >>> print((mean, median, std))  # doctest: +REMOTE_DATA, +FLOAT_CMP
-    (3668.09661145823, 3649.0, 204.41388592022315)
+    >>> print(np.array((mean, median, std)))  # doctest: +REMOTE_DATA, +FLOAT_CMP
+    [3668.09661146 3649.          204.41388592]
 
 Now we will subtract the background and use an instance of
 :class:`~photutils.detection.DAOStarFinder` to find the stars in the
