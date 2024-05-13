@@ -38,6 +38,7 @@ centroid with each of these methods.  For this simple example we will
 not subtract the background from the data (but in practice, one should
 subtract the background)::
 
+    >>> import numpy as np
     >>> from photutils.datasets import make_4gaussians_image
     >>> from photutils.centroids import (centroid_1dg, centroid_2dg,
     ...                                  centroid_com, centroid_quadratic)
@@ -45,24 +46,24 @@ subtract the background)::
     >>> data = make_4gaussians_image()[43:79, 76:104]
 
     >>> x1, y1 = centroid_com(data)
-    >>> print((x1, y1))  # doctest: +FLOAT_CMP
-    (13.93157998341213, 17.051234441067088)
+    >>> print(np.array((x1, y1)))  # doctest: +FLOAT_CMP
+    [13.93157998 17.05123444]
 
     >>> x2, y2 = centroid_quadratic(data)
-    >>> print((x2, y2))  # doctest: +FLOAT_CMP
-    (13.948284438186919, 16.98788199435759)
+    >>> print(np.array((x2, y2)))  # doctest: +FLOAT_CMP
+    [13.94828444 16.98788199]
 
 .. doctest-requires:: scipy
 
     >>> x3, y3 = centroid_1dg(data)
-    >>> print((x3, y3))  # doctest: +FLOAT_CMP
-    (14.040352707371396, 16.962306463644801)
+    >>> print(np.array((x3, y3)))  # doctest: +FLOAT_CMP
+    [14.04035271 16.96230646]
 
 .. doctest-requires:: scipy
 
     >>> x4, y4 = centroid_2dg(data)
-    >>> print((x4, y4))  # doctest: +FLOAT_CMP
-    (14.002212073733611, 16.996134592982017)
+    >>> print(np.array((x4, y4)))  # doctest: +FLOAT_CMP
+    [14.00221339 16.99613642]
 
 Now let's plot the results.  Because the centroids are all very
 similar, we also include an inset plot zoomed in near the centroid:

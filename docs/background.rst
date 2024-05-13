@@ -109,8 +109,8 @@ levels::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
-    >>> print((mean, median, std))  # doctest: +FLOAT_CMP
-    (5.199138651621793, 5.155587433358291, 2.094275212132969)
+    >>> print(np.array((mean, median, std)))  # doctest: +FLOAT_CMP
+    [5.19913865 5.15558743 2.09427521]
 
 
 Masking Sources
@@ -142,8 +142,8 @@ method with a circular dilation footprint to create the source mask:
     >>> footprint = circular_footprint(radius=10)
     >>> mask = segment_img.make_source_mask(footprint=footprint)
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
-    >>> print((mean, median, std))  # doctest: +FLOAT_CMP
-    (4.994042038715669, 4.991333562774164, 1.9699473426119296)
+    >>> print(np.array((mean, median, std)))  # doctest: +FLOAT_CMP
+    [4.99404204 4.99133356 1.96994734]
 
 The source detection and masking procedure can be iterated further. Even
 with one iteration we are within 0.2% of the true background value and
