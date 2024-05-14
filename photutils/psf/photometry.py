@@ -95,8 +95,11 @@ class PSFPhotometry:
 
     localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
         The object used to estimate the local background around each
-        source.  If `None`, then no local background is subtracted.  The
+        source. If `None`, then no local background is subtracted. The
         ``local_bkg`` values in ``init_params`` override this keyword.
+        This option should be used with care, especially in crowded
+        fields where the ``fit_shape`` of sources overlap (see Notes
+        below).
 
     aperture_radius : float, optional
         The radius of the circular aperture used to estimate the initial
@@ -109,6 +112,20 @@ class PSFPhotometry:
         <https://tqdm.github.io/>`_ optional dependency be installed.
         Note that the progress bar does not currently work in the
         Jupyter console due to limitations in ``tqdm``.
+
+    Notes
+    -----
+    The local background value around each source is optionally
+    estimated using the ``localbkg_estimator`` or obtained from the
+    ``local_bkg`` column in the input ``init_params`` table. This local
+    background is then subtracted from the data over the ``fit_shape``
+    region for each source before fitting the PSF model. For sources
+    where their ``fit_shape`` regions overlap, the local background will
+    effectively be subtracted twice in the overlapping ``fit_shape``
+    regions, even if the source ``grouper`` is input. This is not an
+    issue if the sources are well-separated. However, for crowded
+    fields, please use the ``localbkg_estimator`` (or ``local_bkg``
+    column in ``init_params``) with care.
     """
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
@@ -1235,8 +1252,11 @@ class IterativePSFPhotometry:
 
     localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
         The object used to estimate the local background around each
-        source.  If `None`, then no local background is subtracted.  The
+        source. If `None`, then no local background is subtracted. The
         ``local_bkg`` values in ``init_params`` override this keyword.
+        This option should be used with care, especially in crowded
+        fields where the ``fit_shape`` of sources overlap (see Notes
+        below).
 
     aperture_radius : float, optional
         The radius of the circular aperture used to estimate the initial
@@ -1260,6 +1280,18 @@ class IterativePSFPhotometry:
 
     Notes
     -----
+    The local background value around each source is optionally
+    estimated using the ``localbkg_estimator`` or obtained from the
+    ``local_bkg`` column in the input ``init_params`` table. This local
+    background is then subtracted from the data over the ``fit_shape``
+    region for each source before fitting the PSF model. For sources
+    where their ``fit_shape`` regions overlap, the local background will
+    effectively be subtracted twice in the overlapping ``fit_shape``
+    regions, even if the source ``grouper`` is input. This is not an
+    issue if the sources are well-separated. However, for crowded
+    fields, please use the ``localbkg_estimator`` (or ``local_bkg``
+    column in ``init_params``) with care.
+
     This class has two modes of operation: 'new' and 'all'. For both
     modes, `PSFPhotometry` is first run on the data, a residual image
     is created, and the source finder is run on the residual image to
