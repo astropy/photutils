@@ -129,6 +129,8 @@ filterwarnings = [
     'ignore:datetime.datetime.utcfromtimestamp\(\) is deprecated:DeprecationWarning',
     # NumPy 2.0dev deprecations
     "ignore:.*numpy\\.core.*:DeprecationWarning",
+    # photutils.datasets.make deprecation
+    'ignore:photutils.datasets.make is deprecated:DeprecationWarning',
 ]
 
 [tool.coverage.run]
