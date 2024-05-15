@@ -30,6 +30,13 @@ API Changes
 - The ``photutils.test`` function has been removed. Instead use the
   ``pytest --pyargs photutils`` command. [#1725]
 
+- ``photutils.datasets``
+
+  - The ``photutils.datasets`` subpackage has been reorganized and
+    the ``make`` module has been deprecated. Instead of importing
+    functions from ``photutils.datasets.make``, import functions from
+    ``photutils.datasets``. [#1726]
+
 
 1.12.0 (2024-04-12)
 -------------------
