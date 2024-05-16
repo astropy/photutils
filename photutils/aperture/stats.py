@@ -144,15 +144,15 @@ class ApertureStats:
         ``sum_method='subpixel'``.
 
     local_bkg : float, `~numpy.ndarray`,  `~astropy.units.Quantity`, or `None`
-        The *per-pixel* local background values to subtract from the
-        data before performing measurements. If input as any array,
-        the order of ``local_bkg`` values corresponds to the order
-        of the input ``aperture`` positions. ``local_bkg`` must have
-        the same length as the the input ``aperture`` or must be a
-        scalar value, which will be broadcast to all apertures. If
-        `None`, then no local background subtraction is performed. If
-        the input ``data`` has units, then ``local_bkg`` must be a
-        `~astropy.units.Quantity` with the same units.
+        The per-pixel local background values to subtract from the data
+        before performing measurements. If input as an array, the order
+        of ``local_bkg`` values corresponds to the order of the input
+        ``aperture`` positions. ``local_bkg`` must have the same length
+        as the the input ``aperture`` or must be a scalar value, which
+        will be broadcast to all apertures. If `None`, then no local
+        background subtraction is performed. If the input ``data`` has
+        units, then ``local_bkg`` must be a `~astropy.units.Quantity`
+        with the same units.
 
     Notes
     -----
