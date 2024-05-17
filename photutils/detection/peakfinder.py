@@ -187,8 +187,9 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         return None
 
     # construct the output table
-    colnames = ['x_peak', 'y_peak', 'peak_value']
-    coldata = [x_peaks, y_peaks, peak_values]
+    ids = np.arange(len(x_peaks)) + 1
+    colnames = ['id', 'x_peak', 'y_peak', 'peak_value']
+    coldata = [ids, x_peaks, y_peaks, peak_values]
     table = QTable(coldata, names=colnames)
     table.meta.update(_get_meta())  # keep table.meta type
 
