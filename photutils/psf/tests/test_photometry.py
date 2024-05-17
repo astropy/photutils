@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.fitting import LMLSQFitter, SimplexLSQFitter
-from astropy.modeling.models import Gaussian2D
+from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty, overlap_slices
 from astropy.table import QTable, Table
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
@@ -32,6 +32,11 @@ def test_inputs():
     match = 'psf_model must be an Astropy Model subclass'
     with pytest.raises(TypeError, match=match):
         _ = PSFPhotometry(1, 3)
+
+    match = 'psf_model must be two-dimensional'
+    with pytest.raises(ValueError, match=match):
+        psf_model = Gaussian1D()
+        _ = PSFPhotometry(psf_model, 3)
 
     match = 'fit_shape must have an odd value for both axes'
     for shape in ((0, 0), (4, 3)):
