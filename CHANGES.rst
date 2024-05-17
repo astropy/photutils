@@ -37,6 +37,12 @@ API Changes
     functions from ``photutils.datasets.make``, import functions from
     ``photutils.datasets``. [#1726]
 
+- ``photutils.psf``
+
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise a
+    ``ValueError`` if the input ``psf_model`` is not two-dimensional
+    with ``n_inputs=2`` and ``n_outputs=1``. [#1741]
+
 
 1.12.0 (2024-04-12)
 -------------------
