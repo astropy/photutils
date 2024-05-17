@@ -43,12 +43,14 @@ class PSFPhotometry:
 
     Parameters
     ----------
-    psf_model : `astropy.modeling.Fittable2DModel`
+    psf_model : 2D `astropy.modeling.Model`
         The PSF model to fit to the data. The model must have parameters
         named ``x_0``, ``y_0``, and ``flux``, corresponding to the
         center (x, y) position and flux, or it must have 'x_name',
         'y_name', and 'flux_name' attributes that map to the x, y, and
         flux parameters (i.e., a model output from `prepare_psf_model`).
+        The model must be two-dimensional such that it accepts 2 inputs
+        (e.g., x and y) and provides 1 output.
 
     fit_shape : int or length-2 array_like
         The rectangular shape around the center of a star that will
@@ -219,6 +221,9 @@ class PSFPhotometry:
         """
         Validate the input PSF model.
 
+        The PSF model must be a subclass of `astropy.modeling.Model`. It
+        must also be two-dimensional and have a single output.
+
         The PSF model must have parameters called 'x_0', 'y_0', and
         'flux' or it must have 'x_name', 'y_name', and 'flux_name'
         attributes (i.e., output from `prepare_psf_model`). Otherwise, a
@@ -226,6 +231,13 @@ class PSFPhotometry:
         """
         if not isinstance(self.psf_model, Model):
             raise TypeError('psf_model must be an Astropy Model subclass.')
+
+        if self.psf_model.n_inputs != 2:
+            raise ValueError('psf_model must be two-dimensional.')
+        if self.psf_model.n_outputs != 1:
+            raise ValueError('psf_model must have a single output.')
+
+        # check for required PSF model parameters
         _ = self._psf_param_names
 
     @staticmethod
@@ -1189,10 +1201,14 @@ class IterativePSFPhotometry:
 
     Parameters
     ----------
-    psf_model : `astropy.modeling.Fittable2DModel`
-        The PSF model to fit to the data. The model needs to have
-        three parameters named ``x_0``, ``y_0``, and ``flux``,
-        corresponding to the center (x, y) position and flux.
+    psf_model : 2D `astropy.modeling.Model`
+        The PSF model to fit to the data. The model must have parameters
+        named ``x_0``, ``y_0``, and ``flux``, corresponding to the
+        center (x, y) position and flux, or it must have 'x_name',
+        'y_name', and 'flux_name' attributes that map to the x, y, and
+        flux parameters (i.e., a model output from `prepare_psf_model`).
+        The model must be two-dimensional such that it accepts 2 inputs
+        (e.g., x and y) and provides 1 output.
 
     fit_shape : int or length-2 array_like
         The rectangular shape around the center of a star that will
