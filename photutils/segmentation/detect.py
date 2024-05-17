@@ -68,8 +68,8 @@ def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
     Returns
     -------
     threshold : 2D `~numpy.ndarray`
-        A 2D image with the same shape as ``data`` containing the
-        pixel-wise threshold values.
+        A 2D image with the same shape (and units) as ``data``
+        containing the pixel-wise threshold values.
 
     See Also
     --------
@@ -145,8 +145,9 @@ def _detect_sources(data, thresholds, npixels, footprint, inverse_mask, *,
     thresholds : list of 2D `~numpy.ndarray` or 1D array of floats
         The data values (as a 1D array of floats) or pixel-wise data
         values (as a sequence of 2D arrays) to be used for the detection
-        thresholds. 2D threshold arrays must have the same shape as
-        ``data``.
+        thresholds. If ``data`` is a `~astropy.units.Quantity` array,
+        then ``thresholds`` must have the same units as ``data``. 2D
+        threshold arrays must have the same shape as ``data``.
 
     npixels : int
         The minimum number of connected pixels, each greater than
@@ -272,8 +273,9 @@ def detect_sources(data, threshold, npixels, *, connectivity=8, mask=None):
 
     threshold : float or 2D `~numpy.ndarray`
         The data value or pixel-wise data values to be used for the
-        detection threshold. A 2D ``threshold`` array must have the same
-        shape and units as ``data``.
+        detection threshold. If ``data`` is a `~astropy.units.Quantity`
+        array, then ``threshold`` must have the same units as ``data``.
+        A 2D ``threshold`` array must have the same shape as ``data``.
 
     npixels : int
         The minimum number of connected pixels, each greater than
