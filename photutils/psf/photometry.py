@@ -232,10 +232,9 @@ class PSFPhotometry:
         if not isinstance(self.psf_model, Model):
             raise TypeError('psf_model must be an Astropy Model subclass.')
 
-        if self.psf_model.n_inputs != 2:
-            raise ValueError('psf_model must be two-dimensional.')
-        if self.psf_model.n_outputs != 1:
-            raise ValueError('psf_model must have a single output.')
+        if self.psf_model.n_inputs != 2 or self.psf_model.n_outputs != 1:
+            raise ValueError('psf_model must be two-dimensional with '
+                             'n_inputs=2 and n_outputs=1.')
 
         # check for required PSF model parameters
         _ = self._psf_param_names
@@ -653,7 +652,7 @@ class PSFPhotometry:
             fit_infos.extend([info] * npsf_models)  # views
             fit_param_errs.extend(self._split_param_errs(param_err, nfitparam))
 
-        if len(fit_models) != len(fit_infos):
+        if len(fit_models) != len(fit_infos):  # pragma: no cover
             raise ValueError('fit_models and fit_infos have different lengths')
 
         # change the sorting from group_id to source id order
@@ -678,9 +677,9 @@ class PSFPhotometry:
         ungroup_idx = np.argsort(sources['id'].value)
         self._group_results['ungroup_indices'] = ungroup_idx
         sources = sources.groups
-        if self.progress_bar:
+        if self.progress_bar:  # pragma: no cover
             desc = 'Fit source/group'
-            sources = add_progress_bar(sources, desc=desc)  # pragma: no cover
+            sources = add_progress_bar(sources, desc=desc)
 
         # Save the fit_info results for these keys if they are present.
         # Some of these keys are returned only by some fitters. These
@@ -807,10 +806,10 @@ class PSFPhotometry:
 
         for npixfit, residuals in zip(self.fit_results['npixfit'],
                                       fit_residuals):
-            if len(residuals) != npixfit:
+            if len(residuals) != npixfit:  # pragma: no cover
                 raise ValueError('size of residuals does not match npixfit')
 
-        if len(fit_residuals) != len(source_tbl):
+        if len(fit_residuals) != len(source_tbl):  # pragma: no cover
             raise ValueError('fit_residuals does not match the source '
                              'table length')
 
@@ -1039,14 +1038,14 @@ class PSFPhotometry:
 
         # create output table
         fit_sources = self._model_params_to_table(fit_models)  # ungrouped
-        if len(init_params) != len(fit_sources):
+        if len(init_params) != len(fit_sources):  # pragma: no cover
             raise ValueError('init_params and fit_sources tables have '
                              'different lengths')
         source_tbl = hstack((init_params, fit_sources))
 
         param_errors = self._param_errors_to_table()
         if len(param_errors) > 0:
-            if len(param_errors) != len(source_tbl):
+            if len(param_errors) != len(source_tbl):  # pragma: no cover
                 raise ValueError('param errors and fit sources tables have '
                                  'different lengths')
             source_tbl = hstack((source_tbl, param_errors))
@@ -1116,9 +1115,9 @@ class PSFPhotometry:
         data = np.zeros(shape)
         xname, yname = self._psf_param_names[0:2]
 
-        if self.progress_bar:
+        if self.progress_bar:  # pragma: no cover
             desc = 'Model image'
-            fit_models = add_progress_bar(fit_models, desc=desc)  # pragma: no cover
+            fit_models = add_progress_bar(fit_models, desc=desc)
 
         # fit_models must be a list of individual, not grouped, PSF
         # models, i.e., there should be one PSF model (which may be
@@ -1579,9 +1578,9 @@ class IterativePSFPhotometry:
         data = np.zeros(shape)
         xname, yname = self.fit_results[0]._psf_param_names[0:2]
 
-        if self.psfphot.progress_bar:
+        if self.psfphot.progress_bar:  # pragma: no cover
             desc = 'Model image'
-            fit_models = add_progress_bar(fit_models, desc=desc)  # pragma: no cover
+            fit_models = add_progress_bar(fit_models, desc=desc)
 
         # fit_models must be a list of individual, not grouped, PSF
         # models, i.e., there should be one PSF model (which may be

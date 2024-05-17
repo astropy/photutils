@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.fitting import LMLSQFitter, SimplexLSQFitter
-from astropy.modeling.models import Gaussian1D, Gaussian2D
+from astropy.modeling.models import Gaussian1D, Gaussian2D, custom_model
 from astropy.nddata import NDData, StdDevUncertainty, overlap_slices
 from astropy.table import QTable, Table
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
@@ -36,6 +36,22 @@ def test_inputs():
     match = 'psf_model must be two-dimensional'
     with pytest.raises(ValueError, match=match):
         psf_model = Gaussian1D()
+        _ = PSFPhotometry(psf_model, 3)
+
+    @custom_model
+    def my_model(x, y, flux=1, x_0=0, y_0=0, sigma=1):
+        return flux, flux * 2
+    m = my_model()
+    m.n_outputs = 2
+    psf_model = my_model()
+    match = 'psf_model must be two-dimensional'
+    with pytest.raises(ValueError, match=match):
+        psf_model = Gaussian1D()
+        _ = PSFPhotometry(psf_model, 3)
+
+    match = 'Invalid PSF model - could not find PSF parameter names'
+    with pytest.raises(ValueError, match=match):
+        psf_model = Gaussian2D()
         _ = PSFPhotometry(psf_model, 3)
 
     match = 'fit_shape must have an odd value for both axes'
@@ -268,6 +284,18 @@ def test_psf_photometry_compound(test_data):
     phot = psfphot(data, error=error)
     assert isinstance(phot, QTable)
     assert len(phot) == len(sources)
+
+    psf_model2 = psf_model.copy()
+    psf_model2.xname = psf_model2.x_name
+    psf_model2.yname = psf_model2.y_name
+    psf_model2.fluxname = psf_model2.flux_name
+    del psf_model2.x_name, psf_model2.y_name, psf_model2.flux_name
+
+    psfphot2 = PSFPhotometry(psf_model2, fit_shape, finder=finder,
+                             aperture_radius=4)
+    phot2 = psfphot2(data, error=error)
+    assert isinstance(phot2, QTable)
+    assert len(phot2) == len(sources)
 
     # test results when fit does not converge (fitter_maxiters=10)
     match = r'One or more fit\(s\) may not have converged.'
