@@ -3,6 +3,7 @@
 Tests for the peakfinder module.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.tests.helper import assert_quantity_allclose
@@ -26,9 +27,20 @@ class TestFindPeaks:
     def test_box_size(self):
         """Test with box_size."""
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3)
+        assert tbl['id'][0] == 1
         assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
         assert_array_equal(tbl['peak_value'], [1.0, 1.0])
+
+        # test with units
+        unit = u.Jy
+        tbl2 = find_peaks(PEAKDATA << unit, 0.1 << unit, box_size=3)
+        columns = ['id', 'x_peak', 'y_peak']
+        for column in columns:
+            assert_array_equal(tbl[column], tbl2[column])
+        col = 'peak_value'
+        assert tbl2[col].unit == unit
+        assert_array_equal(tbl[col], tbl2[col].value)
 
     def test_footprint(self):
         """Test with footprint."""
