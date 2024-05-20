@@ -283,10 +283,11 @@ class SourceCatalog:
                  apermask_method='correct', kron_params=(2.5, 1.4, 0.0),
                  detection_cat=None, progress_bar=False):
 
-        arrays, unit = process_quantities(
-            (data, convolved_data, error, background),
-            ('data', 'convolved_data', 'error', 'background'))
-        data, convolved_data, error, background = arrays
+        inputs = (data, convolved_data, error, background)
+        names = ('data', 'convolved_data', 'error', 'background')
+        inputs, unit = process_quantities(inputs, names)
+        (data, convolved_data, error, background) = inputs
+
         self._data_unit = unit
         self._data = self._validate_array(data, 'data', shape=False)
         self._convolved_data = self._validate_array(convolved_data,
