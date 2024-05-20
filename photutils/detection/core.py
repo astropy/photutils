@@ -41,23 +41,26 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             The convolution kernel.
 
         threshold : float
-            The absolute image value above which to select sources.  This
-            threshold should be the threshold input to the star finder class
-            multiplied by the kernel relerr.
+            The absolute image value above which to select sources. This
+            threshold should be the threshold input to the star finder
+            class multiplied by the kernel relerr. If ``convolved_data``
+            is a `~astropy.units.Quantity` array, then ``threshold``
+            must have the same units.
 
         min_separation : float, optional
             The minimum separation for detected objects in pixels.
 
         mask : 2D bool array, optional
-            A boolean mask with the same shape as ``data``, where a `True`
-            value indicates the corresponding element of ``data`` is masked.
-            Masked pixels are ignored when searching for stars.
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked. Masked pixels are ignored when searching for
+            stars.
 
         exclude_border : bool, optional
-            Set to `True` to exclude sources found within half the size of
-            the convolution kernel from the image borders.  The default is
-            `False`, which is the mode used by IRAF's `DAOFIND`_ and
-            `starfind`_ tasks.
+            Set to `True` to exclude sources found within half the
+            size of the convolution kernel from the image borders.
+            The default is `False`, which is the mode used by IRAF's
+            `DAOFIND`_ and `starfind`_ tasks.
 
         Returns
         -------
@@ -151,7 +154,7 @@ class _StarFinderKernel:
     """
     Container class for a 2D Gaussian density enhancement kernel.
 
-    The kernel has negative wings and sums to zero.  It is used by both
+    The kernel has negative wings and sums to zero. It is used by both
     `DAOStarFinder` and `IRAFStarFinder`.
 
     Parameters
@@ -161,9 +164,9 @@ class _StarFinderKernel:
         Gaussian kernel in units of pixels.
 
     ratio : float, optional
-        The ratio of the minor and major axis standard deviations of the
-        Gaussian kernel.  ``ratio`` must be strictly positive and less
-        than or equal to 1.0.  The default is 1.0 (i.e., a circular
+        The ratio of the minor and major axis standard deviations of
+        the Gaussian kernel. ``ratio`` must be strictly positive and
+        less than or equal to 1.0. The default is 1.0 (i.e., a circular
         Gaussian kernel).
 
     theta : float, optional
@@ -172,9 +175,9 @@ class _StarFinderKernel:
         axis.
 
     sigma_radius : float, optional
-        The truncation radius of the Gaussian kernel in units of sigma
-        (standard deviation) [``1 sigma = FWHM /
-        2.0*sqrt(2.0*log(2.0))``].  The default is 1.5.
+        The truncation radius of the Gaussian kernel in units
+        of sigma (standard deviation) [``1 sigma = FWHM /
+        2.0*sqrt(2.0*log(2.0))``]. The default is 1.5.
 
     normalize_zerosum : bool, optional
         Whether to normalize the Gaussian kernel to have zero sum, The
