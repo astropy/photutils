@@ -216,8 +216,11 @@ class ApertureStats:
             data, error, mask, wcs = self._unpack_nddata(data, error, mask,
                                                          wcs)
 
-        (data, error, local_bkg), unit = process_quantities(
-            (data, error, local_bkg), ('data', 'error', 'local_bkg'))
+        inputs = (data, error, local_bkg)
+        names = ('data', 'error', 'local_bkg')
+        inputs, unit = process_quantities(inputs, names)
+        (data, error, local_bkg) = inputs
+
         self._data = self._validate_array(data, 'data', shape=False)
         self._data_unit = unit
         self.aperture = self._validate_aperture(aperture)

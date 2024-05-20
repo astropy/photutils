@@ -84,9 +84,10 @@ def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
     sigma-clipped background statistics. If ``background`` and ``error``
     are both input, then ``mask`` and ``sigma_clip`` are ignored.
     """
-    arrays, unit = process_quantities((data, background, error),
-                                      ('data', 'background', 'error'))
-    data, background, error = arrays
+    inputs = (data, background, error)
+    names = ('data', 'background', 'error')
+    inputs, unit = process_quantities(inputs, names)
+    (data, background, error) = inputs
 
     if not isinstance(sigma_clip, SigmaClip):
         raise TypeError('sigma_clip must be a SigmaClip object')
