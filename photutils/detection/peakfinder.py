@@ -195,7 +195,8 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     if wcs is not None:
         skycoord_peaks = wcs.pixel_to_world(x_peaks, y_peaks)
-        table.add_column(skycoord_peaks, name='skycoord_peak', index=2)
+        idx = table.colnames.index('y_peak') + 1
+        table.add_column(skycoord_peaks, name='skycoord_peak', index=idx)
 
     # perform centroiding
     if centroid_func is not None:
