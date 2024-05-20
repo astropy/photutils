@@ -100,6 +100,9 @@ class TestFindPeaks:
         tbl = find_peaks(IMAGE, 100, wcs=FITSWCS, centroid_func=centroid_com)
         for column in columns:
             assert column in tbl.colnames
+        assert tbl.colnames == ['id', 'x_peak', 'y_peak', 'skycoord_peak',
+                                'peak_value', 'x_centroid', 'y_centroid',
+                                'skycoord_centroid']
 
     @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
     def test_gwcs(self):
