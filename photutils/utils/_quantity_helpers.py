@@ -4,48 +4,61 @@ This module provides Quantity helper tools.
 """
 
 
-def process_quantities(arrays, names):
+def process_quantities(values, names):
     """
-    Check units of input arrays.
+    Check and remove units of input values.
 
-    If any of the input arrays have units then they all must have
+    If any of the input values have units then they all must have
     units and the units must be the same.
 
-    Unitless `~numpy.ndarray` objects are returned along with the array
+    The returned values are the input values with units removed and the
     unit.
 
     Parameters
     ----------
-    arrays : list of `~numpy.ndarray` or `~astropy.units.Quantity`
-        A list of arrays.
+    values : list of scalar, `~numpy.ndarray`, or `~astropy.units.Quantity`
+        A list of values.
 
     names : list of str
-        A list of names corresponding to the input ``arrays``.
+        A list of names corresponding to the input ``values``.
 
     Returns
     -------
-    arrays : list of `~numpy.ndarray`
-        A list of numpy arrays, where units have been removed.
+    values : list of scalar or `~numpy.ndarray`
+        A list of values, where units have been removed.
 
     unit : `~astropy.unit.Unit`
-        The data unit. `None` will be returned if the input arrays do
-        not have units.
+        The common unit for the input values. `None` will be returned if
+        all the input values do not have units.
 
     Raises
     ------
     ValueError
-        If the input arrays do not all have the same units.
+        If the input values do not all have the same units.
     """
-    unit = {getattr(arr, 'unit', None) for arr in arrays if arr is not None}
+    if len(values) != len(names):
+        raise ValueError('The number of values must match the number of '
+                         'names.')
+
+    all_units = {name: getattr(arr, 'unit', None)
+                 for arr, name in zip(values, names) if arr is not None}
+    unit = set(all_units.values())
+
     if len(unit) > 1:
-        if len(names) == 2:
-            str_names = f'{names[0]} or {names[1]}'
-        elif len(names) > 2:
-            names1 = ', '.join(names[:-1])
-            str_names = f'{names1}, or {names[-1]}'
-        raise ValueError(f'If {str_names} has units, then they must have the '
-                         'same units.')
+        values = list(all_units.keys())
+        msg = [f'The inputs {values} must all have the same units:']
+        indent = ' ' * 4
+        for key, value in all_units.items():
+            if value is None:
+                msg.append(f'{indent}{key} does not have units')
+            else:
+                msg.append(f'{indent}{key} has units of {value}')
+        msg = '\n'.join(msg)
+        raise ValueError(msg)
+
+    # extract the unit and remove it from the return values
     unit = unit.pop()
     if unit is not None:
-        arrays = [arr.value if arr is not None else arr for arr in arrays]
-    return arrays, unit
+        values = [val.value if val is not None else val for val in values]
+
+    return values, unit
