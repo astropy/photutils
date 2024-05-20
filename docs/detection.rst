@@ -212,18 +212,18 @@ sigma above the background and a separated by at least 5 pixels:
     >>> tbl = find_peaks(data, threshold, box_size=11)
     >>> tbl['peak_value'].info.format = '%.8g'  # for consistent table output
     >>> print(tbl[:10])  # print only the first 10 peaks
-    x_peak y_peak peak_value
-    ------ ------ ----------
-       233      0  27.477852
-       493      6  20.404769
-       207     11  24.075798
-       258     12  17.395025
-       366     12  18.729726
-       289     22  35.853276
-       380     29  19.261986
-       442     31  30.239994
-       359     36  19.771626
-       471     38   25.45583
+     id x_peak y_peak peak_value
+    --- ------ ------ ----------
+      1    233      0  27.477852
+      2    493      6  20.404769
+      3    207     11  24.075798
+      4    258     12  17.395025
+      5    366     12  18.729726
+      6    289     22  35.853276
+      7    380     29  19.261986
+      8    442     31  30.239994
+      9    359     36  19.771626
+     10    471     38   25.45583
 
 And let's plot the location of the detected peaks in the image:
 

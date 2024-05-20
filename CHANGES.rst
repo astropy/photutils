@@ -7,6 +7,14 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.detection``
+
+  - The ``find_peaks`` function now supports ``Quantity`` inputs.
+    [#1743]
+
+  - The ``Table`` returned from ``find_peaks`` now has an ``id`` column
+    that contains unique integer IDs for each peak. [#1743]
+
 - ``photutils.profiles``
 
   - Added an ``unnormalize`` method to ``RadialProfile`` and

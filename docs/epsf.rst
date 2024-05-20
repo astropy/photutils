@@ -83,19 +83,19 @@ stars:
     >>> peaks_tbl = find_peaks(data, threshold=500.0)  # doctest: +REMOTE_DATA
     >>> peaks_tbl['peak_value'].info.format = '%.8g'  # for consistent table output  # doctest: +REMOTE_DATA
     >>> print(peaks_tbl)  # doctest: +REMOTE_DATA
-    x_peak y_peak peak_value
-    ------ ------ ----------
-       849      2  1076.7026
-       182      4  1709.5671
-       324      4  3006.0086
-       100      9  1142.9915
-       824      9  1302.8604
-       ...    ...        ...
-       751    992  801.23834
-       114    994  1595.2804
-       299    994  648.18539
-       207    998  2810.6503
-       691    999  2611.0464
+     id x_peak y_peak peak_value
+    --- ------ ------ ----------
+      1    849      2  1076.7026
+      2    182      4  1709.5671
+      3    324      4  3006.0086
+      4    100      9  1142.9915
+      5    824      9  1302.8604
+    ...    ...    ...        ...
+    427    751    992  801.23834
+    428    114    994  1595.2804
+    429    299    994  648.18539
+    430    207    998  2810.6503
+    431    691    999  2611.0464
     Length = 431 rows
 
 Note that the stars are sufficiently separated in the simulated image
