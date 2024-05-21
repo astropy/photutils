@@ -6,39 +6,12 @@ Tests for StarFinder.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.modeling.models import Gaussian2D
 from astropy.table import Table
 from numpy.testing import assert_equal
 
-from photutils.datasets import make_test_psf_data
-from photutils.detection.starfinder import StarFinder
-from photutils.psf import IntegratedGaussianPRF
+from photutils.detection import StarFinder
 from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
-
-
-@pytest.fixture(name='kernel')
-def fixture_kernel():
-    size = 5
-    cen = (size - 1) / 2
-    y, x = np.mgrid[0:size, 0:size]
-    g = Gaussian2D(1, cen, cen, 1.2, 1.2, theta=0)
-    return g(x, y)
-
-
-@pytest.fixture(name='data')
-def fixture_data():
-    shape = (101, 101)
-    psf_shape = (11, 11)
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=1.5)
-    nsources = 25
-    data, _ = make_test_psf_data(shape, psf_model, psf_shape, nsources,
-                                 flux_range=(100, 200),
-                                 min_separation=10,
-                                 seed=0,
-                                 border_size=(10, 10),
-                                 progress_bar=False)
-    return data
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -73,7 +46,8 @@ class TestStarFinder:
             StarFinder(1, kernel, brightest=3.1)
 
     def test_nosources(self, data, kernel):
-        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
+        match = 'No sources were found'
+        with pytest.warns(NoDetectionsWarning, match=match):
             finder = StarFinder(100, kernel)
             tbl = finder(data)
             assert tbl is None
@@ -94,8 +68,8 @@ class TestStarFinder:
         assert len(tbl1) == 25
         assert len(tbl2) == 17
 
-        with pytest.warns(NoDetectionsWarning,
-                          match='Sources were found, but none pass'):
+        match = 'Sources were found, but none pass'
+        with pytest.warns(NoDetectionsWarning, match=match):
             starfinder = StarFinder(10, kernel, peakmax=5)
             tbl = starfinder(data)
             assert tbl is None
