@@ -5,18 +5,16 @@ Tests for IRAFStarFinder.
 
 import itertools
 import os.path as op
-from contextlib import nullcontext
 
 import astropy.units as u
 import numpy as np
 import pytest
 from astropy.table import Table
-from astropy.utils import minversion
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.datasets import make_100gaussians_image
 from photutils.detection import IRAFStarFinder
-from photutils.tests.helper import PYTEST_LT_80
 from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -84,27 +82,12 @@ class TestIRAFStarFinder:
             assert tbl is None
 
     def test_irafstarfind_sky(self, data):
-        finder0 = IRAFStarFinder(threshold=1.0, fwhm=2.0, sky=0.0)
-        finder1 = IRAFStarFinder(threshold=1.0, fwhm=2.0, sky=5.0)
-        tbl0 = finder0(data)
-        tbl1 = finder1(data)
-        assert np.all(tbl0['flux'] > tbl1['flux'])
-
-    def test_irafstarfind_largesky(self, data):
-        match1 = 'Sources were found, but none pass'
-        ctx1 = pytest.warns(NoDetectionsWarning, match=match1)
-        if PYTEST_LT_80:
-            ctx2 = nullcontext()
-        else:
-            if not minversion(np, '1.23'):
-                match2 = 'invalid value encountered in true_divide'
-            else:
-                match2 = 'invalid value encountered in divide'
-            ctx2 = pytest.warns(RuntimeWarning, match=match2)
-        with ctx1, ctx2:
-            finder = IRAFStarFinder(threshold=1.0, fwhm=2.0, sky=100.0)
-            tbl = finder(data)
-            assert tbl is None
+        with pytest.warns(AstropyDeprecationWarning):
+            finder0 = IRAFStarFinder(threshold=1.0, fwhm=2.0, sky=0.0)
+            finder1 = IRAFStarFinder(threshold=1.0, fwhm=2.0, sky=5.0)
+            tbl0 = finder0(data)
+            tbl1 = finder1(data)
+            assert np.all(tbl0['flux'] > tbl1['flux'])
 
     def test_irafstarfind_peakmax_filtering(self, data):
         """

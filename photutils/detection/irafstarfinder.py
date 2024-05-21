@@ -11,6 +11,7 @@ import numpy as np
 from astropy.nddata import extract_array
 from astropy.table import QTable
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.detection.core import (StarFinderBase, _StarFinderKernel,
                                       _validate_brightest)
@@ -69,6 +70,8 @@ class IRAFStarFinder(StarFinderBase):
         The upper bound on roundness for object detection.
 
     sky : float, optional
+        .. deprecated:: 1.13.0
+
         The background sky level of the image. Inputing a ``sky``
         value will override the background sky estimate. Setting
         ``sky`` affects only the output values of the object ``peak``,
@@ -154,6 +157,7 @@ class IRAFStarFinder(StarFinderBase):
     .. _starfind: https://iraf.net/irafhelp.php?val=starfind
     """
 
+    @deprecated_renamed_argument('sky', None, '1.13.0')
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
                  sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
                  exclude_border=False, brightest=None, peakmax=None,
@@ -234,7 +238,8 @@ class IRAFStarFinder(StarFinderBase):
         Parameters
         ----------
         data : 2D array_like
-            The 2D image array.
+            The 2D image array. The image should be
+            background-subtracted.
 
         mask : 2D bool array, optional
             A boolean mask with the same shape as ``data``, where a
@@ -289,7 +294,7 @@ class _IRAFStarFinderCatalog:
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        The 2D image.
+        The 2D image. The image should be background-subtracted.
 
     convolved_data : 2D `~numpy.ndarray`
         The convolved 2D image. If ``data`` is a
