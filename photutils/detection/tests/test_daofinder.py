@@ -37,7 +37,7 @@ class TestDAOStarFinder:
             assert_allclose(tbl[col], tbl_ref[col])
 
     def test_daofind_threshold_fwhm_inputs(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             DAOStarFinder(threshold=np.ones((2, 2)), fwhm=3.0)
 
         with pytest.raises(TypeError):

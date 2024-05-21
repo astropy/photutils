@@ -200,7 +200,7 @@ class _StarFinderKernel:
     .. [1] https://en.wikipedia.org/wiki/Gaussian_function
     """
 
-    def __init__(self, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
+    def __init__(self, fwhm, *, ratio=1.0, theta=0.0, sigma_radius=1.5,
                  normalize_zerosum=True):
 
         if fwhm < 0:

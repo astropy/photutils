@@ -6,14 +6,17 @@ This module implements the DAOStarFinder class.
 import inspect
 import warnings
 
+import astropy.units as u
 import numpy as np
 from astropy.nddata import extract_array
 from astropy.table import QTable
 from astropy.utils import lazyproperty
 
-from photutils.detection.core import StarFinderBase, _StarFinderKernel
+from photutils.detection.core import (StarFinderBase, _StarFinderKernel,
+                                      _validate_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._misc import _get_meta
+from photutils.utils._quantity_helpers import isscalar, process_quantities
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['DAOStarFinder']
@@ -30,25 +33,25 @@ class DAOStarFinder(StarFinderBase):
     searches images for local density maxima that have a peak amplitude
     greater than ``threshold`` (approximately; ``threshold`` is applied
     to a convolved image) and have a size and shape similar to the
-    defined 2D Gaussian kernel.  The Gaussian kernel is defined by the
-    ``fwhm``, ``ratio``, ``theta``, and ``sigma_radius`` input
+    defined 2D Gaussian kernel. The Gaussian kernel is defined by
+    the ``fwhm``, ``ratio``, ``theta``, and ``sigma_radius`` input
     parameters.
 
-    ``DAOStarFinder`` finds the object centroid by fitting the marginal x
-    and y 1D distributions of the Gaussian kernel to the marginal x and
-    y distributions of the input (unconvolved) ``data`` image.
+    ``DAOStarFinder`` finds the object centroid by fitting the marginal
+    x and y 1D distributions of the Gaussian kernel to the marginal x
+    and y distributions of the input (unconvolved) ``data`` image.
 
-    ``DAOStarFinder`` calculates the object roundness using two methods. The
-    ``roundlo`` and ``roundhi`` bounds are applied to both measures of
-    roundness.  The first method (``roundness1``; called ``SROUND`` in
-    `DAOFIND`_) is based on the source symmetry and is the ratio of a
-    measure of the object's bilateral (2-fold) to four-fold symmetry.
-    The second roundness statistic (``roundness2``; called ``GROUND`` in
-    `DAOFIND`_) measures the ratio of the difference in the height of
-    the best fitting Gaussian function in x minus the best fitting
+    ``DAOStarFinder`` calculates the object roundness using two methods.
+    The ``roundlo`` and ``roundhi`` bounds are applied to both measures
+    of roundness. The first method (``roundness1``; called ``SROUND``
+    in `DAOFIND`_) is based on the source symmetry and is the ratio of
+    a measure of the object's bilateral (2-fold) to four-fold symmetry.
+    The second roundness statistic (``roundness2``; called ``GROUND``
+    in `DAOFIND`_) measures the ratio of the difference in the height
+    of the best fitting Gaussian function in x minus the best fitting
     Gaussian function in y, divided by the average of the best fitting
-    Gaussian functions in x and y.  A circular source will have a zero
-    roundness.  A source extended in x or y will have a negative or
+    Gaussian functions in x and y. A circular source will have a zero
+    roundness. A source extended in x or y will have a negative or
     positive roundness, respectively.
 
     The sharpness statistic measures the ratio of the difference between
@@ -60,15 +63,18 @@ class DAOStarFinder(StarFinderBase):
     ----------
     threshold : float
         The absolute image value above which to select sources.
+        If the star finder is run on an image that is a
+        `~astropy.units.Quantity` array, then ``threshold`` must have
+        the same units.
 
     fwhm : float
         The full-width half-maximum (FWHM) of the major axis of the
         Gaussian kernel in units of pixels.
 
     ratio : float, optional
-        The ratio of the minor to major axis standard deviations of the
-        Gaussian kernel.  ``ratio`` must be strictly positive and less
-        than or equal to 1.0.  The default is 1.0 (i.e., a circular
+        The ratio of the minor to major axis standard deviations of
+        the Gaussian kernel. ``ratio`` must be strictly positive and
+        less than or equal to 1.0. The default is 1.0 (i.e., a circular
         Gaussian kernel).
 
     theta : float, optional
@@ -77,8 +83,8 @@ class DAOStarFinder(StarFinderBase):
         axis.
 
     sigma_radius : float, optional
-        The truncation radius of the Gaussian kernel in units of sigma
-        (standard deviation) [``1 sigma = FWHM /
+        The truncation radius of the Gaussian kernel in units
+        of sigma (standard deviation) [``1 sigma = FWHM /
         (2.0*sqrt(2.0*log(2.0)))``].
 
     sharplo : float, optional
@@ -93,31 +99,38 @@ class DAOStarFinder(StarFinderBase):
     roundhi : float, optional
         The upper bound on roundness for object detection.
 
-    sky : float, optional
-        The background sky level of the image.  Setting ``sky`` affects
+    sky : float or `~astropy.units.Quantity`, optional
+        The background sky level of the image. Setting ``sky`` affects
         only the output values of the object ``peak``, ``flux``, and
-        ``mag`` values.  The default is 0.0, which should be used to
-        replicate the results from `DAOFIND`_.
+        ``mag`` values. The default is 0.0, which should be used to
+        replicate the results from `DAOFIND`_. If the star finder is
+        run on an image that is a `~astropy.units.Quantity` array, then
+        ``sky`` must have the same units.
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
-        the convolution kernel from the image borders.  The default is
+        the convolution kernel from the image borders. The default is
         `False`, which is the mode used by `DAOFIND`_.
 
     brightest : int, None, optional
-        Number of brightest objects to keep after sorting the full object list.
-        If ``brightest`` is set to `None`, all objects will be selected.
+        The number of brightest objects to keep after sorting the source
+        list by flux. If ``brightest`` is set to `None`, all objects
+        will be selected.
 
     peakmax : float, None, optional
-        Maximum peak pixel value in an object. Only objects whose peak pixel
-        values are *strictly smaller* than ``peakmax`` will be selected.
-        This may be used to exclude saturated sources. By default, when
-        ``peakmax`` is set to `None`, all objects will be selected.
+        The maximum allowed peak pixel value in an object. Only objects
+        whose peak pixel values are strictly smaller than ``peakmax``
+        will be selected. This may be used, for example, to exclude
+        saturated sources. If the star finder is run on an image that is
+        a `~astropy.units.Quantity` array, then ``peakmax`` must have
+        the same units. If ``peakmax`` is set to `None`, then no peak
+        pixel value filtering will be performed.
 
         .. warning::
             `DAOStarFinder` automatically excludes objects whose peak
-            pixel values are negative. Therefore, setting ``peakmax`` to a
-            non-positive value would result in exclusion of all objects.
+            pixel values are negative. Therefore, setting ``peakmax``
+            to a non-positive value would result in exclusion of all
+            objects.
 
     xycoords : `None` or Nx2 `~numpy.ndarray`, optional
         The (x, y) pixel coordinates of the approximate centroid
@@ -134,8 +147,12 @@ class DAOStarFinder(StarFinderBase):
 
     Notes
     -----
-    For the convolution step, this routine sets pixels beyond the image
-    borders to 0.0.  The equivalent parameters in `DAOFIND`_ are
+    If the star finder is run on an image that is a
+    `~astropy.units.Quantity` array, then ``threshold``, ``sky``, and
+    ``peakmax`` must all have the same units as the image.
+
+    For the convolution step, this routine sets pixels beyond the
+    image borders to 0.0. The equivalent parameters in `DAOFIND`_ are
     ``boundary='constant'`` and ``constant=0.0``.
 
     The main differences between `~photutils.detection.DAOStarFinder`
@@ -164,8 +181,13 @@ class DAOStarFinder(StarFinderBase):
                  brightest=None, peakmax=None, xycoords=None,
                  min_separation=0.0):
 
-        if not np.isscalar(threshold):
-            raise TypeError('threshold must be a scalar value.')
+        # here we validate the units, but do not strip them
+        inputs = (threshold, sky, peakmax)
+        names = ('threshold', 'sky', 'peakmax')
+        _ = process_quantities(inputs, names)
+
+        if not isscalar(threshold):
+            raise ValueError('threshold must be a scalar value.')
 
         if not np.isscalar(fwhm):
             raise TypeError('fwhm must be a scalar value.')
@@ -181,7 +203,7 @@ class DAOStarFinder(StarFinderBase):
         self.roundhi = roundhi
         self.sky = sky
         self.exclude_border = exclude_border
-        self.brightest = self._validate_brightest(brightest)
+        self.brightest = _validate_brightest(brightest)
         self.peakmax = peakmax
 
         if min_separation < 0:
@@ -194,22 +216,13 @@ class DAOStarFinder(StarFinderBase):
                 raise ValueError('xycoords must be shaped as a Nx2 array')
         self.xycoords = xycoords
 
-        self.kernel = _StarFinderKernel(self.fwhm, self.ratio, self.theta,
-                                        self.sigma_radius)
+        self.kernel = _StarFinderKernel(self.fwhm,
+                                        ratio=self.ratio,
+                                        theta=self.theta,
+                                        sigma_radius=self.sigma_radius)
         self.threshold_eff = self.threshold * self.kernel.relerr
 
-    @staticmethod
-    def _validate_brightest(brightest):
-        if brightest is not None:
-            if brightest <= 0:
-                raise ValueError('brightest must be >= 0')
-            bright_int = int(brightest)
-            if bright_int != brightest:
-                raise ValueError('brightest must be an integer')
-            brightest = bright_int
-        return brightest
-
-    def _get_raw_catalog(self, data, mask=None):
+    def _get_raw_catalog(self, data, *, mask=None):
         convolved_data = _filter_data(data, self.kernel.data, mode='constant',
                                       fill_value=0.0,
                                       check_normalization=False)
@@ -226,10 +239,14 @@ class DAOStarFinder(StarFinderBase):
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        cat = _DAOStarFinderCatalog(data, convolved_data, xypos, self.kernel,
-                                    self.threshold, sky=self.sky,
-                                    sharplo=self.sharplo, sharphi=self.sharphi,
-                                    roundlo=self.roundlo, roundhi=self.roundhi,
+        cat = _DAOStarFinderCatalog(data, convolved_data, xypos,
+                                    self.threshold,
+                                    self.kernel,
+                                    sky=self.sky,
+                                    sharplo=self.sharplo,
+                                    sharphi=self.sharphi,
+                                    roundlo=self.roundlo,
+                                    roundhi=self.roundhi,
                                     brightest=self.brightest,
                                     peakmax=self.peakmax)
         return cat
@@ -246,7 +263,7 @@ class DAOStarFinder(StarFinderBase):
         mask : 2D bool array, optional
             A boolean mask with the same shape as ``data``, where a
             `True` value indicates the corresponding element of ``data``
-            is masked.  Masked pixels are ignored when searching for
+            is masked. Masked pixels are ignored when searching for
             stars.
 
         Returns
@@ -264,15 +281,21 @@ class DAOStarFinder(StarFinderBase):
               array.
             * ``sky``: the input ``sky`` parameter.
             * ``peak``: the peak, sky-subtracted, pixel value of the object.
-            * ``flux``: the object flux calculated as the peak density in
-              the convolved image divided by the detection threshold.  This
-              derivation matches that of `DAOFIND`_ if ``sky`` is 0.0.
+            * ``flux``: the object DAOFind "flux" calculated as the peak
+              density in the convolved image divided by the detection
+              threshold. This derivation matches that of `DAOFIND`_ if
+              ``sky`` is 0.0.
             * ``mag``: the object instrumental magnitude calculated as
-              ``-2.5 * log10(flux)``.  The derivation matches that of
+              ``-2.5 * log10(flux)``. The derivation matches that of
               `DAOFIND`_ if ``sky`` is 0.0.
 
             `None` is returned if no stars are found.
         """
+
+        inputs = (data, self.threshold, self.sky, self.peakmax)
+        names = ('data', 'threshold', 'sky', 'peakmax')
+        _ = process_quantities(inputs, names)
+
         cat = self._get_raw_catalog(data, mask=mask)
         if cat is None:
             return None
@@ -297,34 +320,76 @@ class _DAOStarFinderCatalog:
         The 2D image.
 
     convolved_data : 2D `~numpy.ndarray`
-        The convolved 2D image.
+        The convolved 2D image. If ``data`` is a
+        `~astropy.units.Quantity` array, then ``convolved_data`` must
+        have the same units.
 
     xypos : Nx2 `numpy.ndarray`
         A Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
+    threshold : float
+        The absolute image value above which sources were selected.
+        If ``data`` is a `~astropy.units.Quantity` array, then
+        ``threshold`` must have the same units.
+
     kernel : `_StarFinderKernel`
         The convolution kernel. This kernel must match the kernel used
         to create the ``convolved_data``.
 
-    threshold : float
-        The absolute image value above which sources were selected.
-
     sky : float, optional
-        The local sky level around the source.  ``sky`` is used only to
-        calculate the source peak value, flux, and magnitude.  The
-        default is 0.
+        The local sky level around the source. ``sky`` is used only
+        to calculate the source peak value, flux, and magnitude. If
+        ``data`` is a `~astropy.units.Quantity` array, then ``sky`` must
+        have the same units.
+
+    sharplo : float, optional
+        The lower bound on sharpness for object detection.
+
+    sharphi : float, optional
+        The upper bound on sharpness for object detection.
+
+    roundlo : float, optional
+        The lower bound on roundness for object detection.
+
+    roundhi : float, optional
+        The upper bound on roundness for object detection.
+
+    brightest : int, None, optional
+        The number of brightest objects to keep after sorting the source
+        list by flux. If ``brightest`` is set to `None`, all objects
+        will be selected.
+
+    peakmax : float, None, optional
+        The maximum allowed peak pixel value in an object. Only objects
+        whose peak pixel values are strictly smaller than ``peakmax``
+        will be selected. This may be used, for example, to exclude
+        saturated sources. If the star finder is run on an image that is
+        a `~astropy.units.Quantity` array, then ``peakmax`` must have
+        the same units. If ``peakmax`` is set to `None`, then no peak
+        pixel value filtering will be performed.
 
     References
     ----------
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
     """
 
-    def __init__(self, data, convolved_data, xypos, kernel, threshold,
+    def __init__(self, data, convolved_data, xypos, threshold, kernel, *,
                  sky=0.0, sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
                  brightest=None, peakmax=None):
 
+        # here we validate the units, but do not strip them
+        inputs = (data, convolved_data, threshold, sky, peakmax)
+        names = ('data', 'convolved_data', 'threshold', 'sky', 'peakmax')
+        _ = process_quantities(inputs, names)
+
         self.data = data
+        if isinstance(data, u.Quantity):
+            unit = data.unit
+        else:
+            unit = None
+        self.unit = unit
+
         self.convolved_data = convolved_data
         self.xypos = np.atleast_2d(xypos)
         self.kernel = kernel
@@ -349,10 +414,16 @@ class _DAOStarFinderCatalog:
         return len(self.xypos)
 
     def __getitem__(self, index):
+        # NOTE: we allow indexing/slicing of scalar (self.isscalar = True)
+        #       instances in order to perform catalog filtering even for
+        #       a single source
+
         newcls = object.__new__(self.__class__)
-        init_attr = ('data', 'convolved_data', 'kernel', 'threshold', '_sky',
-                     'sharplo', 'sharphi', 'roundlo', 'roundhi', 'brightest',
-                     'peakmax', 'threshold_eff', 'cutout_shape',
+
+        # copy these attributes to the new instance
+        init_attr = ('data', 'unit', 'convolved_data', 'kernel', 'threshold',
+                     '_sky', 'sharplo', 'sharphi', 'roundlo', 'roundhi',
+                     'brightest', 'peakmax', 'threshold_eff', 'cutout_shape',
                      'cutout_center', 'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
@@ -363,6 +434,7 @@ class _DAOStarFinderCatalog:
         value = getattr(self, attr)[index]
         setattr(newcls, attr, np.atleast_2d(value))
 
+        # slice the other attributes
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
         keys.add('id')
         for key in keys:
@@ -399,7 +471,9 @@ class _DAOStarFinderCatalog:
                                                  predicate=islazyproperty)]
 
     def reset_ids(self):
-        """Reset the ID column to be consecutive integers."""
+        """
+        Reset the ID column to be consecutive integers.
+        """
         self.id = np.arange(len(self)) + 1
 
     def make_cutouts(self, data):
@@ -407,7 +481,11 @@ class _DAOStarFinderCatalog:
         for xpos, ypos in self.xypos:
             cutouts.append(extract_array(data, self.cutout_shape, (ypos, xpos),
                                          fill_value=0.0))
-        return np.array(cutouts)
+        value = np.array(cutouts)
+        if self.unit is not None:
+            value <<= self.unit
+
+        return value
 
     @lazyproperty
     def cutout_data(self):
@@ -499,8 +577,8 @@ class _DAOStarFinderCatalog:
             of the image centroid relative to the maximum pixel.
 
         hx : float
-            The height of the best-fitting Gaussian to the marginal x or
-            y (depending on ``axis`` value) distribution of the
+            The height of the best-fitting Gaussian to the marginal
+            x or y (depending on ``axis`` value) distribution of the
             unconvolved source data.
         """
         # define triangular weighting functions along each axis, peaked
@@ -540,7 +618,11 @@ class _DAOStarFinderCatalog:
         dkern_dx2_sum = np.sum(dkern_dx**2 * wt)
         kern_dkern_dx_sum = np.sum(kern_sum_1d * dkern_dx * wt)
 
-        data_sum_1d = np.sum(self.cutout_data * wts, axis=axis + 1)
+        cutout_data = self.cutout_data
+        if isinstance(cutout_data, u.Quantity):
+            cutout_data = cutout_data.value
+
+        data_sum_1d = np.sum(cutout_data * wts, axis=axis + 1)
         data_sum = np.sum(data_sum_1d * wt, axis=1)
         data_kern_sum = np.sum(data_sum_1d * kern_sum_1d * wt, axis=1)
         data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt, axis=1)
@@ -625,8 +707,8 @@ class _DAOStarFinderCatalog:
         This roundness parameter represents the ratio of the difference
         in the height of the best fitting Gaussian function in x minus
         the best fitting Gaussian function in y, divided by the average
-        of the best fitting Gaussian functions in x and y.  A circular
-        source will have a zero roundness.  A source extended in x or y
+        of the best fitting Gaussian functions in x and y. A circular
+        source will have a zero roundness. A source extended in x or y
         will have a negative or positive roundness, respectively.
         """
         return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
@@ -637,28 +719,44 @@ class _DAOStarFinderCatalog:
 
     @lazyproperty
     def flux(self):
-        return ((self.convdata_peak / self.threshold_eff)
-                - (self.sky * self.npix))
+        """
+        This is DAOStarFinder's definition of "flux", which is the
+        object flux calculated as the peak density in the convolved
+        image divided by the effective detection threshold. This
+        derivation matches that of `DAOFIND`_ if ``sky`` is 0.0.
+        """
+        flux = self.convdata_peak / self.threshold_eff
+        if self.unit is not None:
+            flux = flux.value * self.unit
+        return flux - (self.sky * self.npix)
 
     @lazyproperty
     def mag(self):
         # ignore RunTimeWarning if flux is <= 0
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
-            mag = -2.5 * np.log10(self.flux)
+            flux = self.flux
+            if isinstance(flux, u.Quantity):
+                flux = flux.value
+            mag = -2.5 * np.log10(flux)
             mag[self.flux <= 0] = np.nan
         return mag
 
     @lazyproperty
     def sky(self):
-        return np.full(len(self), fill_value=self._sky)
+        sky_vals = np.full(len(self), fill_value=self._sky)
+        if self.unit is not None:
+            sky_vals <<= self.unit
+        return sky_vals
 
     @lazyproperty
     def npix(self):
         return np.full(len(self), fill_value=self.kernel.data.size)
 
     def apply_filters(self):
-        """Filter the catalog."""
+        """
+        Filter the catalog.
+        """
         mask = (~np.isnan(self.dx) & ~np.isnan(self.dy)
                 & ~np.isnan(self.hx) & ~np.isnan(self.hy))
         mask &= ((self.sharpness > self.sharplo)
@@ -681,8 +779,8 @@ class _DAOStarFinderCatalog:
 
     def select_brightest(self):
         """
-        Sort the catalog by the brightest fluxes and select the
-        top brightest sources.
+        Sort the catalog by the brightest fluxes and select the top
+        brightest sources.
         """
         newcat = self
         if self.brightest is not None:
@@ -693,7 +791,7 @@ class _DAOStarFinderCatalog:
     def apply_all_filters(self):
         """
         Apply all filters, select the brightest, and reset the source
-        ids.
+        IDs.
         """
         cat = self.apply_filters()
         if cat is None:
