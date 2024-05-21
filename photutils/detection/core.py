@@ -275,3 +275,19 @@ class _StarFinderKernel:
             self.data = self.gaussian_kernel
 
         self.shape = self.data.shape
+
+
+def _validate_brightest(brightest):
+    """
+    Validate the ``brightest`` parameter.
+
+    It must be >0 and an integer.
+    """
+    if brightest is not None:
+        if brightest <= 0:
+            raise ValueError('brightest must be >= 0')
+        bright_int = int(brightest)
+        if bright_int != brightest:
+            raise ValueError('brightest must be an integer')
+        brightest = bright_int
+    return brightest
