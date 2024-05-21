@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.tests.helper import assert_quantity_allclose
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_equal
 
 from photutils.centroids import centroid_com
 from photutils.datasets import make_4gaussians_image, make_gwcs, make_wcs
@@ -28,26 +28,26 @@ class TestFindPeaks:
         """Test with box_size."""
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3)
         assert tbl['id'][0] == 1
-        assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
-        assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
-        assert_array_equal(tbl['peak_value'], [1.0, 1.0])
+        assert_equal(tbl['x_peak'], PEAKREF1[:, 1])
+        assert_equal(tbl['y_peak'], PEAKREF1[:, 0])
+        assert_equal(tbl['peak_value'], [1.0, 1.0])
 
         # test with units
         unit = u.Jy
         tbl2 = find_peaks(PEAKDATA << unit, 0.1 << unit, box_size=3)
         columns = ['id', 'x_peak', 'y_peak']
         for column in columns:
-            assert_array_equal(tbl[column], tbl2[column])
+            assert_equal(tbl[column], tbl2[column])
         col = 'peak_value'
         assert tbl2[col].unit == unit
-        assert_array_equal(tbl[col], tbl2[col].value)
+        assert_equal(tbl[col], tbl2[col].value)
 
     def test_footprint(self):
         """Test with footprint."""
         tbl = find_peaks(PEAKDATA, 0.1, footprint=np.ones((3, 3)))
-        assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
-        assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
-        assert_array_equal(tbl['peak_value'], [1.0, 1.0])
+        assert_equal(tbl['x_peak'], PEAKREF1[:, 1])
+        assert_equal(tbl['y_peak'], PEAKREF1[:, 0])
+        assert_equal(tbl['peak_value'], [1.0, 1.0])
 
     def test_mask(self):
         """Test with mask."""
@@ -55,9 +55,9 @@ class TestFindPeaks:
         mask[0, 0] = True
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3, mask=mask)
         assert len(tbl) == 1
-        assert_array_equal(tbl['x_peak'], PEAKREF1[1, 0])
-        assert_array_equal(tbl['y_peak'], PEAKREF1[1, 1])
-        assert_array_equal(tbl['peak_value'], 1.0)
+        assert_equal(tbl['x_peak'], PEAKREF1[1, 0])
+        assert_equal(tbl['y_peak'], PEAKREF1[1, 1])
+        assert_equal(tbl['peak_value'], 1.0)
 
     def test_maskshape(self):
         """Test if make shape doesn't match data shape."""
@@ -72,8 +72,8 @@ class TestFindPeaks:
     def test_npeaks(self):
         """Test npeaks."""
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3, npeaks=1)
-        assert_array_equal(tbl['x_peak'], PEAKREF1[1, 1])
-        assert_array_equal(tbl['y_peak'], PEAKREF1[1, 0])
+        assert_equal(tbl['x_peak'], PEAKREF1[1, 1])
+        assert_equal(tbl['y_peak'], PEAKREF1[1, 0])
 
     def test_border_width(self):
         """Test border exclusion."""
