@@ -11,6 +11,7 @@ import numpy as np
 from astropy.nddata import extract_array
 from astropy.table import QTable
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.detection.core import (StarFinderBase, _StarFinderKernel,
                                       _validate_brightest)
@@ -100,6 +101,8 @@ class DAOStarFinder(StarFinderBase):
         The upper bound on roundness for object detection.
 
     sky : float or `~astropy.units.Quantity`, optional
+        .. deprecated:: 1.13.0
+
         The background sky level of the image. Setting ``sky`` affects
         only the output values of the object ``peak``, ``flux``, and
         ``mag`` values. The default is 0.0, which should be used to
@@ -175,6 +178,7 @@ class DAOStarFinder(StarFinderBase):
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
     """
 
+    @deprecated_renamed_argument('sky', None, '1.13.0')
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
                  sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
                  roundhi=1.0, sky=0.0, exclude_border=False,
@@ -182,7 +186,12 @@ class DAOStarFinder(StarFinderBase):
                  min_separation=0.0):
 
         # here we validate the units, but do not strip them
-        inputs = (threshold, sky, peakmax)
+        # since sky is deprecated, we do not include it in the
+        # validation if it is zero.
+        valid_sky = sky
+        if valid_sky == 0:
+            valid_sky = None
+        inputs = (threshold, valid_sky, peakmax)
         names = ('threshold', 'sky', 'peakmax')
         _ = process_quantities(inputs, names)
 
@@ -258,7 +267,8 @@ class DAOStarFinder(StarFinderBase):
         Parameters
         ----------
         data : 2D array_like
-            The 2D image array.
+            The 2D image array. The image should be
+            background-subtracted.
 
         mask : 2D bool array, optional
             A boolean mask with the same shape as ``data``, where a
@@ -292,7 +302,13 @@ class DAOStarFinder(StarFinderBase):
             `None` is returned if no stars are found.
         """
 
-        inputs = (data, self.threshold, self.sky, self.peakmax)
+        # here we validate the units, but do not strip them
+        # since sky is deprecated, we do not include it in the
+        # validation if it is zero.
+        valid_sky = self.sky
+        if valid_sky == 0:
+            valid_sky = None
+        inputs = (data, self.threshold, valid_sky, self.peakmax)
         names = ('data', 'threshold', 'sky', 'peakmax')
         _ = process_quantities(inputs, names)
 
@@ -317,7 +333,7 @@ class _DAOStarFinderCatalog:
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        The 2D image.
+        The 2D image. The image should be background-subtracted.
 
     convolved_data : 2D `~numpy.ndarray`
         The convolved 2D image. If ``data`` is a
@@ -379,7 +395,12 @@ class _DAOStarFinderCatalog:
                  brightest=None, peakmax=None):
 
         # here we validate the units, but do not strip them
-        inputs = (data, convolved_data, threshold, sky, peakmax)
+        # since sky is deprecated, we do not include it in the
+        # validation if it is zero.
+        valid_sky = sky
+        if valid_sky == 0:
+            valid_sky = None
+        inputs = (data, convolved_data, threshold, valid_sky, peakmax)
         names = ('data', 'convolved_data', 'threshold', 'sky', 'peakmax')
         _ = process_quantities(inputs, names)
 
@@ -739,7 +760,6 @@ class _DAOStarFinderCatalog:
             if isinstance(flux, u.Quantity):
                 flux = flux.value
             mag = -2.5 * np.log10(flux)
-            mag[self.flux <= 0] = np.nan
         return mag
 
     @lazyproperty

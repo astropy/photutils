@@ -25,7 +25,7 @@ class TestDAOStarFinder:
         threshold = 5.0
         fwhm = 1.0
         finder0 = DAOStarFinder(threshold, fwhm)
-        finder1 = DAOStarFinder(threshold * units, fwhm, sky=0 * units)
+        finder1 = DAOStarFinder(threshold * units, fwhm)
 
         tbl0 = finder0(data)
         tbl1 = finder1(data << units)
@@ -101,14 +101,6 @@ class TestDAOStarFinder:
             finder = DAOStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
             tbl = finder(data)
             assert tbl is None
-
-    def test_daofind_flux_negative(self):
-        """Test handling of negative flux (here created by large sky)."""
-        data = np.ones((5, 5))
-        data[2, 2] = 10.0
-        finder = DAOStarFinder(threshold=0.1, fwhm=1.0, sky=10)
-        tbl = finder(data)
-        assert not np.isfinite(tbl['mag'])
 
     def test_daofind_peakmax_filtering(self, data):
         """
