@@ -48,6 +48,11 @@ API Changes
     functions from ``photutils.datasets.make``, import functions from
     ``photutils.datasets``. [#1726]
 
+- ``photutils.detection``
+
+  - The ``sky`` keyword in ``DAOStarFinder`` and ``IRAFStarFinder`` is
+    now deprecated and will be removed in a future version. [#1747]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise a
