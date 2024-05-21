@@ -2,6 +2,8 @@
 """
 This module provides Quantity helper tools.
 """
+import astropy.units as u
+import numpy as np
 
 
 def process_quantities(values, names):
@@ -62,3 +64,28 @@ def process_quantities(values, names):
         values = [val.value if val is not None else val for val in values]
 
     return values, unit
+
+
+def isscalar(value):
+    """
+    Check if a value is a scalar.
+
+    This works for both `~astropy.units.Quantity` and scalars.
+
+    `numpy.isscalar` always returns False for `~astropy.units.Quantity`
+    objects.
+
+    Parameters
+    ----------
+    value : `~astropy.units.Quantity`, scalar, or array-like
+        The value to check.
+
+    Returns
+    -------
+    isscalar : bool
+        `True` if the value is a scalar, `False` otherwise.
+    """
+    if isinstance(value, u.Quantity):
+        return value.isscalar
+    else:
+        return np.isscalar(value)

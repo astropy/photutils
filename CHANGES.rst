@@ -9,11 +9,14 @@ New Features
 
 - ``photutils.detection``
 
-  - The ``find_peaks`` function now supports ``Quantity`` inputs.
+  - The ``find_peaks`` function now supports input arrays with units.
     [#1743]
 
   - The ``Table`` returned from ``find_peaks`` now has an ``id`` column
     that contains unique integer IDs for each peak. [#1743]
+
+  - The ``DAOStarFinder``, ``IRAFStarFinder``, and ``StarFinder``
+    classes now support input arrays with units. [#1746]
 
 - ``photutils.profiles``
 

@@ -6,193 +6,210 @@ Tests for DAOStarFinder.
 import itertools
 import os.path as op
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.table import Table
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.datasets import make_100gaussians_image
 from photutils.detection.daofinder import DAOStarFinder
 from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
-DATA = make_100gaussians_image()
-THRESHOLDS = [8.0, 10.0]
-FWHMS = [1.0, 1.5, 2.0]
-
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestDAOStarFinder:
-    @pytest.mark.parametrize(('threshold', 'fwhm'),
-                             list(itertools.product(THRESHOLDS, FWHMS)))
-    def test_daofind(self, threshold, fwhm):
-        starfinder = DAOStarFinder(threshold, fwhm, sigma_radius=1.5)
-        tbl = starfinder(DATA)
-        datafn = f'daofind_test_thresh{threshold:04.1f}_fwhm{fwhm:04.1f}.txt'
-        datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
-        tbl_ref = Table.read(datafn, format='ascii')
+    def test_daostarfind(self, data):
+        units = u.Jy
+        threshold = 5.0
+        fwhm = 1.0
+        finder0 = DAOStarFinder(threshold, fwhm)
+        finder1 = DAOStarFinder(threshold * units, fwhm, sky=0 * units)
 
-        assert tbl.colnames == tbl_ref.colnames
-        for col in tbl.colnames:
-            assert_allclose(tbl[col], tbl_ref[col])
+        tbl0 = finder0(data)
+        tbl1 = finder1(data << units)
+        assert_array_equal(tbl0, tbl1)
 
-    def test_daofind_threshold_fwhm_inputs(self):
-        with pytest.raises(TypeError):
+    def test_daofind_inputs(self):
+        with pytest.raises(ValueError):
             DAOStarFinder(threshold=np.ones((2, 2)), fwhm=3.0)
 
         with pytest.raises(TypeError):
             DAOStarFinder(threshold=3.0, fwhm=np.ones((2, 2)))
 
-    def test_daofind_include_border(self):
-        starfinder = DAOStarFinder(threshold=10, fwhm=2, sigma_radius=1.5,
-                                   exclude_border=False)
-        tbl = starfinder(DATA)
-        assert len(tbl) == 20
+        with pytest.raises(ValueError):
+            DAOStarFinder(threshold=3.0, fwhm=-10)
 
-        # test when no detections
-        starfinder = DAOStarFinder(threshold=100, fwhm=2, sigma_radius=1.5,
-                                   exclude_border=False)
-        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
-            tbl = starfinder(DATA)
+        with pytest.raises(ValueError):
+            DAOStarFinder(threshold=3.0, fwhm=2, ratio=-10)
+
+        with pytest.raises(ValueError):
+            DAOStarFinder(threshold=3.0, fwhm=2, sigma_radius=-10)
+
+        with pytest.raises(ValueError):
+            DAOStarFinder(threshold=10, fwhm=1.5, brightest=-1)
+
+        with pytest.raises(ValueError):
+            DAOStarFinder(threshold=10, fwhm=1.5, brightest=3.1)
+
+        xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
+        with pytest.raises(ValueError):
+            DAOStarFinder(threshold=10, fwhm=1.5, xycoords=xycoords)
+
+    def test_daofind_nosources(self, data):
+        match = 'No sources were found'
+        with pytest.warns(NoDetectionsWarning, match=match):
+            finder = DAOStarFinder(threshold=100, fwhm=2)
+            tbl = finder(data)
             assert tbl is None
 
     def test_daofind_exclude_border(self):
-        starfinder = DAOStarFinder(threshold=10, fwhm=2, sigma_radius=1.5,
-                                   exclude_border=True)
-        tbl = starfinder(DATA)
-        assert len(tbl) == 19
+        data = np.zeros((9, 9))
+        data[0, 0] = 1
+        data[2, 2] = 1
+        data[4, 4] = 1
+        data[6, 6] = 1
 
-        # test when no detections
-        starfinder = DAOStarFinder(threshold=100, fwhm=2, sigma_radius=1.5,
-                                   exclude_border=True)
-        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
-            tbl = starfinder(DATA)
-            assert tbl is None
+        finder0 = DAOStarFinder(threshold=0.1, fwhm=0.5, exclude_border=False)
+        finder1 = DAOStarFinder(threshold=0.1, fwhm=0.5, exclude_border=True)
+        tbl0 = finder0(data)
+        tbl1 = finder1(data)
+        assert len(tbl0) > len(tbl1)
 
-    def test_daofind_nosources(self):
-        data = np.ones((3, 3))
-        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
-            starfinder = DAOStarFinder(threshold=10, fwhm=1)
-            tbl = starfinder(data)
-            assert tbl is None
-
-    def test_daofind_sharpness(self):
+    def test_daofind_sharpness(self, data):
         """Sources found, but none pass the sharpness criteria."""
-        with pytest.warns(NoDetectionsWarning,
-                          match='Sources were found, but none pass'):
-            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, sharplo=1.0)
-            tbl = starfinder(DATA)
+        match = 'Sources were found, but none pass'
+
+        with pytest.warns(NoDetectionsWarning, match=match):
+            finder = DAOStarFinder(threshold=1, fwhm=1.0, sharplo=1.0)
+            tbl = finder(data)
             assert tbl is None
 
-    def test_daofind_roundness(self):
+    def test_daofind_roundness(self, data):
         """Sources found, but none pass the roundness criteria."""
-        with pytest.warns(NoDetectionsWarning,
-                          match='Sources were found, but none pass'):
-            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, roundlo=1.0)
-            tbl = starfinder(DATA)
+        match = 'Sources were found, but none pass'
+        with pytest.warns(NoDetectionsWarning, match=match):
+            finder = DAOStarFinder(threshold=1, fwhm=1.0, roundlo=1.0)
+            tbl = finder(data)
             assert tbl is None
 
-    def test_daofind_peakmax(self):
+    def test_daofind_peakmax(self, data):
         """Sources found, but none pass the peakmax criteria."""
-        with pytest.warns(NoDetectionsWarning,
-                          match='Sources were found, but none pass'):
-            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, peakmax=1.0)
-            tbl = starfinder(DATA)
+        match = 'Sources were found, but none pass'
+        with pytest.warns(NoDetectionsWarning, match=match):
+            finder = DAOStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
+            tbl = finder(data)
             assert tbl is None
 
     def test_daofind_flux_negative(self):
         """Test handling of negative flux (here created by large sky)."""
         data = np.ones((5, 5))
         data[2, 2] = 10.0
-        starfinder = DAOStarFinder(threshold=0.1, fwhm=1.0, sky=10)
-        tbl = starfinder(data)
+        finder = DAOStarFinder(threshold=0.1, fwhm=1.0, sky=10)
+        tbl = finder(data)
         assert not np.isfinite(tbl['mag'])
 
-    def test_daofind_negative_fit_peak(self):
+    def test_daofind_peakmax_filtering(self, data):
         """
-        Regression test that sources with negative fit peaks (i.e.,
-        hx/hy<=0) are excluded.
+        Regression test that objects with peak >= peakmax are filtered
+        out.
         """
-        starfinder = DAOStarFinder(threshold=7.0, fwhm=1.5, roundlo=-np.inf,
-                                   roundhi=np.inf, sharplo=-np.inf,
-                                   sharphi=np.inf)
-        tbl = starfinder(DATA)
-        assert len(tbl) == 102
+        peakmax = 8
+        finder0 = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
+                                roundhi=np.inf, sharplo=-np.inf,
+                                sharphi=np.inf)
+        finder1 = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
+                                roundhi=np.inf, sharplo=-np.inf,
+                                sharphi=np.inf, peakmax=peakmax)
 
-    def test_daofind_peakmax_filtering(self):
-        """
-        Regression test that objects with ``peak`` >= ``peakmax`` are
-        filtered out.
-        """
-        peakmax = 20
-        starfinder = DAOStarFinder(threshold=7.0, fwhm=1.5, roundlo=-np.inf,
-                                   roundhi=np.inf, sharplo=-np.inf,
-                                   sharphi=np.inf, peakmax=peakmax)
-        tbl = starfinder(DATA)
-        assert len(tbl) == 37
-        assert all(tbl['peak'] < peakmax)
+        tbl0 = finder0(data)
+        tbl1 = finder1(data)
+        assert len(tbl0) > len(tbl1)
+        assert all(tbl1['peak'] < peakmax)
 
-    def test_daofind_brightest_filtering(self):
+    def test_daofind_brightest_filtering(self, data):
         """
         Regression test that only top ``brightest`` objects are
         selected.
         """
-        brightest = 40
-        peakmax = 20
-        starfinder = DAOStarFinder(threshold=7.0, fwhm=1.5, roundlo=-np.inf,
-                                   roundhi=np.inf, sharplo=-np.inf,
-                                   sharphi=np.inf, brightest=brightest)
-        tbl = starfinder(DATA)
-        # combined with peakmax
+        brightest = 10
+        finder = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
+                               roundhi=np.inf, sharplo=-np.inf,
+                               sharphi=np.inf, brightest=brightest)
+        tbl = finder(data)
         assert len(tbl) == brightest
-        starfinder = DAOStarFinder(threshold=7.0, fwhm=1.5, roundlo=-np.inf,
-                                   roundhi=np.inf, sharplo=-np.inf,
-                                   sharphi=np.inf, brightest=brightest,
-                                   peakmax=peakmax)
-        tbl = starfinder(DATA)
-        assert len(tbl) == 37
 
-    def test_daofind_mask(self):
+        # combined with peakmax
+        peakmax = 8
+        finder = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
+                               roundhi=np.inf, sharplo=-np.inf,
+                               sharphi=np.inf, brightest=brightest,
+                               peakmax=peakmax)
+        tbl = finder(data)
+        assert len(tbl) == 7
+
+    def test_daofind_mask(self, data):
         """Test DAOStarFinder with a mask."""
-        starfinder = DAOStarFinder(threshold=10, fwhm=1.5)
-        mask = np.zeros(DATA.shape, dtype=bool)
-        mask[100:200] = True
-        tbl1 = starfinder(DATA)
-        tbl2 = starfinder(DATA, mask=mask)
-        assert len(tbl1) > len(tbl2)
+        finder = DAOStarFinder(threshold=1.0, fwhm=1.5)
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:50, :] = True
+        tbl0 = finder(data)
+        tbl1 = finder(data, mask=mask)
+        assert len(tbl0) > len(tbl1)
 
-    def test_inputs(self):
-        with pytest.raises(ValueError):
-            DAOStarFinder(threshold=10, fwhm=1.5, brightest=-1)
-        with pytest.raises(ValueError):
-            DAOStarFinder(threshold=10, fwhm=1.5, brightest=3.1)
+    def test_xycoords(self, data):
+        finder0 = DAOStarFinder(threshold=8.0, fwhm=2)
+        tbl0 = finder0(data)
+        xycoords = list(zip(tbl0['xcentroid'], tbl0['ycentroid']))
+        xycoords = np.round(xycoords).astype(int)
 
-    def test_xycoords(self):
-        starfinder1 = DAOStarFinder(threshold=30, fwhm=2, sigma_radius=1.5,
-                                    exclude_border=True)
-        tbl1 = starfinder1(DATA)
+        finder1 = DAOStarFinder(threshold=8.0, fwhm=2, xycoords=xycoords)
+        tbl1 = finder1(data)
+        assert_array_equal(tbl0, tbl1)
 
-        xycoords = np.array([[145, 169], [395, 187], [427, 211], [11, 224]])
-        starfinder2 = DAOStarFinder(threshold=30, fwhm=2, sigma_radius=1.5,
-                                    exclude_border=True, xycoords=xycoords)
-        tbl2 = starfinder2(DATA)
-        assert np.all(tbl1 == tbl2)
-
-    def test_invalid_xycoords(self):
-        xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
-        with pytest.raises(ValueError):
-            DAOStarFinder(threshold=10, fwhm=1.5, xycoords=xycoords)
-
-    def test_min_separation(self):
-        threshold = 5
+    def test_min_separation(self, data):
+        threshold = 1.0
         fwhm = 1.0
-        finder1 = DAOStarFinder(threshold, fwhm, sigma_radius=1.5)
-        tbl1 = finder1(DATA)
-        finder2 = DAOStarFinder(threshold, fwhm, sigma_radius=1.5,
-                                min_separation=3.0)
-        tbl2 = finder2(DATA)
+        finder1 = DAOStarFinder(threshold, fwhm)
+        tbl1 = finder1(data)
+        finder2 = DAOStarFinder(threshold, fwhm, min_separation=10.0)
+        tbl2 = finder2(data)
         assert len(tbl1) > len(tbl2)
 
         match = 'min_separation must be >= 0'
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=10, fwhm=1.5, min_separation=-1.0)
+
+    def test_single_detected_source(self, data):
+        finder = DAOStarFinder(8.0, 2, brightest=1)
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:50] = True
+        tbl = finder(data, mask=mask)
+        assert len(tbl) == 1
+
+        # test slicing with scalar catalog to improve coverage
+        cat = finder._get_raw_catalog(data, mask=mask)
+        assert cat.isscalar
+        flux = cat.flux[0]  # evaluate the flux so it can be sliced
+        assert cat[0].flux == flux
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.parametrize(('threshold', 'fwhm'),
+                         list(itertools.product((8.0, 10.0),
+                                                (1.0, 1.5, 2.0))))
+def test_daofind_legacy(threshold, fwhm):
+    """
+    Test DAOStarFinder against the IRAF DAOFind implementation.
+    """
+    data = make_100gaussians_image()
+    finder = DAOStarFinder(threshold, fwhm, sigma_radius=1.5)
+    tbl = finder(data)
+    datafn = f'daofind_test_thresh{threshold:04.1f}_fwhm{fwhm:04.1f}.txt'
+    datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
+    tbl_ref = Table.read(datafn, format='ascii')
+
+    assert tbl.colnames == tbl_ref.colnames
+    for col in tbl.colnames:
+        assert_allclose(tbl[col], tbl_ref[col])

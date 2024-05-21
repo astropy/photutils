@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_equal
 
-from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._quantity_helpers import isscalar, process_quantities
 
 
 @pytest.mark.parametrize('all_units', (False, True))
@@ -60,3 +60,10 @@ def test_inputs():
     match = 'The number of values must match the number of names'
     with pytest.raises(ValueError, match=match):
         _, _ = process_quantities([1, 2, 3], ['a', 'b'])
+
+
+def test_isscalar():
+    assert isscalar(1)
+    assert isscalar(1.0 * u.m)
+    assert not isscalar([1, 2, 3])
+    assert not isscalar([1, 2, 3] * u.m)

@@ -6,15 +6,17 @@ This module implements the StarFinder class.
 import inspect
 import warnings
 
+import astropy.units as u
 import numpy as np
 from astropy.nddata import overlap_slices
 from astropy.table import QTable
 from astropy.utils import lazyproperty
 
-from photutils.detection.core import StarFinderBase
+from photutils.detection.core import StarFinderBase, _validate_brightest
 from photutils.utils._convolution import _filter_data
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _moments, _moments_central
+from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinder']
@@ -28,6 +30,9 @@ class StarFinder(StarFinderBase):
     ----------
     threshold : float
         The absolute image value above which to select sources.
+        If the star finder is run on an image that is a
+        `~astropy.units.Quantity` array, then ``threshold`` must have
+        the same units.
 
     kernel : `~numpy.ndarray`
         A 2D array of the PSF kernel.
@@ -40,15 +45,19 @@ class StarFinder(StarFinderBase):
         Whether to exclude sources found within half the size of the
         convolution kernel from the image borders.
 
-    brightest : `None` or int, optional
-        The number of brightest objects to return in the output table.
-        If ``brightest`` is set to `None`, all objects will be returned.
+    brightest : int, None, optional
+        The number of brightest objects to keep after sorting the source
+        list by flux. If ``brightest`` is set to `None`, all objects
+        will be selected.
 
-    peakmax : `None` or float, optional
+    peakmax : float, None, optional
         The maximum allowed peak pixel value in an object. Only objects
-        whose maximum pixel values are strictly smaller than ``peakmax``
-        will be selected. This may be used to exclude saturated sources.
-        If set to `None`, all objects will be selected.
+        whose peak pixel values are strictly smaller than ``peakmax``
+        will be selected. This may be used, for example, to exclude
+        saturated sources. If the star finder is run on an image that is
+        a `~astropy.units.Quantity` array, then ``peakmax`` must have
+        the same units. If ``peakmax`` is set to `None`, then no peak
+        pixel value filtering will be performed.
 
         .. warning::
             `StarFinder` automatically excludes objects whose maximum
@@ -61,6 +70,10 @@ class StarFinder(StarFinderBase):
 
     Notes
     -----
+    If the star finder is run on an image that is a
+    `~astropy.units.Quantity` array, then ``threshold`` and ``peakmax``
+    must all have the same units as the image.
+
     For the convolution step, this routine sets pixels beyond the image
     borders to 0.0.
 
@@ -70,27 +83,21 @@ class StarFinder(StarFinderBase):
     def __init__(self, threshold, kernel, min_separation=5.0,
                  exclude_border=False, brightest=None, peakmax=None):
 
+        # here we validate the units, but do not strip them
+        inputs = (threshold, peakmax)
+        names = ('threshold', 'peakmax')
+        _ = process_quantities(inputs, names)
+
         self.threshold = threshold
         self.kernel = kernel
         if min_separation < 0:
             raise ValueError('min_separation must be >= 0')
         self.min_separation = min_separation
         self.exclude_border = exclude_border
-        self.brightest = self._validate_brightest(brightest)
+        self.brightest = _validate_brightest(brightest)
         self.peakmax = peakmax
 
-    @staticmethod
-    def _validate_brightest(brightest):
-        if brightest is not None:
-            if brightest <= 0:
-                raise ValueError('brightest must be >= 0')
-            bright_int = int(brightest)
-            if bright_int != brightest:
-                raise ValueError('brightest must be an integer')
-            brightest = bright_int
-        return brightest
-
-    def _get_raw_catalog(self, data, mask=None):
+    def _get_raw_catalog(self, data, *, mask=None):
         kernel = self.kernel
         kernel /= np.max(kernel)  # normalize max value to 1.0
         denom = np.sum(kernel**2) - (np.sum(kernel)**2 / kernel.size)
@@ -125,7 +132,7 @@ class StarFinder(StarFinderBase):
         mask : 2D bool array, optional
             A boolean mask with the same shape as ``data``, where a
             `True` value indicates the corresponding element of ``data``
-            is masked.  Masked pixels are ignored when searching for
+            is masked. Masked pixels are ignored when searching for
             stars.
 
         Returns
@@ -176,10 +183,35 @@ class _StarFinderCatalog:
     shape :  tuple of int
         The shape of the stars cutouts. The shape in both dimensions
         must be odd and match the shape of the smoothing kernel.
+
+    brightest : int, None, optional
+        The number of brightest objects to keep after sorting the source
+        list by flux. If ``brightest`` is set to `None`, all objects
+        will be selected.
+
+    peakmax : float, None, optional
+        The maximum allowed peak pixel value in an object. Only objects
+        whose peak pixel values are strictly smaller than ``peakmax``
+        will be selected. This may be used, for example, to exclude
+        saturated sources. If the star finder is run on an image that is
+        a `~astropy.units.Quantity` array, then ``peakmax`` must have
+        the same units. If ``peakmax`` is set to `None`, then no peak
+        pixel value filtering will be performed.
     """
 
-    def __init__(self, data, xypos, shape, brightest=None, peakmax=None):
+    def __init__(self, data, xypos, shape, *, brightest=None, peakmax=None):
+        # here we validate the units, but do not strip them
+        inputs = (data, peakmax)
+        names = ('data', 'peakmax')
+        _ = process_quantities(inputs, names)
+
         self.data = data
+        if isinstance(data, u.Quantity):
+            unit = data.unit
+        else:
+            unit = None
+        self.unit = unit
+
         self.xypos = np.atleast_2d(xypos)
         self.shape = shape
         self.brightest = brightest
@@ -193,8 +225,14 @@ class _StarFinderCatalog:
         return len(self.xypos)
 
     def __getitem__(self, index):
+        # NOTE: we allow indexing/slicing of scalar (self.isscalar = True)
+        #       instances in order to perform catalog filtering even for
+        #       a single source
+
         newcls = object.__new__(self.__class__)
-        init_attr = ('data', 'shape', 'brightest', 'peakmax',
+
+        # copy these attributes to the new instance
+        init_attr = ('data', 'unit', 'shape', 'brightest', 'peakmax',
                      'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
@@ -203,17 +241,24 @@ class _StarFinderCatalog:
         # NOTE: always keep as 2D array, even for a single source
         attr = 'xypos'
         value = getattr(self, attr)[index]
-        isscalar = value.shape == (2,)
         setattr(newcls, attr, np.atleast_2d(value))
 
+        # index/slice the remaining attributes
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
         keys.add('id')
+        scalar_index = np.isscalar(index)
         for key in keys:
             value = self.__dict__[key]
-            if key in ('slices', 'cutout_data'):
+
+            # do not insert lazy attributes that are always scalar (e.g.,
+            # isscalar), i.e., not an array/list for each source
+            if np.isscalar(value):
+                continue
+
+            if key in ('slices', 'cutout_data'):  # lists instead of arrays
                 # apply fancy indices to list properties
                 value = np.array(value + [None], dtype=object)[:-1][index]
-                if isscalar:
+                if scalar_index:
                     value = [value]
                 else:
                     value = value.tolist()
@@ -223,6 +268,7 @@ class _StarFinderCatalog:
                 value = np.atleast_1d(value[index])
 
             newcls.__dict__[key] = value
+
         return newcls
 
     @lazyproperty
@@ -307,15 +353,28 @@ class _StarFinderCatalog:
 
     @lazyproperty
     def max_value(self):
-        return np.array([np.max(arr) for arr in self.cutout_data])
+        peaks = [np.max(arr) for arr in self.cutout_data]
+        if self.unit is not None:
+            peaks = u.Quantity(peaks)
+        else:
+            peaks = np.array(peaks)
+        return peaks
 
     @lazyproperty
     def flux(self):
-        return np.array([np.sum(arr) for arr in self.cutout_data])
+        fluxes = [np.sum(arr) for arr in self.cutout_data]
+        if self.unit is not None:
+            fluxes = u.Quantity(fluxes)
+        else:
+            fluxes = np.array(fluxes)
+        return fluxes
 
     @lazyproperty
     def mag(self):
-        return -2.5 * np.log10(self.flux)
+        flux = self.flux
+        if isinstance(flux, u.Quantity):
+            flux = flux.value
+        return -2.5 * np.log10(flux)
 
     @lazyproperty
     def moments_central(self):
