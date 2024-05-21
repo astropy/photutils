@@ -183,9 +183,11 @@ class SourceFinder:
             smoothing kernel.
 
         threshold : 2D `~numpy.ndarray` or float
-            The data value or pixel-wise data values (as an array)
-            to be used as the per-pixel detection threshold. A 2D
-            ``threshold`` array must have the same shape as ``data``.
+            The data value or pixel-wise data values (as an array) to be
+            used as the per-pixel detection threshold. If ``data`` is
+            a `~astropy.units.Quantity` array, then ``threshold`` must
+            have the same units as ``data``. A 2D ``threshold`` array must
+            have the same shape as ``data``.
 
         mask : 2D bool `~numpy.ndarray`, optional
             A boolean mask with the same shape as ``data``, where a
