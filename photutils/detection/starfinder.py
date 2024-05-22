@@ -127,7 +127,8 @@ class StarFinder(StarFinderBase):
         Parameters
         ----------
         data : 2D array_like
-            The 2D image array.
+            The 2D image array. The image should be
+            background-subtracted.
 
         mask : 2D bool array, optional
             A boolean mask with the same shape as ``data``, where a
@@ -174,7 +175,7 @@ class _StarFinderCatalog:
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        The 2D image.
+        The 2D image. The image should be background-subtracted.
 
     xypos : Nx2 `numpy.ndarray`
         A Nx2 array of (x, y) pixel coordinates denoting the central
