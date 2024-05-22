@@ -58,6 +58,10 @@ API Changes
   - The ``sky`` keyword in ``DAOStarFinder`` and ``IRAFStarFinder`` is
     now deprecated and will be removed in a future version. [#1747]
 
+  - Sources that have non-finite properties (e.g., centroid, roundness,
+    sharpness, etc.) are automatically excluded from the output table in
+    ``DAOStarFinder``, ``IRAFStarFinder``, and ``StarFinder``. [#1750]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise a
