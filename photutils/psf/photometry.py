@@ -71,9 +71,14 @@ class PSFPhotometry:
         suffix for ``y``): ``'x_init'``, ``'xinit'``, ``'xcentroid'``,
         ``'x_centroid'``, ``'x_peak'``, ``'x'``, ``'xcen'``,
         ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_0'``, and ``'x0'``.
-        If `None`, then the initial (x, y) model positions must be input
-        using the ``init_params`` keyword when calling the class. The
-        (x, y) values in ``init_params`` override this keyword.
+        If `None`, then the initial (x, y) model positions must be
+        input using the ``init_params`` keyword when calling the class.
+        The (x, y) values in ``init_params`` override this keyword.
+        If this class is run on an image that has units (i.e., a
+        `~astropy.units.Quantity` array), then certain ``finder``
+        keywords (e.g., ``threshold``) must have the same units. Please
+        see the the documentation for the specific ``finder`` class for
+        more information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group stars. Typically, grouped stars are
@@ -405,7 +410,10 @@ class PSFPhotometry:
                 raise ValueError('finder must be defined if init_params '
                                  'is not input')
 
-            sources = self.finder(data, mask=mask)
+            if unit is not None:
+                sources = self.finder(data << unit, mask=mask)
+            else:
+                sources = self.finder(data, mask=mask)
             self.finder_results = sources
             if sources is None:
                 return None
@@ -935,9 +943,10 @@ class PSFPhotometry:
             ``error`` is assumed to include *all* sources of
             error, including the Poisson error of the sources
             (see `~photutils.utils.calc_total_error`) . ``error``
-            must have the same shape as the input ``data``. If a
-            `~astropy.units.Quantity` array, then ``data`` must also be
-            a `~astropy.units.Quantity` array with the same units.
+            must have the same shape as the input ``data``. If ``data``
+            is a `~astropy.units.Quantity` array, then ``error`` must
+            also be a `~astropy.units.Quantity` array with the same
+            units.
 
         init_params : `~astropy.table.Table` or `None`, optional
             A table containing the initial guesses of the (x, y, flux)
@@ -963,6 +972,10 @@ class PSFPhotometry:
 
             The parameter names are searched in the input table in the
             above order, stopping at the first match.
+
+            If ``data`` is a `~astropy.units.Quantity` array, then the
+            initial flux values in this table must also must also have
+            compatible units.
 
             The table can also have ``group_id`` and ``local_bkg``
             columns. If ``group_id`` is input, the values will be used
@@ -1230,8 +1243,12 @@ class IterativePSFPhotometry:
         ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_0'``, and ``'x0'``.
         If `None`, then the initial (x, y) model positions must be input
         using the ``init_params`` keyword when calling the class. The
-        (x, y) values in ``init_params`` override this keyword *only for
-        the first iteration*.
+        (x, y) values in ``init_params`` override this keyword *only
+        for the first iteration*. If this class is run on an image
+        that has units (i.e., a `~astropy.units.Quantity` array), then
+        certain ``finder`` keywords (e.g., ``threshold``) must have the
+        same units. Please see the the documentation for the specific
+        ``finder`` class for more information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group stars. Typically, grouped stars are
@@ -1389,10 +1406,10 @@ class IterativePSFPhotometry:
         error : 2D `~numpy.ndarray`, optional
             The pixel-wise 1-sigma errors of the input ``data``.
             ``error`` is assumed to include *all* sources of
-            error, including the Poisson error of the sources
-            (see `~photutils.utils.calc_total_error`) . ``error``
-            must have the same shape as the input ``data``. If a
-            `~astropy.units.Quantity` array, then ``data`` must also be
+            error, including the Poisson error of the sources (see
+            `~photutils.utils.calc_total_error`) . ``error`` must have
+            the same shape as the input ``data``. If ``data`` is a
+            `~astropy.units.Quantity` array, then ``error`` must also be
             a `~astropy.units.Quantity` array with the same units.
 
         init_params : `~astropy.table.Table` or `None`, optional
@@ -1418,6 +1435,10 @@ class IterativePSFPhotometry:
 
             The parameter names are searched in the input table in the
             above order, stopping at the first match.
+
+            If ``data`` is a `~astropy.units.Quantity` array, then the
+            initial flux values in this table must also must also have
+            compatible units.
 
         Returns
         -------
