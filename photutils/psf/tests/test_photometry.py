@@ -189,14 +189,7 @@ def test_psf_photometry(test_data):
     for key in keys:
         assert key in psfphot.fit_results
 
-    unit = u.Jy
-    photu = psfphot(data * unit, error=error * unit)
-    assert photu['flux_init'].unit == unit
-    assert photu['flux_fit'].unit == unit
-    assert photu['flux_err'].unit == unit
-    resid_datau = psfphot.make_residual_image(data * u.Jy, fit_shape)
-    assert resid_datau.unit == unit
-
+    # test np.ma.nomask
     photm = psfphot(data, error=error, mask=np.ma.nomask)
     assert np.all(phot == photm)
 
@@ -213,12 +206,21 @@ def test_psf_photometry(test_data):
     assert resid_data2.data.shape == data.shape
     assert_allclose(resid_data, resid_data2.data)
 
-    # test NDData input with units
+    # test units
     unit = u.Jy
+    finderu = DAOStarFinder(6.0 * unit, 2.0)
+    psfphotu = PSFPhotometry(psf_model, fit_shape, finder=finderu,
+                             aperture_radius=4)
+    photu = psfphotu(data * unit, error=error * unit)
+    colnames = ('flux_init', 'flux_fit', 'flux_err', 'local_bkg')
+    for col in colnames:
+        assert photu[col].unit == unit
+    resid_datau = psfphotu.make_residual_image(data << unit, fit_shape)
+    assert resid_datau.unit == unit
+
+    # test NDData input with units
     uncertainty = StdDevUncertainty(error)
     nddata = NDData(data, uncertainty=uncertainty, unit=unit)
-    psfphotu = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                             aperture_radius=4)
     photu = psfphotu(nddata)
     assert photu['flux_init'].unit == unit
     assert photu['flux_fit'].unit == unit
@@ -604,7 +606,7 @@ def test_fitter_no_maxiters_no_residuals(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-def test_iterative_psf_photometry(test_data):
+def test_iterative_psf_photometry_mode_new(test_data):
     data, error, sources = test_data
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
@@ -617,6 +619,7 @@ def test_iterative_psf_photometry(test_data):
     init_params['x'] = [54, 29, 80]
     init_params['y'] = [8, 26, 29]
     psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                     mode='new',
                                      localbkg_estimator=localbkg_estimator,
                                      aperture_radius=4)
     phot = psfphot(data, error=error, init_params=init_params)
@@ -642,9 +645,25 @@ def test_iterative_psf_photometry(test_data):
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.unit == unit
 
+    # test with units and mode='new'
+    unit = u.Jy
+    finder_units = DAOStarFinder(10.0 * unit, 2.0)
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape,
+                                     finder=finder_units, mode='new',
+                                     localbkg_estimator=localbkg_estimator,
+                                     aperture_radius=4)
+
+    phot2 = psfphot(data << unit, error=error << unit, init_params=init_params)
+    assert phot2['flux_fit'].unit == unit
+    colnames = ('flux_init', 'flux_fit', 'flux_err', 'local_bkg')
+    for col in colnames:
+        assert phot2[col].unit == unit
+        assert_allclose(phot2[col].value, phot[col])
+
     # test return None if no stars are found on first iteration
     finder = DAOStarFinder(1000.0, 2.0)
     psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                     mode='new',
                                      localbkg_estimator=localbkg_estimator,
                                      aperture_radius=4)
     with pytest.warns(NoDetectionsWarning):
@@ -652,22 +671,8 @@ def test_iterative_psf_photometry(test_data):
         assert phot is None
 
 
-def make_psf_model_image(shape, psf_model, param_table, psf_shape):
-    model_params = param_table.colnames
-    data = np.zeros(shape, dtype=float)
-    for row in param_table:
-        for param in model_params:
-            setattr(psf_model, param, row[param])
-        xcen = row['x_0']
-        ycen = row['y_0']
-        slc_lg, _ = overlap_slices(shape, psf_shape, (ycen, xcen), mode='trim')
-        yy, xx = np.mgrid[slc_lg]
-        data[slc_lg] += psf_model(xx, yy)
-    return data
-
-
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-def test_iterative_psf_photometry_all():
+def test_iterative_psf_photometry_mode_all():
     sources = QTable()
     sources['x_0'] = [50, 45, 55, 27, 22, 77, 82]
     sources['y_0'] = [50, 52, 48, 27, 30, 77, 79]
@@ -707,6 +712,22 @@ def test_iterative_psf_photometry_all():
         psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                          grouper=None, aperture_radius=4,
                                          sub_shape=sub_shape, mode='all')
+
+    # test with units and mode='all'
+    unit = u.Jy
+    finderu = DAOStarFinder(0.2 * unit, 6.0)
+    psfphotu = IterativePSFPhotometry(psf_model, fit_shape, finder=finderu,
+                                      grouper=grouper, aperture_radius=4,
+                                      sub_shape=sub_shape, mode='all',
+                                      maxiters=3)
+    phot2 = psfphotu(data << unit)
+    assert len(phot2) == 7
+    assert_equal(phot2['group_id'], [1, 2, 3, 1, 2, 2, 3])
+    assert_equal(phot2['iter_detected'], [1, 1, 1, 2, 2, 2, 2])
+    colnames = ('flux_init', 'flux_fit', 'flux_err', 'local_bkg')
+    for col in colnames:
+        assert phot2[col].unit == unit
+        assert_allclose(phot2[col].value, phot[col])
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -828,3 +849,17 @@ def test_make_psf_model():
                      tbl3['flux_fit'][0]), (xval, yval, flux))
     assert_allclose((tbl4['x_fit'][0], tbl4['y_fit'][0],
                      tbl4['flux_fit'][0]), (xval, yval, flux))
+
+
+def make_psf_model_image(shape, psf_model, param_table, psf_shape):
+    model_params = param_table.colnames
+    data = np.zeros(shape, dtype=float)
+    for row in param_table:
+        for param in model_params:
+            setattr(psf_model, param, row[param])
+        xcen = row['x_0']
+        ycen = row['y_0']
+        slc_lg, _ = overlap_slices(shape, psf_shape, (ycen, xcen), mode='trim')
+        yy, xx = np.mgrid[slc_lg]
+        data[slc_lg] += psf_model(xx, yy)
+    return data
