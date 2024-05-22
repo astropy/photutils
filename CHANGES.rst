@@ -35,6 +35,11 @@ Bug Fixes
   - No longer warn about NaNs in the data if those NaNs are masked in
     ``coverage_mask`` passed to ``Background2D``. [#1729]
 
+- ``photutils.psf``
+
+  - Fixed an where ``IterativePSFPhotometry`` would fail if the input
+    data was a ``Quantity`` array. [#1746]
+
 API Changes
 ^^^^^^^^^^^
 
