@@ -563,7 +563,9 @@ class _IRAFStarFinderCatalog:
                             for arr, xcen_, ycen_ in
                             zip(self.cutout_data, self.cutout_xcentroid,
                                 self.cutout_ycentroid)])
-        return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
 
     @lazyproperty
     def mu_sum(self):
@@ -601,14 +603,26 @@ class _IRAFStarFinderCatalog:
         """
         Filter the catalog.
         """
+        # remove all non-finite values - consider these non-detections
+        attrs = ('xcentroid', 'ycentroid', 'sharpness', 'roundness', 'pa',
+                 'sky', 'peak', 'flux')
         mask = np.count_nonzero(self.cutout_data, axis=(1, 2)) > 1
-        mask &= ((self.sharpness > self.sharplo)
-                 & (self.sharpness < self.sharphi)
-                 & (self.roundness > self.roundlo)
-                 & (self.roundness < self.roundhi))
-        if self.peakmax is not None:
-            mask &= (self.peak < self.peakmax)
+        for attr in attrs:
+            mask &= np.isfinite(getattr(self, attr))
         newcat = self[mask]
+
+        if len(newcat) == 0:
+            warnings.warn('No sources were found.', NoDetectionsWarning)
+            return None
+
+        # filter based on sharpness, roundness, and peakmax
+        mask = ((newcat.sharpness > newcat.sharplo)
+                & (newcat.sharpness < newcat.sharphi)
+                & (newcat.roundness > newcat.roundlo)
+                & (newcat.roundness < newcat.roundhi))
+        if newcat.peakmax is not None:
+            mask &= (newcat.peak < newcat.peakmax)
+        newcat = newcat[mask]
 
         if len(newcat) == 0:
             warnings.warn('Sources were found, but none pass the sharpness, '
