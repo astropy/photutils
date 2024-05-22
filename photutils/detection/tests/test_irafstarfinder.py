@@ -57,6 +57,13 @@ class TestIRAFStarFinder:
             tbl = finder(data)
             assert tbl is None
 
+        data = np.ones((5, 5))
+        data[2, 2] = 10.0
+        with pytest.warns(NoDetectionsWarning, match=match):
+            finder = IRAFStarFinder(threshold=0.1, fwhm=0.1)
+            tbl = finder(-data)
+            assert tbl is None
+
     def test_irafstarfind_sharpness(self, data):
         """Sources found, but none pass the sharpness criteria."""
         match = 'Sources were found, but none pass'

@@ -572,7 +572,9 @@ class _DAOStarFinderCatalog:
         data_mean = ((np.sum(cutout_data_masked, axis=(1, 2)) - self.data_peak)
                      / (self.kernel.npixels - 1))
 
-        return (self.data_peak - data_mean) / self.convdata_peak
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return (self.data_peak - data_mean) / self.convdata_peak
 
     def daofind_marginal_fit(self, axis=0):
         """
@@ -777,17 +779,28 @@ class _DAOStarFinderCatalog:
         """
         Filter the catalog.
         """
-        mask = (~np.isnan(self.dx) & ~np.isnan(self.dy)
-                & ~np.isnan(self.hx) & ~np.isnan(self.hy))
-        mask &= ((self.sharpness > self.sharplo)
-                 & (self.sharpness < self.sharphi)
-                 & (self.roundness1 > self.roundlo)
-                 & (self.roundness1 < self.roundhi)
-                 & (self.roundness2 > self.roundlo)
-                 & (self.roundness2 < self.roundhi))
-        if self.peakmax is not None:
-            mask &= (self.peak < self.peakmax)
+        # remove all non-finite values - consider these non-detections
+        attrs = ('xcentroid', 'ycentroid', 'hx', 'hy', 'sharpness',
+                 'roundness1', 'roundness2', 'peak', 'flux')
+        mask = np.ones(len(self), dtype=bool)
+        for attr in attrs:
+            mask &= np.isfinite(getattr(self, attr))
         newcat = self[mask]
+
+        if len(newcat) == 0:
+            warnings.warn('No sources were found.', NoDetectionsWarning)
+            return None
+
+        # filter based on sharpness, roundness, and peakmax
+        mask = ((newcat.sharpness > newcat.sharplo)
+                & (newcat.sharpness < newcat.sharphi)
+                & (newcat.roundness1 > newcat.roundlo)
+                & (newcat.roundness1 < newcat.roundhi)
+                & (newcat.roundness2 > newcat.roundlo)
+                & (newcat.roundness2 < newcat.roundhi))
+        if newcat.peakmax is not None:
+            mask &= (newcat.peak < newcat.peakmax)
+        newcat = newcat[mask]
 
         if len(newcat) == 0:
             warnings.warn('Sources were found, but none pass the sharpness, '

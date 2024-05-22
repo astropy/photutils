@@ -384,7 +384,9 @@ class _StarFinderCatalog:
                             for arr, xcen_, ycen_ in
                             zip(self.cutout_data, self.cutout_xcentroid,
                                 self.cutout_ycentroid)])
-        return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
 
     @lazyproperty
     def mu_sum(self):
@@ -400,8 +402,10 @@ class _StarFinderCatalog:
 
     @lazyproperty
     def roundness(self):
-        return np.sqrt(self.mu_diff**2
-                       + 4.0 * self.moments_central[:, 1, 1]**2) / self.mu_sum
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            factor = self.mu_diff**2 + 4.0 * self.moments_central[:, 1, 1]**2
+            return np.sqrt(factor) / self.mu_sum
 
     @lazyproperty
     def pa(self):
@@ -412,10 +416,22 @@ class _StarFinderCatalog:
 
     def apply_filters(self):
         """Filter the catalog."""
-        newcat = self
-        if self.peakmax is not None:
-            mask = (self.max_value < self.peakmax)
-            newcat = self[mask]
+        # remove all non-finite values - consider these non-detections
+        attrs = ('xcentroid', 'ycentroid', 'fwhm', 'roundness', 'pa',
+                 'max_value', 'flux')
+        mask = np.ones(len(self), dtype=bool)
+        for attr in attrs:
+            mask &= np.isfinite(getattr(self, attr))
+        newcat = self[mask]
+
+        if len(newcat) == 0:
+            warnings.warn('No sources were found.', NoDetectionsWarning)
+            return None
+
+        # filter based on peakmax
+        if newcat.peakmax is not None:
+            mask = (newcat.max_value < newcat.peakmax)
+            newcat = newcat[mask]
 
         if len(newcat) == 0:
             warnings.warn('Sources were found, but none pass the peakmax '

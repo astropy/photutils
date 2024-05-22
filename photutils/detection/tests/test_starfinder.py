@@ -52,6 +52,13 @@ class TestStarFinder:
             tbl = finder(data)
             assert tbl is None
 
+        data = np.ones((5, 5))
+        data[2, 2] = 10.0
+        with pytest.warns(NoDetectionsWarning, match=match):
+            finder = StarFinder(1, kernel)
+            tbl = finder(-data)
+            assert tbl is None
+
     def test_min_separation(self, data, kernel):
         finder1 = StarFinder(1, kernel, min_separation=0)
         finder2 = StarFinder(1, kernel, min_separation=10)

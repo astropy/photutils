@@ -64,6 +64,11 @@ class TestDAOStarFinder:
             tbl = finder(data)
             assert tbl is None
 
+        with pytest.warns(NoDetectionsWarning, match=match):
+            finder = DAOStarFinder(threshold=1, fwhm=2)
+            tbl = finder(-data)
+            assert tbl is None
+
     def test_daofind_exclude_border(self):
         data = np.zeros((9, 9))
         data[0, 0] = 1
