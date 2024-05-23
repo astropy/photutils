@@ -40,6 +40,9 @@ Bug Fixes
   - Fixed an where ``IterativePSFPhotometry`` would fail if the input
     data was a ``Quantity`` array. [#1746]
 
+  - Fixed the ``IntegratedGaussianPRF`` class ``bounding_box`` limits to
+    always be symmetric. [#1754]
+
 API Changes
 ^^^^^^^^^^^
 
@@ -67,6 +70,11 @@ API Changes
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise a
     ``ValueError`` if the input ``psf_model`` is not two-dimensional
     with ``n_inputs=2`` and ``n_outputs=1``. [#1741]
+
+  - The ``IntegratedGaussianPRF`` class ``bounding_box`` is now a method
+    instead of an attribute for consistency with Astropy models. The
+    method has a ``factor`` keyword to scale the bounding box. The
+    default scale factor is 5.5 times ``sigma``. [#1754]
 
 
 1.12.0 (2024-04-12)
