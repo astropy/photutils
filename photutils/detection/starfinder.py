@@ -59,11 +59,6 @@ class StarFinder(StarFinderBase):
         the same units. If ``peakmax`` is set to `None`, then no peak
         pixel value filtering will be performed.
 
-        .. warning::
-            `StarFinder` automatically excludes objects whose maximum
-            pixel values are negative. Therefore, setting ``peakmax`` to
-            a non-positive value would result in excluding all objects.
-
     See Also
     --------
     DAOStarFinder, IRAFStarFinder

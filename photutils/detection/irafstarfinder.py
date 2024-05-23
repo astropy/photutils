@@ -100,12 +100,6 @@ class IRAFStarFinder(StarFinderBase):
         the same units. If ``peakmax`` is set to `None`, then no peak
         pixel value filtering will be performed.
 
-        .. warning::
-            `IRAFStarFinder` automatically excludes objects whose peak
-            pixel values are negative. Therefore, setting ``peakmax``
-            to a non-positive value would result in exclusion of all
-            objects.
-
     xycoords : `None` or Nx2 `~numpy.ndarray`, optional
         The (x, y) pixel coordinates of the approximate centroid
         positions of identified sources. If ``xycoords`` are input, the
