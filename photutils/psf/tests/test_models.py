@@ -125,7 +125,6 @@ class TestIntegratedGaussianPRF:
         Test subpixel accuracy of IntegratedGaussianPRF by checking the
         sum of pixels.
         """
-
         gauss_psf = IntegratedGaussianPRF(width)
         y, x = np.mgrid[-10:11, -10:11]
         assert_allclose(gauss_psf(x, y).sum(), 1)
@@ -136,10 +135,23 @@ class TestIntegratedGaussianPRF:
         Test if IntegratedGaussianPRF integrates to unity on larger
         scales.
         """
-
         psf = IntegratedGaussianPRF(sigma=sigma)
         y, x = np.mgrid[-100:101, -100:101]
         assert_allclose(psf(y, x).sum(), 1)
+
+    def test_gaussian_psf_bbox(self):
+        """
+        Test bounding_box.
+        """
+        psf = IntegratedGaussianPRF(sigma=2.0)
+        assert psf.bounding_box.bounding_box() == ((-11, 11), (-11, 11))
+
+        psf = IntegratedGaussianPRF(sigma=2.2)
+        assert_allclose(psf.bounding_box, ((-12.1, 12.1), (-12.1, 12.1)))
+
+        psf = IntegratedGaussianPRF(sigma=2.0)
+        psf.bounding_box = psf.bounding_box(factor=2)
+        assert psf.bounding_box.bounding_box() == ((-4, 4), (-4, 4))
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
