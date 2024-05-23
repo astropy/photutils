@@ -130,7 +130,7 @@ class TestBackground2D:
     @pytest.mark.parametrize('box_size', ([(25, 25), (23, 22)]))
     def test_background_mask(self, box_size):
         """
-        Test with an input mask.  Note that box_size=(23, 22) tests the
+        Test with an input mask. Note that box_size=(23, 22) tests the
         resizing of the image and mask.
         """
         data = np.copy(DATA)

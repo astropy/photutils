@@ -94,7 +94,7 @@ class SegmentationImage:
         ----------
         data : array_like (int)
             A segmentation array where source regions are labeled by
-            different positive integer values.  A value of zero is
+            different positive integer values. A value of zero is
             reserved for the background.
 
         Returns
@@ -116,9 +116,9 @@ class SegmentationImage:
         """
         A list of `Segment` objects.
 
-        The list starts with the *non-zero* label.  The returned list
-        has a length equal to the number of labels and matches the order
-        of the ``labels`` attribute.
+        The list starts with the *non-zero* label. The returned list has
+        a length equal to the number of labels and matches the order of
+        the ``labels`` attribute.
         """
         segments = []
 
@@ -254,7 +254,7 @@ class SegmentationImage:
         -------
         indices : int `~numpy.ndarray`
             An integer array of indices with the same shape as
-            ``labels``.  If ``labels`` is a scalar, then the returned
+            ``labels``. If ``labels`` is a scalar, then the returned
             index will also be a scalar.
 
         Raises
@@ -277,9 +277,9 @@ class SegmentationImage:
         A list of tuples, where each tuple contains two slices
         representing the minimal box that contains the labeled region.
 
-        The list starts with the *non-zero* label.  The returned list
-        has a length equal to the number of labels and matches the order
-        of the ``labels`` attribute.
+        The list starts with the *non-zero* label. The returned list has
+        a length equal to the number of labels and matches the order of
+        the ``labels`` attribute.
         """
         return [slc for slc in self._raw_slices if slc is not None]
 
@@ -308,7 +308,7 @@ class SegmentationImage:
         A 1D array of areas (in pixel**2) of the non-zero labeled
         regions.
 
-        The `~numpy.ndarray` starts with the *non-zero* label.  The
+        The `~numpy.ndarray` starts with the *non-zero* label. The
         returned array has a length equal to the number of labels and
         matches the order of the ``labels`` attribute.
         """
@@ -324,7 +324,7 @@ class SegmentationImage:
         Parameters
         ----------
         label : int
-            The label whose area to return.  Label must be non-zero.
+            The label whose area to return. Label must be non-zero.
 
         Returns
         -------
@@ -340,7 +340,7 @@ class SegmentationImage:
         Parameters
         ----------
         labels : int, 1D array_like (int)
-            The label(s) for which to return areas.  Label must be
+            The label(s) for which to return areas. Label must be
             non-zero.
 
         Returns
@@ -703,7 +703,7 @@ class SegmentationImage:
         ----------
         start_label : int, optional
             The starting label number, which should be a strictly
-            positive integer.  The default is 1.
+            positive integer. The default is 1.
 
         Examples
         --------
@@ -1048,7 +1048,7 @@ class SegmentationImage:
 
         partial_overlap : bool, optional
             If this is set to `True` (default), a segment that partially
-            extends into a masked region will also be removed.  Segments
+            extends into a masked region will also be removed. Segments
             that are completely within a masked region are always
             removed.
 
@@ -1303,7 +1303,7 @@ class SegmentationImage:
         Parameters
         ----------
         ax : `matplotlib.axes.Axes` or `None`, optional
-            The matplotlib axes on which to plot.  If `None`, then the
+            The matplotlib axes on which to plot. If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
         origin : array_like, optional
@@ -1562,7 +1562,7 @@ class Segment:
     ----------
     segment_data : int `~numpy.ndarray`
         A segmentation array where source regions are labeled by
-        different positive integer values.  A value of zero is reserved
+        different positive integer values. A value of zero is reserved
         for the background.
 
     label : int
@@ -1651,8 +1651,8 @@ class Segment:
         minimal bounding box of the segment (labeled region).
 
         If ``masked_array`` is `False` (default), then the returned
-        cutout array is simply a `~numpy.ndarray`.  The returned cutout
-        is a view (not a copy) of the input ``data``.  No pixels are
+        cutout array is simply a `~numpy.ndarray`. The returned cutout
+        is a view (not a copy) of the input ``data``. No pixels are
         altered (e.g., set to zero) within the bounding box.
 
         If ``masked_array`` is `True`, then the returned cutout array is
@@ -1669,7 +1669,7 @@ class Segment:
         masked_array : bool, optional
             If `True` then a `~numpy.ma.MaskedArray` will be created
             where the mask is `True` for pixels outside of the segment
-            (labeled region).  If `False`, then a `~numpy.ndarray` will
+            (labeled region). If `False`, then a `~numpy.ndarray` will
             be generated.
 
         Returns

@@ -16,7 +16,7 @@ class CutoutImage:
     """
     Create a cutout object from a 2D array.
 
-    The returned object will contain a 2D cutout array.  If
+    The returned object will contain a 2D cutout array. If
     ``copy=False`` (default), the cutout array is a view into the
     original ``data`` array, otherwise the cutout array will contain a
     copy of the original data.

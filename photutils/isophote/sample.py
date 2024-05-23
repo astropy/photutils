@@ -34,31 +34,31 @@ class EllipseSample:
     astep : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
-        as a relative value (when ``linear_growth=False``).  The default
+        as a relative value (when ``linear_growth=False``). The default
         is 0.1.
     eps : float, optional
-        The ellipticity of the ellipse.  The default is 0.2.
+        The ellipticity of the ellipse. The default is 0.2.
     position_angle : float, optional
         The position angle of ellipse in relation to the positive x axis
-        of the image array (rotating towards the positive y axis).  The
+        of the image array (rotating towards the positive y axis). The
         default is 0.
     sclip : float, optional
-        The sigma-clip sigma value.  The default is 3.0.
+        The sigma-clip sigma value. The default is 3.0.
     nclip : int, optional
         The number of sigma-clip iterations. Set to zero to skip
         sigma-clipping. The default is 0.
     linear_growth : bool, optional
-        The semimajor axis growing/shrinking mode.  The default is
+        The semimajor axis growing/shrinking mode. The default is
         `False`.
     integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, optional
-        The area integration mode.  The default is 'bilinear'.
+        The area integration mode. The default is 'bilinear'.
     geometry : `~photutils.isophote.EllipseGeometry` instance or `None`
-        The geometry that describes the ellipse. This can be used in
-        lieu of the explicit specification of parameters ``sma``,
-        ``x0``, ``y0``, ``eps``, etc.  In any case, the
+        The geometry that describes the ellipse. This can be
+        used in lieu of the explicit specification of parameters
+        ``sma``, ``x0``, ``y0``, ``eps``, etc. In any case, the
         `~photutils.isophote.EllipseGeometry` instance becomes an
-        attribute of the `~photutils.isophote.EllipseSample` object.
-        The default is `None`.
+        attribute of the `~photutils.isophote.EllipseSample` object. The
+        default is `None`.
 
     Attributes
     ----------

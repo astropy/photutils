@@ -22,7 +22,7 @@ def make_test_image(nx=512, ny=512, x0=None, y0=None,
         The image size.
 
     x0, y0 : int, optional
-        The center position.  If `None`, the default is the image center.
+        The center position. If `None`, the default is the image center.
 
     background : float, optional
         The constant background level to add to the image values.

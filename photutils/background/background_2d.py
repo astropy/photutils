@@ -463,7 +463,7 @@ class Background2D:
 
         power : float, optional
             The power of the inverse distance used for the interpolation
-            weights.  See the Notes section for more details.
+            weights. See the Notes section for more details.
 
         reg : float, optional
             The regularization parameter. It may be used to control the
@@ -681,7 +681,7 @@ class Background2D:
         Parameters
         ----------
         ax : `matplotlib.axes.Axes` or `None`, optional
-            The matplotlib axes on which to plot.  If `None`, then the
+            The matplotlib axes on which to plot. If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
         marker : str, optional

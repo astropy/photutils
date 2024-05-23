@@ -257,7 +257,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         Parameters
         ----------
         ax : `matplotlib.axes.Axes` or `None`, optional
-            The matplotlib axes on which to plot.  If `None`, then the
+            The matplotlib axes on which to plot. If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
         **kwargs : `dict`
@@ -289,7 +289,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         Parameters
         ----------
         ax : `matplotlib.axes.Axes` or `None`, optional
-            The matplotlib axes on which to plot.  If `None`, then the
+            The matplotlib axes on which to plot. If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
         **kwargs : `dict`

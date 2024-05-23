@@ -317,10 +317,10 @@ class PixelAperture(Aperture):
             is masked. Masked data are excluded from the area overlap.
 
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
-            generally slower.  The following methods are available:
+            The method used to determine the overlap of the aperture
+            on the pixel grid. Not all options are available for all
+            aperture types. Note that the more precise methods are
+            generally slower. The following methods are available:
 
                 * ``'exact'`` (default):
                   The the exact fractional overlap of the aperture and
@@ -396,10 +396,10 @@ class PixelAperture(Aperture):
         Parameters
         ----------
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
-            generally slower.  The following methods are available:
+            The method used to determine the overlap of the aperture
+            on the pixel grid. Not all options are available for all
+            aperture types. Note that the more precise methods are
+            generally slower. The following methods are available:
 
                 * ``'exact'`` (default):
                   The the exact fractional overlap of the aperture and
@@ -430,8 +430,8 @@ class PixelAperture(Aperture):
         Returns
         -------
         mask : `~photutils.aperture.ApertureMask` or list of `~photutils.aperture.ApertureMask`
-            A mask for the aperture.  If the aperture is scalar then a
-            single `~photutils.aperture.ApertureMask` is returned,
+            A mask for the aperture. If the aperture is scalar then
+            a single `~photutils.aperture.ApertureMask` is returned,
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
@@ -445,26 +445,26 @@ class PixelAperture(Aperture):
         Parameters
         ----------
         data : array_like or `~astropy.units.Quantity` instance
-            The 2D array on which to perform photometry.  ``data``
-            should be background subtracted.
+            The 2D array on which to perform photometry. ``data`` should
+            be background subtracted.
 
         error : array_like or `~astropy.units.Quantity`, optional
             The pixel-wise Gaussian 1-sigma errors of the input
-            ``data``.  ``error`` is assumed to include *all* sources of
-            error, including the Poisson error of the sources (see
-            `~photutils.utils.calc_total_error`) .  ``error`` must have
+            ``data``. ``error`` is assumed to include *all* sources
+            of error, including the Poisson error of the sources (see
+            `~photutils.utils.calc_total_error`) . ``error`` must have
             the same shape as the input ``data``.
 
         mask : array_like (bool), optional
             A boolean mask with the same shape as ``data`` where a
             `True` value indicates the corresponding element of ``data``
-            is masked.  Masked data are excluded from all calculations.
+            is masked. Masked data are excluded from all calculations.
 
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
-            generally slower.  The following methods are available:
+            The method used to determine the overlap of the aperture
+            on the pixel grid. Not all options are available for all
+            aperture types. Note that the more precise methods are
+            generally slower. The following methods are available:
 
                 * ``'exact'`` (default):
                   The the exact fractional overlap of the aperture and
@@ -653,7 +653,7 @@ class PixelAperture(Aperture):
         Returns
         -------
         patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
-            A patch for the aperture.  If the aperture is scalar then a
+            A patch for the aperture. If the aperture is scalar then a
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
@@ -667,7 +667,7 @@ class PixelAperture(Aperture):
         Parameters
         ----------
         ax : `matplotlib.axes.Axes` or `None`, optional
-            The matplotlib axes on which to plot.  If `None`, then the
+            The matplotlib axes on which to plot. If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
         origin : array_like, optional

@@ -42,13 +42,13 @@ class Isophote:
               data points are valid.
            *  2: Exceeded maximum number of iterations.
            *  3: Singular matrix in harmonic fit, results may not be
-              valid.  This also signals an insufficient number of
-              data points to fit.
+              valid. This also signals an insufficient number of data
+              points to fit.
            *  4: Small or wrong gradient, or ellipse diverged. Subsequent
               ellipses at larger or smaller semimajor axis may have
-              the same constant geometric parameters. It's also used
-              when the user turns off the fitting algorithm via the
-              ``maxrit`` fitting parameter (see the
+              the same constant geometric parameters. It's also
+              used when the user turns off the fitting algorithm
+              via the ``maxrit`` fitting parameter (see the
               `~photutils.isophote.Ellipse` class).
            *  5: Ellipse diverged; not even the minimum number of
               iterations could be executed. Subsequent ellipses at
@@ -101,7 +101,7 @@ class Isophote:
         or they are masked.
     a3, b3, a4, b4 : float
         The higher order harmonics that measure the deviations from a
-        perfect ellipse.  These values are actually the raw harmonic
+        perfect ellipse. These values are actually the raw harmonic
         amplitudes divided by the local radial gradient and the
         semimajor axis length, so they can directly be compared with
         each other. The ``b4`` parameter is positive for galaxies with
@@ -319,7 +319,7 @@ class Isophote:
             pa = self.sample.geometry.pa
 
             # parameter errors result from direct projection of
-            # coefficient errors.  These showed to be the error estimators
+            # coefficient errors. These showed to be the error estimators
             # that best convey the errors measured in Monte Carlo
             # experiments (see Busko 1996; ASPC 101, 139).
             ea = abs(errors[2] / self.grad)
@@ -389,7 +389,7 @@ class CentralPixel(Isophote):
     Specialized Isophote class for the galaxy central pixel.
 
     This class holds only a single intensity value at the central
-    position.  Thus, most of its attributes are hardcoded to `None` or a
+    position. Thus, most of its attributes are hardcoded to `None` or a
     default value when appropriate.
 
     Parameters
@@ -454,7 +454,7 @@ class IsophoteList:
 
     The attributes of this class are arrays representing the values of
     the attributes for the entire list of `~photutils.isophote.Isophote`
-    instances.  See the `~photutils.isophote.Isophote` class for a
+    instances. See the `~photutils.isophote.Isophote` class for a
     description of the attributes.
 
     The class extends the `list` functionality, thus provides basic list
@@ -694,7 +694,7 @@ class IsophoteList:
     @property
     def a3(self):
         """
-        A third-order harmonic coefficient.  See the
+        A third-order harmonic coefficient. See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """
@@ -703,7 +703,7 @@ class IsophoteList:
     @property
     def b3(self):
         """
-        A third-order harmonic coefficient.  See the
+        A third-order harmonic coefficient. See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """
@@ -712,7 +712,7 @@ class IsophoteList:
     @property
     def a4(self):
         """
-        A fourth-order harmonic coefficient.  See the
+        A fourth-order harmonic coefficient. See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """
@@ -721,7 +721,7 @@ class IsophoteList:
     @property
     def b4(self):
         """
-        A fourth-order harmonic coefficient.  See the
+        A fourth-order harmonic coefficient. See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """

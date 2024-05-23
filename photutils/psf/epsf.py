@@ -78,15 +78,15 @@ class EPSFFitter:
             An ePSF model to be fitted to the stars.
 
         stars : `EPSFStars` object
-            The stars to be fit.  The center coordinates for each star
-            should be as close as possible to actual centers.  For stars
+            The stars to be fit. The center coordinates for each star
+            should be as close as possible to actual centers. For stars
             than contain weights, a weighted fit of the ePSF to the star
             will be performed.
 
         Returns
         -------
         fitted_stars : `EPSFStars` object
-            The fitted stars.  The ePSF-fitted center position and flux
+            The fitted stars. The ePSF-fitted center position and flux
             are stored in the ``center`` (and ``cutout_center``) and
             ``flux`` attributes.
         """
@@ -134,7 +134,7 @@ class EPSFFitter:
         Fit an ePSF model to a single star.
 
         The input ``epsf`` will usually be modified by the fitting
-        routine in this function.  Make a copy before calling this
+        routine in this function. Make a copy before calling this
         function if the original is needed.
         """
         if fit_boxsize is not None:
@@ -233,19 +233,19 @@ class EPSFBuilder:
         elements, they must be in ``(y, x)`` order.
 
     shape : float, tuple of two floats, or `None`, optional
-        The shape of the output ePSF.  If the ``shape`` is not `None`,
-        it will be derived from the sizes of the input ``stars`` and the
-        ePSF oversampling factor.  If the size is even along any axis,
-        it will be made odd by adding one.  The output ePSF will always
+        The shape of the output ePSF. If the ``shape`` is not `None`, it
+        will be derived from the sizes of the input ``stars`` and the
+        ePSF oversampling factor. If the size is even along any axis,
+        it will be made odd by adding one. The output ePSF will always
         have odd sizes along both axes to ensure a well-defined central
         pixel.
 
     smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
-        The smoothing kernel to apply to the ePSF.  The predefined
-        ``'quartic'`` and ``'quadratic'`` kernels are derived from
-        fourth and second degree polynomials, respectively.
-        Alternatively, a custom 2D array can be input.  If `None` then
-        no smoothing will be performed.
+        The smoothing kernel to apply to the ePSF. The predefined
+        ``'quartic'`` and ``'quadratic'`` kernels are derived
+        from fourth and second degree polynomials, respectively.
+        Alternatively, a custom 2D array can be input. If `None` then no
+        smoothing will be performed.
 
     recentering_func : callable, optional
         A callable object (e.g., function or class) that is used to
@@ -287,10 +287,10 @@ class EPSFBuilder:
             both axes.
 
     center_accuracy : float, optional
-            The desired accuracy for the centers of stars.  The building
-            iterations will stop if the centers of all the stars change by
-            less than ``center_accuracy`` pixels between iterations.  All
-            stars must meet this condition for the loop to exit.
+            The desired accuracy for the centers of stars. The building
+            iterations will stop if the centers of all the stars change
+            by less than ``center_accuracy`` pixels between iterations.
+            All stars must meet this condition for the loop to exit.
 
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
@@ -421,7 +421,7 @@ class EPSFBuilder:
 
         A normalized residual image is calculated by subtracting the
         normalized ePSF model from the normalized star at the location
-        of the star in the undersampled grid.  The normalized residual
+        of the star in the undersampled grid. The normalized residual
         image is then resampled from the undersampled star grid to the
         oversampled ePSF grid.
 
@@ -436,7 +436,7 @@ class EPSFBuilder:
         Returns
         -------
         image : 2D `~numpy.ndarray`
-            A 2D image containing the resampled residual image.  The
+            A 2D image containing the resampled residual image. The
             image contains NaNs where there is no data.
         """
         # Compute the normalized residual by subtracting the ePSF model
@@ -585,7 +585,7 @@ class EPSFBuilder:
             The maximum number of recentering iterations to perform.
 
         center_accuracy : float, optional
-            The desired accuracy for the centers of stars.  The building
+            The desired accuracy for the centers of stars. The building
             iterations will stop if the center of the ePSF changes by
             less than ``center_accuracy`` pixels between iterations.
 
@@ -663,7 +663,7 @@ class EPSFBuilder:
             The stars used to build the ePSF.
 
         epsf : `EPSFModel` object, optional
-            The initial ePSF model.  If not input, then the ePSF will be
+            The initial ePSF model. If not input, then the ePSF will be
             built from scratch.
 
         Returns
@@ -740,7 +740,7 @@ class EPSFBuilder:
             The stars used to build the ePSF.
 
         init_epsf : `EPSFModel` object, optional
-            The initial ePSF model.  If not input, then the ePSF will be
+            The initial ePSF model. If not input, then the ePSF will be
             built from scratch.
 
         Returns

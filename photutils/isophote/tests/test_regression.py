@@ -5,14 +5,14 @@ testing of the Ellipse algorithm, against results obtained by the
 stsdas$analysis/isophote task 'ellipse'.
 
 The stsdas task was run on test images and results were stored in
-tables.  The code here runs the Ellipse algorithm on the same images,
+tables. The code here runs the Ellipse algorithm on the same images,
 producing a list of Isophote instances. The contents of this list then
 get compared with the contents of the corresponding table.
 
 Some quantities are compared in assert statements. These were designed
 to be executed only when the synth_highsnr.fits image is used as input.
-That way, we are mainly checking numerical differences that originate in
-the algorithms themselves, and not caused by noise. The quantities
+That way, we are mainly checking numerical differences that originate
+in the algorithms themselves, and not caused by noise. The quantities
 compared this way are:
 
   - mean intensity: less than 1% diff. for sma > 3 pixels, 5% otherwise
@@ -21,17 +21,17 @@ compared this way are:
     otherwise
   - X and Y position: less than 0.2 pixel diff.
 
-For the M51 image we have mostly good agreement with the SPP code in
-most of the parameters (mean isophotal intensity agrees within a
+For the M51 image we have mostly good agreement with the SPP code
+in most of the parameters (mean isophotal intensity agrees within a
 fraction of 1% mostly), but every now and then the ellipticity and
-position angle of the semi-major axis may differ by a large amount from
-what the SPP code measures.  The code also stops prematurely wrt the
-larger sma values measured by the SPP code. This is caused by a
+position angle of the semi-major axis may differ by a large amount
+from what the SPP code measures. The code also stops prematurely wrt
+the larger sma values measured by the SPP code. This is caused by a
 difference in the way the gradient relative error is measured in each
 case, and suggests that the SPP code may have a bug.
 
-The not-so-good behavior observed in the case of the M51 image is to be
-expected though. This image is exactly the type of galaxy image for
+The not-so-good behavior observed in the case of the M51 image is to
+be expected though. This image is exactly the type of galaxy image for
 which the algorithm *wasn't* designed for. It has an almost negligible
 smooth ellipsoidal component, and a lot of lumpy spiral structure that
 causes the radial gradient computation to go berserk. On top of that,
@@ -39,8 +39,8 @@ the ellipticity is small (roundish isophotes) throughout the image,
 causing large relative errors and instability in the fitting algorithm.
 
 For now, we can only check the bilinear integration mode. The mean and
-median modes cannot be checked since the original 'ellipse' task has a
-bug that causes the creation of erroneous output tables. A partial
+median modes cannot be checked since the original 'ellipse' task has
+a bug that causes the creation of erroneous output tables. A partial
 comparison could be made if we write new code that reads the standard
 output of 'ellipse' instead, captured from screen, and use it as
 reference for the regression.
@@ -67,9 +67,10 @@ from photutils.utils._optional_deps import HAS_SCIPY
 @pytest.mark.remote_data
 def test_regression(name, integrmode=BILINEAR, verbose=False):
     """
-    NOTE:  The original code in SPP won't create the right table for the MEAN
-    integration moder, so use the screen output at synth_table_mean.txt to
-    compare results visually with synth_table_mean.fits.
+    NOTE: The original code in SPP won't create the right table
+    for the MEAN integration moder, so use the screen output
+    at synth_table_mean.txt to compare results visually with
+    synth_table_mean.fits.
     """
 
     filename = f'{name}_table.fits'

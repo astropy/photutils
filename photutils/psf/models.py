@@ -31,14 +31,14 @@ class FittableImageModel(Fittable2DModel):
     A fittable 2D model of an image allowing for image intensity scaling
     and image translations.
 
-    This class takes 2D image data and computes the values of the model
-    at arbitrary locations (including at intra-pixel, fractional
+    This class takes 2D image data and computes the values of the
+    model at arbitrary locations (including at intra-pixel, fractional
     positions) within this image using spline interpolation provided by
     :py:class:`~scipy.interpolate.RectBivariateSpline`.
 
     The fittable model provided by this class has three model
-    parameters: an image intensity scaling factor (``flux``) which is
-    applied to (normalized) image, and two positional parameters
+    parameters: an image intensity scaling factor (``flux``) which
+    is applied to (normalized) image, and two positional parameters
     (``x_0`` and ``y_0``) indicating the location of a feature in the
     coordinate grid on which the model is to be evaluated.
 
@@ -56,9 +56,9 @@ class FittableImageModel(Fittable2DModel):
         is `None`, origin will be set at the middle of the image array.
 
         If ``origin`` represents the location of a feature (e.g., the
-        position of an intensity peak) in the input ``data``, then model
-        parameters ``x_0`` and ``y_0`` show the location of this peak in
-        an another target image to which this model was fitted.
+        position of an intensity peak) in the input ``data``, then
+        model parameters ``x_0`` and ``y_0`` show the location of this
+        peak in an another target image to which this model was fitted.
         Fundamentally, it is the coordinate in the model's image data
         that should map to coordinate (``x_0``, ``y_0``) of the output
         coordinate system on which the model is evaluated.
@@ -83,16 +83,16 @@ class FittableImageModel(Fittable2DModel):
     normalization_correction : float, optional
         A strictly positive number that represents correction that needs
         to be applied to model's data normalization (see *C* in the
-        equation in the comments to ``normalize`` for more details).  A
-        possible application for this parameter is to account for
+        equation in the comments to ``normalize`` for more details).
+        A possible application for this parameter is to account for
         aperture correction. Assuming model's data represent a PSF to be
         fitted to some target star, we set ``normalization_correction``
         to the aperture correction that needs to be applied to the
         model. That is, ``normalization_correction`` in this case should
         be set to the ratio between the total flux of the PSF (including
-        flux outside model's data) to the flux of model's data.  Then,
+        flux outside model's data) to the flux of model's data. Then,
         best fitted value of the ``flux`` model parameter will represent
-        an aperture-corrected flux of the target star.  In the case of
+        an aperture-corrected flux of the target star. In the case of
         aperture correction, ``normalization_correction`` should be a
         value larger than one, as the total flux, including regions
         outside of the aperture, should be larger than the flux inside
@@ -106,7 +106,7 @@ class FittableImageModel(Fittable2DModel):
 
     kwargs : dict, optional
         Additional optional keyword arguments to be passed directly to
-        the `compute_interpolator` method.  See `compute_interpolator`
+        the `compute_interpolator` method. See `compute_interpolator`
         for more details.
 
     oversampling : int or array_like (int)
@@ -403,8 +403,8 @@ class FittableImageModel(Fittable2DModel):
                 Default value is degree=3.
 
             - **s** : float, optional
-                Non-negative smoothing factor. Default value s=0
-                corresponds to interpolation.  See
+                Non-negative smoothing factor. Default
+                value s=0 corresponds to interpolation. See
                 :py:class:`~scipy.interpolate.RectBivariateSpline` for
                 more details.
 
@@ -498,7 +498,7 @@ class EPSFModel(FittableImageModel):
     radius ``norm_radius``.
 
     While this class is a subclass of `FittableImageModel`, it is very
-    similar.  The primary differences/motivation are a few additional
+    similar. The primary differences/motivation are a few additional
     parameters necessary specifically for ePSFs.
 
     Parameters
@@ -617,8 +617,8 @@ class EPSFModel(FittableImageModel):
                 Default value is degree=3.
 
             - **s** : float, optional
-                Non-negative smoothing factor. Default value s=0
-                corresponds to interpolation.  See
+                Non-negative smoothing factor. Default
+                value s=0 corresponds to interpolation. See
                 :py:class:`~scipy.interpolate.RectBivariateSpline` for
                 more details.
 
@@ -775,7 +775,7 @@ class PRFAdapter(Fittable2DModel):
     """
     A model that adapts a supplied PSF model to act as a PRF.
 
-    It integrates the PSF model over pixel "boxes".  A critical built-in
+    It integrates the PSF model over pixel "boxes". A critical built-in
     assumption is that the PSF model scale and location parameters are
     in *pixel* units.
 
@@ -783,23 +783,27 @@ class PRFAdapter(Fittable2DModel):
     ----------
     psfmodel : a 2D model
         The model to assume as representative of the PSF.
+
     renormalize_psf : bool
         If True, the model will be integrated from -inf to inf and
-        re-scaled so that the total integrates to 1.  Note that this
+        re-scaled so that the total integrates to 1. Note that this
         renormalization only occurs *once*, so if the total flux of
         ``psfmodel`` depends on position, this will *not* be correct.
+
     xname : str or None
         The name of the ``psfmodel`` parameter that corresponds to the
-        x-axis center of the PSF.  If None, the model will be assumed to
+        x-axis center of the PSF. If None, the model will be assumed to
         be centered at x=0.
+
     yname : str or None
         The name of the ``psfmodel`` parameter that corresponds to the
-        y-axis center of the PSF.  If None, the model will be assumed to
+        y-axis center of the PSF. If None, the model will be assumed to
         be centered at y=0.
+
     fluxname : str or None
-        The name of the ``psfmodel`` parameter that corresponds to the
-        total flux of the star.  If None, a scaling factor will be
-        applied by the ``PRFAdapter`` instead of modifying the
+        The name of the ``psfmodel`` parameter that corresponds to
+        the total flux of the star. If None, a scaling factor will
+        be applied by the ``PRFAdapter`` instead of modifying the
         ``psfmodel``.
 
     Notes
@@ -869,7 +873,7 @@ class PRFAdapter(Fittable2DModel):
     def _integrated_psfmodel(self, dx, dy):
         from scipy.integrate import dblquad
 
-        # infer type/shape from the PSF model.  Seems wasteful, but the
+        # infer type/shape from the PSF model. Seems wasteful, but the
         # integration step is a *lot* more expensive so its just peanuts
         out = np.empty_like(self.psfmodel(dx, dy))
         outravel = out.ravel()

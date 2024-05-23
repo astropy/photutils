@@ -17,10 +17,10 @@ class BoundingBox:
     Parameters
     ----------
     ixmin, ixmax, iymin, iymax : int
-        The bounding box pixel indices.  Note that the upper values
-        (``iymax`` and ``ixmax``) are exclusive as for normal slices in
-        Python.  The lower values (``ixmin`` and ``iymin``) must not be
-        greater than the respective upper values (``ixmax`` and
+        The bounding box pixel indices. Note that the upper values
+        (``iymax`` and ``ixmax``) are exclusive as for normal slices
+        in Python. The lower values (``ixmin`` and ``iymin``) must not
+        be greater than the respective upper values (``ixmax`` and
         ``iymax``).
 
     Examples
@@ -79,21 +79,21 @@ class BoundingBox:
 
         Following the pixel index convention, an integer index
         corresponds to the center of a pixel and the pixel edges span
-        from (index - 0.5) to (index + 0.5).  For example, the pixel
-        edge spans of the following pixels are:
+        from (index - 0.5) to (index + 0.5). For example, the pixel edge
+        spans of the following pixels are:
 
         - pixel 0: from -0.5 to 0.5
         - pixel 1: from 0.5 to 1.5
         - pixel 2: from 1.5 to 2.5
 
         In addition, because `BoundingBox` upper limits are exclusive
-        (by definition), 1 is added to the upper pixel edges.  See
+        (by definition), 1 is added to the upper pixel edges. See
         examples below.
 
         Parameters
         ----------
         xmin, xmax, ymin, ymax : float
-            Float coordinates defining a rectangle.  The lower values
+            Float coordinates defining a rectangle. The lower values
             (``xmin`` and ``ymin``) must not be greater than the
             respective upper values (``xmax`` and ``ymax``).
 
@@ -277,7 +277,7 @@ class BoundingBox:
         Parameters
         ----------
         ax : `matplotlib.axes.Axes` or `None`, optional
-            The matplotlib axes on which to plot.  If `None`, then the
+            The matplotlib axes on which to plot. If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
         origin : array_like, optional

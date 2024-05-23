@@ -52,7 +52,7 @@ class ModelGridPlotMixin:
         Parameters
         ----------
         ax : `matplotlib.axes.Axes` or `None`, optional
-            The matplotlib axes on which to plot.  If `None`, then the
+            The matplotlib axes on which to plot. If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
         vmax_scale : float, optional
@@ -498,7 +498,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         into ``a`` to maintain order.
 
         The index of the upper bound is the index of the lower bound
-        plus 2.  Both bound indices must be within the array.
+        plus 2. Both bound indices must be within the array.
 
         Parameters
         ----------
@@ -570,7 +570,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         xi, yi : float
             The ``(xi, yi)`` point at which to perform the
-            interpolation.  The ``(xi, yi)`` point must lie within the
+            interpolation. The ``(xi, yi)`` point must lie within the
             rectangle defined by ``xyref``.
 
         Returns

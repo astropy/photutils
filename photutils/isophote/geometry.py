@@ -100,7 +100,7 @@ class EllipseGeometry:
     astep : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
-        as a relative value (when ``linear_growth=False``).  The default
+        as a relative value (when ``linear_growth=False``). The default
         is 0.1.
     linear_growth : bool, optional
         The semimajor axis growing/shrinking mode. The default is
@@ -158,32 +158,33 @@ class EllipseGeometry:
         galaxy center (x, y) coordinates and these coordinates must be
         close to the actual galaxy center for the isophote fit to work.
         This method provides can provide an initial guess for the galaxy
-        center coordinates.  See the **Notes** section below for more
+        center coordinates. See the **Notes** section below for more
         details.
 
         Parameters
         ----------
         image : 2D `~numpy.ndarray`
-            The image array.  Masked arrays are not recognized here. This
-            assumes that centering should always be done on valid pixels.
+            The image array. Masked arrays are not recognized here.
+            This assumes that centering should always be done on valid
+            pixels.
 
         threshold : float, optional
-            The centerer threshold.  To turn off the centerer, set this
-            to a large value (i.e., >> 1).  The default is 0.1.
+            The centerer threshold. To turn off the centerer, set this
+            to a large value (i.e., >> 1). The default is 0.1.
 
         verbose : bool, optional
-            Whether to print object centering information.  The default is
-            `True`.
+            Whether to print object centering information. The default
+            is `True`.
 
         Notes
         -----
         The centerer function scans a 10x10 window centered on the (x,
         y) coordinates in the `~photutils.isophote.EllipseGeometry`
         instance passed to the constructor of the
-        `~photutils.isophote.Ellipse` class.  If any of the
-        `~photutils.isophote.EllipseGeometry` (x, y) coordinates are
-        `None`, the center of the input image frame is used.  If the
-        center acquisition is successful, the
+        `~photutils.isophote.Ellipse` class. If any of the
+        `~photutils.isophote.EllipseGeometry` (x, y) coordinates
+        are `None`, the center of the input image frame is
+        used. If the center acquisition is successful, the
         `~photutils.isophote.EllipseGeometry` instance is modified in
         place to reflect the solution of the object centerer algorithm.
 
@@ -408,7 +409,7 @@ class EllipseGeometry:
 
             0 < phi < 2 \pi
 
-        Note that radius can be anything.  The solution is not tied to
+        Note that radius can be anything. The solution is not tied to
         the semimajor axis length, but to the center position and tilt
         angle.
 

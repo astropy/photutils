@@ -32,26 +32,26 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     Parameters
     ----------
     data : array_like, `~astropy.units.Quantity`, `~astropy.nddata.NDData`
-        The 2D array on which to perform photometry. ``data`` should be
-        background-subtracted.  If ``data`` is a
-        `~astropy.units.Quantity` array, then ``error`` (if input) must
-        also be a `~astropy.units.Quantity` array with the same units.
-        See the Notes section below for more information about
+        The 2D array on which to perform photometry. ``data``
+        should be background-subtracted. If ``data`` is a
+        `~astropy.units.Quantity` array, then ``error`` (if input)
+        must also be a `~astropy.units.Quantity` array with the same
+        units. See the Notes section below for more information about
         `~astropy.nddata.NDData` input.
 
     apertures : `~photutils.aperture.Aperture` or list of `~photutils.aperture.Aperture`
-        The aperture(s) to use for the photometry.  If ``apertures`` is
-        a list of `~photutils.aperture.Aperture` then they all must have
+        The aperture(s) to use for the photometry. If ``apertures`` is a
+        list of `~photutils.aperture.Aperture` then they all must have
         the same position(s).
 
     error : array_like or `~astropy.units.Quantity`, optional
-        The pixel-wise Gaussian 1-sigma errors of the input ``data``.
-        ``error`` is assumed to include *all* sources of error,
-        including the Poisson error of the sources (see
-        `~photutils.utils.calc_total_error`) .  ``error`` must have the
-        same shape as the input ``data``.  If a
-        `~astropy.units.Quantity` array, then ``data`` must also be a
-        `~astropy.units.Quantity` array with the same units.
+        The pixel-wise Gaussian 1-sigma errors of the input
+        ``data``. ``error`` is assumed to include *all* sources
+        of error, including the Poisson error of the sources (see
+        `~photutils.utils.calc_total_error`) . ``error`` must have the
+        same shape as the input ``data``. If a `~astropy.units.Quantity`
+        array, then ``data`` must also be a `~astropy.units.Quantity`
+        array with the same units.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -59,9 +59,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         Masked data are excluded from all calculations.
 
     method : {'exact', 'center', 'subpixel'}, optional
-        The method used to determine the overlap of the aperture on the
-        pixel grid.  Not all options are available for all aperture
-        types.  Note that the more precise methods are generally slower.
+        The method used to determine the overlap of the aperture on
+        the pixel grid. Not all options are available for all aperture
+        types. Note that the more precise methods are generally slower.
         The following methods are available:
 
             * ``'exact'`` (default):
@@ -118,7 +118,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
             * ``'aperture_sum_err'``:
               The corresponding uncertainty in the ``'aperture_sum'``
-              values.  Returned only if the input ``error`` is not
+              values. Returned only if the input ``error`` is not
               `None`.
 
         The table metadata includes the Astropy and Photutils version

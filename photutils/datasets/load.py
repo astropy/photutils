@@ -226,7 +226,7 @@ def load_star_image(show_progress=False):  # pragma: no cover
 
     This is an image of M67 from photographic data obtained as part of
     the National Geographic Society - Palomar Observatory Sky Survey
-    (NGS-POSS).  The image was digitized from the POSS-I Red plates as
+    (NGS-POSS). The image was digitized from the POSS-I Red plates as
     part of the Digitized Sky Survey produced at the Space Telescope
     Science Institute.
 

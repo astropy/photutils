@@ -2200,8 +2200,8 @@ class SourceCatalog:
 
         References
         ----------
-        .. [1] K. Benkrid, D. Crookes, and A. Benkrid.  "Design and FPGA
-               Implementation of a Perimeter Estimator".  Proceedings of
+        .. [1] K. Benkrid, D. Crookes, and A. Benkrid. "Design and FPGA
+               Implementation of a Perimeter Estimator". Proceedings of
                the Irish Machine Vision and Image Processing Conference,
                pp. 51-57 (2000).
                https://maa.org/sites/default/files/images/upload_library/applets/CirclesRedistrict/perimeter.doc
@@ -2379,7 +2379,7 @@ class SourceCatalog:
         """
         The angle between the ``x`` axis and the major axis of the 2D
         Gaussian function that has the same second-order moments as the
-        source.  The angle increases in the counter-clockwise direction.
+        source. The angle increases in the counter-clockwise direction.
         """
         covar = self._covariance
         orient_radians = 0.5 * np.arctan2(2.0 * covar[:, 0, 1],
@@ -2804,7 +2804,7 @@ class SourceCatalog:
             The radius of the circle in pixels.
 
         ax : `matplotlib.axes.Axes` or `None`, optional
-            The matplotlib axes on which to plot.  If `None`, then the
+            The matplotlib axes on which to plot. If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
         origin : array_like, optional
@@ -3215,7 +3215,7 @@ class SourceCatalog:
             as those in `kron_aperture`).
 
         ax : `matplotlib.axes.Axes` or `None`, optional
-            The matplotlib axes on which to plot.  If `None`, then the
+            The matplotlib axes on which to plot. If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
         origin : array_like, optional

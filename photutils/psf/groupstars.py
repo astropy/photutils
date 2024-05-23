@@ -206,11 +206,11 @@ class DBSCANGroup(GroupStarsBase):
       <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN>`_.
 
     * This class provides more general algorithms than
-      `photutils.psf.DAOGroup`.  More precisely,
-      `photutils.psf.DAOGroup` is a special case of
-      `photutils.psf.DBSCANGroup` when ``min_samples=1`` and
-      ``metric=euclidean``.  Additionally, `photutils.psf.DBSCANGroup`
-      may be faster than `photutils.psf.DAOGroup`.
+      `photutils.psf.DAOGroup`. More precisely, `photutils.psf.DAOGroup`
+      is a special case of `photutils.psf.DBSCANGroup`
+      when ``min_samples=1`` and ``metric=euclidean``.
+      Additionally, `photutils.psf.DBSCANGroup` may be faster than
+      `photutils.psf.DAOGroup`.
 
     References
     ----------

@@ -34,10 +34,10 @@ class EllipticalMaskMixin:
         Parameters
         ----------
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
-            generally slower.  The following methods are available:
+            The method used to determine the overlap of the aperture
+            on the pixel grid. Not all options are available for all
+            aperture types. Note that the more precise methods are
+            generally slower. The following methods are available:
 
                 * ``'exact'`` (default):
                   The the exact fractional overlap of the aperture and
@@ -68,8 +68,8 @@ class EllipticalMaskMixin:
         Returns
         -------
         mask : `~photutils.aperture.ApertureMask` or list of `~photutils.aperture.ApertureMask`
-            A mask for the aperture.  If the aperture is scalar then a
-            single `~photutils.aperture.ApertureMask` is returned,
+            A mask for the aperture. If the aperture is scalar then
+            a single `~photutils.aperture.ApertureMask` is returned,
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
@@ -212,7 +212,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         Returns
         -------
         patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
-            A patch for the aperture.  If the aperture is scalar then a
+            A patch for the aperture. If the aperture is scalar then a
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
@@ -377,7 +377,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         Returns
         -------
         patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
-            A patch for the aperture.  If the aperture is scalar then a
+            A patch for the aperture. If the aperture is scalar then a
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
@@ -447,7 +447,7 @@ class SkyEllipticalAperture(SkyAperture):
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the ellipse semimajor
-        axis.  For a right-handed world coordinate system, the position
+        axis. For a right-handed world coordinate system, the position
         angle increases counterclockwise from North (PA=0).
 
     Examples
@@ -524,7 +524,7 @@ class SkyEllipticalAnnulus(SkyAperture):
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the ellipse semimajor
-        axis.  For a right-handed world coordinate system, the position
+        axis. For a right-handed world coordinate system, the position
         angle increases counterclockwise from North (PA=0).
 
     Examples

@@ -55,7 +55,7 @@ class ShepardIDWInterpolator:
 
     leafsize : float, optional
         The number of points at which the k-d tree algorithm switches
-        over to brute-force. ``leafsize`` must be positive.  See
+        over to brute-force. ``leafsize`` must be positive. See
         `scipy.spatial.cKDTree` for further information.
 
     Notes
@@ -195,7 +195,7 @@ class ShepardIDWInterpolator:
 
         power : float, optional
             The power of the inverse distance used for the interpolation
-            weights.  See the Notes section for more details.
+            weights. See the Notes section for more details.
 
         reg : float, optional
             The regularization parameter. It may be used to control the

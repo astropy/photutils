@@ -30,13 +30,13 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
         objects with a shape similar to the kernel.
 
     mode : {'constant', 'reflect', 'nearest', 'mirror', 'wrap'}, optional
-        The ``mode`` determines how the array borders are handled.  For
+        The ``mode`` determines how the array borders are handled. For
         the ``'constant'`` mode, values outside the array borders are
-        set to ``fill_value``.  The default is ``'constant'``.
+        set to ``fill_value``. The default is ``'constant'``.
 
     fill_value : scalar, optional
         Value to fill data values beyond the array borders if ``mode``
-        is ``'constant'``.  The default is ``0.0``.
+        is ``'constant'``. The default is ``0.0``.
 
     check_normalization : bool, optional
         If `True` then a warning will be issued if the kernel is not

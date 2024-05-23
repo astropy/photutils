@@ -276,7 +276,7 @@ class TestDeblendSources:
     def test_data_nan(self):
         """
         Test that deblending occurs even if the data within a segment
-        contains one or more NaNs.  Regression test for #658.
+        contains one or more NaNs. Regression test for #658.
         """
 
         data = self.data.copy()
@@ -288,7 +288,7 @@ class TestDeblendSources:
         """
         Regression test to ensure watershed input mask is bool array.
 
-        With scikit-image >= 0.13, the mask must be a bool array.  In
+        With scikit-image >= 0.13, the mask must be a bool array. In
         particular, if the mask array contains label 512, the watershed
         algorithm fails.
         """

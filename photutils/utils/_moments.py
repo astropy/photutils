@@ -18,7 +18,7 @@ def _moments_central(data, center=None, order=1):
         The input 2D array.
 
     center : tuple of two floats or `None`, optional
-        The ``(x, y)`` center position.  If `None` it will calculated as
+        The ``(x, y)`` center position. If `None` it will calculated as
         the "center of mass" of the input ``data``.
 
     order : int, optional
