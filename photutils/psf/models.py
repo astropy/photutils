@@ -746,11 +746,52 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
     _erf = None
 
-    @property
-    def bounding_box(self):
-        halfwidth = 4 * self.sigma
-        return ((int(self.y_0 - halfwidth), int(self.y_0 + halfwidth)),
-                (int(self.x_0 - halfwidth), int(self.x_0 + halfwidth)))
+    def bounding_box(self, factor=5.5):
+        """
+        Tuple defining the default ``bounding_box`` limits, ``(x_low,
+        x_high)``.
+
+        Parameters
+        ----------
+        factor : float
+            The multiple of `sigma` used to define the limits. The
+            default is 5.5, corresponding to a relative flux error less
+            than 5e-9.
+
+        Examples
+        --------
+        >>> from photutils.psf import IntegratedGaussianPRF
+        >>> model = IntegratedGaussianPRF(x_0=0, y_0=0, sigma=2)
+        >>> model.bounding_box
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-11.0, upper=11.0)
+                y: Interval(lower=-11.0, upper=11.0)
+            }
+            model=IntegratedGaussianPRF(inputs=('x', 'y'))
+            order='C'
+        )
+
+        This range can be set directly (see: `Model.bounding_box
+        <astropy.modeling.Model.bounding_box>`) or by using a different
+        factor, like:
+
+        >>> model.bounding_box = model.bounding_box(factor=2)
+        >>> model.bounding_box
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-4.0, upper=4.0)
+                y: Interval(lower=-4.0, upper=4.0)
+            }
+            model=IntegratedGaussianPRF(inputs=('x', 'y'))
+            order='C'
+        )
+        """
+        delta = factor * self.sigma
+        return (
+            (self.y_0 - delta, self.y_0 + delta),
+            (self.x_0 - delta, self.x_0 + delta),
+        )
 
     def __init__(self, sigma=sigma.default,
                  x_0=x_0.default, y_0=y_0.default, flux=flux.default,
