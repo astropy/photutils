@@ -11,8 +11,7 @@ from astropy.io import fits
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import Table
 from astropy.wcs import WCS
-from numpy.testing import (assert_allclose, assert_array_equal,
-                           assert_array_less)
+from numpy.testing import assert_allclose, assert_array_less, assert_equal
 
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAnnulus, SkyCircularAperture)
@@ -462,8 +461,8 @@ def test_aperture_photometry_inputs_with_mask():
     data_in = data.copy()
     error_in = error.copy()
     t1 = aperture_photometry(data, aperture, error=error, mask=mask)
-    assert_array_equal(data, data_in)
-    assert_array_equal(error, error_in)
+    assert_equal(data, data_in)
+    assert_equal(error, error_in)
     assert_allclose(t1['aperture_sum'][0], 11.5663706144)
     t2 = aperture_photometry(data, aperture)
     assert_allclose(t2['aperture_sum'][0], 111.566370614)

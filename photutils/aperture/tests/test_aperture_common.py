@@ -5,7 +5,7 @@ This module provides base classes for aperture tests.
 
 from astropy.coordinates import SkyCoord
 from astropy.tests.helper import assert_quantity_allclose
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_equal
 
 
 class BaseTestApertureParams:
@@ -29,8 +29,7 @@ class BaseTestAperture(BaseTestApertureParams):
                     assert_quantity_allclose(aper.positions.dec,
                                              expected_positions.dec)
                 else:
-                    assert_array_equal(getattr(aper, param),
-                                       expected_positions)
+                    assert_equal(getattr(aper, param), expected_positions)
             else:
                 assert (getattr(aper, param)
                         == getattr(self.aperture, param))
@@ -49,8 +48,7 @@ class BaseTestAperture(BaseTestApertureParams):
                     assert_quantity_allclose(aper.positions.dec,
                                              expected_positions.dec)
                 else:
-                    assert_array_equal(getattr(aper, param),
-                                       expected_positions)
+                    assert_equal(getattr(aper, param), expected_positions)
             else:
                 assert (getattr(aper, param)
                         == getattr(self.aperture, param))

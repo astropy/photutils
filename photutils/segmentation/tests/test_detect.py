@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.stats import SigmaClip
-from numpy.testing import assert_allclose, assert_array_equal
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils.segmentation.detect import detect_sources, detect_threshold
 from photutils.segmentation.utils import make_2dgaussian_kernel
@@ -116,7 +116,7 @@ class TestDetectThreshold:
         threshold = detect_threshold(DATA, nsigma=1.0, error=0, mask=mask,
                                      sigma_clip=sigma_clip)
         ref = (1.0 / 8.0) * np.ones((3, 3))
-        assert_array_equal(threshold, ref)
+        assert_equal(threshold, ref)
 
     def test_invalid_sigma_clip(self):
         with pytest.raises(TypeError):
@@ -136,11 +136,11 @@ class TestDetectSources:
     def test_detection(self):
         """Test basic detection."""
         segm = detect_sources(self.data, threshold=0.9, npixels=2)
-        assert_array_equal(segm.data, self.refdata)
+        assert_equal(segm.data, self.refdata)
 
         segm = detect_sources(self.data << u.uJy, threshold=0.9 * u.uJy,
                               npixels=2)
-        assert_array_equal(segm.data, self.refdata)
+        assert_equal(segm.data, self.refdata)
 
         with pytest.raises(ValueError):
             detect_sources(self.data << u.uJy, threshold=0.9, npixels=2)
@@ -189,7 +189,7 @@ class TestDetectSources:
     def test_zerothresh(self):
         """Test detection with zero threshold."""
         segm = detect_sources(self.data, threshold=0.0, npixels=2)
-        assert_array_equal(segm.data, self.refdata)
+        assert_equal(segm.data, self.refdata)
 
     def test_zerodet(self):
         """Test detection with large threshold giving no detections."""
@@ -200,14 +200,14 @@ class TestDetectSources:
         """Test detection with connectivity=8."""
         data = np.eye(3)
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=8)
-        assert_array_equal(segm.data, data)
+        assert_equal(segm.data, data)
 
     def test_4connectivity(self):
         """Test detection with connectivity=4."""
         data = np.eye(3)
         ref = np.diag([1, 2, 3])
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=4)
-        assert_array_equal(segm.data, ref)
+        assert_equal(segm.data, ref)
 
     def test_npixels_nonint(self):
         """Test if error raises if npixel is non-integer."""
