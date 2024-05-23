@@ -25,13 +25,13 @@ class BkgZoomInterpolator:
     ----------
     order : int, optional
         The order of the spline interpolation used to resize the
-        low-resolution background and background RMS mesh images.  The
-        value must be an integer in the range 0-5.  The default is 3
+        low-resolution background and background RMS mesh images. The
+        value must be an integer in the range 0-5. The default is 3
         (bicubic interpolation).
 
     mode : {'reflect', 'constant', 'nearest', 'wrap'}, optional
         Points outside the boundaries of the input are filled according
-        to the given mode.  Default is 'reflect'.
+        to the given mode. Default is 'reflect'.
 
     cval : float, optional
         The value used for points outside the boundaries of the input if
@@ -122,7 +122,7 @@ class BkgIDWInterpolator:
     ----------
     leafsize : float, optional
         The number of points at which the k-d tree algorithm switches
-        over to brute-force. ``leafsize`` must be positive.  See
+        over to brute-force. ``leafsize`` must be positive. See
         `scipy.spatial.cKDTree` for further information.
 
     n_neighbors : int, optional

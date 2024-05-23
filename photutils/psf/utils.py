@@ -48,14 +48,14 @@ def _interpolate_missing_data(data, mask, method='cubic'):
     mask : 2D bool `~numpy.ndarray`
         A 2D boolean mask array with the same shape as the input
         ``data``, where a `True` value indicates the corresponding
-        element of ``data`` is masked.  The masked data points are
-        those that will be interpolated.
+        element of ``data`` is masked. The masked data points are those
+        that will be interpolated.
 
     method : {'cubic', 'nearest'}, optional
         The method of used to interpolate the missing data:
 
         * ``'cubic'``:  Masked data are interpolated using 2D cubic
-            splines.  This is the default.
+            splines. This is the default.
 
         * ``'nearest'``:  Masked data are interpolated using
             nearest-neighbor interpolation.
@@ -479,12 +479,12 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
     Parameters
     ----------
     template_psf_model : `astropy.modeling.Fittable2DModel` instance
-        The model to use for *individual* objects.  Must have parameters named
-        ``x_0``, ``y_0``, and ``flux``.
+        The model to use for *individual* objects. Must have parameters
+        named ``x_0``, ``y_0``, and ``flux``.
 
     star_group : `~astropy.table.Table`
-        Table of stars for which the compound PSF will be constructed.  It
-        must have columns named ``x_0``, ``y_0``, and ``flux_0``.
+        Table of stars for which the compound PSF will be constructed.
+        It must have columns named ``x_0``, ``y_0``, and ``flux_0``.
 
     pars_to_set : `dict`
         A dictionary of parameter names and values to set.
@@ -563,13 +563,13 @@ def subtract_psf(data, psf, posflux, *, subshape=None):
         PSF/PRF model to be subtracted from the data.
 
     posflux : Array-like of shape (3, N) or `~astropy.table.Table`
-        Positions and fluxes for the objects to subtract.  If an array,
-        it is interpreted as ``(x, y, flux)``  If a table, the columns
+        Positions and fluxes for the objects to subtract. If an array,
+        it is interpreted as ``(x, y, flux)`` If a table, the columns
         'x_fit', 'y_fit', and 'flux_fit' must be present.
 
     subshape : length-2 or None
         The shape of the region around the center of the location to
-        subtract the PSF from.  If None, subtract from the whole image.
+        subtract the PSF from. If None, subtract from the whole image.
 
     Returns
     -------

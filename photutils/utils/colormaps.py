@@ -17,7 +17,7 @@ def make_random_cmap(ncolors=256, seed=None):
     Parameters
     ----------
     ncolors : int, optional
-        The number of colors in the colormap.  The default is 256.
+        The number of colors in the colormap. The default is 256.
 
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,

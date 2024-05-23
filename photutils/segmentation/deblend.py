@@ -27,7 +27,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
 
     Sources are deblended using a combination of multi-thresholding and
     `watershed segmentation
-    <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_.  In
+    <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. In
     order to deblend sources, there must be a saddle between them.
 
     Parameters
@@ -46,7 +46,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         ``npixels`` must be a positive integer.
 
     labels : int or array_like of int, optional
-        The label numbers to deblend.  If `None` (default), then all
+        The label numbers to deblend. If `None` (default), then all
         labels in the segmentation image will be deblended.
 
     nlevels : int, optional
@@ -115,8 +115,8 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     -------
     segment_image : `~photutils.segmentation.SegmentationImage`
         A segmentation image, with the same shape as ``data``, where
-        sources are marked by different positive integer values.  A
-        value of zero is reserved for the background.
+        sources are marked by different positive integer values. A value
+        of zero is reserved for the background.
 
     See Also
     --------
@@ -282,38 +282,37 @@ class _Deblender:
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
-        that an object must have to be detected.  ``npixels`` must be a
+        that an object must have to be detected. ``npixels`` must be a
         positive integer.
 
     nlevels : int
-        The number of multi-thresholding levels to use.  Each source
-        will be re-thresholded at ``nlevels`` levels spaced
-        exponentially or linearly (see the ``mode`` keyword) between its
-        minimum and maximum values within the source segment.
+        The number of multi-thresholding levels to use. Each source will
+        be re-thresholded at ``nlevels`` levels spaced exponentially
+        or linearly (see the ``mode`` keyword) between its minimum and
+        maximum values within the source segment.
 
     contrast : float
         The fraction of the total (blended) source flux that a local
         peak must have (at any one of the multi-thresholds) to be
-        considered as a separate object.  ``contrast`` must be between 0
-        and 1, inclusive.  If ``contrast = 0`` then every local peak
-        will be made a separate object (maximum deblending).  If
-        ``contrast = 1`` then no deblending will occur.  The default is
-        0.001, which will deblend sources with a 7.5 magnitude
-        difference.
+        considered as a separate object. ``contrast`` must be between 0
+        and 1, inclusive. If ``contrast = 0`` then every local peak will
+        be made a separate object (maximum deblending). If ``contrast =
+        1`` then no deblending will occur. The default is 0.001, which
+        will deblend sources with a 7.5 magnitude difference.
 
     mode : {'exponential', 'linear', 'sinh'}
         The mode used in defining the spacing between the
-        multi-thresholding levels (see the ``nlevels`` keyword).  The
+        multi-thresholding levels (see the ``nlevels`` keyword). The
         default is 'exponential'.
 
     Returns
     -------
     segment_image : `~photutils.segmentation.SegmentationImage`
         A segmentation image, with the same shape as ``data``, where
-        sources are marked by different positive integer values.  A
-        value of zero is reserved for the background.  Note that the
-        returned `SegmentationImage` will have consecutive labels
-        starting with 1.
+        sources are marked by different positive integer values. A value
+        of zero is reserved for the background. Note that the returned
+        `SegmentationImage` will have consecutive labels starting with
+        1.
     """
 
     def __init__(self, source_data, source_segment, npixels, footprint,

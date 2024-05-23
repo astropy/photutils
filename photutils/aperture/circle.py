@@ -32,10 +32,10 @@ class CircularMaskMixin:
         Parameters
         ----------
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
-            generally slower.  The following methods are available:
+            The method used to determine the overlap of the aperture
+            on the pixel grid. Not all options are available for all
+            aperture types. Note that the more precise methods are
+            generally slower. The following methods are available:
 
                 * ``'exact'`` (default):
                   The the exact fractional overlap of the aperture and
@@ -66,8 +66,8 @@ class CircularMaskMixin:
         Returns
         -------
         mask : `~photutils.aperture.ApertureMask` or list of `~photutils.aperture.ApertureMask`
-            A mask for the aperture.  If the aperture is scalar then a
-            single `~photutils.aperture.ApertureMask` is returned,
+            A mask for the aperture. If the aperture is scalar then
+            a single `~photutils.aperture.ApertureMask` is returned,
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
@@ -171,7 +171,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         Returns
         -------
         patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
-            A patch for the aperture.  If the aperture is scalar then a
+            A patch for the aperture. If the aperture is scalar then a
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
@@ -240,7 +240,8 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If inner radius (``r_in``) is greater than outer radius (``r_out``).
+        If inner radius (``r_in``) is greater than outer radius
+        (``r_out``).
 
     ValueError : `ValueError`
         If inner radius (``r_in``) is negative.
@@ -296,7 +297,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         Returns
         -------
         patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
-            A patch for the aperture.  If the aperture is scalar then a
+            A patch for the aperture. If the aperture is scalar then a
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
@@ -323,8 +324,8 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     def to_sky(self, wcs):
         """
-        Convert the aperture to a `SkyCircularAnnulus` object defined
-        in celestial coordinates.
+        Convert the aperture to a `SkyCircularAnnulus` object defined in
+        celestial coordinates.
 
         Parameters
         ----------

@@ -26,10 +26,10 @@ def data_properties(data, mask=None, background=None, wcs=None):
 
     background : float, array_like, or `~astropy.units.Quantity`, optional
         The background level that was previously present in the input
-        ``data``.  ``background`` may either be a scalar value or a 2D
-        image with the same shape as the input ``data``.  Inputting the
+        ``data``. ``background`` may either be a scalar value or a 2D
+        image with the same shape as the input ``data``. Inputting the
         ``background`` merely allows for its properties to be measured
-        within each source segment.  The input ``background`` does *not*
+        within each source segment. The input ``background`` does *not*
         get subtracted from the input ``data``, which should already be
         background-subtracted.
 

@@ -35,10 +35,10 @@ class RectangularMaskMixin:
         Parameters
         ----------
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
-            generally slower.  The following methods are available:
+            The method used to determine the overlap of the aperture
+            on the pixel grid. Not all options are available for all
+            aperture types. Note that the more precise methods are
+            generally slower. The following methods are available:
 
                 * ``'exact'`` (default):
                   The the exact fractional overlap of the aperture and
@@ -69,8 +69,8 @@ class RectangularMaskMixin:
         Returns
         -------
         mask : `~photutils.aperture.ApertureMask` or list of `~photutils.aperture.ApertureMask`
-            A mask for the aperture.  If the aperture is scalar then a
-            single `~photutils.aperture.ApertureMask` is returned,
+            A mask for the aperture. If the aperture is scalar then
+            a single `~photutils.aperture.ApertureMask` is returned,
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
@@ -161,11 +161,11 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
 
     w : float
-        The full width of the rectangle in pixels.  For ``theta=0`` the
+        The full width of the rectangle in pixels. For ``theta=0`` the
         width side is along the ``x`` axis.
 
     h : float
-        The full height of the rectangle in pixels.  For ``theta=0`` the
+        The full height of the rectangle in pixels. For ``theta=0`` the
         height side is along the ``y`` axis.
 
     theta : float or `~astropy.units.Quantity`, optional
@@ -235,7 +235,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         Returns
         -------
         patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
-            A patch for the aperture.  If the aperture is scalar then a
+            A patch for the aperture. If the aperture is scalar then a
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
@@ -299,19 +299,19 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
             * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
 
     w_in : float
-        The inner full width of the rectangular annulus in pixels.  For
+        The inner full width of the rectangular annulus in pixels. For
         ``theta=0`` the width side is along the ``x`` axis.
 
     w_out : float
-        The outer full width of the rectangular annulus in pixels.  For
+        The outer full width of the rectangular annulus in pixels. For
         ``theta=0`` the width side is along the ``x`` axis.
 
     h_out : float
         The outer full height of the rectangular annulus in pixels.
 
     h_in : `None` or float
-        The inner full height of the rectangular annulus in pixels.
-        If `None`, then the inner full height is calculated as:
+        The inner full height of the rectangular annulus in pixels. If
+        `None`, then the inner full height is calculated as:
 
             .. math:: h_{in} = h_{out}
                 \left(\frac{w_{in}}{w_{out}}\right)
@@ -404,7 +404,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         Returns
         -------
         patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
-            A patch for the aperture.  If the aperture is scalar then a
+            A patch for the aperture. If the aperture is scalar then a
             single `~matplotlib.patches.patch` is returned, otherwise a
             list of `~matplotlib.patches.patch` is returned.
         """
@@ -483,7 +483,7 @@ class SkyRectangularAperture(SkyAperture):
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the rectangle "width"
-        side.  For a right-handed world coordinate system, the position
+        side. For a right-handed world coordinate system, the position
         angle increases counterclockwise from North (PA=0).
 
     Examples
@@ -567,7 +567,7 @@ class SkyRectangularAnnulus(SkyAperture):
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the rectangle "width"
-        side.  For a right-handed world coordinate system, the position
+        side. For a right-handed world coordinate system, the position
         angle increases counterclockwise from North (PA=0).
 
     Examples

@@ -23,35 +23,35 @@ def calc_total_error(data, bkg_error, effective_gain):
     bkg_error : array_like or `~astropy.units.Quantity`
         The 1-sigma background-only errors of the input ``data``.
         ``bkg_error`` should include all sources of "background" error
-        but *exclude* the Poisson error of the sources.  ``bkg_error``
-        must have the same shape as ``data``.  If ``data`` and
+        but *exclude* the Poisson error of the sources. ``bkg_error``
+        must have the same shape as ``data``. If ``data`` and
         ``bkg_error`` are `~astropy.units.Quantity` objects, then they
         must have the same units.
 
     effective_gain : float, array_like, or `~astropy.units.Quantity`
         Ratio of counts (e.g., electrons or photons) to the units of
-        ``data`` used to calculate the Poisson error of the sources.  If
-        ``effective_gain`` is zero (or contains zero values in an
-        array), then the source Poisson noise component will not be
-        included.  In other words, the returned total error value will
-        simply be the ``bkg_error`` value for pixels where
-        ``effective_gain`` is zero.  ``effective_gain`` cannot not be
+        ``data`` used to calculate the Poisson error of the sources.
+        If ``effective_gain`` is zero (or contains zero values in
+        an array), then the source Poisson noise component will not
+        be included. In other words, the returned total error value
+        will simply be the ``bkg_error`` value for pixels where
+        ``effective_gain`` is zero. ``effective_gain`` cannot not be
         negative or contain negative values.
 
     Returns
     -------
     total_error : `~numpy.ndarray` or `~astropy.units.Quantity`
-        The total error array.  If ``data``, ``bkg_error``, and
-        ``effective_gain`` are all `~astropy.units.Quantity` objects,
-        then ``total_error`` will also be returned as a
+        The total error array. If ``data``, ``bkg_error``, and
+        ``effective_gain`` are all `~astropy.units.Quantity`
+        objects, then ``total_error`` will also be returned as a
         `~astropy.units.Quantity` object with the same units as the
-        input ``data``.  Otherwise, a `~numpy.ndarray` will be returned.
+        input ``data``. Otherwise, a `~numpy.ndarray` will be returned.
 
     Notes
     -----
-    To use units, ``data``, ``bkg_error``, and ``effective_gain`` must
-    *all* be `~astropy.units.Quantity` objects.  ``data`` and
-    ``bkg_error`` must have the same units.  A `ValueError` will be
+    To use units, ``data``, ``bkg_error``, and ``effective_gain``
+    must *all* be `~astropy.units.Quantity` objects. ``data`` and
+    ``bkg_error`` must have the same units. A `ValueError` will be
     raised if only some of the inputs are `~astropy.units.Quantity`
     objects or if the ``data`` and ``bkg_error`` units differ.
 
@@ -65,10 +65,10 @@ def calc_total_error(data, bkg_error, effective_gain):
     (``effective_gain``; image or scalar) and :math:`I` is the ``data``
     image.
 
-    The total error is the combination of the background-only error and
-    the source Poisson error.  The total error array
-    :math:`\sigma_{\mathrm{tot}}` in countable units (e.g., electrons
-    or photons) is therefore:
+    The total error is the combination of the background-only
+    error and the source Poisson error. The total error array
+    :math:`\sigma_{\mathrm{tot}}` in countable units (e.g., electrons or
+    photons) is therefore:
 
     .. math::
         \sigma_{\mathrm{tot}}  = \sqrt{g_{\mathrm{eff}}^2
@@ -89,20 +89,19 @@ def calc_total_error(data, bkg_error, effective_gain):
                   \frac{I}{g_{\mathrm{eff}}}}
 
     ``effective_gain`` can either be a scalar value or a 2D image with
-    the same shape as the ``data``.  A 2D ``effective_gain`` image is
+    the same shape as the ``data``. A 2D ``effective_gain`` image is
     useful when the input ``data`` has variable depths across the field
-    (e.g., a mosaic image with non-uniform exposure times).  For
-    example, if your input ``data`` are in units of electrons/s then
-    ideally ``effective_gain`` should be an exposure-time map.
+    (e.g., a mosaic image with non-uniform exposure times). For example,
+    if your input ``data`` are in units of electrons/s then ideally
+    ``effective_gain`` should be an exposure-time map.
 
     The Poisson noise component is not included in the output total
-    error for pixels where ``data`` (:math:`I_i)` is negative.  For such
-    pixels, :math:`\sigma_{\mathrm{tot}, i} = \sigma_{\mathrm{bkg},
-    i}`.
+    error for pixels where ``data`` (:math:`I_i)` is negative. For such
+    pixels, :math:`\sigma_{\mathrm{tot}, i} = \sigma_{\mathrm{bkg}, i}`.
 
     The Poisson noise component is also not included in the output total
     error for pixels where the effective gain (:math:`g_{\mathrm{eff},
-    i}`) is zero.  For such pixels, :math:`\sigma_{\mathrm{tot}, i} =
+    i}`) is zero. For such pixels, :math:`\sigma_{\mathrm{tot}, i} =
     \sigma_{\mathrm{bkg}, i}`.
 
     To replicate `SourceExtractor`_ errors when it is configured to
@@ -180,7 +179,7 @@ def calc_total_error(data, bkg_error, effective_gain):
 
     if use_units:
         # source_variance is calculated to have units of (data.unit)**2
-        # so that it can be added with bkg_error**2 below.  The returned
+        # so that it can be added with bkg_error**2 below. The returned
         # total error will have units of data.unit.
         source_variance <<= unit**2
 

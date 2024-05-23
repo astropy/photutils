@@ -127,13 +127,13 @@ def _detect_sources(data, thresholds, npixels, footprint, inverse_mask, *,
     Detect sources above a specified threshold value in an image.
 
     Detected sources must have ``npixels`` connected pixels that are
-    each greater than the ``threshold`` value.  If the filtering option
+    each greater than the ``threshold`` value. If the filtering option
     is used, then the ``threshold`` is applied to the filtered image.
     The input ``mask`` can be used to mask pixels in the input data.
     Masked pixels will not be included in any source.
 
-    This function does not deblend overlapping sources.  First use this
-    function to detect sources followed by
+    This function does not deblend overlapping sources.
+    First use this function to detect sources followed by
     :func:`~photutils.segmentation.deblend_sources` to deblend sources.
 
     Parameters
@@ -256,13 +256,13 @@ def detect_sources(data, threshold, npixels, *, connectivity=8, mask=None):
     Detect sources above a specified threshold value in an image.
 
     Detected sources must have ``npixels`` connected pixels that are
-    each greater than the ``threshold`` value.  If the filtering option
+    each greater than the ``threshold`` value. If the filtering option
     is used, then the ``threshold`` is applied to the filtered image.
     The input ``mask`` can be used to mask pixels in the input data.
     Masked pixels will not be included in any source.
 
-    This function does not deblend overlapping sources.  First use this
-    function to detect sources followed by
+    This function does not deblend overlapping sources.
+    First use this function to detect sources followed by
     :func:`~photutils.segmentation.deblend_sources` to deblend sources.
 
     Parameters

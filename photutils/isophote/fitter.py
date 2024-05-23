@@ -53,12 +53,12 @@ class EllipseFitter:
         conver : float, optional
             The main convergence criterion. Iterations stop when the
             largest harmonic amplitude becomes smaller (in absolute
-            value) than ``conver`` times the harmonic fit rms.  The
+            value) than ``conver`` times the harmonic fit rms. The
             default is 0.05.
 
         minit : int, optional
-            The minimum number of iterations to perform. A minimum of 10
-            (the default) iterations guarantees that, on average, 2
+            The minimum number of iterations to perform. A minimum of
+            10 (the default) iterations guarantees that, on average, 2
             iterations will be available for fitting each independent
             parameter (the four harmonic amplitudes and the intensity
             level). For the first isophote, the minimum number of
@@ -67,44 +67,44 @@ class EllipseFitter:
             chance to converge to a sensible solution.
 
         maxit : int, optional
-            The maximum number of iterations to perform.  The default is
+            The maximum number of iterations to perform. The default is
             50.
 
         fflag : float, optional
             The acceptable fraction of flagged data points in the
-            sample.  If the actual fraction of valid data points is
+            sample. If the actual fraction of valid data points is
             smaller than this, the iterations will stop and the current
-            `~photutils.isophote.Isophote` will be returned.  Flagged
+            `~photutils.isophote.Isophote` will be returned. Flagged
             data points are points that either lie outside the image
-            frame, are masked, or were rejected by sigma-clipping.  The
+            frame, are masked, or were rejected by sigma-clipping. The
             default is 0.7.
 
         maxgerr : float, optional
-            The maximum acceptable relative error in the local radial
-            intensity gradient. This is the main control for preventing
-            ellipses to grow to regions of too low signal-to-noise
-            ratio.  It specifies the maximum acceptable relative error
-            in the local radial intensity gradient.  `Busko (1996; ASPC
-            101, 139)
-            <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_
-            showed that the fitting precision relates to that relative
-            error.  The usual behavior of the gradient relative error is
-            to increase with semimajor axis, being larger in outer,
-            fainter regions of a galaxy image.  In the current
+            The maximum acceptable relative error in the local
+            radial intensity gradient. This is the main control
+            for preventing ellipses to grow to regions of too
+            low signal-to-noise ratio. It specifies the maximum
+            acceptable relative error in the local radial
+            intensity gradient. `Busko (1996; ASPC 101, 139)
+            <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstr
+            act>`_ showed that the fitting precision relates to that
+            relative error. The usual behavior of the gradient relative
+            error is to increase with semimajor axis, being larger in
+            outer, fainter regions of a galaxy image. In the current
             implementation, the ``maxgerr`` criterion is triggered only
             when two consecutive isophotes exceed the value specified by
             the parameter. This prevents premature stopping caused by
             contamination such as stars and HII regions.
 
             A number of actions may happen when the gradient error
-            exceeds ``maxgerr`` (or becomes non-significant and is set
-            to `None`).  If the maximum semimajor axis specified by
-            ``maxsma`` is set to `None`, semimajor axis growth is
+            exceeds ``maxgerr`` (or becomes non-significant and is
+            set to `None`). If the maximum semimajor axis specified
+            by ``maxsma`` is set to `None`, semimajor axis growth is
             stopped and the algorithm proceeds inwards to the galaxy
             center. If ``maxsma`` is set to some finite value, and this
             value is larger than the current semimajor axis length, the
             algorithm enters non-iterative mode and proceeds outwards
-            until reaching ``maxsma``.  The default is 0.5.
+            until reaching ``maxsma``. The default is 0.5.
 
         going_inwards : bool, optional
             Parameter to define the sense of SMA growth. When fitting
@@ -112,7 +112,7 @@ class EllipseFitter:
             that defines the details of how elliptical arc segments
             ("sectors") are extracted from the image, when using area
             extraction modes (see the ``integrmode`` parameter in the
-            `~photutils.isophote.EllipseSample` class).  The default is
+            `~photutils.isophote.EllipseSample` class). The default is
             `False`.
 
         Returns
@@ -149,17 +149,18 @@ class EllipseFitter:
             # Force the sample to compute its gradient and associated values.
             sample.update(fixed_parameters)
 
-            # The extract() method returns sampled values as a 2-d numpy array
-            # with the following structure:
+            # The extract() method returns sampled values as a 2-d numpy
+            # array with the following structure:
             # values[0] = 1-d array with angles
             # values[1] = 1-d array with radii
             # values[2] = 1-d array with intensity
             values = sample.extract()
 
-            # We have to check for a zero-length condition here, and bail out
-            # in case it is detected. The scipy fitter won't raise an exception
-            # for zero-length input arrays, but just prints an "INFO" message.
-            # This may result in an infinite loop.
+            # We have to check for a zero-length condition here, and
+            # bail out in case it is detected. The scipy fitter won't
+            # raise an exception for zero-length input arrays, but just
+            # prints an "INFO" message. This may result in an infinite
+            # loop.
             if len(values[2]) < 1:
                 s = str(sample.geometry.sma)
                 log.warning('Too small sample to warrant a fit. SMA is ' + s)
@@ -215,14 +216,14 @@ class EllipseFitter:
             corrector = _CORRECTORS[largest_harmonic_index]
 
             # generate *NEW* EllipseSample instance with corrected
-            # parameter.  Note that this instance is still devoid of other
-            # information besides its geometry.  It needs to be explicitly
-            # updated for computations to proceed.  We have to build a new
-            # EllipseSample instance every time because of the lazy
-            # extraction process used by EllipseSample code. To minimize
-            # the number of calls to the area integrators, we pay a
-            # (hopefully smaller) price here, by having multiple calls to
-            # the EllipseSample constructor.
+            # parameter. Note that this instance is still devoid of
+            # other information besides its geometry. It needs to be
+            # explicitly updated for computations to proceed. We have to
+            # build a new EllipseSample instance every time because of
+            # the lazy extraction process used by EllipseSample code. To
+            # minimize the number of calls to the area integrators, we
+            # pay a (hopefully smaller) price here, by having multiple
+            # calls to the EllipseSample constructor.
             sample = corrector.correct(sample, largest_harmonic)
             sample.update(fixed_parameters)
 
@@ -396,11 +397,11 @@ class CentralEllipseFitter(EllipseFitter):
         Returns
         -------
         result : `~photutils.isophote.CentralEllipsePixel` instance
-            The central pixel value.  For convenience, the
+            The central pixel value. For convenience, the
             `~photutils.isophote.CentralEllipsePixel` class inherits
             from the `~photutils.isophote.Isophote` class, although it's
             not really a true isophote but just a single intensity value
-            at the central position.  Thus, most of its attributes are
+            at the central position. Thus, most of its attributes are
             hardcoded to `None` or other default value when appropriate.
         """
         # default values

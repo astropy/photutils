@@ -13,8 +13,8 @@ def circular_footprint(radius, dtype=int):
     Create a circular footprint.
 
     A pixel is considered to be entirely in or out of the footprint
-    depending on whether its center is in or out of the footprint.  The
-    size of the output array is the minimal bounding box for the
+    depending on whether its center is in or out of the footprint.
+    The size of the output array is the minimal bounding box for the
     footprint.
 
     Parameters

@@ -39,7 +39,7 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
         The model to be used for rendering the sources.
 
     source_table : `~astropy.table.Table`
-        Table of parameters for the sources.  Each row of the table
+        Table of parameters for the sources. Each row of the table
         corresponds to a source whose model parameters are defined by
         the column names, which must match the model parameter names.
         Column names that do not match model parameters will be ignored.
@@ -48,12 +48,12 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
 
     oversample : float, optional
         The sampling factor used to discretize the models on a pixel
-        grid.  If the value is 1.0 (the default), then the models will
+        grid. If the value is 1.0 (the default), then the models will
         be discretized by taking the value at the center of the pixel
-        bin.  Note that this method will not preserve the total flux of
-        very small sources.  Otherwise, the models will be discretized
-        by taking the average over an oversampled grid.  The pixels will
-        be oversampled by the ``oversample`` factor.
+        bin. Note that this method will not preserve the total flux of
+        very small sources. Otherwise, the models will be discretized by
+        taking the average over an oversampled grid. The pixels will be
+        oversampled by the ``oversample`` factor.
 
     Returns
     -------
@@ -130,23 +130,23 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         The shape of the output 2D image.
 
     source_table : `~astropy.table.Table`
-        Table of parameters for the Gaussian sources.  Each row of the
+        Table of parameters for the Gaussian sources. Each row of the
         table corresponds to a Gaussian source whose parameters are
-        defined by the column names.  With the exception of ``'flux'``,
+        defined by the column names. With the exception of ``'flux'``,
         column names that do not match model parameters will be ignored
-        (flux will be converted to amplitude).  If both ``'flux'`` and
+        (flux will be converted to amplitude). If both ``'flux'`` and
         ``'amplitude'`` are present, then ``'flux'`` will be ignored.
         Model parameters not defined in the table will be set to the
         default value.
 
     oversample : float, optional
         The sampling factor used to discretize the models on a pixel
-        grid.  If the value is 1.0 (the default), then the models will
+        grid. If the value is 1.0 (the default), then the models will
         be discretized by taking the value at the center of the pixel
-        bin.  Note that this method will not preserve the total flux of
-        very small sources.  Otherwise, the models will be discretized
-        by taking the average over an oversampled grid.  The pixels will
-        be oversampled by the ``oversample`` factor.
+        bin. Note that this method will not preserve the total flux of
+        very small sources. Otherwise, the models will be discretized by
+        taking the average over an oversampled grid. The pixels will be
+        oversampled by the ``oversample`` factor.
 
     Returns
     -------
@@ -227,11 +227,11 @@ def make_gaussian_prf_sources_image(shape, source_table):
         The shape of the output 2D image.
 
     source_table : `~astropy.table.Table`
-        Table of parameters for the Gaussian sources.  Each row of the
+        Table of parameters for the Gaussian sources. Each row of the
         table corresponds to a Gaussian source whose parameters are
-        defined by the column names.  With the exception of ``'flux'``,
+        defined by the column names. With the exception of ``'flux'``,
         column names that do not match model parameters will be ignored
-        (flux will be converted to amplitude).  If both ``'flux'`` and
+        (flux will be converted to amplitude). If both ``'flux'`` and
         ``'amplitude'`` are present, then ``'flux'`` will be ignored.
         Model parameters not defined in the table will be set to the
         default value.
@@ -405,7 +405,7 @@ def make_100gaussians_image(noise=True):
     sources = QTable()
     for param_name, (lower, upper) in params.items():
         # Generate a column for every item in param_ranges, even if it
-        # is not in the model (e.g., flux).  However, such columns will
+        # is not in the model (e.g., flux). However, such columns will
         # be ignored when rendering the image.
         sources[param_name] = rng.uniform(lower, upper, n_sources)
     xstd = sources['x_stddev']

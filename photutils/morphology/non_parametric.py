@@ -28,7 +28,7 @@ def gini(data):
 
     The Gini coefficient is a way of measuring the inequality in a given
     set of values. In the context of galaxy morphology, it measures how
-    the light of a galaxy image is distributed among its pixels.  A Gini
+    the light of a galaxy image is distributed among its pixels. A Gini
     coefficient value of 0 corresponds to a galaxy image with the light
     evenly distributed over all pixels while a Gini coefficient value of
     1 represents a galaxy image with all its light concentrated in just

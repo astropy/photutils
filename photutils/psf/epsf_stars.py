@@ -36,15 +36,15 @@ class EPSFStar:
 
     cutout_center : tuple of two floats or `None`, optional
         The ``(x, y)`` position of the star's center with respect to the
-        input cutout ``data`` array.  If `None`, then the center of of
+        input cutout ``data`` array. If `None`, then the center of of
         the input cutout ``data`` array will be used.
 
     origin : tuple of two int, optional
-        The ``(x, y)`` index of the origin (bottom-left corner) pixel of
-        the input cutout array with respect to the original array from
-        which the cutout was extracted.  This can be used to convert
+        The ``(x, y)`` index of the origin (bottom-left corner) pixel
+        of the input cutout array with respect to the original array
+        from which the cutout was extracted. This can be used to convert
         positions within the cutout image to positions in the original
-        image.  ``origin`` and ``wcs_large`` must both be input for a
+        image. ``origin`` and ``wcs_large`` must both be input for a
         linked star (a single star extracted from different images).
 
     wcs_large : `None` or WCS object, optional
@@ -399,7 +399,7 @@ class EPSFStars:
     def n_all_stars(self):
         """
         The total number of `EPSFStar` objects, including all the linked
-        stars within `LinkedEPSFStar`.  Each linked star is included in
+        stars within `LinkedEPSFStar`. Each linked star is included in
         the count.
         """
         return len(self.all_stars)
@@ -409,8 +409,7 @@ class EPSFStars:
         """
         The total number of `EPSFStar` objects, including all the linked
         stars within `LinkedEPSFStar`, that have not been excluded from
-        fitting.  Each non-excluded linked star is included in the
-        count.
+        fitting. Each non-excluded linked star is included in the count.
         """
         return len(self.all_good_stars)
 
@@ -429,13 +428,13 @@ class LinkedEPSFStar(EPSFStars):
     A class to hold a list of `EPSFStar` objects for linked stars.
 
     Linked stars are `EPSFStar` cutouts from different images that
-    represent the same physical star.  When building the ePSF, linked
+    represent the same physical star. When building the ePSF, linked
     stars are constrained to have the same sky coordinates.
 
     Parameters
     ----------
     stars_list : list of `EPSFStar` objects
-        A list of `EPSFStar` objects for the same physical star.  Each
+        A list of `EPSFStar` objects for the same physical star. Each
         `EPSFStar` object must have a valid ``wcs_large`` attribute to
         convert between pixel and sky coordinates.
     """
@@ -523,9 +522,9 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
 
     catalogs : `~astropy.table.Table`, list of `~astropy.table.Table`
         A catalog or list of catalogs of sources to be extracted from
-        the input ``data``.  To link stars in multiple images as a
-        single source, you must use a single source catalog where the
-        positions defined in sky coordinates.
+        the input ``data``. To link stars in multiple images as a single
+        source, you must use a single source catalog where the positions
+        defined in sky coordinates.
 
         If a list of catalogs is input (or a single catalog with a
         single `~astropy.nddata.NDData` object), they are assumed to
@@ -539,25 +538,24 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
 
         If a single source catalog is input with multiple
         `~astropy.nddata.NDData` objects, then these sources will be
-        extracted from every 2D image in the input ``data``.  In this
-        case, the sky coordinates for each source must be specified as a
-        `~astropy.coordinates.SkyCoord` object contained in a column
-        called ``skycoord``.  Each `~astropy.nddata.NDData` object in
-        the input ``data`` must also have a valid ``wcs`` attribute.
-        Pixel coordinates (in ``x`` and ``y`` columns) will be ignored.
+        extracted from every 2D image in the input ``data``. In this
+        case, the sky coordinates for each source must be specified as
+        a `~astropy.coordinates.SkyCoord` object contained in a column
+        called ``skycoord``. Each `~astropy.nddata.NDData` object in the
+        input ``data`` must also have a valid ``wcs`` attribute. Pixel
+        coordinates (in ``x`` and ``y`` columns) will be ignored.
 
         Optionally, each catalog may also contain an ``id`` column
-        representing the ID/name of stars.  If this column is not
+        representing the ID/name of stars. If this column is not
         present then the extracted stars will be given an ``id`` number
-        corresponding the the table row number (starting at 1).  Any
+        corresponding the the table row number (starting at 1). Any
         other columns present in the input ``catalogs`` will be ignored.
 
     size : int or array_like (int), optional
-        The extraction box size along each axis.  If ``size`` is a
-        scalar then a square box of size ``size`` will be used.  If
-        ``size`` has two elements, they must be in ``(ny, nx)`` order.
-        ``size`` must have odd values and be greater than or equal to 3
-        for both axes.
+        The extraction box size along each axis. If ``size`` is a scalar
+        then a square box of size ``size`` will be used. If ``size`` has
+        two elements, they must be in ``(ny, nx)`` order. ``size`` must
+        have odd values and be greater than or equal to 3 for both axes.
 
     Returns
     -------
@@ -674,11 +672,11 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
         valid ``wcs`` attribute.
 
     catalog : `~astropy.table.Table`
-        A single catalog of sources to be extracted from the input
-        ``data``.  The center of each source can be defined either in
-        pixel coordinates (in ``x`` and ``y`` columns) or sky
-        coordinates (in a ``skycoord`` column containing a
-        `~astropy.coordinates.SkyCoord` object).  If both are specified,
+        A single catalog of sources to be extracted from the
+        input ``data``. The center of each source can be defined
+        either in pixel coordinates (in ``x`` and ``y`` columns)
+        or sky coordinates (in a ``skycoord`` column containing a
+        `~astropy.coordinates.SkyCoord` object). If both are specified,
         then the value of the ``use_xy`` keyword determines which
         coordinates will be used.
 
@@ -720,8 +718,8 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
             weights = np.asanyarray(data.uncertainty.array, dtype=float)
         else:
             warnings.warn('The data uncertainty attribute has an unsupported '
-                          'type.  Only uncertainty_type="weights" can be '
-                          'used to set weights.  Weights will be set to 1.',
+                          'type. Only uncertainty_type="weights" can be '
+                          'used to set weights. Weights will be set to 1.',
                           AstropyUserWarning)
             weights = np.ones_like(data.data)
 

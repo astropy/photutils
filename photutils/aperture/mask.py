@@ -130,27 +130,26 @@ class ApertureMask:
 
         fill_value : float, optional
             The value used to fill pixels where the aperture mask does
-            not overlap with the input ``data``.  The default is 0.
+            not overlap with the input ``data``. The default is 0.
 
         copy : bool, optional
             If `True` then the returned cutout array will always be hold
-            a copy of the input ``data``.  If `False` and the mask is
+            a copy of the input ``data``. If `False` and the mask is
             fully within the input ``data``, then the returned cutout
-            array will be a view into the input ``data``.  In cases
-            where the mask partially overlaps or has no overlap with the
-            input ``data``, the returned cutout array will always hold a
-            copy of the input ``data`` (i.e., this keyword has no
-            effect).
+            array will be a view into the input ``data``. In cases where
+            the mask partially overlaps or has no overlap with the input
+            ``data``, the returned cutout array will always hold a copy
+            of the input ``data`` (i.e., this keyword has no effect).
 
         Returns
         -------
         result : `~numpy.ndarray` or `None`
-            A 2D array cut out from the input ``data`` representing the
-            same cutout region as the aperture mask.  If there is a
-            partial overlap of the aperture mask with the input data,
-            pixels outside of the data will be assigned to
-            ``fill_value``.  `None` is returned if there is no overlap
-            of the aperture with the input ``data``.
+            A 2D array cut out from the input ``data`` representing
+            the same cutout region as the aperture mask. If there is
+            a partial overlap of the aperture mask with the input
+            data, pixels outside of the data will be assigned to
+            ``fill_value``. `None` is returned if there is no overlap of
+            the aperture with the input ``data``.
         """
         data = np.asanyarray(data)
         if data.ndim != 2:
@@ -199,7 +198,7 @@ class ApertureMask:
 
         fill_value : float, optional
             The value is used to fill pixels where the aperture mask
-            does not overlap with the input ``data``.  The default is 0.
+            does not overlap with the input ``data``. The default is 0.
 
         Returns
         -------

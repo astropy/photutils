@@ -183,7 +183,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
                           upper_bound=data.shape, check_odd=True)
 
     if np.prod(fit_boxsize) < 6:
-        raise ValueError('fit_boxsize is too small.  6 values are required '
+        raise ValueError('fit_boxsize is too small. 6 values are required '
                          'to fit a 2D quadratic polynomial.')
 
     if xpeak is None or ypeak is None:
@@ -282,8 +282,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
     Calculate the centroid of sources at the defined positions.
 
     A cutout image centered on each input position will be used to
-    calculate the centroid position.  The cutout image is defined either
-    using the ``box_size`` or ``footprint`` keyword.  The ``footprint``
+    calculate the centroid position. The cutout image is defined either
+    using the ``box_size`` or ``footprint`` keyword. The ``footprint``
     keyword can be used to create a non-rectangular cutout image.
 
     Parameters
@@ -293,7 +293,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
     xpos, ypos : float or array_like of float
         The initial ``x`` and ``y`` pixel position(s) of the center
-        position.  A cutout image centered on this position be used to
+        position. A cutout image centered on this position be used to
         calculate the centroid.
 
     box_size : int or array_like of int, optional
@@ -321,7 +321,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
     error : 2D `~numpy.ndarray`, optional
         The 2D array of the 1-sigma errors of the input ``data``.
-        ``error`` must have the same shape as ``data``.  ``error`` will
+        ``error`` must have the same shape as ``data``. ``error`` will
         be used only if supported by the input ``centroid_func``.
 
     centroid_func : callable, optional
