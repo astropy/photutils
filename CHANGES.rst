@@ -27,6 +27,11 @@ New Features
   - Added ``calc_ee_from_radius`` and ``calc_radius_from_ee`` methods to
     ``CurveOfGrowth``. [#1733]
 
+- ``photutils.psf``
+
+  - Added an ``include_localbkg`` keyword to the ``IterativePSFPhotometry``
+    ``make_model_image`` and ``make_residual_image`` methods. [#1756]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -75,6 +80,12 @@ API Changes
     instead of an attribute for consistency with Astropy models. The
     method has a ``factor`` keyword to scale the bounding box. The
     default scale factor is 5.5 times ``sigma``. [#1754]
+
+  - The ``IterativePSFPhotometry`` ``make_model_image`` and
+    ``make_residual_image`` methods no longer include the local
+    background by default. This is a backwards-incompatible change. If
+    the previous behavior is desired, set ``include_localbkg=True``.
+    [#1756]
 
 
 1.12.0 (2024-04-12)
@@ -127,7 +138,7 @@ New Features
   - An ``init_params`` table is now included in the ``PSFPhotometry``
     ``fit_results`` dictionary. [#1681]
 
-  - Added an ``include_localbkg`` keyword to the PSF photometry
+  - Added an ``include_localbkg`` keyword to the ``PSFPhotometry``
     ``make_model_image`` and ``make_residual_image`` methods. [#1691]
 
   - Significantly reduced the memory usage of PSF photometry when using
@@ -179,7 +190,7 @@ API Changes
   - The ``GridddedPSFModel`` string representations now include the
     model ``flux``, ``x_0``, and ``y_0`` parameters. [#1680]
 
-  - The PSF photometry ``make_model_image`` and ``make_residual_image``
+  - The ``PSFPhotometry`` ``make_model_image`` and ``make_residual_image``
     methods no longer include the local background by default. This is a
     backwards-incompatible change. If the previous behavior is desired,
     set ``include_localbkg=True``. [#1703]
