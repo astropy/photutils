@@ -98,7 +98,9 @@ class PSFPhotometry:
 
     fitter_maxiters : int, optional
         The maximum number of iterations in which the ``fitter`` is
-        called for each source.
+        called for each source. This keyword can be increased if the fit
+        is not converging for sources (e.g., the output ``flags`` value
+        contains 8).
 
     localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
         The object used to estimate the local background around each
@@ -1013,7 +1015,9 @@ class PSFPhotometry:
                   * 2 : the fit x and/or y position lies outside of the
                     input data
                   * 4 : the fit flux is less than or equal to zero
-                  * 8 : the fitter may not have converged
+                  * 8 : the fitter may not have converged. In this case,
+                    you can try increasing the maximum number of fit
+                    iterations using the ``fitter_maxiters`` keyword.
                   * 16 : the fitter parameter covariance matrix was not
                     returned
         """
