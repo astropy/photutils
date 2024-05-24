@@ -1234,6 +1234,14 @@ class PSFPhotometry(ModelImageMixin):
 
         return source_tbl
 
+    def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
+        return ModelImageMixin.make_model_image(
+            self, shape, psf_shape, include_localbkg=include_localbkg)
+
+    def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
+        return ModelImageMixin.make_residual_image(
+            self, data, psf_shape, include_localbkg=include_localbkg)
+
 
 class IterativePSFPhotometry(ModelImageMixin):
     """
@@ -1596,6 +1604,14 @@ class IterativePSFPhotometry(ModelImageMixin):
             phot_tbl = phot_tbl[colnames]
 
         return phot_tbl
+
+    def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
+        return ModelImageMixin.make_model_image(
+            self, shape, psf_shape, include_localbkg=include_localbkg)
+
+    def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
+        return ModelImageMixin.make_residual_image(
+            self, data, psf_shape, include_localbkg=include_localbkg)
 
 
 def _flatten(iterable):
