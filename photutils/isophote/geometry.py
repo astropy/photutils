@@ -85,8 +85,14 @@ class EllipseGeometry:
         The center pixel coordinate of the ellipse.
     sma : float
         The semimajor axis of the ellipse in pixels.
-    eps : ellipticity
-        The ellipticity of the ellipse.
+    eps : float
+        The ellipticity of the ellipse. The ellipticity is defined as
+        .. math::
+
+            \epsilon =  1  -  \frac{b}{a}
+
+        where a and b are the lengths of the semimajor and semimior
+        axes, respectively.
     pa : float
         The position angle (in radians) of the semimajor axis in
         relation to the positive x axis of the image array (rotating
