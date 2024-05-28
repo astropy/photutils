@@ -13,6 +13,7 @@ from astropy.modeling import Model, models
 from astropy.nddata import overlap_slices
 from astropy.nddata.utils import NoOverlapError
 from astropy.table import QTable, Table
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.psf import IntegratedGaussianPRF
@@ -140,6 +141,30 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     array : 2D `~numpy.ndarray`
         The rendered image containing the model sources.
 
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        from astropy.modeling.models import Moffat2D
+        from photutils.datasets import (make_model_image,
+                                        make_random_models_table)
+
+        model = Moffat2D()
+        n_sources = 10
+        shape = (100, 100)
+        param_ranges = {'amplitude': [100, 200],
+                        'x_0': [0, shape[1]],
+                        'y_0': [0, shape[0]],
+                        'gamma': [5, 10],
+                        'alpha': [1, 2]}
+        sources = make_random_models_table(n_sources, param_ranges,
+                                           seed=0)
+
+        data = make_model_image(shape, model, sources)
+        plt.imshow(data)
+
     Notes
     -----
     The local background value around each source is optionally included
@@ -245,8 +270,11 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     return image
 
 
+@deprecated('1.13.0', alternative='make_model_image')
 def make_model_sources_image(shape, model, source_table, oversample=1):
     """
+    .. deprecated:: 1.13.0
+
     Make an image containing sources generated from a user-specified
     model.
 
@@ -283,30 +311,6 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
     See Also
     --------
     make_random_models_table, make_gaussian_sources_image
-
-    Examples
-    --------
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        from astropy.modeling.models import Moffat2D
-        from photutils.datasets import (make_model_sources_image,
-                                        make_random_models_table)
-
-        model = Moffat2D()
-        n_sources = 10
-        shape = (100, 100)
-        param_ranges = {'amplitude': [100, 200],
-                        'x_0': [0, shape[1]],
-                        'y_0': [0, shape[0]],
-                        'gamma': [5, 10],
-                        'alpha': [1, 2]}
-        sources = make_random_models_table(n_sources, param_ranges,
-                                           seed=0)
-
-        data = make_model_sources_image(shape, model, sources)
-        plt.imshow(data)
     """
     image = np.zeros(shape, dtype=float)
     yidx, xidx = np.indices(shape)
@@ -375,7 +379,7 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
 
     See Also
     --------
-    make_model_sources_image, make_random_gaussians_table
+    make_random_gaussians_table
 
     Examples
     --------
@@ -433,8 +437,8 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         source_table['amplitude'] = (source_table['flux']
                                      / (2.0 * np.pi * xstd * ystd))
 
-    return make_model_sources_image(shape, model, source_table,
-                                    oversample=oversample)
+    return make_model_image(shape, model, source_table, xname='x_mean',
+                            yname='y_mean', discretize_oversample=oversample)
 
 
 def make_gaussian_prf_sources_image(shape, source_table):
@@ -463,7 +467,7 @@ def make_gaussian_prf_sources_image(shape, source_table):
 
     See Also
     --------
-    make_model_sources_image, make_random_gaussians_table
+    make_random_gaussians_table
 
     Examples
     --------
@@ -514,8 +518,7 @@ def make_gaussian_prf_sources_image(shape, source_table):
         source_table['flux'] = (source_table['amplitude']
                                 * (2.0 * np.pi * sigma * sigma))
 
-    return make_model_sources_image(shape, model, source_table,
-                                    oversample=1)
+    return make_model_image(shape, model, source_table)
 
 
 def _define_psf_shape(psf_model, psf_shape):
