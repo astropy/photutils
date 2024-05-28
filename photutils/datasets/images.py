@@ -161,18 +161,20 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
                                         make_random_models_table)
 
         model = Moffat2D()
-        n_sources = 10
+        n_sources = 25
         shape = (100, 100)
         param_ranges = {'amplitude': [100, 200],
                         'x_0': [0, shape[1]],
                         'y_0': [0, shape[0]],
-                        'gamma': [5, 10],
+                        'gamma': [1, 2],
                         'alpha': [1, 2]}
         sources = make_random_models_table(n_sources, param_ranges,
                                            seed=0)
 
-        data = make_model_image(shape, model, sources)
-        plt.imshow(data)
+        model_shape = (15, 15)
+        data = make_model_image(shape, model, sources, model_shape=model_shape)
+
+        plt.imshow(data, origin='lower')
 
     Notes
     -----
@@ -214,9 +216,12 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
                                     for shape in model_shape])
         variable_shape = True
 
-    if model_shape is None and not hasattr(model, 'bounding_box'):
-        raise ValueError('model_shape must be specified if the model does not have '
-                         'a bounding_box attribute')
+    if model_shape is None:
+        try:
+            _ = model.bounding_box
+        except NotImplementedError:
+            raise ValueError('model_shape must be specified if the model '
+                             'does not have a bounding_box attribute')
 
     if 'local_bkg' in params_table.colnames:
         local_bkg = params_table['local_bkg']
