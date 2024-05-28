@@ -6,11 +6,11 @@ version 1.15.0 (or 2.0.0).
 
 import warnings
 
-from photutils.datasets import images, noise, sources, wcs
+from photutils.datasets import examples, images, noise, sources, wcs
 
 __depr__ = {}
+__depr__[examples] = ['make_4gaussians_image', 'make_100gaussians_image']
 __depr__[images] = ['make_model_sources_image', 'make_gaussian_sources_image',
-                    'make_4gaussians_image', 'make_100gaussians_image',
                     'make_gaussian_prf_sources_image', 'make_test_psf_data']
 __depr__[noise] = ['apply_poisson_noise', 'make_noise_image']
 __depr__[sources] = ['make_random_models_table', 'make_random_gaussians_table']
