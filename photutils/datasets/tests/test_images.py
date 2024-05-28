@@ -7,7 +7,8 @@ import numpy as np
 import pytest
 from astropy.modeling.models import Moffat2D
 from astropy.table import Table
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose
 
 from photutils.datasets import (make_4gaussians_image, make_100gaussians_image,
@@ -17,80 +18,70 @@ from photutils.datasets import (make_4gaussians_image, make_100gaussians_image,
 from photutils.psf import IntegratedGaussianPRF
 from photutils.utils._optional_deps import HAS_SCIPY
 
-SOURCE_TABLE = Table()
-SOURCE_TABLE['flux'] = [1, 2, 3]
-SOURCE_TABLE['x_mean'] = [30, 50, 70.5]
-SOURCE_TABLE['y_mean'] = [50, 50, 50.5]
-SOURCE_TABLE['x_stddev'] = [1, 2, 3.5]
-SOURCE_TABLE['y_stddev'] = [2, 1, 3.5]
-SOURCE_TABLE['theta'] = np.array([0.0, 30, 50]) * np.pi / 180.0
 
-SOURCE_TABLE_PRF = Table()
-SOURCE_TABLE_PRF['x_0'] = [30, 50, 70.5]
-SOURCE_TABLE_PRF['y_0'] = [50, 50, 50.5]
-# Without sigma, make_gaussian_prf_sources_image will default to sigma = 1
-# so we can ignore it when converting to amplitude
-SOURCE_TABLE_PRF['amplitude'] = np.array([1, 2, 3]) / (2 * np.pi)
+@pytest.fixture(name='source_params')
+def fixture_source_params():
+    params = Table()
+    params['flux'] = [1, 2, 3]
+    params['x_mean'] = [30, 50, 70.5]
+    params['y_mean'] = [50, 50, 50.5]
+    params['x_stddev'] = [1, 2, 3.5]
+    params['y_stddev'] = [2, 1, 3.5]
+    params['theta'] = np.array([0.0, 30, 50]) * np.pi / 180.0
+    return params
+
+
+@pytest.fixture(name='source_params_prf')
+def fixture_source_params_prf():
+    params = Table()
+    params['x_0'] = [30, 50, 70.5]
+    params['y_0'] = [50, 50, 50.5]
+    params['amplitude'] = np.array([1, 2, 3]) / (2 * np.pi)  # sigma = 1
+    return params
 
 
 def test_make_model_sources_image():
-    source_tbl = Table()
-    source_tbl['x_0'] = [50, 70, 90]
-    source_tbl['y_0'] = [50, 50, 50]
-    source_tbl['gamma'] = [1.7, 2.32, 5.8]
-    source_tbl['alpha'] = [2.9, 5.7, 4.6]
+    params = Table()
+    params['x_0'] = [50, 70, 90]
+    params['y_0'] = [50, 50, 50]
+    params['gamma'] = [1.7, 2.32, 5.8]
+    params['alpha'] = [2.9, 5.7, 4.6]
     model = Moffat2D(amplitude=1)
-    image = make_model_sources_image((300, 500), model, source_tbl)
-    assert image.sum() > 1
+    with pytest.warns(AstropyDeprecationWarning):
+        image = make_model_sources_image((300, 500), model, params)
+        assert image.sum() > 1
 
 
-def test_make_gaussian_sources_image():
+def test_make_gaussian_sources_image(source_params):
     shape = (100, 100)
-    image = make_gaussian_sources_image(shape, SOURCE_TABLE)
+    image = make_gaussian_sources_image(shape, source_params)
     assert image.shape == shape
-    assert_allclose(image.sum(), SOURCE_TABLE['flux'].sum())
+    assert_allclose(image.sum(), source_params['flux'].sum())
 
 
-def test_make_gaussian_sources_image_amplitude():
-    table = SOURCE_TABLE.copy()
-    table.remove_column('flux')
-    table['amplitude'] = [1, 2, 3]
+def test_make_gaussian_sources_image_amplitude(source_params):
+    params = source_params.copy()
+    params.remove_column('flux')
+    params['amplitude'] = [1, 2, 3]
     shape = (100, 100)
-    image = make_gaussian_sources_image(shape, table)
+    image = make_gaussian_sources_image(shape, params)
     assert image.shape == shape
 
 
-def test_make_gaussian_sources_image_oversample():
+def test_make_gaussian_sources_image_desc_oversample(source_params):
     shape = (100, 100)
-    image = make_gaussian_sources_image(shape, SOURCE_TABLE, oversample=10)
+    image = make_gaussian_sources_image(shape, source_params, oversample=10)
     assert image.shape == shape
-    assert_allclose(image.sum(), SOURCE_TABLE['flux'].sum())
+    assert_allclose(image.sum(), source_params['flux'].sum())
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-def test_make_gaussian_prf_sources_image():
+def test_make_gaussian_prf_sources_image(source_params_prf):
     shape = (100, 100)
-    image = make_gaussian_prf_sources_image(shape, SOURCE_TABLE_PRF)
+    image = make_gaussian_prf_sources_image(shape, source_params_prf)
     assert image.shape == shape
-    # Without sigma in table, image assumes sigma = 1
-    flux = SOURCE_TABLE_PRF['amplitude'] * (2 * np.pi)
-    assert_allclose(image.sum(), flux.sum())
-
-
-def test_make_4gaussians_image():
-    shape = (100, 200)
-    data_sum = 176219.18059091491
-    image = make_4gaussians_image()
-    assert image.shape == shape
-    assert_allclose(image.sum(), data_sum, rtol=1.0e-6)
-
-
-def test_make_100gaussians_image():
-    shape = (300, 500)
-    data_sum = 826182.24501251709
-    image = make_100gaussians_image()
-    assert image.shape == shape
-    assert_allclose(image.sum(), data_sum, rtol=1.0e-6)
+    flux = source_params_prf['amplitude'] * (2 * np.pi)  # sigma = 1
+    assert_allclose(image.sum(), flux.sum(), rtol=1.0e-6)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -115,3 +106,19 @@ def test_make_test_psf_data():
         nsources = 100
         make_test_psf_data(shape, psf_model, psf_shape, nsources,
                            flux_range=(500, 1000), min_separation=100, seed=0)
+
+
+def test_make_4gaussians_image():
+    shape = (100, 200)
+    data_sum = 176219.18059091491
+    image = make_4gaussians_image()
+    assert image.shape == shape
+    assert_allclose(image.sum(), data_sum, rtol=1.0e-6)
+
+
+def test_make_100gaussians_image():
+    shape = (300, 500)
+    data_sum = 826182.24501251709
+    image = make_100gaussians_image()
+    assert image.shape == shape
+    assert_allclose(image.sum(), data_sum, rtol=1.0e-6)
