@@ -28,8 +28,9 @@ __all__ = ['make_model_image', 'make_model_sources_image',
 
 
 def make_model_image(shape, model, params_table, *, model_shape=None,
-                     xname='x_0', yname='y_0', discretize_method='center',
-                     discretize_oversample=10, progress_bar=False):
+                     bbox_factor=None, xname='x_0', yname='y_0',
+                     discretize_method='center', discretize_oversample=10,
+                     progress_bar=False):
     """
     Make a 2D image containing sources generated from a user-specified
     astropy 2D model.
@@ -80,14 +81,22 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     model_shape : 2-tuple of int, int, or `None`, optional
         The shape around the (x, y) center of each source that will
         used to evaluate the ``model``. If ``model_shape`` is a scalar
-        integer, then a square shape of size ``model_shape`` will
-        be used. If `None`, then the bounding box of the model will
-        be used. This keyword must be specified if the model does
+        integer, then a square shape of size ``model_shape`` will be
+        used. If `None`, then the bounding box of the model will be
+        used (which can optionally be scaled using the ``bbox_factor``
+        keyword). This keyword must be specified if the model does
         not have a ``bounding_box`` attribute. If specified, this
         keyword overrides the model ``bounding_box`` attribute. To
         use a different shape for each source, include a column named
         ``'model_shape'`` in the ``params_table``. For that case, this
         keyword is ignored.
+
+    bbox_factor : `None` or float, optional
+        The multiplicative factor to pass to the model ``bounding_box``
+        method to determine the model shape. If `None`, the the default
+        model bounding box will be used. This keyword is ignored if
+        ``model_shape`` is specified or if the ``params_table`` contains
+        a ``'model_shape'`` column.
 
     xname : str, optional
         The name of the ``model`` parameter that corresponds to the x
@@ -236,8 +245,12 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
             mod_shape = model_shape[i]
         else:
             if model_shape is None:
-                # the model bounding box size can depend on the model parameters
-                bbox = model.bounding_box.bounding_box()
+                # the bounding box size generally depends on model parameters,
+                # so needs to be calculated for each source
+                if bbox_factor is not None:
+                    bbox = model.bounding_box(factor=bbox_factor)
+                else:
+                    bbox = model.bounding_box.bounding_box()
                 mod_shape = (bbox[0][1] - bbox[0][0], bbox[1][1] - bbox[1][0])
             else:
                 mod_shape = model_shape
