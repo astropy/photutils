@@ -76,8 +76,8 @@ where pixels touch along their edges or corners. One can also use
     >>> print(segment_map)
     <photutils.segmentation.core.SegmentationImage>
     shape: (300, 500)
-    nlabels: 87
-    labels: [ 1  2  3  4  5 ... 83 84 85 86 87]
+    nlabels: 86
+    labels: [ 1  2  3  4  5 ... 82 83 84 85 86]
 
 The result is a :class:`~photutils.segmentation.SegmentationImage`
 object with the same shape as the data, where detected sources are
@@ -271,8 +271,8 @@ the background-subtracted (convolved) image and threshold:
     >>> print(segment_map)
     <photutils.segmentation.core.SegmentationImage>
     shape: (300, 500)
-    nlabels: 94
-    labels: [ 1  2  3  4  5 ... 90 91 92 93 94]
+    nlabels: 93
+    labels: [ 1  2  3  4  5 ... 89 90 91 92 93]
 
 
 Modifying a Segmentation Image
@@ -321,8 +321,8 @@ detected sources:
     >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
     >>> print(cat)
     <photutils.segmentation.catalog.SourceCatalog>
-    Length: 94
-    labels: [ 1  2  3  4  5 ... 90 91 92 93 94]
+    Length: 93
+    labels: [ 1  2  3  4  5 ... 89 90 91 92 93]
 
 The source properties can be accessed using
 `~photutils.segmentation.SourceCatalog` attributes or
@@ -350,18 +350,18 @@ properties are shown below:
     label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
                               ...
     ----- --------- --------- ... --------------- --------- ------------
-        1    235.31      1.45 ...             nan    509.74          nan
-        2    493.92      5.79 ...             nan    544.31          nan
-        3    207.42      9.81 ...             nan    722.26          nan
-        4    364.86     11.11 ...             nan    704.23          nan
-        5    258.27     11.94 ...             nan    661.22          nan
+        1    235.38      1.44 ...             nan    490.35          nan
+        2    493.78      5.84 ...             nan    489.37          nan
+        3    207.29     10.26 ...             nan    694.24          nan
+        4    364.87     11.13 ...             nan    681.20          nan
+        5    257.85     12.18 ...             nan    748.18          nan
       ...       ...       ... ...             ...       ...          ...
-       90    419.52    216.55 ...             nan    866.40          nan
-       91     74.55    259.86 ...             nan    870.31          nan
-       92     82.56    267.55 ...             nan    811.81          nan
-       93    433.88    280.75 ...             nan    652.12          nan
-       94    434.07    288.90 ...             nan    942.22          nan
-    Length = 94 rows
+       89    292.77    244.93 ...             nan    792.63          nan
+       90     32.66    241.24 ...             nan    930.77          nan
+       91     42.60    249.43 ...             nan    580.54          nan
+       92    433.80    280.74 ...             nan    663.44          nan
+       93    434.03    288.88 ...             nan    879.64          nan
+    Length = 93 rows
 
 The error columns are NaN because we did not input an error array (see
 the :ref:`photutils-segmentation_errors` section below).
@@ -440,12 +440,12 @@ label numbers in the segmentation image:
     label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
                               ...
     ----- --------- --------- ... --------------- --------- ------------
-        1    235.31      1.45 ...             nan    509.74          nan
-        5    258.27     11.94 ...             nan    661.22          nan
-       20    346.99     66.83 ...             nan    811.70          nan
-       50      5.29    178.94 ...             nan    614.46          nan
-       75     42.96    249.88 ...             nan    617.18          nan
-       80    130.75    297.10 ...             nan    246.91          nan
+        1    235.38      1.44 ...             nan    490.35          nan
+        5    257.85     12.18 ...             nan    748.18          nan
+       20    347.17     66.45 ...             nan    855.34          nan
+       50    381.02    174.67 ...             nan    438.55          nan
+       75     74.44    259.78 ...             nan    876.02          nan
+       80     14.93     60.06 ...             nan    878.52          nan
 
 By default, the :meth:`~photutils.segmentation.SourceCatalog.to_table`
 includes only a small subset of source properties. The output table
@@ -463,15 +463,15 @@ properties can be customized in the `~astropy.table.QTable` using the
     >>> tbl3['ycentroid'].info.format = '.4f'
     >>> tbl3['segment_flux'].info.format = '.4f'
     >>> print(tbl3)
-    label xcentroid ycentroid area segment_flux
-                              pix2
-    ----- --------- --------- ---- ------------
-        1  235.3128    1.4483 47.0     445.6095
-        5  258.2727   11.9418 79.0     472.4109
-       20  346.9920   66.8323 98.0     571.3138
-       50    5.2910  178.9449 57.0     257.4050
-       75   42.9629  249.8825 79.0     428.7122
-       80  130.7542  297.1048 25.0     108.7877
+    label xcentroid ycentroid  area segment_flux
+                               pix2
+    ----- --------- --------- ----- ------------
+        1  235.3827    1.4439  47.0     433.3546
+        5  257.8501   12.1764  84.0     489.9653
+       20  347.1743   66.4462 103.0     625.9668
+       50  381.0186  174.6745  50.0     249.0170
+       75   74.4448  259.7843  66.0     836.4803
+       80   14.9296   60.0641  87.0     666.6014
 
 A `~astropy.wcs.WCS` transformation can also be input to
 :class:`~photutils.segmentation.SourceCatalog` via the ``wcs`` keyword,
@@ -502,12 +502,12 @@ properties for each source will also be calculated:
     >>> print(tbl4)
     label background_centroid background_mean background_sum
     ----- ------------------- --------------- --------------
-        1        5.2031964923    5.2026137494 244.5228462207
-        5        5.2369908619    5.2229743435 412.6149731339
-       20        5.2392999490    5.2702094547 516.4805265602
-       50        5.1910069327    5.2466148904 299.0570487533
-       75        5.2010736005    5.2249844745 412.7737734871
-       80        5.2669562370    5.2642197817 131.6054945414
+        1        5.2383296240    5.1952756242 244.1779543392
+        5        5.2926300845    5.2065435089 437.3496547461
+       20        5.2901502015    5.2182858995 537.4834476464
+       50        5.0822645472    5.2277566101 261.3878305070
+       75        5.1889235577    5.2203644547 344.5440540106
+       80        5.2014082564    5.2174773439 453.9205289152
 
 
 .. _photutils-segmentation_errors:
@@ -561,12 +561,12 @@ instrumental flux and propagated flux error within the source segments:
     >>> print(tbl5)
     label xcentroid ycentroid segment_flux segment_fluxerr
     ----- --------- --------- ------------ ---------------
-        1 235.24243 1.2020749    445.60947       14.634553
-        5 258.29728 11.899213    472.41087       19.060458
-       20 346.94871 66.802889    571.31384       21.674279
-       50 5.2694265  178.9268    257.40504       16.431396
-       75 43.030177 249.92847    428.71216       19.175229
-       80 130.64209 297.11218    108.78768       10.882015
+        1 235.24302 1.1928271    433.35463       14.167067
+        5 257.82267 12.228232    489.96534       18.998371
+       20 347.15384 66.417567    625.96683       22.475065
+       50 380.94448 174.57181    249.01701       15.261334
+       75 74.413068 259.76066     836.4803       17.193721
+       80 14.920217 60.024006    666.60139       19.605394
 
 
 Pixel Masking

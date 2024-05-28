@@ -83,9 +83,9 @@ background level of 5::
     >>> import numpy as np
     >>> from astropy.stats import biweight_location
     >>> print(np.median(data))  # doctest: +FLOAT_CMP
-    5.225529518399048
+    5.222396450477202
     >>> print(biweight_location(data))  # doctest: +FLOAT_CMP
-    5.186759755495727
+    5.187556942771537
 
 Similarly, using the median absolute deviation to estimate the
 background noise level gives a value that is larger than the true
@@ -93,7 +93,7 @@ value of 2::
 
     >>> from astropy.stats import mad_std
     >>> print(mad_std(data))  # doctest: +FLOAT_CMP
-    2.1443760096598914
+    2.1497096320053166
 
 
 Sigma Clipping Sources
@@ -110,7 +110,7 @@ levels::
     >>> from astropy.stats import sigma_clipped_stats
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> print(np.array((mean, median, std)))  # doctest: +FLOAT_CMP
-    [5.19913865 5.15558743 2.09427521]
+    [5.19968673 5.15244174 2.09423739]
 
 
 Masking Sources
@@ -143,7 +143,7 @@ method with a circular dilation footprint to create the source mask:
     >>> mask = segment_img.make_source_mask(footprint=footprint)
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
     >>> print(np.array((mean, median, std)))  # doctest: +FLOAT_CMP
-    [4.99404204 4.99133356 1.96994734]
+    [5.00257401 4.99641799 1.97009566]
 
 The source detection and masking procedure can be iterated further. Even
 with one iteration we are within 0.2% of the true background value and
@@ -283,9 +283,9 @@ and ``background_rms_median`` attributes, respectively:
 .. doctest-requires:: scipy
 
     >>> print(bkg.background_median)  # doctest: +FLOAT_CMP
-    10.821997862561792
+    10.852487630351824
     >>> print(bkg.background_rms_median)  # doctest: +FLOAT_CMP
-    2.298820539683762
+    2.262996981325314
 
 Let's plot the background image:
 
