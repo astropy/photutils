@@ -47,23 +47,23 @@ subtract the background)::
 
     >>> x1, y1 = centroid_com(data)
     >>> print(np.array((x1, y1)))  # doctest: +FLOAT_CMP
-    [13.93157998 17.05123444]
+    [13.87628017 17.0965772 ]
 
     >>> x2, y2 = centroid_quadratic(data)
     >>> print(np.array((x2, y2)))  # doctest: +FLOAT_CMP
-    [13.94828444 16.98788199]
+    [13.94009505 17.06884997]
 
 .. doctest-requires:: scipy
 
     >>> x3, y3 = centroid_1dg(data)
     >>> print(np.array((x3, y3)))  # doctest: +FLOAT_CMP
-    [14.04035271 16.96230646]
+    [13.97702781 17.01026203]
 
 .. doctest-requires:: scipy
 
     >>> x4, y4 = centroid_2dg(data)
     >>> print(np.array((x4, y4)))  # doctest: +FLOAT_CMP
-    [14.00221339 16.99613642]
+    [13.98397984 17.01241918]
 
 Now let's plot the results.  Because the centroids are all very
 similar, we also include an inset plot zoomed in near the centroid:
@@ -130,9 +130,9 @@ then calculated within the cutout image for each source:
     >>> x, y = centroid_sources(data, x_init, y_init, box_size=21,
     ...                         centroid_func=centroid_com)
     >>> print(x)  # doctest: +FLOAT_CMP
-    [ 24.98911515  90.43056554 150.20332399 159.87234831]
+    [ 25.01202863  90.39269745 150.22699671 160.02054966]
     >>> print(y)  # doctest: +FLOAT_CMP
-    [40.08504359 60.56869612 24.74216925 70.32723054]
+    [39.8963082  60.5920161  24.76769128 70.38147784]
 
 Let's plot the results:
 

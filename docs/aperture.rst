@@ -324,17 +324,17 @@ background as the sigma-clipped median value::
     >>> aper = CircularAperture((150, 25), 8)
     >>> aperstats = ApertureStats(data, aper)  # doctest: +FLOAT_CMP
     >>> print(aperstats.xcentroid)  # doctest: +FLOAT_CMP
-    149.98572304129868
+    149.98963482915323
     >>> print(aperstats.ycentroid)  # doctest: +FLOAT_CMP
-    24.996938431105146
+    24.97165265459083
     >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
-    [149.98572304  24.99693843]
+    [149.98963483  24.97165265]
 
     >>> print(aperstats.mean, aperstats.median, aperstats.std)  # doctest: +FLOAT_CMP
-    41.45359513219223 28.335251716057705 38.25291812758177
+    42.38192194155781 26.53270189818481 39.19365538349298
 
     >>> print(aperstats.sum)  # doctest: +FLOAT_CMP
-    8030.736512250234
+    8204.777345704442
 
 Similar to `~photutils.aperture.aperture_photometry`, the input aperture
 can have multiple positions::
@@ -342,9 +342,9 @@ can have multiple positions::
     >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
     >>> aperstats2 = ApertureStats(data, aper2)
     >>> print(aperstats2.xcentroid)  # doctest: +FLOAT_CMP
-    [149.96671384  90.00873475]
+    [149.98175939  89.97793821]
     >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
-    [ 8164.51010709 34930.47721039]
+    [ 8487.10695247 34963.45850824]
     >>> columns = ('id', 'mean', 'median', 'std', 'var', 'sum')
     >>> stats_table = aperstats2.to_table(columns)
     >>> for col in stats_table.colnames:
@@ -353,8 +353,8 @@ can have multiple positions::
     >>> print(stats_table)  # doctest: +FLOAT_CMP
      id    mean     median     std       var       sum
     --- --------- --------- --------- --------- ---------
-      1 26.792685  11.13497 36.189318 1309.6667 8164.5101
-      2 113.09856 111.77054  50.10054 2510.0641 34930.477
+      1 27.915818 12.582676 36.628464 1341.6444  8487.107
+      2 113.18737 112.11505 49.756626 2475.7218 34963.459
 
 Each row of the table corresponds to a single aperture position (i.e., a
 single source).

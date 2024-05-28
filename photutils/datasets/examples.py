@@ -64,7 +64,7 @@ def make_4gaussians_image(noise=True):
     data += 5.0  # background
 
     if noise:
-        rng = np.random.RandomState(12345)
+        rng = np.random.default_rng(seed=0)
         data += rng.normal(loc=0.0, scale=5.0, size=shape)
 
     return data
