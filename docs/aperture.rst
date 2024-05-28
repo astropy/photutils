@@ -455,7 +455,7 @@ position::
     >>> aperstats = ApertureStats(data, annulus_aperture)
     >>> bkg_mean = aperstats.mean
     >>> print(bkg_mean)  # doctest: +FLOAT_CMP
-    [4.96369499 5.10467691 4.9497741 ]
+    [4.96369499 5.10467691 4.94977409]
 
 Now let's use :func:`~photutils.aperture.aperture_photometry` to perform
 the photometry in the circular aperture (in the next example, we'll use

@@ -7,6 +7,13 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.datasets``
+
+  - Added a ``make_model_image`` function for generating simulated images
+    with model sources. This function has more options
+    and is significantly faster than the now-deprecated
+    ``make_model_sources_image`` function. [#1759]
+
 - ``photutils.detection``
 
   - The ``find_peaks`` function now supports input arrays with units.
@@ -60,6 +67,10 @@ API Changes
     the ``make`` module has been deprecated. Instead of importing
     functions from ``photutils.datasets.make``, import functions from
     ``photutils.datasets``. [#1726]
+
+  - The ``make_model_sources_image`` function has been deprecated in
+    favor of the new ``make_model_image`` function. The new function
+    has more options and is significantly faster. [#1759]
 
 - ``photutils.detection``
 

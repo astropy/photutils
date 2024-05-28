@@ -20,7 +20,6 @@ def test_apply_poisson_noise():
 
 def test_apply_poisson_noise_negative():
     """Test if negative image values raises ValueError."""
-
     with pytest.raises(ValueError):
         shape = (100, 100)
         data = np.zeros(shape) - 1.0
@@ -43,7 +42,6 @@ def test_make_noise_image_poisson():
 
 def test_make_noise_image_nomean():
     """Test if ValueError raises if mean is not input."""
-
     with pytest.raises(ValueError):
         shape = (100, 100)
         make_noise_image(shape, 'gaussian', stddev=2.0)
@@ -53,7 +51,6 @@ def test_make_noise_image_nostddev():
     """
     Test if ValueError raises if stddev is not input for Gaussian noise.
     """
-
     with pytest.raises(ValueError):
         shape = (100, 100)
         make_noise_image(shape, 'gaussian', mean=2.0)
