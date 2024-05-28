@@ -180,13 +180,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
                                     for shape in model_shape])
         variable_shape = True
 
-    if model_shape is None:
-        try:
-            bbox = model.bounding_box.bounding_box()
-            model_shape = (bbox[0][1] - bbox[0][0], bbox[1][1] - bbox[1][0])
-        except NotImplementedError:
-            raise ValueError('model_shape must be specified if the model '
-                             'does not have a bounding_box attribute')
+    if model_shape is None and not hasattr(model, 'bounding_box'):
+        raise ValueError('model_shape must be specified if the model does not have '
+                         'a bounding_box attribute')
 
     if 'local_bkg' in params_table.colnames:
         local_bkg = params_table['local_bkg']
@@ -214,7 +210,12 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         if variable_shape:
             mod_shape = model_shape[i]
         else:
-            mod_shape = model_shape
+            if model_shape is None:
+                # the model bounding box size can depend on the model parameters
+                bbox = model.bounding_box.bounding_box()
+                mod_shape = (bbox[0][1] - bbox[0][0], bbox[1][1] - bbox[1][0])
+            else:
+                mod_shape = model_shape
 
         try:
             slc_lg, _ = overlap_slices(shape, mod_shape, (y0, x0), mode='trim')
