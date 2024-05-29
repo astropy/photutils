@@ -46,7 +46,8 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
         A table of parameters for the randomly generated sources. Each
         row of the table corresponds to a source whose model parameters
         are defined by the column names. The column names will be the
-        keys of the dictionary ``param_ranges``.
+        keys of the dictionary ``param_ranges``. The table will also
+        contain an ``'id'`` column with unique source IDs.
 
     See Also
     --------
@@ -73,18 +74,19 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     >>> for col in sources.colnames:
     ...     sources[col].info.format = '%.8g'  # for consistent table output
     >>> print(sources)
-    amplitude   x_mean    y_mean    x_stddev  y_stddev   theta
-    --------- --------- ---------- --------- --------- ---------
-    818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586
-    634.89336 303.31789 0.82155005 4.4527157 1.4971331 3.1328274
-    520.48676 364.74828  257.22128 3.1658449 3.6824977 3.0813851
-    508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937
-    906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781
+     id amplitude   x_mean    y_mean    x_stddev  y_stddev   theta
+    --- --------- --------- ---------- --------- --------- ---------
+      1 818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586
+      2 634.89336 303.31789 0.82155005 4.4527157 1.4971331 3.1328274
+      3 520.48676 364.74828  257.22128 3.1658449 3.6824977 3.0813851
+      4 508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937
+      5 906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781
     """
     rng = np.random.default_rng(seed)
 
     sources = QTable()
     sources.meta.update(_get_meta())  # keep sources.meta type
+    sources['id'] = np.arange(n_sources) + 1
     for param_name, (lower, upper) in param_ranges.items():
         # Generate a column for every item in param_ranges, even if it
         # is not in the model (e.g., flux).
