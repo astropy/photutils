@@ -84,8 +84,15 @@ API Changes
     deprecated. Use the ``make_psf_test_data`` function or the new
     ``make_model_image`` function instead. [#1762]
 
-  - The ``make_gaussian_sources_table`` function now always returns both
-    ``'flux'`` and ``'amplitude'`` columns. [#1763]
+  - The ``make_gaussian_sources_table`` function now includes an "id"
+    column and always returns both ``'flux'`` and ``'amplitude'`` columns.
+    [#1763]
+
+  - The ``make_model_sources_table`` function now includes an "id"
+    column. [#1764]
+
+  - The ``make_gaussian_sources_table`` function is now deprecated.
+    Use the ``make_model_sources_table`` function instead. [#1764]
 
 - ``photutils.detection``
 
