@@ -116,45 +116,45 @@ sources3['iter_detected'] = [1, 2]
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('sigma_psf, sources', [(sigma_psfs[2], sources3)])
 def test_psf_photometry_niters(sigma_psf, sources):
-    img_shape = (32, 32)
-    # generate image with read-out noise (Gaussian) and
-    # background noise (Poisson)
-    image = (make_gaussian_prf_sources_image(img_shape, sources)
-             + make_noise_image(img_shape, distribution='poisson', mean=6.0,
-                                seed=0)
-             + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
-                                stddev=2.0, seed=0))
-    cp_image = image.copy()
-    sigma_clip = SigmaClip(sigma=3.0)
-    bkgrms = StdBackgroundRMS(sigma_clip)
-    std = bkgrms(image)
+    with pytest.warns(AstropyDeprecationWarning):
+        img_shape = (32, 32)
+        # generate image with read-out noise (Gaussian) and
+        # background noise (Poisson)
+        image = (make_gaussian_prf_sources_image(img_shape, sources)
+                 + make_noise_image(img_shape, distribution='poisson',
+                                    mean=6.0, seed=0)
+                 + make_noise_image(img_shape, distribution='gaussian',
+                                    mean=0.0, stddev=2.0, seed=0))
+        cp_image = image.copy()
+        sigma_clip = SigmaClip(sigma=3.0)
+        bkgrms = StdBackgroundRMS(sigma_clip)
+        std = bkgrms(image)
 
-    phot_obj = make_psf_photometry_objs(std, sigma_psf)[1:3]
-    for iter_phot_obj in phot_obj:
-        iter_phot_obj.niters = None
+        phot_obj = make_psf_photometry_objs(std, sigma_psf)[1:3]
+        for iter_phot_obj in phot_obj:
+            iter_phot_obj.niters = None
 
-        with pytest.warns(AstropyDeprecationWarning):
             result_tab = iter_phot_obj(image)
             residual_image = iter_phot_obj.get_residual_image()
 
-        assert (result_tab['x_0_unc'] < 1.96 * sigma_psf
-                / np.sqrt(sources['flux'])).all()
-        assert (result_tab['y_0_unc'] < 1.96 * sigma_psf
-                / np.sqrt(sources['flux'])).all()
-        assert (result_tab['flux_unc'] < 1.96
-                * np.sqrt(sources['flux'])).all()
+            assert (result_tab['x_0_unc'] < 1.96 * sigma_psf
+                    / np.sqrt(sources['flux'])).all()
+            assert (result_tab['y_0_unc'] < 1.96 * sigma_psf
+                    / np.sqrt(sources['flux'])).all()
+            assert (result_tab['flux_unc'] < 1.96
+                    * np.sqrt(sources['flux'])).all()
 
-        assert_allclose(result_tab['x_fit'], sources['x_0'], rtol=1e-1)
-        assert_allclose(result_tab['y_fit'], sources['y_0'], rtol=1e-1)
-        assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
-        assert_array_equal(result_tab['id'], sources['id'])
-        assert_array_equal(result_tab['group_id'], sources['group_id'])
-        assert_array_equal(result_tab['iter_detected'],
-                           sources['iter_detected'])
-        assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
+            assert_allclose(result_tab['x_fit'], sources['x_0'], rtol=1e-1)
+            assert_allclose(result_tab['y_fit'], sources['y_0'], rtol=1e-1)
+            assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
+            assert_array_equal(result_tab['id'], sources['id'])
+            assert_array_equal(result_tab['group_id'], sources['group_id'])
+            assert_array_equal(result_tab['iter_detected'],
+                               sources['iter_detected'])
+            assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
 
-        # make sure image is note overwritten
-        assert_array_equal(cp_image, image)
+            # make sure image is note overwritten
+            assert_array_equal(cp_image, image)
 
 
 @pytest.mark.filterwarnings('ignore:Both init_guesses and finder are '
@@ -169,70 +169,68 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
     Tests in an image with a group of two overlapped stars and an
     isolated one.
     """
+    with pytest.warns(AstropyDeprecationWarning):
+        img_shape = (32, 32)
+        # generate image with read-out noise (Gaussian) and
+        # background noise (Poisson)
+        image = (make_gaussian_prf_sources_image(img_shape, sources)
+                 + make_noise_image(img_shape, distribution='poisson', mean=6.0,
+                                    seed=0)
+                 + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
+                                    stddev=2.0, seed=0))
+        cp_image = image.copy()
 
-    img_shape = (32, 32)
-    # generate image with read-out noise (Gaussian) and
-    # background noise (Poisson)
-    image = (make_gaussian_prf_sources_image(img_shape, sources)
-             + make_noise_image(img_shape, distribution='poisson', mean=6.0,
-                                seed=0)
-             + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
-                                stddev=2.0, seed=0))
-    cp_image = image.copy()
+        sigma_clip = SigmaClip(sigma=3.0)
+        bkgrms = StdBackgroundRMS(sigma_clip)
+        std = bkgrms(image)
+        phot_objs = make_psf_photometry_objs(std, sigma_psf)
 
-    sigma_clip = SigmaClip(sigma=3.0)
-    bkgrms = StdBackgroundRMS(sigma_clip)
-    std = bkgrms(image)
-    phot_objs = make_psf_photometry_objs(std, sigma_psf)
-
-    for phot_proc in phot_objs:
-        with pytest.warns(AstropyDeprecationWarning):
+        for phot_proc in phot_objs:
             result_tab = phot_proc(image)
             residual_image = phot_proc.get_residual_image()
-        assert (result_tab['x_0_unc'] < 1.96 * sigma_psf
-                / np.sqrt(sources['flux'])).all()
-        assert (result_tab['y_0_unc'] < 1.96 * sigma_psf
-                / np.sqrt(sources['flux'])).all()
-        assert (result_tab['flux_unc'] < 1.96
-                * np.sqrt(sources['flux'])).all()
-        assert_allclose(result_tab['x_fit'], sources['x_0'], rtol=1e-1)
-        assert_allclose(result_tab['y_fit'], sources['y_0'], rtol=1e-1)
-        assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
-        assert_array_equal(result_tab['id'], sources['id'])
-        assert_array_equal(result_tab['group_id'], sources['group_id'])
-        assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
+            assert (result_tab['x_0_unc'] < 1.96 * sigma_psf
+                    / np.sqrt(sources['flux'])).all()
+            assert (result_tab['y_0_unc'] < 1.96 * sigma_psf
+                    / np.sqrt(sources['flux'])).all()
+            assert (result_tab['flux_unc'] < 1.96
+                    * np.sqrt(sources['flux'])).all()
+            assert_allclose(result_tab['x_fit'], sources['x_0'], rtol=1e-1)
+            assert_allclose(result_tab['y_fit'], sources['y_0'], rtol=1e-1)
+            assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
+            assert_array_equal(result_tab['id'], sources['id'])
+            assert_array_equal(result_tab['group_id'], sources['group_id'])
+            assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
 
-        # test fixed photometry
-        phot_proc.psf_model.x_0.fixed = True
-        phot_proc.psf_model.y_0.fixed = True
+            # test fixed photometry
+            phot_proc.psf_model.x_0.fixed = True
+            phot_proc.psf_model.y_0.fixed = True
 
-        pos = Table(names=['x_0', 'y_0'], data=[sources['x_0'],
-                                                sources['y_0']])
-        cp_pos = pos.copy()
+            pos = Table(names=['x_0', 'y_0'], data=[sources['x_0'],
+                                                    sources['y_0']])
+            cp_pos = pos.copy()
 
-        with pytest.warns(AstropyDeprecationWarning):
             result_tab = phot_proc(image, init_guesses=pos)
             residual_image = phot_proc.get_residual_image()
-        assert 'x_0_unc' not in result_tab.colnames
-        assert 'y_0_unc' not in result_tab.colnames
-        assert (result_tab['flux_unc'] < 1.96
-                * np.sqrt(sources['flux'])).all()
-        assert_array_equal(result_tab['x_fit'], sources['x_0'])
-        assert_array_equal(result_tab['y_fit'], sources['y_0'])
-        assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
-        assert_array_equal(result_tab['id'], sources['id'])
-        assert_array_equal(result_tab['group_id'], sources['group_id'])
-        assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
+            assert 'x_0_unc' not in result_tab.colnames
+            assert 'y_0_unc' not in result_tab.colnames
+            assert (result_tab['flux_unc'] < 1.96
+                    * np.sqrt(sources['flux'])).all()
+            assert_array_equal(result_tab['x_fit'], sources['x_0'])
+            assert_array_equal(result_tab['y_fit'], sources['y_0'])
+            assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
+            assert_array_equal(result_tab['id'], sources['id'])
+            assert_array_equal(result_tab['group_id'], sources['group_id'])
+            assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
 
-        # make sure image is not overwritten
-        assert_array_equal(cp_image, image)
+            # make sure image is not overwritten
+            assert_array_equal(cp_image, image)
 
-        # make sure initial guess table is not modified
-        assert_array_equal(cp_pos, pos)
+            # make sure initial guess table is not modified
+            assert_array_equal(cp_pos, pos)
 
-        # resets fixed positions
-        phot_proc.psf_model.x_0.fixed = False
-        phot_proc.psf_model.y_0.fixed = False
+            # resets fixed positions
+            phot_proc.psf_model.x_0.fixed = False
+            phot_proc.psf_model.y_0.fixed = False
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -307,67 +305,69 @@ def test_finder_errors():
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_finder_positions_warning():
-    basic_phot_obj = make_psf_photometry_objs(sigma_psf=2)[0]
-    positions = Table()
-    positions['x_0'] = [12.8, 18.2, 25.3]
-    positions['y_0'] = [15.7, 16.5, 25.1]
+    with pytest.warns(AstropyDeprecationWarning):
+        basic_phot_obj = make_psf_photometry_objs(sigma_psf=2)[0]
+        positions = Table()
+        positions['x_0'] = [12.8, 18.2, 25.3]
+        positions['y_0'] = [15.7, 16.5, 25.1]
 
-    image = (make_gaussian_prf_sources_image((32, 32), sources1)
-             + make_noise_image((32, 32), distribution='poisson', mean=6.0,
-                                seed=0))
+        image = (make_gaussian_prf_sources_image((32, 32), sources1)
+                 + make_noise_image((32, 32), distribution='poisson', mean=6.0,
+                                    seed=0))
 
-    match = 'Both init_guesses and finder are different than None'
-    ctx1 = pytest.warns(AstropyUserWarning, match=match)
-    if PYTEST_LT_80:
-        ctx2 = nullcontext()
-    else:
-        ctx2 = pytest.warns(AstropyDeprecationWarning)
-    with ctx1, ctx2:
-        result_tab = basic_phot_obj(image=image, init_guesses=positions)
-        assert_array_equal(result_tab['x_0'], positions['x_0'])
-        assert_array_equal(result_tab['y_0'], positions['y_0'])
-        assert_allclose(result_tab['x_fit'], positions['x_0'], rtol=1e-1)
-        assert_allclose(result_tab['y_fit'], positions['y_0'], rtol=1e-1)
+        match = 'Both init_guesses and finder are different than None'
+        ctx1 = pytest.warns(AstropyUserWarning, match=match)
+        if PYTEST_LT_80:
+            ctx2 = nullcontext()
+        else:
+            ctx2 = pytest.warns(AstropyDeprecationWarning)
+        with ctx1, ctx2:
+            result_tab = basic_phot_obj(image=image, init_guesses=positions)
+            assert_array_equal(result_tab['x_0'], positions['x_0'])
+            assert_array_equal(result_tab['y_0'], positions['y_0'])
+            assert_allclose(result_tab['x_fit'], positions['x_0'], rtol=1e-1)
+            assert_allclose(result_tab['y_fit'], positions['y_0'], rtol=1e-1)
 
-    basic_phot_obj.finder = None
-    with pytest.raises(ValueError):
-        result_tab = basic_phot_obj(image=image)
+        basic_phot_obj.finder = None
+        with pytest.raises(ValueError):
+            result_tab = basic_phot_obj(image=image)
 
 
 @pytest.mark.filterwarnings('ignore:The fit may be unsuccessful')
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_aperture_radius():
-    img_shape = (32, 32)
-
-    # generate image with read-out noise (Gaussian) and
-    # background noise (Poisson)
-    image = (make_gaussian_prf_sources_image(img_shape, sources1)
-             + make_noise_image(img_shape, distribution='poisson', mean=6.0,
-                                seed=0)
-             + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
-                                stddev=2.0, seed=0))
-
-    basic_phot_obj = make_psf_photometry_objs()[0]
-
-    # test that aperture radius is properly set whenever the PSF model has
-    # a `fwhm` attribute
-    class PSFModelWithFWHM(Fittable2DModel):
-        x_0 = Parameter(default=1)
-        y_0 = Parameter(default=1)
-        flux = Parameter(default=1)
-        fwhm = Parameter(default=5)
-
-        def __init__(self, fwhm=fwhm.default):
-            super().__init__(fwhm=fwhm)
-
-        def evaluate(self, x, y, x_0, y_0, flux, fwhm):
-            return flux / (fwhm * (x - x_0)**2 * (y - y_0)**2)
-
-    psf_model = PSFModelWithFWHM()
-    basic_phot_obj.psf_model = psf_model
     with pytest.warns(AstropyDeprecationWarning):
-        basic_phot_obj(image)
-    assert_equal(basic_phot_obj.aperture_radius, psf_model.fwhm.value)
+        img_shape = (32, 32)
+
+        # generate image with read-out noise (Gaussian) and
+        # background noise (Poisson)
+        image = (make_gaussian_prf_sources_image(img_shape, sources1)
+                 + make_noise_image(img_shape, distribution='poisson', mean=6.0,
+                                    seed=0)
+                 + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
+                                    stddev=2.0, seed=0))
+
+        basic_phot_obj = make_psf_photometry_objs()[0]
+
+        # test that aperture radius is properly set whenever the PSF model has
+        # a `fwhm` attribute
+        class PSFModelWithFWHM(Fittable2DModel):
+            x_0 = Parameter(default=1)
+            y_0 = Parameter(default=1)
+            flux = Parameter(default=1)
+            fwhm = Parameter(default=5)
+
+            def __init__(self, fwhm=fwhm.default):
+                super().__init__(fwhm=fwhm)
+
+            def evaluate(self, x, y, x_0, y_0, flux, fwhm):
+                return flux / (fwhm * (x - x_0)**2 * (y - y_0)**2)
+
+        psf_model = PSFModelWithFWHM()
+        basic_phot_obj.psf_model = psf_model
+        with pytest.warns(AstropyDeprecationWarning):
+            basic_phot_obj(image)
+        assert_equal(basic_phot_obj.aperture_radius, psf_model.fwhm.value)
 
 
 PARS_TO_SET_0 = {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux'}
@@ -811,44 +811,46 @@ def test_psf_photometry_uncertainties():
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_re_use_result_as_initial_guess():
-    img_shape = (32, 32)
-    # generate image with read-out noise (Gaussian) and
-    # background noise (Poisson)
-    image = (make_gaussian_prf_sources_image(img_shape, sources1)
-             + make_noise_image(img_shape, distribution='poisson', mean=6.0,
-                                seed=0)
-             + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
-                                stddev=2.0, seed=0))
 
-    _, _, dao_phot_obj = make_psf_photometry_objs()
+    with pytest.warns(AstropyDeprecationWarning):
+        img_shape = (32, 32)
+        # generate image with read-out noise (Gaussian) and
+        # background noise (Poisson)
+        image = (make_gaussian_prf_sources_image(img_shape, sources1)
+                 + make_noise_image(img_shape, distribution='poisson', mean=6.0,
+                                    seed=0)
+                 + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
+                                    stddev=2.0, seed=0))
 
-    match = 'The fit may be unsuccessful'
-    ctx1 = pytest.warns(AstropyUserWarning, match=match)
-    if PYTEST_LT_80:
-        ctx2 = nullcontext()
-    else:
-        ctx2 = pytest.warns(AstropyDeprecationWarning)
-    with ctx1, ctx2:
-        result_table = dao_phot_obj(image)
-        result_table['x'] = result_table['x_fit']
-        result_table['y'] = result_table['y_fit']
-        result_table['flux'] = result_table['flux_fit']
+        _, _, dao_phot_obj = make_psf_photometry_objs()
 
-    match1 = 'Both init_guesses and finder are different than None'
-    ctx1 = pytest.warns(AstropyUserWarning, match=match1)
-    if PYTEST_LT_80:
-        ctx2 = nullcontext()
-        ctx3 = nullcontext()
-        ctx4 = nullcontext()
-    else:
-        match2 = 'init_guesses contains a "group_id" column'
-        match3 = 'The fit may be unsuccessful; check fit_info'
-        ctx2 = pytest.warns(AstropyUserWarning, match=match2)
-        ctx3 = pytest.warns(AstropyUserWarning, match=match3)
-        ctx4 = pytest.warns(AstropyDeprecationWarning)
-    with ctx1, ctx2, ctx3, ctx4:
-        second_result = dao_phot_obj(image, init_guesses=result_table)
-        assert second_result
+        match = 'The fit may be unsuccessful'
+        ctx1 = pytest.warns(AstropyUserWarning, match=match)
+        if PYTEST_LT_80:
+            ctx2 = nullcontext()
+        else:
+            ctx2 = pytest.warns(AstropyDeprecationWarning)
+        with ctx1, ctx2:
+            result_table = dao_phot_obj(image)
+            result_table['x'] = result_table['x_fit']
+            result_table['y'] = result_table['y_fit']
+            result_table['flux'] = result_table['flux_fit']
+
+        match1 = 'Both init_guesses and finder are different than None'
+        ctx1 = pytest.warns(AstropyUserWarning, match=match1)
+        if PYTEST_LT_80:
+            ctx2 = nullcontext()
+            ctx3 = nullcontext()
+            ctx4 = nullcontext()
+        else:
+            match2 = 'init_guesses contains a "group_id" column'
+            match3 = 'The fit may be unsuccessful; check fit_info'
+            ctx2 = pytest.warns(AstropyUserWarning, match=match2)
+            ctx3 = pytest.warns(AstropyUserWarning, match=match3)
+            ctx4 = pytest.warns(AstropyDeprecationWarning)
+        with ctx1, ctx2, ctx3, ctx4:
+            second_result = dao_phot_obj(image, init_guesses=result_table)
+            assert second_result
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -975,33 +977,36 @@ def test_psf_photometry_oneiter_uncert(sigma_psf, sources):
     isolated one, and check that the best-fit fluxes have smaller
     uncertainties when the measured fluxes have smaller uncertainties.
     """
-    img_shape = (32, 32)
-    # generate image with read-out noise (Gaussian) and
-    # background noise (Poisson)
-    image = (make_gaussian_prf_sources_image(img_shape, sources)
-             + make_noise_image(img_shape, distribution='poisson', mean=6.0,
-                                seed=0)
-             + make_noise_image(img_shape, distribution='gaussian', mean=0.0,
-                                stddev=2.0, seed=0))
+    with pytest.warns(AstropyDeprecationWarning):
+        img_shape = (32, 32)
+        # generate image with read-out noise (Gaussian) and
+        # background noise (Poisson)
+        image = (make_gaussian_prf_sources_image(img_shape, sources)
+                 + make_noise_image(img_shape, distribution='poisson',
+                                    mean=6.0, seed=0)
+                 + make_noise_image(img_shape, distribution='gaussian',
+                                    mean=0.0, stddev=2.0, seed=0))
 
-    sigma_clip = SigmaClip(sigma=3.0)
-    bkgrms = StdBackgroundRMS(sigma_clip)
-    std = bkgrms(image)
-    phot_objs = make_psf_photometry_objs(std, sigma_psf)
+        sigma_clip = SigmaClip(sigma=3.0)
+        bkgrms = StdBackgroundRMS(sigma_clip)
+        std = bkgrms(image)
+        phot_objs = make_psf_photometry_objs(std, sigma_psf)
 
-    flux_uncertainties_0 = []
-    flux_uncertainties_1 = []
+        flux_uncertainties_0 = []
+        flux_uncertainties_1 = []
 
-    for uncertainty_scale_factor, flux_uncert in zip(
-        [1e-5, 0.1], [flux_uncertainties_0, flux_uncertainties_1]
-    ):
-        for phot_proc in phot_objs:
-            uncertainty = (
-                uncertainty_scale_factor * np.std(image) * np.ones_like(image)
-            )
-            with pytest.warns(AstropyDeprecationWarning):
-                result_tab = phot_proc(image, uncertainty=uncertainty)
-            flux_uncert.append(np.array(result_tab['flux_unc']))
+        for uncertainty_scale_factor, flux_uncert in zip(
+            [1e-5, 0.1], [flux_uncertainties_0, flux_uncertainties_1]
+        ):
+            for phot_proc in phot_objs:
+                uncertainty = (
+                    uncertainty_scale_factor * np.std(image)
+                    * np.ones_like(image)
+                )
+                with pytest.warns(AstropyDeprecationWarning):
+                    result_tab = phot_proc(image, uncertainty=uncertainty)
+                flux_uncert.append(np.array(result_tab['flux_unc']))
 
-    for uncert_0, uncert_1 in zip(flux_uncertainties_0, flux_uncertainties_1):
-        assert np.all(uncert_0 < uncert_1)
+        for uncert_0, uncert_1 in zip(flux_uncertainties_0,
+                                      flux_uncertainties_1):
+            assert np.all(uncert_0 < uncert_1)

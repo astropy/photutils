@@ -15,8 +15,8 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background import LocalBackground, MMMBackground
-from photutils.datasets import (make_gaussian_prf_sources_image,
-                                make_noise_image, make_test_psf_data)
+from photutils.datasets import (make_model_image, make_noise_image,
+                                make_test_psf_data)
 from photutils.detection import DAOStarFinder
 from photutils.psf import (IntegratedGaussianPRF, IterativePSFPhotometry,
                            PSFPhotometry, SourceGrouper, make_psf_model)
@@ -769,11 +769,10 @@ def test_negative_xy():
     sources['y_0'] = [-0.3, -0.4, 18.7]
     sources['sigma'] = 3.1
     shape = (31, 31)
-    data = make_gaussian_prf_sources_image(shape, sources)
     psf_model = IntegratedGaussianPRF(flux=1, sigma=3.1)
+    data = make_model_image(shape, psf_model, sources)
     fit_shape = (11, 11)
-    psfphot = PSFPhotometry(psf_model, fit_shape,
-                            aperture_radius=10)
+    psfphot = PSFPhotometry(psf_model, fit_shape, aperture_radius=10)
     phot = psfphot(data, init_params=sources)
     assert_equal(phot['x_init'], sources['x_0'])
     assert_equal(phot['y_init'], sources['y_0'])
@@ -789,12 +788,10 @@ def test_out_of_bounds_centroids():
     sources['sigma'] = 3.1
 
     shape = (51, 51)
-    data = make_gaussian_prf_sources_image(shape, sources)
-
     psf_model = IntegratedGaussianPRF(flux=1, sigma=3.1)
+    data = make_model_image(shape, psf_model, sources)
     fit_shape = (11, 11)
-    psfphot = PSFPhotometry(psf_model, fit_shape,
-                            aperture_radius=10)
+    psfphot = PSFPhotometry(psf_model, fit_shape, aperture_radius=10)
 
     phot = psfphot(data, init_params=sources)
 
