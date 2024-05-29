@@ -355,6 +355,7 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
     return image
 
 
+@deprecated('1.13.0', alternative='make_model_image')
 def make_gaussian_sources_image(shape, source_table, oversample=1):
     r"""
     Make an image containing 2D Gaussian sources.
