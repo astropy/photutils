@@ -72,6 +72,11 @@ API Changes
     favor of the new ``make_model_image`` function. The new function
     has more options and is significantly faster. [#1759]
 
+  - The randomly-generated optional noise in the simulated example images
+    ``make_4gaussians_image`` and ``make_100gaussians_image`` is now
+    slightly different. The noise sigma is the same, but the pixel
+    values differ. [#1760]
+
 - ``photutils.detection``
 
   - The ``sky`` keyword in ``DAOStarFinder`` and ``IRAFStarFinder`` is
