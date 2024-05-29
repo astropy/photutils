@@ -5,7 +5,7 @@ model parameters.
 """
 
 import numpy as np
-from astropy.modeling import models
+from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
 
 from photutils.utils._misc import _get_meta
@@ -101,6 +101,9 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
     parameters are defined by the column names. The parameters are drawn
     from a uniform distribution over the specified input ranges.
 
+    The output table will contain columns for both the Gaussian
+    amplitude and flux.
+
     The output table can be input into
     :func:`make_gaussian_sources_image` to create an image containing
     the 2D Gaussian sources.
@@ -108,7 +111,7 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
     Parameters
     ----------
     n_sources : float
-        The number of random Gaussian sources to generate.
+        The number of random 2D Gaussian sources to generate.
 
     param_ranges : dict
         The lower and upper boundaries for each of the
@@ -118,10 +121,12 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
         `~astropy.modeling.functional_models.Gaussian2D` parameter
         names or ``'flux'``. If ``'flux'`` is specified, but not
         ``'amplitude'`` then the 2D Gaussian amplitudes will be
-        calculated and placed in the output table. If both ``'flux'``
-        and ``'amplitude'`` are specified, then ``'flux'`` will be
-        ignored. Model parameters not defined in ``param_ranges`` will
-        be set to the default value.
+        calculated and placed in the output table. If ``'amplitude'``
+        is specified, then the 2D Gaussian fluxes will be calculated
+        and placed in the output table. If both ``'flux'`` and
+        ``'amplitude'`` are specified, then ``'flux'`` will be
+        recalculated and overwritten. Model parameters not defined in
+        ``param_ranges`` will be set to the default value.
 
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
@@ -159,15 +164,15 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
     >>> for col in sources.colnames:
     ...     sources[col].info.format = '%.8g'  # for consistent table output
     >>> print(sources)
-    amplitude   x_mean    y_mean    x_stddev  y_stddev   theta
-    --------- --------- ---------- --------- --------- ---------
-    818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586
-    634.89336 303.31789 0.82155005 4.4527157 1.4971331 3.1328274
-    520.48676 364.74828  257.22128 3.1658449 3.6824977 3.0813851
-    508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937
-    906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781
+    amplitude   x_mean    y_mean    x_stddev  y_stddev   theta      flux
+    --------- --------- ---------- --------- --------- --------- ---------
+    818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586 9747.8906
+    634.89336 303.31789 0.82155005 4.4527157 1.4971331 3.1328274  26592.92
+    520.48676 364.74828  257.22128 3.1658449 3.6824977 3.0813851 38126.037
+    508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937 25200.454
+    906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781 53058.502
 
-    To specifying the flux range instead of the amplitude range:
+    To specify the flux range instead of the amplitude range:
 
     >>> param_ranges = {'flux': [500, 1000],
     ...                 'x_mean': [0, 500],
@@ -194,21 +199,23 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
     """
     sources = make_random_models_table(n_sources, param_ranges,
                                        seed=seed)
+    model = Gaussian2D()
 
-    # convert Gaussian2D flux to amplitude
+    # compute Gaussian2D amplitude to flux conversion factor
+    if 'x_stddev' in sources.colnames:
+        xstd = sources['x_stddev']
+    else:
+        xstd = model.x_stddev.value  # default
+    if 'y_stddev' in sources.colnames:
+        ystd = sources['y_stddev']
+    else:
+        ystd = model.y_stddev.value  # default
+    gaussian_amplitude_to_flux = 2.0 * np.pi * xstd * ystd
+
+    if 'amplitude' in param_ranges:
+        sources['flux'] = sources['amplitude'] * gaussian_amplitude_to_flux
+
     if 'flux' in param_ranges and 'amplitude' not in param_ranges:
-        model = models.Gaussian2D(x_stddev=1, y_stddev=1)
-
-        if 'x_stddev' in sources.colnames:
-            xstd = sources['x_stddev']
-        else:
-            xstd = model.x_stddev.value  # default
-        if 'y_stddev' in sources.colnames:
-            ystd = sources['y_stddev']
-        else:
-            ystd = model.y_stddev.value  # default
-
-        sources = sources.copy()
-        sources['amplitude'] = sources['flux'] / (2.0 * np.pi * xstd * ystd)
+        sources['amplitude'] = sources['flux'] / gaussian_amplitude_to_flux
 
     return sources
