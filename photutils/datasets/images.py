@@ -291,8 +291,6 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 @deprecated('1.13.0', alternative='make_model_image')
 def make_model_sources_image(shape, model, source_table, oversample=1):
     """
-    .. deprecated:: 1.13.0
-
     Make an image containing sources generated from a user-specified
     model.
 
