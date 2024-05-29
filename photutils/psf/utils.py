@@ -201,13 +201,14 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     fittable 2D model.
 
     If the ``x_name``, ``y_name``, or ``flux_name`` keywords are input,
-    this function will map the those ``model`` parameter names to
-    ``x_0``, ``y_0``, or ``flux``, respectively.
+    this function will map those ``model`` parameter names to ``x_0``,
+    ``y_0``, or ``flux``, respectively.
 
-    If any of these keywords are `None`, then a new parameter will be
-    added to the model corresponding to the missing parameter. The new
-    position parameters will be set to 0, and the new flux parameter
-    will be set to 1.
+    If any of the ``x_name``, ``y_name``, or ``flux_name`` keywords
+    are `None`, then a new parameter will be added to the model
+    corresponding to the missing parameter. Any new position parameters
+    will be set to a default value of 0, and any new flux parameter will
+    be set to a default value of 1.
 
     The output PSF model will have ``x_name``, ``y_name``, and
     ``flux_name`` attributes that contain the name of the corresponding
