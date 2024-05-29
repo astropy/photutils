@@ -322,10 +322,6 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
     -------
     image : 2D `~numpy.ndarray`
         Image containing model sources.
-
-    See Also
-    --------
-    make_random_models_table, make_gaussian_sources_image
     """
     image = np.zeros(shape, dtype=float)
     yidx, xidx = np.indices(shape)
@@ -391,10 +387,6 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
     -------
     image : 2D `~numpy.ndarray`
         Image containing 2D Gaussian sources.
-
-    See Also
-    --------
-    make_random_gaussians_table
 
     Examples
     --------
@@ -480,10 +472,6 @@ def make_gaussian_prf_sources_image(shape, source_table):
     -------
     image : 2D `~numpy.ndarray`
         Image containing 2D Gaussian sources.
-
-    See Also
-    --------
-    make_random_gaussians_table
 
     Examples
     --------

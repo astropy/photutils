@@ -136,7 +136,7 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
 
     See Also
     --------
-    make_random_models_table, make_gaussian_sources_image
+    make_random_models_table
 
     Notes
     -----
