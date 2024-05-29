@@ -84,6 +84,9 @@ API Changes
     deprecated. Use the ``make_psf_test_data`` function or the new
     ``make_model_image`` function instead. [#1762]
 
+  - The ``make_gaussian_sources_table`` function now always returns both
+    ``'flux'`` and ``'amplitude'`` columns. [#1763]
+
 - ``photutils.detection``
 
   - The ``sky`` keyword in ``DAOStarFinder`` and ``IRAFStarFinder`` is
