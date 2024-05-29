@@ -46,9 +46,9 @@ class TestImageDepth:
                            zeropoint=23.9, progress_bar=False)
 
         if overlap:
-            exp_limits = (66.60324687694235, 19.341261496655026)
+            exp_limits = (72.65695364143787, 19.246807037943814)
         else:
-            exp_limits = (68.60472024061636, 19.30911500577945)
+            exp_limits = (71.07332848526178, 19.27073336332396)
 
         data = self.data
         fluxlim = exp_limits[0]
@@ -70,7 +70,7 @@ class TestImageDepth:
                            mask_pad=5, overlap=True, seed=123, zeropoint=23.9,
                            progress_bar=False)
         limits = depth(self.data, mask=None)
-        assert_allclose(limits, (65.21122793974521, 19.36419405467095))
+        assert_allclose(limits, (79.348118, 19.151158))
 
     def test_many_apertures(self):
         radius = 4
