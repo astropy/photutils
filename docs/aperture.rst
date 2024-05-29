@@ -324,17 +324,17 @@ background as the sigma-clipped median value::
     >>> aper = CircularAperture((150, 25), 8)
     >>> aperstats = ApertureStats(data, aper)  # doctest: +FLOAT_CMP
     >>> print(aperstats.xcentroid)  # doctest: +FLOAT_CMP
-    149.98572304129868
+    149.98963482915323
     >>> print(aperstats.ycentroid)  # doctest: +FLOAT_CMP
-    24.996938431105146
+    24.97165265459083
     >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
-    [149.98572304  24.99693843]
+    [149.98963483  24.97165265]
 
     >>> print(aperstats.mean, aperstats.median, aperstats.std)  # doctest: +FLOAT_CMP
-    41.45359513219223 28.335251716057705 38.25291812758177
+    42.38192194155781 26.53270189818481 39.19365538349298
 
     >>> print(aperstats.sum)  # doctest: +FLOAT_CMP
-    8030.736512250234
+    8204.777345704442
 
 Similar to `~photutils.aperture.aperture_photometry`, the input aperture
 can have multiple positions::
@@ -342,9 +342,9 @@ can have multiple positions::
     >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
     >>> aperstats2 = ApertureStats(data, aper2)
     >>> print(aperstats2.xcentroid)  # doctest: +FLOAT_CMP
-    [149.96671384  90.00873475]
+    [149.98175939  89.97793821]
     >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
-    [ 8164.51010709 34930.47721039]
+    [ 8487.10695247 34963.45850824]
     >>> columns = ('id', 'mean', 'median', 'std', 'var', 'sum')
     >>> stats_table = aperstats2.to_table(columns)
     >>> for col in stats_table.colnames:
@@ -353,8 +353,8 @@ can have multiple positions::
     >>> print(stats_table)  # doctest: +FLOAT_CMP
      id    mean     median     std       var       sum
     --- --------- --------- --------- --------- ---------
-      1 26.792685  11.13497 36.189318 1309.6667 8164.5101
-      2 113.09856 111.77054  50.10054 2510.0641 34930.477
+      1 27.915818 12.582676 36.628464 1341.6444  8487.107
+      2 113.18737 112.11505 49.756626 2475.7218 34963.459
 
 Each row of the table corresponds to a single aperture position (i.e., a
 single source).
@@ -455,7 +455,7 @@ position::
     >>> aperstats = ApertureStats(data, annulus_aperture)
     >>> bkg_mean = aperstats.mean
     >>> print(bkg_mean)  # doctest: +FLOAT_CMP
-    [4.96369499 5.10467691 4.94977409]
+    [4.99411764 5.1349344  4.86894665]
 
 Now let's use :func:`~photutils.aperture.aperture_photometry` to perform
 the photometry in the circular aperture (in the next example, we'll use
@@ -469,9 +469,9 @@ the photometry in the circular aperture (in the next example, we'll use
      id xcenter ycenter aperture_sum
           pix     pix
     --- ------- ------- ------------
-      1   145.1   168.3    1131.5794
-      2    84.5   224.1    746.16064
-      3    48.3   200.3    1250.2186
+      1   145.1   168.3    1128.1245
+      2    84.5   224.1      735.739
+      3    48.3   200.3    1299.6341
 
 The total background within the circular aperture is the mean local
 per-pixel background times the circular aperture area. If you are
@@ -499,7 +499,7 @@ The total background within the circular aperture is then::
 
     >>> total_bkg = bkg_mean * aperture_area
     >>> print(total_bkg)  # doctest: +FLOAT_CMP
-    [389.84769319 400.92038721 388.75434843]
+    [392.23708187 403.29680431 382.40617574]
 
 Thus, the background-subtracted photometry is::
 
@@ -515,9 +515,9 @@ Finally, let's add these as columns to the photometry table::
      id xcenter ycenter aperture_sum total_bkg aperture_sum_bkgsub
           pix     pix
     --- ------- ------- ------------ --------- -------------------
-      1   145.1   168.3    1131.5794 389.84769           741.73173
-      2    84.5   224.1    746.16064 400.92039           345.24026
-      3    48.3   200.3    1250.2186 388.75435           861.46422
+      1   145.1   168.3    1128.1245 392.23708           735.88739
+      2    84.5   224.1      735.739  403.2968           332.44219
+      3    48.3   200.3    1299.6341 382.40618           917.22792
 
 Sigma-clipped median within a circular annulus
 """"""""""""""""""""""""""""""""""""""""""""""
@@ -536,21 +536,21 @@ The sigma-clipped median values in the background annulus apertures
 are::
 
     >>> print(bkg_stats.median)  # doctest: +FLOAT_CMP
-    [4.848213   5.0884354  4.80605993]
+    [4.89374178 5.05655328 4.83268958]
 
 The total background within the circular apertures is then the per-pixel
 background level multiplied by the circular-aperture areas::
 
     >>> total_bkg = bkg_stats.median * aper_stats.sum_aper_area.value
     >>> print(total_bkg)  # doctest: +FLOAT_CMP
-    [380.77775843 399.64478152 377.46706442]
+    [384.35358069 397.14076611 379.5585524 ]
 
 Finally, the local background-subtracted sum within the circular
 apertures is::
 
     >>> apersum_bkgsub = aper_stats.sum - total_bkg
     >>> print(apersum_bkgsub)  # doctest: +FLOAT_CMP
-    [750.80166351 346.51586233 872.75150158]
+    [743.77088731 338.59823118 920.07553956]
 
 Note that if you want to compute all the source properties (i.e., in
 addition to only :attr:`~photutils.aperture.ApertureStats.sum`) on the
@@ -561,7 +561,7 @@ background values to :class:`~photutils.aperture.ApertureStats` via the
     >>> aper_stats_bkgsub = ApertureStats(data, aperture,
     ...                                   local_bkg=bkg_stats.median)
     >>> print(aper_stats_bkgsub.sum)  # doctest: +FLOAT_CMP
-    [750.80166351 346.51586233 872.75150158]
+    [743.77088731 338.59823118 920.07553956]
 
 Note these background-subtracted values are the same as those above.
 

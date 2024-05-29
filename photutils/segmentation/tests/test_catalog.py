@@ -857,35 +857,35 @@ def test_kron_params():
     cat = SourceCatalog(data, segm, convolved_data=convolved_data,
                         kron_params=kron_params)
     assert cat.kron_radius.value.min() == minrad
-    assert_allclose(cat.kron_flux.min(), 246.91339096556538)
+    assert_allclose(cat.kron_flux.min(), 264.775307)
     rh = cat.fluxfrac_radius(0.5)
-    assert_allclose(rh.value.min(), 1.3925520107605818)
+    assert_allclose(rh.value.min(), 1.293722, rtol=1e-6)
 
     minrad = 1.2
     kron_params = (2.5, minrad, 0.0)
     cat = SourceCatalog(data, segm, convolved_data=convolved_data,
                         kron_params=kron_params)
     assert cat.kron_radius.value.min() == minrad
-    assert_allclose(cat.kron_flux.min(), 246.91339096556538)
+    assert_allclose(cat.kron_flux.min(), 264.775307)
     rh = cat.fluxfrac_radius(0.5)
-    assert_allclose(rh.value.min(), 1.3979610808075127)
+    assert_allclose(rh.value.min(), 1.312618, rtol=1e-6)
 
     minrad = 0.2
     kron_params = (2.5, minrad, 0.0)
     cat = SourceCatalog(data, segm, convolved_data=convolved_data,
                         kron_params=kron_params)
-    assert_allclose(cat.kron_radius.value.min(), 0.5712931578847312)
-    assert_allclose(cat.kron_flux.min(), 246.91339096556538)
+    assert_allclose(cat.kron_radius.value.min(), 0.677399, rtol=1e-6)
+    assert_allclose(cat.kron_flux.min(), 264.775307)
     rh = cat.fluxfrac_radius(0.5)
-    assert_allclose(rh.value.min(), 1.34218684691197)
+    assert_allclose(rh.value.min(), 1.232554)
 
     kron_params = (2.5, 1.4, 7.0)
     cat = SourceCatalog(data, segm, convolved_data=convolved_data,
                         kron_params=kron_params)
     assert cat.kron_radius.value.min() == 0.0
-    assert_allclose(cat.kron_flux.min(), 246.91339096556538)
+    assert_allclose(cat.kron_flux.min(), 264.775307)
     rh = cat.fluxfrac_radius(0.5)
-    assert_allclose(rh.value.min(), 1.3649418211298536)
+    assert_allclose(rh.value.min(), 1.288211, rtol=1e-6)
     assert isinstance(cat.kron_aperture[0], CircularAperture)
 
 

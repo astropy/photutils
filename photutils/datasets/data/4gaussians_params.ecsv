@@ -1,0 +1,15 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: amplitude, datatype: int64}
+# - {name: x_mean, datatype: int64}
+# - {name: y_mean, datatype: int64}
+# - {name: x_stddev, datatype: float64}
+# - {name: y_stddev, datatype: float64}
+# - {name: theta, datatype: float64}
+# schema: astropy-2.0
+amplitude x_mean y_mean x_stddev y_stddev theta
+50 160 70 15.2 2.6 2.530727415391778
+70 25 40 5.1 2.5 0.3490658503988659
+150 150 25 3.0 3.0 0.0
+210 90 60 8.1 4.7 1.0471975511965976

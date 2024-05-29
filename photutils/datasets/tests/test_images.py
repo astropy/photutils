@@ -11,8 +11,7 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose
 
-from photutils.datasets import (make_4gaussians_image, make_100gaussians_image,
-                                make_gaussian_prf_sources_image,
+from photutils.datasets import (make_gaussian_prf_sources_image,
                                 make_gaussian_sources_image,
                                 make_model_sources_image, make_test_psf_data)
 from photutils.psf import IntegratedGaussianPRF
@@ -106,19 +105,3 @@ def test_make_test_psf_data():
         nsources = 100
         make_test_psf_data(shape, psf_model, psf_shape, nsources,
                            flux_range=(500, 1000), min_separation=100, seed=0)
-
-
-def test_make_4gaussians_image():
-    shape = (100, 200)
-    data_sum = 176219.18059091491
-    image = make_4gaussians_image()
-    assert image.shape == shape
-    assert_allclose(image.sum(), data_sum, rtol=1.0e-6)
-
-
-def test_make_100gaussians_image():
-    shape = (300, 500)
-    data_sum = 826182.24501251709
-    image = make_100gaussians_image()
-    assert image.shape == shape
-    assert_allclose(image.sum(), data_sum, rtol=1.0e-6)

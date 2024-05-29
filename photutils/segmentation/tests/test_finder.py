@@ -47,7 +47,7 @@ class TestSourceFinder:
         finder = SourceFinder(npixels=self.npixels, deblend=False,
                               progress_bar=False)
         segm = finder(self.convolved_data, self.threshold)
-        assert segm.nlabels == 85
+        assert segm.nlabels == 87
 
     def test_no_sources(self):
         finder = SourceFinder(npixels=self.npixels, deblend=True,

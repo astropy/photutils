@@ -3,17 +3,12 @@
 Tests for IRAFStarFinder.
 """
 
-import itertools
-import os.path as op
-
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.table import Table
 from astropy.utils.exceptions import AstropyDeprecationWarning
-from numpy.testing import assert_allclose, assert_array_equal
+from numpy.testing import assert_array_equal
 
-from photutils.datasets import make_100gaussians_image
 from photutils.detection import IRAFStarFinder
 from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -173,24 +168,3 @@ class TestIRAFStarFinder:
         assert cat.isscalar
         flux = cat.flux[0]  # evaluate the flux so it can be sliced
         assert cat[0].flux == flux
-
-
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.parametrize(('threshold', 'fwhm'),
-                         list(itertools.product((8.0, 10.0),
-                                                (1.0, 1.5, 2.0))))
-def test_irafstarfind_legacy(threshold, fwhm):
-    """
-    Test IRAFStarFinder against the IRAF starfind implementation.
-    """
-    data = make_100gaussians_image()
-    finder = IRAFStarFinder(threshold, fwhm, sigma_radius=1.5)
-    tbl = finder(data)
-    datafn = (f'irafstarfind_test_thresh{threshold:04.1f}_'
-              f'fwhm{fwhm:04.1f}.txt')
-    datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
-    tbl_ref = Table.read(datafn, format='ascii')
-
-    assert tbl.colnames == tbl_ref.colnames
-    for col in tbl.colnames:
-        assert_allclose(tbl[col], tbl_ref[col])

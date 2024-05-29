@@ -9,3 +9,7 @@ from .load import *  # noqa: F401, F403
 from .noise import *  # noqa: F401, F403
 from .sources import *  # noqa: F401, F403
 from .wcs import *  # noqa: F401, F403
+
+# prevent circular imports
+# isort: off
+from .examples import *  # noqa: F401, F403

@@ -184,17 +184,17 @@ class ApertureStats:
     >>> aper = CircularAperture((150, 25), 8)
     >>> aperstats = ApertureStats(data, aper)
     >>> print(aperstats.xcentroid)  # doctest: +FLOAT_CMP
-    149.98737072209013
+    149.99080259251238
     >>> print(aperstats.ycentroid)  # doctest: +FLOAT_CMP
-    24.99729176183652
+    24.97484633000507
     >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
-    [149.98737072  24.99729176]
+    [149.99080259  24.97484633]
 
     >>> print(aperstats.mean, aperstats.median, aperstats.std) #  doctest: +FLOAT_CMP
-    46.861845146453526 33.743501730319 38.25291812758177
+    47.76300955780609 31.913789514433084 39.193655383492974
 
     >>> print(aperstats.sum)  # doctest: +FLOAT_CMP
-    9118.129697119366
+    9286.709206410273
 
     >>> print(aperstats.sum_aper_area) # doctest: +FLOAT_CMP
     201.0619298297468 pix2
@@ -203,9 +203,9 @@ class ApertureStats:
     >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
     >>> aperstats2 = ApertureStats(data, aper2)
     >>> print(aperstats2.xcentroid)  # doctest: +FLOAT_CMP
-    [149.97230436  90.00833613]
+    [149.98470724  89.97893946]
     >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
-    [ 9863.56195844 36629.52906175]
+    [10177.62548482 36653.97704059]
     """
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,

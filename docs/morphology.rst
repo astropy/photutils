@@ -51,7 +51,7 @@ Then, calculate its properties:
     label   xcentroid     ycentroid   ... semiminor_sigma  orientation
                                       ...       pix            deg
     ----- ------------- ------------- ... --------------- -------------
-        1 14.0225090502 16.9901801466 ...    3.6977761870 60.1283048753
+        1 13.9557547142 17.0049225325 ...    3.6800596993 59.6897216190
 
 
 Now let's use the measured morphological properties to define an
