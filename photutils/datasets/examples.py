@@ -7,7 +7,7 @@ documentation examples and tests.
 import pathlib
 
 import numpy as np
-from astropy.modeling import models
+from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
 from astropy.utils.data import get_pkg_data_path
 
@@ -56,7 +56,7 @@ def make_4gaussians_image(noise=True):
         plt.imshow(image, origin='lower', interpolation='nearest')
     """
     shape = (100, 200)
-    model = models.Gaussian2D()
+    model = Gaussian2D()
     params = QTable.read(_DATASETS_DATA_DIR / '4gaussians_params.ecsv',
                          format='ascii.ecsv')
     data = make_model_image(shape, model, params, xname='x_mean',
@@ -107,7 +107,7 @@ def make_100gaussians_image(noise=True):
         plt.imshow(image, origin='lower', interpolation='nearest')
     """
     shape = (300, 500)
-    model = models.Gaussian2D()
+    model = Gaussian2D()
     params = QTable.read(_DATASETS_DATA_DIR / '100gaussians_params.ecsv',
                          format='ascii.ecsv')
     data = make_model_image(shape, model, params, bbox_factor=6.0,

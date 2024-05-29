@@ -9,7 +9,8 @@ import warnings
 
 import numpy as np
 from astropy.convolution import discretize_model
-from astropy.modeling import Model, models
+from astropy.modeling import Model
+from astropy.modeling.models import Gaussian2D
 from astropy.nddata import overlap_slices
 from astropy.nddata.utils import NoOverlapError
 from astropy.table import QTable, Table
@@ -428,7 +429,7 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         ax3.imshow(image3, origin='lower', interpolation='nearest')
         ax3.set_title(r'Original image with added Poisson noise ($\mu = 5$)')
     """
-    model = models.Gaussian2D(x_stddev=1, y_stddev=1)
+    model = Gaussian2D(x_stddev=1, y_stddev=1)
 
     if 'x_stddev' in source_table.colnames:
         xstd = source_table['x_stddev']

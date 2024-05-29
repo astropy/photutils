@@ -28,7 +28,20 @@ def test_make_random_gaussians_table():
                          ('y_stddev', [1, 5]), ('theta', [0, np.pi])])
 
     table = make_random_gaussians_table(n_sources, param_ranges, seed=0)
+    assert 'flux' in table.colnames
     assert len(table) == n_sources
+
+
+def test_make_random_gaussians_table_no_stddev():
+    n_sources = 5
+    param_ranges = dict([('amplitude', [500, 1000]), ('x_mean', [0, 500]),
+                         ('y_mean', [0, 300])])
+
+    table = make_random_gaussians_table(n_sources, param_ranges, seed=0)
+    assert 'flux' in table.colnames
+    assert len(table) == n_sources
+    assert 'x_stddev' not in table.colnames
+    assert 'y_stddev' not in table.colnames
 
 
 def test_make_random_gaussians_table_flux():
