@@ -80,6 +80,10 @@ API Changes
     slightly different. The noise sigma is the same, but the pixel
     values differ. [#1760]
 
+  - The ``make_gaussian_prf_sources_image`` function is now
+    deprecated. Use the ``make_psf_test_data`` function or the new
+    ``make_model_image`` function instead. [#1762]
+
 - ``photutils.detection``
 
   - The ``sky`` keyword in ``DAOStarFinder`` and ``IRAFStarFinder`` is

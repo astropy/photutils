@@ -14,7 +14,7 @@ from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_almost_equal
 
-from photutils.datasets import make_gaussian_prf_sources_image
+from photutils.datasets import make_model_image
 from photutils.psf.epsf import EPSFBuilder, EPSFFitter
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
 from photutils.psf.models import EPSFModel, IntegratedGaussianPRF
@@ -58,7 +58,8 @@ class TestEPSFBuild:
         sources['sigma'] = np.zeros(len(xx)) + self.stddev
         sources['theta'] = 0.0
 
-        self.data = make_gaussian_prf_sources_image(shape, sources)
+        psf_model = IntegratedGaussianPRF(sigma=self.stddev)
+        self.data = make_model_image(shape, psf_model, sources)
         self.nddata = NDData(self.data)
 
         init_stars = Table()
@@ -203,7 +204,9 @@ def test_epsf_build_oversampling(oversamp):
     sources['y_0'] = y.ravel() + ydithers
     sources['sigma'] = np.full((nstars,), sigma)
 
-    data = make_gaussian_prf_sources_image((size, size), sources)
+    psf_model = IntegratedGaussianPRF(sigma=sigma)
+    shape = (size, size)
+    data = make_model_image(shape, psf_model, sources)
     nddata = NDData(data=data)
     stars_tbl = Table()
     stars_tbl['x'] = sources['x_0']

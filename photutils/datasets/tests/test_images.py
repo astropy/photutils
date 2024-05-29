@@ -52,35 +52,40 @@ def test_make_model_sources_image():
 
 
 def test_make_gaussian_sources_image(source_params):
-    shape = (100, 100)
-    image = make_gaussian_sources_image(shape, source_params)
-    assert image.shape == shape
-    assert_allclose(image.sum(), source_params['flux'].sum())
+    with pytest.warns(AstropyDeprecationWarning):
+        shape = (100, 100)
+        image = make_gaussian_sources_image(shape, source_params)
+        assert image.shape == shape
+        assert_allclose(image.sum(), source_params['flux'].sum())
 
 
 def test_make_gaussian_sources_image_amplitude(source_params):
-    params = source_params.copy()
-    params.remove_column('flux')
-    params['amplitude'] = [1, 2, 3]
-    shape = (100, 100)
-    image = make_gaussian_sources_image(shape, params)
-    assert image.shape == shape
+    with pytest.warns(AstropyDeprecationWarning):
+        params = source_params.copy()
+        params.remove_column('flux')
+        params['amplitude'] = [1, 2, 3]
+        shape = (100, 100)
+        image = make_gaussian_sources_image(shape, params)
+        assert image.shape == shape
 
 
 def test_make_gaussian_sources_image_desc_oversample(source_params):
-    shape = (100, 100)
-    image = make_gaussian_sources_image(shape, source_params, oversample=10)
-    assert image.shape == shape
-    assert_allclose(image.sum(), source_params['flux'].sum())
+    with pytest.warns(AstropyDeprecationWarning):
+        shape = (100, 100)
+        image = make_gaussian_sources_image(shape, source_params,
+                                            oversample=10)
+        assert image.shape == shape
+        assert_allclose(image.sum(), source_params['flux'].sum())
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_gaussian_prf_sources_image(source_params_prf):
-    shape = (100, 100)
-    image = make_gaussian_prf_sources_image(shape, source_params_prf)
-    assert image.shape == shape
-    flux = source_params_prf['amplitude'] * (2 * np.pi)  # sigma = 1
-    assert_allclose(image.sum(), flux.sum(), rtol=1.0e-6)
+    with pytest.warns(AstropyDeprecationWarning):
+        shape = (100, 100)
+        image = make_gaussian_prf_sources_image(shape, source_params_prf)
+        assert image.shape == shape
+        flux = source_params_prf['amplitude'] * (2 * np.pi)  # sigma = 1
+        assert_allclose(image.sum(), flux.sum(), rtol=1.0e-6)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')

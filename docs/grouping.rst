@@ -11,7 +11,7 @@ used to combine stars into optimum groups. The stars in each group are
 usually defined as those close enough together such that they need to be
 fit simultaneously, i.e., their profiles overlap.
 
-Stetson, in his seminal paper (`Stetson 1987, PASP 99, 191
+Stetson (`1987, PASP 99, 191
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_),
 provided a simple and powerful grouping algorithm to decide whether
 the profile of a given star extends into the fitting region of any
@@ -30,61 +30,54 @@ class to group stars. The groups are formed using hierarchical
 agglomerative clustering with a distance criterion, calling the
 `scipy.cluster.hierarchy.fclusterdata` function.
 
-First, let's make some Gaussian sources using
-`~photutils.datasets.make_random_gaussians_table` and
-`~photutils.datasets.make_gaussian_sources_image`. The former will
-return a `~astropy.table.Table` containing parameters for 2D Gaussian
-sources and the latter will make an actual image using that table::
+First, let's create a simulated image containing 2D Gaussian sources
+using `~photutils.datasets.make_test_psf_data`.
 
-    >>> from photutils.datasets import (make_gaussian_sources_image,
-    ...                                 make_random_gaussians_table)
-    >>> n_sources = 100
-    >>> size = 256
-    >>> bounds = [6, 250]
-    >>> sigma_psf = 2.0
-    >>> params = {'flux': [500, 5000],
-    ...          'x_mean': bounds,
-    ...          'y_mean': bounds,
-    ...          'x_stddev': [sigma_psf, sigma_psf],
-    ...          'y_stddev': [sigma_psf, sigma_psf],
-    ...          'theta': [0, 0]}
-    >>> stars = make_random_gaussians_table(n_sources, params, seed=123)
-    >>> shape = (size, size)
-    >>> data = make_gaussian_sources_image(shape, stars)
+.. doctest-requires:: scipy
 
-``stars`` is an astropy `~astropy.table.Table` of parameters defining
-the position and shape of the stars.
+    >>> from photutils.datasets import make_test_psf_data
+    >>> from photutils.psf import IntegratedGaussianPRF
+    >>> shape = (256, 256)
+    >>> sigma = 2.0
+    >>> psf_model = IntegratedGaussianPRF(sigma=sigma)
+    >>> psf_shape = (11, 11)
+    >>> nsources = 100
+    >>> flux_range = (500, 1000)
+    >>> border_size = (7, 7)
+    >>> data, stars = make_test_psf_data(shape, psf_model, psf_shape, nsources,
+    ...                                  flux_range=flux_range,
+    ...                                  border_size=border_size, seed=123)
 
 Let's display the image:
 
 .. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
+    >>> plt.figure(figsize=(8, 8))
     >>> plt.imshow(data, origin='lower', interpolation='nearest')
 
 .. plot::
 
     import matplotlib.pyplot as plt
-    import numpy as np
-    from photutils.datasets import (make_gaussian_sources_image,
-                                    make_random_gaussians_table)
-
-    n_sources = 100
-    size = 256
-    bounds = [6, 250]
-    sigma_psf = 2.0
-    params = {'flux': [500, 5000],
-              'x_mean': bounds,
-              'y_mean': bounds,
-              'x_stddev': [sigma_psf, sigma_psf],
-              'y_stddev': [sigma_psf, sigma_psf],
-              'theta': [0, 0]}
-    stars = make_random_gaussians_table(n_sources, params, seed=123)
-    shape = (size, size)
-    data = make_gaussian_sources_image(shape, stars)
-
+    from photutils.datasets import make_test_psf_data
+    from photutils.psf import IntegratedGaussianPRF
+    shape = (256, 256)
+    sigma = 2.0
+    psf_model = IntegratedGaussianPRF(sigma=sigma)
+    psf_shape = (11, 11)
+    nsources = 100
+    flux_range = (500, 1000)
+    border_size = (7, 7)
+    data, stars = make_test_psf_data(shape, psf_model, psf_shape, nsources,
+                                     flux_range=flux_range,
+                                     border_size=border_size, seed=123)
+    plt.figure(figsize=(8, 8))
     plt.imshow(data, origin='lower', interpolation='nearest')
     plt.show()
+
+The ``make_test_psf_data`` function returns the simulated image
+(``data``) and a table of the star positions and fluxes (``stars``). The
+star positions are stored in the 'x' and 'y' columns of the table.
 
 Now, let's find the stellar groups. We start by creating
 a `~photutils.psf.SourceGrouper` object. Here we set the
@@ -97,7 +90,7 @@ profiles.
 
     >>> from astropy.stats import gaussian_sigma_to_fwhm
     >>> from photutils.psf import SourceGrouper
-    >>> fwhm = sigma_psf * gaussian_sigma_to_fwhm
+    >>> fwhm = sigma * gaussian_sigma_to_fwhm
     >>> min_separation = 2.5 * fwhm
     >>> grouper = SourceGrouper(min_separation)
 
@@ -109,8 +102,8 @@ to find the sources.
 .. doctest-requires:: scipy
 
    >>> import numpy as np
-   >>> x = np.array(stars['x_mean'])
-   >>> y = np.array(stars['y_mean'])
+   >>> x = np.array(stars['x'])
+   >>> y = np.array(stars['y'])
    >>> groups = grouper(x, y)
 
 The ``groups`` output is an array of integers (ordered the same as the
@@ -123,7 +116,7 @@ For example, to find all the stars in group 3:
 
    >>> mask = groups == 3
    >>> x[mask], y[mask]
-   (array([215.49777086, 224.48346981]), array([108.91763388, 111.12429701]))
+   (array([60.32708921, 58.73063714]), array([147.24184586, 158.0612346 ]))
 
 Here the grouping algorithm separated the 100 stars into 65 distinct groups:
 
@@ -147,7 +140,7 @@ the same group have the same aperture color:
     >>>     mask = groups == i
     >>>     xypos = zip(x[mask], y[mask])
     >>>     ap = CircularAperture(xypos, r=fwhm)
-    >>>     ap.plot(color=cmap.colors[i])
+    >>>     ap.plot(color=cmap.colors[i], lw=2)
     >>> plt.show()
 
 .. plot::
@@ -156,40 +149,37 @@ the same group have the same aperture color:
     import numpy as np
     from astropy.stats import gaussian_sigma_to_fwhm
     from photutils.aperture import CircularAperture
-    from photutils.datasets import (make_gaussian_sources_image,
-                                    make_random_gaussians_table)
-    from photutils.psf import SourceGrouper
+    from photutils.datasets import make_test_psf_data
+    from photutils.psf import IntegratedGaussianPRF, SourceGrouper
     from photutils.utils import make_random_cmap
 
-    n_sources = 100
-    size = 256
-    bounds = [6, 250]
-    sigma_psf = 2.0
-    params = {'flux': [500, 5000],
-            'x_mean': bounds,
-            'y_mean': bounds,
-            'x_stddev': [sigma_psf, sigma_psf],
-            'y_stddev': [sigma_psf, sigma_psf],
-            'theta': [0, 0]}
-    stars = make_random_gaussians_table(n_sources, params, seed=123)
-    shape = (size, size)
-    data = make_gaussian_sources_image(shape, stars)
+    shape = (256, 256)
+    psf_shape = (11, 11)
+    border_size = (6, 6)
+    flux_range = (500, 1000)
+    sigma = 2.0
+    psf_model = IntegratedGaussianPRF(sigma=sigma)
+    nsources = 100
+    data, stars = make_test_psf_data(shape, psf_model, psf_shape, nsources,
+                                     flux_range=flux_range,
+                                     border_size=border_size, seed=123)
 
-    fwhm = sigma_psf * gaussian_sigma_to_fwhm
+    fwhm = sigma * gaussian_sigma_to_fwhm
     min_separation = 2.5 * fwhm
     grouper = SourceGrouper(min_separation)
-    x = np.array(stars['x_mean'])
-    y = np.array(stars['y_mean'])
+
+    x = np.array(stars['x'])
+    y = np.array(stars['y'])
     groups = grouper(x, y)
 
-    plt.imshow(data, origin='lower', interpolation='nearest',
-            cmap='Greys_r')
+    plt.figure(figsize=(8, 8))
+    plt.imshow(data, origin='lower', interpolation='nearest', cmap='Greys_r')
     cmap = make_random_cmap(seed=123)
-    for i in np.arange(1, max(groups) + 1):
+    for i in np.arange(1, max(groups)):
         mask = groups == i
         xypos = zip(x[mask], y[mask])
         ap = CircularAperture(xypos, r=fwhm)
-        ap.plot(color=cmap.colors[i])
+        ap.plot(color=cmap.colors[i], lw=2)
 
     plt.show()
 

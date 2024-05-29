@@ -8,6 +8,7 @@ import numpy as np
 from astropy import coordinates as coord
 from astropy.io import fits
 from astropy.modeling import models
+from astropy.utils.decorators import deprecated
 from astropy.wcs import WCS
 
 __all__ = ['make_wcs', 'make_gwcs', 'make_imagehdu']
@@ -155,6 +156,7 @@ def make_gwcs(shape, galactic=False):
     return gwcs_wcs.WCS(pipeline)
 
 
+@deprecated('1.13.0')
 def make_imagehdu(data, wcs=None):
     """
     Create a FITS `~astropy.io.fits.ImageHDU` containing the input 2D
@@ -173,20 +175,6 @@ def make_imagehdu(data, wcs=None):
     -------
     image_hdu : `~astropy.io.fits.ImageHDU`
         The FITS `~astropy.io.fits.ImageHDU`.
-
-    See Also
-    --------
-    make_wcs
-
-    Examples
-    --------
-    >>> from photutils.datasets import make_imagehdu, make_wcs
-    >>> shape = (100, 100)
-    >>> data = np.ones(shape)
-    >>> wcs = make_wcs(shape)
-    >>> hdu = make_imagehdu(data, wcs=wcs)
-    >>> print(hdu.data.shape)
-    (100, 100)
     """
     data = np.asanyarray(data)
     if data.ndim != 2:
