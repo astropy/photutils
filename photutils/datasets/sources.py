@@ -37,7 +37,7 @@ def make_model_params(shape, n_sources, flux_range, *, min_separation=1,
         given ``shape`` and therefore the number of sources generated
         may be less than ``n_sources``.
 
-    flux_range : tuple
+    flux_range : 2-tuple
         The lower and upper bounds of the flux range. The fluxes will be
         uniformly distributed between these bounds.
 
