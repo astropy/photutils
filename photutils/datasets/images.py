@@ -456,6 +456,7 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
                             yname='y_mean', discretize_oversample=oversample)
 
 
+@deprecated('1.13.0', alternative='make_test_psf_data')
 def make_gaussian_prf_sources_image(shape, source_table):
     r"""
     Make an image containing 2D Gaussian sources.
