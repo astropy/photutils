@@ -49,11 +49,14 @@ Bug Fixes
 
 - ``photutils.psf``
 
-  - Fixed an where ``IterativePSFPhotometry`` would fail if the input
-    data was a ``Quantity`` array. [#1746]
+  - Fixed an issue where ``IterativePSFPhotometry`` would fail if the
+    input data was a ``Quantity`` array. [#1746]
 
   - Fixed the ``IntegratedGaussianPRF`` class ``bounding_box`` limits to
     always be symmetric. [#1754]
+
+  - Fixed an issue where ``IterativePSFPhotometry`` could sometimes fail
+    to merge tables when ``mode='all'``. [#1761]
 
 API Changes
 ^^^^^^^^^^^

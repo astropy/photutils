@@ -1570,6 +1570,7 @@ class IterativePSFPhotometry(ModelImageMixin):
                 orig_sources.rename_column('x_fit', xcol)
                 orig_sources.rename_column('y_fit', ycol)
                 orig_sources.rename_column('flux_fit', fluxcol)
+                new_sources.meta.pop('date', None)  # prevent merge conflicts
                 init_params = vstack([orig_sources, new_sources])
 
                 residual_data = data
