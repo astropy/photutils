@@ -7,6 +7,7 @@ model parameters.
 import numpy as np
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
+from astropy.utils.decorators import deprecated
 
 from photutils.utils._misc import _get_meta
 
@@ -45,7 +46,8 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
         A table of parameters for the randomly generated sources. Each
         row of the table corresponds to a source whose model parameters
         are defined by the column names. The column names will be the
-        keys of the dictionary ``param_ranges``.
+        keys of the dictionary ``param_ranges``. The table will also
+        contain an ``'id'`` column with unique source IDs.
 
     See Also
     --------
@@ -72,18 +74,19 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     >>> for col in sources.colnames:
     ...     sources[col].info.format = '%.8g'  # for consistent table output
     >>> print(sources)
-    amplitude   x_mean    y_mean    x_stddev  y_stddev   theta
-    --------- --------- ---------- --------- --------- ---------
-    818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586
-    634.89336 303.31789 0.82155005 4.4527157 1.4971331 3.1328274
-    520.48676 364.74828  257.22128 3.1658449 3.6824977 3.0813851
-    508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937
-    906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781
+     id amplitude   x_mean    y_mean    x_stddev  y_stddev   theta
+    --- --------- --------- ---------- --------- --------- ---------
+      1 818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586
+      2 634.89336 303.31789 0.82155005 4.4527157 1.4971331 3.1328274
+      3 520.48676 364.74828  257.22128 3.1658449 3.6824977 3.0813851
+      4 508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937
+      5 906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781
     """
     rng = np.random.default_rng(seed)
 
     sources = QTable()
     sources.meta.update(_get_meta())  # keep sources.meta type
+    sources['id'] = np.arange(n_sources) + 1
     for param_name, (lower, upper) in param_ranges.items():
         # Generate a column for every item in param_ranges, even if it
         # is not in the model (e.g., flux).
@@ -92,6 +95,7 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     return sources
 
 
+@deprecated('1.13.0', alternative='make_random_models_table')
 def make_random_gaussians_table(n_sources, param_ranges, seed=None):
     """
     Make a `~astropy.table.QTable` containing randomly generated
@@ -148,54 +152,6 @@ def make_random_gaussians_table(n_sources, param_ranges, seed=None):
     To generate identical parameter values from separate function
     calls, ``param_ranges`` must have the same parameter ranges and the
     ``seed`` must be the same.
-
-    Examples
-    --------
-    >>> from photutils.datasets import make_random_gaussians_table
-    >>> n_sources = 5
-    >>> param_ranges = {'amplitude': [500, 1000],
-    ...                 'x_mean': [0, 500],
-    ...                 'y_mean': [0, 300],
-    ...                 'x_stddev': [1, 5],
-    ...                 'y_stddev': [1, 5],
-    ...                 'theta': [0, np.pi]}
-    >>> sources = make_random_gaussians_table(n_sources, param_ranges,
-    ...                                       seed=0)
-    >>> for col in sources.colnames:
-    ...     sources[col].info.format = '%.8g'  # for consistent table output
-    >>> print(sources)
-    amplitude   x_mean    y_mean    x_stddev  y_stddev   theta      flux
-    --------- --------- ---------- --------- --------- --------- ---------
-    818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586 9747.8906
-    634.89336 303.31789 0.82155005 4.4527157 1.4971331 3.1328274  26592.92
-    520.48676 364.74828  257.22128 3.1658449 3.6824977 3.0813851 38126.037
-    508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937 25200.454
-    906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781 53058.502
-
-    To specify the flux range instead of the amplitude range:
-
-    >>> param_ranges = {'flux': [500, 1000],
-    ...                 'x_mean': [0, 500],
-    ...                 'y_mean': [0, 300],
-    ...                 'x_stddev': [1, 5],
-    ...                 'y_stddev': [1, 5],
-    ...                 'theta': [0, np.pi]}
-    >>> sources = make_random_gaussians_table(n_sources, param_ranges,
-    ...                                       seed=0)
-    >>> for col in sources.colnames:
-    ...     sources[col].info.format = '%.8g'  # for consistent table output
-    >>> print(sources)
-       flux     x_mean    y_mean    x_stddev  y_stddev   theta   amplitude
-    --------- --------- ---------- --------- --------- --------- ---------
-    818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586 68.723678
-    634.89336 303.31789 0.82155005 4.4527157 1.4971331 3.1328274 15.157778
-    520.48676 364.74828  257.22128 3.1658449 3.6824977 3.0813851 7.1055501
-    508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937 10.251089
-    906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781 15.492093
-
-    Note that in this case the output table contains both a flux and
-    amplitude column. The flux column will be ignored when generating an
-    image of the models using :func:`make_gaussian_sources_image`.
     """
     sources = make_random_models_table(n_sources, param_ranges,
                                        seed=seed)
