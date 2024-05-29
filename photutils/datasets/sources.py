@@ -9,9 +9,84 @@ from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
 from astropy.utils.decorators import deprecated
 
+from photutils.utils._coords import make_random_xycoords
 from photutils.utils._misc import _get_meta
+from photutils.utils._parameters import as_pair
 
-__all__ = ['make_random_models_table', 'make_random_gaussians_table']
+__all__ = ['make_model_params', 'make_random_models_table',
+           'make_random_gaussians_table']
+
+
+def make_model_params(shape, n_sources, flux_range, *, min_separation=1,
+                      border_size=(0, 0), seed=0):
+    """
+    Make a table of randomly generated model positions and fluxes for
+    simulated sources.
+
+    This function computes only a table of (x_0, y_0, flux) parameters
+    of the sources.
+
+    Parameters
+    ----------
+    shape : 2-tuple of int
+        The shape of the output image.
+
+    n_sources : int
+        The number of sources to generate. If ``min_separation`` is too
+        large, the number of requested sources may not fit within the
+        given ``shape`` and therefore the number of sources generated
+        may be less than ``n_sources``.
+
+    flux_range : tuple
+        The lower and upper bounds of the flux range. The fluxes will be
+        uniformly distributed between these bounds.
+
+    min_separation : float, optional
+        The minimum separation between the centers of two sources. Note
+        that if the minimum separation is too large, the number of
+        sources generated may be less than ``n_sources``.
+
+    border_size : tuple of 2 int or int, optional
+        The (ny, nx) size of the border around the image where no
+        sources will be generated (i.e., the source center will not be
+        located within the border). If a single integer is provided, it
+        will be used for both dimensions.
+
+    seed : int, optional
+        A seed to initialize the `numpy.random.BitGenerator`. If `None`,
+        then fresh, unpredictable entropy will be pulled from the OS.
+
+    Returns
+    -------
+    table : `~astropy.table.QTable`
+        A table containing the (x_0, y_0, flux) parameters of the
+        generated sources. The table will also contain an ``'id'``
+        column with unique source IDs.
+    """
+    shape = as_pair('shape', shape, lower_bound=(0, 1))
+    border_size = as_pair('border_size', border_size, lower_bound=(0, 0))
+
+    xrange = (border_size[1], shape[1] - border_size[1])
+    yrange = (border_size[0], shape[0] - border_size[0])
+
+    if xrange[0] >= xrange[1] or yrange[0] >= yrange[1]:
+        raise ValueError('border_size is too large for the given shape')
+
+    xycoords = make_random_xycoords(n_sources, xrange, yrange,
+                                    min_separation=min_separation,
+                                    seed=seed)
+    x, y = np.transpose(xycoords)
+
+    rng = np.random.default_rng(seed)
+    flux = rng.uniform(flux_range[0], flux_range[1], len(x))
+
+    params = QTable()
+    params['id'] = np.arange(len(x)) + 1
+    params['x_0'] = x
+    params['y_0'] = y
+    params['flux'] = flux
+
+    return params
 
 
 def make_random_models_table(n_sources, param_ranges, seed=None):
