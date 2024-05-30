@@ -426,11 +426,12 @@ class PSFPhotometry(ModelImageMixin):
         A dictionary of column names for the initial x, y, and flux values
         reported in the output table.
         """
+        suffix = '_init'
         init_colnames = {}
-        init_colnames['x'] = 'x_init'
-        init_colnames['y'] = 'y_init'
-        init_colnames['flux'] = 'flux_init'
-        init_colnames['suffix'] = '_init'
+        init_colnames['suffix'] = suffix
+        init_colnames['x'] = f'x{suffix}'
+        init_colnames['y'] = f'y{suffix}'
+        init_colnames['flux'] = f'flux{suffix}'
         return init_colnames
 
     @lazyproperty
@@ -441,25 +442,32 @@ class PSFPhotometry(ModelImageMixin):
 
         These lists are searched in order.
         """
-        xy_suffixes = ('_init', 'init', 'centroid', '_centroid', '_peak', '',
-                       'cen', '_cen', 'pos', '_pos', '_0', '0')
+        xy_suffixes = ('_init', 'init', '', '_0', '0', 'centroid',
+                       '_centroid', '_peak', 'cen', '_cen', 'pos', '_pos')
         x_valid = ['x' + i for i in xy_suffixes]
         y_valid = ['y' + i for i in xy_suffixes]
 
         valid_colnames = {}
         valid_colnames['x'] = x_valid
         valid_colnames['y'] = y_valid
-        valid_colnames['flux'] = ('flux_init', 'flux_0', 'flux0', 'flux',
-                                  'source_sum', 'segment_flux', 'kron_flux')
+        valid_colnames['flux'] = ('flux_init', 'fluxinit', 'flux', 'flux_0',
+                                  'flux0', 'source_sum', 'segment_flux',
+                                  'kron_flux')
 
         return valid_colnames
 
     def _find_column_name(self, key, colnames):
+        """
+        Find the first valid matching column name for x, y, or flux
+        (defined by `_valid_colnames` in the input ``init_params``
+        table).
+        """
         name = ''
         valid_names = self._valid_colnames[key]
         for valid_name in valid_names:
             if valid_name in colnames:
                 name = valid_name
+                break
         return name
 
     def _validate_init_params(self, init_params, flux_unit):

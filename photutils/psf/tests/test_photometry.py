@@ -456,6 +456,21 @@ def test_psf_photometry_init_params(test_data):
     with pytest.raises(ValueError, match=match):
         _ = psfphot(data, init_params=init_params)
 
+    # check that the first matching column name is used
+    init_params = QTable()
+    init_params['x'] = [42]
+    init_params['y'] = [36]
+    init_params['flux'] = [680]
+    init_params['x_cen'] = [42.1]
+    init_params['y_cen'] = [36.1]
+    init_params['flux0'] = [680.1]
+    phot = psfphot(data, error=error, init_params=init_params)
+    assert isinstance(phot, QTable)
+    assert len(phot) == 1
+    assert phot['x_init'][0] == 42
+    assert phot['y_init'][0] == 36
+    assert phot['flux_init'][0] == 680
+
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_init_params_columns(test_data):
