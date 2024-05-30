@@ -313,22 +313,25 @@ class PSFPhotometry(ModelImageMixin):
     def _psf_param_names(self):
         """
         The PSF model parameters corresponding to x, y, and flux.
+
+        The parameter options are checked together as a unit in the
+        following order:
+
+            * ('x_0', 'y_0', 'flux') parameters
+            * ('x_name', 'y_name', 'flux_name') attributes
+            * ('xname', 'yname', 'fluxname') (deprecated) attributes
         """
         params1 = ('x_0', 'y_0', 'flux')
         params2 = ('x_name', 'y_name', 'flux_name')
         params3 = ('xname', 'yname', 'fluxname')  # deprecated
         if all(name in self.psf_model.param_names for name in params1):
             model_params = params1
-        elif all(hasattr(self.psf_model, name) for name in params2):
-            model_params = []
-            for name in params2:
-                model_params.append(getattr(self.psf_model, name))
-            model_params = tuple(model_params)
-        elif all(hasattr(self.psf_model, name) for name in params3):
-            model_params = []
-            for name in params3:
-                model_params.append(getattr(self.psf_model, name))
-            model_params = tuple(model_params)
+        elif all(params := [getattr(self.psf_model, name, None)
+                            for name in params2]):
+            model_params = tuple(params)
+        elif all(params := [getattr(self.psf_model, name, None)
+                            for name in params3]):
+            model_params = tuple(params)
         else:
             msg = 'Invalid PSF model - could not find PSF parameter names.'
             raise ValueError(msg)
@@ -352,11 +355,8 @@ class PSFPhotometry(ModelImageMixin):
         PSF model parameters that are fit, but do not correspond to x,
         y, or flux.
         """
-        extra_params = []
-        for key in self._fitted_psf_param_names:
-            if key not in self._psf_param_names:
-                extra_params.append(key)
-        return extra_params
+        return list(set(self._fitted_psf_param_names)
+                    - set(self._psf_param_names))
 
     def _validate_psf_model(self):
         """
