@@ -72,13 +72,13 @@ def make_model_params(shape, n_sources, flux_range, *, min_separation=1,
     if xrange[0] >= xrange[1] or yrange[0] >= yrange[1]:
         raise ValueError('border_size is too large for the given shape')
 
+    rng = np.random.default_rng(seed)
     xycoords = make_random_xycoords(n_sources, xrange, yrange,
                                     min_separation=min_separation,
-                                    seed=seed)
+                                    seed=rng)
     x, y = np.transpose(xycoords)
 
-    rng = np.random.default_rng(seed)
-    flux = rng.uniform(flux_range[0], flux_range[1], len(x))
+    flux = rng.uniform(flux_range[0], flux_range[1], size=len(x))
 
     params = QTable()
     params['id'] = np.arange(len(x)) + 1
