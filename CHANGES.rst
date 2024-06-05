@@ -39,6 +39,10 @@ New Features
   - Added an ``include_localbkg`` keyword to the ``IterativePSFPhotometry``
     ``make_model_image`` and ``make_residual_image`` methods. [#1756]
 
+  - Added "x_fit", "xfit", "y_fit", "yfit", "flux_fit", and "fluxfit" as
+    allowed column names in the ``init_params`` table input to the PSF
+    photometry objects. [#1765]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -57,6 +61,10 @@ Bug Fixes
 
   - Fixed an issue where ``IterativePSFPhotometry`` could sometimes fail
     to merge tables when ``mode='all'``. [#1761]
+
+  - Fixed a bug where the first matching column in the ``init_params``
+    table was not used in ``PSFPhotometry`` and
+    ``IterativePSFPhotometry``. [#1765]
 
 API Changes
 ^^^^^^^^^^^
