@@ -14,6 +14,9 @@ New Features
     and is significantly faster than the now-deprecated
     ``make_model_sources_image`` function. [#1759]
 
+  - Added a ``make_model_params`` function to make a table of randomly
+    generated model positions and fluxes for simulated sources. [#1766]
+
 - ``photutils.detection``
 
   - The ``find_peaks`` function now supports input arrays with units.

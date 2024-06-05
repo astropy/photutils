@@ -28,7 +28,7 @@ __all__ = ['make_model_image', 'make_model_sources_image',
 
 
 def make_model_image(shape, model, params_table, *, model_shape=None,
-                     bbox_factor=None, xname='x_0', yname='y_0',
+                     bbox_factor=None, x_name='x_0', y_name='y_0',
                      discretize_method='center', discretize_oversample=10,
                      progress_bar=False):
     """
@@ -49,7 +49,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         has 1 output. The model must have parameters for the x and y
         positions of the sources. Typically, these parameters are named
         'x_0' and 'y_0', but the parameter names can be specified using
-        the ``xname`` and ``yname`` keywords.
+        the ``x_name`` and ``y_name`` keywords.
 
     params_table : `~astropy.table.Table`
         A table containing the model parameters for each source. Each
@@ -57,7 +57,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         are defined by the column names, which must match the model
         parameter names. The table must contain columns for the x and
         y positions of the sources. The column names for the x and y
-        positions can be specified using the ``xname`` and ``yname``
+        positions can be specified using the ``x_name`` and ``y_name``
         keywords. Model parameters not defined in the table will be set
         to the ``model`` default value. Any units in the table will be
         ignored.
@@ -98,12 +98,12 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         ``model_shape`` is specified or if the ``params_table`` contains
         a ``'model_shape'`` column.
 
-    xname : str, optional
+    x_name : str, optional
         The name of the ``model`` parameter that corresponds to the x
         position of the sources. This parameter must also be a column
         name in ``params_table``.
 
-    yname : str, optional
+    y_name : str, optional
         The name of the ``model`` parameter that corresponds to the y
         position of the sources. This parameter must also be a column
         name in ``params_table``.
@@ -193,17 +193,17 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         raise ValueError('model must be a Model instance')
     if model.n_inputs != 2 or model.n_outputs != 1:
         raise ValueError('model must be a 2D model')
-    if xname not in model.param_names:
-        raise ValueError(f'xname "{xname}" not in model parameter names')
-    if yname not in model.param_names:
-        raise ValueError(f'yname "{yname}" not in model parameter names')
+    if x_name not in model.param_names:
+        raise ValueError(f'x_name "{x_name}" not in model parameter names')
+    if y_name not in model.param_names:
+        raise ValueError(f'y_name "{y_name}" not in model parameter names')
 
     if not isinstance(params_table, Table):
         raise ValueError('params_table must be an astropy Table')
-    if xname not in params_table.colnames:
-        raise ValueError(f'xname "{xname}" not in psf_params column names')
-    if yname not in params_table.colnames:
-        raise ValueError(f'yname "{yname}" not in psf_params column names')
+    if x_name not in params_table.colnames:
+        raise ValueError(f'x_name "{x_name}" not in psf_params column names')
+    if y_name not in params_table.colnames:
+        raise ValueError(f'y_name "{y_name}" not in psf_params column names')
 
     if model_shape is not None:
         model_shape = as_pair('model_shape', model_shape, lower_bound=(0, 1))
@@ -243,8 +243,8 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         for param in params_to_set:
             setattr(model, param, source[param])
 
-        x0 = getattr(model, xname).value
-        y0 = getattr(model, yname).value
+        x0 = getattr(model, x_name).value
+        y0 = getattr(model, y_name).value
 
         if variable_shape:
             mod_shape = model_shape[i]
@@ -446,8 +446,8 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         source_table['amplitude'] = (source_table['flux']
                                      / (2.0 * np.pi * xstd * ystd))
 
-    return make_model_image(shape, model, source_table, xname='x_mean',
-                            yname='y_mean', discretize_oversample=oversample)
+    return make_model_image(shape, model, source_table, x_name='x_mean',
+                            y_name='y_mean', discretize_oversample=oversample)
 
 
 @deprecated('1.13.0', alternative='make_test_psf_data')

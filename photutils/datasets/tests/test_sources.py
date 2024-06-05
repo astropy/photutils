@@ -5,10 +5,37 @@ Tests for the sources module.
 
 import numpy as np
 import pytest
+from astropy.table import Table
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
-from photutils.datasets import (make_random_gaussians_table,
+from photutils.datasets import (make_model_params, make_random_gaussians_table,
                                 make_random_models_table)
+from photutils.utils._optional_deps import HAS_SCIPY
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_make_model_params():
+    shape = (100, 100)
+    n_sources = 10
+    flux_range = (100, 1000)
+    params = make_model_params(shape, n_sources, flux_range)
+    assert isinstance(params, Table)
+    assert len(params) == 10
+    cols = ('id', 'x_0', 'y_0', 'flux')
+    for col in cols:
+        assert col in params.colnames
+        assert np.min(params[col]) >= 0
+    assert np.min(params['flux']) >= flux_range[0]
+    assert np.max(params['flux']) <= flux_range[1]
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_make_model_params_border_size():
+    shape = (10, 10)
+    n_sources = 10
+    flux_range = (100, 1000)
+    with pytest.raises(ValueError):
+        make_model_params(shape, n_sources, flux_range, border_size=20)
 
 
 def test_make_random_models_table():

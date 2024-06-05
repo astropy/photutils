@@ -182,7 +182,7 @@ class PSFPhotometry(ModelImageMixin):
         named ``x_0``, ``y_0``, and ``flux``, corresponding to the
         center (x, y) position and flux, or it must have 'x_name',
         'y_name', and 'flux_name' attributes that map to the x, y, and
-        flux parameters (i.e., a model output from `prepare_psf_model`).
+        flux parameters (i.e., a model output from `make_psf_model`).
         The model must be two-dimensional such that it accepts 2 inputs
         (e.g., x and y) and provides 1 output.
 
@@ -367,7 +367,7 @@ class PSFPhotometry(ModelImageMixin):
 
         The PSF model must have parameters called 'x_0', 'y_0', and
         'flux' or it must have 'x_name', 'y_name', and 'flux_name'
-        attributes (i.e., output from `prepare_psf_model`). Otherwise, a
+        attributes (i.e., output from `make_psf_model`). Otherwise, a
         `ValueError` is raised.
         """
         if not isinstance(self.psf_model, Model):
@@ -1271,7 +1271,7 @@ class IterativePSFPhotometry(ModelImageMixin):
         named ``x_0``, ``y_0``, and ``flux``, corresponding to the
         center (x, y) position and flux, or it must have 'x_name',
         'y_name', and 'flux_name' attributes that map to the x, y, and
-        flux parameters (i.e., a model output from `prepare_psf_model`).
+        flux parameters (i.e., a model output from `make_psf_model`).
         The model must be two-dimensional such that it accepts 2 inputs
         (e.g., x and y) and provides 1 output.
 

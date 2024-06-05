@@ -75,7 +75,9 @@ def make_random_xycoords(size, x_range, y_range, min_separation=0.0,
     xycoords = xycoords[:size]
 
     if len(xycoords) < size:
-        warnings.warn(f'Unable to produce {size!r} coordinates.',
+        warnings.warn(f'Unable to produce {size!r} coordinates within the '
+                      'given shape and minimum separation. Only '
+                      f'{len(xycoords)!r} coordinates were generated.',
                       AstropyUserWarning)
 
     return xycoords

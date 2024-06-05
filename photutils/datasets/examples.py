@@ -59,8 +59,8 @@ def make_4gaussians_image(noise=True):
     model = Gaussian2D()
     params = QTable.read(_DATASETS_DATA_DIR / '4gaussians_params.ecsv',
                          format='ascii.ecsv')
-    data = make_model_image(shape, model, params, xname='x_mean',
-                            yname='y_mean')
+    data = make_model_image(shape, model, params, x_name='x_mean',
+                            y_name='y_mean')
     data += 5.0  # background
 
     if noise:
@@ -111,7 +111,7 @@ def make_100gaussians_image(noise=True):
     params = QTable.read(_DATASETS_DATA_DIR / '100gaussians_params.ecsv',
                          format='ascii.ecsv')
     data = make_model_image(shape, model, params, bbox_factor=6.0,
-                            xname='x_mean', yname='y_mean')
+                            x_name='x_mean', y_name='y_mean')
     data += 5.0  # background
 
     if noise:
