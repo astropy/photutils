@@ -1497,6 +1497,110 @@ class IterativePSFPhotometry(ModelImageMixin):
             warnings.warn_explicit(warning.message, warning.category,
                                    warning.filename, warning.lineno)
 
+    def _convert_finder_to_init(self, sources):
+        """
+        Convert the output of the finder to a table with initial (x, y)
+        position column names
+        """
+        xcol = self._psfphot._init_colnames['x']
+        ycol = self._psfphot._init_colnames['y']
+        sources = sources['xcentroid', 'ycentroid']
+        sources.rename_column('xcentroid', xcol)
+        sources.rename_column('ycentroid', ycol)
+        return sources
+
+    def _measure_init_fluxes(self, data, mask, sources):
+        """
+        Measure initial fluxes for the new sources from the
+        residual data.
+
+        The fluxes are added in place to the input ``sources`` table.
+
+        The fluxes are measured using aperture photometry with a
+        circular aperture of radius ``aperture_radius``.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D array on which to perform photometry.
+
+        mask : 2D bool `~numpy.ndarray`
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.
+
+        sources : `~astropy.table.Table`
+            A table containing the initial (x, y) positions of the
+            sources.
+
+        Returns
+        -------
+        sources : `~astropy.table.Table`
+            The input ``sources`` table with the new flux column added.
+        """
+        flux = self._psfphot._get_aper_fluxes(data, mask, sources)
+        unit = getattr(data, 'unit', None)
+        if unit is not None:
+            flux <<= unit
+        fluxcol = self._psfphot._init_colnames['flux']
+        sources[fluxcol] = flux
+        return sources
+
+    def _create_init_params(self, data, mask, new_sources, orig_sources):
+        """
+        Create the initial parameters table by combining the original
+        and new sources.
+        """
+        # add initial fluxes for the new sources from the residual data
+        new_sources = self._measure_init_fluxes(data, mask, new_sources)
+
+        # use the init_params column names
+        orig_sources = orig_sources['x_fit', 'y_fit', 'flux_fit']
+        xcol = self._psfphot._init_colnames['x']
+        ycol = self._psfphot._init_colnames['y']
+        fluxcol = self._psfphot._init_colnames['flux']
+        orig_sources.rename_column('x_fit', xcol)
+        orig_sources.rename_column('y_fit', ycol)
+        orig_sources.rename_column('flux_fit', fluxcol)
+
+        # combine original and new source tables
+        new_sources.meta.pop('date', None)  # prevent merge conflicts
+        return vstack([orig_sources, new_sources])
+
+    @staticmethod
+    def _move_column(colname, colname_after, table):
+        """
+        Move a column to a new position in a table.
+
+        The table is modified in place.
+
+        Parameters
+        ----------
+        colname : str
+            The column name to move.
+
+        colname_after : str
+            The column name after which to place the moved column.
+
+        table : `~astropy.table.Table`
+            The input table.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            The input table with the column moved.
+        """
+        # re-order 'iter_detected' column
+        colname = 'iter_detected'
+        colname_after = 'group_id'
+        if colname in table.colnames:
+            colnames = table.colnames
+            old_index = colnames.index(colname)
+            new_index = colnames.index(colname_after) + 1
+            colnames.insert(new_index, colnames.pop(old_index))
+            table = table[colnames]
+        return table
+
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         """
         Perform PSF photometry.
@@ -1610,7 +1714,8 @@ class IterativePSFPhotometry(ModelImageMixin):
                 residual_data = self._psfphot.make_residual_image(
                     residual_data, self.sub_shape)
 
-                # do not warn if no sources are found beyond the first iteration
+                # do not warn if no sources are found beyond the first
+                #  iteration
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', NoDetectionsWarning)
 
@@ -1619,33 +1724,16 @@ class IterativePSFPhotometry(ModelImageMixin):
                     if new_sources is None:  # no new sources detected
                         break
 
-                xcol = self._psfphot._init_colnames['x']
-                ycol = self._psfphot._init_colnames['y']
-                new_sources = new_sources['xcentroid', 'ycentroid']
-                new_sources.rename_column('xcentroid', xcol)
-                new_sources.rename_column('ycentroid', ycol)
-                iter_det = np.ones(len(new_sources), dtype=int) * iter_num
-                iter_detected = np.concatenate((iter_detected, iter_det))
+                new_sources = self._convert_finder_to_init(new_sources)
+
+                # keep track of the iteration number in which the source
+                # was detected
+                current_iter = np.ones(len(new_sources), dtype=int) * iter_num
+                iter_detected = np.concatenate((iter_detected, current_iter))
 
                 if self.mode == 'all':
-                    # measure initial fluxes for the new sources from the
-                    # residual data
-                    flux = self._psfphot._get_aper_fluxes(residual_data, mask,
-                                                          new_sources)
-                    unit = getattr(data, 'unit', None)
-                    if unit is not None:
-                        flux <<= unit
-                    fluxcol = self._psfphot._init_colnames['flux']
-                    new_sources[fluxcol] = flux
-
-                    # combine source tables and re-fit on the original data
-                    orig_sources = phot_tbl['x_fit', 'y_fit', 'flux_fit']
-                    orig_sources.rename_column('x_fit', xcol)
-                    orig_sources.rename_column('y_fit', ycol)
-                    orig_sources.rename_column('flux_fit', fluxcol)
-                    new_sources.meta.pop('date', None)  # prevent merge conflicts
-                    init_params = vstack([orig_sources, new_sources])
-
+                    init_params = self._create_init_params(
+                        residual_data, mask, new_sources, phot_tbl)
                     residual_data = data
                 elif self.mode == 'new':
                     # fit new sources on the residual data
@@ -1662,20 +1750,17 @@ class IterativePSFPhotometry(ModelImageMixin):
 
                 elif self.mode == 'new':
                     # combine tables
-                    new_tbl['iter_detected'] = iter_num
                     new_tbl['id'] += np.max(phot_tbl['id'])
                     new_tbl['group_id'] += np.max(phot_tbl['group_id'])
-                    new_tbl.meta = {}  # prevent merge conflicts
+                    new_tbl['iter_detected'] = iter_num
+                    new_tbl.meta = {}  # prevent merge conflicts on date
                     phot_tbl = vstack([phot_tbl, new_tbl])
 
                 iter_num += 1
 
             # re-order 'iter_detected' column
-            if 'iter_detected' in phot_tbl.colnames:
-                colnames = phot_tbl.colnames.copy()
-                colnames.insert(2, 'iter_detected')
-                colnames = colnames[:-1]
-                phot_tbl = phot_tbl[colnames]
+            phot_tbl = self._move_column('iter_detected', 'group_id',
+                                         phot_tbl)
 
         # emit unique warnings
         recorded_warnings = rwarn0 + rwarn1
