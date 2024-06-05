@@ -246,8 +246,8 @@ class PSFPhotometry(ModelImageMixin):
 
     aperture_radius : float, optional
         The radius of the circular aperture used to estimate the initial
-        flux of each source. The initial flux value in ``init_params``
-        override this keyword.
+        flux of each source. If initial flux values are present in the
+        ``init_params`` table, they will override this keyword.
 
     progress_bar : bool, optional
         Whether to display a progress bar when fitting the sources
@@ -1289,19 +1289,20 @@ class IterativePSFPhotometry(ModelImageMixin):
         A callable used to identify stars in an image. The
         ``finder`` must accept a 2D image as input and return a
         `~astropy.table.Table` containing the x and y centroid
-        positions. These positions are used as the starting points
-        for the PSF fitting. The allowed ``x`` column names are (same
-        suffix for ``y``): ``'x_init'``, ``'xinit'``, ``'xcentroid'``,
-        ``'x_centroid'``, ``'x_peak'``, ``'x'``, ``'xcen'``,
-        ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_0'``, and ``'x0'``.
-        If `None`, then the initial (x, y) model positions must be input
-        using the ``init_params`` keyword when calling the class. The
-        (x, y) values in ``init_params`` override this keyword *only
-        for the first iteration*. If this class is run on an image
-        that has units (i.e., a `~astropy.units.Quantity` array), then
-        certain ``finder`` keywords (e.g., ``threshold``) must have the
-        same units. Please see the the documentation for the specific
-        ``finder`` class for more information.
+        positions. These positions are used as the starting points for
+        the PSF fitting. The allowed ``x`` column names are (same suffix
+        for ``y``): ``'x_init'``, ``'xinit'``, ``'x'``, ``'x_0'``,
+        ``'x0'``, ``'xcentroid'``, ``'x_centroid'``, ``'x_peak'``,
+        ``'xcen'``, ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_fit'``,
+        and ``'xfit'``. If `None`, then the initial (x, y) model
+        positions must be input using the ``init_params`` keyword
+        when calling the class. The (x, y) values in ``init_params``
+        override this keyword *only for the first iteration*. If
+        this class is run on an image that has units (i.e., a
+        `~astropy.units.Quantity` array), then certain ``finder``
+        keywords (e.g., ``threshold``) must have the same units. Please
+        see the the documentation for the specific ``finder`` class for
+        more information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group stars. Typically, grouped stars are
@@ -1345,8 +1346,9 @@ class IterativePSFPhotometry(ModelImageMixin):
 
     aperture_radius : float, optional
         The radius of the circular aperture used to estimate the initial
-        flux of each source. The ``flux_init`` values in ``init_params``
-        override this keyword *only for the first iteration*.
+        flux of each source. If initial flux values are present in the
+        ``init_params`` table, they will override this keyword *only for
+        the first iteration*.
 
     sub_shape : `None`, int, or length-2 array_like
         The rectangular shape around the center of a star that will be
@@ -1471,19 +1473,23 @@ class IterativePSFPhotometry(ModelImageMixin):
             iteration*. If the x and y values are not input, then the
             ``finder`` will be used for all iterations. If the flux
             values are not input, then the initial fluxes will be
-            measured in using the ``aperture_radius`` keyword. The input
-            flux values will be used for the first iteration only. The
-            allowed column names are:
+            measured using the ``aperture_radius`` keyword. The input
+            flux values will be used for the first iteration only.
+            Note that the initial flux values refer to the model flux
+            parameters and are not corrected for local background
+            values (computed using ``localbkg_estimator`` or input in a
+            ``local_bkg`` column) The allowed column names are:
 
-              * ``x_init``, ``xinit``, ``xcentroid``, ``x_centroid``,
-                ``x_peak``, ``x``, ``xcen``, ``x_cen``, ``xpos``,
-                ``x_pos``, ``x_0``, and ``x0``.
+              * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
+                ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
+                ``x_cen``, ``xpos``, ``x_pos``, ``x_fit``, and ``xfit``.
 
-              * ``y_init``, ``yinit``, ``ycentroid``, ``y_centroid``,
-                ``y_peak``, ``y``, ``ycen``, ``y_cen``, ``ypos``,
-                ``y_pos``, and ``y_0``, and ``y0``.
+              * ``y_init``, ``yinit``, ``y``, ``y_0``, ``y0``,
+                ``ycentroid``, ``y_centroid``, ``y_peak``, ``ycen``,
+                ``y_cen``, ``ypos``, ``y_pos``, ``y_fit``, and ``yfit``.
 
-              * ``flux_init``, ``flux``, ``source_sum``,
+              * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
+                ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
                 ``segment_flux``, and ``kron_flux``.
 
             The parameter names are searched in the input table in the
