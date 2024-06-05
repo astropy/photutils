@@ -131,6 +131,9 @@ API Changes
     the previous behavior is desired, set ``include_localbkg=True``.
     [#1756]
 
+  - ``IterativePSFPhotometry`` will now only issue warnings after
+    all iterations are completed. [#1767]
+
 
 1.12.0 (2024-04-12)
 -------------------
