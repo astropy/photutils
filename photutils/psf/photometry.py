@@ -1171,6 +1171,8 @@ class PSFPhotometry(ModelImageMixin):
               * ``id`` : unique identification number for the source
               * ``group_id`` : unique identification number for the
                 source group
+              * ``group_size`` : the total number of sources that were
+                simultaneously fit along with the given source
               * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
                 error of the source x center
               * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit, and
@@ -1179,8 +1181,6 @@ class PSFPhotometry(ModelImageMixin):
                 fit, and error of the source flux
               * ``npixfit`` : the number of unmasked pixels used to fit
                 the source
-              * ``group_size`` : the total number of sources that were
-                simultaneously fit along with the given source
               * ``qfit`` : a quality-of-fit metric defined as the
                 absolute value of the sum of the fit residuals divided by
                 the fit flux
@@ -1250,7 +1250,8 @@ class PSFPhotometry(ModelImageMixin):
 
         nmodels = np.array(self._ungroup(self._group_results['nmodels']))
         self.fit_results['nmodels'] = nmodels
-        source_tbl['group_size'] = nmodels
+        index = source_tbl.index_column('group_id') + 1
+        source_tbl.add_column(nmodels, name='group_size', index=index)
 
         qfit, cfit = self._calc_fit_metrics(data, source_tbl)
         source_tbl['qfit'] = qfit
@@ -1590,9 +1591,6 @@ class IterativePSFPhotometry(ModelImageMixin):
         table : `~astropy.table.Table`
             The input table with the column moved.
         """
-        # re-order 'iter_detected' column
-        colname = 'iter_detected'
-        colname_after = 'group_id'
         if colname in table.colnames:
             colnames = table.colnames
             old_index = colnames.index(colname)
@@ -1666,6 +1664,8 @@ class IterativePSFPhotometry(ModelImageMixin):
               * ``id`` : unique identification number for the source
               * ``group_id`` : unique identification number for the
                 source group
+              * ``group_size`` : the total number of sources that were
+                simultaneously fit along with the given source
               * ``iter_detected`` : the iteration number in which the
                 source was detected
               * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
@@ -1676,8 +1676,6 @@ class IterativePSFPhotometry(ModelImageMixin):
                 fit, and error of the source flux
               * ``npixfit`` : the number of unmasked pixels used to fit
                 the source
-              * ``group_size`` : the total number of sources that were
-                simultaneously fit along with the given source
               * ``qfit`` : a quality-of-fit metric defined as the
                 absolute value of the sum of the fit residuals divided by
                 the fit flux
@@ -1758,8 +1756,8 @@ class IterativePSFPhotometry(ModelImageMixin):
 
                 iter_num += 1
 
-            # re-order 'iter_detected' column
-            phot_tbl = self._move_column('iter_detected', 'group_id',
+            # reorder 'iter_detected' column
+            phot_tbl = self._move_column('iter_detected', 'group_size',
                                          phot_tbl)
 
         # emit unique warnings
