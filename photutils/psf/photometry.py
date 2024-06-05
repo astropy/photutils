@@ -200,19 +200,19 @@ class PSFPhotometry(ModelImageMixin):
         A callable used to identify stars in an image. The
         ``finder`` must accept a 2D image as input and return a
         `~astropy.table.Table` containing the x and y centroid
-        positions. These positions are used as the starting points
-        for the PSF fitting. The allowed ``x`` column names are (same
-        suffix for ``y``): ``'x_init'``, ``'xinit'``, ``'xcentroid'``,
-        ``'x_centroid'``, ``'x_peak'``, ``'x'``, ``'xcen'``,
-        ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_0'``, and ``'x0'``.
-        If `None`, then the initial (x, y) model positions must be
-        input using the ``init_params`` keyword when calling the class.
-        The (x, y) values in ``init_params`` override this keyword.
-        If this class is run on an image that has units (i.e., a
-        `~astropy.units.Quantity` array), then certain ``finder``
-        keywords (e.g., ``threshold``) must have the same units. Please
-        see the the documentation for the specific ``finder`` class for
-        more information.
+        positions. These positions are used as the starting points for
+        the PSF fitting. The allowed ``x`` column names are (same suffix
+        for ``y``): ``'x_init'``, ``'xinit'``, ``'x'``, ``'x_0'``,
+        ``'x0'``, ``'xcentroid'``, ``'x_centroid'``, ``'x_peak'``,
+        ``'xcen'``, ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_fit'``,
+        and ``'xfit'``. If `None`, then the initial (x, y) model
+        positions must be input using the ``init_params`` keyword
+        when calling the class. The (x, y) values in ``init_params``
+        override this keyword. If this class is run on an image that
+        has units (i.e., a `~astropy.units.Quantity` array), then
+        certain ``finder`` keywords (e.g., ``threshold``) must have the
+        same units. Please see the the documentation for the specific
+        ``finder`` class for more information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group stars. Typically, grouped stars are
@@ -246,8 +246,8 @@ class PSFPhotometry(ModelImageMixin):
 
     aperture_radius : float, optional
         The radius of the circular aperture used to estimate the initial
-        flux of each source. The ``flux_init`` values in ``init_params``
-        override this keyword.
+        flux of each source. If initial flux values are present in the
+        ``init_params`` table, they will override this keyword.
 
     progress_bar : bool, optional
         Whether to display a progress bar when fitting the sources
@@ -313,22 +313,25 @@ class PSFPhotometry(ModelImageMixin):
     def _psf_param_names(self):
         """
         The PSF model parameters corresponding to x, y, and flux.
+
+        The parameter options are checked together as a unit in the
+        following order:
+
+            * ('x_0', 'y_0', 'flux') parameters
+            * ('x_name', 'y_name', 'flux_name') attributes
+            * ('xname', 'yname', 'fluxname') (deprecated) attributes
         """
         params1 = ('x_0', 'y_0', 'flux')
         params2 = ('x_name', 'y_name', 'flux_name')
         params3 = ('xname', 'yname', 'fluxname')  # deprecated
         if all(name in self.psf_model.param_names for name in params1):
             model_params = params1
-        elif all(hasattr(self.psf_model, name) for name in params2):
-            model_params = []
-            for name in params2:
-                model_params.append(getattr(self.psf_model, name))
-            model_params = tuple(model_params)
-        elif all(hasattr(self.psf_model, name) for name in params3):
-            model_params = []
-            for name in params3:
-                model_params.append(getattr(self.psf_model, name))
-            model_params = tuple(model_params)
+        elif all(params := [getattr(self.psf_model, name, None)
+                            for name in params2]):
+            model_params = tuple(params)
+        elif all(params := [getattr(self.psf_model, name, None)
+                            for name in params3]):
+            model_params = tuple(params)
         else:
             msg = 'Invalid PSF model - could not find PSF parameter names.'
             raise ValueError(msg)
@@ -352,11 +355,8 @@ class PSFPhotometry(ModelImageMixin):
         PSF model parameters that are fit, but do not correspond to x,
         y, or flux.
         """
-        extra_params = []
-        for key in self._fitted_psf_param_names:
-            if key not in self._psf_param_names:
-                extra_params.append(key)
-        return extra_params
+        return list(set(self._fitted_psf_param_names)
+                    - set(self._psf_param_names))
 
     def _validate_psf_model(self):
         """
@@ -426,11 +426,12 @@ class PSFPhotometry(ModelImageMixin):
         A dictionary of column names for the initial x, y, and flux values
         reported in the output table.
         """
+        suffix = '_init'
         init_colnames = {}
-        init_colnames['x'] = 'x_init'
-        init_colnames['y'] = 'y_init'
-        init_colnames['flux'] = 'flux_init'
-        init_colnames['suffix'] = '_init'
+        init_colnames['suffix'] = suffix
+        init_colnames['x'] = f'x{suffix}'
+        init_colnames['y'] = f'y{suffix}'
+        init_colnames['flux'] = f'flux{suffix}'
         return init_colnames
 
     @lazyproperty
@@ -441,25 +442,32 @@ class PSFPhotometry(ModelImageMixin):
 
         These lists are searched in order.
         """
-        xy_suffixes = ('_init', 'init', 'centroid', '_centroid', '_peak', '',
-                       'cen', '_cen', 'pos', '_pos', '_0', '0')
+        xy_suffixes = ('_init', 'init', '', '_0', '0', 'centroid', '_centroid',
+                       '_peak', 'cen', '_cen', 'pos', '_pos', '_fit', 'fit')
         x_valid = ['x' + i for i in xy_suffixes]
         y_valid = ['y' + i for i in xy_suffixes]
 
         valid_colnames = {}
         valid_colnames['x'] = x_valid
         valid_colnames['y'] = y_valid
-        valid_colnames['flux'] = ('flux_init', 'flux_0', 'flux0', 'flux',
-                                  'source_sum', 'segment_flux', 'kron_flux')
+        valid_colnames['flux'] = ('flux_init', 'fluxinit', 'flux', 'flux_0',
+                                  'flux0', 'flux_fit', 'fluxfit', 'source_sum',
+                                  'segment_flux', 'kron_flux')
 
         return valid_colnames
 
     def _find_column_name(self, key, colnames):
+        """
+        Find the first valid matching column name for x, y, or flux
+        (defined by `_valid_colnames` in the input ``init_params``
+        table).
+        """
         name = ''
         valid_names = self._valid_colnames[key]
         for valid_name in valid_names:
             if valid_name in colnames:
                 name = valid_name
+                break
         return name
 
     def _validate_init_params(self, init_params, flux_unit):
@@ -1095,15 +1103,16 @@ class PSFPhotometry(ModelImageMixin):
             ``localbkg_estimator`` or input in a ``local_bkg`` column)
             The allowed column names are:
 
-              * ``x_init``, ``xinit``, ``xcentroid``, ``x_centroid``,
-                ``x_peak``, ``x``, ``xcen``, ``x_cen``, ``xpos``,
-                ``x_pos``, ``x_0``, and ``x0``.
+              * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
+                ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
+                ``x_cen``, ``xpos``, ``x_pos``, ``x_fit``, and ``xfit``.
 
-              * ``y_init``, ``yinit``, ``ycentroid``, ``y_centroid``,
-                ``y_peak``, ``y``, ``ycen``, ``y_cen``, ``ypos``,
-                ``y_pos``, ``y_0``, and ``y0``.
+              * ``y_init``, ``yinit``, ``y``, ``y_0``, ``y0``,
+                ``ycentroid``, ``y_centroid``, ``y_peak``, ``ycen``,
+                ``y_cen``, ``ypos``, ``y_pos``, ``y_fit``, and ``yfit``.
 
-              * ``flux_init``, ``flux``, ``source_sum``,
+              * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
+                ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
                 ``segment_flux``, and ``kron_flux``.
 
             The parameter names are searched in the input table in the
@@ -1280,19 +1289,20 @@ class IterativePSFPhotometry(ModelImageMixin):
         A callable used to identify stars in an image. The
         ``finder`` must accept a 2D image as input and return a
         `~astropy.table.Table` containing the x and y centroid
-        positions. These positions are used as the starting points
-        for the PSF fitting. The allowed ``x`` column names are (same
-        suffix for ``y``): ``'x_init'``, ``'xinit'``, ``'xcentroid'``,
-        ``'x_centroid'``, ``'x_peak'``, ``'x'``, ``'xcen'``,
-        ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_0'``, and ``'x0'``.
-        If `None`, then the initial (x, y) model positions must be input
-        using the ``init_params`` keyword when calling the class. The
-        (x, y) values in ``init_params`` override this keyword *only
-        for the first iteration*. If this class is run on an image
-        that has units (i.e., a `~astropy.units.Quantity` array), then
-        certain ``finder`` keywords (e.g., ``threshold``) must have the
-        same units. Please see the the documentation for the specific
-        ``finder`` class for more information.
+        positions. These positions are used as the starting points for
+        the PSF fitting. The allowed ``x`` column names are (same suffix
+        for ``y``): ``'x_init'``, ``'xinit'``, ``'x'``, ``'x_0'``,
+        ``'x0'``, ``'xcentroid'``, ``'x_centroid'``, ``'x_peak'``,
+        ``'xcen'``, ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_fit'``,
+        and ``'xfit'``. If `None`, then the initial (x, y) model
+        positions must be input using the ``init_params`` keyword
+        when calling the class. The (x, y) values in ``init_params``
+        override this keyword *only for the first iteration*. If
+        this class is run on an image that has units (i.e., a
+        `~astropy.units.Quantity` array), then certain ``finder``
+        keywords (e.g., ``threshold``) must have the same units. Please
+        see the the documentation for the specific ``finder`` class for
+        more information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group stars. Typically, grouped stars are
@@ -1336,8 +1346,9 @@ class IterativePSFPhotometry(ModelImageMixin):
 
     aperture_radius : float, optional
         The radius of the circular aperture used to estimate the initial
-        flux of each source. The ``flux_init`` values in ``init_params``
-        override this keyword *only for the first iteration*.
+        flux of each source. If initial flux values are present in the
+        ``init_params`` table, they will override this keyword *only for
+        the first iteration*.
 
     sub_shape : `None`, int, or length-2 array_like
         The rectangular shape around the center of a star that will be
@@ -1462,19 +1473,23 @@ class IterativePSFPhotometry(ModelImageMixin):
             iteration*. If the x and y values are not input, then the
             ``finder`` will be used for all iterations. If the flux
             values are not input, then the initial fluxes will be
-            measured in using the ``aperture_radius`` keyword. The input
-            flux values will be used for the first iteration only. The
-            allowed column names are:
+            measured using the ``aperture_radius`` keyword. The input
+            flux values will be used for the first iteration only.
+            Note that the initial flux values refer to the model flux
+            parameters and are not corrected for local background
+            values (computed using ``localbkg_estimator`` or input in a
+            ``local_bkg`` column) The allowed column names are:
 
-              * ``x_init``, ``xinit``, ``xcentroid``, ``x_centroid``,
-                ``x_peak``, ``x``, ``xcen``, ``x_cen``, ``xpos``,
-                ``x_pos``, ``x_0``, and ``x0``.
+              * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
+                ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
+                ``x_cen``, ``xpos``, ``x_pos``, ``x_fit``, and ``xfit``.
 
-              * ``y_init``, ``yinit``, ``ycentroid``, ``y_centroid``,
-                ``y_peak``, ``y``, ``ycen``, ``y_cen``, ``ypos``,
-                ``y_pos``, and ``y_0``, and ``y0``.
+              * ``y_init``, ``yinit``, ``y``, ``y_0``, ``y0``,
+                ``ycentroid``, ``y_centroid``, ``y_peak``, ``ycen``,
+                ``y_cen``, ``ypos``, ``y_pos``, ``y_fit``, and ``yfit``.
 
-              * ``flux_init``, ``flux``, ``source_sum``,
+              * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
+                ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
                 ``segment_flux``, and ``kron_flux``.
 
             The parameter names are searched in the input table in the
