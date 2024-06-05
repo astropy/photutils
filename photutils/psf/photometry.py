@@ -72,7 +72,7 @@ class ModelImageMixin:
             local_bkgs = self.fit_results['local_bkg']
             xname, yname = self._psf_param_names[0:2]
         else:
-            progress_bar = self.psfphot.progress_bar
+            progress_bar = self._psfphot.progress_bar
             xname, yname = self.fit_results[0]._psf_param_names[0:2]
 
             if self.mode == 'new':
@@ -1446,12 +1446,12 @@ class IterativePSFPhotometry(ModelImageMixin):
             raise ValueError('aperture_radius cannot be None for '
                              'IterativePSFPhotometry.')
 
-        self.psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                                     grouper=grouper, fitter=fitter,
-                                     fitter_maxiters=fitter_maxiters,
-                                     localbkg_estimator=localbkg_estimator,
-                                     aperture_radius=aperture_radius,
-                                     progress_bar=progress_bar)
+        self._psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                                      grouper=grouper, fitter=fitter,
+                                      fitter_maxiters=fitter_maxiters,
+                                      localbkg_estimator=localbkg_estimator,
+                                      aperture_radius=aperture_radius,
+                                      progress_bar=progress_bar)
 
         self.maxiters = self._validate_maxiters(maxiters)
 
@@ -1590,9 +1590,9 @@ class IterativePSFPhotometry(ModelImageMixin):
                     returned
         """
         with warnings.catch_warnings(record=True) as rwarn0:
-            phot_tbl = self.psfphot(data, mask=mask, error=error,
-                                    init_params=init_params)
-            self.fit_results.append(deepcopy(self.psfphot))
+            phot_tbl = self._psfphot(data, mask=mask, error=error,
+                                     init_params=init_params)
+            self.fit_results.append(deepcopy(self._psfphot))
 
         # this needs to be run outside of the context manager to be able
         # to re-emit any warnings
@@ -1600,29 +1600,27 @@ class IterativePSFPhotometry(ModelImageMixin):
             self._emit_warnings(rwarn0)
             return None
 
+        residual_data = data
         with warnings.catch_warnings(record=True) as rwarn1:
             phot_tbl['iter_detected'] = 1
             iter_detected = np.ones(len(phot_tbl), dtype=int)
 
             iter_num = 2
             while iter_num <= self.maxiters and phot_tbl is not None:
-                if iter_num == 2:
-                    residual_data = self.psfphot.make_residual_image(
-                        data, self.sub_shape)
-                else:
-                    residual_data = self.psfphot.make_residual_image(
-                        residual_data, self.sub_shape)
+                residual_data = self._psfphot.make_residual_image(
+                    residual_data, self.sub_shape)
 
                 # do not warn if no sources are found beyond the first iteration
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', NoDetectionsWarning)
 
-                    new_sources = self.psfphot.finder(residual_data, mask=mask)
+                    new_sources = self._psfphot.finder(residual_data,
+                                                       mask=mask)
                     if new_sources is None:  # no new sources detected
                         break
 
-                xcol = self.psfphot._init_colnames['x']
-                ycol = self.psfphot._init_colnames['y']
+                xcol = self._psfphot._init_colnames['x']
+                ycol = self._psfphot._init_colnames['y']
                 new_sources = new_sources['xcentroid', 'ycentroid']
                 new_sources.rename_column('xcentroid', xcol)
                 new_sources.rename_column('ycentroid', ycol)
@@ -1632,12 +1630,12 @@ class IterativePSFPhotometry(ModelImageMixin):
                 if self.mode == 'all':
                     # measure initial fluxes for the new sources from the
                     # residual data
-                    flux = self.psfphot._get_aper_fluxes(residual_data, mask,
-                                                         new_sources)
+                    flux = self._psfphot._get_aper_fluxes(residual_data, mask,
+                                                          new_sources)
                     unit = getattr(data, 'unit', None)
                     if unit is not None:
                         flux <<= unit
-                    fluxcol = self.psfphot._init_colnames['flux']
+                    fluxcol = self._psfphot._init_colnames['flux']
                     new_sources[fluxcol] = flux
 
                     # combine source tables and re-fit on the original data
@@ -1653,10 +1651,10 @@ class IterativePSFPhotometry(ModelImageMixin):
                     # fit new sources on the residual data
                     init_params = new_sources
 
-                new_tbl = self.psfphot(residual_data, mask=mask, error=error,
-                                       init_params=init_params)
-                self.psfphot.finder_results = new_sources
-                self.fit_results.append(deepcopy(self.psfphot))
+                new_tbl = self._psfphot(residual_data, mask=mask, error=error,
+                                        init_params=init_params)
+                self._psfphot.finder_results = new_sources
+                self.fit_results.append(deepcopy(self._psfphot))
 
                 if self.mode == 'all':
                     new_tbl['iter_detected'] = iter_detected
