@@ -865,10 +865,12 @@ class PSFPhotometry(ModelImageMixin):
                     except AttributeError:
                         pass
                 except TypeError as exc:
-                    msg = ('The number of data points is less than the '
-                           'number of fit parameters. This is likely due '
-                           'to overmasked data. Please check the input '
-                           'mask.')
+                    msg = ('For one or more sources, the number of data '
+                           'points available to fit is less than the '
+                           'number of fit parameters. This could be due to '
+                           'a source(s) near the edge of the detector or '
+                           'if it has few unmasked pixels. Please check the '
+                           'input mask or source positions.')
                     raise ValueError(msg) from exc
 
                 fit_info = {}
