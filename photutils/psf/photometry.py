@@ -291,6 +291,7 @@ class PSFPhotometry(ModelImageMixin):
 
         # reset these attributes for each __call__ (see _reset_results)
         self.finder_results = None
+        self.init_params = None
         self.fit_results = defaultdict(list)
         self._fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
@@ -298,6 +299,7 @@ class PSFPhotometry(ModelImageMixin):
 
     def _reset_results(self):
         self.finder_results = None
+        self.init_params = None
         self.fit_results = defaultdict(list)
         self._fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
@@ -1088,7 +1090,7 @@ class PSFPhotometry(ModelImageMixin):
         init_params = self._prepare_init_params(data, unit, mask, init_params)
         if init_params is not None:
             self._check_init_positions(init_params, data.shape)
-        self.fit_results['init_params'] = init_params
+        self.init_params = init_params
 
         if init_params is None:  # no sources detected
             # TODO: raise warning
