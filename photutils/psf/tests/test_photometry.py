@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from astropy.modeling.fitting import LMLSQFitter, SimplexLSQFitter
 from astropy.modeling.models import Gaussian1D, Gaussian2D, custom_model
-from astropy.nddata import NDData, StdDevUncertainty, overlap_slices
+from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, Table
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
@@ -22,6 +22,7 @@ from photutils.psf import (IntegratedGaussianPRF, IterativePSFPhotometry,
                            PSFPhotometry, SourceGrouper, make_psf_model)
 from photutils.psf.photometry_depr import DAOGroup
 from photutils.utils._optional_deps import HAS_SCIPY
+from photutils.utils.cutouts import _overlap_slices as overlap_slices
 from photutils.utils.exceptions import NoDetectionsWarning
 
 

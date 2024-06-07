@@ -101,8 +101,8 @@ class CutoutImage:
         self.copy = copy
 
         data = np.asanyarray(data)
-        self._overlap_slices = overlap_slices(data.shape, shape, position,
-                                              mode=mode)
+        self._overlap_slices = _overlap_slices(data.shape, shape, position,
+                                               mode=mode)
         self.data = self._make_cutout(data)
         self.shape = self.data.shape
 

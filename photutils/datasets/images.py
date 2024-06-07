@@ -11,7 +11,6 @@ import numpy as np
 from astropy.convolution import discretize_model
 from astropy.modeling import Model
 from astropy.modeling.models import Gaussian2D
-from astropy.nddata import overlap_slices
 from astropy.nddata.utils import NoOverlapError
 from astropy.table import QTable, Table
 from astropy.utils.decorators import deprecated
@@ -21,6 +20,7 @@ from photutils.psf import IntegratedGaussianPRF
 from photutils.utils._coords import make_random_xycoords
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
+from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['make_model_image', 'make_model_sources_image',
            'make_gaussian_sources_image', 'make_gaussian_prf_sources_image',

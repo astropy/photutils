@@ -10,8 +10,7 @@ import warnings
 
 import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata.utils import (NoOverlapError, PartialOverlapError,
-                                  overlap_slices)
+from astropy.nddata.utils import NoOverlapError, PartialOverlapError
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -23,6 +22,7 @@ from photutils.utils._optional_deps import HAS_BOTTLENECK
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._round import py2intround
+from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['EPSFFitter', 'EPSFBuilder']
 

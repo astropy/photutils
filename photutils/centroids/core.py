@@ -7,11 +7,11 @@ import inspect
 import warnings
 
 import numpy as np
-from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._parameters import as_pair
 from photutils.utils._round import py2intround
+from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
