@@ -69,7 +69,7 @@ class ModelImageMixin:
         if isinstance(self, PSFPhotometry):
             progress_bar = self.progress_bar
             fit_models = self._fit_models
-            local_bkgs = self._fit_results['local_bkg']
+            local_bkgs = self.init_params['local_bkg']
             xname, yname = self._psf_param_names[0:2]
         else:
             progress_bar = self._psfphot.progress_bar
@@ -82,7 +82,7 @@ class ModelImageMixin:
                 local_bkgs = []
                 for psfphot in self.fit_results:
                     fit_models.append(psfphot._fit_models)
-                    local_bkgs.append(psfphot._fit_results['local_bkg'])
+                    local_bkgs.append(psfphot.init_params['local_bkg'])
 
                 fit_models = _flatten(fit_models)
                 local_bkgs = _flatten(local_bkgs)
@@ -90,7 +90,7 @@ class ModelImageMixin:
                 # use only the fit models and local backgrounds from the
                 # final iteration, which includes all sources
                 fit_models = self.fit_results[-1]._fit_models
-                local_bkgs = self.fit_results[-1]._fit_results['local_bkg']
+                local_bkgs = self.fit_results[-1].init_params['local_bkg']
 
         if progress_bar:  # pragma: no cover
             desc = 'Model image'
@@ -587,8 +587,6 @@ class PSFPhotometry(ModelImageMixin):
                     data, init_params[self._init_colnames['x']],
                     init_params[self._init_colnames['y']], mask=mask)
             init_params['local_bkg'] = local_bkg
-
-        self._fit_results['local_bkg'] = init_params['local_bkg'].value
 
         if self._init_colnames['flux'] not in init_params.colnames:
             flux = self._get_aper_fluxes(data, mask, init_params)
