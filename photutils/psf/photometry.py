@@ -69,7 +69,7 @@ class ModelImageMixin:
         if isinstance(self, PSFPhotometry):
             progress_bar = self.progress_bar
             fit_models = self._fit_models
-            local_bkgs = self.fit_results['local_bkg']
+            local_bkgs = self._fit_results['local_bkg']
             xname, yname = self._psf_param_names[0:2]
         else:
             progress_bar = self._psfphot.progress_bar
@@ -82,7 +82,7 @@ class ModelImageMixin:
                 local_bkgs = []
                 for psfphot in self.fit_results:
                     fit_models.append(psfphot._fit_models)
-                    local_bkgs.append(psfphot.fit_results['local_bkg'])
+                    local_bkgs.append(psfphot._fit_results['local_bkg'])
 
                 fit_models = _flatten(fit_models)
                 local_bkgs = _flatten(local_bkgs)
@@ -90,7 +90,7 @@ class ModelImageMixin:
                 # use only the fit models and local backgrounds from the
                 # final iteration, which includes all sources
                 fit_models = self.fit_results[-1]._fit_models
-                local_bkgs = self.fit_results[-1].fit_results['local_bkg']
+                local_bkgs = self.fit_results[-1]._fit_results['local_bkg']
 
         if progress_bar:  # pragma: no cover
             desc = 'Model image'
@@ -292,12 +292,14 @@ class PSFPhotometry(ModelImageMixin):
         # reset these attributes for each __call__ (see _reset_results)
         self.finder_results = None
         self.fit_results = defaultdict(list)
+        self._fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
         self._fit_models = None
 
     def _reset_results(self):
         self.finder_results = None
         self.fit_results = defaultdict(list)
+        self._fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
         self._fit_models = None
 
@@ -584,7 +586,7 @@ class PSFPhotometry(ModelImageMixin):
                     init_params[self._init_colnames['y']], mask=mask)
             init_params['local_bkg'] = local_bkg
 
-        self.fit_results['local_bkg'] = init_params['local_bkg'].value
+        self._fit_results['local_bkg'] = init_params['local_bkg'].value
 
         if self._init_colnames['flux'] not in init_params.colnames:
             flux = self._get_aper_fluxes(data, mask, init_params)
@@ -955,7 +957,7 @@ class PSFPhotometry(ModelImageMixin):
         # If NaNs are present, turning it into an array will convert the
         # ints to floats, which cannot be used as slices.
         cen_idx = self._ungroup(self._group_results['psfcenter_indices'])
-        self.fit_results['psfcenter_indices'] = cen_idx
+        self._fit_results['psfcenter_indices'] = cen_idx
 
         split_index = []
         for npixfit in self._group_results['npixfit']:
@@ -979,9 +981,9 @@ class PSFPhotometry(ModelImageMixin):
                                  self._group_results['fit_infos']):
             fit_residuals.extend(np.split(fit_info[key], idx))
         fit_residuals = self._order_by_id(fit_residuals)
-        self.fit_results['fit_residuals'] = fit_residuals
+        self._fit_results['fit_residuals'] = fit_residuals
 
-        for npixfit, residuals in zip(self.fit_results['npixfit'],
+        for npixfit, residuals in zip(self._fit_results['npixfit'],
                                       fit_residuals):
             if len(residuals) != npixfit:  # pragma: no cover
                 raise ValueError('size of residuals does not match npixfit')
@@ -1247,11 +1249,11 @@ class PSFPhotometry(ModelImageMixin):
             source_tbl = hstack((source_tbl, param_errors))
 
         npixfit = np.array(self._ungroup(self._group_results['npixfit']))
-        self.fit_results['npixfit'] = npixfit
+        self._fit_results['npixfit'] = npixfit
         source_tbl['npixfit'] = npixfit
 
         nmodels = np.array(self._ungroup(self._group_results['nmodels']))
-        self.fit_results['nmodels'] = nmodels
+        self._fit_results['nmodels'] = nmodels
         index = source_tbl.index_column('group_id') + 1
         source_tbl.add_column(nmodels, name='group_size', index=index)
 

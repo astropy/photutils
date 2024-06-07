@@ -185,9 +185,7 @@ def test_psf_photometry(test_data):
     assert resid_data.shape == data.shape
     assert phot.colnames[:4] == ['id', 'group_id', 'group_size', 'local_bkg']
 
-    keys = ('local_bkg', 'init_params', 'fit_infos', 'fit_param_errs',
-            'fit_error_indices', 'npixfit', 'nmodels', 'psfcenter_indices',
-            'fit_residuals')
+    keys = ('init_params', 'fit_infos', 'fit_param_errs', 'fit_error_indices')
     for key in keys:
         assert key in psfphot.fit_results
 
