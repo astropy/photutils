@@ -134,6 +134,10 @@ API Changes
   - ``IterativePSFPhotometry`` will now only issue warnings after
     all iterations are completed. [#1767]
 
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` will now raise
+    a ``ValueError`` for invalid source positions in ``init_params``.
+    [#1770]
+
 
 1.12.0 (2024-04-12)
 -------------------
