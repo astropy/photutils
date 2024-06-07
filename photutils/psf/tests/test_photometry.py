@@ -422,6 +422,8 @@ def test_psf_photometry_init_params(test_data):
                                 aperture_radius=None)
         _ = psfphot(data, error=error, init_params=init_params)
 
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
     init_params['flux'] = 650
     phot = psfphot(data, error=error, init_params=init_params)
     assert len(phot) == 1
@@ -430,21 +432,24 @@ def test_psf_photometry_init_params(test_data):
     phot = psfphot(data, error=error, init_params=init_params)
     assert len(phot) == 1
 
-    init_params['flux'] = [650 * u.Jy]
-    match = 'column has units, but the input data does not have units'
-    with pytest.raises(ValueError, match=match):
-        _ = psfphot(data, error=error, init_params=init_params)
+    colnames = ('flux', 'local_bkg')
+    for col in colnames:
+        init_params2 = init_params.copy()
+        init_params2.remove_column('flux')
+        init_params2[col] = [650 * u.Jy]
+        match = 'column has units, but the input data does not have units'
+        with pytest.raises(ValueError, match=match):
+            _ = psfphot(data, error=error, init_params=init_params2)
 
-    init_params['flux'] = [650 * u.Jy]
-    match = 'column has units that are incompatible with the input data'
-    with pytest.raises(ValueError, match=match):
-        _ = psfphot(data << u.m, init_params=init_params)
+        init_params2[col] = [650 * u.Jy]
+        match = 'column has units that are incompatible with the input data'
+        with pytest.raises(ValueError, match=match):
+            _ = psfphot(data << u.m, init_params=init_params2)
 
-    init_params['flux'] = [650]
-    match = ('The input data has units, but the init_params flux_init column '
-             'does not have units')
-    with pytest.raises(ValueError, match=match):
-        _ = psfphot(data << u.Jy, init_params=init_params)
+        init_params2[col] = [650]
+        match = 'The input data has units, but the init_params'
+        with pytest.raises(ValueError, match=match):
+            _ = psfphot(data << u.Jy, init_params=init_params2)
 
     init_params = QTable()
     init_params['x'] = [-42]
