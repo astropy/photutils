@@ -62,7 +62,8 @@ class ModelImageMixin:
         Returns
         -------
         array : 2D `~numpy.ndarray`
-            The rendered image from the fit PSF models.
+            The rendered image from the fit PSF models. This image will
+            not have any units.
         """
         data = np.zeros(shape)
 
@@ -95,6 +96,10 @@ class ModelImageMixin:
         if progress_bar:  # pragma: no cover
             desc = 'Model image'
             fit_models = add_progress_bar(fit_models, desc=desc)
+
+        if include_localbkg:
+            if isinstance(local_bkgs, u.Quantity):
+                local_bkgs = local_bkgs.value
 
         # fit_models must be a list of individual, not grouped, PSF
         # models, i.e., there should be one PSF model (which may be
@@ -473,7 +478,28 @@ class PSFPhotometry(ModelImageMixin):
                 break
         return name
 
-    def _validate_init_params(self, init_params, flux_unit):
+    def _check_init_units(self, init_params, colname, data_unit):
+        values = init_params[colname]
+        if isinstance(values, u.Quantity):
+            if data_unit is None:
+                raise ValueError(f'init_params {colname} column has '
+                                 'units, but the input data does not '
+                                 'have units.')
+            try:
+                init_params[colname] = values.to(data_unit)
+            except u.UnitConversionError as exc:
+                raise ValueError(f'init_params {colname} column has '
+                                 'units that are incompatible with '
+                                 'the input data units.') from exc
+        else:
+            if data_unit is not None:
+                raise ValueError('The input data has units, but the '
+                                 f'init_params {colname} column does not '
+                                 'have units.')
+
+        return init_params
+
+    def _validate_init_params(self, init_params, data_unit):
         if init_params is None:
             return init_params
 
@@ -500,23 +526,15 @@ class PSFPhotometry(ModelImageMixin):
             if fluxcolname != fluxinit_name:
                 init_params.rename_column(fluxcolname, fluxinit_name)
 
-            init_flux = init_params[fluxinit_name]
-            if isinstance(init_flux, u.Quantity):
-                if flux_unit is None:
-                    raise ValueError('init_params flux column has '
-                                     'units, but the input data does not '
-                                     'have units.')
-                try:
-                    init_params[fluxinit_name] = init_flux.to(flux_unit)
-                except u.UnitConversionError as exc:
-                    raise ValueError('init_params flux column has '
-                                     'units that are incompatible with '
-                                     'the input data units.') from exc
-            else:
-                if flux_unit is not None:
-                    raise ValueError('The input data has units, but the '
-                                     'init_params flux column does not have '
-                                     'units.')
+            init_params = self._check_init_units(init_params, fluxinit_name,
+                                                 data_unit)
+
+        if 'local_bkg' in init_params.colnames:
+            if not np.all(np.isfinite(init_params['local_bkg'])):
+                raise ValueError('init_params local_bkg column contains '
+                                 'non-finite values.')
+            init_params = self._check_init_units(init_params, 'local_bkg',
+                                                 data_unit)
 
         return init_params
 
@@ -735,7 +753,10 @@ class PSFPhotometry(ModelImageMixin):
 
             xi.append(xx)
             yi.append(yy)
-            cutout.append(data[yy, xx] - row['local_bkg'])
+            local_bkg = row['local_bkg']
+            if isinstance(local_bkg, u.Quantity):
+                local_bkg = local_bkg.value
+            cutout.append(data[yy, xx] - local_bkg)
             npixfit.append(len(xx))
 
             # this is overlap_slices center pixel index (before any trimming)
@@ -1161,10 +1182,12 @@ class PSFPhotometry(ModelImageMixin):
             compatible units.
 
             The table can also have ``group_id`` and ``local_bkg``
-            columns. If ``group_id`` is input, the values will be used
-            and ``grouper`` keyword will be ignored. If ``local_bkg`` is
-            input, they will be used and the ``localbkg_estimator`` will
-            be ignored.
+            columns. If ``group_id`` is input, the values will
+            be used and ``grouper`` keyword will be ignored. If
+            ``local_bkg`` is input, those values will be used and the
+            ``localbkg_estimator`` will be ignored. If ``data`` has
+            units, then the ``local_bkg`` values must have the same
+            units.
 
         Returns
         -------

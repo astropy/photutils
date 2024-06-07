@@ -431,19 +431,17 @@ def test_psf_photometry_init_params(test_data):
     assert len(phot) == 1
 
     init_params['flux'] = [650 * u.Jy]
-    match = ('init_params flux column has units, but the input data does '
-             'not have units')
+    match = 'column has units, but the input data does not have units'
     with pytest.raises(ValueError, match=match):
         _ = psfphot(data, error=error, init_params=init_params)
 
     init_params['flux'] = [650 * u.Jy]
-    match = ('init_params flux column has units that are incompatible with '
-             'the input data units')
+    match = 'column has units that are incompatible with the input data'
     with pytest.raises(ValueError, match=match):
         _ = psfphot(data << u.m, init_params=init_params)
 
     init_params['flux'] = [650]
-    match = ('The input data has units, but the init_params flux column '
+    match = ('The input data has units, but the init_params flux_init column '
              'does not have units')
     with pytest.raises(ValueError, match=match):
         _ = psfphot(data << u.Jy, init_params=init_params)
