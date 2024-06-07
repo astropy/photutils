@@ -4,12 +4,26 @@ This module provides tools for generating 2D image cutouts.
 """
 
 import numpy as np
-from astropy.nddata import extract_array, overlap_slices
+from astropy.nddata import NoOverlapError, extract_array, overlap_slices
 from astropy.utils import lazyproperty
 
 from photutils.aperture import BoundingBox
 
 __all__ = ['CutoutImage']
+
+
+def _overlap_slices(large_array_shape, small_array_shape, position,
+                    mode='partial'):
+    slc_lg, slc_sm = overlap_slices(large_array_shape, small_array_shape,
+                                    position, mode=mode)
+
+    # TEMP: remove when required Astropy >= 6.1.1
+    # fix for https://github.com/astropy/astropy/pull/16544
+    for i in (0, 1):
+        if slc_lg[i].stop - slc_lg[i].start == 0:
+            raise NoOverlapError('Arrays do not overlap.')
+
+    return slc_lg, slc_sm
 
 
 class CutoutImage:
@@ -87,8 +101,8 @@ class CutoutImage:
         self.copy = copy
 
         data = np.asanyarray(data)
-        self._overlap_slices = overlap_slices(data.shape, shape, position,
-                                              mode=mode)
+        self._overlap_slices = _overlap_slices(data.shape, shape, position,
+                                               mode=mode)
         self.data = self._make_cutout(data)
         self.shape = self.data.shape
 

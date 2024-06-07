@@ -13,8 +13,7 @@ import astropy.units as u
 import numpy as np
 from astropy.modeling import Model
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata import (NDData, NoOverlapError, StdDevUncertainty,
-                            overlap_slices)
+from astropy.nddata import NDData, NoOverlapError, StdDevUncertainty
 from astropy.table import QTable, Table, hstack, vstack
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
@@ -27,6 +26,7 @@ from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._round import py2intround
+from photutils.utils.cutouts import _overlap_slices as overlap_slices
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['ModelImageMixin', 'PSFPhotometry', 'IterativePSFPhotometry']
