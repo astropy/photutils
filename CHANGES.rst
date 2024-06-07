@@ -139,6 +139,10 @@ API Changes
     a list of ``PSFPhotometry`` instances for each fit iteration.
     [#1771]
 
+  - The ``group_size`` column has been moved to come immediately after
+    the ``group_id`` column in the output table from ``PSFPhotometry``
+    and ``IterativePSFPhotometry``. [#1772]
+
 
 1.12.0 (2024-04-12)
 -------------------
