@@ -623,6 +623,24 @@ class PSFPhotometry(ModelImageMixin):
 
         return init_params
 
+    def _check_init_positions(self, init_params, shape):
+        """
+        Check the initial source positions to ensure they are within the
+        data shape.
+
+        This code is based on astropy.nddata.overlap_slices.
+        """
+        x = init_params[self._init_colnames['x']]
+        y = init_params[self._init_colnames['y']]
+        positions = np.column_stack((x, y))
+        delta = self.fit_shape / 2
+        min_idx = np.ceil(positions - delta)
+        max_idx = np.ceil(positions + delta)
+        if np.any(max_idx <= 0) or np.any(min_idx >= shape):
+            raise ValueError('Some of the sources have no overlap with the '
+                             'data. Check the initial source positions or '
+                             'increase the fit_shape.')
+
     @lazyproperty
     def _param_maps(self):
         """
@@ -691,7 +709,9 @@ class PSFPhotometry(ModelImageMixin):
             try:
                 slc_lg, _ = overlap_slices(data.shape, self.fit_shape,
                                            (ycen, xcen), mode='trim')
-            except NoOverlapError as exc:
+            except NoOverlapError as exc:  # pragma: no cover
+                # this should never happen because the initial positions
+                # are checked in _prepare_fit_inputs
                 msg = (f'Initial source at ({xcen}, {ycen}) does not '
                        'overlap with the input data.')
                 raise ValueError(msg) from exc
@@ -1052,6 +1072,8 @@ class PSFPhotometry(ModelImageMixin):
                              'init_params')
 
         init_params = self._prepare_init_params(data, unit, mask, init_params)
+        if init_params is not None:
+            self._check_init_positions(init_params, data.shape)
         self.fit_results['init_params'] = init_params
 
         if init_params is None:  # no sources detected

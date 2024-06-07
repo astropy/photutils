@@ -453,7 +453,7 @@ def test_psf_photometry_init_params(test_data):
     init_params['x'] = [-42]
     init_params['y'] = [-36]
     init_params['flux'] = [100]
-    match = 'does not overlap with the input data'
+    match = 'Some of the sources have no overlap with the data'
     with pytest.raises(ValueError, match=match):
         _ = psfphot(data, init_params=init_params)
 
