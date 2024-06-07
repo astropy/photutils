@@ -183,6 +183,7 @@ def test_psf_photometry(test_data):
     assert len(phot) == len(sources)
     assert isinstance(resid_data, np.ndarray)
     assert resid_data.shape == data.shape
+    assert phot.colnames[:4] == ['id', 'group_id', 'group_size', 'local_bkg']
 
     keys = ('local_bkg', 'init_params', 'fit_infos', 'fit_param_errs',
             'fit_error_indices', 'npixfit', 'nmodels', 'psfcenter_indices',
@@ -639,6 +640,8 @@ def test_iterative_psf_photometry_mode_new(test_data):
                                      localbkg_estimator=localbkg_estimator,
                                      aperture_radius=4)
     phot = psfphot(data, error=error, init_params=init_params)
+    cols = ['id', 'group_id', 'group_size', 'iter_detected', 'local_bkg']
+    assert phot.colnames[:5] == cols
 
     assert 'iter_detected' in phot.colnames
     assert len(phot) == len(sources)
@@ -708,6 +711,8 @@ def test_iterative_psf_photometry_mode_all():
                                      sub_shape=sub_shape, mode='all',
                                      maxiters=3)
     phot = psfphot(data)
+    cols = ['id', 'group_id', 'group_size', 'iter_detected', 'local_bkg']
+    assert phot.colnames[:5] == cols
 
     assert len(phot) == 7
     assert_equal(phot['group_id'], [1, 2, 3, 1, 2, 2, 3])
