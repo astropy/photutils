@@ -376,8 +376,8 @@ def test_psf_photometry_mask(test_data):
         _ = psfphot(data, mask=mask, init_params=init_params)
 
     # completely masked source
-    match = ('The number of data points is less than the number of fit '
-             'parameters.')
+    match = ('the number of data points available to fit is less than the '
+             'number of fit parameters')
     with pytest.raises(ValueError, match=match):
         init_params = QTable()
         init_params['x'] = [42]
@@ -453,7 +453,7 @@ def test_psf_photometry_init_params(test_data):
     init_params['x'] = [-42]
     init_params['y'] = [-36]
     init_params['flux'] = [100]
-    match = 'does not overlap with the input data'
+    match = 'Some of the sources have no overlap with the data'
     with pytest.raises(ValueError, match=match):
         _ = psfphot(data, init_params=init_params)
 

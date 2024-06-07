@@ -25,7 +25,6 @@ from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
-from photutils.utils._round import py2intround
 from photutils.utils.cutouts import _overlap_slices as overlap_slices
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -623,6 +622,24 @@ class PSFPhotometry(ModelImageMixin):
 
         return init_params
 
+    def _check_init_positions(self, init_params, shape):
+        """
+        Check the initial source positions to ensure they are within the
+        data shape.
+
+        This code is based on astropy.nddata.overlap_slices.
+        """
+        x = init_params[self._init_colnames['x']]
+        y = init_params[self._init_colnames['y']]
+        positions = np.column_stack((x, y))
+        delta = self.fit_shape / 2
+        min_idx = np.ceil(positions - delta)
+        max_idx = np.ceil(positions + delta)
+        if np.any(max_idx <= 0) or np.any(min_idx >= shape):
+            raise ValueError('Some of the sources have no overlap with the '
+                             'data. Check the initial source positions or '
+                             'increase the fit_shape.')
+
     @lazyproperty
     def _param_maps(self):
         """
@@ -685,13 +702,15 @@ class PSFPhotometry(ModelImageMixin):
         npixfit = []
         cen_index = []
         for row in sources:
-            xcen = py2intround(row[self._init_colnames['x']])
-            ycen = py2intround(row[self._init_colnames['y']])
+            xcen = row[self._init_colnames['x']]
+            ycen = row[self._init_colnames['y']]
 
             try:
                 slc_lg, _ = overlap_slices(data.shape, self.fit_shape,
                                            (ycen, xcen), mode='trim')
-            except NoOverlapError as exc:
+            except NoOverlapError as exc:  # pragma: no cover
+                # this should never happen because the initial positions
+                # are checked in _prepare_fit_inputs
                 msg = (f'Initial source at ({xcen}, {ycen}) does not '
                        'overlap with the input data.')
                 raise ValueError(msg) from exc
@@ -716,6 +735,10 @@ class PSFPhotometry(ModelImageMixin):
             yi.append(yy)
             cutout.append(data[yy, xx] - row['local_bkg'])
             npixfit.append(len(xx))
+
+            # this is overlap_slices center pixel index (before any trimming)
+            xcen = np.ceil(xcen - 0.5).astype(int)
+            ycen = np.ceil(ycen - 0.5).astype(int)
 
             idx = np.where((xx == xcen) & (yy == ycen))[0]
             if len(idx) == 0:
@@ -865,10 +888,12 @@ class PSFPhotometry(ModelImageMixin):
                     except AttributeError:
                         pass
                 except TypeError as exc:
-                    msg = ('The number of data points is less than the '
-                           'number of fit parameters. This is likely due '
-                           'to overmasked data. Please check the input '
-                           'mask.')
+                    msg = ('For one or more sources, the number of data '
+                           'points available to fit is less than the '
+                           'number of fit parameters. This could be due to '
+                           'a source(s) near the edge of the detector or '
+                           'if it has few unmasked pixels. Please check the '
+                           'input mask or source positions.')
                     raise ValueError(msg) from exc
 
                 fit_info = {}
@@ -974,14 +999,20 @@ class PSFPhotometry(ModelImageMixin):
             for index, (model, residual, cen_idx_) in enumerate(
                     zip(self._fit_models, fit_residuals, cen_idx)):
                 source = source_tbl[index]
-                xcen = py2intround(source[self._init_colnames['x']])
-                ycen = py2intround(source[self._init_colnames['y']])
+
+                # this is overlap_slices center pixel index (before any
+                # trimming)
+                xcen = np.ceil(source[self._init_colnames['x']]
+                               - 0.5).astype(int)
+                ycen = np.ceil(source[self._init_colnames['y']]
+                               - 0.5).astype(int)
+
                 flux_fit = source['flux_fit']
                 qfit.append(np.sum(np.abs(residual)) / flux_fit)
 
                 if np.isnan(cen_idx_):
-                    # calculate residual at central pixel if the central pixel
-                    # is within the bounds of the ``data``, otherwise mask it:
+                    # calculate residual at central pixel if its within
+                    # the bounds of the ``data``, otherwise mask it
                     cen_in_data = (
                         0 <= ycen <= data.shape[0] - 1
                         and 0 <= xcen <= data.shape[1] - 1
@@ -993,6 +1024,7 @@ class PSFPhotometry(ModelImageMixin):
                 else:
                     # find residual at (xcen, ycen)
                     cen_residual = -residual[cen_idx_]
+
                 cfit.append(cen_residual / flux_fit)
 
         return qfit, cfit
@@ -1050,6 +1082,8 @@ class PSFPhotometry(ModelImageMixin):
                              'init_params')
 
         init_params = self._prepare_init_params(data, unit, mask, init_params)
+        if init_params is not None:
+            self._check_init_positions(init_params, data.shape)
         self.fit_results['init_params'] = init_params
 
         if init_params is None:  # no sources detected
