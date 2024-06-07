@@ -1023,6 +1023,8 @@ class PSFPhotometry(ModelImageMixin):
                         cen_residual = np.nan
                 else:
                     # find residual at (xcen, ycen)
+                    # astropy fitters compute residuals as
+                    # (model - data), thus need to negate the residual
                     cen_residual = -residual[cen_idx_]
 
                 cfit.append(cen_residual / flux_fit)
