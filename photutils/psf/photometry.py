@@ -1288,6 +1288,8 @@ class PSFPhotometry(ModelImageMixin):
                           'check the "flags" column in the output table.',
                           AstropyUserWarning)
 
+        self.fit_results = dict(self.fit_results)
+
         return source_tbl
 
     def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
