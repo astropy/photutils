@@ -50,9 +50,7 @@ __depr__[psf] = ('EPSFFitter', 'EPSFBuilder', 'EPSFStar', 'EPSFStars',
                  'LinkedEPSFStar', 'extract_stars', 'DAOGroup', 'DBSCANGroup',
                  'GroupStarsBase', 'NonNormalizable', 'FittableImageModel',
                  'EPSFModel', 'GriddedPSFModel', 'IntegratedGaussianPRF',
-                 'PRFAdapter', 'prepare_psf_model',
-                 'get_grouped_psf_model', 'subtract_psf',
-                 'resize_psf', 'create_matching_kernel',
+                 'PRFAdapter', 'resize_psf', 'create_matching_kernel',
                  'SplitCosineBellWindow', 'HanningWindow', 'TukeyWindow',
                  'CosineBellWindow', 'TopHatWindow')
 
