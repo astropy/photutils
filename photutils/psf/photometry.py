@@ -20,7 +20,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
 from photutils.background import LocalBackground
-from photutils.psf.groupstars import GroupStarsBase
+from photutils.psf.groupers import SourceGrouper
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
@@ -309,11 +309,9 @@ class PSFPhotometry(ModelImageMixin):
         self._fit_models = None
 
     def _validate_grouper(self, grouper, name):
-        # remove this check when GroupStarsBase subclasses are removed
-        if isinstance(grouper, GroupStarsBase):
-            raise ValueError('Invalid grouper class. Please use '
-                             'SourceGrouper.')
-        return self._validate_callable(grouper, name)
+        if grouper is not None and not isinstance(grouper, SourceGrouper):
+            raise ValueError('grouper must be a SourceGrouper instance.')
+        return grouper
 
     @lazyproperty
     def _psf_param_names(self):

@@ -10,8 +10,7 @@ from astropy.modeling.fitting import LMLSQFitter, SimplexLSQFitter
 from astropy.modeling.models import Gaussian1D, Gaussian2D, custom_model
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, Table
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background import LocalBackground, MMMBackground
@@ -20,7 +19,6 @@ from photutils.datasets import (make_model_image, make_noise_image,
 from photutils.detection import DAOStarFinder
 from photutils.psf import (IntegratedGaussianPRF, IterativePSFPhotometry,
                            PSFPhotometry, SourceGrouper, make_psf_model)
-from photutils.psf.photometry_depr import DAOGroup
 from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.cutouts import _overlap_slices as overlap_slices
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -85,16 +83,11 @@ def test_invalid_inputs():
         with pytest.raises(ValueError, match=match):
             _ = PSFPhotometry(model, shape)
 
-    kwargs = {'grouper': 1, 'finder': 1, 'fitter': 1}
+    kwargs = {'finder': 1, 'fitter': 1}
     for key, val in kwargs.items():
         match = f"'{key}' must be a callable object"
         with pytest.raises(TypeError, match=match):
             _ = PSFPhotometry(model, 1, **{key: val})
-
-    match = 'Invalid grouper class. Please use SourceGrouper.'
-    with pytest.raises(ValueError, match=match):
-        with pytest.warns(AstropyDeprecationWarning):
-            _ = PSFPhotometry(model, 1, grouper=DAOGroup(1))
 
     match = 'localbkg_estimator must be a LocalBackground instance'
     with pytest.raises(ValueError, match=match):
