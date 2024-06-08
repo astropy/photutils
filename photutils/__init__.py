@@ -47,8 +47,7 @@ __depr__[detection] = ('StarFinderBase', 'DAOStarFinder', 'IRAFStarFinder',
                        'find_peaks', 'StarFinder')
 
 __depr__[psf] = ('EPSFFitter', 'EPSFBuilder', 'EPSFStar', 'EPSFStars',
-                 'LinkedEPSFStar', 'extract_stars',
-                 'NonNormalizable', 'FittableImageModel',
+                 'LinkedEPSFStar', 'extract_stars', 'FittableImageModel',
                  'EPSFModel', 'GriddedPSFModel', 'IntegratedGaussianPRF',
                  'PRFAdapter', 'resize_psf', 'create_matching_kernel',
                  'SplitCosineBellWindow', 'HanningWindow', 'TukeyWindow',

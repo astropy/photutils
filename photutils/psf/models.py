@@ -8,22 +8,13 @@ import warnings
 
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
-from astropy.utils.decorators import deprecated
-from astropy.utils.exceptions import AstropyUserWarning, AstropyWarning
+from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
 from photutils.utils._parameters import as_pair
 
-__all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
-           'IntegratedGaussianPRF', 'PRFAdapter']
-
-
-@deprecated('1.11.0', alternative='AstropyUserWarning')
-class NonNormalizable(AstropyWarning):
-    """
-    Used to indicate that a :py:class:`FittableImageModel` model is
-    non-normalizable.
-    """
+__all__ = ['FittableImageModel', 'EPSFModel', 'IntegratedGaussianPRF',
+           'PRFAdapter']
 
 
 class FittableImageModel(Fittable2DModel):
