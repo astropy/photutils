@@ -84,9 +84,9 @@ centered at their centroid. The cutouts are instances of a new
 PSF-Fitting Masks
 =================
 
-The `~photutils.psf.BasicPSFPhotometry`,
-`~photutils.psf.IterativelySubtractedPSFPhotometry` and
-`~photutils.psf.DAOPhotPSFPhotometry` PSF-fitting instances now accept
+The ``~photutils.psf.BasicPSFPhotometry``,
+``~photutils.psf.IterativelySubtractedPSFPhotometry`` and
+``~photutils.psf.DAOPhotPSFPhotometry`` PSF-fitting instances now accept
 a ``mask`` keyword when called with the input data to mask bad pixels.
 Invalid data values (i.e., NaN or inf) are now automatically masked
 when performing PSF fitting. The Astropy/Scipy fitters do not actually

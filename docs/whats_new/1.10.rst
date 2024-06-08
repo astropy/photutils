@@ -33,7 +33,7 @@ PSF photometry models
 A `~photutils.psf.make_psf_model` function was added for making a PSF
 model from a 2D Astropy model. Compound models are also supported.
 The output PSF model can be used in the PSF photometry classes. This
-function replaces the deprecated `~photutils.psf.prepare_psf_model`
+function replaces the deprecated ``~photutils.psf.prepare_psf_model``
 function.
 
 

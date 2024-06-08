@@ -16,8 +16,8 @@ Improved PSF Photometry classes
 The `~photutils.psf.PSFPhotometry` and
 `~photutils.psf.IterativePSFPhotometry` classes were added
 to perform PSF photometry. They represent a complete rewrite
-of the previous `~photutils.psf.BasicPSFPhotometry` and
-`~photutils.psf.IterativelySubtractedPSFPhotometry` classes, but have
+of the previous ``~photutils.psf.BasicPSFPhotometry`` and
+``~photutils.psf.IterativelySubtractedPSFPhotometry`` classes, but have
 a similar API and functionality. The new classes are more flexible and
 significantly faster than the previous classes. The new classes also
 allow the input of error arrays, which will be used as weights in the
@@ -39,9 +39,9 @@ Some other features of the new classes include:
   * Allows access to the finder results
   * Adds a local background subtraction option
 
-The old PSF photometry classes (`~photutils.psf.BasicPSFPhotometry`,
-`~photutils.psf.IterativelySubtractedPSFPhotometry`, and
-`~photutils.psf.DAOPhotPSFPhotometry`) are still available in this
+The old PSF photometry classes (``~photutils.psf.BasicPSFPhotometry``,
+``~photutils.psf.IterativelySubtractedPSFPhotometry``, and
+``~photutils.psf.DAOPhotPSFPhotometry``) are still available in this
 release, but are deprecated. They will be removed in a future release.
 
 
@@ -53,8 +53,8 @@ using hierarchical agglomerative clustering with a distance criterion.
 This class is used by the new `~photutils.psf.PSFPhotometry` and
 `~photutils.psf.IterativePSFPhotometry` classes.
 
-The old source grouping classes (`~photutils.psf.DAOGroup` and
-`~photutils.psf.DBSCANGroup`) are still available in this release, but
+The old source grouping classes (``~photutils.psf.DAOGroup`` and
+``~photutils.psf.DBSCANGroup``) are still available in this release, but
 are deprecated. They will be removed in a future release.
 
 
