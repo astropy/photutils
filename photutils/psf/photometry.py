@@ -62,14 +62,15 @@ class ModelImageMixin:
         Returns
         -------
         array : 2D `~numpy.ndarray`
-            The rendered image from the fit PSF models.
+            The rendered image from the fit PSF models. This image will
+            not have any units.
         """
         data = np.zeros(shape)
 
         if isinstance(self, PSFPhotometry):
             progress_bar = self.progress_bar
             fit_models = self._fit_models
-            local_bkgs = self.fit_results['local_bkg']
+            local_bkgs = self.init_params['local_bkg']
             xname, yname = self._psf_param_names[0:2]
         else:
             progress_bar = self._psfphot.progress_bar
@@ -82,7 +83,7 @@ class ModelImageMixin:
                 local_bkgs = []
                 for psfphot in self.fit_results:
                     fit_models.append(psfphot._fit_models)
-                    local_bkgs.append(psfphot.fit_results['local_bkg'])
+                    local_bkgs.append(psfphot.init_params['local_bkg'])
 
                 fit_models = _flatten(fit_models)
                 local_bkgs = _flatten(local_bkgs)
@@ -90,11 +91,15 @@ class ModelImageMixin:
                 # use only the fit models and local backgrounds from the
                 # final iteration, which includes all sources
                 fit_models = self.fit_results[-1]._fit_models
-                local_bkgs = self.fit_results[-1].fit_results['local_bkg']
+                local_bkgs = self.fit_results[-1].init_params['local_bkg']
 
         if progress_bar:  # pragma: no cover
             desc = 'Model image'
             fit_models = add_progress_bar(fit_models, desc=desc)
+
+        if include_localbkg:
+            if isinstance(local_bkgs, u.Quantity):
+                local_bkgs = local_bkgs.value
 
         # fit_models must be a list of individual, not grouped, PSF
         # models, i.e., there should be one PSF model (which may be
@@ -291,12 +296,14 @@ class PSFPhotometry(ModelImageMixin):
 
         # reset these attributes for each __call__ (see _reset_results)
         self.finder_results = None
+        self.init_params = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
         self._fit_models = None
 
     def _reset_results(self):
         self.finder_results = None
+        self.init_params = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
         self._fit_models = None
@@ -469,7 +476,28 @@ class PSFPhotometry(ModelImageMixin):
                 break
         return name
 
-    def _validate_init_params(self, init_params, flux_unit):
+    def _check_init_units(self, init_params, colname, data_unit):
+        values = init_params[colname]
+        if isinstance(values, u.Quantity):
+            if data_unit is None:
+                raise ValueError(f'init_params {colname} column has '
+                                 'units, but the input data does not '
+                                 'have units.')
+            try:
+                init_params[colname] = values.to(data_unit)
+            except u.UnitConversionError as exc:
+                raise ValueError(f'init_params {colname} column has '
+                                 'units that are incompatible with '
+                                 'the input data units.') from exc
+        else:
+            if data_unit is not None:
+                raise ValueError('The input data has units, but the '
+                                 f'init_params {colname} column does not '
+                                 'have units.')
+
+        return init_params
+
+    def _validate_init_params(self, init_params, data_unit):
         if init_params is None:
             return init_params
 
@@ -496,23 +524,15 @@ class PSFPhotometry(ModelImageMixin):
             if fluxcolname != fluxinit_name:
                 init_params.rename_column(fluxcolname, fluxinit_name)
 
-            init_flux = init_params[fluxinit_name]
-            if isinstance(init_flux, u.Quantity):
-                if flux_unit is None:
-                    raise ValueError('init_params flux column has '
-                                     'units, but the input data does not '
-                                     'have units.')
-                try:
-                    init_params[fluxinit_name] = init_flux.to(flux_unit)
-                except u.UnitConversionError as exc:
-                    raise ValueError('init_params flux column has '
-                                     'units that are incompatible with '
-                                     'the input data units.') from exc
-            else:
-                if flux_unit is not None:
-                    raise ValueError('The input data has units, but the '
-                                     'init_params flux column does not have '
-                                     'units.')
+            init_params = self._check_init_units(init_params, fluxinit_name,
+                                                 data_unit)
+
+        if 'local_bkg' in init_params.colnames:
+            if not np.all(np.isfinite(init_params['local_bkg'])):
+                raise ValueError('init_params local_bkg column contains '
+                                 'non-finite values.')
+            init_params = self._check_init_units(init_params, 'local_bkg',
+                                                 data_unit)
 
         return init_params
 
@@ -583,8 +603,6 @@ class PSFPhotometry(ModelImageMixin):
                     data, init_params[self._init_colnames['x']],
                     init_params[self._init_colnames['y']], mask=mask)
             init_params['local_bkg'] = local_bkg
-
-        self.fit_results['local_bkg'] = init_params['local_bkg'].value
 
         if self._init_colnames['flux'] not in init_params.colnames:
             flux = self._get_aper_fluxes(data, mask, init_params)
@@ -733,7 +751,10 @@ class PSFPhotometry(ModelImageMixin):
 
             xi.append(xx)
             yi.append(yy)
-            cutout.append(data[yy, xx] - row['local_bkg'])
+            local_bkg = row['local_bkg']
+            if isinstance(local_bkg, u.Quantity):
+                local_bkg = local_bkg.value
+            cutout.append(data[yy, xx] - local_bkg)
             npixfit.append(len(xx))
 
             # this is overlap_slices center pixel index (before any trimming)
@@ -955,7 +976,6 @@ class PSFPhotometry(ModelImageMixin):
         # If NaNs are present, turning it into an array will convert the
         # ints to floats, which cannot be used as slices.
         cen_idx = self._ungroup(self._group_results['psfcenter_indices'])
-        self.fit_results['psfcenter_indices'] = cen_idx
 
         split_index = []
         for npixfit in self._group_results['npixfit']:
@@ -979,16 +999,6 @@ class PSFPhotometry(ModelImageMixin):
                                  self._group_results['fit_infos']):
             fit_residuals.extend(np.split(fit_info[key], idx))
         fit_residuals = self._order_by_id(fit_residuals)
-        self.fit_results['fit_residuals'] = fit_residuals
-
-        for npixfit, residuals in zip(self.fit_results['npixfit'],
-                                      fit_residuals):
-            if len(residuals) != npixfit:  # pragma: no cover
-                raise ValueError('size of residuals does not match npixfit')
-
-        if len(fit_residuals) != len(source_tbl):  # pragma: no cover
-            raise ValueError('fit_residuals does not match the source '
-                             'table length')
 
         with warnings.catch_warnings():
             # ignore divide-by-zero if flux = 0
@@ -1023,6 +1033,8 @@ class PSFPhotometry(ModelImageMixin):
                         cen_residual = np.nan
                 else:
                     # find residual at (xcen, ycen)
+                    # astropy fitters compute residuals as
+                    # (model - data), thus need to negate the residual
                     cen_residual = -residual[cen_idx_]
 
                 cfit.append(cen_residual / flux_fit)
@@ -1084,7 +1096,7 @@ class PSFPhotometry(ModelImageMixin):
         init_params = self._prepare_init_params(data, unit, mask, init_params)
         if init_params is not None:
             self._check_init_positions(init_params, data.shape)
-        self.fit_results['init_params'] = init_params
+        self.init_params = init_params
 
         if init_params is None:  # no sources detected
             # TODO: raise warning
@@ -1157,10 +1169,12 @@ class PSFPhotometry(ModelImageMixin):
             compatible units.
 
             The table can also have ``group_id`` and ``local_bkg``
-            columns. If ``group_id`` is input, the values will be used
-            and ``grouper`` keyword will be ignored. If ``local_bkg`` is
-            input, they will be used and the ``localbkg_estimator`` will
-            be ignored.
+            columns. If ``group_id`` is input, the values will
+            be used and ``grouper`` keyword will be ignored. If
+            ``local_bkg`` is input, those values will be used and the
+            ``localbkg_estimator`` will be ignored. If ``data`` has
+            units, then the ``local_bkg`` values must have the same
+            units.
 
         Returns
         -------
@@ -1245,11 +1259,9 @@ class PSFPhotometry(ModelImageMixin):
             source_tbl = hstack((source_tbl, param_errors))
 
         npixfit = np.array(self._ungroup(self._group_results['npixfit']))
-        self.fit_results['npixfit'] = npixfit
         source_tbl['npixfit'] = npixfit
 
         nmodels = np.array(self._ungroup(self._group_results['nmodels']))
-        self.fit_results['nmodels'] = nmodels
         index = source_tbl.index_column('group_id') + 1
         source_tbl.add_column(nmodels, name='group_size', index=index)
 
@@ -1275,6 +1287,8 @@ class PSFPhotometry(ModelImageMixin):
             warnings.warn('One or more fit(s) may not have converged. Please '
                           'check the "flags" column in the output table.',
                           AstropyUserWarning)
+
+        self.fit_results = dict(self.fit_results)
 
         return source_tbl
 

@@ -26,8 +26,24 @@ from photutils.utils.cutouts import _overlap_slices as overlap_slices
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
+@pytest.fixture(name='test_data')
+def fixture_test_data():
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_shape = (9, 9)
+    nsources = 10
+    shape = (101, 101)
+    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
+                                           nsources, flux_range=(500, 700),
+                                           min_separation=10, seed=0)
+    noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
+    data += noise
+    error = np.abs(noise)
+
+    return data, error, true_params
+
+
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-def test_inputs():
+def test_invalid_inputs():
     model = IntegratedGaussianPRF(sigma=1.0)
 
     match = 'psf_model must be an Astropy Model subclass'
@@ -141,29 +157,14 @@ def test_inputs():
         mask[7, 7] = True
         _ = psfphot2(data, mask=mask, init_params=init_params)
 
-    # this should not raise a warning because the non-finite pixel was
-    # explicitly masked
-    data = np.ones((11, 11))
-    data[5, 5] = np.nan
-    mask = np.zeros(data.shape, dtype=bool)
-    mask[5, 5] = True
-    _ = psfphot2(data, mask=mask, init_params=init_params)
-
-
-@pytest.fixture(name='test_data')
-def fixture_test_data():
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
-    psf_shape = (9, 9)
-    nsources = 10
-    shape = (101, 101)
-    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
-                                           nsources, flux_range=(500, 700),
-                                           min_separation=10, seed=0)
-    noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
-    data += noise
-    error = np.abs(noise)
-
-    return data, error, true_params
+    match = 'init_params local_bkg column contains non-finite values'
+    with pytest.raises(ValueError, match=match):
+        tbl = Table()
+        init_params['x_init'] = [1, 2]
+        init_params['y_init'] = [1, 2]
+        init_params['local_bkg'] = [0.1, np.inf]
+        data = np.ones((11, 11))
+        _ = psfphot(data, init_params=init_params)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -185,28 +186,9 @@ def test_psf_photometry(test_data):
     assert resid_data.shape == data.shape
     assert phot.colnames[:4] == ['id', 'group_id', 'group_size', 'local_bkg']
 
-    keys = ('local_bkg', 'init_params', 'fit_infos', 'fit_param_errs',
-            'fit_error_indices', 'npixfit', 'nmodels', 'psfcenter_indices',
-            'fit_residuals')
+    keys = ('fit_infos', 'fit_param_errs', 'fit_error_indices')
     for key in keys:
         assert key in psfphot.fit_results
-
-    # test np.ma.nomask
-    photm = psfphot(data, error=error, mask=np.ma.nomask)
-    assert np.all(phot == photm)
-
-    # test NDData input
-    uncertainty = StdDevUncertainty(error)
-    nddata = NDData(data, uncertainty=uncertainty)
-    psfphot2 = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                             aperture_radius=4)
-    phot2 = psfphot2(nddata)
-    resid_data2 = psfphot2.make_residual_image(nddata, fit_shape)
-
-    assert np.all(phot == phot2)
-    assert isinstance(resid_data2, NDData)
-    assert resid_data2.data.shape == data.shape
-    assert_allclose(resid_data, resid_data2.data)
 
     # test units
     unit = u.Jy
@@ -220,7 +202,36 @@ def test_psf_photometry(test_data):
     resid_datau = psfphotu.make_residual_image(data << unit, fit_shape)
     assert resid_datau.unit == unit
 
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_psf_photometry_nddata(test_data):
+    data, error, sources = test_data
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+
+    # test NDData input
+    uncertainty = StdDevUncertainty(error)
+    nddata = NDData(data, uncertainty=uncertainty)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    phot1 = psfphot(data, error=error)
+    phot2 = psfphot(nddata)
+    resid_data1 = psfphot.make_residual_image(data, fit_shape)
+    resid_data2 = psfphot.make_residual_image(nddata, fit_shape)
+
+    assert np.all(phot1 == phot2)
+    assert isinstance(resid_data2, NDData)
+    assert resid_data2.data.shape == data.shape
+    assert_allclose(resid_data1, resid_data2.data)
+
     # test NDData input with units
+    unit = u.Jy
+    finderu = DAOStarFinder(6.0 * unit, 2.0)
+    psfphotu = PSFPhotometry(psf_model, fit_shape, finder=finderu,
+                             aperture_radius=4)
+    photu = psfphotu(data * unit, error=error * unit)
     uncertainty = StdDevUncertainty(error)
     nddata = NDData(data, uncertainty=uncertainty, unit=unit)
     photu = psfphotu(nddata)
@@ -270,7 +281,7 @@ def test_model_residual_image(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-def test_psf_photometry_compound(test_data):
+def test_psf_photometry_compound_psfmodel(test_data):
     """
     Test compound models output from ``make_psf_model``.
     """
@@ -334,9 +345,6 @@ def test_psf_photometry_compound(test_data):
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_mask(test_data):
     data, error, sources = test_data
-    data_orig = data.copy()
-    data = data.copy()
-    data[50, 40:50] = np.nan
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     fit_shape = (5, 5)
@@ -344,35 +352,45 @@ def test_psf_photometry_mask(test_data):
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
 
+    # test np.ma.nomask
+    phot = psfphot(data, error=error, mask=None)
+    photm = psfphot(data, error=error, mask=np.ma.nomask)
+    assert np.all(phot == photm)
+
+    # masked near source at ~(63, 49)
+    data_orig = data.copy()
+    data = data.copy()
+    data[55, 60:70] = np.nan
+
     match = 'Input data contains unmasked non-finite values'
     with pytest.warns(AstropyUserWarning, match=match):
-        phot = psfphot(data, error=error, mask=None)
-        assert len(phot) == len(sources)
+        phot1 = psfphot(data, error=error, mask=None)
+        assert len(phot1) == len(sources)
+
+    mask = ~np.isfinite(data)
+    phot2 = psfphot(data, error=error, mask=mask)
+    assert np.all(phot1 == phot2)
 
     # unmasked NaN with mask not None
     match = 'Input data contains unmasked non-finite values'
     with pytest.warns(AstropyUserWarning, match=match):
         mask = ~np.isfinite(data)
-        mask[50, 40] = False
+        mask[55, 65] = False
         phot = psfphot(data, error=error, mask=mask)
         assert len(phot) == len(sources)
-
-    mask = ~np.isfinite(data)
-    phot2 = psfphot(data, error=error, mask=mask)
-    assert np.all(phot == phot2)
 
     # mask all True; finder returns no sources
     with pytest.warns(NoDetectionsWarning):
         mask = np.ones(data.shape, dtype=bool)
-        _ = psfphot(data, mask=mask)
+        psfphot(data, mask=mask)
 
     # completely masked source
     match = ('is completely masked. Remove the source from init_params '
              'or correct the input mask')
     with pytest.raises(ValueError, match=match):
         init_params = QTable()
-        init_params['x'] = [42]
-        init_params['y'] = [36]
+        init_params['x'] = [63]
+        init_params['y'] = [49]
         mask = np.ones(data.shape, dtype=bool)
         _ = psfphot(data, mask=mask, init_params=init_params)
 
@@ -381,23 +399,35 @@ def test_psf_photometry_mask(test_data):
              'number of fit parameters')
     with pytest.raises(ValueError, match=match):
         init_params = QTable()
-        init_params['x'] = [42]
-        init_params['y'] = [36]
+        init_params['x'] = [63]
+        init_params['y'] = [49]
         mask = np.zeros(data.shape, dtype=bool)
-        mask[35:37, :] = True
-        mask[37, 42:44] = True
+        mask[48:50, :] = True
+        mask[50, 63:65] = True
         psfphot = PSFPhotometry(psf_model, (3, 3), finder=finder,
                                 aperture_radius=4)
         _ = psfphot(data_orig, mask=mask, init_params=init_params)
 
     # masked central pixel
     init_params = QTable()
-    init_params['x'] = [42]
-    init_params['y'] = [36]
+    init_params['x'] = [63]
+    init_params['y'] = [49]
     mask = np.zeros(data.shape, dtype=bool)
-    mask[36, 42] = True
+    mask[49, 63] = True
     phot = psfphot(data_orig, mask=mask, init_params=init_params)
     assert len(phot) == 1
+
+    # this should not raise a warning because the non-finite pixel was
+    # explicitly masked
+    psfphot = PSFPhotometry(psf_model, (3, 3), aperture_radius=3)
+    data = np.ones((11, 11))
+    data[5, 5] = np.nan
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[5, 5] = True
+    init_params = Table()
+    init_params['x_init'] = [1, 2]
+    init_params['y_init'] = [1, 2]
+    psfphot(data, mask=mask, init_params=init_params)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -412,8 +442,8 @@ def test_psf_photometry_init_params(test_data):
                             aperture_radius=4)
 
     init_params = QTable()
-    init_params['x'] = [42]
-    init_params['y'] = [36]
+    init_params['x'] = [63]
+    init_params['y'] = [49]
     phot = psfphot(data, error=error, init_params=init_params)
     assert isinstance(phot, QTable)
     assert len(phot) == 1
@@ -424,6 +454,8 @@ def test_psf_photometry_init_params(test_data):
                                 aperture_radius=None)
         _ = psfphot(data, error=error, init_params=init_params)
 
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
     init_params['flux'] = 650
     phot = psfphot(data, error=error, init_params=init_params)
     assert len(phot) == 1
@@ -432,27 +464,28 @@ def test_psf_photometry_init_params(test_data):
     phot = psfphot(data, error=error, init_params=init_params)
     assert len(phot) == 1
 
-    init_params['flux'] = [650 * u.Jy]
-    match = ('init_params flux column has units, but the input data does '
-             'not have units')
-    with pytest.raises(ValueError, match=match):
-        _ = psfphot(data, error=error, init_params=init_params)
+    colnames = ('flux', 'local_bkg')
+    for col in colnames:
+        init_params2 = init_params.copy()
+        init_params2.remove_column('flux')
+        init_params2[col] = [650 * u.Jy]
+        match = 'column has units, but the input data does not have units'
+        with pytest.raises(ValueError, match=match):
+            _ = psfphot(data, error=error, init_params=init_params2)
 
-    init_params['flux'] = [650 * u.Jy]
-    match = ('init_params flux column has units that are incompatible with '
-             'the input data units')
-    with pytest.raises(ValueError, match=match):
-        _ = psfphot(data << u.m, init_params=init_params)
+        init_params2[col] = [650 * u.Jy]
+        match = 'column has units that are incompatible with the input data'
+        with pytest.raises(ValueError, match=match):
+            _ = psfphot(data << u.m, init_params=init_params2)
 
-    init_params['flux'] = [650]
-    match = ('The input data has units, but the init_params flux column '
-             'does not have units')
-    with pytest.raises(ValueError, match=match):
-        _ = psfphot(data << u.Jy, init_params=init_params)
+        init_params2[col] = [650]
+        match = 'The input data has units, but the init_params'
+        with pytest.raises(ValueError, match=match):
+            _ = psfphot(data << u.Jy, init_params=init_params2)
 
     init_params = QTable()
-    init_params['x'] = [-42]
-    init_params['y'] = [-36]
+    init_params['x'] = [-63]
+    init_params['y'] = [-49]
     init_params['flux'] = [100]
     match = 'Some of the sources have no overlap with the data'
     with pytest.raises(ValueError, match=match):
@@ -460,18 +493,75 @@ def test_psf_photometry_init_params(test_data):
 
     # check that the first matching column name is used
     init_params = QTable()
-    init_params['x'] = [42]
-    init_params['y'] = [36]
-    init_params['flux'] = [680]
-    init_params['x_cen'] = [42.1]
-    init_params['y_cen'] = [36.1]
-    init_params['flux0'] = [680.1]
+    x = 63
+    y = 49
+    flux = 680
+    init_params['x'] = [x]
+    init_params['y'] = [y]
+    init_params['flux'] = [flux]
+    init_params['x_cen'] = [x + 0.1]
+    init_params['y_cen'] = [y + 0.1]
+    init_params['flux0'] = [flux + 0.1]
     phot = psfphot(data, error=error, init_params=init_params)
     assert isinstance(phot, QTable)
     assert len(phot) == 1
-    assert phot['x_init'][0] == 42
-    assert phot['y_init'][0] == 36
-    assert phot['flux_init'][0] == 680
+    assert phot['x_init'][0] == x
+    assert phot['y_init'][0] == y
+    assert phot['flux_init'][0] == flux
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_psf_photometry_init_params_units(test_data):
+    data, error, _ = test_data
+    data2 = data.copy()
+    error2 = error.copy()
+
+    unit = u.Jy
+    data2 <<= unit
+    error2 <<= unit
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    fit_shape = (5, 5)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
+                            aperture_radius=4)
+
+    init_params = QTable()
+    init_params['x'] = [63]
+    init_params['y'] = [49]
+    init_params['flux'] = [650 * unit]
+    init_params['local_bkg'] = [0.001 * unit]
+    phot = psfphot(data2, error=error2, init_params=init_params)
+    assert isinstance(phot, QTable)
+    assert len(phot) == 1
+
+    for val in (True, False):
+        im = psfphot.make_model_image(data2.shape, fit_shape,
+                                      include_localbkg=val)
+        assert not isinstance(im, u.Quantity)
+        resid = psfphot.make_residual_image(data2, fit_shape,
+                                            include_localbkg=val)
+        assert resid.unit == unit
+
+    # test invalid units
+    colnames = ('flux', 'local_bkg')
+    for col in colnames:
+        init_params2 = init_params.copy()
+        init_params2.remove_column('flux')
+        init_params2.remove_column('local_bkg')
+        init_params2[col] = [650 * u.Jy]
+        match = 'column has units, but the input data does not have units'
+        with pytest.raises(ValueError, match=match):
+            _ = psfphot(data, error=error, init_params=init_params2)
+
+        init_params2[col] = [650 * u.Jy]
+        match = 'column has units that are incompatible with the input data'
+        with pytest.raises(ValueError, match=match):
+            _ = psfphot(data << u.m, init_params=init_params2)
+
+        init_params2[col] = [650]
+        match = 'The input data has units, but the init_params'
+        with pytest.raises(ValueError, match=match):
+            _ = psfphot(data << u.Jy, init_params=init_params2)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -605,7 +695,11 @@ def test_fit_warning(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-def test_fitter_no_maxiters_no_residuals(test_data):
+def test_fitter_no_maxiters_no_metrics(test_data):
+    """
+    Test with a fitter that does not have a maxiters parameter and does
+    not produce a residual array.
+    """
     data, error, _ = test_data
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
