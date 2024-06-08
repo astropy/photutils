@@ -389,45 +389,6 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
     -------
     image : 2D `~numpy.ndarray`
         Image containing 2D Gaussian sources.
-
-    Examples
-    --------
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        import numpy as np
-        from astropy.table import QTable
-        from photutils.datasets import (make_gaussian_sources_image,
-                                        make_noise_image)
-
-        # make a table of Gaussian sources
-        table = QTable()
-        table['amplitude'] = [50, 70, 150, 210]
-        table['x_mean'] = [160, 25, 150, 90]
-        table['y_mean'] = [70, 40, 25, 60]
-        table['x_stddev'] = [15.2, 5.1, 3., 8.1]
-        table['y_stddev'] = [2.6, 2.5, 3., 4.7]
-        table['theta'] = np.radians(np.array([145., 20., 0., 60.]))
-
-        # make an image of the sources without noise, with Gaussian
-        # noise, and with Poisson noise
-        shape = (100, 200)
-        image1 = make_gaussian_sources_image(shape, table)
-        image2 = image1 + make_noise_image(shape, distribution='gaussian',
-                                           mean=5., stddev=5.)
-        image3 = image1 + make_noise_image(shape, distribution='poisson',
-                                           mean=5.)
-
-        # plot the images
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 12))
-        ax1.imshow(image1, origin='lower', interpolation='nearest')
-        ax1.set_title('Original image')
-        ax2.imshow(image2, origin='lower', interpolation='nearest')
-        ax2.set_title('Original image with added Gaussian noise'
-                      r' ($\mu = 5, \sigma = 5$)')
-        ax3.imshow(image3, origin='lower', interpolation='nearest')
-        ax3.set_title(r'Original image with added Poisson noise ($\mu = 5$)')
     """
     model = Gaussian2D(x_stddev=1, y_stddev=1)
 
@@ -474,42 +435,6 @@ def make_gaussian_prf_sources_image(shape, source_table):
     -------
     image : 2D `~numpy.ndarray`
         Image containing 2D Gaussian sources.
-
-    Examples
-    --------
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        from astropy.table import QTable
-        from photutils.datasets import (make_gaussian_prf_sources_image,
-                                        make_noise_image)
-
-        # make a table of Gaussian sources
-        table = QTable()
-        table['amplitude'] = [50, 70, 150, 210]
-        table['x_0'] = [160, 25, 150, 90]
-        table['y_0'] = [70, 40, 25, 60]
-        table['sigma'] = [15.2, 5.1, 3., 8.1]
-
-        # make an image of the sources without noise, with Gaussian
-        # noise, and with Poisson noise
-        shape = (100, 200)
-        image1 = make_gaussian_prf_sources_image(shape, table)
-        image2 = (image1 + make_noise_image(shape, distribution='gaussian',
-                                            mean=5., stddev=5.))
-        image3 = (image1 + make_noise_image(shape, distribution='poisson',
-                                            mean=5.))
-
-        # plot the images
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 12))
-        ax1.imshow(image1, origin='lower', interpolation='nearest')
-        ax1.set_title('Original image')
-        ax2.imshow(image2, origin='lower', interpolation='nearest')
-        ax2.set_title('Original image with added Gaussian noise'
-                      r' ($\mu = 5, \sigma = 5$)')
-        ax3.imshow(image3, origin='lower', interpolation='nearest')
-        ax3.set_title(r'Original image with added Poisson noise ($\mu = 5$)')
     """
     model = IntegratedGaussianPRF(sigma=1)
 
