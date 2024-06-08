@@ -24,9 +24,6 @@ Photutils also optionally depends on other packages for some features:
 * `scikit-image <https://scikit-image.org/>`_ 0.20 or later: Used for
   deblending segmented sources.
 
-* `scikit-learn <https://scikit-learn.org/>`_ 1.1 or later: Used in the
-  deprecated `~photutils.psf.DBSCANGroup` class to create star groups.
-
 * `GWCS <https://gwcs.readthedocs.io/en/stable/>`_ 0.18 or later:
   Used in `~photutils.datasets.make_gwcs` to create a simple celestial
   gwcs object.
