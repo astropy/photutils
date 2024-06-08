@@ -143,6 +143,13 @@ API Changes
     the ``group_id`` column in the output table from ``PSFPhotometry``
     and ``IterativePSFPhotometry``. [#1772]
 
+  - The ``PSFPhotometry`` ``init_params`` table was moved from the
+    ``fit_results`` dictionary to an attribute. [#1773]
+
+  - Removed  ``local_bkg``, ``psfcenter_indices``, ``fit_residuals``,
+    ``npixfit``, and ``nmodels`` keys from the ``PSFPhotometry``
+    ``fit_results`` dictionary. [#1773]
+
 
 1.12.0 (2024-04-12)
 -------------------
