@@ -293,18 +293,6 @@ def test_psf_photometry_compound_psfmodel(test_data):
     assert isinstance(phot, QTable)
     assert len(phot) == len(sources)
 
-    psf_model2 = psf_model.copy()
-    psf_model2.xname = psf_model2.x_name
-    psf_model2.yname = psf_model2.y_name
-    psf_model2.fluxname = psf_model2.flux_name
-    del psf_model2.x_name, psf_model2.y_name, psf_model2.flux_name
-
-    psfphot2 = PSFPhotometry(psf_model2, fit_shape, finder=finder,
-                             aperture_radius=4)
-    phot2 = psfphot2(data, error=error)
-    assert isinstance(phot2, QTable)
-    assert len(phot2) == len(sources)
-
     # test results when fit does not converge (fitter_maxiters=10)
     match = r'One or more fit\(s\) may not have converged.'
     with pytest.warns(AstropyUserWarning, match=match):

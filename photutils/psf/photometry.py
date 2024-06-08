@@ -323,18 +323,13 @@ class PSFPhotometry(ModelImageMixin):
 
             * ('x_0', 'y_0', 'flux') parameters
             * ('x_name', 'y_name', 'flux_name') attributes
-            * ('xname', 'yname', 'fluxname') (deprecated) attributes
         """
         params1 = ('x_0', 'y_0', 'flux')
         params2 = ('x_name', 'y_name', 'flux_name')
-        params3 = ('xname', 'yname', 'fluxname')  # deprecated
         if all(name in self.psf_model.param_names for name in params1):
             model_params = params1
         elif all(params := [getattr(self.psf_model, name, None)
                             for name in params2]):
-            model_params = tuple(params)
-        elif all(params := [getattr(self.psf_model, name, None)
-                            for name in params3]):
             model_params = tuple(params)
         else:
             msg = 'Invalid PSF model - could not find PSF parameter names.'
