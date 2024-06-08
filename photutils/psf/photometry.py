@@ -20,7 +20,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
 from photutils.background import LocalBackground
-from photutils.psf.groupstars import GroupStarsBase
+from photutils.psf.groupers import SourceGrouper
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
@@ -309,11 +309,9 @@ class PSFPhotometry(ModelImageMixin):
         self._fit_models = None
 
     def _validate_grouper(self, grouper, name):
-        # remove this check when GroupStarsBase subclasses are removed
-        if isinstance(grouper, GroupStarsBase):
-            raise ValueError('Invalid grouper class. Please use '
-                             'SourceGrouper.')
-        return self._validate_callable(grouper, name)
+        if grouper is not None and not isinstance(grouper, SourceGrouper):
+            raise ValueError('grouper must be a SourceGrouper instance.')
+        return grouper
 
     @lazyproperty
     def _psf_param_names(self):
@@ -325,18 +323,13 @@ class PSFPhotometry(ModelImageMixin):
 
             * ('x_0', 'y_0', 'flux') parameters
             * ('x_name', 'y_name', 'flux_name') attributes
-            * ('xname', 'yname', 'fluxname') (deprecated) attributes
         """
         params1 = ('x_0', 'y_0', 'flux')
         params2 = ('x_name', 'y_name', 'flux_name')
-        params3 = ('xname', 'yname', 'fluxname')  # deprecated
         if all(name in self.psf_model.param_names for name in params1):
             model_params = params1
         elif all(params := [getattr(self.psf_model, name, None)
                             for name in params2]):
-            model_params = tuple(params)
-        elif all(params := [getattr(self.psf_model, name, None)
-                            for name in params3]):
             model_params = tuple(params)
         else:
             msg = 'Invalid PSF model - could not find PSF parameter names.'

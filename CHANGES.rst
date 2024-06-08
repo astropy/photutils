@@ -4,6 +4,8 @@
 General
 ^^^^^^^
 
+- ``scikit-learn`` has been removed as an optional dependency. [#1774]
+
 New Features
 ^^^^^^^^^^^^
 
@@ -149,6 +151,12 @@ API Changes
   - Removed  ``local_bkg``, ``psfcenter_indices``, ``fit_residuals``,
     ``npixfit``, and ``nmodels`` keys from the ``PSFPhotometry``
     ``fit_results`` dictionary. [#1773]
+
+  - Removed the deprecated ``BasicPSFPhotometry``,
+    ``IterativelySubtractedPSFPhotometry``, ``DAOPhotPSFPhotometry``,
+    ``DAOGroup``, ``DBSCANGroup``, and ``GroupStarsBase``, and
+    ``NonNormalizable`` classes and the ``prepare_psf_model``,
+    ``get_grouped_psf_model``, and ``subtract_psf`` functions. [#1774]
 
 
 1.12.0 (2024-04-12)

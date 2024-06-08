@@ -317,6 +317,5 @@ Finally, let's show the constructed ePSF:
 The :class:`~photutils.psf.EPSFModel` object is a subclass of
 :class:`~photutils.psf.FittableImageModel`, thus it can be used
 as a PSF model for the :ref:`PSF-fitting machinery in Photutils
-<psf-photometry>` (i.e., `~photutils.psf.BasicPSFPhotometry`,
-`~photutils.psf.IterativelySubtractedPSFPhotometry`, or
-`~photutils.psf.DAOPhotPSFPhotometry`).
+<psf-photometry>` (i.e., `~photutils.psf.PSFPhotometry` or
+`~photutils.psf.IterativePSFPhotometry`).
