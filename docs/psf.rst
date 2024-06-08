@@ -334,14 +334,13 @@ astropy table):
       9    5.5845   89.8645    0.5721 ... 0.0 50.5544  6.5387 -2.0387
      10   71.8284   90.5625    0.6038 ... 0.0 65.7975  8.5373 -2.3283
 
-The ``fit_results`` attribute contains a dictionary with a wealth of
-detailed information, including the fit models and any information
-returned from the ``fitter`` for each source:
+The ``fit_results`` attribute contains a dictionary with detailed
+information returned from the ``fitter`` for each source:
 
 .. doctest-requires:: scipy
 
     >>> psfphot.fit_results.keys()
-    dict_keys(['local_bkg', 'init_params', 'fit_infos', 'fit_param_errs', 'fit_error_indices', 'npixfit', 'nmodels', 'psfcenter_indices', 'fit_residuals'])
+    dict_keys(['fit_infos', 'fit_param_errs', 'fit_error_indices'])
 
 As an example, let's print the covariance matrix of the fit parameters
 for the first source (note that not all astropy fitters will return a
