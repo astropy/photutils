@@ -298,7 +298,6 @@ class PSFPhotometry(ModelImageMixin):
         self.finder_results = None
         self.init_params = None
         self.fit_results = defaultdict(list)
-        self._fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
         self._fit_models = None
 
@@ -306,7 +305,6 @@ class PSFPhotometry(ModelImageMixin):
         self.finder_results = None
         self.init_params = None
         self.fit_results = defaultdict(list)
-        self._fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
         self._fit_models = None
 
@@ -978,7 +976,6 @@ class PSFPhotometry(ModelImageMixin):
         # If NaNs are present, turning it into an array will convert the
         # ints to floats, which cannot be used as slices.
         cen_idx = self._ungroup(self._group_results['psfcenter_indices'])
-        self._fit_results['psfcenter_indices'] = cen_idx
 
         split_index = []
         for npixfit in self._group_results['npixfit']:
@@ -1002,16 +999,6 @@ class PSFPhotometry(ModelImageMixin):
                                  self._group_results['fit_infos']):
             fit_residuals.extend(np.split(fit_info[key], idx))
         fit_residuals = self._order_by_id(fit_residuals)
-        self._fit_results['fit_residuals'] = fit_residuals
-
-        for npixfit, residuals in zip(self._fit_results['npixfit'],
-                                      fit_residuals):
-            if len(residuals) != npixfit:  # pragma: no cover
-                raise ValueError('size of residuals does not match npixfit')
-
-        if len(fit_residuals) != len(source_tbl):  # pragma: no cover
-            raise ValueError('fit_residuals does not match the source '
-                             'table length')
 
         with warnings.catch_warnings():
             # ignore divide-by-zero if flux = 0
@@ -1272,11 +1259,9 @@ class PSFPhotometry(ModelImageMixin):
             source_tbl = hstack((source_tbl, param_errors))
 
         npixfit = np.array(self._ungroup(self._group_results['npixfit']))
-        self._fit_results['npixfit'] = npixfit
         source_tbl['npixfit'] = npixfit
 
         nmodels = np.array(self._ungroup(self._group_results['nmodels']))
-        self._fit_results['nmodels'] = nmodels
         index = source_tbl.index_column('group_id') + 1
         source_tbl.add_column(nmodels, name='group_size', index=index)
 
