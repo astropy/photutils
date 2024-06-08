@@ -633,10 +633,9 @@ class PSFPhotometry(ModelImageMixin):
 
         return init_params
 
-    def _check_init_positions(self, init_params, shape):
+    def _get_invalid_positions(self, init_params, shape):
         """
-        Check the initial source positions to ensure they are within the
-        data shape.
+        Get a mask of sources with no overlap with the data.
 
         This code is based on astropy.nddata.overlap_slices.
         """
@@ -646,7 +645,15 @@ class PSFPhotometry(ModelImageMixin):
         delta = self.fit_shape / 2
         min_idx = np.ceil(positions - delta)
         max_idx = np.ceil(positions + delta)
-        if np.any(max_idx <= 0) or np.any(min_idx >= shape):
+        mask = np.any(max_idx <= 0, axis=1) | np.any(min_idx >= shape, axis=1)
+        return mask
+
+    def _check_init_positions(self, init_params, shape):
+        """
+        Check the initial source positions to ensure they are within the
+        data shape.
+        """
+        if np.any(self._get_invalid_positions(init_params, shape)):
             raise ValueError('Some of the sources have no overlap with the '
                              'data. Check the initial source positions or '
                              'increase the fit_shape.')
@@ -1713,7 +1720,8 @@ class IterativePSFPhotometry(ModelImageMixin):
         residual_data = data
         with warnings.catch_warnings(record=True) as rwarn1:
             phot_tbl['iter_detected'] = 1
-            iter_detected = np.ones(len(phot_tbl), dtype=int)
+            if self.mode == 'all':
+                iter_detected = np.ones(len(phot_tbl), dtype=int)
 
             iter_num = 2
             while iter_num <= self.maxiters and phot_tbl is not None:
@@ -1721,7 +1729,7 @@ class IterativePSFPhotometry(ModelImageMixin):
                     residual_data, self.sub_shape)
 
                 # do not warn if no sources are found beyond the first
-                #  iteration
+                # iteration
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', NoDetectionsWarning)
 
@@ -1730,24 +1738,33 @@ class IterativePSFPhotometry(ModelImageMixin):
                     if new_sources is None:  # no new sources detected
                         break
 
+                finder_results = new_sources.copy()
                 new_sources = self._convert_finder_to_init(new_sources)
-
-                # keep track of the iteration number in which the source
-                # was detected
-                current_iter = np.ones(len(new_sources), dtype=int) * iter_num
-                iter_detected = np.concatenate((iter_detected, current_iter))
-
                 if self.mode == 'all':
                     init_params = self._create_init_params(
                         residual_data, mask, new_sources, phot_tbl)
                     residual_data = data
+
+                    # keep track of the iteration number in which the source
+                    # was detected
+                    current_iter = (np.ones(len(new_sources), dtype=int)
+                                    * iter_num)
+                    iter_detected = np.concatenate((iter_detected,
+                                                    current_iter))
                 elif self.mode == 'new':
                     # fit new sources on the residual data
                     init_params = new_sources
 
+                # remove any sources that do not overlap the data
+                imask = self._psfphot._get_invalid_positions(init_params,
+                                                             data.shape)
+                init_params = init_params[~imask]
+                if self.mode == 'all':
+                    iter_detected = iter_detected[~imask]
+
                 new_tbl = self._psfphot(residual_data, mask=mask, error=error,
                                         init_params=init_params)
-                self._psfphot.finder_results = new_sources
+                self._psfphot.finder_results = finder_results
                 self.fit_results.append(deepcopy(self._psfphot))
 
                 if self.mode == 'all':
