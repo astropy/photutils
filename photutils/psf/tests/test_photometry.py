@@ -833,6 +833,36 @@ def test_iterative_psf_photometry_mode_all():
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_iterative_psf_photometry_overlap():
+    """
+    Regression test for #1769.
+
+    A ValueError should not be raised for no overlap.
+    """
+    sigma = 1.5
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=sigma)
+    data, true_params = make_test_psf_data((150, 150), psf_model, (11, 11),
+                                           nsources=300, flux_range=(50, 100),
+                                           min_separation=1, seed=0)
+    noise = make_noise_image(data.shape, mean=0, stddev=0.01, seed=0)
+    data += noise
+    error = np.abs(noise)
+    slc = (slice(0, 50), slice(0, 50))
+    data = data[slc]
+    error = error[slc]
+
+    daofinder = DAOStarFinder(threshold=0.5, fwhm=sigma)
+    grouper = SourceGrouper(min_separation=3.0 * sigma)
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape=(5, 5),
+                                     finder=daofinder, mode='all',
+                                     grouper=grouper, maxiters=3,
+                                     aperture_radius=3)
+    with pytest.warns(AstropyUserWarning):
+        phot = psfphot(data, error=error)
+        assert len(phot) == 41
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_iterative_psf_photometry_inputs():
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     fit_shape = (5, 5)
