@@ -6,11 +6,14 @@ This module provides utilities for PSF-fitting photometry.
 import re
 
 import numpy as np
-from astropy.modeling import CompoundModel
+from astropy.modeling import CompoundModel, Model
 from astropy.modeling.models import Const2D, Identity, Shift
 from astropy.nddata import NDData
 
-__all__ = ['make_psf_model', 'grid_from_epsfs']
+from photutils.datasets import make_model_image, make_model_params
+from photutils.utils._parameters import as_pair
+
+__all__ = ['make_psf_model', 'grid_from_epsfs', 'make_psf_model_image']
 
 
 def _interpolate_missing_data(data, mask, method='cubic'):
@@ -507,3 +510,192 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     grid = GriddedPSFModel(data, fill_value=fill_value)
 
     return grid
+
+
+def _validate_psf_model(psf_model):
+    """
+    Validate the PSF model.
+
+    The PSF model must be a subclass of `astropy
+    .modeling.Fittable2DModel`. It must also be two-dimensional and
+    have a single output.
+
+    Parameters
+    ----------
+    psf_model : `astropy.modeling.Fittable2DModel`
+        The PSF model to validate.
+
+    Returns
+    -------
+    psf_model : `astropy.modeling.Model`
+        The validated PSF model.
+
+    Raises
+    ------
+    TypeError
+        If the PSF model is not an Astropy Model subclass.
+
+    ValueError
+        If the PSF model is not two-dimensional with n_inputs=2 and
+        n_outputs=1.
+    """
+    if not isinstance(psf_model, Model):
+        raise TypeError('psf_model must be an Astropy Model subclass.')
+
+    if psf_model.n_inputs != 2 or psf_model.n_outputs != 1:
+        raise ValueError('psf_model must be two-dimensional with '
+                         'n_inputs=2 and n_outputs=1.')
+
+    return psf_model
+
+
+def _get_psf_model_params(psf_model):
+    """
+    Get the names of the PSF model parameters corresponding to
+    x, y, and flux.
+
+    The PSF model must have parameters called 'x_0', 'y_0', and
+    'flux' or it must have 'x_name', 'y_name', and 'flux_name'
+    attributes (i.e., output from `make_psf_model`). Otherwise, a
+    `ValueError` is raised.
+
+    The PSF model must be a subclass of `astropy.modeling.Model`. It
+    must also be two-dimensional and have a single output.
+
+    Parameters
+    ----------
+    psf_model : `astropy.modeling.Model`
+        The PSF model to validate.
+
+    Returns
+    -------
+    model_params : tuple
+        A tuple of the PSF model parameter names.
+    """
+    psf_model = _validate_psf_model(psf_model)
+
+    params1 = ('x_0', 'y_0', 'flux')
+    params2 = ('x_name', 'y_name', 'flux_name')
+    if all(name in psf_model.param_names for name in params1):
+        model_params = params1
+    elif all(params := [getattr(psf_model, name, None) for name in params2]):
+        model_params = tuple(params)
+    else:
+        msg = 'Invalid PSF model - could not find PSF parameter names.'
+        raise ValueError(msg)
+
+    return model_params
+
+
+def make_psf_model_image(shape, psf_model, n_sources, *, flux_range=(1, 1),
+                         model_shape=None, min_separation=1, border_size=None,
+                         seed=0, progress_bar=False):
+    """
+    Make an example image containing PSF model images.
+
+    Source positions and fluxes are randomly generated using an optional
+    ``seed``.
+
+    Parameters
+    ----------
+    shape : 2-tuple of int
+        The shape of the output image.
+
+    psf_model : 2D `astropy.modeling.Model`
+        The PSF model. The model must have parameters named ``x_0``,
+        ``y_0``, and ``flux``, corresponding to the center (x, y)
+        position and flux, or it must have 'x_name', 'y_name', and
+        'flux_name' attributes that map to the x, y, and flux parameters
+        (i.e., a model output from `make_psf_model`). The model must be
+        two-dimensional such that it accepts 2 inputs (e.g., x and y)
+        and provides 1 output.
+
+    n_sources : int
+        The number of sources to generate. If ``min_separation`` is too
+        large, the number of requested sources may not fit within the
+        given ``shape`` and therefore the number of sources generated
+        may be less than ``n_sources``.
+
+    flux_range : 2-tuple, optional
+        The lower and upper bounds of the flux range. The fluxes will be
+        uniformly distributed between these bounds.
+
+    model_shape : `None` or 2-tuple of int, optional
+        The shape around the center (x, y) position that will used to
+        evaluate the ``psf_model``. If `None`, then the shape will be
+        determined from the ``psf_model`` bounding box (an error will be
+        raised if the model does not have a bounding box).
+
+    min_separation : float, optional
+        The minimum separation between the centers of two sources. Note
+        that if the minimum separation is too large, the number of
+        sources generated may be less than ``n_sources``.
+
+    border_size : `None`, tuple of 2 int, or int, optional
+        The (ny, nx) size of the exclusion border around the image edges
+        where no sources will be generated that have centers within
+        the border region. If a single integer is provided, it will be
+        used for both dimensions. If `None`, then a border size equal
+        to half the (y, x) size of the evaluated PSF model (taking any
+        oversampling into account) will be used.
+
+    seed : int, optional
+        A seed to initialize the `numpy.random.BitGenerator`. If `None`,
+        then fresh, unpredictable entropy will be pulled from the OS.
+
+    progress_bar : bool, optional
+        Whether to display a progress bar when creating the sources. The
+        progress bar requires that the `tqdm <https://tqdm.github.io/>`_
+        optional dependency be installed. Note that the progress
+        bar does not currently work in the Jupyter console due to
+        limitations in ``tqdm``.
+
+    Returns
+    -------
+    data : 2D `~numpy.ndarray`
+        The simulated image.
+
+    table : `~astropy.table.Table`
+        A table containing the (x, y, flux) parameters of the generated
+        sources. The column names will correspond to the names of the
+        input ``psf_model`` (x, y, flux) parameter names. The table will
+        also contain an ``'id'`` column with unique source IDs
+    """
+    psf_params = _get_psf_model_params(psf_model)
+
+    if model_shape is not None:
+        model_shape = as_pair('model_shape', model_shape, lower_bound=(0, 1))
+    else:
+        try:
+            bbox = psf_model.bounding_box.bounding_box()
+            model_shape = (int(np.round(bbox[0][1] - bbox[0][0])),
+                           int(np.round(bbox[1][1] - bbox[1][0])))
+
+        except NotImplementedError:
+            raise ValueError('model_shape must be specified if the model '
+                             'does not have a bounding_box attribute')
+
+    if border_size is None:
+        border_size = (np.array(model_shape) - 1) // 2
+
+    params = make_model_params(shape, n_sources, flux_range=flux_range,
+                               min_separation=min_separation,
+                               border_size=border_size, seed=seed)
+
+    if psf_params != ('x_0', 'y_0', 'flux'):
+        # rename the parameter names to match the PSF model
+        x_name, y_name = psf_params[0:2]
+        model_params = params.copy()
+        model_params.rename_column('x_0', psf_params[0])
+        model_params.rename_column('y_0', psf_params[1])
+        model_params.rename_column('flux', psf_params[2])
+    else:
+        model_params = params
+        x_name = 'x_0'
+        y_name = 'y_0'
+
+    data = make_model_image(shape, psf_model, model_params,
+                            model_shape=model_shape, x_name=x_name,
+                            y_name=y_name, progress_bar=progress_bar)
+
+    return data, model_params
