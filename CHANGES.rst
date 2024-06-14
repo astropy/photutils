@@ -158,6 +158,10 @@ API Changes
     ``NonNormalizable`` classes and the ``prepare_psf_model``,
     ``get_grouped_psf_model``, and ``subtract_psf`` functions. [#1774]
 
+  - A ``ValueError`` is now raised if the shape of the ``error`` array
+    does not match the ``data`` array when calling the PSF-fitting
+    classes. [#1777]
+
 
 1.12.0 (2024-04-12)
 -------------------
