@@ -17,8 +17,8 @@ __all__ = ['make_model_params', 'make_random_models_table',
            'make_random_gaussians_table']
 
 
-def make_model_params(shape, n_sources, flux_range, *, min_separation=1,
-                      border_size=(0, 0), seed=0):
+def make_model_params(shape, n_sources, *, flux_range=(1, 1),
+                      min_separation=1, border_size=(0, 0), seed=0):
     """
     Make a table of randomly generated model positions and fluxes for
     simulated sources.
@@ -37,7 +37,7 @@ def make_model_params(shape, n_sources, flux_range, *, min_separation=1,
         given ``shape`` and therefore the number of sources generated
         may be less than ``n_sources``.
 
-    flux_range : 2-tuple
+    flux_range : 2-tuple, optional
         The lower and upper bounds of the flux range. The fluxes will be
         uniformly distributed between these bounds.
 
@@ -62,6 +62,22 @@ def make_model_params(shape, n_sources, flux_range, *, min_separation=1,
         A table containing the (x_0, y_0, flux) parameters of the
         generated sources. The table will also contain an ``'id'``
         column with unique source IDs.
+
+    Examples
+    --------
+    >>> from photutils.datasets import make_model_params
+    >>> params = make_model_params((100, 100), 5, flux_range=(100, 500),
+    ...                            min_separation=3, border_size=10, seed=0)
+    >>> for col in params.colnames:
+    ...     params[col].info.format = '%.8g'  # for consistent table output
+    >>> print(params)
+     id    x_0       y_0       flux
+    --- --------- --------- ---------
+      1 60.956935 72.967865 291.99517
+      2 31.582937 29.149555 192.94917
+      3 13.277882 80.118738 420.75223
+      4 11.322211 14.685443 469.41206
+      5 75.061619 36.889365 206.45211
     """
     shape = as_pair('shape', shape, lower_bound=(0, 1))
     border_size = as_pair('border_size', border_size, lower_bound=(0, 0))
@@ -144,11 +160,10 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     ...                 'x_stddev': [1, 5],
     ...                 'y_stddev': [1, 5],
     ...                 'theta': [0, np.pi]}
-    >>> sources = make_random_models_table(n_sources, param_ranges,
-    ...                                    seed=0)
-    >>> for col in sources.colnames:
-    ...     sources[col].info.format = '%.8g'  # for consistent table output
-    >>> print(sources)
+    >>> params = make_random_models_table(n_sources, param_ranges, seed=0)
+    >>> for col in params.colnames:
+    ...     params[col].info.format = '%.8g'  # for consistent table output
+    >>> print(params)
      id amplitude   x_mean    y_mean    x_stddev  y_stddev   theta
     --- --------- --------- ---------- --------- --------- ---------
       1 818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586

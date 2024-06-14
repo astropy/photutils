@@ -18,7 +18,7 @@ def test_make_model_params():
     shape = (100, 100)
     n_sources = 10
     flux_range = (100, 1000)
-    params = make_model_params(shape, n_sources, flux_range)
+    params = make_model_params(shape, n_sources, flux_range=flux_range)
     assert isinstance(params, Table)
     assert len(params) == 10
     cols = ('id', 'x_0', 'y_0', 'flux')
@@ -35,7 +35,8 @@ def test_make_model_params_border_size():
     n_sources = 10
     flux_range = (100, 1000)
     with pytest.raises(ValueError):
-        make_model_params(shape, n_sources, flux_range, border_size=20)
+        make_model_params(shape, n_sources, flux_range=flux_range,
+                          border_size=20)
 
 
 def test_make_random_models_table():
