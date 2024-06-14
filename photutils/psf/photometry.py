@@ -1075,6 +1075,7 @@ class PSFPhotometry(ModelImageMixin):
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
         data = self._validate_array(data, 'data')
+        error = self._validate_array(error, 'error', data_shape=data.shape)
         mask = self._validate_array(mask, 'mask', data_shape=data.shape)
         mask = self._make_mask(data, mask)
         init_params = self._validate_init_params(init_params, unit)  # copies

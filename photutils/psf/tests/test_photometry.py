@@ -104,6 +104,12 @@ def test_invalid_inputs():
     with pytest.raises(ValueError, match=match):
         _ = psfphot(np.arange(3))
 
+    match = 'data and error must have the same shape.'
+    with pytest.raises(ValueError, match=match):
+        data = np.ones((11, 11))
+        error = np.ones((3, 3))
+        _ = psfphot(data, error=error)
+
     match = 'data and mask must have the same shape.'
     with pytest.raises(ValueError, match=match):
         data = np.ones((11, 11))
