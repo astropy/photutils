@@ -71,6 +71,9 @@ Bug Fixes
     table was not used in ``PSFPhotometry`` and
     ``IterativePSFPhotometry``. [#1765]
 
+  - Fixed an issue where ``IterativePSFPhotometry`` could sometimes
+    raise an error about non-overlapping data. [#1778]
+
 API Changes
 ^^^^^^^^^^^
 
