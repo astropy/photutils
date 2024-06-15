@@ -14,8 +14,9 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils import datasets
 from photutils.detection import find_peaks
-from photutils.psf import (EPSFBuilder, extract_stars, grid_from_epsfs,
-                           make_psf_model)
+from photutils.psf import (EPSFBuilder, IntegratedGaussianPRF, extract_stars,
+                           grid_from_epsfs, make_psf_model,
+                           make_psf_model_image)
 from photutils.psf.utils import (_integrate_model, _interpolate_missing_data,
                                  _InverseShift)
 from photutils.utils._optional_deps import HAS_SCIPY
@@ -338,3 +339,55 @@ class TestGridFromEPSFs:
         assert psf_grid.meta['grid_xypos'].sort() == self.grid_xypos.sort()
         assert_equal(psf_grid.meta['oversampling'], [4, 4])
         assert psf_grid.meta['fill_value'] == 0.0
+
+
+def test_make_psf_model_image():
+    shape = (401, 451)
+    n_sources = 100
+    model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
+    data, params = make_psf_model_image(shape, model, n_sources)
+    assert data.shape == shape
+    assert isinstance(params, Table)
+    assert len(params) == n_sources
+
+    model_shape = (13, 13)
+    data2, params2 = make_psf_model_image(shape, model, n_sources,
+                                          model_shape=model_shape)
+    assert_equal(data, data2)
+    assert len(params2) == n_sources
+
+
+def test_make_psf_model_image_custom():
+    shape = (401, 451)
+    n_sources = 100
+    model = Gaussian2D()
+    psf_model = make_psf_model(model, x_name='x_mean', y_name='y_mean')
+    data, params = make_psf_model_image(shape, psf_model, n_sources,
+                                        model_shape=(11, 11))
+    assert data.shape == shape
+    assert isinstance(params, Table)
+    assert len(params) == n_sources
+
+
+def test_make_psf_model_image_inputs():
+    shape = (50, 50)
+    match = 'psf_model must be an Astropy Model subclass'
+    with pytest.raises(TypeError, match=match):
+        make_psf_model_image(shape, None, 2)
+
+    match = 'psf_model must be two-dimensional'
+    with pytest.raises(ValueError, match=match):
+        model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
+        model.n_inputs = 3
+        make_psf_model_image(shape, model, 2)
+
+    match = 'model_shape must be specified if the model does not have'
+    with pytest.raises(ValueError, match=match):
+        model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
+        model.bounding_box = None
+        make_psf_model_image(shape, model, 2)
+
+    match = 'Invalid PSF model - could not find PSF parameter names'
+    with pytest.raises(ValueError, match=match):
+        model = Gaussian2D()
+        make_psf_model_image(shape, model, 2)
