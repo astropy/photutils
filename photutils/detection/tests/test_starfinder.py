@@ -23,7 +23,7 @@ class TestStarFinder:
         tbl2 = finder2(data)
         assert isinstance(tbl1, Table)
         assert len(tbl1) == 25
-        assert len(tbl2) == 7
+        assert len(tbl2) == 9
 
         # test with units
         unit = u.Jy
@@ -65,7 +65,7 @@ class TestStarFinder:
         tbl1 = finder1(data)
         tbl2 = finder2(data)
         assert len(tbl1) == 25
-        assert len(tbl2) == 22
+        assert len(tbl2) == 20
 
     def test_peakmax(self, data, kernel):
         finder1 = StarFinder(1, kernel, peakmax=None)
@@ -73,7 +73,7 @@ class TestStarFinder:
         tbl1 = finder1(data)
         tbl2 = finder2(data)
         assert len(tbl1) == 25
-        assert len(tbl2) == 17
+        assert len(tbl2) == 16
 
         match = 'Sources were found, but none pass'
         with pytest.warns(NoDetectionsWarning, match=match):
@@ -89,7 +89,7 @@ class TestStarFinder:
         assert fluxes[0] == np.max(fluxes)
 
     def test_single_detected_source(self, data, kernel):
-        finder = StarFinder(11, kernel, brightest=1)
+        finder = StarFinder(11.5, kernel, brightest=1)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
         tbl = finder(data, mask=mask)

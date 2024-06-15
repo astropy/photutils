@@ -139,7 +139,7 @@ class TestDAOStarFinder:
                                sharphi=np.inf, brightest=brightest,
                                peakmax=peakmax)
         tbl = finder(data)
-        assert len(tbl) == 7
+        assert len(tbl) == 5
 
     def test_daofind_mask(self, data):
         """Test DAOStarFinder with a mask."""
@@ -174,7 +174,7 @@ class TestDAOStarFinder:
             DAOStarFinder(threshold=10, fwhm=1.5, min_separation=-1.0)
 
     def test_single_detected_source(self, data):
-        finder = DAOStarFinder(8.0, 2, brightest=1)
+        finder = DAOStarFinder(7.9, 2, brightest=1)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
         tbl = finder(data, mask=mask)

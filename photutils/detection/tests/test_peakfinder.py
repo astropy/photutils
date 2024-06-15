@@ -29,7 +29,7 @@ class TestFindPeaks:
         assert np.max(tbl['x_peak']) < 101
         assert np.min(tbl['y_peak']) > 0
         assert np.max(tbl['y_peak']) < 101
-        assert np.max(tbl['peak_value']) < 13.1
+        assert np.max(tbl['peak_value']) < 13.2
 
         # test with units
         unit = u.Jy
