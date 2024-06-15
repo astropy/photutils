@@ -16,7 +16,6 @@ from astropy.table import QTable, Table
 from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.psf import IntegratedGaussianPRF
 from photutils.utils._coords import make_random_xycoords
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
@@ -411,7 +410,7 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
                             y_name='y_mean', discretize_oversample=oversample)
 
 
-@deprecated('1.13.0', alternative='make_test_psf_data')
+@deprecated('1.13.0', alternative='make_psf_model_image')
 def make_gaussian_prf_sources_image(shape, source_table):
     r"""
     Make an image containing 2D Gaussian sources.
@@ -436,6 +435,8 @@ def make_gaussian_prf_sources_image(shape, source_table):
     image : 2D `~numpy.ndarray`
         Image containing 2D Gaussian sources.
     """
+    from photutils.psf import IntegratedGaussianPRF
+
     model = IntegratedGaussianPRF(sigma=1)
 
     if 'sigma' in source_table.colnames:
@@ -456,6 +457,8 @@ def _define_psf_shape(psf_model, psf_shape):
     """
     Define the shape of the model to evaluate, including the
     oversampling.
+
+    Deprecated with make_test_psf_data.
     """
     try:
         model_ndim = psf_model.data.ndim
@@ -504,6 +507,7 @@ def _define_psf_shape(psf_model, psf_shape):
     return psf_shape
 
 
+@deprecated('1.13.0', alternative='make_psf_model_image')
 def make_test_psf_data(shape, psf_model, psf_shape, nsources, *,
                        flux_range=(100, 1000), min_separation=1, seed=0,
                        border_size=None, progress_bar=False):

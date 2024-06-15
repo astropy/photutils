@@ -90,23 +90,26 @@ def test_make_gaussian_prf_sources_image(source_params_prf):
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_test_psf_data():
-    psf_model = IntegratedGaussianPRF(flux=100, sigma=1.5)
-    psf_shape = (5, 5)
-    nsources = 10
-    shape = (100, 100)
-    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
-                                           nsources, flux_range=(500, 1000),
-                                           min_separation=10, seed=0)
+    with pytest.warns(AstropyDeprecationWarning):
+        psf_model = IntegratedGaussianPRF(flux=100, sigma=1.5)
+        psf_shape = (5, 5)
+        nsources = 10
+        shape = (100, 100)
+        data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
+                                               nsources,
+                                               flux_range=(500, 1000),
+                                               min_separation=10, seed=0)
 
-    assert isinstance(data, np.ndarray)
-    assert data.shape == shape
-    assert isinstance(true_params, Table)
-    assert len(true_params) == nsources
-    assert true_params['x'].min() >= 0
-    assert true_params['y'].min() >= 0
+        assert isinstance(data, np.ndarray)
+        assert data.shape == shape
+        assert isinstance(true_params, Table)
+        assert len(true_params) == nsources
+        assert true_params['x'].min() >= 0
+        assert true_params['y'].min() >= 0
 
-    match = 'Unable to produce'
-    with pytest.warns(AstropyUserWarning, match=match):
-        nsources = 100
-        make_test_psf_data(shape, psf_model, psf_shape, nsources,
-                           flux_range=(500, 1000), min_separation=100, seed=0)
+        match = 'Unable to produce'
+        with pytest.warns(AstropyUserWarning, match=match):
+            nsources = 100
+            make_test_psf_data(shape, psf_model, psf_shape, nsources,
+                               flux_range=(500, 1000), min_separation=100,
+                               seed=0)
