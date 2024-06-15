@@ -453,7 +453,7 @@ def make_gaussian_prf_sources_image(shape, source_table):
     return make_model_image(shape, model, source_table)
 
 
-def _define_psf_shape(psf_model, psf_shape):
+def _define_psf_shape(psf_model, psf_shape):  # pragma: no cover
     """
     Define the shape of the model to evaluate, including the
     oversampling.

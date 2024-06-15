@@ -12,7 +12,7 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
 from numpy.testing import assert_allclose
 
 from photutils.datasets import (make_gaussian_prf_sources_image,
-                                make_gaussian_sources_image,
+                                make_gaussian_sources_image, make_model_image,
                                 make_model_sources_image, make_test_psf_data)
 from photutils.psf import IntegratedGaussianPRF
 from photutils.utils._optional_deps import HAS_SCIPY
@@ -37,6 +37,115 @@ def fixture_source_params_prf():
     params['y_0'] = [50, 50, 50.5]
     params['amplitude'] = np.array([1, 2, 3]) / (2 * np.pi)  # sigma = 1
     return params
+
+
+def test_make_model_image():
+    params = Table()
+    params['x_0'] = [50, 70, 90]
+    params['y_0'] = [50, 50, 50]
+    params['gamma'] = [1.7, 2.32, 5.8]
+    params['alpha'] = [2.9, 5.7, 4.6]
+    model = Moffat2D(amplitude=1)
+    shape = (300, 500)
+    model_shape = (11, 11)
+    image = make_model_image(shape, model, params, model_shape=model_shape)
+    assert image.shape == shape
+    assert image.sum() > 1
+
+    # test variable model shape
+    params['model_shape'] = [9, 7, 11]
+    image = make_model_image(shape, model, params, model_shape=model_shape)
+    assert image.shape == shape
+    assert image.sum() > 1
+
+    # test local_bkg
+    params['local_bkg'] = [1, 2, 3]
+    image = make_model_image(shape, model, params, model_shape=model_shape)
+    assert image.shape == shape
+    assert image.sum() > 1
+
+
+def test_make_model_image_discretize_method():
+    params = Table()
+    params['x_0'] = [50, 70, 90]
+    params['y_0'] = [50, 50, 50]
+    params['gamma'] = [1.7, 2.32, 5.8]
+    params['alpha'] = [2.9, 5.7, 4.6]
+    model = Moffat2D(amplitude=1)
+    shape = (300, 500)
+    model_shape = (11, 11)
+    for method in ('interp', 'oversample'):
+        image = make_model_image(shape, model, params, model_shape=model_shape,
+                                 discretize_method=method)
+        assert image.shape == shape
+        assert image.sum() > 1
+
+
+def test_make_model_image_no_overlap():
+    params = Table()
+    params['x_0'] = [50]
+    params['y_0'] = [50]
+    params['gamma'] = [1.7]
+    params['alpha'] = [2.9]
+    model = Moffat2D(amplitude=1)
+    shape = (10, 10)
+    model_shape = (3, 3)
+    data = make_model_image(shape, model, params, model_shape=model_shape)
+    assert data.shape == shape
+    assert np.sum(data) == 0
+
+
+def test_make_model_image_inputs():
+    match = 'shape must be a 2-tuple'
+    with pytest.raises(ValueError, match=match):
+        make_model_image(100, Moffat2D(), Table())
+
+    match = 'model must be a Model instance'
+    with pytest.raises(ValueError, match=match):
+        make_model_image((100, 100), None, Table())
+
+    match = 'model must be a 2D model'
+    with pytest.raises(ValueError, match=match):
+        model = Moffat2D()
+        model.n_inputs = 1
+        make_model_image((100, 100), model, Table())
+
+    match = 'params_table must be an astropy Table'
+    with pytest.raises(ValueError, match=match):
+        model = Moffat2D()
+        make_model_image((100, 100), model, None)
+
+    match = 'not in model parameter names'
+    with pytest.raises(ValueError, match=match):
+        model = Moffat2D()
+        make_model_image((100, 100), model, Table(), x_name='invalid')
+    with pytest.raises(ValueError, match=match):
+        model = Moffat2D()
+        make_model_image((100, 100), model, Table(), y_name='invalid')
+
+    match = '"x_0" not in psf_params column names'
+    with pytest.raises(ValueError, match=match):
+        model = Moffat2D()
+        params = Table()
+        make_model_image((100, 100), model, params)
+
+    match = '"y_0" not in psf_params column names'
+    with pytest.raises(ValueError, match=match):
+        model = Moffat2D()
+        params = Table()
+        params['x_0'] = [50, 70, 90]
+        make_model_image((100, 100), model, params)
+
+    match = 'model_shape must be specified if the model does not have'
+    with pytest.raises(ValueError, match=match):
+        params = Table()
+        params['x_0'] = [50]
+        params['y_0'] = [50]
+        params['gamma'] = [1.7]
+        params['alpha'] = [2.9]
+        model = Moffat2D(amplitude=1)
+        shape = (100, 100)
+        make_model_image(shape, model, params)
 
 
 def test_make_model_sources_image():

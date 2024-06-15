@@ -165,7 +165,7 @@ def make_gwcs(shape, galactic=False):
 
 
 @deprecated('1.13.0')
-def make_imagehdu(data, wcs=None):
+def make_imagehdu(data, wcs=None):  # pragma: no cover
     """
     Create a FITS `~astropy.io.fits.ImageHDU` containing the input 2D
     image.
