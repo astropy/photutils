@@ -31,22 +31,22 @@ agglomerative clustering with a distance criterion, calling the
 `scipy.cluster.hierarchy.fclusterdata` function.
 
 First, let's create a simulated image containing 2D Gaussian sources
-using `~photutils.datasets.make_test_psf_data`.
+using `~photutils.psf.make_psf_model_image`.
 
 .. doctest-requires:: scipy
 
-    >>> from photutils.datasets import make_test_psf_data
-    >>> from photutils.psf import IntegratedGaussianPRF
+    >>> from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
     >>> shape = (256, 256)
     >>> sigma = 2.0
     >>> psf_model = IntegratedGaussianPRF(sigma=sigma)
     >>> psf_shape = (11, 11)
-    >>> nsources = 100
+    >>> n_sources = 100
     >>> flux_range = (500, 1000)
     >>> border_size = (7, 7)
-    >>> data, stars = make_test_psf_data(shape, psf_model, psf_shape, nsources,
-    ...                                  flux_range=flux_range,
-    ...                                  border_size=border_size, seed=123)
+    >>> data, stars = make_psf_model_image(shape, psf_model, n_sources,
+    ...                                    model_shape=psf_shape,
+    ...                                    flux_range=flux_range,
+    ...                                    border_size=border_size, seed=123)
 
 Let's display the image:
 
@@ -103,8 +103,8 @@ to find the sources.
 .. doctest-requires:: scipy
 
    >>> import numpy as np
-   >>> x = np.array(stars['x'])
-   >>> y = np.array(stars['y'])
+   >>> x = np.array(stars['x_0'])
+   >>> y = np.array(stars['y_0'])
    >>> groups = grouper(x, y)
 
 The ``groups`` output is an array of integers (ordered the same as the

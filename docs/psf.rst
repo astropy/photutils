@@ -141,15 +141,16 @@ provided by the :ref:`photutils.datasets <datasets>` module:
 .. doctest-requires:: scipy
 
     >>> import numpy as np
-    >>> from photutils.datasets import make_test_psf_data, make_noise_image
-    >>> from photutils.psf import IntegratedGaussianPRF
+    >>> from photutils.datasets import make_noise_image
+    >>> from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
     >>> psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     >>> psf_shape = (9, 9)
-    >>> nsources = 10
+    >>> n_sources = 10
     >>> shape = (101, 101)
-    >>> data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
-    ...                                        nsources, flux_range=(500, 700),
-    ...                                        min_separation=10, seed=0)
+    >>> data, true_params = make_psf_model_image(shape, psf_model, n_sources,
+    ...                                          model_shape=psf_shape,
+    ...                                          flux_range=(500, 700),
+    ...                                          min_separation=10, seed=0)
     >>> noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     >>> data += noise
     >>> error = np.abs(noise)
@@ -159,16 +160,17 @@ Let's plot the image:
 .. plot::
 
     import matplotlib.pyplot as plt
-    from photutils.datasets import make_noise_image, make_test_psf_data
-    from photutils.psf import IntegratedGaussianPRF
+    from photutils.datasets import make_noise_image
+    from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     psf_shape = (9, 9)
-    nsources = 10
+    n_sources = 10
     shape = (101, 101)
-    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
-                                           nsources, flux_range=(500, 700),
-                                           min_separation=10, seed=0)
+    data, true_params = make_psf_model_image(shape, psf_model, n_sources,
+                                             model_shape=psf_shape,
+                                             flux_range=(500, 700),
+                                             min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
     plt.imshow(data, origin='lower')
@@ -245,16 +247,16 @@ print the source ID along with the fit x, y, and flux values:
     >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id  x_fit   y_fit  flux_fit
     --- ------- ------- --------
-      1 54.5641  7.7650 645.4552
-      2 29.0866 25.6111 553.0376
-      3 79.6285 28.7488 665.8715
-      4 63.2344 48.6406 626.7983
-      5 88.8849 54.1203 681.9908
-      6 79.8762 61.1380 686.3628
-      7 90.9606 72.0860 610.5911
-      8  7.8021 78.5730 509.3270
-      9  5.5349 89.8869 503.9691
-     10 71.8411 90.5841 621.1757
+      1 54.5658  7.7644 514.0129
+      2 29.0865 25.6111 536.5818
+      3 79.6281 28.7487 618.7551
+      4 63.2340 48.6408 563.3426
+      5 88.8848 54.1202 619.8874
+      6 79.8763 61.1380 648.1679
+      7 90.9606 72.0861 601.8609
+      8  7.8038 78.5734 635.6392
+      9  5.5350 89.8870 539.6850
+     10 71.8414 90.5842 692.3331
 
 Let's create the residual image:
 
@@ -269,17 +271,20 @@ and plot it:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.visualization import simple_norm
-    from photutils.datasets import make_noise_image, make_test_psf_data
+    from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
-    from photutils.psf import IntegratedGaussianPRF, PSFPhotometry
+    from photutils.psf import (IntegratedGaussianPRF, PSFPhotometry,
+                               make_psf_model_image)
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     psf_shape = (9, 9)
-    nsources = 10
+    n_sources = 10
     shape = (101, 101)
-    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
-                                           nsources, flux_range=(500, 700),
-                                           min_separation=10, seed=0)
+
+    data, true_params = make_psf_model_image(shape, psf_model, n_sources,
+                                             model_shape=psf_shape,
+                                             flux_range=(500, 700),
+                                             min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
     error = np.abs(noise)
@@ -321,18 +326,18 @@ astropy table):
     >>> psfphot.finder_results['flux'].info.format = '.4f'
     >>> psfphot.finder_results['mag'].info.format = '.4f'
     >>> print(psfphot.finder_results)  # doctest: +FLOAT_CMP
-     id xcentroid ycentroid sharpness ... sky   peak    flux    mag
-    --- --------- --------- --------- ... --- ------- ------- -------
-      1   54.5300    7.7508    0.5996 ... 0.0 67.0314  8.7012 -2.3490
-      2   29.0926   25.5993    0.5952 ... 0.0 58.7504  7.7484 -2.2230
-      3   79.6189   28.7515    0.5956 ... 0.0 70.4621  9.2351 -2.4136
-      4   63.2472   48.6151    0.5817 ... 0.0 64.9101  8.5701 -2.3325
-      5   88.8827   54.1299    0.5954 ... 0.0 75.8880 10.3243 -2.5347
-      6   79.8730   61.1214    0.6204 ... 0.0 78.0913 10.3346 -2.5357
-      7   90.9621   72.0802    0.6162 ... 0.0 69.1417  9.2325 -2.4133
-      8    7.7917   78.5454    0.5971 ... 0.0 52.7325  6.6840 -2.0626
-      9    5.5845   89.8645    0.5721 ... 0.0 50.5544  6.5387 -2.0387
-     10   71.8284   90.5625    0.6038 ... 0.0 65.7975  8.5373 -2.3283
+     id xcentroid ycentroid sharpness ... sky   peak   flux    mag
+    --- --------- --------- --------- ... --- ------- ------ -------
+      1   54.5301    7.7460    0.6002 ... 0.0 53.4082 6.9430 -2.1039
+      2   29.0927   25.5994    0.5950 ... 0.0 56.9892 7.5179 -2.1902
+      3   79.6186   28.7516    0.5953 ... 0.0 65.4845 8.5872 -2.3346
+      4   63.2485   48.6135    0.5797 ... 0.0 58.1835 7.6933 -2.2153
+      5   88.8820   54.1311    0.5943 ... 0.0 68.9214 9.3947 -2.4322
+      6   79.8728   61.1207    0.6212 ... 0.0 73.8172 9.7648 -2.4742
+      7   90.9621   72.0803    0.6163 ... 0.0 68.1552 9.1005 -2.3977
+      8    7.7962   78.5467    0.5975 ... 0.0 65.9807 8.4028 -2.3111
+      9    5.5854   89.8663    0.5737 ... 0.0 54.1899 7.0039 -2.1134
+     10   71.8303   90.5626    0.6034 ... 0.0 73.3127 9.5152 -2.4460
 
 The ``fit_results`` attribute contains a dictionary with detailed
 information returned from the ``fitter`` for each source:
@@ -386,7 +391,7 @@ The output table contains only the fit results for the input source:
     >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id  x_fit   y_fit  flux_fit
     --- ------- ------- --------
-      1 63.2344 48.6406 626.7983
+      1 63.2340 48.6408 563.3426
 
 Finally, let's show the residual image. The red circular aperture shows
 the location of the star that was fit and subtracted.
@@ -396,18 +401,22 @@ the location of the star that was fit and subtracted.
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.table import QTable
+    from astropy.visualization import simple_norm
     from photutils.aperture import CircularAperture
-    from photutils.datasets import make_noise_image, make_test_psf_data
+    from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
-    from photutils.psf import IntegratedGaussianPRF, PSFPhotometry
+    from photutils.psf import (IntegratedGaussianPRF, PSFPhotometry,
+                               make_psf_model_image)
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     psf_shape = (9, 9)
-    nsources = 10
+    n_sources = 10
     shape = (101, 101)
-    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
-                                           nsources, flux_range=(500, 700),
-                                           min_separation=10, seed=0)
+
+    data, true_params = make_psf_model_image(shape, psf_model, n_sources,
+                                             model_shape=psf_shape,
+                                             flux_range=(500, 700),
+                                             min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
     error = np.abs(noise)
@@ -424,15 +433,20 @@ the location of the star that was fit and subtracted.
     phot = psfphot(data, error=error, init_params=init_params)
 
     resid = psfphot.make_residual_image(data, (9, 9))
-    plt.imshow(resid, origin='lower')
+    aper = CircularAperture(zip(phot['x_fit'], phot['y_fit']), r=4)
 
-    resid = psfphot.make_residual_image(data, (9, 9))
-    aper = CircularAperture(zip(init_params['x'], init_params['y']), r=4)
-    plt.imshow(resid, origin='lower')
-    aper.plot(color='red')
-
-    plt.title('Residual Image')
-    plt.colorbar()
+    fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
+    norm = simple_norm(data, 'sqrt', percent=99)
+    ax[0].imshow(data, origin='lower', norm=norm)
+    ax[1].imshow(data - resid, origin='lower', norm=norm)
+    im = ax[2].imshow(resid, origin='lower')
+    ax[0].set_title('Data')
+    aper.plot(ax=ax[0], color='red')
+    ax[1].set_title('Model')
+    aper.plot(ax=ax[1], color='red')
+    ax[2].set_title('Residual Image')
+    aper.plot(ax=ax[2], color='red')
+    plt.tight_layout()
 
 
 Forced Photometry
@@ -475,7 +489,7 @@ fit:
     ...             'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id x_init y_init flux_init x_fit y_fit flux_fit
     --- ------ ------ --------- ----- ----- --------
-      1     63     49  619.5049  63.0  49.0 556.8463
+      1     63     49  556.4444  63.0  49.0 500.4789
 
 
 Source Grouping
@@ -551,12 +565,12 @@ The local background values are output in the table:
       1   -0.0840
       2    0.1784
       3    0.2593
-      4   -0.0455
-      5    0.3212
-      6   -0.0836
+      4   -0.0574
+      5    0.2934
+      6   -0.0826
       7   -0.1130
-      8   -0.2482
-      9    0.0315
+      8   -0.2138
+      9    0.0089
      10    0.3926
 
 The local background values can also be input directly using the
@@ -603,16 +617,16 @@ the source was detected:
     >>> print(phot[('id', 'iter_detected', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id iter_detected  x_fit   y_fit  flux_fit
     --- ------------- ------- ------- --------
-      1             1 54.5646  7.7648 645.7164
-      2             1 29.0884 25.6093 550.5295
-      3             1 79.6278 28.7481 660.1429
-      4             2 63.2344 48.6411 627.4414
-      5             2 88.8859 54.1203 676.3059
-      6             2 79.8764 61.1359 688.1962
-      7             2 90.9631 72.0879 612.4822
-      8             2  7.8259 78.5856 516.4237
-      9             2  5.5348 89.8868 503.4775
-     10             2 71.8491 90.5828 616.2827
+      1             1 54.5665  7.7641 514.2679
+      2             1 29.0883 25.6092 534.0753
+      3             1 79.6273 28.7479 613.0246
+      4             2 63.2340 48.6415 564.1535
+      5             2 88.8857 54.1203 614.6949
+      6             2 79.8765 61.1358 649.9802
+      7             2 90.9631 72.0881 603.7519
+      8             2  7.8202 78.5821 641.7541
+      9             2  5.5350 89.8869 539.5465
+     10             2 71.8485 90.5830 687.4396
 
 
 References
