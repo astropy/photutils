@@ -29,7 +29,7 @@ def fixture_test_data():
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     psf_shape = (9, 9)
     nsources = 10
-    shape = (91, 111)
+    shape = (101, 101)
     data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
                                            nsources, flux_range=(500, 700),
                                            min_separation=10, seed=0)
