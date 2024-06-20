@@ -7,7 +7,7 @@ import numpy as np
 
 __all__ = ['ShepardIDWInterpolator']
 
-__doctest_requires__ = {('ShepardIDWInterpolator'): ['scipy']}
+__doctest_requires__ = {'ShepardIDWInterpolator': ['scipy']}
 
 
 class ShepardIDWInterpolator:

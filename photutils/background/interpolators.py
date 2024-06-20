@@ -10,7 +10,7 @@ from photutils.utils._repr import make_repr
 
 __all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator']
 
-__doctest_requires__ = {('BkgZoomInterpolator'): ['scipy']}
+__doctest_requires__ = {'BkgZoomInterpolator': ['scipy']}
 
 
 class BkgZoomInterpolator:

@@ -16,6 +16,7 @@ from photutils.utils._repr import make_repr
 from photutils.utils.footprints import circular_footprint
 
 __all__ = ['ImageDepth']
+
 __doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['scipy', 'skimage']}
 
 
