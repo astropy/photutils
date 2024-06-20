@@ -11,7 +11,6 @@ from itertools import chain
 
 import astropy.units as u
 import numpy as np
-from astropy.modeling import Model
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import NDData, NoOverlapError, StdDevUncertainty
 from astropy.table import QTable, Table, hstack, vstack
@@ -21,6 +20,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.aperture import CircularAperture
 from photutils.background import LocalBackground
 from photutils.psf.groupers import SourceGrouper
+from photutils.psf.utils import _get_psf_model_params, _validate_psf_model
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
@@ -281,7 +281,7 @@ class PSFPhotometry(ModelImageMixin):
                  progress_bar=False):
 
         self.psf_model = psf_model
-        self._validate_psf_model()
+        self._validate_psf_model()  # validate the PSF model
 
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(0, 1),
                                  check_odd=True)
@@ -324,18 +324,7 @@ class PSFPhotometry(ModelImageMixin):
             * ('x_0', 'y_0', 'flux') parameters
             * ('x_name', 'y_name', 'flux_name') attributes
         """
-        params1 = ('x_0', 'y_0', 'flux')
-        params2 = ('x_name', 'y_name', 'flux_name')
-        if all(name in self.psf_model.param_names for name in params1):
-            model_params = params1
-        elif all(params := [getattr(self.psf_model, name, None)
-                            for name in params2]):
-            model_params = tuple(params)
-        else:
-            msg = 'Invalid PSF model - could not find PSF parameter names.'
-            raise ValueError(msg)
-
-        return model_params
+        return _get_psf_model_params(self.psf_model)
 
     @lazyproperty
     def _fitted_psf_param_names(self):
@@ -369,15 +358,8 @@ class PSFPhotometry(ModelImageMixin):
         attributes (i.e., output from `make_psf_model`). Otherwise, a
         `ValueError` is raised.
         """
-        if not isinstance(self.psf_model, Model):
-            raise TypeError('psf_model must be an Astropy Model subclass.')
-
-        if self.psf_model.n_inputs != 2 or self.psf_model.n_outputs != 1:
-            raise ValueError('psf_model must be two-dimensional with '
-                             'n_inputs=2 and n_outputs=1.')
-
-        # check for required PSF model parameters
-        _ = self._psf_param_names
+        _validate_psf_model(self.psf_model)
+        self._psf_param_names  # validate the PSF model parameters
 
     @staticmethod
     def _validate_callable(obj, name):
