@@ -61,6 +61,7 @@ Let's display the image:
     import matplotlib.pyplot as plt
     from photutils.datasets import make_test_psf_data
     from photutils.psf import IntegratedGaussianPRF
+
     shape = (256, 256)
     sigma = 2.0
     psf_model = IntegratedGaussianPRF(sigma=sigma)
