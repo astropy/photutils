@@ -48,6 +48,9 @@ New Features
     allowed column names in the ``init_params`` table input to the PSF
     photometry objects. [#1765]
 
+  - Added a ``make_psf_model_image`` function to generate a simulated
+    image from PSF models. [#1785]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -97,7 +100,7 @@ API Changes
     values differ. [#1760]
 
   - The ``make_gaussian_prf_sources_image`` function is now
-    deprecated. Use the ``make_psf_test_data`` function or the new
+    deprecated. Use the ``make_model_psf_image`` function or the new
     ``make_model_image`` function instead. [#1762]
 
   - The ``make_gaussian_sources_table`` function now includes an "id"
@@ -109,6 +112,9 @@ API Changes
 
   - The ``make_gaussian_sources_table`` function is now deprecated.
     Use the ``make_model_sources_table`` function instead. [#1764]
+
+  - The ``make_test_psf_data`` function is now deprecated. Use the new
+    ``make_model_psf_image`` function instead. [#1785]
 
 - ``photutils.detection``
 

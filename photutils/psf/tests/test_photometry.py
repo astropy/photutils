@@ -14,25 +14,25 @@ from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background import LocalBackground, MMMBackground
-from photutils.datasets import (make_model_image, make_noise_image,
-                                make_test_psf_data)
+from photutils.datasets import make_model_image, make_noise_image
 from photutils.detection import DAOStarFinder
 from photutils.psf import (IntegratedGaussianPRF, IterativePSFPhotometry,
-                           PSFPhotometry, SourceGrouper, make_psf_model)
+                           PSFPhotometry, SourceGrouper, make_psf_model,
+                           make_psf_model_image)
 from photutils.utils._optional_deps import HAS_SCIPY
-from photutils.utils.cutouts import _overlap_slices as overlap_slices
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
 @pytest.fixture(name='test_data')
 def fixture_test_data():
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
-    psf_shape = (9, 9)
-    nsources = 10
+    model_shape = (9, 9)
+    n_sources = 10
     shape = (101, 101)
-    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
-                                           nsources, flux_range=(500, 700),
-                                           min_separation=10, seed=0)
+    data, true_params = make_psf_model_image(shape, psf_model, n_sources,
+                                             model_shape=model_shape,
+                                             flux_range=(500, 700),
+                                             min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
     error = np.abs(noise)
@@ -608,13 +608,14 @@ def test_grouper(test_data):
 def test_large_group_warning():
     psf_model = IntegratedGaussianPRF(flux=1, sigma=1.0)
     grouper = SourceGrouper(min_separation=50)
-    psf_shape = (5, 5)
+    model_shape = (5, 5)
     fit_shape = (5, 5)
-    nsources = 50
+    n_sources = 50
     shape = (301, 301)
-    data, true_params = make_test_psf_data(shape, psf_model, psf_shape,
-                                           nsources, flux_range=(500, 700),
-                                           min_separation=10, seed=0)
+    data, true_params = make_psf_model_image(shape, psf_model, n_sources,
+                                             model_shape=model_shape,
+                                             flux_range=(500, 700),
+                                             min_separation=10, seed=0)
     match = 'Some groups have more than'
     with pytest.warns(AstropyUserWarning, match=match):
         psfphot = PSFPhotometry(psf_model, fit_shape, grouper=grouper)
@@ -781,7 +782,7 @@ def test_iterative_psf_photometry_mode_all():
     shape = (101, 101)
     psf_model = IntegratedGaussianPRF(flux=500, sigma=4.0)
     psf_shape = (41, 41)
-    data = make_psf_model_image(shape, psf_model, sources, psf_shape)
+    data = make_model_image(shape, psf_model, sources, model_shape=psf_shape)
 
     fit_shape = (5, 5)
     finder = DAOStarFinder(0.2, 6.0)
@@ -841,9 +842,11 @@ def test_iterative_psf_photometry_overlap():
     """
     sigma = 1.5
     psf_model = IntegratedGaussianPRF(flux=1, sigma=sigma)
-    data, true_params = make_test_psf_data((150, 150), psf_model, (11, 11),
-                                           nsources=300, flux_range=(50, 100),
-                                           min_separation=1, seed=0)
+    data, true_params = make_psf_model_image((150, 150), psf_model,
+                                             n_sources=300,
+                                             model_shape=(11, 11),
+                                             flux_range=(50, 100),
+                                             min_separation=1, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=0.01, seed=0)
     data += noise
     error = np.abs(noise)
@@ -859,7 +862,7 @@ def test_iterative_psf_photometry_overlap():
                                      aperture_radius=3)
     with pytest.warns(AstropyUserWarning):
         phot = psfphot(data, error=error)
-        assert len(phot) == 41
+        assert len(phot) == 38
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -978,17 +981,3 @@ def test_make_psf_model():
                      tbl3['flux_fit'][0]), (xval, yval, flux))
     assert_allclose((tbl4['x_fit'][0], tbl4['y_fit'][0],
                      tbl4['flux_fit'][0]), (xval, yval, flux))
-
-
-def make_psf_model_image(shape, psf_model, param_table, psf_shape):
-    model_params = param_table.colnames
-    data = np.zeros(shape, dtype=float)
-    for row in param_table:
-        for param in model_params:
-            setattr(psf_model, param, row[param])
-        xcen = row['x_0']
-        ycen = row['y_0']
-        slc_lg, _ = overlap_slices(shape, psf_shape, (ycen, xcen), mode='trim')
-        yy, xx = np.mgrid[slc_lg]
-        data[slc_lg] += psf_model(xx, yy)
-    return data

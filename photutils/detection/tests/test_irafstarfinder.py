@@ -86,7 +86,7 @@ class TestIRAFStarFinder:
     def test_irafstarfind_sky(self, data):
         with pytest.warns(AstropyDeprecationWarning):
             finder0 = IRAFStarFinder(threshold=1.0, fwhm=2.0, sky=0.0)
-            finder1 = IRAFStarFinder(threshold=1.0, fwhm=2.0, sky=5.0)
+            finder1 = IRAFStarFinder(threshold=1.0, fwhm=2.0, sky=2.0)
             tbl0 = finder0(data)
             tbl1 = finder1(data)
             assert np.all(tbl0['flux'] > tbl1['flux'])
@@ -157,7 +157,7 @@ class TestIRAFStarFinder:
             IRAFStarFinder(threshold=10, fwhm=1.5, min_separation=-1.0)
 
     def test_single_detected_source(self, data):
-        finder = IRAFStarFinder(8.0, 2, brightest=1)
+        finder = IRAFStarFinder(8.4, 2, brightest=1)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
         tbl = finder(data, mask=mask)
