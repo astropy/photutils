@@ -55,6 +55,10 @@ def make_wcs(shape, galactic=False):
     [50. 50.]
     >>> print(wcs.wcs.crval)  # doctest: +FLOAT_CMP
     [197.8925      -1.36555556]
+    >>> skycoord = wcs.pixel_to_world(42, 57)
+    >>> print(skycoord)  # doctest: +FLOAT_CMP
+    <SkyCoord (ICRS): (ra, dec) in deg
+        (197.89278975, -1.36561284)>
     """
     wcs = WCS(naxis=2)
     rho = np.pi / 3.0
@@ -117,6 +121,10 @@ def make_gwcs(shape, galactic=False):
     -------- ----------------
     detector linear_transform
         icrs             None
+    >>> skycoord = gwcs.pixel_to_world(42, 57)
+    >>> print(skycoord)  # doctest: +FLOAT_CMP
+    <SkyCoord (ICRS): (ra, dec) in deg
+        (197.89278975, -1.36561284)>
     """
     from gwcs import coordinate_frames as cf
     from gwcs import wcs as gwcs_wcs
