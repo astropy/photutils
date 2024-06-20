@@ -341,6 +341,7 @@ class TestGridFromEPSFs:
         assert psf_grid.meta['fill_value'] == 0.0
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model_image():
     shape = (401, 451)
     n_sources = 100
@@ -357,6 +358,7 @@ def test_make_psf_model_image():
     assert len(params2) == n_sources
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model_image_custom():
     shape = (401, 451)
     n_sources = 100
@@ -369,6 +371,7 @@ def test_make_psf_model_image_custom():
     assert len(params) == n_sources
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model_image_inputs():
     shape = (50, 50)
     match = 'psf_model must be an Astropy Model subclass'
