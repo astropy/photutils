@@ -28,6 +28,7 @@ from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
 
 __all__ = ['SourceCatalog']
+
 __doctest_requires__ = {('SourceCatalog', 'SourceCatalog.*'): ['scipy']}
 
 

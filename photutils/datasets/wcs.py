@@ -13,7 +13,7 @@ from astropy.wcs import WCS
 
 __all__ = ['make_wcs', 'make_gwcs', 'make_imagehdu']
 
-__doctest_requires__ = {('make_gwcs'): ['gwcs']}
+__doctest_requires__ = {'make_gwcs': ['gwcs']}
 
 
 def make_wcs(shape, galactic=False):

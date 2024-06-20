@@ -15,7 +15,7 @@ from photutils.profiles.core import ProfileBase
 
 __all__ = ['RadialProfile']
 
-__doctest_requires__ = {('RadialProfile'): ['scipy']}
+__doctest_requires__ = {'RadialProfile': ['scipy']}
 
 
 class RadialProfile(ProfileBase):

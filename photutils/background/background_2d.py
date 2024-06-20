@@ -23,7 +23,7 @@ from photutils.utils._stats import nanmedian
 
 __all__ = ['Background2D']
 
-__doctest_requires__ = {('Background2D'): ['scipy']}
+__doctest_requires__ = {'Background2D': ['scipy']}
 
 
 class Background2D:
