@@ -311,6 +311,7 @@ to set the plot label.
 
 .. plot::
 
+    import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from photutils.centroids import centroid_quadratic
