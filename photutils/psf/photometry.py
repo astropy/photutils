@@ -641,7 +641,7 @@ class PSFPhotometry(ModelImageMixin):
         """
         x = init_params[self._init_colnames['x']]
         y = init_params[self._init_colnames['y']]
-        positions = np.column_stack((x, y))
+        positions = np.column_stack((y, x))
         delta = self.fit_shape / 2
         min_idx = np.ceil(positions - delta)
         max_idx = np.ceil(positions + delta)
