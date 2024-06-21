@@ -54,6 +54,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Fixed an issue in ``ApertureStats`` where in very rare cases the
+    ``covariance`` calculation could take a long time. [#1788]
+
 - ``photutils.background``
 
   - No longer warn about NaNs in the data if those NaNs are masked in
@@ -76,6 +81,11 @@ Bug Fixes
 
   - Fixed an issue where ``IterativePSFPhotometry`` could sometimes
     raise an error about non-overlapping data. [#1778]
+
+- ``photutils.segmentation``
+
+  - Fixed an issue in ``SourceCatalog`` where in very rare cases the
+    ``covariance`` calculation could take a long time. [#1788]
 
 API Changes
 ^^^^^^^^^^^
