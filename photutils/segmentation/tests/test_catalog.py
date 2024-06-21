@@ -833,6 +833,19 @@ class TestSourceCatalog:
         tbl = self.cat.to_table()
         assert len(tbl) == 7
 
+    def test_tiny_sources(self):
+        data = np.zeros((11, 11))
+        data[5, 5] = 1.0
+        data[8, 8] = 1.0
+        segm = detect_sources(data, 0.1, 1)
+        data[8, 8] = 0
+        cat = SourceCatalog(data, segm)
+        assert_allclose(cat[0].covariance,
+                        [(1 / 12, 0), (0, 1 / 12)] * u.pix**2)
+        assert_allclose(cat[1].covariance,
+                        [(np.nan, np.nan), (np.nan, np.nan)] * u.pix**2)
+        assert_allclose(cat.fwhm, [0.67977799, np.nan] * u.pix)
+
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')

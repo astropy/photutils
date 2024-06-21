@@ -2278,8 +2278,13 @@ class SourceCatalog:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             covar_det = np.linalg.det(covar)
+
+            # covariance should be positive semidefinite
+            idx = np.where(covar_det < 0)[0]
+            covar[idx] = np.array([[np.nan, np.nan], [np.nan, np.nan]])
+
             idx = np.where(covar_det < delta2)[0]
-            while idx.size > 0:  # pragma: no cover
+            while idx.size > 0:
                 covar[idx, 0, 0] += delta
                 covar[idx, 1, 1] += delta
                 covar_det = np.linalg.det(covar)
@@ -2311,7 +2316,7 @@ class SourceCatalog:
         eigvals[idx] = np.linalg.eigvals(self._covariance[idx])
 
         # check for negative variance
-        # (just in case covariance matrix is not positive (semi)definite)
+        # (just in case covariance matrix is not positive semidefinite)
         idx2 = np.unique(np.where(eigvals < 0)[0])  # pragma: no cover
         eigvals[idx2] = (np.nan, np.nan)  # pragma: no cover
 
