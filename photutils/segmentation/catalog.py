@@ -1338,9 +1338,9 @@ class SourceCatalog:
         kwargs = self._apermask_kwargs['cen_win']
 
         labels = self.labels
-        if self.progress_bar:
+        if self.progress_bar:  # pragma: no cover
             desc = 'centroid_win'
-            labels = add_progress_bar(labels, desc=desc)  # pragma: no cover
+            labels = add_progress_bar(labels, desc=desc)
 
         xcen_win = []
         ycen_win = []
@@ -1519,9 +1519,9 @@ class SourceCatalog:
             warnings.simplefilter('ignore', AstropyUserWarning)
 
             cutouts = self._data_cutouts
-            if self.progress_bar:
+            if self.progress_bar:  # pragma: no cover
                 desc = 'centroid_quad'
-                cutouts = add_progress_bar(cutouts, desc=desc)  # pragma: no cover
+                cutouts = add_progress_bar(cutouts, desc=desc)
 
             for data, mask in zip(cutouts, self._cutout_total_masks):
                 try:
@@ -2278,8 +2278,13 @@ class SourceCatalog:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             covar_det = np.linalg.det(covar)
+
+            # covariance should be positive semidefinite
+            idx = np.where(covar_det < 0)[0]
+            covar[idx] = np.array([[np.nan, np.nan], [np.nan, np.nan]])
+
             idx = np.where(covar_det < delta2)[0]
-            while idx.size > 0:  # pragma: no cover
+            while idx.size > 0:
                 covar[idx, 0, 0] += delta
                 covar[idx, 1, 1] += delta
                 covar_det = np.linalg.det(covar)
@@ -2311,7 +2316,7 @@ class SourceCatalog:
         eigvals[idx] = np.linalg.eigvals(self._covariance[idx])
 
         # check for negative variance
-        # (just in case covariance matrix is not positive (semi)definite)
+        # (just in case covariance matrix is not positive semidefinite)
         idx2 = np.unique(np.where(eigvals < 0)[0])  # pragma: no cover
         eigvals[idx2] = (np.nan, np.nan)  # pragma: no cover
 
@@ -2969,9 +2974,9 @@ class SourceCatalog:
             cyy = (cyy,)
 
         labels = self.labels
-        if self.progress_bar:
+        if self.progress_bar:  # pragma: no cover
             desc = 'kron_radius'
-            labels = add_progress_bar(labels, desc=desc)  # pragma: no cover
+            labels = add_progress_bar(labels, desc=desc)
 
         kron_radius = []
         for (label, aperture, cxx_, cxy_, cyy_) in zip(labels, apertures,
@@ -3273,8 +3278,8 @@ class SourceCatalog:
             The flux and flux error arrays.
         """
         labels = self.labels
-        if self.progress_bar:
-            labels = add_progress_bar(labels, desc=desc)  # pragma: no cover
+        if self.progress_bar:  # pragma: no cover
+            labels = add_progress_bar(labels, desc=desc)
 
         flux = []
         fluxerr = []
@@ -3504,9 +3509,9 @@ class SourceCatalog:
         kwargs = self._apermask_kwargs['fluxfrac']
 
         labels = self.labels
-        if self.progress_bar:
+        if self.progress_bar:  # pragma: no cover
             desc = 'fluxfrac_radius prep'
-            labels = add_progress_bar(labels, desc=desc)  # pragma: no cover
+            labels = add_progress_bar(labels, desc=desc)
 
         args = []
         for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
@@ -3567,9 +3572,9 @@ class SourceCatalog:
         from scipy.optimize import root_scalar
 
         args = self._fluxfrac_optimizer_args
-        if self.progress_bar:
+        if self.progress_bar:  # pragma: no cover
             desc = 'fluxfrac_radius'
-            args = add_progress_bar(args, desc=desc)  # pragma: no cover
+            args = add_progress_bar(args, desc=desc)
 
         radius = []
         for fluxfrac_args in args:
