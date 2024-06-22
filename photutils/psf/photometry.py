@@ -297,16 +297,18 @@ class PSFPhotometry(ModelImageMixin):
         # reset these attributes for each __call__ (see _reset_results)
         self.finder_results = None
         self.init_params = None
+        self._fit_params = None
+        self._fit_models = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
-        self._fit_models = None
 
     def _reset_results(self):
         self.finder_results = None
         self.init_params = None
+        self._fit_params = None
+        self._fit_models = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
-        self._fit_models = None
 
     def _validate_grouper(self, grouper, name):
         if grouper is not None and not isinstance(grouper, SourceGrouper):
@@ -908,14 +910,15 @@ class PSFPhotometry(ModelImageMixin):
             fit_models.append(fit_model)
             fit_infos.append(fit_info)
 
-        self._group_results['fit_models'] = fit_models
         self._group_results['fit_infos'] = fit_infos
         self._group_results['nmodels'] = nmodels
 
         # split the groups and return objects in source-id order
         fit_models = self._make_fit_results(fit_models, fit_infos)
+        fit_params = self._model_params_to_table(fit_models)  # ungrouped
+        self._fit_params = fit_params
 
-        return fit_models
+        return fit_params
 
     def _model_params_to_table(self, models):
         fit_param_map = self._param_maps['fit']
@@ -953,7 +956,7 @@ class PSFPhotometry(ModelImageMixin):
         # sort column names
         return table[colnames]
 
-    def _calc_fit_metrics(self, data, source_tbl):
+    def _calc_fit_metrics(self, data, results_tbl):
         # Keep cen_idx as a list because it can have NaNs with the ints.
         # If NaNs are present, turning it into an array will convert the
         # ints to floats, which cannot be used as slices.
@@ -973,7 +976,7 @@ class PSFPhotometry(ModelImageMixin):
 
         # SimplexLSQFitter
         if key is None:
-            qfit = cfit = np.array([[np.nan]] * len(source_tbl))
+            qfit = cfit = np.array([[np.nan]] * len(results_tbl))
             return qfit, cfit
 
         fit_residuals = []
@@ -990,7 +993,7 @@ class PSFPhotometry(ModelImageMixin):
             cfit = []
             for index, (model, residual, cen_idx_) in enumerate(
                     zip(self._fit_models, fit_residuals, cen_idx)):
-                source = source_tbl[index]
+                source = results_tbl[index]
 
                 # this is overlap_slices center pixel index (before any
                 # trimming)
@@ -1023,10 +1026,10 @@ class PSFPhotometry(ModelImageMixin):
 
         return qfit, cfit
 
-    def _define_flags(self, source_tbl, shape):
-        flags = np.zeros(len(source_tbl), dtype=int)
+    def _define_flags(self, results_tbl, shape):
+        flags = np.zeros(len(results_tbl), dtype=int)
 
-        for index, row in enumerate(source_tbl):
+        for index, row in enumerate(results_tbl):
             if row['npixfit'] < np.prod(self.fit_shape):
                 flags[index] += 1
             if (row['x_fit'] < 0 or row['y_fit'] < 0
@@ -1224,56 +1227,50 @@ class PSFPhotometry(ModelImageMixin):
 
         # fit the sources
         data, mask, error, init_params, unit = fit_inputs
-        fit_models = self._fit_sources(data, init_params, error=error,
+        fit_params = self._fit_sources(data, init_params, error=error,
                                        mask=mask)
 
-        # create output table
-        fit_sources = self._model_params_to_table(fit_models)  # ungrouped
-        if len(init_params) != len(fit_sources):  # pragma: no cover
-            raise ValueError('init_params and fit_sources tables have '
-                             'different lengths')
-        source_tbl = hstack((init_params, fit_sources))
+        # stack initial and fit params to create output table
+        results_tbl = hstack((init_params, fit_params))
 
         param_errors = self._param_errors_to_table()
         if len(param_errors) > 0:
-            if len(param_errors) != len(source_tbl):  # pragma: no cover
-                raise ValueError('param errors and fit sources tables have '
-                                 'different lengths')
-            source_tbl = hstack((source_tbl, param_errors))
+            results_tbl = hstack((results_tbl, param_errors))
 
         npixfit = np.array(self._ungroup(self._group_results['npixfit']))
-        source_tbl['npixfit'] = npixfit
+        results_tbl['npixfit'] = npixfit
 
         nmodels = np.array(self._ungroup(self._group_results['nmodels']))
-        index = source_tbl.index_column('group_id') + 1
-        source_tbl.add_column(nmodels, name='group_size', index=index)
+        index = results_tbl.index_column('group_id') + 1
+        results_tbl.add_column(nmodels, name='group_size', index=index)
 
-        qfit, cfit = self._calc_fit_metrics(data, source_tbl)
-        source_tbl['qfit'] = qfit
-        source_tbl['cfit'] = cfit
+        qfit, cfit = self._calc_fit_metrics(data, results_tbl)
+        results_tbl['qfit'] = qfit
+        results_tbl['cfit'] = cfit
 
-        source_tbl['flags'] = self._define_flags(source_tbl, data.shape)
+        results_tbl['flags'] = self._define_flags(results_tbl, data.shape)
 
         if unit is not None:
-            source_tbl['local_bkg'] <<= unit
-            source_tbl['flux_fit'] <<= unit
-            source_tbl['flux_err'] <<= unit
+            results_tbl['local_bkg'] <<= unit
+            results_tbl['flux_fit'] <<= unit
+            results_tbl['flux_err'] <<= unit
 
         meta = _get_meta()
         attrs = ('fit_shape', 'fitter_maxiters', 'aperture_radius',
                  'progress_bar')
         for attr in attrs:
             meta[attr] = getattr(self, attr)
-        source_tbl.meta = meta
+        results_tbl.meta = meta
 
         if len(self.fit_results['fit_error_indices']) > 0:
             warnings.warn('One or more fit(s) may not have converged. Please '
                           'check the "flags" column in the output table.',
                           AstropyUserWarning)
 
+        # convert results from defaultdict to dict
         self.fit_results = dict(self.fit_results)
 
-        return source_tbl
+        return results_tbl
 
     def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
         return ModelImageMixin.make_model_image(
