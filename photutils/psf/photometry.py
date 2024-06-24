@@ -266,8 +266,8 @@ class PSFPhotometry(ModelImageMixin):
 
     If the returned model parameter errors are NaN, then either
     the fit did not converge, the model parameter was fixed, or
-    the input ``fitter`` is not returning parameter errors. For
-    the later case, one can try a different fitter that may return
+    the input ``fitter`` did not return parameter errors. For the
+    later case, one can try a different fitter that may return
     parameter errors (e.g., `astropy.models.fitting.LMLSQFitter
     or `astropy.models.fitting.TRFLSQFitter`). Note that
     these fitters are typically slower than the default
@@ -1470,6 +1470,32 @@ class IterativePSFPhotometry(ModelImageMixin):
 
     Notes
     -----
+    The data that will be fit for each source is defined by the
+    ``fit_shape`` parameter. A cutout will be made around the initial
+    center of each source with a shape defined by ``fit_shape``. The PSF
+    model will be fit to the data in this region. The cutout region that
+    is fit does not shift if the source center shifts during the fit
+    iterations. Therefore, the initial source positions should be close
+    to the true source positions. One way to ensure this is to use a
+    ``finder`` to identify sources in the data.
+
+    If the fitted positions are significantly different from the initial
+    positions, one can re-run the `PSFPhotometry` class using the fit
+    results as the input ``init_params``, which will change the fitted
+    cutout region for each source. After calling `PSFPhotometry` on the
+    data, it will have a ``fit_params`` attribute containing the fitted
+    model parameters. This table can be used as the ``init_params``
+    input in a subsequent call to `PSFPhotometry`.
+
+    If the returned model parameter errors are NaN, then either
+    the fit did not converge, the model parameter was fixed, or
+    the input ``fitter`` did not return parameter errors. For the
+    later case, one can try a different fitter that may return
+    parameter errors (e.g., `astropy.models.fitting.LMLSQFitter
+    or `astropy.models.fitting.TRFLSQFitter`). Note that
+    these fitters are typically slower than the default
+    `astropy.models.fitting.LevMarLSQFitter`.
+
     The local background value around each source is optionally
     estimated using the ``localbkg_estimator`` or obtained from the
     ``local_bkg`` column in the input ``init_params`` table. This local
