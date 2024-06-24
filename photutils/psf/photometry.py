@@ -19,6 +19,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
 from photutils.background import LocalBackground
+from photutils.datasets import make_model_image as _make_model_image
 from photutils.psf.groupers import SourceGrouper
 from photutils.psf.utils import _get_psf_model_params, _validate_psf_model
 from photutils.utils._misc import _get_meta
@@ -65,62 +66,46 @@ class ModelImageMixin:
             The rendered image from the fit PSF models. This image will
             not have any units.
         """
-        data = np.zeros(shape)
-
         if isinstance(self, PSFPhotometry):
             progress_bar = self.progress_bar
-            fit_models = self._fit_models
+            psf_model = self.psf_model
+            fit_params = self._fit_params
             local_bkgs = self.init_params['local_bkg']
-            xname, yname = self._psf_param_names[0:2]
         else:
+            psf_model = self._psfphot.psf_model
             progress_bar = self._psfphot.progress_bar
-            xname, yname = self.fit_results[0]._psf_param_names[0:2]
 
             if self.mode == 'new':
-                # collect the fit models and local backgrounds from each
+                # collect the fit params and local backgrounds from each
                 # iteration
-                fit_models = []
                 local_bkgs = []
-                for psfphot in self.fit_results:
-                    fit_models.append(psfphot._fit_models)
+                for i, psfphot in enumerate(self.fit_results):
+                    if i == 0:
+                        fit_params = psfphot._fit_params
+                    else:
+                        fit_params = vstack((fit_params, psfphot._fit_params))
                     local_bkgs.append(psfphot.init_params['local_bkg'])
 
-                fit_models = _flatten(fit_models)
                 local_bkgs = _flatten(local_bkgs)
             else:
-                # use only the fit models and local backgrounds from the
+                # use the fit params and local backgrounds only from the
                 # final iteration, which includes all sources
-                fit_models = self.fit_results[-1]._fit_models
+                fit_params = self.fit_results[-1]._fit_params
                 local_bkgs = self.fit_results[-1].init_params['local_bkg']
 
-        if progress_bar:  # pragma: no cover
-            desc = 'Model image'
-            fit_models = add_progress_bar(fit_models, desc=desc)
+        model_params = fit_params
 
         if include_localbkg:
             if isinstance(local_bkgs, u.Quantity):
                 local_bkgs = local_bkgs.value
 
-        # fit_models must be a list of individual, not grouped, PSF
-        # models, i.e., there should be one PSF model (which may be
-        # compound) for each source
-        for fit_model, local_bkg in zip(fit_models, local_bkgs):
-            x0 = getattr(fit_model, xname).value
-            y0 = getattr(fit_model, yname).value
+            # add local_bkg
+            model_params = model_params.copy()
+            model_params['local_bkg'] = local_bkgs
 
-            try:
-                slc_lg, _ = overlap_slices(shape, psf_shape, (y0, x0),
-                                           mode='trim')
-            except NoOverlapError:
-                continue
-
-            yy, xx = np.mgrid[slc_lg]
-            data[slc_lg] += fit_model(xx, yy)
-
-            if include_localbkg:
-                data[slc_lg] += local_bkg
-
-        return data
+        return _make_model_image(shape, psf_model, model_params,
+                                 model_shape=psf_shape,
+                                 progress_bar=progress_bar)
 
     def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
         """
@@ -1095,7 +1080,6 @@ class PSFPhotometry(ModelImageMixin):
                                  self._group_results['fit_infos']):
             fit_residuals.extend(np.split(fit_info[key], idx))
         fit_residuals = self._order_by_id(fit_residuals)
-        self.fit_residuals = fit_residuals
 
         with warnings.catch_warnings():
             # ignore divide-by-zero if flux = 0
