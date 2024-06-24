@@ -14,7 +14,7 @@ New Features
   - Added a ``make_model_image`` function for generating simulated images
     with model sources. This function has more options
     and is significantly faster than the now-deprecated
-    ``make_model_sources_image`` function. [#1759]
+    ``make_model_sources_image`` function. [#1759, #1790]
 
   - Added a ``make_model_params`` function to make a table of randomly
     generated model positions and fluxes for simulated sources. [#1766]

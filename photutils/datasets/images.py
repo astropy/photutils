@@ -7,6 +7,7 @@ examples and tests.
 import math
 import warnings
 
+import astropy.units as u
 import numpy as np
 from astropy.convolution import discretize_model
 from astropy.modeling import Model
@@ -51,15 +52,16 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         the ``x_name`` and ``y_name`` keywords.
 
     params_table : `~astropy.table.Table`
-        A table containing the model parameters for each source. Each
-        row of the table corresponds to a source whose model parameters
-        are defined by the column names, which must match the model
-        parameter names. The table must contain columns for the x and
-        y positions of the sources. The column names for the x and y
-        positions can be specified using the ``x_name`` and ``y_name``
-        keywords. Model parameters not defined in the table will be set
-        to the ``model`` default value. Any units in the table will be
-        ignored.
+        A table containing the model parameters for each source.
+        Each row of the table corresponds to a source whose model
+        parameters are defined by the column names, which must match
+        the model parameter names. The table must contain columns for
+        the x and y positions of the sources. The column names for
+        the x and y positions can be specified using the ``x_name``
+        and ``y_name`` keywords. Model parameters not defined in the
+        table will be set to the ``model`` default value. To attach
+        units to model parameters, ``params_table`` must be input as a
+        `~astropy.table.QTable`.
 
         If the table contains a column named 'model_shape', then
         the values in that column will be used to override the
@@ -70,9 +72,12 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         If the table contains a column named 'local_bkg', then the
         per-pixel local background values in that column will be used
         to added to each model source over the region defined by its
-        ``model_shape``. This option should be used with care,
-        especially in crowded fields where the ``model_shape`` of
-        sources overlap (see Notes below).
+        ``model_shape``. The 'local_bkg' column must have the same
+        flux units as the output image (e.g., if the input ``model``
+        has 'amplitude' or 'flux' parameters with units). Including
+        'local_bkg' should be used with care, especially in crowded
+        fields where the ``model_shape`` of sources overlap (see Notes
+        below).
 
         Except for ``model_shape`` and ``local_bkg`` column names,
         column names that do not match model parameters will be ignored.
@@ -275,7 +280,13 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
                                           mode=discretize_method,
                                           factor=discretize_oversample)
 
-            image[slc_lg] += subimg + local_bkg[i]
+            if i == 0 and isinstance(subimg, u.Quantity):
+                image <<= subimg.unit
+            try:
+                image[slc_lg] += subimg + local_bkg[i]
+            except u.UnitConversionError:
+                raise ValueError('The local_bkg column must have the same '
+                                 'flux units as the output image')
 
         except NoOverlapError:
             continue

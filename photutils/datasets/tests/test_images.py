@@ -3,10 +3,11 @@
 Tests for the images module.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.models import Moffat2D
-from astropy.table import Table
+from astropy.table import QTable
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose
@@ -20,7 +21,8 @@ from photutils.utils._optional_deps import HAS_SCIPY
 
 @pytest.fixture(name='source_params')
 def fixture_source_params():
-    params = Table()
+    # this can be remove when the image deprecations are removed
+    params = QTable()
     params['flux'] = [1, 2, 3]
     params['x_mean'] = [30, 50, 70.5]
     params['y_mean'] = [50, 50, 50.5]
@@ -32,7 +34,8 @@ def fixture_source_params():
 
 @pytest.fixture(name='source_params_prf')
 def fixture_source_params_prf():
-    params = Table()
+    # this can be remove when the image deprecations are removed
+    params = QTable()
     params['x_0'] = [30, 50, 70.5]
     params['y_0'] = [50, 50, 50.5]
     params['amplitude'] = np.array([1, 2, 3]) / (2 * np.pi)  # sigma = 1
@@ -40,7 +43,7 @@ def fixture_source_params_prf():
 
 
 def test_make_model_image():
-    params = Table()
+    params = QTable()
     params['x_0'] = [50, 70, 90]
     params['y_0'] = [50, 50, 50]
     params['gamma'] = [1.7, 2.32, 5.8]
@@ -65,8 +68,34 @@ def test_make_model_image():
     assert image.sum() > 1
 
 
+def test_make_model_image_units():
+    unit = u.Jy
+    params = QTable()
+    params['x_0'] = [30, 50, 70.5]
+    params['y_0'] = [50, 50, 50.5]
+    params['flux'] = [1, 2, 3] * unit
+    model = IntegratedGaussianPRF(sigma=1.5)
+    shape = (300, 500)
+    model_shape = (11, 11)
+    image = make_model_image(shape, model, params, model_shape=model_shape)
+    assert image.shape == shape
+    assert isinstance(image, u.Quantity)
+    assert image.unit == unit
+
+    params['local_bkg'] = [0.1, 0.2, 0.3] * unit
+    image = make_model_image(shape, model, params, model_shape=model_shape)
+    assert image.shape == shape
+    assert isinstance(image, u.Quantity)
+    assert image.unit == unit
+
+    match = 'The local_bkg column must have the same flux units'
+    with pytest.raises(ValueError, match=match):
+        params['local_bkg'] = [0.1, 0.2, 0.3]
+        make_model_image(shape, model, params, model_shape=model_shape)
+
+
 def test_make_model_image_discretize_method():
-    params = Table()
+    params = QTable()
     params['x_0'] = [50, 70, 90]
     params['y_0'] = [50, 50, 50]
     params['gamma'] = [1.7, 2.32, 5.8]
@@ -82,7 +111,7 @@ def test_make_model_image_discretize_method():
 
 
 def test_make_model_image_no_overlap():
-    params = Table()
+    params = QTable()
     params['x_0'] = [50]
     params['y_0'] = [50]
     params['gamma'] = [1.7]
@@ -98,17 +127,17 @@ def test_make_model_image_no_overlap():
 def test_make_model_image_inputs():
     match = 'shape must be a 2-tuple'
     with pytest.raises(ValueError, match=match):
-        make_model_image(100, Moffat2D(), Table())
+        make_model_image(100, Moffat2D(), QTable())
 
     match = 'model must be a Model instance'
     with pytest.raises(ValueError, match=match):
-        make_model_image((100, 100), None, Table())
+        make_model_image((100, 100), None, QTable())
 
     match = 'model must be a 2D model'
     with pytest.raises(ValueError, match=match):
         model = Moffat2D()
         model.n_inputs = 1
-        make_model_image((100, 100), model, Table())
+        make_model_image((100, 100), model, QTable())
 
     match = 'params_table must be an astropy Table'
     with pytest.raises(ValueError, match=match):
@@ -118,27 +147,27 @@ def test_make_model_image_inputs():
     match = 'not in model parameter names'
     with pytest.raises(ValueError, match=match):
         model = Moffat2D()
-        make_model_image((100, 100), model, Table(), x_name='invalid')
+        make_model_image((100, 100), model, QTable(), x_name='invalid')
     with pytest.raises(ValueError, match=match):
         model = Moffat2D()
-        make_model_image((100, 100), model, Table(), y_name='invalid')
+        make_model_image((100, 100), model, QTable(), y_name='invalid')
 
     match = '"x_0" not in psf_params column names'
     with pytest.raises(ValueError, match=match):
         model = Moffat2D()
-        params = Table()
+        params = QTable()
         make_model_image((100, 100), model, params)
 
     match = '"y_0" not in psf_params column names'
     with pytest.raises(ValueError, match=match):
         model = Moffat2D()
-        params = Table()
+        params = QTable()
         params['x_0'] = [50, 70, 90]
         make_model_image((100, 100), model, params)
 
     match = 'model_shape must be specified if the model does not have'
     with pytest.raises(ValueError, match=match):
-        params = Table()
+        params = QTable()
         params['x_0'] = [50]
         params['y_0'] = [50]
         params['gamma'] = [1.7]
@@ -149,7 +178,7 @@ def test_make_model_image_inputs():
 
 
 def test_make_model_sources_image():
-    params = Table()
+    params = QTable()
     params['x_0'] = [50, 70, 90]
     params['y_0'] = [50, 50, 50]
     params['gamma'] = [1.7, 2.32, 5.8]
@@ -211,7 +240,7 @@ def test_make_test_psf_data():
 
         assert isinstance(data, np.ndarray)
         assert data.shape == shape
-        assert isinstance(true_params, Table)
+        assert isinstance(true_params, QTable)
         assert len(true_params) == nsources
         assert true_params['x'].min() >= 0
         assert true_params['y'].min() >= 0
