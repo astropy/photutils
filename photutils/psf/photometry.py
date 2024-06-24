@@ -344,9 +344,14 @@ class PSFPhotometry(ModelImageMixin):
         """
         PSF model parameters that are fit, but do not correspond to x,
         y, or flux.
+
+        The order of the psf_model parameters is preserved.
         """
-        return list(set(self._fitted_psf_param_names)
-                    - set(self._psf_param_names))
+        extra_params = []
+        for key in self._fitted_psf_param_names:
+            if key not in self._psf_param_names:
+                extra_params.append(key)
+        return extra_params
 
     def _validate_psf_model(self):
         """
@@ -697,6 +702,49 @@ class PSFPhotometry(ModelImageMixin):
 
         return psf_model
 
+    def _model_params_to_table(self, models):
+        """
+        Convert a list of PSF models to a table of model parameters.
+
+        The inputs ``models`` are assumed to be instances of the same
+        model class (i.e., the parameters names are the same for all
+        models).
+        """
+        fit_param_map = self._param_maps['fit']
+
+        params = []
+        for model in models:
+            mparams = []
+            for model_param in fit_param_map.keys():
+                mparams.append(getattr(model, model_param).value)
+            params.append(mparams)
+        vals = np.transpose(params)
+
+        colnames = fit_param_map.values()
+        table = QTable()
+        for index, colname in enumerate(colnames):
+            table[colname] = vals[index]
+
+        return table
+
+    def _param_errors_to_table(self):
+        err_param_map = self._param_maps['err']
+        table = QTable()
+        for index, name in enumerate(self._fitted_psf_param_names):
+            colname = err_param_map[name]
+            table[colname] = self.fit_results['fit_param_errs'][:, index]
+
+        colnames = list(err_param_map.values())
+
+        # add missing error columns
+        nsources = len(self._fit_models)
+        for colname in colnames:
+            if colname not in table.colnames:
+                table[colname] = [np.nan] * nsources
+
+        # sort column names
+        return table[colnames]
+
     def _define_fit_data(self, sources, data, mask):
         yi = []
         xi = []
@@ -919,42 +967,6 @@ class PSFPhotometry(ModelImageMixin):
         self._fit_params = fit_params
 
         return fit_params
-
-    def _model_params_to_table(self, models):
-        fit_param_map = self._param_maps['fit']
-
-        params = []
-        for model in models:
-            mparams = []
-            for model_param in fit_param_map.keys():
-                mparams.append(getattr(model, model_param).value)
-            params.append(mparams)
-        vals = np.transpose(params)
-
-        colnames = fit_param_map.values()
-        table = QTable()
-        for index, colname in enumerate(colnames):
-            table[colname] = vals[index]
-
-        return table
-
-    def _param_errors_to_table(self):
-        err_param_map = self._param_maps['err']
-        table = QTable()
-        for index, name in enumerate(self._fitted_psf_param_names):
-            colname = err_param_map[name]
-            table[colname] = self.fit_results['fit_param_errs'][:, index]
-
-        colnames = list(err_param_map.values())
-
-        # add missing error columns
-        nsources = len(self._fit_models)
-        for colname in colnames:
-            if colname not in table.colnames:
-                table[colname] = [np.nan] * nsources
-
-        # sort column names
-        return table[colnames]
 
     def _calc_fit_metrics(self, data, results_tbl):
         # Keep cen_idx as a list because it can have NaNs with the ints.
