@@ -13,7 +13,7 @@ import astropy.units as u
 import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import NDData, NoOverlapError, StdDevUncertainty
-from astropy.table import QTable, Table, hstack, vstack
+from astropy.table import QTable, Table, hstack, join, vstack
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -323,6 +323,7 @@ class PSFPhotometry(ModelImageMixin):
         # reset these attributes for each __call__ (see _reset_results)
         self.finder_results = None
         self.init_params = None
+        self.fit_params = None
         self._fit_params = None
         self._fit_models = None
         self.fit_results = defaultdict(list)
@@ -331,6 +332,7 @@ class PSFPhotometry(ModelImageMixin):
     def _reset_results(self):
         self.finder_results = None
         self.init_params = None
+        self.fit_params = None
         self._fit_params = None
         self._fit_models = None
         self.fit_results = defaultdict(list)
@@ -787,7 +789,28 @@ class PSFPhotometry(ModelImageMixin):
         table = QTable(params)
         ids = np.arange(len(table)) + 1
         table.add_column(ids, index=0, name='id')
+
         return table
+
+    def _param_errors_to_table(self):
+        param_err = self.fit_results.pop('fit_param_errs')
+
+        err_param_map = self._param_maps['err']
+        table = QTable()
+        for index, name in enumerate(self._fitted_psf_param_names):
+            colname = err_param_map[name]
+            table[colname] = param_err[:, index]
+
+        colnames = list(err_param_map.values())
+
+        # add missing error columns
+        nsources = len(self.init_params)
+        for colname in colnames:
+            if colname not in table.colnames:
+                table[colname] = [np.nan] * nsources
+
+        # sort column names
+        return table[colnames]
 
     def _prepare_fit_results(self, fit_params):
         """
@@ -796,6 +819,8 @@ class PSFPhotometry(ModelImageMixin):
         # remove parameters that are not fit
         out_params = fit_params.copy()
         for column in out_params.colnames:
+            if column == 'id':
+                continue
             if column not in self._param_maps['fit'].keys():
                 out_params.remove_column(column)
 
@@ -808,25 +833,11 @@ class PSFPhotometry(ModelImageMixin):
         flux_col = self._param_maps['fit'][self._psf_param_names[2]]
         out_params = self._move_column(out_params, flux_col, y_col)
 
+        # add parameter error columns
+        param_errs = self._param_errors_to_table()
+        out_params = hstack([out_params, param_errs])
+
         return out_params
-
-    def _param_errors_to_table(self):
-        err_param_map = self._param_maps['err']
-        table = QTable()
-        for index, name in enumerate(self._fitted_psf_param_names):
-            colname = err_param_map[name]
-            table[colname] = self.fit_results['fit_param_errs'][:, index]
-
-        colnames = list(err_param_map.values())
-
-        # add missing error columns
-        nsources = len(self._fit_models)
-        for colname in colnames:
-            if colname not in table.colnames:
-                table[colname] = [np.nan] * nsources
-
-        # sort column names
-        return table[colnames]
 
     def _define_fit_data(self, sources, data, mask):
         yi = []
@@ -932,18 +943,21 @@ class PSFPhotometry(ModelImageMixin):
 
         return np.array(indices, dtype=int)
 
-    def _make_fit_results(self, models, infos):
+    def _parse_fit_results(self, group_models, group_fit_infos):
+        """
+        Parse the fit results for each source or group of sources.
+        """
         psf_nsub = self.psf_model.n_submodels
 
         fit_models = []
         fit_infos = []
         fit_param_errs = []
         nfitparam = len(self._fitted_psf_param_names)
-        for model, info in zip(models, infos):
+        for model, fit_info in zip(group_models, group_fit_infos):
             model_nsub = model.n_submodels
             npsf_models = model_nsub // psf_nsub
 
-            param_cov = info.get('param_cov', None)
+            param_cov = fit_info.get('param_cov', None)
             if param_cov is None:
                 if nfitparam == 0:  # model params are all fixed
                     nfitparam = 3   # x_err, y_err, and flux_err are np.nan
@@ -954,13 +968,13 @@ class PSFPhotometry(ModelImageMixin):
             # model is for a single source (which may be compound)
             if npsf_models == 1:
                 fit_models.append(model)
-                fit_infos.append(info)
+                fit_infos.append(fit_info)
                 fit_param_errs.append(param_err)
                 continue
 
             # model is a grouped model for multiple sources
             fit_models.extend(self._split_compound_model(model, psf_nsub))
-            fit_infos.extend([info] * npsf_models)  # views
+            fit_infos.extend([fit_info] * npsf_models)  # views
             fit_param_errs.extend(self._split_param_errs(param_err, nfitparam))
 
         if len(fit_models) != len(fit_infos):  # pragma: no cover
@@ -973,8 +987,8 @@ class PSFPhotometry(ModelImageMixin):
 
         self._fit_models = fit_models
         self.fit_results['fit_infos'] = fit_infos
-        self.fit_results['fit_param_errs'] = fit_param_errs
         self.fit_results['fit_error_indices'] = self._get_fit_error_indices()
+        self.fit_results['fit_param_errs'] = fit_param_errs
 
         return fit_models
 
@@ -1045,7 +1059,7 @@ class PSFPhotometry(ModelImageMixin):
         self._group_results['nmodels'] = nmodels
 
         # split the groups and return objects in source-id order
-        fit_models = self._make_fit_results(fit_models, fit_infos)
+        fit_models = self._parse_fit_results(fit_models, fit_infos)
         _fit_params = self._model_params_to_table(fit_models)  # ungrouped
         fit_params = self._prepare_fit_results(_fit_params)
         self._fit_params = _fit_params
@@ -1328,11 +1342,7 @@ class PSFPhotometry(ModelImageMixin):
                                        mask=mask)
 
         # stack initial and fit params to create output table
-        results_tbl = hstack((init_params, fit_params))
-
-        param_errors = self._param_errors_to_table()
-        if len(param_errors) > 0:
-            results_tbl = hstack((results_tbl, param_errors))
+        results_tbl = join(init_params, fit_params)
 
         npixfit = np.array(self._ungroup(self._group_results['npixfit']))
         results_tbl['npixfit'] = npixfit
