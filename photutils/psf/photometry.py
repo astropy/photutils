@@ -268,10 +268,10 @@ class PSFPhotometry(ModelImageMixin):
     the fit did not converge, the model parameter was fixed, or
     the input ``fitter`` did not return parameter errors. For the
     later case, one can try a different fitter that may return
-    parameter errors (e.g., `astropy.models.fitting.LMLSQFitter
-    or `astropy.models.fitting.TRFLSQFitter`). Note that
+    parameter errors (e.g., `astropy.modeling.fitting.LMLSQFitter`
+    or `astropy.modeling.fitting.TRFLSQFitter`). Note that
     these fitters are typically slower than the default
-    `astropy.models.fitting.LevMarLSQFitter`.
+    `astropy.modeling.fitting.LevMarLSQFitter`.
 
     The local background value around each source is optionally
     estimated using the ``localbkg_estimator`` or obtained from the
@@ -1491,10 +1491,10 @@ class IterativePSFPhotometry(ModelImageMixin):
     the fit did not converge, the model parameter was fixed, or
     the input ``fitter`` did not return parameter errors. For the
     later case, one can try a different fitter that may return
-    parameter errors (e.g., `astropy.models.fitting.LMLSQFitter
-    or `astropy.models.fitting.TRFLSQFitter`). Note that
+    parameter errors (e.g., `astropy.modeling.fitting.LMLSQFitter`
+    or `astropy.modeling.fitting.TRFLSQFitter`). Note that
     these fitters are typically slower than the default
-    `astropy.models.fitting.LevMarLSQFitter`.
+    `astropy.modeling.fitting.LevMarLSQFitter`.
 
     The local background value around each source is optionally
     estimated using the ``localbkg_estimator`` or obtained from the
