@@ -1095,6 +1095,7 @@ class PSFPhotometry(ModelImageMixin):
                                  self._group_results['fit_infos']):
             fit_residuals.extend(np.split(fit_info[key], idx))
         fit_residuals = self._order_by_id(fit_residuals)
+        self.fit_residuals = fit_residuals
 
         with warnings.catch_warnings():
             # ignore divide-by-zero if flux = 0
@@ -1104,31 +1105,14 @@ class PSFPhotometry(ModelImageMixin):
             cfit = []
             for index, (model, residual, cen_idx_) in enumerate(
                     zip(self._fit_models, fit_residuals, cen_idx)):
-                source = results_tbl[index]
 
-                # this is overlap_slices center pixel index (before any
-                # trimming)
-                xcen = np.ceil(source[self._init_colnames['x']]
-                               - 0.5).astype(int)
-                ycen = np.ceil(source[self._init_colnames['y']]
-                               - 0.5).astype(int)
-
-                flux_fit = source['flux_fit']
+                flux_fit = results_tbl['flux_fit'][index]
                 qfit.append(np.sum(np.abs(residual)) / flux_fit)
 
-                if np.isnan(cen_idx_):
-                    # calculate residual at central pixel if its within
-                    # the bounds of the ``data``, otherwise mask it
-                    cen_in_data = (
-                        0 <= ycen <= data.shape[0] - 1
-                        and 0 <= xcen <= data.shape[1] - 1
-                    )
-                    if cen_in_data:
-                        cen_residual = data[ycen, xcen] - model(xcen, ycen)
-                    else:
-                        cen_residual = np.nan
+                if np.isnan(cen_idx_):  # masked central pixel
+                    cen_residual = np.nan
                 else:
-                    # find residual at (xcen, ycen)
+                    # find residual at center pixel;
                     # astropy fitters compute residuals as
                     # (model - data), thus need to negate the residual
                     cen_residual = -residual[cen_idx_]
@@ -1296,7 +1280,9 @@ class PSFPhotometry(ModelImageMixin):
                 absolute value of the sum of the fit residuals divided by
                 the fit flux
               * ``cfit`` : a quality-of-fit metric defined as the
-                fit residual in the central pixel divided by the fit flux
+                fit residual in the initial central pixel value divided by
+                the fit flux. NaN values indicate that the central pixel
+                was masked.
               * ``flags`` : bitwise flag values:
                   * 1 : one or more pixels in the ``fit_shape`` region
                     were masked
@@ -1750,7 +1736,9 @@ class IterativePSFPhotometry(ModelImageMixin):
                 absolute value of the sum of the fit residuals divided by
                 the fit flux
               * ``cfit`` : a quality-of-fit metric defined as the
-                fit residual in the central pixel divided by the fit flux
+                fit residual in the initial central pixel value divided by
+                the fit flux. NaN values indicate that the central pixel
+                was masked.
               * ``flags`` : bitwise flag values:
                   * 1 : one or more pixels in the ``fit_shape`` region
                     were masked

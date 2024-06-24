@@ -403,6 +403,7 @@ def test_psf_photometry_mask(test_data):
     mask[49, 63] = True
     phot = psfphot(data_orig, mask=mask, init_params=init_params)
     assert len(phot) == 1
+    assert np.isnan(phot['cfit'][0])
 
     # this should not raise a warning because the non-finite pixel was
     # explicitly masked
