@@ -51,6 +51,9 @@ New Features
   - Added a ``make_psf_model_image`` function to generate a simulated
     image from PSF models. [#1785]
 
+  - ``PSFPhotometry`` now has a new ``fit_params`` attribute containing
+    a table of the fit model parameters and errors. [#1789]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -180,6 +183,14 @@ API Changes
   - A ``ValueError`` is now raised if the shape of the ``error`` array
     does not match the ``data`` array when calling the PSF-fitting
     classes. [#1777]
+
+  - The ``fit_param_errs`` key was removed from the ``PSFPhotometry``
+    ``fit_results`` dictionary. The fit parameter errors are now stored
+    in the ``fit_params`` table. [#1789]
+
+  - The ``cfit`` column in the ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` result table will now be NaN for sources
+    whose initial central pixel is masked. [#1789]
 
 
 1.12.0 (2024-04-12)
