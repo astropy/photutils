@@ -702,7 +702,45 @@ class PSFPhotometry(ModelImageMixin):
 
         return psf_model
 
-    def _model_params_to_table(self, models):
+    @staticmethod
+    def _move_column(table, colname, colname_after):
+        """
+        Move a column to a new position in a table.
+
+        The table is modified in place.
+
+        Parameters
+        ----------
+        colname : str
+            The column name to move.
+
+        colname_after : str
+            The column name after which to place the moved column.
+
+        table : `~astropy.table.Table`
+            The input table.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            The input table with the column moved.
+        """
+        colnames = table.colnames
+        if colname not in colnames or colname_after not in colnames:
+            return table
+        if colname == colname_after:
+            return table
+
+        old_index = colnames.index(colname)
+        new_index = colnames.index(colname_after)
+        if old_index > new_index:
+            new_index += 1
+        colnames.insert(new_index, colnames.pop(old_index))
+        table = table[colnames]
+        return table
+
+    @staticmethod
+    def _model_params_to_table(models):
         """
         Convert a list of PSF models to a table of model parameters.
 
@@ -710,22 +748,41 @@ class PSFPhotometry(ModelImageMixin):
         model class (i.e., the parameters names are the same for all
         models).
         """
-        fit_param_map = self._param_maps['fit']
-
-        params = []
+        param_names = list(models[0].param_names)
+        params = defaultdict(list)
         for model in models:
-            mparams = []
-            for model_param in fit_param_map.keys():
-                mparams.append(getattr(model, model_param).value)
-            params.append(mparams)
-        vals = np.transpose(params)
+            for name in param_names:
+                try:
+                    value = getattr(model, name).value
+                except AttributeError:
+                    value = getattr(model, name)
+                params[name].append(value)
 
-        colnames = fit_param_map.values()
-        table = QTable()
-        for index, colname in enumerate(colnames):
-            table[colname] = vals[index]
-
+        table = QTable(params)
+        ids = np.arange(len(table)) + 1
+        table.add_column(ids, index=0, name='id')
         return table
+
+    def _prepare_fit_results(self, fit_params):
+        """
+        Prepare the output table of fit results.
+        """
+        # remove parameters that are not fit
+        out_params = fit_params.copy()
+        for column in out_params.colnames:
+            if column not in self._param_maps['fit'].keys():
+                out_params.remove_column(column)
+
+        # rename columns to have the "fit" suffix
+        for key, val in self._param_maps['fit'].items():
+            out_params.rename_column(key, val)
+
+        # reorder columns to have "flux" come immediately after "y"
+        y_col = self._param_maps['fit'][self._psf_param_names[1]]
+        flux_col = self._param_maps['fit'][self._psf_param_names[2]]
+        out_params = self._move_column(out_params, flux_col, y_col)
+
+        return out_params
 
     def _param_errors_to_table(self):
         err_param_map = self._param_maps['err']
@@ -966,7 +1023,7 @@ class PSFPhotometry(ModelImageMixin):
         fit_params = self._model_params_to_table(fit_models)  # ungrouped
         self._fit_params = fit_params
 
-        return fit_params
+        return self._prepare_fit_results(fit_params)
 
     def _calc_fit_metrics(self, data, results_tbl):
         # Keep cen_idx as a list because it can have NaNs with the ints.
@@ -1574,37 +1631,6 @@ class IterativePSFPhotometry(ModelImageMixin):
         new_sources.meta.pop('date', None)  # prevent merge conflicts
         return vstack([orig_sources, new_sources])
 
-    @staticmethod
-    def _move_column(colname, colname_after, table):
-        """
-        Move a column to a new position in a table.
-
-        The table is modified in place.
-
-        Parameters
-        ----------
-        colname : str
-            The column name to move.
-
-        colname_after : str
-            The column name after which to place the moved column.
-
-        table : `~astropy.table.Table`
-            The input table.
-
-        Returns
-        -------
-        table : `~astropy.table.Table`
-            The input table with the column moved.
-        """
-        if colname in table.colnames:
-            colnames = table.colnames
-            old_index = colnames.index(colname)
-            new_index = colnames.index(colname_after) + 1
-            colnames.insert(new_index, colnames.pop(old_index))
-            table = table[colnames]
-        return table
-
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         """
         Perform PSF photometry.
@@ -1772,9 +1798,9 @@ class IterativePSFPhotometry(ModelImageMixin):
 
                 iter_num += 1
 
-            # reorder 'iter_detected' column
-            phot_tbl = self._move_column('iter_detected', 'group_size',
-                                         phot_tbl)
+            # move 'iter_detected' column
+            phot_tbl = self._psfphot._move_column(phot_tbl, 'iter_detected',
+                                                  'group_size')
 
         # emit unique warnings
         recorded_warnings = rwarn0 + rwarn1
