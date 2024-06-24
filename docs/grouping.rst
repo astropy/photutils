@@ -59,26 +59,26 @@ Let's display the image:
 .. plot::
 
     import matplotlib.pyplot as plt
-    from photutils.datasets import make_test_psf_data
-    from photutils.psf import IntegratedGaussianPRF
+    from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
 
     shape = (256, 256)
     sigma = 2.0
     psf_model = IntegratedGaussianPRF(sigma=sigma)
     psf_shape = (11, 11)
-    nsources = 100
+    n_sources = 100
     flux_range = (500, 1000)
     border_size = (7, 7)
-    data, stars = make_test_psf_data(shape, psf_model, psf_shape, nsources,
-                                     flux_range=flux_range,
-                                     border_size=border_size, seed=123)
+    data, stars = make_psf_model_image(shape, psf_model, n_sources,
+                                       flux_range=flux_range,
+                                       model_shape=psf_shape,
+                                       border_size=border_size, seed=123)
     plt.figure(figsize=(8, 8))
     plt.imshow(data, origin='lower', interpolation='nearest')
     plt.show()
 
-The ``make_test_psf_data`` function returns the simulated image
+The ``make_psf_model_image`` function returns the simulated image
 (``data``) and a table of the star positions and fluxes (``stars``). The
-star positions are stored in the 'x' and 'y' columns of the table.
+star positions are stored in the 'x_0' and 'y_0' columns of the table.
 
 Now, let's find the stellar groups. We start by creating
 a `~photutils.psf.SourceGrouper` object. Here we set the
@@ -150,8 +150,8 @@ the same group have the same aperture color:
     import numpy as np
     from astropy.stats import gaussian_sigma_to_fwhm
     from photutils.aperture import CircularAperture
-    from photutils.datasets import make_test_psf_data
-    from photutils.psf import IntegratedGaussianPRF, SourceGrouper
+    from photutils.psf import (IntegratedGaussianPRF, SourceGrouper,
+                               make_psf_model_image)
     from photutils.utils import make_random_cmap
 
     shape = (256, 256)
@@ -160,17 +160,18 @@ the same group have the same aperture color:
     flux_range = (500, 1000)
     sigma = 2.0
     psf_model = IntegratedGaussianPRF(sigma=sigma)
-    nsources = 100
-    data, stars = make_test_psf_data(shape, psf_model, psf_shape, nsources,
-                                     flux_range=flux_range,
-                                     border_size=border_size, seed=123)
+    n_sources = 100
+    data, stars = make_psf_model_image(shape, psf_model, n_sources,
+                                       flux_range=flux_range,
+                                       model_shape=psf_shape,
+                                       border_size=border_size, seed=123)
 
     fwhm = sigma * gaussian_sigma_to_fwhm
     min_separation = 2.5 * fwhm
     grouper = SourceGrouper(min_separation)
 
-    x = np.array(stars['x'])
-    y = np.array(stars['y'])
+    x = np.array(stars['x_0'])
+    y = np.array(stars['y_0'])
     groups = grouper(x, y)
 
     plt.figure(figsize=(8, 8))
