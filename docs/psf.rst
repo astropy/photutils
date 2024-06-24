@@ -345,7 +345,10 @@ information returned from the ``fitter`` for each source:
 .. doctest-requires:: scipy
 
     >>> psfphot.fit_results.keys()
-    dict_keys(['fit_infos', 'fit_param_errs', 'fit_error_indices'])
+    dict_keys(['fit_infos', 'fit_error_indices'])
+
+The ``fit_error_indices`` key contains the indices of sources for which
+the fit reported warnings or errors.
 
 As an example, let's print the covariance matrix of the fit parameters
 for the first source (note that not all astropy fitters will return a

@@ -185,7 +185,7 @@ def test_psf_photometry(test_data):
     assert resid_data.shape == data.shape
     assert phot.colnames[:4] == ['id', 'group_id', 'group_size', 'local_bkg']
 
-    keys = ('fit_infos', 'fit_param_errs', 'fit_error_indices')
+    keys = ('fit_infos', 'fit_error_indices')
     for key in keys:
         assert key in psfphot.fit_results
 
@@ -403,6 +403,7 @@ def test_psf_photometry_mask(test_data):
     mask[49, 63] = True
     phot = psfphot(data_orig, mask=mask, init_params=init_params)
     assert len(phot) == 1
+    assert np.isnan(phot['cfit'][0])
 
     # this should not raise a warning because the non-finite pixel was
     # explicitly masked

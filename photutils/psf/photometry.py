@@ -13,12 +13,13 @@ import astropy.units as u
 import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import NDData, NoOverlapError, StdDevUncertainty
-from astropy.table import QTable, Table, hstack, vstack
+from astropy.table import QTable, Table, hstack, join, vstack
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
 from photutils.background import LocalBackground
+from photutils.datasets import make_model_image as _make_model_image
 from photutils.psf.groupers import SourceGrouper
 from photutils.psf.utils import _get_psf_model_params, _validate_psf_model
 from photutils.utils._misc import _get_meta
@@ -65,62 +66,46 @@ class ModelImageMixin:
             The rendered image from the fit PSF models. This image will
             not have any units.
         """
-        data = np.zeros(shape)
-
         if isinstance(self, PSFPhotometry):
             progress_bar = self.progress_bar
-            fit_models = self._fit_models
+            psf_model = self.psf_model
+            fit_params = self._fit_params
             local_bkgs = self.init_params['local_bkg']
-            xname, yname = self._psf_param_names[0:2]
         else:
+            psf_model = self._psfphot.psf_model
             progress_bar = self._psfphot.progress_bar
-            xname, yname = self.fit_results[0]._psf_param_names[0:2]
 
             if self.mode == 'new':
-                # collect the fit models and local backgrounds from each
+                # collect the fit params and local backgrounds from each
                 # iteration
-                fit_models = []
                 local_bkgs = []
-                for psfphot in self.fit_results:
-                    fit_models.append(psfphot._fit_models)
+                for i, psfphot in enumerate(self.fit_results):
+                    if i == 0:
+                        fit_params = psfphot._fit_params
+                    else:
+                        fit_params = vstack((fit_params, psfphot._fit_params))
                     local_bkgs.append(psfphot.init_params['local_bkg'])
 
-                fit_models = _flatten(fit_models)
                 local_bkgs = _flatten(local_bkgs)
             else:
-                # use only the fit models and local backgrounds from the
+                # use the fit params and local backgrounds only from the
                 # final iteration, which includes all sources
-                fit_models = self.fit_results[-1]._fit_models
+                fit_params = self.fit_results[-1]._fit_params
                 local_bkgs = self.fit_results[-1].init_params['local_bkg']
 
-        if progress_bar:  # pragma: no cover
-            desc = 'Model image'
-            fit_models = add_progress_bar(fit_models, desc=desc)
+        model_params = fit_params
 
         if include_localbkg:
             if isinstance(local_bkgs, u.Quantity):
                 local_bkgs = local_bkgs.value
 
-        # fit_models must be a list of individual, not grouped, PSF
-        # models, i.e., there should be one PSF model (which may be
-        # compound) for each source
-        for fit_model, local_bkg in zip(fit_models, local_bkgs):
-            x0 = getattr(fit_model, xname).value
-            y0 = getattr(fit_model, yname).value
+            # add local_bkg
+            model_params = model_params.copy()
+            model_params['local_bkg'] = local_bkgs
 
-            try:
-                slc_lg, _ = overlap_slices(shape, psf_shape, (y0, x0),
-                                           mode='trim')
-            except NoOverlapError:
-                continue
-
-            yy, xx = np.mgrid[slc_lg]
-            data[slc_lg] += fit_model(xx, yy)
-
-            if include_localbkg:
-                data[slc_lg] += local_bkg
-
-        return data
+        return _make_model_image(shape, psf_model, model_params,
+                                 model_shape=psf_shape,
+                                 progress_bar=progress_bar)
 
     def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
         """
@@ -262,6 +247,32 @@ class PSFPhotometry(ModelImageMixin):
 
     Notes
     -----
+    The data that will be fit for each source is defined by the
+    ``fit_shape`` parameter. A cutout will be made around the initial
+    center of each source with a shape defined by ``fit_shape``. The PSF
+    model will be fit to the data in this region. The cutout region that
+    is fit does not shift if the source center shifts during the fit
+    iterations. Therefore, the initial source positions should be close
+    to the true source positions. One way to ensure this is to use a
+    ``finder`` to identify sources in the data.
+
+    If the fitted positions are significantly different from the initial
+    positions, one can re-run the `PSFPhotometry` class using the fit
+    results as the input ``init_params``, which will change the fitted
+    cutout region for each source. After calling `PSFPhotometry` on the
+    data, it will have a ``fit_params`` attribute containing the fitted
+    model parameters. This table can be used as the ``init_params``
+    input in a subsequent call to `PSFPhotometry`.
+
+    If the returned model parameter errors are NaN, then either
+    the fit did not converge, the model parameter was fixed, or
+    the input ``fitter`` did not return parameter errors. For the
+    later case, one can try a different fitter that may return
+    parameter errors (e.g., `astropy.modeling.fitting.LMLSQFitter`
+    or `astropy.modeling.fitting.TRFLSQFitter`). Note that
+    these fitters are typically slower than the default
+    `astropy.modeling.fitting.LevMarLSQFitter`.
+
     The local background value around each source is optionally
     estimated using the ``localbkg_estimator`` or obtained from the
     ``local_bkg`` column in the input ``init_params`` table. This local
@@ -297,16 +308,18 @@ class PSFPhotometry(ModelImageMixin):
         # reset these attributes for each __call__ (see _reset_results)
         self.finder_results = None
         self.init_params = None
+        self.fit_params = None
+        self._fit_params = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
-        self._fit_models = None
 
     def _reset_results(self):
         self.finder_results = None
         self.init_params = None
+        self.fit_params = None
+        self._fit_params = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
-        self._fit_models = None
 
     def _validate_grouper(self, grouper, name):
         if grouper is not None and not isinstance(grouper, SourceGrouper):
@@ -342,9 +355,14 @@ class PSFPhotometry(ModelImageMixin):
         """
         PSF model parameters that are fit, but do not correspond to x,
         y, or flux.
+
+        The order of the psf_model parameters is preserved.
         """
-        return list(set(self._fitted_psf_param_names)
-                    - set(self._psf_param_names))
+        extra_params = []
+        for key in self._fitted_psf_param_names:
+            if key not in self._psf_param_names:
+                extra_params.append(key)
+        return extra_params
 
     def _validate_psf_model(self):
         """
@@ -695,6 +713,115 @@ class PSFPhotometry(ModelImageMixin):
 
         return psf_model
 
+    @staticmethod
+    def _move_column(table, colname, colname_after):
+        """
+        Move a column to a new position in a table.
+
+        The table is modified in place.
+
+        Parameters
+        ----------
+        colname : str
+            The column name to move.
+
+        colname_after : str
+            The column name after which to place the moved column.
+
+        table : `~astropy.table.Table`
+            The input table.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            The input table with the column moved.
+        """
+        colnames = table.colnames
+        if colname not in colnames or colname_after not in colnames:
+            return table
+        if colname == colname_after:
+            return table
+
+        old_index = colnames.index(colname)
+        new_index = colnames.index(colname_after)
+        if old_index > new_index:
+            new_index += 1
+        colnames.insert(new_index, colnames.pop(old_index))
+        table = table[colnames]
+        return table
+
+    @staticmethod
+    def _model_params_to_table(models):
+        """
+        Convert a list of PSF models to a table of model parameters.
+
+        The inputs ``models`` are assumed to be instances of the same
+        model class (i.e., the parameters names are the same for all
+        models).
+        """
+        param_names = list(models[0].param_names)
+        params = defaultdict(list)
+        for model in models:
+            for name in param_names:
+                try:
+                    value = getattr(model, name).value
+                except AttributeError:
+                    value = getattr(model, name)
+                params[name].append(value)
+
+        table = QTable(params)
+        ids = np.arange(len(table)) + 1
+        table.add_column(ids, index=0, name='id')
+
+        return table
+
+    def _param_errors_to_table(self):
+        param_err = self.fit_results.pop('fit_param_errs')
+
+        err_param_map = self._param_maps['err']
+        table = QTable()
+        for index, name in enumerate(self._fitted_psf_param_names):
+            colname = err_param_map[name]
+            table[colname] = param_err[:, index]
+
+        colnames = list(err_param_map.values())
+
+        # add missing error columns
+        nsources = len(self.init_params)
+        for colname in colnames:
+            if colname not in table.colnames:
+                table[colname] = [np.nan] * nsources
+
+        # sort column names
+        return table[colnames]
+
+    def _prepare_fit_results(self, fit_params):
+        """
+        Prepare the output table of fit results.
+        """
+        # remove parameters that are not fit
+        out_params = fit_params.copy()
+        for column in out_params.colnames:
+            if column == 'id':
+                continue
+            if column not in self._param_maps['fit'].keys():
+                out_params.remove_column(column)
+
+        # rename columns to have the "fit" suffix
+        for key, val in self._param_maps['fit'].items():
+            out_params.rename_column(key, val)
+
+        # reorder columns to have "flux" come immediately after "y"
+        y_col = self._param_maps['fit'][self._psf_param_names[1]]
+        flux_col = self._param_maps['fit'][self._psf_param_names[2]]
+        out_params = self._move_column(out_params, flux_col, y_col)
+
+        # add parameter error columns
+        param_errs = self._param_errors_to_table()
+        out_params = hstack([out_params, param_errs])
+
+        return out_params
+
     def _define_fit_data(self, sources, data, mask):
         yi = []
         xi = []
@@ -799,18 +926,21 @@ class PSFPhotometry(ModelImageMixin):
 
         return np.array(indices, dtype=int)
 
-    def _make_fit_results(self, models, infos):
+    def _parse_fit_results(self, group_models, group_fit_infos):
+        """
+        Parse the fit results for each source or group of sources.
+        """
         psf_nsub = self.psf_model.n_submodels
 
         fit_models = []
         fit_infos = []
         fit_param_errs = []
         nfitparam = len(self._fitted_psf_param_names)
-        for model, info in zip(models, infos):
+        for model, fit_info in zip(group_models, group_fit_infos):
             model_nsub = model.n_submodels
             npsf_models = model_nsub // psf_nsub
 
-            param_cov = info.get('param_cov', None)
+            param_cov = fit_info.get('param_cov', None)
             if param_cov is None:
                 if nfitparam == 0:  # model params are all fixed
                     nfitparam = 3   # x_err, y_err, and flux_err are np.nan
@@ -821,13 +951,13 @@ class PSFPhotometry(ModelImageMixin):
             # model is for a single source (which may be compound)
             if npsf_models == 1:
                 fit_models.append(model)
-                fit_infos.append(info)
+                fit_infos.append(fit_info)
                 fit_param_errs.append(param_err)
                 continue
 
             # model is a grouped model for multiple sources
             fit_models.extend(self._split_compound_model(model, psf_nsub))
-            fit_infos.extend([info] * npsf_models)  # views
+            fit_infos.extend([fit_info] * npsf_models)  # views
             fit_param_errs.extend(self._split_param_errs(param_err, nfitparam))
 
         if len(fit_models) != len(fit_infos):  # pragma: no cover
@@ -838,10 +968,9 @@ class PSFPhotometry(ModelImageMixin):
         fit_infos = self._order_by_id(fit_infos)
         fit_param_errs = np.array(self._order_by_id(fit_param_errs))
 
-        self._fit_models = fit_models
         self.fit_results['fit_infos'] = fit_infos
-        self.fit_results['fit_param_errs'] = fit_param_errs
         self.fit_results['fit_error_indices'] = self._get_fit_error_indices()
+        self.fit_results['fit_param_errs'] = fit_param_errs
 
         return fit_models
 
@@ -908,52 +1037,19 @@ class PSFPhotometry(ModelImageMixin):
             fit_models.append(fit_model)
             fit_infos.append(fit_info)
 
-        self._group_results['fit_models'] = fit_models
         self._group_results['fit_infos'] = fit_infos
         self._group_results['nmodels'] = nmodels
 
         # split the groups and return objects in source-id order
-        fit_models = self._make_fit_results(fit_models, fit_infos)
+        fit_models = self._parse_fit_results(fit_models, fit_infos)
+        _fit_params = self._model_params_to_table(fit_models)  # ungrouped
+        fit_params = self._prepare_fit_results(_fit_params)
+        self._fit_params = _fit_params
+        self.fit_params = fit_params
 
-        return fit_models
+        return fit_params
 
-    def _model_params_to_table(self, models):
-        fit_param_map = self._param_maps['fit']
-
-        params = []
-        for model in models:
-            mparams = []
-            for model_param in fit_param_map.keys():
-                mparams.append(getattr(model, model_param).value)
-            params.append(mparams)
-        vals = np.transpose(params)
-
-        colnames = fit_param_map.values()
-        table = QTable()
-        for index, colname in enumerate(colnames):
-            table[colname] = vals[index]
-
-        return table
-
-    def _param_errors_to_table(self):
-        err_param_map = self._param_maps['err']
-        table = QTable()
-        for index, name in enumerate(self._fitted_psf_param_names):
-            colname = err_param_map[name]
-            table[colname] = self.fit_results['fit_param_errs'][:, index]
-
-        colnames = list(err_param_map.values())
-
-        # add missing error columns
-        nsources = len(self._fit_models)
-        for colname in colnames:
-            if colname not in table.colnames:
-                table[colname] = [np.nan] * nsources
-
-        # sort column names
-        return table[colnames]
-
-    def _calc_fit_metrics(self, data, source_tbl):
+    def _calc_fit_metrics(self, data, results_tbl):
         # Keep cen_idx as a list because it can have NaNs with the ints.
         # If NaNs are present, turning it into an array will convert the
         # ints to floats, which cannot be used as slices.
@@ -973,7 +1069,7 @@ class PSFPhotometry(ModelImageMixin):
 
         # SimplexLSQFitter
         if key is None:
-            qfit = cfit = np.array([[np.nan]] * len(source_tbl))
+            qfit = cfit = np.array([[np.nan]] * len(results_tbl))
             return qfit, cfit
 
         fit_residuals = []
@@ -988,33 +1084,16 @@ class PSFPhotometry(ModelImageMixin):
 
             qfit = []
             cfit = []
-            for index, (model, residual, cen_idx_) in enumerate(
-                    zip(self._fit_models, fit_residuals, cen_idx)):
-                source = source_tbl[index]
+            for index, (residual, cen_idx_) in enumerate(
+                    zip(fit_residuals, cen_idx)):
 
-                # this is overlap_slices center pixel index (before any
-                # trimming)
-                xcen = np.ceil(source[self._init_colnames['x']]
-                               - 0.5).astype(int)
-                ycen = np.ceil(source[self._init_colnames['y']]
-                               - 0.5).astype(int)
-
-                flux_fit = source['flux_fit']
+                flux_fit = results_tbl['flux_fit'][index]
                 qfit.append(np.sum(np.abs(residual)) / flux_fit)
 
-                if np.isnan(cen_idx_):
-                    # calculate residual at central pixel if its within
-                    # the bounds of the ``data``, otherwise mask it
-                    cen_in_data = (
-                        0 <= ycen <= data.shape[0] - 1
-                        and 0 <= xcen <= data.shape[1] - 1
-                    )
-                    if cen_in_data:
-                        cen_residual = data[ycen, xcen] - model(xcen, ycen)
-                    else:
-                        cen_residual = np.nan
+                if np.isnan(cen_idx_):  # masked central pixel
+                    cen_residual = np.nan
                 else:
-                    # find residual at (xcen, ycen)
+                    # find residual at center pixel;
                     # astropy fitters compute residuals as
                     # (model - data), thus need to negate the residual
                     cen_residual = -residual[cen_idx_]
@@ -1023,10 +1102,10 @@ class PSFPhotometry(ModelImageMixin):
 
         return qfit, cfit
 
-    def _define_flags(self, source_tbl, shape):
-        flags = np.zeros(len(source_tbl), dtype=int)
+    def _define_flags(self, results_tbl, shape):
+        flags = np.zeros(len(results_tbl), dtype=int)
 
-        for index, row in enumerate(source_tbl):
+        for index, row in enumerate(results_tbl):
             if row['npixfit'] < np.prod(self.fit_shape):
                 flags[index] += 1
             if (row['x_fit'] < 0 or row['y_fit'] < 0
@@ -1182,7 +1261,9 @@ class PSFPhotometry(ModelImageMixin):
                 absolute value of the sum of the fit residuals divided by
                 the fit flux
               * ``cfit`` : a quality-of-fit metric defined as the
-                fit residual in the central pixel divided by the fit flux
+                fit residual in the initial central pixel value divided by
+                the fit flux. NaN values indicate that the central pixel
+                was masked.
               * ``flags`` : bitwise flag values:
                   * 1 : one or more pixels in the ``fit_shape`` region
                     were masked
@@ -1224,56 +1305,46 @@ class PSFPhotometry(ModelImageMixin):
 
         # fit the sources
         data, mask, error, init_params, unit = fit_inputs
-        fit_models = self._fit_sources(data, init_params, error=error,
+        fit_params = self._fit_sources(data, init_params, error=error,
                                        mask=mask)
 
-        # create output table
-        fit_sources = self._model_params_to_table(fit_models)  # ungrouped
-        if len(init_params) != len(fit_sources):  # pragma: no cover
-            raise ValueError('init_params and fit_sources tables have '
-                             'different lengths')
-        source_tbl = hstack((init_params, fit_sources))
-
-        param_errors = self._param_errors_to_table()
-        if len(param_errors) > 0:
-            if len(param_errors) != len(source_tbl):  # pragma: no cover
-                raise ValueError('param errors and fit sources tables have '
-                                 'different lengths')
-            source_tbl = hstack((source_tbl, param_errors))
+        # stack initial and fit params to create output table
+        results_tbl = join(init_params, fit_params)
 
         npixfit = np.array(self._ungroup(self._group_results['npixfit']))
-        source_tbl['npixfit'] = npixfit
+        results_tbl['npixfit'] = npixfit
 
         nmodels = np.array(self._ungroup(self._group_results['nmodels']))
-        index = source_tbl.index_column('group_id') + 1
-        source_tbl.add_column(nmodels, name='group_size', index=index)
+        index = results_tbl.index_column('group_id') + 1
+        results_tbl.add_column(nmodels, name='group_size', index=index)
 
-        qfit, cfit = self._calc_fit_metrics(data, source_tbl)
-        source_tbl['qfit'] = qfit
-        source_tbl['cfit'] = cfit
+        qfit, cfit = self._calc_fit_metrics(data, results_tbl)
+        results_tbl['qfit'] = qfit
+        results_tbl['cfit'] = cfit
 
-        source_tbl['flags'] = self._define_flags(source_tbl, data.shape)
+        results_tbl['flags'] = self._define_flags(results_tbl, data.shape)
 
         if unit is not None:
-            source_tbl['local_bkg'] <<= unit
-            source_tbl['flux_fit'] <<= unit
-            source_tbl['flux_err'] <<= unit
+            results_tbl['local_bkg'] <<= unit
+            results_tbl['flux_fit'] <<= unit
+            results_tbl['flux_err'] <<= unit
 
         meta = _get_meta()
         attrs = ('fit_shape', 'fitter_maxiters', 'aperture_radius',
                  'progress_bar')
         for attr in attrs:
             meta[attr] = getattr(self, attr)
-        source_tbl.meta = meta
+        results_tbl.meta = meta
 
         if len(self.fit_results['fit_error_indices']) > 0:
             warnings.warn('One or more fit(s) may not have converged. Please '
                           'check the "flags" column in the output table.',
                           AstropyUserWarning)
 
+        # convert results from defaultdict to dict
         self.fit_results = dict(self.fit_results)
 
-        return source_tbl
+        return results_tbl
 
     def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
         return ModelImageMixin.make_model_image(
@@ -1399,6 +1470,32 @@ class IterativePSFPhotometry(ModelImageMixin):
 
     Notes
     -----
+    The data that will be fit for each source is defined by the
+    ``fit_shape`` parameter. A cutout will be made around the initial
+    center of each source with a shape defined by ``fit_shape``. The PSF
+    model will be fit to the data in this region. The cutout region that
+    is fit does not shift if the source center shifts during the fit
+    iterations. Therefore, the initial source positions should be close
+    to the true source positions. One way to ensure this is to use a
+    ``finder`` to identify sources in the data.
+
+    If the fitted positions are significantly different from the initial
+    positions, one can re-run the `PSFPhotometry` class using the fit
+    results as the input ``init_params``, which will change the fitted
+    cutout region for each source. After calling `PSFPhotometry` on the
+    data, it will have a ``fit_params`` attribute containing the fitted
+    model parameters. This table can be used as the ``init_params``
+    input in a subsequent call to `PSFPhotometry`.
+
+    If the returned model parameter errors are NaN, then either
+    the fit did not converge, the model parameter was fixed, or
+    the input ``fitter`` did not return parameter errors. For the
+    later case, one can try a different fitter that may return
+    parameter errors (e.g., `astropy.modeling.fitting.LMLSQFitter`
+    or `astropy.modeling.fitting.TRFLSQFitter`). Note that
+    these fitters are typically slower than the default
+    `astropy.modeling.fitting.LevMarLSQFitter`.
+
     The local background value around each source is optionally
     estimated using the ``localbkg_estimator`` or obtained from the
     ``local_bkg`` column in the input ``init_params`` table. This local
@@ -1565,37 +1662,6 @@ class IterativePSFPhotometry(ModelImageMixin):
         new_sources.meta.pop('date', None)  # prevent merge conflicts
         return vstack([orig_sources, new_sources])
 
-    @staticmethod
-    def _move_column(colname, colname_after, table):
-        """
-        Move a column to a new position in a table.
-
-        The table is modified in place.
-
-        Parameters
-        ----------
-        colname : str
-            The column name to move.
-
-        colname_after : str
-            The column name after which to place the moved column.
-
-        table : `~astropy.table.Table`
-            The input table.
-
-        Returns
-        -------
-        table : `~astropy.table.Table`
-            The input table with the column moved.
-        """
-        if colname in table.colnames:
-            colnames = table.colnames
-            old_index = colnames.index(colname)
-            new_index = colnames.index(colname_after) + 1
-            colnames.insert(new_index, colnames.pop(old_index))
-            table = table[colnames]
-        return table
-
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         """
         Perform PSF photometry.
@@ -1677,7 +1743,9 @@ class IterativePSFPhotometry(ModelImageMixin):
                 absolute value of the sum of the fit residuals divided by
                 the fit flux
               * ``cfit`` : a quality-of-fit metric defined as the
-                fit residual in the central pixel divided by the fit flux
+                fit residual in the initial central pixel value divided by
+                the fit flux. NaN values indicate that the central pixel
+                was masked.
               * ``flags`` : bitwise flag values:
                   * 1 : one or more pixels in the ``fit_shape`` region
                     were masked
@@ -1763,9 +1831,9 @@ class IterativePSFPhotometry(ModelImageMixin):
 
                 iter_num += 1
 
-            # reorder 'iter_detected' column
-            phot_tbl = self._move_column('iter_detected', 'group_size',
-                                         phot_tbl)
+            # move 'iter_detected' column
+            phot_tbl = self._psfphot._move_column(phot_tbl, 'iter_detected',
+                                                  'group_size')
 
         # emit unique warnings
         recorded_warnings = rwarn0 + rwarn1
