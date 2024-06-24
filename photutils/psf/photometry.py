@@ -310,7 +310,6 @@ class PSFPhotometry(ModelImageMixin):
         self.init_params = None
         self.fit_params = None
         self._fit_params = None
-        self._fit_models = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
 
@@ -319,7 +318,6 @@ class PSFPhotometry(ModelImageMixin):
         self.init_params = None
         self.fit_params = None
         self._fit_params = None
-        self._fit_models = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
 
@@ -970,7 +968,6 @@ class PSFPhotometry(ModelImageMixin):
         fit_infos = self._order_by_id(fit_infos)
         fit_param_errs = np.array(self._order_by_id(fit_param_errs))
 
-        self._fit_models = fit_models
         self.fit_results['fit_infos'] = fit_infos
         self.fit_results['fit_error_indices'] = self._get_fit_error_indices()
         self.fit_results['fit_param_errs'] = fit_param_errs
@@ -1087,8 +1084,8 @@ class PSFPhotometry(ModelImageMixin):
 
             qfit = []
             cfit = []
-            for index, (model, residual, cen_idx_) in enumerate(
-                    zip(self._fit_models, fit_residuals, cen_idx)):
+            for index, (residual, cen_idx_) in enumerate(
+                    zip(fit_residuals, cen_idx)):
 
                 flux_fit = results_tbl['flux_fit'][index]
                 qfit.append(np.sum(np.abs(residual)) / flux_fit)
