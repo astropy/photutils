@@ -96,15 +96,20 @@ class ModelImageMixin:
         model_params = fit_params
 
         if include_localbkg:
-            if isinstance(local_bkgs, u.Quantity):
-                local_bkgs = local_bkgs.value
-
             # add local_bkg
             model_params = model_params.copy()
             model_params['local_bkg'] = local_bkgs
 
+        try:
+            x_name = psf_model.x_name
+            y_name = psf_model.y_name
+        except AttributeError:
+            x_name = 'x_0'
+            y_name = 'y_0'
+
         return _make_model_image(shape, psf_model, model_params,
                                  model_shape=psf_shape,
+                                 x_name=x_name, y_name=y_name,
                                  progress_bar=progress_bar)
 
     def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
@@ -133,24 +138,20 @@ class ModelImageMixin:
         Returns
         -------
         array : 2D `~numpy.ndarray`
-            The residual image of the ``data`` minus the ``local_bkg``
-            minus the fit PSF models.
+            The residual image of the ``data`` minus the fit PSF models
+            minus the optional``local_bkg``.
         """
         if isinstance(data, NDData):
             residual = deepcopy(data)
+            data_arr = data.data
+            if data.unit is not None:
+                data_arr <<= data.unit
             residual.data[:] = self.make_residual_image(
-                data.data, psf_shape, include_localbkg=include_localbkg)
+                data_arr, psf_shape, include_localbkg=include_localbkg)
         else:
-            unit = None
-            if isinstance(data, u.Quantity):
-                unit = data.unit
-                data = data.value
             residual = self.make_model_image(data.shape, psf_shape,
                                              include_localbkg=include_localbkg)
             np.subtract(data, residual, out=residual)
-
-            if unit is not None:
-                residual <<= unit
 
         return residual
 
@@ -305,7 +306,9 @@ class PSFPhotometry(ModelImageMixin):
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
-        # reset these attributes for each __call__ (see _reset_results)
+        # be sure to reset these attributes for each __call__
+        # (see _reset_results)
+        self.data_unit = None
         self.finder_results = None
         self.init_params = None
         self.fit_params = None
@@ -314,6 +317,10 @@ class PSFPhotometry(ModelImageMixin):
         self._group_results = defaultdict(list)
 
     def _reset_results(self):
+        """
+        Reset these attributes for each __call__.
+        """
+        self.data_unit = None
         self.finder_results = None
         self.init_params = None
         self.fit_params = None
@@ -469,28 +476,28 @@ class PSFPhotometry(ModelImageMixin):
                 break
         return name
 
-    def _check_init_units(self, init_params, colname, data_unit):
+    def _check_init_units(self, init_params, colname):
         values = init_params[colname]
         if isinstance(values, u.Quantity):
-            if data_unit is None:
+            if self.data_unit is None:
                 raise ValueError(f'init_params {colname} column has '
                                  'units, but the input data does not '
                                  'have units.')
             try:
-                init_params[colname] = values.to(data_unit)
+                init_params[colname] = values.to(self.data_unit)
             except u.UnitConversionError as exc:
                 raise ValueError(f'init_params {colname} column has '
                                  'units that are incompatible with '
                                  'the input data units.') from exc
         else:
-            if data_unit is not None:
+            if self.data_unit is not None:
                 raise ValueError('The input data has units, but the '
                                  f'init_params {colname} column does not '
                                  'have units.')
 
         return init_params
 
-    def _validate_init_params(self, init_params, data_unit):
+    def _validate_init_params(self, init_params):
         if init_params is None:
             return init_params
 
@@ -517,15 +524,13 @@ class PSFPhotometry(ModelImageMixin):
             if fluxcolname != fluxinit_name:
                 init_params.rename_column(fluxcolname, fluxinit_name)
 
-            init_params = self._check_init_units(init_params, fluxinit_name,
-                                                 data_unit)
+            init_params = self._check_init_units(init_params, fluxinit_name)
 
         if 'local_bkg' in init_params.colnames:
             if not np.all(np.isfinite(init_params['local_bkg'])):
                 raise ValueError('init_params local_bkg column contains '
                                  'non-finite values.')
-            init_params = self._check_init_units(init_params, 'local_bkg',
-                                                 data_unit)
+            init_params = self._check_init_units(init_params, 'local_bkg')
 
         return init_params
 
@@ -560,19 +565,20 @@ class PSFPhotometry(ModelImageMixin):
         flux, _ = apertures.do_photometry(data, mask=mask)
         return flux
 
-    def _prepare_init_params(self, data, unit, mask, init_params):
+    def _prepare_init_params(self, data, mask, init_params):
         if init_params is None:
             if self.finder is None:
                 raise ValueError('finder must be defined if init_params '
                                  'is not input')
 
-            if unit is not None:
-                sources = self.finder(data << unit, mask=mask)
+            # restore units to the input data (stripped earlier)
+            if self.data_unit is not None:
+                sources = self.finder(data << self.data_unit, mask=mask)
             else:
                 sources = self.finder(data, mask=mask)
-            self.finder_results = sources
             if sources is None:
                 return None
+            self.finder_results = sources
 
             init_params = QTable()
             init_params['id'] = np.arange(len(sources)) + 1
@@ -595,13 +601,15 @@ class PSFPhotometry(ModelImageMixin):
                 local_bkg = self.localbkg_estimator(
                     data, init_params[self._init_colnames['x']],
                     init_params[self._init_colnames['y']], mask=mask)
+            if self.data_unit is not None:
+                local_bkg <<= self.data_unit
             init_params['local_bkg'] = local_bkg
 
         if self._init_colnames['flux'] not in init_params.colnames:
             flux = self._get_aper_fluxes(data, mask, init_params)
+            if self.data_unit is not None:
+                flux <<= self.data_unit
             flux -= init_params['local_bkg']
-            if unit is not None:
-                flux <<= unit
             init_params[self._init_colnames['flux']] = flux
 
         if self.grouper is not None:
@@ -750,8 +758,7 @@ class PSFPhotometry(ModelImageMixin):
         table = table[colnames]
         return table
 
-    @staticmethod
-    def _model_params_to_table(models):
+    def _model_params_to_table(self, models):
         """
         Convert a list of PSF models to a table of model parameters.
 
@@ -767,6 +774,11 @@ class PSFPhotometry(ModelImageMixin):
                     value = getattr(model, name).value
                 except AttributeError:
                     value = getattr(model, name)
+
+                if (self.data_unit is not None
+                        and name == self._psf_param_names[2]):
+                    value <<= self.data_unit  # add the flux units
+
                 params[name].append(value)
 
         table = QTable(params)
@@ -782,7 +794,11 @@ class PSFPhotometry(ModelImageMixin):
         table = QTable()
         for index, name in enumerate(self._fitted_psf_param_names):
             colname = err_param_map[name]
-            table[colname] = param_err[:, index]
+            value = param_err[:, index]
+            if (self.data_unit is not None
+                    and name == self._psf_param_names[2]):
+                value <<= self.data_unit  # add the flux units
+            table[colname] = value
 
         colnames = list(err_param_map.values())
 
@@ -1142,11 +1158,12 @@ class PSFPhotometry(ModelImageMixin):
         """
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
+        self.data_unit = unit
         data = self._validate_array(data, 'data')
         error = self._validate_array(error, 'error', data_shape=data.shape)
         mask = self._validate_array(mask, 'mask', data_shape=data.shape)
         mask = self._make_mask(data, mask)
-        init_params = self._validate_init_params(init_params, unit)  # copies
+        init_params = self._validate_init_params(init_params)  # copies
 
         if (self.aperture_radius is None
             and (init_params is None
@@ -1155,7 +1172,7 @@ class PSFPhotometry(ModelImageMixin):
                              'is not input or if a flux column is not in '
                              'init_params')
 
-        init_params = self._prepare_init_params(data, unit, mask, init_params)
+        init_params = self._prepare_init_params(data, mask, init_params)
         if init_params is not None:
             self._check_init_positions(init_params, data.shape)
         self.init_params = init_params
@@ -1173,7 +1190,7 @@ class PSFPhotometry(ModelImageMixin):
                           'changing the "group_id" column in "init_params".',
                           AstropyUserWarning)
 
-        return data, mask, error, init_params, unit
+        return data, mask, error, init_params
 
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         """
@@ -1304,7 +1321,7 @@ class PSFPhotometry(ModelImageMixin):
             return None
 
         # fit the sources
-        data, mask, error, init_params, unit = fit_inputs
+        data, mask, error, init_params = fit_inputs
         fit_params = self._fit_sources(data, init_params, error=error,
                                        mask=mask)
 
@@ -1323,11 +1340,6 @@ class PSFPhotometry(ModelImageMixin):
         results_tbl['cfit'] = cfit
 
         results_tbl['flags'] = self._define_flags(results_tbl, data.shape)
-
-        if unit is not None:
-            results_tbl['local_bkg'] <<= unit
-            results_tbl['flux_fit'] <<= unit
-            results_tbl['flux_err'] <<= unit
 
         meta = _get_meta()
         attrs = ('fit_shape', 'fitter_maxiters', 'aperture_radius',

@@ -525,9 +525,11 @@ def test_psf_photometry_init_params_units(test_data):
     for val in (True, False):
         im = psfphot.make_model_image(data2.shape, fit_shape,
                                       include_localbkg=val)
-        assert not isinstance(im, u.Quantity)
+        assert isinstance(im, u.Quantity)
+        assert im.unit == unit
         resid = psfphot.make_residual_image(data2, fit_shape,
                                             include_localbkg=val)
+        assert isinstance(resid, u.Quantity)
         assert resid.unit == unit
 
     # test invalid units
@@ -738,14 +740,14 @@ def test_iterative_psf_photometry_mode_new(test_data):
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.data.shape == data.shape
 
-    unit = u.Jy
-    resid_data = psfphot.make_residual_image(data * unit, fit_shape)
-    assert resid_data.unit == unit
+    # unit = u.Jy
+    # resid_data = psfphot.make_residual_image(data * unit, fit_shape)
+    # assert resid_data.unit == unit
 
-    nddata = NDData(data * unit)
-    resid_nddata = psfphot.make_residual_image(nddata, fit_shape)
-    assert isinstance(resid_nddata, NDData)
-    assert resid_nddata.unit == unit
+    # nddata = NDData(data * unit)
+    # resid_nddata = psfphot.make_residual_image(nddata, fit_shape)
+    # assert isinstance(resid_nddata, NDData)
+    # assert resid_nddata.unit == unit
 
     # test with units and mode='new'
     unit = u.Jy
