@@ -82,6 +82,7 @@ def test_make_model_image_units():
     assert image.shape == shape
     assert isinstance(image, u.Quantity)
     assert image.unit == unit
+    assert model.flux == 1.0  # default flux (unchanged)
 
     params['local_bkg'] = [0.1, 0.2, 0.3] * unit
     image = make_model_image(shape, model, params, model_shape=model_shape)

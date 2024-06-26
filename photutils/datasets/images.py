@@ -235,8 +235,8 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     # include only column names that are model parameters
     params_to_set = set(params_table.colnames) & set(model.param_names)
 
-    # save the model initial parameter values so we can restore them
-    init_params = {param: getattr(model, param) for param in params_to_set}
+    # copy the input model to leave it unchanged
+    model = model.copy()
 
     if progress_bar:  # pragma: no cover
         desc = 'Add model sources'
@@ -290,10 +290,6 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
         except NoOverlapError:
             continue
-
-    # restore the model initial parameter values
-    for param, value in init_params.items():
-        setattr(model, param, value)
 
     return image
 

@@ -85,6 +85,9 @@ Bug Fixes
   - Fixed an issue where ``IterativePSFPhotometry`` could sometimes
     raise an error about non-overlapping data. [#1778]
 
+  - Fixed an issue with unit handling in ``PSFPhotometry`` and
+    ``IterativePSFPhotometry``. [#1792]
+
 - ``photutils.segmentation``
 
   - Fixed an issue in ``SourceCatalog`` where in very rare cases the
