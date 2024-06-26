@@ -68,6 +68,7 @@ def test_make_model_image():
     assert image.sum() > 1
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_model_image_units():
     unit = u.Jy
     params = QTable()
