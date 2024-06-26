@@ -1768,6 +1768,21 @@ class IterativePSFPhotometry(ModelImageMixin):
                   * 16 : the fitter parameter covariance matrix was not
                     returned
         """
+        if isinstance(data, NDData):
+            data_ = data.data
+            if data.unit is not None:
+                data_ <<= data.unit
+            mask = data.mask
+            unc = data.uncertainty
+            if unc is not None:
+                error = unc.represent_as(StdDevUncertainty).quantity
+                if error.unit is u.dimensionless_unscaled:
+                    error = error.value
+                else:
+                    error = error.to(data.unit)
+            return self.__call__(data_, mask=mask, error=error,
+                                 init_params=init_params)
+
         with warnings.catch_warnings(record=True) as rwarn0:
             phot_tbl = self._psfphot(data, mask=mask, error=error,
                                      init_params=init_params)
