@@ -119,9 +119,9 @@ class ApertureStats:
         all aperture types. The following methods are available:
 
           * ``'exact'`` (default):
-            The the exact fractional overlap of the aperture and each
-            pixel is calculated. The aperture weights will contain
-            values between 0 and 1.
+            The exact fractional overlap of the aperture and each pixel
+            is calculated. The aperture weights will contain values
+            between 0 and 1.
 
           * ``'center'``:
             A pixel is considered to be entirely in or out of the
@@ -148,7 +148,7 @@ class ApertureStats:
         before performing measurements. If input as an array, the order
         of ``local_bkg`` values corresponds to the order of the input
         ``aperture`` positions. ``local_bkg`` must have the same length
-        as the the input ``aperture`` or must be a scalar value, which
+        as the input ``aperture`` or must be a scalar value, which
         will be broadcast to all apertures. If `None`, then no local
         background subtraction is performed. If the input ``data`` has
         units, then ``local_bkg`` must be a `~astropy.units.Quantity`

@@ -197,11 +197,11 @@ class PSFPhotometry(ModelImageMixin):
         and ``'xfit'``. If `None`, then the initial (x, y) model
         positions must be input using the ``init_params`` keyword
         when calling the class. The (x, y) values in ``init_params``
-        override this keyword. If this class is run on an image that
-        has units (i.e., a `~astropy.units.Quantity` array), then
-        certain ``finder`` keywords (e.g., ``threshold``) must have the
-        same units. Please see the the documentation for the specific
-        ``finder`` class for more information.
+        override this keyword. If this class is run on an image that has
+        units (i.e., a `~astropy.units.Quantity` array), then certain
+        ``finder`` keywords (e.g., ``threshold``) must have the same
+        units. Please see the documentation for the specific ``finder``
+        class for more information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group stars. Typically, grouped stars are
@@ -1404,8 +1404,8 @@ class IterativePSFPhotometry(ModelImageMixin):
         this class is run on an image that has units (i.e., a
         `~astropy.units.Quantity` array), then certain ``finder``
         keywords (e.g., ``threshold``) must have the same units. Please
-        see the the documentation for the specific ``finder`` class for
-        more information.
+        see the documentation for the specific ``finder`` class for more
+        information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group stars. Typically, grouped stars are

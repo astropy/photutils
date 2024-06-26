@@ -78,7 +78,7 @@ def test_epsf_star_residual_image():
     # As current EPSFStar instances cannot accept IntegratedGaussianPRF
     # as input, we have to accept some loss of precision from the
     # conversion to ePSF, and spline fitting (twice), so assert_allclose
-    # cannot be more more precise than 0.001 currently.
+    # cannot be more precise than 0.001 currently.
     assert_allclose(np.sum(residual), 0.0, atol=1.0e-3, rtol=1e-3)
 
 

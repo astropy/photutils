@@ -77,7 +77,7 @@ class ShepardIDWInterpolator:
 
     Examples
     --------
-    This class can can be instantiated using the following syntax::
+    This class can be instantiated using the following syntax::
 
         >>> from photutils.utils import ShepardIDWInterpolator as idw
 

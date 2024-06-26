@@ -80,7 +80,7 @@ class SourceGrouper:
         group_id = fclusterdata(xypos, t=self.min_separation,
                                 criterion='distance')
 
-        # reorder the group_ids so that that unique group_ids start from 1
+        # reorder the group_ids so that unique group_ids start from 1
         # and increase (this matches the output of DBSCAN)
         mapping = defaultdict(lambda: len(mapping) + 1)
         return np.array([mapping[group] for group in group_id])

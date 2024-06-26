@@ -172,7 +172,7 @@ class SourceFinder:
 
     def __call__(self, data, threshold, mask=None):
         """
-        Detect sources, including deblending, in an image using using
+        Detect sources, including deblending, in an image using
         segmentation.
 
         Parameters

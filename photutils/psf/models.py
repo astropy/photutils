@@ -483,7 +483,7 @@ class EPSFModel(FittableImageModel):
     A class that models an effective PSF (ePSF).
 
     The EPSFModel is normalized such that the sum of the PSF over the
-    (undersampled) pixels within the the input ``norm_radius`` is 1.0.
+    (undersampled) pixels within the input ``norm_radius`` is 1.0.
     This means that when the EPSF is fit to stars, the resulting flux
     corresponds to aperture photometry within a circular aperture of
     radius ``norm_radius``.

@@ -97,7 +97,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
     bbox_factor : `None` or float, optional
         The multiplicative factor to pass to the model ``bounding_box``
-        method to determine the model shape. If `None`, the the default
+        method to determine the model shape. If `None`, the default
         model bounding box will be used. This keyword is ignored if
         ``model_shape`` is specified or if the ``params_table`` contains
         a ``'model_shape'`` column.

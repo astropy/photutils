@@ -40,9 +40,9 @@ class EllipticalMaskMixin:
             generally slower. The following methods are available:
 
                 * ``'exact'`` (default):
-                  The the exact fractional overlap of the aperture and
-                  each pixel is calculated. The aperture weights will
-                  contain values between 0 and 1.
+                  The exact fractional overlap of the aperture and each
+                  pixel is calculated. The aperture weights will contain
+                  values between 0 and 1.
 
                 * ``'center'``:
                   A pixel is considered to be entirely in or out of the
@@ -285,7 +285,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     b_in : `None` or float, optional
         The inner semiminor axis of the elliptical annulus in pixels.
-        If `None`, then the the inner semiminor axis is calculated as:
+        If `None`, then the inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
                 \left(\frac{a_{in}}{a_{out}}\right)

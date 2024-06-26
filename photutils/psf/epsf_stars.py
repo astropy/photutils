@@ -36,8 +36,8 @@ class EPSFStar:
 
     cutout_center : tuple of two floats or `None`, optional
         The ``(x, y)`` position of the star's center with respect to the
-        input cutout ``data`` array. If `None`, then the center of of
-        the input cutout ``data`` array will be used.
+        input cutout ``data`` array. If `None`, then the center of the
+        input cutout ``data`` array will be used.
 
     origin : tuple of two int, optional
         The ``(x, y)`` index of the origin (bottom-left corner) pixel
@@ -548,8 +548,8 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         Optionally, each catalog may also contain an ``id`` column
         representing the ID/name of stars. If this column is not
         present then the extracted stars will be given an ``id`` number
-        corresponding the the table row number (starting at 1). Any
-        other columns present in the input ``catalogs`` will be ignored.
+        corresponding the table row number (starting at 1). Any other
+        columns present in the input ``catalogs`` will be ignored.
 
     size : int or array_like (int), optional
         The extraction box size along each axis. If ``size`` is a scalar
