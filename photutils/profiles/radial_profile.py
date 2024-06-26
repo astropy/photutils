@@ -67,7 +67,7 @@ class RadialProfile(ProfileBase):
         pixel grid:
 
             * ``'exact'`` (default):
-              The the exact fractional overlap of the aperture and each
+              The exact fractional overlap of the aperture and each
               pixel is calculated. The aperture weights will contain
               values between 0 and 1.
 

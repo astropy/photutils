@@ -20,8 +20,8 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
                border_width=None, npeaks=np.inf, centroid_func=None,
                error=None, wcs=None):
     """
-    Find local peaks in an image that are above above a specified
-    threshold value.
+    Find local peaks in an image that are above a specified threshold
+    value.
 
     Peaks are the maxima above the ``threshold`` within a local
     region. The local regions are defined by either the ``box_size``

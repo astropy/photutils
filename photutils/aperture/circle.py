@@ -38,9 +38,9 @@ class CircularMaskMixin:
             generally slower. The following methods are available:
 
                 * ``'exact'`` (default):
-                  The the exact fractional overlap of the aperture and
-                  each pixel is calculated. The aperture weights will
-                  contain values between 0 and 1.
+                  The exact fractional overlap of the aperture and each
+                  pixel is calculated. The aperture weights will contain
+                  values between 0 and 1.
 
                 * ``'center'``:
                   A pixel is considered to be entirely in or out of the

@@ -284,7 +284,7 @@ class EllipseSample:
         This method calls the
         :meth:`~photutils.isophote.EllipseSample.extract` method to get
         the values that match the current ``geometry`` attribute, and
-        then computes the the mean intensity, local gradient, and other
+        then computes the mean intensity, local gradient, and other
         associated quantities.
         """
         if fixed_parameters is None:

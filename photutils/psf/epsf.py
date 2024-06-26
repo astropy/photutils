@@ -300,8 +300,8 @@ class EPSFBuilder:
 
     Notes
     -----
-    If your image image contains NaN values, you may see better
-    performance if you have the `bottleneck`_ package installed.
+    If your image contains NaN values, you may see better performance if
+    you have the `bottleneck`_ package installed.
 
     .. _bottleneck:  https://github.com/pydata/bottleneck
     """
