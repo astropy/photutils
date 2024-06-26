@@ -740,15 +740,6 @@ def test_iterative_psf_photometry_mode_new(test_data):
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.data.shape == data.shape
 
-    # unit = u.Jy
-    # resid_data = psfphot.make_residual_image(data * unit, fit_shape)
-    # assert resid_data.unit == unit
-
-    # nddata = NDData(data * unit)
-    # resid_nddata = psfphot.make_residual_image(nddata, fit_shape)
-    # assert isinstance(resid_nddata, NDData)
-    # assert resid_nddata.unit == unit
-
     # test with units and mode='new'
     unit = u.Jy
     finder_units = DAOStarFinder(10.0 * unit, 2.0)
@@ -763,6 +754,18 @@ def test_iterative_psf_photometry_mode_new(test_data):
     for col in colnames:
         assert phot2[col].unit == unit
         assert_allclose(phot2[col].value, phot[col])
+
+    # test NDData with units
+    uncertainty = StdDevUncertainty(error << unit)
+    nddata = NDData(data << unit, uncertainty=uncertainty)
+    phot3 = psfphot(nddata, init_params=init_params)
+    colnames = ('flux_init', 'flux_fit', 'flux_err', 'local_bkg')
+    for col in colnames:
+        assert phot3[col].unit == unit
+        assert_allclose(phot3[col].value, phot2[col].value)
+    resid_nddata = psfphot.make_residual_image(nddata, fit_shape)
+    assert isinstance(resid_nddata, NDData)
+    assert resid_nddata.unit == unit
 
     # test return None if no stars are found on first iteration
     finder = DAOStarFinder(1000.0, 2.0)
@@ -834,6 +837,17 @@ def test_iterative_psf_photometry_mode_all():
     for col in colnames:
         assert phot2[col].unit == unit
         assert_allclose(phot2[col].value, phot[col])
+
+    # test NDData with units
+    nddata = NDData(data * unit)
+    phot3 = psfphotu(nddata)
+    colnames = ('flux_init', 'flux_fit', 'flux_err', 'local_bkg')
+    for col in colnames:
+        assert phot3[col].unit == unit
+        assert_allclose(phot3[col].value, phot[col])
+    resid_nddata = psfphotu.make_residual_image(nddata, fit_shape)
+    assert isinstance(resid_nddata, NDData)
+    assert resid_nddata.unit == unit
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
