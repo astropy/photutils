@@ -200,6 +200,9 @@ def test_psf_photometry(test_data):
         assert photu[col].unit == unit
     resid_datau = psfphotu.make_residual_image(data << unit, fit_shape)
     assert resid_datau.unit == unit
+    colnames = ('qfit', 'cfit')
+    for col in colnames:
+        assert not isinstance(col, u.Quantity)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
