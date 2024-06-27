@@ -54,6 +54,12 @@ New Features
   - ``PSFPhotometry`` now has a new ``fit_params`` attribute containing
     a table of the fit model parameters and errors. [#1789]
 
+  - The ``PSFPhotometry`` and ``IterativePSFPhotometry`` ``init_params``
+    table now allows the user to input columns for model parameters
+    other than x, y, and flux. The column names must match the parameter
+    names in the PSF model. They can also be suffixed with either the
+    "_init" or "_fit" suffix. [#1793]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -87,6 +93,10 @@ Bug Fixes
 
   - Fixed an issue with unit handling in ``PSFPhotometry`` and
     ``IterativePSFPhotometry``. [#1792]
+
+  - Fixed an issue in ``IterativePSFPhotometry`` where the
+    ``fit_results`` attribute was not cleared between repeated calls.
+    [#1793]
 
 - ``photutils.segmentation``
 
