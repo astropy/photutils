@@ -81,8 +81,8 @@ Bug Fixes
   - Fixed the ``IntegratedGaussianPRF`` class ``bounding_box`` limits to
     always be symmetric. [#1754]
 
-  - Fixed an issue where ``IterativePSFPhotometry`` could sometimes fail
-    to merge tables when ``mode='all'``. [#1761]
+  - Fixed an issue where ``IterativePSFPhotometry`` could sometimes
+    issue a warning when merging tables if ``mode='all'``. [#1761]
 
   - Fixed a bug where the first matching column in the ``init_params``
     table was not used in ``PSFPhotometry`` and
