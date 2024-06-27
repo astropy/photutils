@@ -15,6 +15,8 @@ from photutils.utils._parameters import as_pair
 
 __all__ = ['make_psf_model', 'grid_from_epsfs', 'make_psf_model_image']
 
+__doctest_requires__ = {('make_psf_model', 'make_psf_model_image'): ['scipy']}
+
 
 def _interpolate_missing_data(data, mask, method='cubic'):
     """
@@ -288,6 +290,16 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     fail, e.g., return zero for a non-zero model. This can happen when
     the model function is sharply localized relative to the size of the
     integration interval.
+
+    Examples
+    --------
+    >>> from astropy.modeling.models import Gaussian2D
+    >>> from photutils.psf import make_psf_model
+    >>> model = Gaussian2D(x_stddev=2, y_stddev=2)
+    >>> psf_model = make_psf_model(model, x_name='x_mean', y_name='y_mean')
+    >>> print(psf_model.param_names)  # doctest: +SKIP
+    ('amplitude_2', 'x_mean_2', 'y_mean_2', 'x_stddev_2', 'y_stddev_2',
+     'theta_2', 'amplitude_3', 'amplitude_4')
     """
     input_model = model.copy()
 
