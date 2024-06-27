@@ -26,6 +26,117 @@ This method replaces the old method of running the test suite using the
 ``photutils.test()`` Python function, which has been removed.
 
 
+Datasets subpackage reoganization
+=================================
+
+The ``photutils.datasets`` subpackage has been reorganized and
+the ``make`` module has been deprecated. Instead of importing
+functions from ``photutils.datasets.make``, import functions from
+``photutils.datasets``.
+
+
+Changed noise pixel values in example datasets
+==============================================
+
+The randomly-generated optional noise in the simulated
+example images returned by the ``make_4gaussians_image`` and
+``make_100gaussians_image`` is now slightly different. The noise sigma
+is the same, but the pixel values differ. This is due to a change from
+the legacy NumPy random number generator to the redesigned and preferred
+random number generator introduced in NumPy 1.17.
+
+
+Making simulated images with model sources
+==========================================
+
+The new :func:`~photutils.datasets.make_model_image` function creates
+a simulated image with model sources. This function is useful for
+testing source detection and photometry algorithms. This function
+has more options and is significantly faster than the now-deprecated
+``mask_model_sources_image`` function.
+
+A new :func:`~photutils.datasets.make_model_params` function was also
+added to make a table of randomly generated model positions and fluxes
+for simulated sources.
+
+These two new functions along with the existing
+:func:`~photutils.datasets.make_random_models_table` function provide a
+complete set of tools for creating simulated images with model sources.
+Please see the examples in the documentation of these functions.
+
+The ``make_model_sources_image``, ``make_gaussian_sources_image``,
+``make_gaussian_prf_sources_image``, ``make_test_psf_data``, and
+``make_random_gaussians_table`` functions are now deprecated and will be
+removed in a future release.
+
+
+Making simulated images with a PSF model
+========================================
+
+A specialized function, :func:`~photutils.psf.make_psf_model_image`
+function was also added to generated simulated images from a PSF model.
+This function returns both an image and a table of the model parameters.
+
+
+PSF photometry initial parameter guesses
+========================================
+
+The ``init_params`` table input when calling
+the `~photutils.psf.PSFPhotometry` or
+`~photutils.psf.IterativePSFPhotometry` class now allows the user to
+input columns for additional model parameters other than x, y, and flux
+if those parameters are free vary in the fitting routine (i.e., not
+fixed parameters). The column names must match the parameter names in
+the PSF model. They can also be suffixed with either the "_init" or
+"_fit" suffix.
+
+
+Removed deprecated PSF photometry tools
+=======================================
+
+The deprecated ``BasicPSFPhotometry``,
+``IterativelySubtractedPSFPhotometry``, ``DAOPhotPSFPhotometry``,
+``DAOGroup``, ``DBSCANGroup``, and ``GroupStarsBase``, and
+``NonNormalizable`` classes and the ``prepare_psf_model``,
+``get_grouped_psf_model``, and ``subtract_psf`` functions were removed.
+
+
+Updates to Star finders
+=======================
+
+The `~photutils.detection.DAOStarFinder`,
+`~photutils.detection.IRAFStarFinder`, and
+`~photutils.detection.StarFinder` classes and the
+`~photutils.detection.find_peaks` functions now support input arrays
+with units. This requires inputing a ``threshold`` value that also has
+compatible units to the input data array.
+
+Sources that have non-finite properties (e.g., centroid,
+roundness, sharpness, etc.) are now automatically excluded
+from the output table in `~photutils.detection.DAOStarFinder`,
+`~photutils.detection.IRAFStarFinder`, and
+`~photutils.detection.StarFinder`.
+
+The ``sky`` keyword in `~photutils.detection.DAOStarFinder`, and
+`~photutils.detection.IRAFStarFinder` is now deprecated and will be
+removed in a future version. One should background subtract the image
+before calling the star finders.
+
+
+Improvements to Radial Profile tools
+=====================================
+
+The `~photutils.profiles.CurveOfGrowth` class now has
+``calc_ee_from_radius`` and ``calc_radius_from_ee`` methods to calculate
+the encircled energy (EE) at a given radius and vice versa using a cubic
+interpolator.
+
+The `~photutils.profiles.CurveOfGrowth` and
+`~photutils.profiles.RadialProfile` classes now have a ``unnormalize``
+method to return the profile to the state before any ``normalize`` calls
+were run.
+
+
 Other changes
 =============
 
