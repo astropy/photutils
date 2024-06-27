@@ -69,7 +69,7 @@ class ModelImageMixin:
         if isinstance(self, PSFPhotometry):
             progress_bar = self.progress_bar
             psf_model = self.psf_model
-            fit_params = self._fit_params
+            fit_params = self._fit_model_params
             local_bkgs = self.init_params['local_bkg']
         else:
             psf_model = self._psfphot.psf_model
@@ -81,16 +81,17 @@ class ModelImageMixin:
                 local_bkgs = []
                 for i, psfphot in enumerate(self.fit_results):
                     if i == 0:
-                        fit_params = psfphot._fit_params
+                        fit_params = psfphot._fit_model_params
                     else:
-                        fit_params = vstack((fit_params, psfphot._fit_params))
+                        fit_params = vstack((fit_params,
+                                             psfphot._fit_model_params))
                     local_bkgs.append(psfphot.init_params['local_bkg'])
 
                 local_bkgs = _flatten(local_bkgs)
             else:
                 # use the fit params and local backgrounds only from the
                 # final iteration, which includes all sources
-                fit_params = self.fit_results[-1]._fit_params
+                fit_params = self.fit_results[-1]._fit_model_params
                 local_bkgs = self.fit_results[-1].init_params['local_bkg']
 
         model_params = fit_params
@@ -212,9 +213,8 @@ class PSFPhotometry(ModelImageMixin):
         the group id numbers (starting from 1) indicating the group
         in which a given source belongs. If `None`, then no grouping
         is performed, i.e. each source is fit independently. The
-        ``group_id`` values in ``init_params`` override this keyword
-        *only for the first iteration*. A warning is raised if any group
-        size is larger than 25 sources.
+        ``group_id`` values in ``init_params`` override this keyword. A
+        warning is raised if any group size is larger than 25 sources.
 
     fitter : `~astropy.modeling.fitting.Fitter`, optional
         The fitter object used to perform the fit of the model to the
@@ -292,8 +292,8 @@ class PSFPhotometry(ModelImageMixin):
                  localbkg_estimator=None, aperture_radius=None,
                  progress_bar=False):
 
-        self.psf_model = psf_model
-        self._validate_psf_model()  # validate the PSF model
+        self._param_maps = self._define_param_maps(psf_model)
+        self.psf_model = _validate_psf_model(psf_model)
 
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(0, 1),
                                  check_odd=True)
@@ -312,7 +312,7 @@ class PSFPhotometry(ModelImageMixin):
         self.finder_results = None
         self.init_params = None
         self.fit_params = None
-        self._fit_params = None
+        self._fit_model_params = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
 
@@ -324,7 +324,7 @@ class PSFPhotometry(ModelImageMixin):
         self.finder_results = None
         self.init_params = None
         self.fit_params = None
-        self._fit_params = None
+        self._fit_model_params = None
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
 
@@ -333,58 +333,69 @@ class PSFPhotometry(ModelImageMixin):
             raise ValueError('grouper must be a SourceGrouper instance.')
         return grouper
 
-    @lazyproperty
-    def _psf_param_names(self):
-        """
-        The PSF model parameters corresponding to x, y, and flux.
+    @staticmethod
+    def _define_model_params_map(psf_model):
+        # The main parameter names are checked together as a unit in the
+        # following order:
+        #     * ('x_0', 'y_0', 'flux') parameters
+        #     * ('x_name', 'y_name', 'flux_name') attributes
+        main_params = _get_psf_model_params(psf_model)
+        main_aliases = ('x', 'y', 'flux')
+        params_map = dict(zip(main_aliases, main_params))
 
-        The parameter options are checked together as a unit in the
-        following order:
-
-            * ('x_0', 'y_0', 'flux') parameters
-            * ('x_name', 'y_name', 'flux_name') attributes
-        """
-        return _get_psf_model_params(self.psf_model)
-
-    @lazyproperty
-    def _fitted_psf_param_names(self):
-        """
-        All PSF model parameters that are fit.
-        """
+        # define the fitted model parameters
         fitted_params = []
-        for key, val in self.psf_model.fixed.items():
+        for key, val in psf_model.fixed.items():
             if not val:
                 fitted_params.append(key)
-        return fitted_params
 
-    @lazyproperty
-    def _extra_psf_param_names(self):
-        """
-        PSF model parameters that are fit, but do not correspond to x,
-        y, or flux.
-
-        The order of the psf_model parameters is preserved.
-        """
+        # define the "extra" fitted model parameters that do not
+        # correspond to x, y, or flux
         extra_params = []
-        for key in self._fitted_psf_param_names:
-            if key not in self._psf_param_names:
+        for key in fitted_params:
+            if key not in main_params:
                 extra_params.append(key)
-        return extra_params
+        other_params = {key: key for key in extra_params}
 
-    def _validate_psf_model(self):
+        params_map.update(other_params)
+
+        return params_map
+
+    def _define_param_maps(self, psf_model):
         """
-        Validate the input PSF model.
+        Map x, y, and flux column names to the PSF model parameter names.
 
-        The PSF model must be a subclass of `astropy.modeling.Model`. It
-        must also be two-dimensional and have a single output.
+        Also include any extra PSF model parameters that are fit, but do
+        not correspond to x, y, or flux.
 
-        The PSF model must have parameters called 'x_0', 'y_0', and
-        'flux' or it must have 'x_name', 'y_name', and 'flux_name'
-        attributes (i.e., output from `make_psf_model`). Otherwise, a
-        `ValueError` is raised.
+        The column names include the ``_init``, ``_fit``, and ``_err``
+        suffixes for each parameter.
         """
-        _validate_psf_model(self.psf_model)
-        self._psf_param_names  # validate the PSF model parameters
+        params_map = self._define_model_params_map(psf_model)
+
+        param_maps = {}
+        param_maps['model'] = params_map
+
+        # keep track of only the fitted parameters
+        fit_params = {}
+        for key, val in params_map.items():
+            if not psf_model.fixed[val]:
+                fit_params[key] = val
+        param_maps['fit_params'] = fit_params
+
+        suffixes = ('init', 'fit', 'err')
+        for suffix in suffixes:
+            pmap = {}
+            for key, val in params_map.items():
+                pmap[val] = f'{key}_{suffix}'
+            param_maps[suffix] = pmap
+
+        init_cols = {}
+        for key in param_maps['model'].keys():
+            init_cols[key] = f'{key}_init'
+        param_maps['init_cols'] = init_cols
+
+        return param_maps
 
     @staticmethod
     def _validate_callable(obj, name):
@@ -427,20 +438,6 @@ class PSFPhotometry(ModelImageMixin):
         return array
 
     @lazyproperty
-    def _init_colnames(self):
-        """
-        A dictionary of column names for the initial x, y, and flux values
-        reported in the output table.
-        """
-        suffix = '_init'
-        init_colnames = {}
-        init_colnames['suffix'] = suffix
-        init_colnames['x'] = f'x{suffix}'
-        init_colnames['y'] = f'y{suffix}'
-        init_colnames['flux'] = f'flux{suffix}'
-        return init_colnames
-
-    @lazyproperty
     def _valid_colnames(self):
         """
         A dictionary of valid column names for the input ``init_params``
@@ -469,11 +466,18 @@ class PSFPhotometry(ModelImageMixin):
         table).
         """
         name = ''
-        valid_names = self._valid_colnames[key]
+        try:
+            valid_names = self._valid_colnames[key]
+        except KeyError:
+            # parameters other than (x, y, flux) must have "_init", "",
+            # or "_fit" suffixes
+            valid_names = [f'{key}_init', key, f'{key}_fit']
+
         for valid_name in valid_names:
             if valid_name in colnames:
                 name = valid_name
-                break
+                break  # return the first match
+
         return name
 
     def _check_init_units(self, init_params, colname):
@@ -497,34 +501,49 @@ class PSFPhotometry(ModelImageMixin):
 
         return init_params
 
+    @staticmethod
+    def _rename_init_columns(init_params, param_maps, find_column_name):
+        """
+        This is a static method to allow the method to be called from
+        IterativePSFPhotometry.
+        """
+        for param in param_maps['model'].keys():
+            colname = find_column_name(param, init_params.colnames)
+            if colname:
+                init_name = param_maps['init_cols'][param]
+                if colname != init_name:
+                    init_params.rename_column(colname, init_name)
+        return init_params
+
     def _validate_init_params(self, init_params):
+        """
+        Validate the input ``init_params`` table.
+
+        Also rename the columns to the expected names with the "_init"
+        suffix if necessary.
+        """
         if init_params is None:
             return init_params
 
         if not isinstance(init_params, Table):
             raise TypeError('init_params must be an astropy Table')
 
-        xcolname = self._find_column_name('x', init_params.colnames)
-        ycolname = self._find_column_name('y', init_params.colnames)
-        if not xcolname or not ycolname:
+        # copy is used to preserve the input init_params
+        init_params = self._rename_init_columns(init_params.copy(),
+                                                self._param_maps,
+                                                self._find_column_name)
+
+        # x and y columns are always required
+        xcolname = self._param_maps['init_cols']['x']
+        ycolname = self._param_maps['init_cols']['y']
+        if (xcolname not in init_params.colnames
+                or ycolname not in init_params.colnames):
             raise ValueError('init_param must contain valid column names '
                              'for the x and y source positions')
 
-        init_params = init_params.copy()  # preserve input init_params
-        xinit_name = self._init_colnames['x']
-        yinit_name = self._init_colnames['y']
-        if xcolname != xinit_name:
-            init_params.rename_column(xcolname, xinit_name)
-        if ycolname != yinit_name:
-            init_params.rename_column(ycolname, yinit_name)
-
-        fluxcolname = self._find_column_name('flux', init_params.colnames)
-        if fluxcolname:
-            fluxinit_name = self._init_colnames['flux']
-            if fluxcolname != fluxinit_name:
-                init_params.rename_column(fluxcolname, fluxinit_name)
-
-            init_params = self._check_init_units(init_params, fluxinit_name)
+        fluxcolname = self._param_maps['init_cols']['flux']
+        if fluxcolname in init_params.colnames:
+            init_params = self._check_init_units(init_params, fluxcolname)
 
         if 'local_bkg' in init_params.colnames:
             if not np.all(np.isfinite(init_params['local_bkg'])):
@@ -559,13 +578,17 @@ class PSFPhotometry(ModelImageMixin):
         return mask
 
     def _get_aper_fluxes(self, data, mask, init_params):
-        xpos = init_params[self._init_colnames['x']]
-        ypos = init_params[self._init_colnames['y']]
+        xpos = init_params[self._param_maps['init_cols']['x']]
+        ypos = init_params[self._param_maps['init_cols']['y']]
         apertures = CircularAperture(zip(xpos, ypos), r=self.aperture_radius)
         flux, _ = apertures.do_photometry(data, mask=mask)
         return flux
 
     def _prepare_init_params(self, data, mask, init_params):
+        xcolname = self._param_maps['init_cols']['x']
+        ycolname = self._param_maps['init_cols']['y']
+        fluxcolname = self._param_maps['init_cols']['flux']
+
         if init_params is None:
             if self.finder is None:
                 raise ValueError('finder must be defined if init_params '
@@ -582,60 +605,54 @@ class PSFPhotometry(ModelImageMixin):
 
             init_params = QTable()
             init_params['id'] = np.arange(len(sources)) + 1
-            init_params[self._init_colnames['x']] = sources['xcentroid']
-            init_params[self._init_colnames['y']] = sources['ycentroid']
-
+            init_params[xcolname] = sources['xcentroid']
+            init_params[ycolname] = sources['ycentroid']
         else:
             colnames = init_params.colnames
             if 'id' not in colnames:
                 init_params['id'] = np.arange(len(init_params)) + 1
-
-            if 'group_id' in colnames:
-                # grouper is ignored if group_id is input in init_params
-                self.grouper = None
 
         if 'local_bkg' not in init_params.colnames:
             if self.localbkg_estimator is None:
                 local_bkg = np.zeros(len(init_params))
             else:
                 local_bkg = self.localbkg_estimator(
-                    data, init_params[self._init_colnames['x']],
-                    init_params[self._init_colnames['y']], mask=mask)
+                    data, init_params[xcolname], init_params[ycolname],
+                    mask=mask)
             if self.data_unit is not None:
                 local_bkg <<= self.data_unit
             init_params['local_bkg'] = local_bkg
 
-        if self._init_colnames['flux'] not in init_params.colnames:
+        if fluxcolname not in init_params.colnames:
             flux = self._get_aper_fluxes(data, mask, init_params)
             if self.data_unit is not None:
                 flux <<= self.data_unit
             flux -= init_params['local_bkg']
-            init_params[self._init_colnames['flux']] = flux
+            init_params[fluxcolname] = flux
 
+        if 'group_id' in init_params.colnames:
+            # grouper is ignored if group_id is input in init_params
+            self.grouper = None
         if self.grouper is not None:
-            init_params['group_id'] = self.grouper(
-                init_params['x_init'], init_params['y_init'])
+            group_id = self.grouper(init_params[xcolname],
+                                    init_params[ycolname])
+        else:
+            group_id = init_params['id'].copy()
+        init_params['group_id'] = group_id
 
-        # no grouping
-        if 'group_id' not in init_params.colnames:
-            init_params['group_id'] = init_params['id']
-
+        # add columns for any additional parameters that are fit
+        for param_name, colname in self._param_maps['init'].items():
+            if colname not in init_params.colnames:
+                init_params[colname] = getattr(self.psf_model, param_name)
         extra_param_cols = []
-        init_param_map = self._param_maps['init']
-        for extra_param in self._extra_psf_param_names:
-            for key, val in init_param_map.items():
-                if val == extra_param:
-                    extra_param_cols.append(key)
-
-        for extra_col in extra_param_cols:
-            if extra_col not in init_params.colnames:
-                init_params[extra_col] = getattr(self.psf_model,
-                                                 init_param_map[extra_col])
+        for colname in self._param_maps['init_cols'].values():
+            if colname in (xcolname, ycolname, fluxcolname):
+                continue
+            extra_param_cols.append(colname)
 
         # order init_params columns
-        colname_order = ['id', 'group_id', 'local_bkg',
-                         self._init_colnames['x'], self._init_colnames['y'],
-                         self._init_colnames['flux']]
+        colname_order = ['id', 'group_id', 'local_bkg', xcolname, ycolname,
+                         fluxcolname]
         colname_order.extend(extra_param_cols)
         init_params = init_params[colname_order]
 
@@ -647,8 +664,8 @@ class PSFPhotometry(ModelImageMixin):
 
         This code is based on astropy.nddata.overlap_slices.
         """
-        x = init_params[self._init_colnames['x']]
-        y = init_params[self._init_colnames['y']]
+        x = init_params[self._param_maps['init_cols']['x']]
+        y = init_params[self._param_maps['init_cols']['y']]
         positions = np.column_stack((y, x))
         delta = self.fit_shape / 2
         min_idx = np.ceil(positions - delta)
@@ -666,38 +683,6 @@ class PSFPhotometry(ModelImageMixin):
                              'data. Check the initial source positions or '
                              'increase the fit_shape.')
 
-    @lazyproperty
-    def _param_maps(self):
-        """
-        Map x, y, and flux column names to the PSF model parameter names.
-
-        Also include any extra PSF model parameters that are fit, but do
-        not correspond to x, y, or flux.
-
-        The column names include the ``_init``, ``_fit``, and ``_err``
-        suffixes for each parameter.
-        """
-        init_param_map = {}
-        init_param_map[self._init_colnames['x']] = self._psf_param_names[0]
-        init_param_map[self._init_colnames['y']] = self._psf_param_names[1]
-        init_param_map[self._init_colnames['flux']] = self._psf_param_names[2]
-
-        for extra_param in self._extra_psf_param_names:
-            init_param_map[f'{extra_param}_init'] = extra_param
-
-        init_suffix = self._init_colnames['suffix']
-        fit_param_map = {val: key.replace(init_suffix, '_fit')
-                         for key, val in init_param_map.items()}
-        err_param_map = {val: key.replace(init_suffix, '_err')
-                         for key, val in init_param_map.items()}
-
-        param_maps = {}
-        param_maps['init'] = init_param_map
-        param_maps['fit'] = fit_param_map
-        param_maps['err'] = err_param_map
-
-        return param_maps
-
     def _make_psf_model(self, sources):
         """
         Make a PSF model to fit a single source or several sources within
@@ -707,8 +692,8 @@ class PSFPhotometry(ModelImageMixin):
 
         for index, source in enumerate(sources):
             model = self.psf_model.copy()
-            for param, model_param in init_param_map.items():
-                value = source[param]
+            for model_param, init_col in init_param_map.items():
+                value = source[init_col]
                 if isinstance(value, u.Quantity):
                     value = value.value  # psf model cannot be fit with units
                 setattr(model, model_param, value)
@@ -770,15 +755,10 @@ class PSFPhotometry(ModelImageMixin):
         params = defaultdict(list)
         for model in models:
             for name in param_names:
-                try:
-                    value = getattr(model, name).value
-                except AttributeError:
-                    value = getattr(model, name)
-
+                value = getattr(model, name).value
                 if (self.data_unit is not None
-                        and name == self._psf_param_names[2]):
+                        and name == self._param_maps['model']['flux']):
                     value <<= self.data_unit  # add the flux units
-
                 params[name].append(value)
 
         table = QTable(params)
@@ -792,17 +772,17 @@ class PSFPhotometry(ModelImageMixin):
 
         err_param_map = self._param_maps['err']
         table = QTable()
-        for index, name in enumerate(self._fitted_psf_param_names):
+        for index, name in enumerate(self._param_maps['fit_params'].values()):
             colname = err_param_map[name]
             value = param_err[:, index]
             if (self.data_unit is not None
-                    and name == self._psf_param_names[2]):
+                    and name == self._param_maps['model']['flux']):
                 value <<= self.data_unit  # add the flux units
             table[colname] = value
 
         colnames = list(err_param_map.values())
 
-        # add missing error columns
+        # add error columns for fixed params; errors are set to NaN
         nsources = len(self.init_params)
         for colname in colnames:
             if colname not in table.colnames:
@@ -828,8 +808,10 @@ class PSFPhotometry(ModelImageMixin):
             out_params.rename_column(key, val)
 
         # reorder columns to have "flux" come immediately after "y"
-        y_col = self._param_maps['fit'][self._psf_param_names[1]]
-        flux_col = self._param_maps['fit'][self._psf_param_names[2]]
+        ymodelparam = self._param_maps['model']['y']
+        fluxmodelparam = self._param_maps['model']['flux']
+        y_col = self._param_maps['fit'][ymodelparam]
+        flux_col = self._param_maps['fit'][fluxmodelparam]
         out_params = self._move_column(out_params, flux_col, y_col)
 
         # add parameter error columns
@@ -845,8 +827,8 @@ class PSFPhotometry(ModelImageMixin):
         npixfit = []
         cen_index = []
         for row in sources:
-            xcen = row[self._init_colnames['x']]
-            ycen = row[self._init_colnames['y']]
+            xcen = row[self._param_maps['init_cols']['x']]
+            ycen = row[self._param_maps['init_cols']['y']]
 
             try:
                 slc_lg, _ = overlap_slices(data.shape, self.fit_shape,
@@ -951,7 +933,7 @@ class PSFPhotometry(ModelImageMixin):
         fit_models = []
         fit_infos = []
         fit_param_errs = []
-        nfitparam = len(self._fitted_psf_param_names)
+        nfitparam = len(self._param_maps['fit_params'].keys())
         for model, fit_info in zip(group_models, group_fit_infos):
             model_nsub = model.n_submodels
             npsf_models = model_nsub // psf_nsub
@@ -1058,9 +1040,9 @@ class PSFPhotometry(ModelImageMixin):
 
         # split the groups and return objects in source-id order
         fit_models = self._parse_fit_results(fit_models, fit_infos)
-        _fit_params = self._model_params_to_table(fit_models)  # ungrouped
-        fit_params = self._prepare_fit_results(_fit_params)
-        self._fit_params = _fit_params
+        _fit_model_params = self._model_params_to_table(fit_models)
+        fit_params = self._prepare_fit_results(_fit_model_params)
+        self._fit_model_params = _fit_model_params  # ungrouped
         self.fit_params = fit_params
 
         return fit_params
@@ -1098,12 +1080,17 @@ class PSFPhotometry(ModelImageMixin):
             # ignore divide-by-zero if flux = 0
             warnings.simplefilter('ignore', RuntimeWarning)
 
+            flux_name = self._param_maps['model']['flux']
+            fluxcolname = self._param_maps['fit'][flux_name]
             qfit = []
             cfit = []
             for index, (residual, cen_idx_) in enumerate(
                     zip(fit_residuals, cen_idx)):
 
-                flux_fit = results_tbl['flux_fit'][index]
+                flux_fit = results_tbl[fluxcolname][index]
+                if isinstance(flux_fit, u.Quantity):
+                    flux_fit = flux_fit.value
+
                 qfit.append(np.sum(np.abs(residual)) / flux_fit)
 
                 if np.isnan(cen_idx_):  # masked central pixel
@@ -1121,13 +1108,19 @@ class PSFPhotometry(ModelImageMixin):
     def _define_flags(self, results_tbl, shape):
         flags = np.zeros(len(results_tbl), dtype=int)
 
+        model_names = self._param_maps['model']
+        param_map = self._param_maps['fit']
+        xcolname = param_map[model_names['x']]
+        ycolname = param_map[model_names['y']]
+        fluxcolname = param_map[model_names['flux']]
+
         for index, row in enumerate(results_tbl):
             if row['npixfit'] < np.prod(self.fit_shape):
                 flags[index] += 1
-            if (row['x_fit'] < 0 or row['y_fit'] < 0
-                    or row['x_fit'] > shape[1] or row['y_fit'] > shape[0]):
+            if (row[xcolname] < 0 or row[ycolname] < 0
+                    or row[xcolname] > shape[1] or row[ycolname] > shape[0]):
                 flags[index] += 2
-            if row['flux_fit'] <= 0:
+            if row[fluxcolname] <= 0:
                 flags[index] += 4
 
         flags[self.fit_results['fit_error_indices']] += 8
@@ -1165,21 +1158,20 @@ class PSFPhotometry(ModelImageMixin):
         mask = self._make_mask(data, mask)
         init_params = self._validate_init_params(init_params)  # copies
 
+        fluxcol = self._param_maps['init_cols']['flux']
         if (self.aperture_radius is None
             and (init_params is None
-                 or self._init_colnames['flux'] not in init_params.colnames)):
+                 or fluxcol not in init_params.colnames)):
             raise ValueError('aperture_radius must be defined if init_params '
                              'is not input or if a flux column is not in '
                              'init_params')
 
         init_params = self._prepare_init_params(data, mask, init_params)
-        if init_params is not None:
-            self._check_init_positions(init_params, data.shape)
-        self.init_params = init_params
-
-        if init_params is None:  # no sources detected
-            # TODO: raise warning
+        if init_params is None:  # no sources detected by finder
             return None
+
+        self._check_init_positions(init_params, data.shape)
+        self.init_params = init_params
 
         _, counts = np.unique(init_params['group_id'], return_counts=True)
         if max(counts) > 25:
@@ -1218,13 +1210,14 @@ class PSFPhotometry(ModelImageMixin):
             units.
 
         init_params : `~astropy.table.Table` or `None`, optional
-            A table containing the initial guesses of the (x, y, flux)
-            model parameters for each source. If the x and y values are
-            not input, then the ``finder`` keyword must be defined. If
-            the flux values are not input, then the ``aperture_radius``
-            keyword must be defined. Note that the initial flux
-            values refer to the model flux parameters and are not
-            corrected for local background values (computed using
+            A table containing the initial guesses of the model
+            parameters (e.g., x, y, flux) for each source. If the x and
+            y values are not input, then the ``finder`` keyword must be
+            defined. If the flux values are not input, then the initial
+            fluxes will be measured using the ``aperture_radius``
+            keyword, which must be defined. Note that the initial
+            flux values refer to the model flux parameters and are
+            not corrected for local background values (computed using
             ``localbkg_estimator`` or input in a ``local_bkg`` column)
             The allowed column names are:
 
@@ -1239,6 +1232,18 @@ class PSFPhotometry(ModelImageMixin):
               * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
                 ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
                 ``segment_flux``, and ``kron_flux``.
+
+              * If the PSF model has additional free parameters that are
+                fit, they can be included in the table. The column
+                names must match the parameter names in the PSF model.
+                They can also be suffixed with either the "_init" or
+                "_fit" suffix. The suffix search order is "_init", ""
+                (no suffix), and "_fit". For example, if the PSF model
+                has an additional parameter named "sigma", then the
+                allowed column names are: "sigma_init", "sigma", and
+                "sigma_fit". If the column name is not found in the
+                table, then the default value from the PSF model will be
+                used.
 
             The parameter names are searched in the input table in the
             above order, stopping at the first match.
@@ -1575,6 +1580,12 @@ class IterativePSFPhotometry(ModelImageMixin):
 
         self.fit_results = []
 
+    def _reset_results(self):
+        """
+        Reset these attributes for each __call__.
+        """
+        self.fit_results = []
+
     @staticmethod
     def _validate_maxiters(maxiters):
         if (not np.isscalar(maxiters) or maxiters <= 0
@@ -1609,9 +1620,9 @@ class IterativePSFPhotometry(ModelImageMixin):
         Convert the output of the finder to a table with initial (x, y)
         position column names
         """
-        xcol = self._psfphot._init_colnames['x']
-        ycol = self._psfphot._init_colnames['y']
-        sources = sources['xcentroid', 'ycentroid']
+        xcol = self._psfphot._param_maps['init_cols']['x']
+        ycol = self._psfphot._param_maps['init_cols']['y']
+        sources = sources[('xcentroid', 'ycentroid')]
         sources.rename_column('xcentroid', xcol)
         sources.rename_column('ycentroid', ycol)
         return sources
@@ -1649,7 +1660,7 @@ class IterativePSFPhotometry(ModelImageMixin):
         unit = getattr(data, 'unit', None)
         if unit is not None:
             flux <<= unit
-        fluxcol = self._psfphot._init_colnames['flux']
+        fluxcol = self._psfphot._param_maps['init_cols']['flux']
         sources[fluxcol] = flux
         return sources
 
@@ -1658,17 +1669,22 @@ class IterativePSFPhotometry(ModelImageMixin):
         Create the initial parameters table by combining the original
         and new sources.
         """
+        # rename the columns from the fit results
+        init_params = self._psfphot._rename_init_columns(
+            orig_sources, self._psfphot._param_maps,
+            self._psfphot._find_column_name)
+        for colname in init_params.colnames:
+            if '_init' not in colname:
+                init_params.remove_column(colname)
+
         # add initial fluxes for the new sources from the residual data
         new_sources = self._measure_init_fluxes(data, mask, new_sources)
 
-        # use the init_params column names
-        orig_sources = orig_sources['x_fit', 'y_fit', 'flux_fit']
-        xcol = self._psfphot._init_colnames['x']
-        ycol = self._psfphot._init_colnames['y']
-        fluxcol = self._psfphot._init_colnames['flux']
-        orig_sources.rename_column('x_fit', xcol)
-        orig_sources.rename_column('y_fit', ycol)
-        orig_sources.rename_column('flux_fit', fluxcol)
+        # add columns for any additional parameters that are fit
+        for param_name, colname in self._psfphot._param_maps['init'].items():
+            if colname not in new_sources.colnames:
+                new_sources[colname] = getattr(self._psfphot.psf_model,
+                                               param_name)
 
         # combine original and new source tables
         new_sources.meta.pop('date', None)  # prevent merge conflicts
@@ -1699,17 +1715,16 @@ class IterativePSFPhotometry(ModelImageMixin):
             a `~astropy.units.Quantity` array with the same units.
 
         init_params : `~astropy.table.Table` or `None`, optional
-            A table containing the initial guesses of the (x, y, flux)
-            model parameters for each source *only for the first
-            iteration*. If the x and y values are not input, then the
-            ``finder`` will be used for all iterations. If the flux
-            values are not input, then the initial fluxes will be
-            measured using the ``aperture_radius`` keyword. The input
-            flux values will be used for the first iteration only.
-            Note that the initial flux values refer to the model flux
-            parameters and are not corrected for local background
-            values (computed using ``localbkg_estimator`` or input in a
-            ``local_bkg`` column) The allowed column names are:
+            A table containing the initial guesses of the model
+            parameters (e.g., x, y, flux) for each source *only for
+            the first iteration*. If the x and y values are not input,
+            then the ``finder`` will be used for all iterations. If the
+            flux values are not input, then the initial fluxes will be
+            measured using the ``aperture_radius`` keyword. Note that
+            the initial flux values refer to the model flux parameters
+            and are not corrected for local background values (computed
+            using ``localbkg_estimator`` or input in a ``local_bkg``
+            column) The allowed column names are:
 
               * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
                 ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
@@ -1722,6 +1737,19 @@ class IterativePSFPhotometry(ModelImageMixin):
               * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
                 ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
                 ``segment_flux``, and ``kron_flux``.
+
+              * If the PSF model has additional free parameters that are
+                fit, they can be included in the table. The column
+                names must match the parameter names in the PSF model.
+                They can also be suffixed with either the "_init" or
+                "_fit" suffix. The suffix search order is "_init", ""
+                (no suffix), and "_fit". For example, if the PSF model
+                has an additional parameter named "sigma", then the
+                allowed column names are: "sigma_init", "sigma", and
+                "sigma_fit". If the column name is not found in the
+                table, then the default value from the PSF model will be
+                used. The default values from the PSF model will also be
+                used for all iterations after the first.
 
             The parameter names are searched in the input table in the
             above order, stopping at the first match.
@@ -1783,6 +1811,9 @@ class IterativePSFPhotometry(ModelImageMixin):
             return self.__call__(data_, mask=mask, error=error,
                                  init_params=init_params)
 
+        # reset results from previous runs
+        self._reset_results()
+
         with warnings.catch_warnings(record=True) as rwarn0:
             phot_tbl = self._psfphot(data, mask=mask, error=error,
                                      init_params=init_params)
@@ -1819,7 +1850,8 @@ class IterativePSFPhotometry(ModelImageMixin):
                 new_sources = self._convert_finder_to_init(new_sources)
                 if self.mode == 'all':
                     init_params = self._create_init_params(
-                        residual_data, mask, new_sources, phot_tbl)
+                        residual_data, mask, new_sources,
+                        self._psfphot.fit_params)
                     residual_data = data
 
                     # keep track of the iteration number in which the source

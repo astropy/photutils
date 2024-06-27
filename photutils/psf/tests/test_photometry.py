@@ -99,6 +99,10 @@ def test_invalid_inputs():
         with pytest.raises(ValueError, match=match):
             _ = PSFPhotometry(model, 1, aperture_radius=radius)
 
+    match = 'grouper must be a SourceGrouper instance'
+    with pytest.raises(ValueError, match=match):
+        _ = PSFPhotometry(model, (5, 5), grouper=1)
+
     match = 'data must be a 2D array'
     psfphot = PSFPhotometry(model, (3, 3))
     with pytest.raises(ValueError, match=match):
@@ -189,6 +193,10 @@ def test_psf_photometry(test_data):
     for key in keys:
         assert key in psfphot.fit_results
 
+    # test that repeated calls reset the results
+    phot = psfphot(data, error=error)
+    assert len(psfphot.fit_results['fit_infos']) == len(phot)
+
     # test units
     unit = u.Jy
     finderu = DAOStarFinder(6.0 * unit, 2.0)
@@ -200,6 +208,42 @@ def test_psf_photometry(test_data):
         assert photu[col].unit == unit
     resid_datau = psfphotu.make_residual_image(data << unit, fit_shape)
     assert resid_datau.unit == unit
+    colnames = ('qfit', 'cfit')
+    for col in colnames:
+        assert not isinstance(col, u.Quantity)
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.parametrize('fit_sigma', (False, True))
+def test_psf_photometry_forced(test_data, fit_sigma):
+    data, error, sources = test_data
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model.x_0.fixed = True
+    psf_model.y_0.fixed = True
+    if fit_sigma:
+        psf_model.sigma.fixed = False
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    phot = psfphot(data, error=error)
+    resid_data = psfphot.make_residual_image(data, fit_shape)
+
+    assert isinstance(psfphot.finder_results, QTable)
+    assert isinstance(phot, QTable)
+    assert len(phot) == len(sources)
+    assert isinstance(resid_data, np.ndarray)
+    assert resid_data.shape == data.shape
+    assert phot.colnames[:4] == ['id', 'group_id', 'group_size', 'local_bkg']
+    assert_equal(phot['x_init'], phot['x_fit'])
+
+    if fit_sigma:
+        col = 'sigma'
+        suffixes = ('_init', '_fit', '_err')
+        colnames = [col + suffix for suffix in suffixes]
+        for colname in colnames:
+            assert colname in phot.colnames
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -280,15 +324,19 @@ def test_model_residual_image(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-def test_psf_photometry_compound_psfmodel(test_data):
+@pytest.mark.parametrize('fit_stddev', (False, True))
+def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
     """
     Test compound models output from ``make_psf_model``.
     """
     data, error, sources = test_data
-    x_stddev = y_stddev = 1.8
+    x_stddev = y_stddev = 1.7
     psf_func = Gaussian2D(amplitude=1, x_mean=0, y_mean=0, x_stddev=x_stddev,
                           y_stddev=y_stddev)
     psf_model = make_psf_model(psf_func, x_name='x_mean', y_name='y_mean')
+    if fit_stddev:
+        psf_model.x_stddev_2.fixed = False
+        psf_model.y_stddev_2.fixed = False
 
     fit_shape = (5, 5)
     finder = DAOStarFinder(5.0, 3.0)
@@ -299,6 +347,43 @@ def test_psf_photometry_compound_psfmodel(test_data):
     assert isinstance(phot, QTable)
     assert len(phot) == len(sources)
 
+    if fit_stddev:
+        cols = ('x_stddev_2', 'y_stddev_2')
+        suffixes = ('_init', '_fit', '_err')
+        colnames = [col + suffix for suffix in suffixes for col in cols]
+        for colname in colnames:
+            assert colname in phot.colnames
+
+    # test model and residual images
+    psf_shape = (9, 9)
+    model1 = psfphot.make_model_image(data.shape, psf_shape,
+                                      include_localbkg=False)
+    resid1 = psfphot.make_residual_image(data, psf_shape,
+                                         include_localbkg=False)
+    model2 = psfphot.make_model_image(data.shape, psf_shape,
+                                      include_localbkg=True)
+    resid2 = psfphot.make_residual_image(data, psf_shape,
+                                         include_localbkg=True)
+    assert model1.shape == data.shape
+    assert model2.shape == data.shape
+    assert resid1.shape == data.shape
+    assert resid2.shape == data.shape
+    assert_equal(data - model1, resid1)
+    assert_equal(data - model2, resid2)
+
+    # test with init_params
+    init_params = psfphot.fit_params
+    phot = psfphot(data, error=error, init_params=init_params)
+    assert isinstance(phot, QTable)
+    assert len(phot) == len(sources)
+
+    if fit_stddev:
+        cols = ('x_stddev_2', 'y_stddev_2')
+        suffixes = ('_init', '_fit', '_err')
+        colnames = [col + suffix for suffix in suffixes for col in cols]
+        for colname in colnames:
+            assert colname in phot.colnames
+
     # test results when fit does not converge (fitter_maxiters=10)
     match = r'One or more fit\(s\) may not have converged.'
     with pytest.warns(AstropyUserWarning, match=match):
@@ -306,27 +391,80 @@ def test_psf_photometry_compound_psfmodel(test_data):
                                 aperture_radius=4, fitter_maxiters=10)
         phot = psfphot(data, error=error)
         columns1 = ['x_err', 'y_err', 'flux_err']
+        if fit_stddev:
+            columns1 += ['x_stddev_2_err', 'y_stddev_2_err']
         for column in columns1:
             assert np.all(np.isnan(phot[column]))
 
-    # allow other parameters to vary
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.parametrize('mode', ['new', 'all'])
+def test_iterative_psf_photometry_compound(mode):
+    x_stddev = y_stddev = 1.7
+    psf_func = Gaussian2D(amplitude=1, x_mean=0, y_mean=0, x_stddev=x_stddev,
+                          y_stddev=y_stddev)
+    psf_model = make_psf_model(psf_func, x_name='x_mean', y_name='y_mean')
     psf_model.x_stddev_2.fixed = False
     psf_model.y_stddev_2.fixed = False
-    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                            aperture_radius=4, fitter_maxiters=400)
-    phot = psfphot(data, error=error)
-    columns2 = ['x_stddev_2_init', 'y_stddev_2_init', 'x_stddev_2_fit',
-                'y_stddev_2_fit', 'x_stddev_2_err', 'y_stddev_2_err']
-    for column in columns2:
-        assert column in phot.colnames
 
-    # test results when fit does not converge (fitter_maxiters=10)
-    with pytest.warns(AstropyUserWarning, match=match):
-        psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                                aperture_radius=4, fitter_maxiters=10)
-        phot = psfphot(data, error=error)
-        for column in columns1 + ['x_stddev_2_err', 'y_stddev_2_err']:
-            assert np.all(np.isnan(phot[column]))
+    model_shape = (9, 9)
+    n_sources = 10
+    shape = (101, 101)
+    data, true_params = make_psf_model_image(shape, psf_model, n_sources,
+                                             model_shape=model_shape,
+                                             flux_range=(500, 700),
+                                             min_separation=10, seed=0)
+    noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
+    data += noise
+    error = np.abs(noise)
+
+    init_params = QTable()
+    init_params['x'] = [54, 29, 80]
+    init_params['y'] = [8, 26, 29]
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 3.0)
+    grouper = SourceGrouper(min_separation=2)
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                     grouper=grouper, aperture_radius=4,
+                                     mode=mode, maxiters=2)
+    phot = psfphot(data, error=error, init_params=init_params)
+    assert isinstance(phot, QTable)
+    assert len(phot) == len(true_params)
+
+    cols = ('x_stddev_2', 'y_stddev_2')
+    suffixes = ('_init', '_fit', '_err')
+    colnames = [col + suffix for suffix in suffixes for col in cols]
+    for colname in colnames:
+        assert colname in phot.colnames
+
+    # test model and residual images
+    psf_shape = (9, 9)
+    model1 = psfphot.make_model_image(data.shape, psf_shape,
+                                      include_localbkg=False)
+    resid1 = psfphot.make_residual_image(data, psf_shape,
+                                         include_localbkg=False)
+    model2 = psfphot.make_model_image(data.shape, psf_shape,
+                                      include_localbkg=True)
+    resid2 = psfphot.make_residual_image(data, psf_shape,
+                                         include_localbkg=True)
+    assert model1.shape == data.shape
+    assert model2.shape == data.shape
+    assert resid1.shape == data.shape
+    assert resid2.shape == data.shape
+    assert_equal(data - model1, resid1)
+    assert_equal(data - model2, resid2)
+
+    # test with init_params
+    init_params = psfphot.fit_results[-1].fit_params
+    phot = psfphot(data, error=error, init_params=init_params)
+    assert isinstance(phot, QTable)
+    assert len(phot) == len(true_params)
+
+    cols = ('x_stddev_2', 'y_stddev_2')
+    suffixes = ('_init', '_fit', '_err')
+    colnames = [col + suffix for suffix in suffixes for col in cols]
+    for colname in colnames:
+        assert colname in phot.colnames
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -727,6 +865,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     phot = psfphot(data, error=error, init_params=init_params)
     cols = ['id', 'group_id', 'group_size', 'iter_detected', 'local_bkg']
     assert phot.colnames[:5] == cols
+    assert len(psfphot.fit_results) == 2
 
     assert 'iter_detected' in phot.colnames
     assert len(phot) == len(sources)
@@ -739,6 +878,21 @@ def test_iterative_psf_photometry_mode_new(test_data):
     resid_nddata = psfphot.make_residual_image(nddata, fit_shape)
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.data.shape == data.shape
+
+    # test that repeated calls reset the results
+    phot = psfphot(data, error=error, init_params=init_params)
+    assert len(psfphot.fit_results) == 2
+
+    # test NDData without units
+    uncertainty = StdDevUncertainty(error)
+    nddata = NDData(data, uncertainty=uncertainty)
+    phot0 = psfphot(nddata, init_params=init_params)
+    colnames = ('flux_init', 'flux_fit', 'flux_err', 'local_bkg')
+    for col in colnames:
+        assert_allclose(phot0[col], phot[col])
+    resid_nddata = psfphot.make_residual_image(nddata, fit_shape)
+    assert isinstance(resid_nddata, NDData)
+    assert_equal(resid_nddata.data, resid_data)
 
     # test with units and mode='new'
     unit = u.Jy
@@ -998,3 +1152,23 @@ def test_make_psf_model():
                      tbl3['flux_fit'][0]), (xval, yval, flux))
     assert_allclose((tbl4['x_fit'][0], tbl4['y_fit'][0],
                      tbl4['flux_fit'][0]), (xval, yval, flux))
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_move_column():
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    tbl = QTable()
+    tbl['a'] = [1, 2, 3]
+    tbl['b'] = [4, 5, 6]
+    tbl['c'] = [7, 8, 9]
+
+    tbl1 = psfphot._move_column(tbl, 'a', 'c')
+    assert tbl1.colnames == ['b', 'c', 'a']
+    tbl2 = psfphot._move_column(tbl, 'd', 'b')
+    assert tbl2.colnames == ['a', 'b', 'c']
+    tbl3 = psfphot._move_column(tbl, 'b', 'b')
+    assert tbl3.colnames == ['a', 'b', 'c']
