@@ -15,6 +15,8 @@ from photutils.utils._parameters import as_pair
 
 __all__ = ['make_psf_model', 'grid_from_epsfs', 'make_psf_model_image']
 
+__doctest_requires__ = {('make_psf_model', 'make_psf_model_image'): ['scipy']}
+
 
 def _interpolate_missing_data(data, mask, method='cubic'):
     """
@@ -288,6 +290,16 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     fail, e.g., return zero for a non-zero model. This can happen when
     the model function is sharply localized relative to the size of the
     integration interval.
+
+    Examples
+    --------
+    >>> from astropy.modeling.models import Gaussian2D
+    >>> from photutils.psf import make_psf_model
+    >>> model = Gaussian2D(x_stddev=2, y_stddev=2)
+    >>> psf_model = make_psf_model(model, x_name='x_mean', y_name='y_mean')
+    >>> print(psf_model.param_names)  # doctest: +SKIP
+    ('amplitude_2', 'x_mean_2', 'y_mean_2', 'x_stddev_2', 'y_stddev_2',
+     'theta_2', 'amplitude_3', 'amplitude_4')
     """
     input_model = model.copy()
 
@@ -660,6 +672,48 @@ def make_psf_model_image(shape, psf_model, n_sources, *, flux_range=(1, 1),
         sources. The column names will correspond to the names of the
         input ``psf_model`` (x, y, flux) parameter names. The table will
         also contain an ``'id'`` column with unique source IDs
+
+    Examples
+    --------
+    >>> from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+    >>> shape = (150, 200)
+    >>> psf_model= IntegratedGaussianPRF(sigma=1.5)
+    >>> n_sources = 10
+    >>> data, params = make_psf_model_image(shape, psf_model, n_sources,
+    ...                                     flux_range=(100, 250),
+    ...                                     min_separation=10,
+    ...                                     seed=0)
+
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+        shape = (150, 200)
+        psf_model= IntegratedGaussianPRF(sigma=1.5)
+        n_sources = 10
+        data, params = make_psf_model_image(shape, psf_model, n_sources,
+                                            flux_range=(100, 250),
+                                            min_separation=10,
+                                            seed=0)
+        plt.imshow(data, origin='lower')
+
+    >>> params['x_0'].info.format = '.4f'  # optional format
+    >>> params['y_0'].info.format = '.4f'
+    >>> params['flux'].info.format = '.4f'
+    >>> print(params)  # doctest: +FLOAT_CMP
+     id   x_0      y_0      flux
+    --- -------- -------- --------
+      1 125.4749  72.2784 147.9522
+      2  57.1803  38.6027 128.1262
+      3  14.6211 116.0558 200.8790
+      4  10.0741 132.6001 129.2661
+      5 158.2683  43.1937 186.6532
+      6 176.7725  80.2951 190.3359
+      7 142.6864 133.6184 244.3635
+      8 108.1142  12.5095 110.8398
+      9 180.9235 106.5528 174.9959
+     10 158.7488  90.5548 211.6146
     """
     psf_params = _get_psf_model_params(psf_model)
 
