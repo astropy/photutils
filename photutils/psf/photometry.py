@@ -1202,13 +1202,14 @@ class PSFPhotometry(ModelImageMixin):
             units.
 
         init_params : `~astropy.table.Table` or `None`, optional
-            A table containing the initial guesses of the (x, y, flux)
-            model parameters for each source. If the x and y values are
-            not input, then the ``finder`` keyword must be defined. If
-            the flux values are not input, then the ``aperture_radius``
-            keyword must be defined. Note that the initial flux
-            values refer to the model flux parameters and are not
-            corrected for local background values (computed using
+            A table containing the initial guesses of the model
+            parameters (e.g., x, y, flux) for each source. If the x and
+            y values are not input, then the ``finder`` keyword must be
+            defined. If the flux values are not input, then the initial
+            fluxes will be measured using the ``aperture_radius``
+            keyword, which must be defined. Note that the initial
+            flux values refer to the model flux parameters and are
+            not corrected for local background values (computed using
             ``localbkg_estimator`` or input in a ``local_bkg`` column)
             The allowed column names are:
 
@@ -1223,6 +1224,18 @@ class PSFPhotometry(ModelImageMixin):
               * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
                 ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
                 ``segment_flux``, and ``kron_flux``.
+
+              * If the PSF model has additional free parameters that are
+                fit, they can be included in the table. The column
+                names must match the parameter names in the PSF model.
+                They can also be suffixed with either the "_init" or
+                "_fit" suffix. The suffix search order is "_init", ""
+                (no suffix), and "_fit". For example, if the PSF model
+                has an additional parameter named "sigma", then the
+                allowed column names are: "sigma_init", "sigma", and
+                "sigma_fit". If the column name is not found in the
+                table, then the default value from the PSF model will be
+                used.
 
             The parameter names are searched in the input table in the
             above order, stopping at the first match.
@@ -1653,6 +1666,12 @@ class IterativePSFPhotometry(ModelImageMixin):
         # add initial fluxes for the new sources from the residual data
         new_sources = self._measure_init_fluxes(data, mask, new_sources)
 
+        # add columns for any additional parameters that are fit
+        for param_name, colname in self._psfphot._param_maps['init'].items():
+            if colname not in new_sources.colnames:
+                new_sources[colname] = getattr(self._psfphot.psf_model,
+                                               param_name)
+
         # combine original and new source tables
         new_sources.meta.pop('date', None)  # prevent merge conflicts
         return vstack([orig_sources, new_sources])
@@ -1682,17 +1701,16 @@ class IterativePSFPhotometry(ModelImageMixin):
             a `~astropy.units.Quantity` array with the same units.
 
         init_params : `~astropy.table.Table` or `None`, optional
-            A table containing the initial guesses of the (x, y, flux)
-            model parameters for each source *only for the first
-            iteration*. If the x and y values are not input, then the
-            ``finder`` will be used for all iterations. If the flux
-            values are not input, then the initial fluxes will be
-            measured using the ``aperture_radius`` keyword. The input
-            flux values will be used for the first iteration only.
-            Note that the initial flux values refer to the model flux
-            parameters and are not corrected for local background
-            values (computed using ``localbkg_estimator`` or input in a
-            ``local_bkg`` column) The allowed column names are:
+            A table containing the initial guesses of the model
+            parameters (e.g., x, y, flux) for each source *only for
+            the first iteration*. If the x and y values are not input,
+            then the ``finder`` will be used for all iterations. If the
+            flux values are not input, then the initial fluxes will be
+            measured using the ``aperture_radius`` keyword. Note that
+            the initial flux values refer to the model flux parameters
+            and are not corrected for local background values (computed
+            using ``localbkg_estimator`` or input in a ``local_bkg``
+            column) The allowed column names are:
 
               * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
                 ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
@@ -1705,6 +1723,19 @@ class IterativePSFPhotometry(ModelImageMixin):
               * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
                 ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
                 ``segment_flux``, and ``kron_flux``.
+
+              * If the PSF model has additional free parameters that are
+                fit, they can be included in the table. The column
+                names must match the parameter names in the PSF model.
+                They can also be suffixed with either the "_init" or
+                "_fit" suffix. The suffix search order is "_init", ""
+                (no suffix), and "_fit". For example, if the PSF model
+                has an additional parameter named "sigma", then the
+                allowed column names are: "sigma_init", "sigma", and
+                "sigma_fit". If the column name is not found in the
+                table, then the default value from the PSF model will be
+                used. The default values from the PSF model will also be
+                used for all iterations after the first.
 
             The parameter names are searched in the input table in the
             above order, stopping at the first match.
