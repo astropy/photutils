@@ -375,6 +375,14 @@ class PSFPhotometry(ModelImageMixin):
 
         param_maps = {}
         param_maps['model'] = params_map
+
+        # keep track of only the fitted parameters
+        fit_params = {}
+        for key, val in params_map.items():
+            if not psf_model.fixed[val]:
+                fit_params[key] = val
+        param_maps['fit_params'] = fit_params
+
         suffixes = ('init', 'fit', 'err')
         for suffix in suffixes:
             pmap = {}
@@ -764,7 +772,7 @@ class PSFPhotometry(ModelImageMixin):
 
         err_param_map = self._param_maps['err']
         table = QTable()
-        for index, name in enumerate(self._param_maps['model'].values()):
+        for index, name in enumerate(self._param_maps['fit_params'].values()):
             colname = err_param_map[name]
             value = param_err[:, index]
             if (self.data_unit is not None
@@ -774,7 +782,7 @@ class PSFPhotometry(ModelImageMixin):
 
         colnames = list(err_param_map.values())
 
-        # add missing error columns
+        # add error columns for fixed params; errors are set to NaN
         nsources = len(self.init_params)
         for colname in colnames:
             if colname not in table.colnames:
@@ -925,7 +933,7 @@ class PSFPhotometry(ModelImageMixin):
         fit_models = []
         fit_infos = []
         fit_param_errs = []
-        nfitparam = len(self._param_maps['model'].keys())
+        nfitparam = len(self._param_maps['fit_params'].keys())
         for model, fit_info in zip(group_models, group_fit_infos):
             model_nsub = model.n_submodels
             npsf_models = model_nsub // psf_nsub

@@ -210,6 +210,29 @@ def test_psf_photometry(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_psf_photometry_forced(test_data):
+    data, error, sources = test_data
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model.x_0.fixed = True
+    psf_model.y_0.fixed = True
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    phot = psfphot(data, error=error)
+    resid_data = psfphot.make_residual_image(data, fit_shape)
+
+    assert isinstance(psfphot.finder_results, QTable)
+    assert isinstance(phot, QTable)
+    assert len(phot) == len(sources)
+    assert isinstance(resid_data, np.ndarray)
+    assert resid_data.shape == data.shape
+    assert phot.colnames[:4] == ['id', 'group_id', 'group_size', 'local_bkg']
+    assert_equal(phot['x_init'], phot['x_fit'])
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_nddata(test_data):
     data, error, sources = test_data
 
