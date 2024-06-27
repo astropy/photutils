@@ -1572,6 +1572,12 @@ class IterativePSFPhotometry(ModelImageMixin):
 
         self.fit_results = []
 
+    def _reset_results(self):
+        """
+        Reset these attributes for each __call__.
+        """
+        self.fit_results = []
+
     @staticmethod
     def _validate_maxiters(maxiters):
         if (not np.isscalar(maxiters) or maxiters <= 0
@@ -1796,6 +1802,9 @@ class IterativePSFPhotometry(ModelImageMixin):
                     error = error.to(data.unit)
             return self.__call__(data_, mask=mask, error=error,
                                  init_params=init_params)
+
+        # reset results from previous runs
+        self._reset_results()
 
         with warnings.catch_warnings(record=True) as rwarn0:
             phot_tbl = self._psfphot(data, mask=mask, error=error,

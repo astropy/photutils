@@ -189,6 +189,10 @@ def test_psf_photometry(test_data):
     for key in keys:
         assert key in psfphot.fit_results
 
+    # test that repeated calls reset the results
+    phot = psfphot(data, error=error)
+    assert len(psfphot.fit_results['fit_infos']) == len(phot)
+
     # test units
     unit = u.Jy
     finderu = DAOStarFinder(6.0 * unit, 2.0)
@@ -730,6 +734,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     phot = psfphot(data, error=error, init_params=init_params)
     cols = ['id', 'group_id', 'group_size', 'iter_detected', 'local_bkg']
     assert phot.colnames[:5] == cols
+    assert len(psfphot.fit_results) == 2
 
     assert 'iter_detected' in phot.colnames
     assert len(phot) == len(sources)
@@ -742,6 +747,10 @@ def test_iterative_psf_photometry_mode_new(test_data):
     resid_nddata = psfphot.make_residual_image(nddata, fit_shape)
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.data.shape == data.shape
+
+    # test that repeated calls reset the results
+    phot = psfphot(data, error=error, init_params=init_params)
+    assert len(psfphot.fit_results) == 2
 
     # test with units and mode='new'
     unit = u.Jy
