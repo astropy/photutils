@@ -397,6 +397,7 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
             assert np.all(np.isnan(phot[column]))
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('mode', ['new', 'all'])
 def test_iterative_psf_photometry_compound(mode):
     x_stddev = y_stddev = 1.7
@@ -1153,6 +1154,7 @@ def test_make_psf_model():
                      tbl4['flux_fit'][0]), (xval, yval, flux))
 
 
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_move_column():
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     fit_shape = (5, 5)
