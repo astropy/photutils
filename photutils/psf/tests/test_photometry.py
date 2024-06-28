@@ -407,12 +407,14 @@ def test_iterative_psf_photometry_compound(mode):
     psf_model.x_stddev_2.fixed = False
     psf_model.y_stddev_2.fixed = False
 
+    other_params = {psf_model.flux_name: (500, 700)}
+
     model_shape = (9, 9)
     n_sources = 10
     shape = (101, 101)
     data, true_params = make_psf_model_image(shape, psf_model, n_sources,
                                              model_shape=model_shape,
-                                             flux=(500, 700),
+                                             **other_params,
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise

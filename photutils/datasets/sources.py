@@ -19,14 +19,17 @@ __all__ = ['make_model_params', 'make_random_models_table',
 __doctest_requires__ = {'make_model_params': ['scipy']}
 
 
-def make_model_params(shape, n_sources, *, flux=(1, 1), min_separation=1,
-                      border_size=(0, 0), seed=0, **kwargs):
+def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
+                      min_separation=1, border_size=(0, 0), seed=0, **kwargs):
     """
-    Make a table of randomly generated model positions and fluxes for
-    simulated sources.
+    Make a table of randomly generated model positions and additional
+    parameters for simulated sources.
 
-    This function computes only a table of (x_0, y_0, flux) parameters
-    of the sources.
+    By default, this function computes only a table of x_0 and y_0
+    values. Additional parameters can be specified as keyword arguments
+    with their lower and upper bounds as 2-tuples. The parameter values
+    will be uniformly distributed between the lower and upper bounds,
+    inclusively.
 
     Parameters
     ----------
@@ -39,9 +42,15 @@ def make_model_params(shape, n_sources, *, flux=(1, 1), min_separation=1,
         given ``shape`` and therefore the number of sources generated
         may be less than ``n_sources``.
 
-    flux : 2-tuple, optional
-        The lower and upper bounds of the flux range. The fluxes will be
-        uniformly distributed between these bounds, inclusively.
+    x_name : str, optional
+        The name of the ``model`` parameter that corresponds to the x
+        position of the sources. This will be the column name in the
+        output table.
+
+    y_name : str, optional
+        The name of the ``model`` parameter that corresponds to the y
+        position of the sources. This will be the column name in the
+        output table.
 
     min_separation : float, optional
         The minimum separation between the centers of two sources. Note
@@ -60,17 +69,16 @@ def make_model_params(shape, n_sources, *, flux=(1, 1), min_separation=1,
 
     **kwargs
         Keyword arguments are accepted for additional model parameters.
-        Like ``flux`` above, they values should be 2-tuples of the
-        lower and upper bounds for the parameter range. The parameter
-        values will be uniformly distributed between the lower and upper
-        bounds, inclusively.
+        The values should be 2-tuples of the lower and upper bounds for
+        the parameter range. The parameter values will be uniformly
+        distributed between the lower and upper bounds, inclusively.
 
     Returns
     -------
     table : `~astropy.table.QTable`
-        A table containing the (x_0, y_0, flux) parameters of the
-        generated sources. The table will also contain an ``'id'``
-        column with unique source IDs.
+        A table containing the model parameters of the generated
+        sources. The table will also contain an ``'id'`` column with
+        unique source IDs.
 
     Examples
     --------
@@ -88,7 +96,20 @@ def make_model_params(shape, n_sources, *, flux=(1, 1), min_separation=1,
       4 11.322211 14.685443 469.41206
       5 75.061619 36.889365 206.45211
 
-    >>> from photutils.datasets import make_model_params
+    >>> params = make_model_params((100, 100), 5, flux=(100, 500),
+    ...                            x_name='x_mean', y_name='y_mean',
+    ...                            min_separation=3, border_size=10, seed=0)
+    >>> for col in params.colnames:
+    ...     params[col].info.format = '%.8g'  # for consistent table output
+    >>> print(params)
+     id   x_mean    y_mean     flux
+    --- --------- --------- ---------
+      1 60.956935 72.967865 291.99517
+      2 31.582937 29.149555 192.94917
+      3 13.277882 80.118738 420.75223
+      4 11.322211 14.685443 469.41206
+      5 75.061619 36.889365 206.45211
+
     >>> params = make_model_params((100, 100), 5, flux=(100, 500),
     ...                            sigma=(1, 2), alpha=(0, 1),
     ...                            min_separation=3, border_size=10, seed=0)
@@ -105,8 +126,6 @@ def make_model_params(shape, n_sources, *, flux=(1, 1), min_separation=1,
     """
     shape = as_pair('shape', shape, lower_bound=(0, 1))
     border_size = as_pair('border_size', border_size, lower_bound=(0, 0))
-    if len(flux) != 2:
-        raise ValueError('flux must be a 2-tuple')
 
     xrange = (border_size[1], shape[1] - border_size[1])
     yrange = (border_size[0], shape[0] - border_size[0])
@@ -120,18 +139,15 @@ def make_model_params(shape, n_sources, *, flux=(1, 1), min_separation=1,
                                     seed=rng)
     x, y = np.transpose(xycoords)
 
-    flux = rng.uniform(flux[0], flux[1], size=len(x))
-
     model_params = QTable()
     model_params['id'] = np.arange(len(x)) + 1
-    model_params['x_0'] = x
-    model_params['y_0'] = y
-    model_params['flux'] = flux
+    model_params[x_name] = x
+    model_params[y_name] = y
 
     for param, prange in kwargs.items():
         if len(prange) != 2:
             raise ValueError(f'{param} must be a 2-tuple')
-        vals = rng.uniform(*prange, n_sources)
+        vals = rng.uniform(*prange, len(model_params))
         model_params[param] = vals
 
     return model_params

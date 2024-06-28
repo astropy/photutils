@@ -599,14 +599,13 @@ def _get_psf_model_params(psf_model):
     return model_params
 
 
-def make_psf_model_image(shape, psf_model, n_sources, *, flux=(1, 1),
-                         model_shape=None, min_separation=1, border_size=None,
-                         seed=0, progress_bar=False, **kwargs):
+def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
+                         min_separation=1, border_size=None, seed=0,
+                         progress_bar=False, **kwargs):
     """
     Make an example image containing PSF model images.
 
-    Source positions and fluxes are randomly generated using an optional
-    ``seed``.
+    Source parameters are randomly generated using an optional ``seed``.
 
     Parameters
     ----------
@@ -627,10 +626,6 @@ def make_psf_model_image(shape, psf_model, n_sources, *, flux=(1, 1),
         large, the number of requested sources may not fit within the
         given ``shape`` and therefore the number of sources generated
         may be less than ``n_sources``.
-
-    flux : 2-tuple, optional
-        The lower and upper bounds of the flux range. The fluxes will be
-        uniformly distributed between these bounds, inclusively.
 
     model_shape : `None` or 2-tuple of int, optional
         The shape around the center (x, y) position that will used to
@@ -664,11 +659,11 @@ def make_psf_model_image(shape, psf_model, n_sources, *, flux=(1, 1),
 
     **kwargs
         Keyword arguments are accepted for additional model parameters.
-        Like ``flux`` above, they values should be 2-tuples of the
-        lower and upper bounds for the parameter range. The parameter
-        values will be uniformly distributed between the lower and
-        upper bounds, inclusively. If the parameter is not in the input
-        ``psf_model`` parameter names, it will be ignored.
+        The values should be 2-tuples of the lower and upper bounds for
+        the parameter range. The parameter values will be uniformly
+        distributed between the lower and upper bounds, inclusively. If
+        the parameter is not in the input ``psf_model`` parameter names,
+        it will be ignored.
 
     Returns
     -------
@@ -757,29 +752,18 @@ def make_psf_model_image(shape, psf_model, n_sources, *, flux=(1, 1),
     if kwargs:
         # include only kwargs that are not x, y, or flux
         for key, val in kwargs.items():
-            if key in psf_params or key not in psf_model.param_names:
-                continue  # skip the x, y, flux parameters
+            if key not in psf_model.param_names or key in psf_params[0:2]:
+                continue  # skip the x, y parameters
             other_params[key] = val
 
-    params = make_model_params(shape, n_sources, flux=flux,
+    x_name, y_name = psf_params[0:2]
+    params = make_model_params(shape, n_sources, x_name=x_name, y_name=y_name,
                                min_separation=min_separation,
                                border_size=border_size, seed=seed,
                                **other_params)
 
-    if psf_params != ('x_0', 'y_0', 'flux'):
-        # rename the parameter names to match the PSF model
-        x_name, y_name = psf_params[0:2]
-        model_params = params.copy()
-        model_params.rename_column('x_0', psf_params[0])
-        model_params.rename_column('y_0', psf_params[1])
-        model_params.rename_column('flux', psf_params[2])
-    else:
-        model_params = params
-        x_name = 'x_0'
-        y_name = 'y_0'
+    data = make_model_image(shape, psf_model, params, model_shape=model_shape,
+                            x_name=x_name, y_name=y_name,
+                            progress_bar=progress_bar)
 
-    data = make_model_image(shape, psf_model, model_params,
-                            model_shape=model_shape, x_name=x_name,
-                            y_name=y_name, progress_bar=progress_bar)
-
-    return data, model_params
+    return data, params

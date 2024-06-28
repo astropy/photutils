@@ -172,13 +172,34 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
                         'y_0': [0, shape[0]],
                         'gamma': [1, 2],
                         'alpha': [1, 2]}
-        sources = make_random_models_table(n_sources, param_ranges,
-                                           seed=0)
+        params = make_random_models_table(n_sources, param_ranges, seed=0)
 
         model_shape = (15, 15)
-        data = make_model_image(shape, model, sources, model_shape=model_shape)
+        data = make_model_image(shape, model, params, model_shape=model_shape)
 
         plt.imshow(data, origin='lower')
+        plt.tight_layout()
+
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        from astropy.modeling.models import Gaussian2D
+        from photutils.datasets import make_model_image, make_model_params
+
+        model = Gaussian2D()
+        shape = (500, 500)
+        n_sources = 100
+        params = make_model_params(shape, n_sources, x_name='x_mean',
+                                   y_name='y_mean', min_separation=25,
+                                   amplitude=(100, 500), x_stddev=(1, 3),
+                                   y_stddev=(1, 3), theta=(0, np.pi))
+        model_shape = (25, 25)
+        data = make_model_image(shape, model, params, model_shape=model_shape,
+                                x_name='x_mean', y_name='y_mean')
+
+        plt.imshow(data, origin='lower')
+        plt.tight_layout()
 
     Notes
     -----
