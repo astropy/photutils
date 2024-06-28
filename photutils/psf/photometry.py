@@ -376,11 +376,14 @@ class PSFPhotometry(ModelImageMixin):
         param_maps = {}
         param_maps['model'] = params_map
 
-        # keep track of only the fitted parameters
+        # Keep track of only the fitted parameters in the same order as
+        # they are stored in the psf_model. This is used to extract the
+        # fitted parameter errors from the fitter output.
         fit_params = {}
-        for key, val in params_map.items():
-            if not psf_model.fixed[val]:
-                fit_params[key] = val
+        inv_pmap = {val: key for key, val in params_map.items()}
+        for name in psf_model.param_names:
+            if not psf_model.fixed[name]:
+                fit_params[inv_pmap[name]] = name
         param_maps['fit_params'] = fit_params
 
         suffixes = ('init', 'fit', 'err')
@@ -938,6 +941,8 @@ class PSFPhotometry(ModelImageMixin):
             model_nsub = model.n_submodels
             npsf_models = model_nsub // psf_nsub
 
+            # NOTE: param_cov/param_err are returned in the same order
+            # as the model parameters
             param_cov = fit_info.get('param_cov', None)
             if param_cov is None:
                 if nfitparam == 0:  # model params are all fixed
