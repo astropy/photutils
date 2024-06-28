@@ -149,7 +149,7 @@ provided by the :ref:`photutils.datasets <datasets>` module:
     >>> shape = (101, 101)
     >>> data, true_params = make_psf_model_image(shape, psf_model, n_sources,
     ...                                          model_shape=psf_shape,
-    ...                                          flux_range=(500, 700),
+    ...                                          flux=(500, 700),
     ...                                          min_separation=10, seed=0)
     >>> noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     >>> data += noise
@@ -169,7 +169,7 @@ Let's plot the image:
     shape = (101, 101)
     data, true_params = make_psf_model_image(shape, psf_model, n_sources,
                                              model_shape=psf_shape,
-                                             flux_range=(500, 700),
+                                             flux=(500, 700),
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
@@ -283,7 +283,7 @@ and plot it:
 
     data, true_params = make_psf_model_image(shape, psf_model, n_sources,
                                              model_shape=psf_shape,
-                                             flux_range=(500, 700),
+                                             flux=(500, 700),
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
@@ -418,7 +418,7 @@ the location of the star that was fit and subtracted.
 
     data, true_params = make_psf_model_image(shape, psf_model, n_sources,
                                              model_shape=psf_shape,
-                                             flux_range=(500, 700),
+                                             flux=(500, 700),
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise

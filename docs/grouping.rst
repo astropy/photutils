@@ -41,11 +41,11 @@ using `~photutils.psf.make_psf_model_image`.
     >>> psf_model = IntegratedGaussianPRF(sigma=sigma)
     >>> psf_shape = (11, 11)
     >>> n_sources = 100
-    >>> flux_range = (500, 1000)
+    >>> flux = (500, 1000)
     >>> border_size = (7, 7)
     >>> data, stars = make_psf_model_image(shape, psf_model, n_sources,
     ...                                    model_shape=psf_shape,
-    ...                                    flux_range=flux_range,
+    ...                                    flux=flux,
     ...                                    border_size=border_size, seed=123)
 
 Let's display the image:
@@ -66,10 +66,10 @@ Let's display the image:
     psf_model = IntegratedGaussianPRF(sigma=sigma)
     psf_shape = (11, 11)
     n_sources = 100
-    flux_range = (500, 1000)
+    flux = (500, 1000)
     border_size = (7, 7)
     data, stars = make_psf_model_image(shape, psf_model, n_sources,
-                                       flux_range=flux_range,
+                                       flux=flux,
                                        model_shape=psf_shape,
                                        border_size=border_size, seed=123)
     plt.figure(figsize=(8, 8))
@@ -157,12 +157,12 @@ the same group have the same aperture color:
     shape = (256, 256)
     psf_shape = (11, 11)
     border_size = (6, 6)
-    flux_range = (500, 1000)
+    flux = (500, 1000)
     sigma = 2.0
     psf_model = IntegratedGaussianPRF(sigma=sigma)
     n_sources = 100
     data, stars = make_psf_model_image(shape, psf_model, n_sources,
-                                       flux_range=flux_range,
+                                       flux=flux,
                                        model_shape=psf_shape,
                                        border_size=border_size, seed=123)
 

@@ -27,7 +27,7 @@ def fixture_data():
     n_sources = 25
     data, _ = make_psf_model_image(shape, psf_model, n_sources,
                                    model_shape=model_shape,
-                                   flux_range=(100, 200),
+                                   flux=(100, 200),
                                    min_separation=10,
                                    seed=0,
                                    border_size=(10, 10),
