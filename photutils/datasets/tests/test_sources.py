@@ -17,26 +17,50 @@ from photutils.utils._optional_deps import HAS_SCIPY
 def test_make_model_params():
     shape = (100, 100)
     n_sources = 10
-    flux_range = (100, 1000)
-    params = make_model_params(shape, n_sources, flux_range=flux_range)
+    flux = (100, 1000)
+    params = make_model_params(shape, n_sources, flux=flux)
     assert isinstance(params, Table)
     assert len(params) == 10
     cols = ('id', 'x_0', 'y_0', 'flux')
     for col in cols:
         assert col in params.colnames
         assert np.min(params[col]) >= 0
-    assert np.min(params['flux']) >= flux_range[0]
-    assert np.max(params['flux']) <= flux_range[1]
+    assert np.min(params['flux']) >= flux[0]
+    assert np.max(params['flux']) <= flux[1]
+
+    # test extra parameters
+    sigma = (1, 2)
+    alpha = (0, 1)
+    params = make_model_params((120, 100), 5, flux=flux, sigma=sigma,
+                               alpha=alpha, min_separation=3, border_size=10,
+                               seed=0)
+    cols = ('id', 'x_0', 'y_0', 'flux', 'sigma', 'alpha')
+    for col in cols:
+        assert col in params.colnames
+        assert np.min(params[col]) >= 0
+    assert np.min(params['flux']) >= flux[0]
+    assert np.max(params['flux']) <= flux[1]
+    assert np.min(params['sigma']) >= sigma[0]
+    assert np.max(params['sigma']) <= sigma[1]
+    assert np.min(params['alpha']) >= alpha[0]
+    assert np.max(params['alpha']) <= alpha[1]
+
+    match = 'flux must be a 2-tuple'
+    with pytest.raises(ValueError, match=match):
+        make_model_params(shape, n_sources, flux=(1, 2, 3))
+
+    match = 'must be a 2-tuple'
+    with pytest.raises(ValueError, match=match):
+        make_model_params(shape, n_sources, flux=(1, 2), alpha=(1, 2, 3))
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_model_params_border_size():
     shape = (10, 10)
     n_sources = 10
-    flux_range = (100, 1000)
+    flux = (100, 1000)
     with pytest.raises(ValueError):
-        make_model_params(shape, n_sources, flux_range=flux_range,
-                          border_size=20)
+        make_model_params(shape, n_sources, flux=flux, border_size=20)
 
 
 def test_make_random_models_table():

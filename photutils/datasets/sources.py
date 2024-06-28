@@ -19,8 +19,8 @@ __all__ = ['make_model_params', 'make_random_models_table',
 __doctest_requires__ = {'make_model_params': ['scipy']}
 
 
-def make_model_params(shape, n_sources, *, flux_range=(1, 1),
-                      min_separation=1, border_size=(0, 0), seed=0):
+def make_model_params(shape, n_sources, *, flux=(1, 1), min_separation=1,
+                      border_size=(0, 0), seed=0, **kwargs):
     """
     Make a table of randomly generated model positions and fluxes for
     simulated sources.
@@ -39,9 +39,9 @@ def make_model_params(shape, n_sources, *, flux_range=(1, 1),
         given ``shape`` and therefore the number of sources generated
         may be less than ``n_sources``.
 
-    flux_range : 2-tuple, optional
+    flux : 2-tuple, optional
         The lower and upper bounds of the flux range. The fluxes will be
-        uniformly distributed between these bounds.
+        uniformly distributed between these bounds, inclusively.
 
     min_separation : float, optional
         The minimum separation between the centers of two sources. Note
@@ -58,6 +58,13 @@ def make_model_params(shape, n_sources, *, flux_range=(1, 1),
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
         then fresh, unpredictable entropy will be pulled from the OS.
 
+    **kwargs
+        Keyword arguments are accepted for additional model parameters.
+        Like ``flux`` above, they values should be 2-tuples of the
+        lower and upper bounds for the parameter range. The parameter
+        values will be uniformly distributed between the lower and upper
+        bounds, inclusively.
+
     Returns
     -------
     table : `~astropy.table.QTable`
@@ -68,7 +75,7 @@ def make_model_params(shape, n_sources, *, flux_range=(1, 1),
     Examples
     --------
     >>> from photutils.datasets import make_model_params
-    >>> params = make_model_params((100, 100), 5, flux_range=(100, 500),
+    >>> params = make_model_params((100, 100), 5, flux=(100, 500),
     ...                            min_separation=3, border_size=10, seed=0)
     >>> for col in params.colnames:
     ...     params[col].info.format = '%.8g'  # for consistent table output
@@ -80,9 +87,26 @@ def make_model_params(shape, n_sources, *, flux_range=(1, 1),
       3 13.277882 80.118738 420.75223
       4 11.322211 14.685443 469.41206
       5 75.061619 36.889365 206.45211
+
+    >>> from photutils.datasets import make_model_params
+    >>> params = make_model_params((100, 100), 5, flux=(100, 500),
+    ...                            sigma=(1, 2), alpha=(0, 1),
+    ...                            min_separation=3, border_size=10, seed=0)
+    >>> for col in params.colnames:
+    ...     params[col].info.format = '%.5g'  # for consistent table output
+    >>> print(params)
+     id  x_0    y_0    flux  sigma   alpha
+    --- ------ ------ ------ ------ --------
+      1 60.957 72.968    292 1.5389  0.61437
+      2 31.583  29.15 192.95 1.4428 0.028365
+      3 13.278 80.119 420.75  1.931  0.71922
+      4 11.322 14.685 469.41 1.0405 0.015992
+      5 75.062 36.889 206.45  1.732  0.75795
     """
     shape = as_pair('shape', shape, lower_bound=(0, 1))
     border_size = as_pair('border_size', border_size, lower_bound=(0, 0))
+    if len(flux) != 2:
+        raise ValueError('flux must be a 2-tuple')
 
     xrange = (border_size[1], shape[1] - border_size[1])
     yrange = (border_size[0], shape[0] - border_size[0])
@@ -96,15 +120,21 @@ def make_model_params(shape, n_sources, *, flux_range=(1, 1),
                                     seed=rng)
     x, y = np.transpose(xycoords)
 
-    flux = rng.uniform(flux_range[0], flux_range[1], size=len(x))
+    flux = rng.uniform(flux[0], flux[1], size=len(x))
 
-    params = QTable()
-    params['id'] = np.arange(len(x)) + 1
-    params['x_0'] = x
-    params['y_0'] = y
-    params['flux'] = flux
+    model_params = QTable()
+    model_params['id'] = np.arange(len(x)) + 1
+    model_params['x_0'] = x
+    model_params['y_0'] = y
+    model_params['flux'] = flux
 
-    return params
+    for param, prange in kwargs.items():
+        if len(prange) != 2:
+            raise ValueError(f'{param} must be a 2-tuple')
+        vals = rng.uniform(*prange, n_sources)
+        model_params[param] = vals
+
+    return model_params
 
 
 def make_random_models_table(n_sources, param_ranges, seed=None):
@@ -114,7 +144,7 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
 
     Each row of the table corresponds to a source whose parameters are
     defined by the column names. The parameters are drawn from a uniform
-    distribution over the specified input ranges.
+    distribution over the specified input ranges, inclusively.
 
     The output table can be input into :func:`make_model_sources_image`
     to create an image containing the model sources.
@@ -127,7 +157,8 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     param_ranges : dict
         The lower and upper boundaries for each of the model parameters
         as a dictionary mapping the parameter name to its ``(lower,
-        upper)`` bounds.
+        upper)`` bounds. The parameter values will be uniformly
+        distributed between these bounds, inclusively.
 
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
