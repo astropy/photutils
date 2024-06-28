@@ -147,7 +147,7 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
     for param, prange in kwargs.items():
         if len(prange) != 2:
             raise ValueError(f'{param} must be a 2-tuple')
-        vals = rng.uniform(*prange, n_sources)
+        vals = rng.uniform(*prange, len(model_params))
         model_params[param] = vals
 
     return model_params

@@ -6,7 +6,8 @@ Tests for the sources module.
 import numpy as np
 import pytest
 from astropy.table import Table
-from astropy.utils.exceptions import AstropyDeprecationWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 
 from photutils.datasets import (make_model_params, make_random_gaussians_table,
                                 make_random_models_table)
@@ -52,6 +53,21 @@ def test_make_model_params():
     match = 'must be a 2-tuple'
     with pytest.raises(ValueError, match=match):
         make_model_params(shape, n_sources, flux=(1, 2), alpha=(1, 2, 3))
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_make_model_params_nsources():
+    """
+    Test case when the number of the possible sources is less than
+    ``n_sources``.
+    """
+    with pytest.warns(AstropyUserWarning):
+        shape = (200, 500)
+        n_sources = 100
+        params = make_model_params(shape, n_sources, min_separation=50,
+                                   amplitude=(100, 500), x_stddev=(1, 5),
+                                   y_stddev=(1, 5), theta=(0, np.pi))
+        assert len(params) < 100
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
