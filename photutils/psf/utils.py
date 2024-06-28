@@ -599,9 +599,9 @@ def _get_psf_model_params(psf_model):
     return model_params
 
 
-def make_psf_model_image(shape, psf_model, n_sources, *, flux_range=(1, 1),
+def make_psf_model_image(shape, psf_model, n_sources, *, flux=(1, 1),
                          model_shape=None, min_separation=1, border_size=None,
-                         seed=0, progress_bar=False):
+                         seed=0, progress_bar=False, **kwargs):
     """
     Make an example image containing PSF model images.
 
@@ -628,9 +628,9 @@ def make_psf_model_image(shape, psf_model, n_sources, *, flux_range=(1, 1),
         given ``shape`` and therefore the number of sources generated
         may be less than ``n_sources``.
 
-    flux_range : 2-tuple, optional
+    flux : 2-tuple, optional
         The lower and upper bounds of the flux range. The fluxes will be
-        uniformly distributed between these bounds.
+        uniformly distributed between these bounds, inclusively.
 
     model_shape : `None` or 2-tuple of int, optional
         The shape around the center (x, y) position that will used to
@@ -662,6 +662,14 @@ def make_psf_model_image(shape, psf_model, n_sources, *, flux_range=(1, 1),
         bar does not currently work in the Jupyter console due to
         limitations in ``tqdm``.
 
+    **kwargs
+        Keyword arguments are accepted for additional model parameters.
+        Like ``flux`` above, they values should be 2-tuples of the
+        lower and upper bounds for the parameter range. The parameter
+        values will be uniformly distributed between the lower and
+        upper bounds, inclusively. If the parameter is not in the input
+        ``psf_model`` parameter names, it will be ignored.
+
     Returns
     -------
     data : 2D `~numpy.ndarray`
@@ -680,24 +688,9 @@ def make_psf_model_image(shape, psf_model, n_sources, *, flux_range=(1, 1),
     >>> psf_model= IntegratedGaussianPRF(sigma=1.5)
     >>> n_sources = 10
     >>> data, params = make_psf_model_image(shape, psf_model, n_sources,
-    ...                                     flux_range=(100, 250),
+    ...                                     flux=(100, 250),
     ...                                     min_separation=10,
     ...                                     seed=0)
-
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
-        shape = (150, 200)
-        psf_model= IntegratedGaussianPRF(sigma=1.5)
-        n_sources = 10
-        data, params = make_psf_model_image(shape, psf_model, n_sources,
-                                            flux_range=(100, 250),
-                                            min_separation=10,
-                                            seed=0)
-        plt.imshow(data, origin='lower')
-
     >>> params['x_0'].info.format = '.4f'  # optional format
     >>> params['y_0'].info.format = '.4f'
     >>> params['flux'].info.format = '.4f'
@@ -714,6 +707,34 @@ def make_psf_model_image(shape, psf_model, n_sources, *, flux_range=(1, 1),
       8 108.1142  12.5095 110.8398
       9 180.9235 106.5528 174.9959
      10 158.7488  90.5548 211.6146
+
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+        shape = (150, 200)
+        psf_model= IntegratedGaussianPRF(sigma=1.5)
+        n_sources = 10
+        data, params = make_psf_model_image(shape, psf_model, n_sources,
+                                            flux=(100, 250),
+                                            min_separation=10,
+                                            seed=0)
+        plt.imshow(data, origin='lower')
+
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+        shape = (150, 200)
+        psf_model= IntegratedGaussianPRF(sigma=1.5)
+        n_sources = 10
+        data, params = make_psf_model_image(shape, psf_model, n_sources,
+                                            flux=(100, 250),
+                                            min_separation=10,
+                                            seed=0, sigma=(1, 2))
+        plt.imshow(data, origin='lower')
     """
     psf_params = _get_psf_model_params(psf_model)
 
@@ -732,9 +753,18 @@ def make_psf_model_image(shape, psf_model, n_sources, *, flux_range=(1, 1),
     if border_size is None:
         border_size = (np.array(model_shape) - 1) // 2
 
-    params = make_model_params(shape, n_sources, flux_range=flux_range,
+    other_params = {}
+    if kwargs:
+        # include only kwargs that are not x, y, or flux
+        for key, val in kwargs.items():
+            if key in psf_params or key not in psf_model.param_names:
+                continue  # skip the x, y, flux parameters
+            other_params[key] = val
+
+    params = make_model_params(shape, n_sources, flux=flux,
                                min_separation=min_separation,
-                               border_size=border_size, seed=seed)
+                               border_size=border_size, seed=seed,
+                               **other_params)
 
     if psf_params != ('x_0', 'y_0', 'flux'):
         # rename the parameter names to match the PSF model

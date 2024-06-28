@@ -31,7 +31,7 @@ def fixture_test_data():
     shape = (101, 101)
     data, true_params = make_psf_model_image(shape, psf_model, n_sources,
                                              model_shape=model_shape,
-                                             flux_range=(500, 700),
+                                             flux=(500, 700),
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
@@ -412,7 +412,7 @@ def test_iterative_psf_photometry_compound(mode):
     shape = (101, 101)
     data, true_params = make_psf_model_image(shape, psf_model, n_sources,
                                              model_shape=model_shape,
-                                             flux_range=(500, 700),
+                                             flux=(500, 700),
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
@@ -755,7 +755,7 @@ def test_large_group_warning():
     shape = (301, 301)
     data, true_params = make_psf_model_image(shape, psf_model, n_sources,
                                              model_shape=model_shape,
-                                             flux_range=(500, 700),
+                                             flux=(500, 700),
                                              min_separation=10, seed=0)
     match = 'Some groups have more than'
     with pytest.warns(AstropyUserWarning, match=match):
@@ -1016,7 +1016,7 @@ def test_iterative_psf_photometry_overlap():
     data, true_params = make_psf_model_image((150, 150), psf_model,
                                              n_sources=300,
                                              model_shape=(11, 11),
-                                             flux_range=(50, 100),
+                                             flux=(50, 100),
                                              min_separation=1, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=0.01, seed=0)
     data += noise

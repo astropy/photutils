@@ -357,6 +357,23 @@ def test_make_psf_model_image():
     assert_equal(data, data2)
     assert len(params2) == n_sources
 
+    flux = (100, 200)
+    sigma = (1, 2)
+    alpha = (0, 1)
+    n_sources = 10
+    data, params = make_psf_model_image(shape, model, n_sources,
+                                        seed=0, flux=flux, sigma=sigma,
+                                        alpha=alpha)
+    assert len(params) == n_sources
+    colnames = ('id', 'x_0', 'y_0', 'flux', 'sigma')
+    for colname in colnames:
+        assert colname in params.colnames
+    assert 'alpha' not in params.colnames
+    assert np.min(params['flux']) >= flux[0]
+    assert np.max(params['flux']) <= flux[1]
+    assert np.min(params['sigma']) >= sigma[0]
+    assert np.max(params['sigma']) <= sigma[1]
+
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model_image_custom():
