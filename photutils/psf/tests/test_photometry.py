@@ -188,6 +188,10 @@ def test_psf_photometry(test_data):
     assert isinstance(resid_data, np.ndarray)
     assert resid_data.shape == data.shape
     assert phot.colnames[:4] == ['id', 'group_id', 'group_size', 'local_bkg']
+    # test that error columns are ordered correctly
+    assert phot['x_err'].max() > 0.0062
+    assert phot['y_err'].max() > 0.0065
+    assert phot['flux_err'].max() > 2.5
 
     keys = ('fit_infos', 'fit_error_indices')
     for key in keys:
