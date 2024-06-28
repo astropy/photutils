@@ -17,7 +17,8 @@ New Features
     ``make_model_sources_image`` function. [#1759, #1790]
 
   - Added a ``make_model_params`` function to make a table of randomly
-    generated model positions and fluxes for simulated sources. [#1766]
+    generated model positions and fluxes for simulated sources. [#1766,
+    #1796]
 
 - ``photutils.detection``
 
@@ -49,7 +50,7 @@ New Features
     photometry objects. [#1765]
 
   - Added a ``make_psf_model_image`` function to generate a simulated
-    image from PSF models. [#1785]
+    image from PSF models. [#1785, #1796]
 
   - ``PSFPhotometry`` now has a new ``fit_params`` attribute containing
     a table of the fit model parameters and errors. [#1789]
