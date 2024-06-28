@@ -62,7 +62,7 @@ for details.
     :alt: Powered by Astropy
 
 .. |Zenodo| image:: https://zenodo.org/badge/2640766.svg
-    :target: https://zenodo.org/badge/latestdoi/2640766
+    :target: https://zenodo.org/doi/10.5281/zenodo.596036
     :alt: Zenodo Latest DOI
 
 .. |CI Status| image:: https://github.com/astropy/photutils/workflows/CI%20Tests/badge.svg#
