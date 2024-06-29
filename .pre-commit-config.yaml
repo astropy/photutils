@@ -54,7 +54,7 @@ repos:
         # Enforce that all noqa annotations always occur with specific codes.
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.15.2
+    rev: v3.16.0
     hooks:
       - id: pyupgrade
         args: ["--py39-plus"]
@@ -72,7 +72,7 @@ repos:
         additional_dependencies: [toml]
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.0.0
+    rev: 7.1.0
     hooks:
       - id: flake8
         args: ["--ignore", "E501,W503"]
@@ -83,7 +83,7 @@ repos:
       - id: yesqa
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.6
+    rev: v2.3.0
     hooks:
       - id: codespell
         args: ["--write-changes", "--ignore-words-list", "exten, conver, fom"]
