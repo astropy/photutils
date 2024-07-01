@@ -38,7 +38,8 @@ class ModelImageMixin:
     residuals.
     """
 
-    def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
+    def make_model_image(self, shape, psf_shape, *, include_localbkg=False,
+                         exclude_negative_peaks=False):
         """
         Create a 2D image from the fit PSF models and optional local
         background.
@@ -59,6 +60,9 @@ class ModelImageMixin:
             ``psf_shape``. Thus, regions where the ``psf_shape`` of
             sources overlap will have the local background added
             multiple times.
+
+        exclude_negative_peaks : bool, optional
+            Whether to exclude from the model all peaks with negative flux.
 
         Returns
         -------
@@ -96,6 +100,10 @@ class ModelImageMixin:
 
         model_params = fit_params
 
+        if exclude_negative_peaks:
+            to_include = model_params['flux_fit'] >= 0
+            model_params = model_params[to_include]
+
         if include_localbkg:
             # add local_bkg
             model_params = model_params.copy()
@@ -113,7 +121,8 @@ class ModelImageMixin:
                                  x_name=x_name, y_name=y_name,
                                  progress_bar=progress_bar)
 
-    def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
+    def make_residual_image(self, data, psf_shape, *, include_localbkg=False,
+                            exclude_negative_peaks=False):
         """
         Create a 2D residual image from the fit PSF models and local
         background.
@@ -136,6 +145,9 @@ class ModelImageMixin:
             Thus, regions where the ``psf_shape`` of sources overlap
             will have the local background subtracted multiple times.
 
+        exclude_negative_peaks : bool, optional
+            Whether to exclude from the model all peaks with negative flux.
+
         Returns
         -------
         array : 2D `~numpy.ndarray`
@@ -148,10 +160,12 @@ class ModelImageMixin:
             if data.unit is not None:
                 data_arr <<= data.unit
             residual.data[:] = self.make_residual_image(
-                data_arr, psf_shape, include_localbkg=include_localbkg)
+                data_arr, psf_shape, include_localbkg=include_localbkg,
+                exclude_negative_peaks=exclude_negative_peaks)
         else:
             residual = self.make_model_image(data.shape, psf_shape,
-                                             include_localbkg=include_localbkg)
+                                             include_localbkg=include_localbkg,
+                                             exclude_negative_peaks=exclude_negative_peaks)
             np.subtract(data, residual, out=residual)
 
         return residual
@@ -1368,13 +1382,17 @@ class PSFPhotometry(ModelImageMixin):
 
         return results_tbl
 
-    def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
+    def make_model_image(self, shape, psf_shape, *, include_localbkg=False,
+                         exclude_negative_peaks=False):
         return ModelImageMixin.make_model_image(
-            self, shape, psf_shape, include_localbkg=include_localbkg)
+            self, shape, psf_shape, include_localbkg=include_localbkg,
+            exclude_negative_peaks=exclude_negative_peaks)
 
-    def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
+    def make_residual_image(self, data, psf_shape, *, include_localbkg=False,
+                            exclude_negative_peaks=False):
         return ModelImageMixin.make_residual_image(
-            self, data, psf_shape, include_localbkg=include_localbkg)
+            self, data, psf_shape, include_localbkg=include_localbkg,
+            exclude_negative_peaks=exclude_negative_peaks)
 
 
 class IterativePSFPhotometry(ModelImageMixin):
@@ -1905,13 +1923,17 @@ class IterativePSFPhotometry(ModelImageMixin):
 
         return phot_tbl
 
-    def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
+    def make_model_image(self, shape, psf_shape, *, include_localbkg=False,
+                         exclude_negative_peaks=False):
         return ModelImageMixin.make_model_image(
-            self, shape, psf_shape, include_localbkg=include_localbkg)
+            self, shape, psf_shape, include_localbkg=include_localbkg,
+            exclude_negative_peaks=exclude_negative_peaks)
 
-    def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
+    def make_residual_image(self, data, psf_shape, *, include_localbkg=False,
+                            exclude_negative_peaks=False):
         return ModelImageMixin.make_residual_image(
-            self, data, psf_shape, include_localbkg=include_localbkg)
+            self, data, psf_shape, include_localbkg=include_localbkg,
+            exclude_negative_peaks=exclude_negative_peaks)
 
 
 def _flatten(iterable):
