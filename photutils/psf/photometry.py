@@ -101,7 +101,12 @@ class ModelImageMixin:
         model_params = fit_params
 
         if exclude_negative_peaks:
-            to_include = model_params['flux_fit'] >= 0
+            if 'flux_fit' in model_params:
+                to_include = model_params['flux_fit'] >= 0
+            elif 'flux' in model_params:
+                to_include = model_params['flux'] >= 0
+            else:
+                raise ValueError("No 'flux' or 'flux_fit' column in model parameters.")
             model_params = model_params[to_include]
 
         if include_localbkg:
