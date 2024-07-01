@@ -164,8 +164,8 @@ class ModelImageMixin:
                 exclude_negative_peaks=exclude_negative_peaks)
         else:
             residual = self.make_model_image(data.shape, psf_shape,
-                                             include_localbkg=include_localbkg,
-                                             exclude_negative_peaks=exclude_negative_peaks)
+                include_localbkg=include_localbkg,
+                exclude_negative_peaks=exclude_negative_peaks)
             np.subtract(data, residual, out=residual)
 
         return residual
