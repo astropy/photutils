@@ -20,8 +20,7 @@ def pytest_configure(config):
         # running the tests.
         PYTEST_HEADER_MODULES.clear()
         deps = ['NumPy', 'SciPy', 'Matplotlib', 'Astropy', 'skimage',
-                'sklearn', 'GWCS', 'Bottleneck', 'tqdm', 'Rasterio',
-                'Shapely']
+                'GWCS', 'Bottleneck', 'tqdm', 'Rasterio', 'Shapely']
         for dep in deps:
             PYTEST_HEADER_MODULES[dep] = dep.lower()
 
