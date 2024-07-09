@@ -74,7 +74,7 @@ def test_invalid_inputs():
         with pytest.raises(ValueError, match=match):
             _ = PSFPhotometry(model, shape)
 
-    match = 'fit_shape must be > 0'
+    match = 'fit_shape must be >= 1'
     with pytest.raises(ValueError, match=match):
         _ = PSFPhotometry(model, (-1, 1))
 
@@ -849,6 +849,67 @@ def test_fitter_no_maxiters_no_metrics(test_data):
         phot = psfphot(data, error=error)
         assert np.all(np.isnan(phot['qfit']))
         assert np.all(np.isnan(phot['cfit']))
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_xy_bounds(test_data):
+    data, error, _ = test_data
+
+    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    fit_shape = (5, 5)
+    init_params = QTable()
+    init_params['x'] = [65]
+    init_params['y'] = [51]
+    xy_bounds = (1, 1)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
+                            aperture_radius=4, xy_bounds=xy_bounds)
+    phot = psfphot(data, error=error, init_params=init_params)
+    assert len(phot) == len(init_params)
+    assert phot['x_fit'] == 64.0  # at lower bound
+    assert phot['y_fit'] == 50.0  # at lower bound
+    assert phot['flags'] == 32
+
+    psfphot2 = PSFPhotometry(psf_model, fit_shape, finder=None,
+                             aperture_radius=4, xy_bounds=1)
+    phot2 = psfphot2(data, error=error, init_params=init_params)
+    cols = ('x_fit', 'y_fit', 'flux_fit')
+    for col in cols:
+        assert np.all(phot[col] == phot2[col])
+
+    xy_bounds = (None, 1)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
+                            aperture_radius=4, xy_bounds=xy_bounds)
+    phot = psfphot(data, error=error, init_params=init_params)
+    assert phot['x_fit'] < 64.0
+    assert phot['y_fit'] == 50.0  # at lower bound
+    assert phot['flags'] == 32
+
+    xy_bounds = (1, None)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
+                            aperture_radius=4, xy_bounds=xy_bounds)
+    phot = psfphot(data, error=error, init_params=init_params)
+    assert phot['x_fit'] == 64.0  # at lower bound
+    assert phot['y_fit'] < 50.0
+    assert phot['flags'] == 32
+
+    xy_bounds = (None, None)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
+                            aperture_radius=4, xy_bounds=xy_bounds)
+    phot = psfphot(data, error=error, init_params=init_params)
+    assert phot['x_fit'] < 64.0
+    assert phot['y_fit'] < 50.0
+    assert phot['flags'] == 0
+
+    # test invalid inputs
+    match = 'xy_bounds must have 1 or 2 elements'
+    with pytest.raises(ValueError, match=match):
+        PSFPhotometry(psf_model, fit_shape, xy_bounds=(1, 2, 3))
+    match = 'xy_bounds must be a 1D array'
+    with pytest.raises(ValueError, match=match):
+        PSFPhotometry(psf_model, fit_shape, xy_bounds=np.ones((1, 1)))
+    match = 'xy_bounds must be strictly positive'
+    with pytest.raises(ValueError, match=match):
+        PSFPhotometry(psf_model, fit_shape, xy_bounds=(-1, 2))
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')

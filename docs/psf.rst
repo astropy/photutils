@@ -502,8 +502,16 @@ The astropy modeling and fitting framework also allows for bounding the
 parameter values during the fitting process. However, not all astropy
 "Fitter" classes support parameter bounds. Please see `Fitting Model to
 Data <https://docs.astropy.org/en/stable/modeling/fitting.html>`_ for
-more details. Currently, parameter bounds apply to all sources in the
-image, thus x and y positions cannot be bounded for individual sources.
+more details.
+
+The model parameter bounds apply to all sources in the image,
+thus this mechanism cannot be used to bound the x and y positions
+of individual sources. However, the x and y positions can be
+bounded for individual sources during the fitting by using the
+``xy_bounds`` keyword in `~photutils.psf.PSFPhotometry` and
+`~photutils.psf.IterativePSFPhotometry`. This keyword accepts a tuple of
+floats representing the maximum distance in pixels that a fitted source
+can be from its initial (x, y) position.
 
 For example, you may want to constrain the flux of a source to be
 between certain values or ensure that it is a non-negative value. This
