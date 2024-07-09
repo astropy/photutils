@@ -502,7 +502,8 @@ The astropy modeling and fitting framework also allows for bounding the
 parameter values during the fitting process. However, not all astropy
 "Fitter" classes support parameter bounds. Please see `Fitting Model to
 Data <https://docs.astropy.org/en/stable/modeling/fitting.html>`_ for
-more details.
+more details. Currently, parameter bounds apply to all sources in the
+image, thus x and y positions cannot be bounded for individual sources.
 
 For example, you may want to constrain the flux of a source to be
 between certain values or ensure that it is a non-negative value. This
