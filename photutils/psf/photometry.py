@@ -1485,6 +1485,14 @@ class IterativePSFPhotometry(ModelImageMixin):
         The maximum number of iterations in which the ``fitter`` is
         called for each source.
 
+    xy_bounds : `None`, float, or 2-tuple of float, optional
+        The maximum distance in pixels that a fitted source can be from
+        the initial (x, y) position. If a single float, then the same
+        maximum distance is used for both x and y. If a 2-tuple of
+        floats, then the distances are in ``(x, y)`` order. If `None`,
+        then no bounds are applied. Either value can also be `None` to
+        indicate no bound in that direction.
+
     maxiters : int, optional
         The maximum number of PSF-fitting/subtraction iterations to
         perform.
@@ -1587,8 +1595,9 @@ class IterativePSFPhotometry(ModelImageMixin):
     """
 
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
-                 fitter=LevMarLSQFitter(), fitter_maxiters=100, maxiters=3,
-                 mode='new', localbkg_estimator=None, aperture_radius=None,
+                 fitter=LevMarLSQFitter(), fitter_maxiters=100,
+                 xy_bounds=None, maxiters=3, mode='new',
+                 localbkg_estimator=None, aperture_radius=None,
                  sub_shape=None, progress_bar=False):
 
         if finder is None:
@@ -1602,6 +1611,7 @@ class IterativePSFPhotometry(ModelImageMixin):
         self._psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                                       grouper=grouper, fitter=fitter,
                                       fitter_maxiters=fitter_maxiters,
+                                      xy_bounds=xy_bounds,
                                       localbkg_estimator=localbkg_estimator,
                                       aperture_radius=aperture_radius,
                                       progress_bar=progress_bar)
