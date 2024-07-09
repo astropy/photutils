@@ -867,6 +867,7 @@ def test_xy_bounds(test_data):
     assert len(phot) == len(init_params)
     assert phot['x_fit'] == 64.0  # at lower bound
     assert phot['y_fit'] == 50.0  # at lower bound
+    assert phot['flags'] == 32
 
     psfphot2 = PSFPhotometry(psf_model, fit_shape, finder=None,
                              aperture_radius=4, xy_bounds=1)
@@ -881,6 +882,7 @@ def test_xy_bounds(test_data):
     phot = psfphot(data, error=error, init_params=init_params)
     assert phot['x_fit'] < 64.0
     assert phot['y_fit'] == 50.0  # at lower bound
+    assert phot['flags'] == 32
 
     xy_bounds = (1, None)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
@@ -888,6 +890,7 @@ def test_xy_bounds(test_data):
     phot = psfphot(data, error=error, init_params=init_params)
     assert phot['x_fit'] == 64.0  # at lower bound
     assert phot['y_fit'] < 50.0
+    assert phot['flags'] == 32
 
     xy_bounds = (None, None)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
@@ -895,6 +898,7 @@ def test_xy_bounds(test_data):
     phot = psfphot(data, error=error, init_params=init_params)
     assert phot['x_fit'] < 64.0
     assert phot['y_fit'] < 50.0
+    assert phot['flags'] == 0
 
     # test invalid inputs
     match = 'xy_bounds must have 1 or 2 elements'
