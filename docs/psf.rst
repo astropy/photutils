@@ -452,8 +452,8 @@ the location of the star that was fit and subtracted.
     plt.tight_layout()
 
 
-Forced Photometry
-^^^^^^^^^^^^^^^^^
+Forced Photometry (Fixed Model Parameters)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In general, the three parameters fit for each source are the x and
 y positions and the flux. However, the astropy modeling and fitting
@@ -493,6 +493,47 @@ fit:
      id x_init y_init flux_init x_fit y_fit flux_fit
     --- ------ ------ --------- ----- ----- --------
       1     63     49  556.4444  63.0  49.0 500.4789
+
+
+Bounded Model Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+The astropy modeling and fitting framework also allows for bounding the
+parameter values during the fitting process. However, not all astropy
+"Fitter" classes support parameter bounds. Please see `Fitting Model to
+Data <https://docs.astropy.org/en/stable/modeling/fitting.html>`_ for
+more details.
+
+For example, you may want to constrain the flux of a source to be
+between certain values or ensure that it is a non-negative value. This
+can be done by setting the ``bounds`` attribute on the input PSF model
+parameters. Here we constrain the flux to be greater than or equal to 0:
+
+.. doctest-requires:: scipy
+
+    >>> psf_model3 = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_model3.flux.bounds = (0, None)
+    >>> psf_model3.bounds
+    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'sigma': (None, None)}
+
+The model parameter ``bounds`` can also be set using the ``min`` and/or
+``max`` attributes. Here we set the minimum flux to be 0:
+
+.. doctest-requires:: scipy
+
+    >>> psf_model3.flux.min = 0
+    >>> psf_model3.bounds
+    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'sigma': (None, None)}
+
+For this example, let's constrain the flux value to be between between
+400 and 600:
+
+.. doctest-requires:: scipy
+
+    >>> psf_model3 = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_model3.flux.bounds = (400, 600)
+    >>> psf_model3.bounds
+    {'flux': (400.0, 600.0), 'x_0': (None, None), 'y_0': (None, None), 'sigma': (None, None)}
 
 
 Source Grouping
