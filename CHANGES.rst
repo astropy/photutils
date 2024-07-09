@@ -7,6 +7,12 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Added new ``xy_bounds`` keyword to ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` to allow one to bound the x and y
+    model parameters during the fitting. [#1805]
+
 Bug Fixes
 ^^^^^^^^^
 
