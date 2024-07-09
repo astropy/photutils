@@ -794,11 +794,14 @@ class PSFPhotometry(ModelImageMixin):
         params = defaultdict(list)
         for model in models:
             for name in param_names:
-                value = getattr(model, name).value
+                param = getattr(model, name)
+                value = param.value
                 if (self.data_unit is not None
                         and name == self._param_maps['model']['flux']):
                     value <<= self.data_unit  # add the flux units
                 params[name].append(value)
+                params[f'{name}_fixed'].append(param.fixed)
+                params[f'{name}_bounds'].append(param.bounds)
 
         table = QTable(params)
         ids = np.arange(len(table)) + 1
@@ -1173,6 +1176,20 @@ class PSFPhotometry(ModelImageMixin):
         except KeyError:
             pass
 
+        # add flag = 32 if x or y fitted value is at the bounds
+        if self.xy_bounds is not None:
+            xcolname = self._param_maps['model']['x']
+            ycolname = self._param_maps['model']['y']
+            for index, row in enumerate(self._fit_model_params):
+                x_bounds = row[f'{xcolname}_bounds']
+                x_bounds = np.array([i for i in x_bounds if i is not None])
+                y_bounds = row[f'{ycolname}_bounds']
+                y_bounds = np.array([i for i in y_bounds if i is not None])
+                dx = x_bounds - row[xcolname]
+                dy = y_bounds - row[ycolname]
+                if np.any(dx == 0) or np.any(dy == 0):
+                    flags[index] += 32
+
         return flags
 
     def _prepare_fit_inputs(self, data, *, mask=None, error=None,
@@ -1338,6 +1355,7 @@ class PSFPhotometry(ModelImageMixin):
                     iterations using the ``fitter_maxiters`` keyword.
                   * 16 : the fitter parameter covariance matrix was not
                     returned
+                  * 32 : the fit x or y position is at the bounded value
         """
         if isinstance(data, NDData):
             data_ = data.data
@@ -1846,6 +1864,7 @@ class IterativePSFPhotometry(ModelImageMixin):
                   * 8 : the fitter may not have converged
                   * 16 : the fitter parameter covariance matrix was not
                     returned
+                  * 32 : the fit x or y position is at the bounded value
         """
         if isinstance(data, NDData):
             data_ = data.data
