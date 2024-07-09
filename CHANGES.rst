@@ -19,6 +19,10 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- The ``sklearn`` version information has been removed from the meta
+  attribute in output tables. ``sklearn`` was removed as an optional
+  dependency in 1.13.0. [#1807]
+
 
 1.13.0 (2024-06-28)
 -------------------

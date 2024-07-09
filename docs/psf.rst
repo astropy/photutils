@@ -553,7 +553,7 @@ Source grouping is an optional feature. To turn it on, create a
 keyword. Here we'll group stars that are within 20 pixels of each
 other:
 
-.. doctest-requires:: scipy, sklearn
+.. doctest-requires:: scipy
 
     >>> from photutils.psf import SourceGrouper
     >>> grouper = SourceGrouper(min_separation=20)
@@ -564,7 +564,7 @@ other:
 The ``group_id`` column shows that six groups were identified (each with
 two stars). The stars in each group were simultaneously fit.
 
-.. doctest-requires:: scipy, sklearn
+.. doctest-requires:: scipy
 
     >>> print(phot[('id', 'group_id', 'group_size')])
      id group_id group_size
@@ -596,7 +596,7 @@ an inner and outer radius of 5 and 10 pixels, respectively, with the
 `~photutils.background.MMMBackground` statistic (with its default sigma
 clipping):
 
-.. doctest-requires:: scipy, sklearn
+.. doctest-requires:: scipy
 
     >>> from photutils.background import LocalBackground, MMMBackground
     >>> bkgstat = MMMBackground()
@@ -609,7 +609,7 @@ clipping):
 
 The local background values are output in the table:
 
-.. doctest-requires:: scipy, sklearn
+.. doctest-requires:: scipy
 
     >>> phot['local_bkg'].info.format = '.4f'  # optional format
     >>> print(phot[('id', 'local_bkg')])  # doctest: +FLOAT_CMP
