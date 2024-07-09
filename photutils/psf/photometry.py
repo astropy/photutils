@@ -226,6 +226,14 @@ class PSFPhotometry(ModelImageMixin):
         is not converging for sources (e.g., the output ``flags`` value
         contains 8).
 
+    xy_bounds : `None`, float, or 2-tuple of float, optional
+        The maximum distance in pixels that a fitted source can be from
+        the initial (x, y) position. If a single float, then the same
+        maximum distance is used for both x and y. If a 2-tuple of
+        floats, then the distances are in ``(x, y)`` order. If `None`,
+        then no bounds are applied. Either value can also be `None` to
+        indicate no bound in that direction.
+
     localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
         The object used to estimate the local background around each
         source. If `None`, then no local background is subtracted. The
@@ -289,13 +297,13 @@ class PSFPhotometry(ModelImageMixin):
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
                  fitter=LevMarLSQFitter(), fitter_maxiters=100,
-                 localbkg_estimator=None, aperture_radius=None,
+                 xy_bounds=None, localbkg_estimator=None, aperture_radius=None,
                  progress_bar=False):
 
         self._param_maps = self._define_param_maps(psf_model)
         self.psf_model = _validate_psf_model(psf_model)
 
-        self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(0, 1),
+        self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 0),
                                  check_odd=True)
         self.grouper = self._validate_grouper(grouper, 'grouper')
         self.finder = self._validate_callable(finder, 'finder')
@@ -303,6 +311,7 @@ class PSFPhotometry(ModelImageMixin):
         self.localbkg_estimator = self._validate_localbkg(
             localbkg_estimator, 'localbkg_estimator')
         self.fitter_maxiters = self._validate_maxiters(fitter_maxiters)
+        self.xy_bounds = self._validate_bounds(xy_bounds)
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
@@ -420,6 +429,22 @@ class PSFPhotometry(ModelImageMixin):
                           AstropyUserWarning)
             maxiters = None
         return maxiters
+
+    def _validate_bounds(self, xy_bounds):
+        if xy_bounds is None:
+            return xy_bounds
+
+        xy_bounds = np.atleast_1d(xy_bounds)
+        if len(xy_bounds) == 1:
+            xy_bounds = np.array((xy_bounds[0], xy_bounds[0]))
+        if len(xy_bounds) != 2:
+            raise ValueError('xy_bounds must have 1 or 2 elements')
+        if xy_bounds.ndim != 1:
+            raise ValueError('xy_bounds must be a 1D array')
+        non_none = [i for i in xy_bounds if i is not None]
+        if np.any(np.array(non_none) <= 0):
+            raise ValueError('xy_bounds must be strictly positive')
+        return xy_bounds
 
     @staticmethod
     def _validate_radius(radius):
@@ -701,6 +726,17 @@ class PSFPhotometry(ModelImageMixin):
                     value = value.value  # psf model cannot be fit with units
                 setattr(model, model_param, value)
                 model.name = source['id']
+
+            if self.xy_bounds is not None:
+                if self.xy_bounds[0] is not None:
+                    x_param = getattr(model, self._param_maps['model']['x'])
+                    x_param.bounds = (x_param.value - self.xy_bounds[0],
+                                      x_param.value + self.xy_bounds[0])
+
+                if self.xy_bounds[1] is not None:
+                    y_param = getattr(model, self._param_maps['model']['y'])
+                    y_param.bounds = (y_param.value - self.xy_bounds[1],
+                                      y_param.value + self.xy_bounds[1])
 
             if index == 0:
                 psf_model = model
