@@ -14,6 +14,7 @@ from astropy.utils.data import get_pkg_data_filename
 from photutils.datasets import get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.isophote import IsophoteList
 from photutils.isophote.model import build_ellipse_model
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.tests.helper import PYTEST_LT_80
@@ -99,3 +100,9 @@ def test_model_minimum_radius():
         # It's enough that the algorithm reached this point. The
         # actual accuracy of the modelling is being tested elsewhere.
         assert data.shape == model.shape
+
+
+def test_model_inputs():
+    match = 'isolist must not be empty'
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model((10, 10), IsophoteList([]))

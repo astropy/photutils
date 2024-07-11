@@ -23,6 +23,11 @@ API Changes
   attribute in output tables. ``sklearn`` was removed as an optional
   dependency in 1.13.0. [#1807]
 
+- ``photutils.isophote``
+
+  - The ``build_ellipse_model`` function now raises a ``ValueError`` if
+    the input ``isolist`` is empty. [#1809]
+
 
 1.13.0 (2024-06-28)
 -------------------
