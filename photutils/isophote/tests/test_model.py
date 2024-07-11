@@ -9,6 +9,7 @@ from contextlib import nullcontext
 import numpy as np
 import pytest
 from astropy.io import fits
+from astropy.modeling.models import Gaussian2D
 from astropy.utils.data import get_pkg_data_filename
 
 from photutils.datasets import get_path
@@ -106,3 +107,37 @@ def test_model_inputs():
     match = 'isolist must not be empty'
     with pytest.raises(ValueError, match=match):
         build_ellipse_model((10, 10), IsophoteList([]))
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_model_harmonics():
+    """
+    Test that high harmonics are included in build_ellipse_model.
+    """
+    x0 = y0 = 50
+    xsig = 10
+    ysig = 5
+    eps = ysig / xsig
+    theta = np.deg2rad(41)
+    m = Gaussian2D(100, x0, y0, xsig, ysig, theta)
+    yy, xx = np.mgrid[:101, :101]
+    data = m(xx, yy)
+    yy -= y0
+    xx -= x0
+    dt = np.arctan2(yy, xx) - np.deg2rad(10)
+    harm = (0.1 * np.sin(3 * dt)
+            + 0.1 * np.cos(3 * dt)
+            + 0.6 * np.sin(4 * dt)
+            - 0.5 * np.cos(4 * dt))
+    harm -= np.min(harm)
+    data += 5 * harm
+
+    geometry = EllipseGeometry(x0=x0, y0=y0, sma=30, eps=eps, pa=theta)
+    ellipse = Ellipse(data, geometry)
+    isolist = ellipse.fit_image(fix_center=True, fix_eps=True)
+
+    model_image = build_ellipse_model(data.shape, isolist, high_harmonics=True)
+    residual = data - model_image
+
+    mask = model_image > 0
+    assert np.std(residual[mask]) < 0.4

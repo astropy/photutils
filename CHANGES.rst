@@ -16,6 +16,12 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.isophote``
+
+  - Fixed a bug in ``build_ellipse_model`` where if
+    ``high_harmonics=True``, the harmonics were not correctly added to
+    the model. [#1810]
+
 API Changes
 ^^^^^^^^^^^
 
