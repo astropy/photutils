@@ -69,6 +69,11 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
     r"""
     Make a noise image containing Gaussian or Poisson noise.
 
+    This function simply takes random samples from a Gaussian
+    or Poisson distribution with the given parameters. If you
+    want to apply Poisson noise to existing sources, see the
+    `~photutils.datasets.apply_poisson_noise` function.
+
     Parameters
     ----------
     shape : 2-tuple of int
