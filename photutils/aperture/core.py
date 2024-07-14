@@ -691,7 +691,7 @@ class PixelAperture(Aperture):
 
         patches = self._to_patch(origin=origin, **kwargs)
         if self.isscalar:
-            patches = (patches,)
+            patches = [patches,]
 
         for patch in patches:
             ax.add_patch(patch)
@@ -744,6 +744,8 @@ class PixelAperture(Aperture):
                 # axis). region sky angles are defined relative to the WCS
                 # longitude axis.
                 value = (value * u.rad) - angle.to(u.rad)
+            elif param == 'region':
+                value = value.to_sky(wcs)
             else:
                 value = (value * u.pix * pixscale).to(u.arcsec)
 
@@ -828,6 +830,8 @@ class SkyAperture(Aperture):
                 # axis). region sky angles are defined relative to the WCS
                 # longitude axis.
                 value = (value + angle).to(u.radian).value
+            elif param == 'region':
+                value = value.to_pixel(wcs)
             else:
                 if value.unit.physical_type == 'angle':
                     value = (value / pixscale).to(u.pixel).value
