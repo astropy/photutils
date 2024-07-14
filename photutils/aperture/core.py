@@ -691,7 +691,7 @@ class PixelAperture(Aperture):
 
         patches = self._to_patch(origin=origin, **kwargs)
         if self.isscalar:
-            patches = [patches,]
+            patches = [patches, ]
 
         for patch in patches:
             ax.add_patch(patch)
