@@ -94,22 +94,24 @@ Converting Between Pixel and Sky Apertures
 The pixel apertures can be converted to sky apertures, and
 vice versa, given a WCS object. To accomplish this, use the
 :meth:`~photutils.aperture.PixelAperture.to_sky` method for pixel
-apertures, e.g.,:
+apertures. For this example, we'll use a sample WCS object::
 
-.. doctest-skip::
-
+    >>> from photutils.datasets import make_wcs
+    >>> wcs = make_wcs((100, 100))
     >>> aperture = CircularAperture((10, 20), r=4.0)
     >>> sky_aperture = aperture.to_sky(wcs)
+    >>> sky_aperture  # doctest: +FLOAT_CMP
+    <SkyCircularAperture(<SkyCoord (ICRS): (ra, dec) in deg
+        (197.89234399, -1.36689653)>, r=0.39999999985539925 arcsec)>
 
 and the :meth:`~photutils.aperture.SkyAperture.to_pixel` method for
-sky apertures, e.g.,:
+sky apertures, e.g.,::
 
-.. doctest-skip::
-
-    >>> position = SkyCoord(1.2, 0.1, unit='deg', frame='icrs')
-    >>> aperture = SkyCircularAperture(position, r=4.0 * u.arcsec)
+    >>> position = SkyCoord(197.893, -1.366, unit='deg', frame='icrs')
+    >>> aperture = SkyCircularAperture(position, r=0.4 * u.arcsec)
     >>> pix_aperture = aperture.to_pixel(wcs)
-
+    >>> pix_aperture  # doctest: +FLOAT_CMP
+    <CircularAperture([26.14628817, 56.58410628], r=4.000000000439743)>
 
 Performing Aperture Photometry
 ------------------------------
