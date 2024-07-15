@@ -7,11 +7,9 @@ validation.
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
-from regions import Region, SkyRegion
 
 __all__ = ['ApertureAttribute', 'PixelPositions', 'SkyCoordPositions',
-           'PositiveScalar', 'ScalarAngle', 'ScalarAngleOrValue',
-           'WrappedRegion', 'WrappedSkyRegion']
+           'PositiveScalar', 'ScalarAngle', 'ScalarAngleOrValue']
 
 
 class ApertureAttribute:
@@ -38,7 +36,7 @@ class ApertureAttribute:
 
     def __set__(self, instance, value):
         self._validate(value)
-        if not isinstance(value, (u.Quantity, SkyCoord, Region)):
+        if not isinstance(value, (u.Quantity, SkyCoord)):
             value = float(value)
         # no need to reset if not already in the instance dict
         if self.name in instance.__dict__:
@@ -197,15 +195,3 @@ class ScalarAngleOrValue(ApertureAttribute):
             if not np.isscalar(value):
                 raise ValueError(f'If not an angle Quantity, {self.name!r} '
                                  'must be a scalar float in radians')
-
-
-class WrappedRegion(ApertureAttribute):
-    def _validate(self, value):
-        if not isinstance(value, Region):
-            raise ValueError(f'{self.name!r} must be a Region instance')
-
-
-class WrappedSkyRegion(ApertureAttribute):
-    def _validate(self, value):
-        if not isinstance(value, SkyRegion):
-            raise ValueError(f'{self.name!r} must be a SkyRegion instance.')

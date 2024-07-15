@@ -10,5 +10,4 @@ from .ellipse import *  # noqa: F401, F403
 from .mask import *  # noqa: F401, F403
 from .photometry import *  # noqa: F401, F403
 from .rectangle import *  # noqa: F401, F403
-from .region import *  # noqa: F401, F403
 from .stats import *  # noqa: F401, F403
