@@ -827,3 +827,12 @@ def test_nddata_input():
         if column == 'sky_center':  # cannot test SkyCoord equality
             continue
         assert_allclose(tbl1[column], tbl2[column])
+
+
+def test_invalid_subpixels():
+    data = np.ones((11, 11))
+    aper = CircularAperture((5, 5), r=3)
+    with pytest.raises(ValueError):
+        aperture_photometry(data, aper, method='subpixel', subpixels=0)
+    with pytest.raises(ValueError):
+        aperture_photometry(data, aper, method='subpixel', subpixels=-1)

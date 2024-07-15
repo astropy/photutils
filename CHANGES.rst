@@ -16,6 +16,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Fixed a bug checking that the ``subpixels`` keyword is a strictly
+    positive integer. [#1816]
+
 - ``photutils.isophote``
 
   - Fixed a bug in ``build_ellipse_model`` where if
