@@ -190,7 +190,7 @@ class PixelAperture(Aperture):
             mode = 'subpixel'
             subpixels = 32
 
-        if mode == 'subpixels':
+        if mode == 'subpixel':
             if not isinstance(subpixels, int) or subpixels <= 0:
                 raise ValueError('subpixels must be a strictly positive '
                                  'integer')
