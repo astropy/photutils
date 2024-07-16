@@ -864,7 +864,8 @@ class BaseTestRegionPhotometry:
 
         if isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
             for reg_table, ap_table in zip(region_tables, aperture_tables):
-                assert_allclose(reg_table['aperture_sum_err'], ap_table['aperture_sum_err'])
+                assert_allclose(reg_table['aperture_sum_err'],
+                                ap_table['aperture_sum_err'])
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
@@ -910,8 +911,14 @@ class TestEllipseAnnulusRegionPhotometry(BaseTestRegionPhotometry):
         b_in = 3.0
         b_out = 5.0
         theta = (-np.pi / 4.0) * u.rad
-        self.region = EllipseAnnulusPixelRegion(PixCoord(*position), a_in * 2, a_out * 2, b_in * 2, b_out * 2, theta)
-        self.aperture = EllipticalAnnulus(position, a_in, a_out, b_out, b_in, theta=theta)
+        self.region = EllipseAnnulusPixelRegion(PixCoord(*position),
+                                                a_in * 2, a_out * 2,
+                                                b_in * 2, b_out * 2,
+                                                theta)
+        self.aperture = EllipticalAnnulus(position,
+                                          a_in, a_out,
+                                          b_out, b_in,
+                                          theta=theta)
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
@@ -936,8 +943,10 @@ class TestRectangleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
         w_out = 12.0
         h_in = w_in * h_out / w_out
         theta = (np.pi / 8.0) * u.rad
-        self.region = RectangleAnnulusPixelRegion(PixCoord(*position), w_in, w_out, h_in, h_out, theta)
-        self.aperture = RectangularAnnulus(position, w_in, w_out, h_out, h_in, theta)
+        self.region = RectangleAnnulusPixelRegion(PixCoord(*position), w_in, w_out,
+                                                  h_in, h_out, theta)
+        self.aperture = RectangularAnnulus(position, w_in, w_out,
+                                           h_out, h_in, theta)
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')

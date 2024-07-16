@@ -68,37 +68,44 @@ def regions2aperture(region_shape):
 
     elif isinstance(region_shape, CircleAnnulusPixelRegion):
         aperture = CircularAnnulus(
-            region_shape.center.xy, region_shape.inner_radius, region_shape.outer_radius)
+            region_shape.center.xy,
+            region_shape.inner_radius, region_shape.outer_radius)
 
     elif isinstance(region_shape, CircleAnnulusSkyRegion):
         aperture = SkyCircularAnnulus(
-            region_shape.center, region_shape.inner_radius, region_shape.outer_radius)
+            region_shape.center,
+            region_shape.inner_radius, region_shape.outer_radius)
 
     elif isinstance(region_shape, EllipseAnnulusPixelRegion):
         aperture = EllipticalAnnulus(
-            region_shape.center.xy, region_shape.inner_width * 0.5, region_shape.outer_width * 0.5,
+            region_shape.center.xy,
+            region_shape.inner_width * 0.5, region_shape.outer_width * 0.5,
             region_shape.outer_height * 0.5, b_in=region_shape.inner_height * 0.5,
             theta=region_shape.angle.to_value(u.radian))
 
     elif isinstance(region_shape, EllipseAnnulusSkyRegion):
         aperture = SkyEllipticalAnnulus(
-            region_shape.center, region_shape.inner_width * 0.5, region_shape.outer_width * 0.5,
+            region_shape.center,
+            region_shape.inner_width * 0.5, region_shape.outer_width * 0.5,
             region_shape.outer_height * 0.5, b_in=region_shape.inner_height * 0.5,
             theta=(region_shape.angle - (90 * u.deg)))
 
     elif isinstance(region_shape, RectangleAnnulusPixelRegion):
         aperture = RectangularAnnulus(
-            region_shape.center.xy, region_shape.inner_width, region_shape.outer_width,
+            region_shape.center.xy,
+            region_shape.inner_width, region_shape.outer_width,
             region_shape.outer_height, h_in=region_shape.inner_height,
             theta=region_shape.angle.to_value(u.radian))
 
     elif isinstance(region_shape, RectangleAnnulusSkyRegion):
         aperture = SkyRectangularAnnulus(
-            region_shape.center, region_shape.inner_width, region_shape.outer_width,
+            region_shape.center,
+            region_shape.inner_width, region_shape.outer_width,
             region_shape.outer_height, h_in=region_shape.inner_height,
             theta=(region_shape.angle - (90 * u.deg)))
 
     else:
-        raise NotImplementedError(f'{region_shape.__class__.__name__} is not supported')
+        raise NotImplementedError(f'{region_shape.__class__.__name__}'
+                                  ' is not supported')
 
     return aperture

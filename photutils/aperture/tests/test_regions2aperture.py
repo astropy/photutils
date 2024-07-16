@@ -125,17 +125,20 @@ def test_translation_rectangle(image_2d_wcs):
     # NOTE: If these no longer fail, we also have to account for non-scalar inputs.
     # Assume this is representative for the sky counterpart too.
     with pytest.raises(ValueError, match='must be a scalar PixCoord'):
-        RectanglePixelRegion(
-            center=PixCoord(x=[0, 42], y=[1, 43]), width=16, height=10, angle=Angle(30, 'deg'))
+        RectanglePixelRegion(center=PixCoord(x=[0, 42], y=[1, 43]),
+                             width=16, height=10, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectanglePixelRegion(
-            center=PixCoord(x=42, y=43), width=[1, 16], height=10, angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            width=[1, 16], height=10, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectanglePixelRegion(
-            center=PixCoord(x=42, y=43), width=16, height=[1, 10], angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            width=16, height=[1, 10], angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectanglePixelRegion(
-            center=PixCoord(x=42, y=43), width=16, height=10, angle=Angle([0, 30], 'deg'))
+            center=PixCoord(x=42, y=43),
+            width=16, height=10, angle=Angle([0, 30], 'deg'))
 
 
 def test_translation_circle_annulus(image_2d_wcs):
@@ -194,28 +197,34 @@ def test_translation_ellipse_annulus(image_2d_wcs):
     # Assume this is representative for the sky counterpart too.
     with pytest.raises(ValueError, match='must be a scalar PixCoord'):
         EllipseAnnulusPixelRegion(
-            center=PixCoord(x=[0, 42], y=[1, 43]), inner_width=5.5, inner_height=3.5,
+            center=PixCoord(x=[0, 42], y=[1, 43]),
+            inner_width=5.5, inner_height=3.5,
             outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipseAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_width=[1, 5.5], inner_height=3.5, outer_width=8.5,
-            outer_height=6.5, angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            inner_width=[1, 5.5], inner_height=3.5,
+            outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipseAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=[1, 3.5], outer_width=8.5,
-            outer_height=6.5, angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            inner_width=5.5, inner_height=[1, 3.5],
+            outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipseAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=3.5, outer_width=[8.5, 10],
-            outer_height=6.5, angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            inner_width=5.5, inner_height=3.5,
+            outer_width=[8.5, 10], outer_height=6.5, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipseAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=3.5, outer_width=8.5,
-            outer_height=[6.5, 10], angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            inner_width=5.5, inner_height=3.5,
+            outer_width=8.5, outer_height=[6.5, 10], angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipseAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=3.5, outer_width=8.5,
-            outer_height=6.5, angle=Angle([0, 30], 'deg'))
+            center=PixCoord(x=42, y=43),
+            inner_width=5.5, inner_height=3.5,
+            outer_width=8.5, outer_height=6.5, angle=Angle([0, 30], 'deg'))
 
 
 def test_translation_rectangle_annulus(image_2d_wcs):
@@ -245,28 +254,34 @@ def test_translation_rectangle_annulus(image_2d_wcs):
     # Assume this is representative for the sky counterpart too.
     with pytest.raises(ValueError, match='must be a scalar PixCoord'):
         RectangleAnnulusPixelRegion(
-            center=PixCoord(x=[0, 42], y=[1, 43]), inner_width=5.5, inner_height=3.5,
+            center=PixCoord(x=[0, 42], y=[1, 43]),
+            inner_width=5.5, inner_height=3.5,
             outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectangleAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_width=[1, 5.5], inner_height=3.5, outer_width=8.5,
-            outer_height=6.5, angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            inner_width=[1, 5.5], inner_height=3.5,
+            outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectangleAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=[1, 3.5], outer_width=8.5,
-            outer_height=6.5, angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            inner_width=5.5, inner_height=[1, 3.5],
+            outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectangleAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=3.5, outer_width=[8.5, 10],
-            outer_height=6.5, angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            inner_width=5.5, inner_height=3.5,
+            outer_width=[8.5, 10], outer_height=6.5, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectangleAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=3.5, outer_width=8.5,
-            outer_height=[6.5, 10], angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            inner_width=5.5, inner_height=3.5,
+            outer_width=8.5, outer_height=[6.5, 10], angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectangleAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=3.5, outer_width=8.5,
-            outer_height=6.5, angle=Angle([0, 30], 'deg'))
+            center=PixCoord(x=42, y=43),
+            inner_width=5.5, inner_height=3.5,
+            outer_width=8.5, outer_height=6.5, angle=Angle([0, 30], 'deg'))
 
 
 def test_translation_polygon():
