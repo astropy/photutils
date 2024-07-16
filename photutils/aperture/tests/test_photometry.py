@@ -25,7 +25,8 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
                                           SkyRectangularAperture)
 from photutils.datasets import (get_path, make_4gaussians_image, make_gwcs,
                                 make_wcs)
-from photutils.utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB
+from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
+                                            HAS_REGIONS)
 
 APERTURE_CL = [CircularAperture,
                CircularAnnulus,
@@ -836,3 +837,113 @@ def test_invalid_subpixels():
         aperture_photometry(data, aper, method='subpixel', subpixels=0)
     with pytest.raises(ValueError):
         aperture_photometry(data, aper, method='subpixel', subpixels=-1)
+
+
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+class BaseTestRegionPhotometry:
+    def test_region_matches_aperture(self):
+        data = np.ones((40, 40), dtype=float)
+        error = np.ones(data.shape, dtype=float)
+        region_tables = [
+            aperture_photometry(data, self.region, method='center', error=error),
+            aperture_photometry(data, self.region,
+                                method='subpixel', subpixels=12,
+                                error=error),
+            aperture_photometry(data, self.region, method='exact', error=error),
+        ]
+        aperture_tables = [
+            aperture_photometry(data, self.aperture, method='center', error=error),
+            aperture_photometry(data, self.aperture,
+                                method='subpixel', subpixels=12,
+                                error=error),
+            aperture_photometry(data, self.aperture, method='exact', error=error),
+        ]
+
+        for reg_table, ap_table in zip(region_tables, aperture_tables):
+            assert_allclose(reg_table['aperture_sum'], ap_table['aperture_sum'])
+
+        if isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+            for reg_table, ap_table in zip(region_tables, aperture_tables):
+                assert_allclose(reg_table['aperture_sum_err'], ap_table['aperture_sum_err'])
+
+
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+class TestCircleRegionPhotometry(BaseTestRegionPhotometry):
+    def setup_class(self):
+        from regions import CirclePixelRegion, PixCoord
+        position = (20.0, 20.0)
+        r = 10.0
+        self.region = CirclePixelRegion(PixCoord(*position), r)
+        self.aperture = CircularAperture(position, r)
+
+
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+class TestCircleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
+    def setup_class(self):
+        from regions import CircleAnnulusPixelRegion, PixCoord
+        position = (20.0, 20.0)
+        r_in = 8.0
+        r_out = 10.0
+        self.region = CircleAnnulusPixelRegion(PixCoord(*position), r_in, r_out)
+        self.aperture = CircularAnnulus(position, r_in, r_out)
+
+
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+class TestEllipseRegionPhotometry(BaseTestRegionPhotometry):
+    def setup_class(self):
+        from regions import EllipsePixelRegion, PixCoord
+        position = (20.0, 20.0)
+        a = 10.0
+        b = 5.0
+        theta = (-np.pi / 4.0) * u.rad
+        self.region = EllipsePixelRegion(PixCoord(*position), a * 2, b * 2, theta)
+        self.aperture = EllipticalAperture(position, a, b, theta=theta)
+
+
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+class TestEllipseAnnulusRegionPhotometry(BaseTestRegionPhotometry):
+    def setup_class(self):
+        from regions import EllipseAnnulusPixelRegion, PixCoord
+        position = (20.0, 20.0)
+        a_in = 5.0
+        a_out = 8.0
+        b_in = 3.0
+        b_out = 5.0
+        theta = (-np.pi / 4.0) * u.rad
+        self.region = EllipseAnnulusPixelRegion(PixCoord(*position), a_in * 2, a_out * 2, b_in * 2, b_out * 2, theta)
+        self.aperture = EllipticalAnnulus(position, a_in, a_out, b_out, b_in, theta=theta)
+
+
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+class TestRectangleRegionPhotometry(BaseTestRegionPhotometry):
+    def setup_class(self):
+        from regions import PixCoord, RectanglePixelRegion
+        position = (20.0, 20.0)
+        h = 5.0
+        w = 8.0
+        theta = (np.pi / 4.0) * u.rad
+        self.region = RectanglePixelRegion(PixCoord(*position), w, h, theta)
+        self.aperture = RectangularAperture(position, w, h, theta)
+
+
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+class TestRectangleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
+    def setup_class(self):
+        from regions import PixCoord, RectangleAnnulusPixelRegion
+        position = (20.0, 20.0)
+        h_out = 8.0
+        w_in = 8.0
+        w_out = 12.0
+        h_in = w_in * h_out / w_out
+        theta = (np.pi / 8.0) * u.rad
+        self.region = RectangleAnnulusPixelRegion(PixCoord(*position), w_in, w_out, h_in, h_out, theta)
+        self.aperture = RectangularAnnulus(position, w_in, w_out, h_out, h_in, theta)
+
+
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+def test_unsupported_region_input():
+    from regions import PixCoord, PolygonPixelRegion
+    region = PolygonPixelRegion(vertices=PixCoord(x=[1, 2, 3], y=[1, 1, 2]))
+    data = np.ones((10, 10))
+    with pytest.raises(NotImplementedError, match='is not supported'):
+        aperture_photometry(data, region)

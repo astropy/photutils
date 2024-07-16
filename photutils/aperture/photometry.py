@@ -39,10 +39,11 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         units. See the Notes section below for more information about
         `~astropy.nddata.NDData` input.
 
-    apertures : `~photutils.aperture.Aperture` or list of `~photutils.aperture.Aperture`
+    apertures : `~photutils.aperture.Aperture`, supported `regions.Region`, list of `~photutils.aperture.Aperture` or `regions.Region`
         The aperture(s) to use for the photometry. If ``apertures`` is a
         list of `~photutils.aperture.Aperture` then they all must have
-        the same position(s).
+        the same position(s). `regions.Region` are converted to
+        `~photutils.aperture.Aperture`.
 
     error : array_like or `~astropy.units.Quantity`, optional
         The pixel-wise Gaussian 1-sigma errors of the input
@@ -170,9 +171,20 @@ def aperture_photometry(data, apertures, error=None, mask=None,
                                    wcs=wcs)
 
     single_aperture = False
-    if isinstance(apertures, Aperture):
-        single_aperture = True
-        apertures = (apertures,)
+    try:
+        from regions import Region
+
+        from photutils.aperture.regions2aperture import regions2aperture
+        if isinstance(apertures, (Aperture, Region)):
+            single_aperture = True
+            apertures = (apertures,)
+        # convert regions to apertures
+        apertures = [regions2aperture(ap) if isinstance(ap, Region) else ap
+                     for ap in apertures]
+    except ModuleNotFoundError:
+        if isinstance(apertures, Aperture):
+            single_aperture = True
+            apertures = (apertures,)
 
     # convert sky to pixel apertures
     skyaper = False
