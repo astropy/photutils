@@ -92,16 +92,20 @@ def test_translation_ellipse(image_2d_wcs):
     # Assume this is representative for the sky counterpart too.
     with pytest.raises(ValueError, match='must be a scalar PixCoord'):
         EllipsePixelRegion(
-            center=PixCoord(x=[0, 42], y=[1, 43]), width=16, height=10, angle=Angle(30, 'deg'))
+            center=PixCoord(x=[0, 42], y=[1, 43]),
+            width=16, height=10, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipsePixelRegion(
-            center=PixCoord(x=42, y=43), width=[1, 16], height=10, angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            width=[1, 16], height=10, angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipsePixelRegion(
-            center=PixCoord(x=42, y=43), width=16, height=[1, 10], angle=Angle(30, 'deg'))
+            center=PixCoord(x=42, y=43),
+            width=16, height=[1, 10], angle=Angle(30, 'deg'))
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipsePixelRegion(
-            center=PixCoord(x=42, y=43), width=16, height=10, angle=Angle([0, 30], 'deg'))
+            center=PixCoord(x=42, y=43),
+            width=16, height=10, angle=Angle([0, 30], 'deg'))
 
 
 def test_translation_rectangle(image_2d_wcs):
