@@ -1,6 +1,3 @@
 [flake8]
 max-line-length = 88
 exclude = extern
-per-file-ignores =
-    # uses pytest.importorskip before importing regions
-    photutils/aperture/tests/test_regions2aperture.py: E402

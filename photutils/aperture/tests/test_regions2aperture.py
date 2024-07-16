@@ -4,18 +4,11 @@ Tests for converting regions.Region to Aperture.
 """
 
 import pytest
-
-pytest.importorskip('regions')
-
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
 from astropy.tests.helper import assert_quantity_allclose
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose
-from regions import (CircleAnnulusPixelRegion, CirclePixelRegion,
-                     EllipseAnnulusPixelRegion, EllipsePixelRegion, PixCoord,
-                     PolygonPixelRegion, RectangleAnnulusPixelRegion,
-                     RectanglePixelRegion)
 
 from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 EllipticalAnnulus, EllipticalAperture,
@@ -24,6 +17,7 @@ from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 SkyEllipticalAnnulus, SkyEllipticalAperture,
                                 SkyRectangularAnnulus, SkyRectangularAperture)
 from photutils.aperture.regions2aperture import regions2aperture
+from photutils.utils._optional_deps import HAS_REGIONS
 
 
 @pytest.fixture
@@ -35,6 +29,7 @@ def image_2d_wcs():
 
 
 def compare_region_shapes(reg1, reg2):
+    from regions import PixCoord
     assert reg1.__class__ == reg2.__class__
     for param in reg1._params:
         par1 = getattr(reg1, param)
@@ -49,7 +44,9 @@ def compare_region_shapes(reg1, reg2):
             assert_allclose(par1, par2)
 
 
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_circle(image_2d_wcs):
+    from regions import CirclePixelRegion, PixCoord
     region_shape = CirclePixelRegion(center=PixCoord(x=42, y=43), radius=4.2)
     aperture = regions2aperture(region_shape)
     assert isinstance(aperture, CircularAperture)
@@ -70,7 +67,9 @@ def test_translation_circle(image_2d_wcs):
         CirclePixelRegion(center=PixCoord(x=42, y=43), radius=[1, 4.2])
 
 
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_ellipse(image_2d_wcs):
+    from regions import EllipsePixelRegion, PixCoord
     region_shape = EllipsePixelRegion(
         center=PixCoord(x=42, y=43), width=16, height=10, angle=Angle(30, 'deg'))
     aperture = regions2aperture(region_shape)
@@ -108,7 +107,9 @@ def test_translation_ellipse(image_2d_wcs):
             width=16, height=10, angle=Angle([0, 30], 'deg'))
 
 
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_rectangle(image_2d_wcs):
+    from regions import PixCoord, RectanglePixelRegion
     region_shape = RectanglePixelRegion(
         center=PixCoord(x=42, y=43), width=16, height=10, angle=Angle(30, 'deg'))
     aperture = regions2aperture(region_shape)
@@ -145,7 +146,9 @@ def test_translation_rectangle(image_2d_wcs):
             width=16, height=10, angle=Angle([0, 30], 'deg'))
 
 
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_circle_annulus(image_2d_wcs):
+    from regions import CircleAnnulusPixelRegion, PixCoord
     region_shape = CircleAnnulusPixelRegion(
         center=PixCoord(x=42, y=43), inner_radius=5, outer_radius=8)
     aperture = regions2aperture(region_shape)
@@ -174,7 +177,9 @@ def test_translation_circle_annulus(image_2d_wcs):
             center=PixCoord(x=42, y=43), inner_radius=5, outer_radius=[8, 10])
 
 
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_ellipse_annulus(image_2d_wcs):
+    from regions import EllipseAnnulusPixelRegion, PixCoord
     region_shape = EllipseAnnulusPixelRegion(
         center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=3.5, outer_width=8.5,
         outer_height=6.5, angle=Angle(30, 'deg'))
@@ -231,7 +236,9 @@ def test_translation_ellipse_annulus(image_2d_wcs):
             outer_width=8.5, outer_height=6.5, angle=Angle([0, 30], 'deg'))
 
 
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_rectangle_annulus(image_2d_wcs):
+    from regions import PixCoord, RectangleAnnulusPixelRegion
     region_shape = RectangleAnnulusPixelRegion(
         center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=3.5, outer_width=8.5,
         outer_height=6.5, angle=Angle(30, 'deg'))
@@ -288,7 +295,9 @@ def test_translation_rectangle_annulus(image_2d_wcs):
             outer_width=8.5, outer_height=6.5, angle=Angle([0, 30], 'deg'))
 
 
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_polygon():
+    from regions import PixCoord, PolygonPixelRegion
     region_shape = PolygonPixelRegion(vertices=PixCoord(x=[1, 2, 2], y=[1, 1, 2]))
     with pytest.raises(NotImplementedError, match='is not supported'):
         regions2aperture(region_shape)
