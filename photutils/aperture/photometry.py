@@ -17,9 +17,8 @@ from photutils.utils._misc import _get_meta
 __all__ = ['aperture_photometry']
 
 
-def aperture_photometry(
-    data, apertures, error=None, mask=None, method='exact', subpixels=5, wcs=None
-):
+def aperture_photometry(data, apertures, error=None, mask=None,
+                        method='exact', subpixels=5, wcs=None):
     """
     Perform aperture photometry on the input data by summing the flux
     within the given aperture(s).
@@ -150,11 +149,9 @@ def aperture_photometry(
         nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
         for key, value in nddata_attr.items():
             if value is not None:
-                warnings.warn(
-                    f"The {key!r} keyword is be ignored. Its value "
-                    'is obtained from the input NDData object.',
-                    AstropyUserWarning,
-                )
+                warnings.warn(f'The {key!r} keyword is be ignored. Its value '
+                              'is obtained from the input NDData object.',
+                              AstropyUserWarning)
 
         mask = data.mask
         wcs = data.wcs
@@ -170,15 +167,9 @@ def aperture_photometry(
         else:
             data = data.data
 
-        return aperture_photometry(
-            data,
-            apertures,
-            error=error,
-            mask=mask,
-            method=method,
-            subpixels=subpixels,
-            wcs=wcs,
-        )
+        return aperture_photometry(data, apertures, error=error, mask=mask,
+                                   method=method, subpixels=subpixels,
+                                   wcs=wcs)
 
     single_aperture = False
     try:
@@ -190,9 +181,8 @@ def aperture_photometry(
             single_aperture = True
             apertures = (apertures,)
         # convert regions to apertures
-        apertures = [
-            region_to_aperture(ap) if isinstance(ap, Region) else ap for ap in apertures
-        ]
+        apertures = [region_to_aperture(ap) if isinstance(ap, Region) else ap
+                     for ap in apertures]
     except ModuleNotFoundError:
         if isinstance(apertures, Aperture):
             single_aperture = True
@@ -202,11 +192,9 @@ def aperture_photometry(
     skyaper = False
     if isinstance(apertures[0], SkyAperture):
         if wcs is None:
-            raise ValueError(
-                'A WCS transform must be defined by the input '
-                'data or the wcs keyword when using a '
-                'SkyAperture object.'
-            )
+            raise ValueError('A WCS transform must be defined by the input '
+                             'data or the wcs keyword when using a '
+                             'SkyAperture object.')
 
         # used to include SkyCoord position in the output table
         skyaper = True
@@ -218,7 +206,8 @@ def aperture_photometry(
     positions = apertures[0].positions
     for aper in apertures[1:]:
         if not np.array_equal(aper.positions, positions):
-            raise ValueError('Input apertures must all have identical ' 'positions.')
+            raise ValueError('Input apertures must all have identical '
+                             'positions.')
 
     # define output table meta data
     meta = _get_meta()
@@ -245,15 +234,15 @@ def aperture_photometry(
     sum_key_main = 'aperture_sum'
     sum_err_key_main = 'aperture_sum_err'
     for i, aper in enumerate(apertures):
-        aper_sum, aper_sum_err = aper.do_photometry(
-            data, error=error, mask=mask, method=method, subpixels=subpixels
-        )
+        aper_sum, aper_sum_err = aper.do_photometry(data, error=error,
+                                                    mask=mask, method=method,
+                                                    subpixels=subpixels)
 
         sum_key = sum_key_main
         sum_err_key = sum_err_key_main
         if not single_aperture:
-            sum_key += f"_{i}"
-            sum_err_key += f"_{i}"
+            sum_key += f'_{i}'
+            sum_err_key += f'_{i}'
 
         tbl[sum_key] = aper_sum
         if error is not None:
