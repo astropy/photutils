@@ -50,9 +50,8 @@ del intersphinx_mapping['h5py']  # noqa: F405
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-# Exclude template PSF block specification documentation
-exclude_patterns.append('psf_spec/*')  # noqa: F405
-
+# .inc.rst mean *include* files, don't have sphinx process them
+# exclude_patterns += ["_templates", "_pkgtemplate.rst", "**/*.inc.rst"]
 
 plot_formats = ['png', 'hires.png', 'pdf', 'svg']
 
