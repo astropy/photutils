@@ -16,20 +16,31 @@ from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 SkyCircularAnnulus, SkyCircularAperture,
                                 SkyEllipticalAnnulus, SkyEllipticalAperture,
                                 SkyRectangularAnnulus, SkyRectangularAperture)
-from photutils.aperture.regions2aperture import regions2aperture
+from photutils.aperture.converters import region_to_aperture
 from photutils.utils._optional_deps import HAS_REGIONS
 
 
 @pytest.fixture
 def image_2d_wcs():
-    return WCS({'CTYPE1': 'RA---TAN', 'CUNIT1': 'deg', 'CDELT1': -0.0002777777778,
-                'CRPIX1': 1, 'CRVAL1': 337.5202808,
-                'CTYPE2': 'DEC--TAN', 'CUNIT2': 'deg', 'CDELT2': 0.0002777777778,
-                'CRPIX2': 1, 'CRVAL2': -20.833333059999998})
+    return WCS(
+        {
+            'CTYPE1': 'RA---TAN',
+            'CUNIT1': 'deg',
+            'CDELT1': -0.0002777777778,
+            'CRPIX1': 1,
+            'CRVAL1': 337.5202808,
+            'CTYPE2': 'DEC--TAN',
+            'CUNIT2': 'deg',
+            'CDELT2': 0.0002777777778,
+            'CRPIX2': 1,
+            'CRVAL2': -20.833333059999998,
+        }
+    )
 
 
 def compare_region_shapes(reg1, reg2):
     from regions import PixCoord
+
     assert reg1.__class__ == reg2.__class__
     for param in reg1._params:
         par1 = getattr(reg1, param)
@@ -47,14 +58,15 @@ def compare_region_shapes(reg1, reg2):
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_circle(image_2d_wcs):
     from regions import CirclePixelRegion, PixCoord
+
     region_shape = CirclePixelRegion(center=PixCoord(x=42, y=43), radius=4.2)
-    aperture = regions2aperture(region_shape)
+    aperture = region_to_aperture(region_shape)
     assert isinstance(aperture, CircularAperture)
     assert_allclose(aperture.positions, region_shape.center.xy)
     assert_allclose(aperture.r, region_shape.radius)
 
     region_sky = region_shape.to_sky(image_2d_wcs)
-    aperture_sky = regions2aperture(region_sky)
+    aperture_sky = region_to_aperture(region_sky)
     assert isinstance(aperture_sky, SkyCircularAperture)
     assert aperture_sky.positions == region_sky.center  # SkyCoord
     assert_quantity_allclose(aperture_sky.r, region_sky.radius)
@@ -70,9 +82,11 @@ def test_translation_circle(image_2d_wcs):
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_ellipse(image_2d_wcs):
     from regions import EllipsePixelRegion, PixCoord
+
     region_shape = EllipsePixelRegion(
-        center=PixCoord(x=42, y=43), width=16, height=10, angle=Angle(30, 'deg'))
-    aperture = regions2aperture(region_shape)
+        center=PixCoord(x=42, y=43), width=16, height=10, angle=Angle(30, 'deg')
+    )
+    aperture = region_to_aperture(region_shape)
     assert isinstance(aperture, EllipticalAperture)
     assert_allclose(aperture.positions, region_shape.center.xy)
     assert_allclose(aperture.a * 2, region_shape.width)
@@ -80,7 +94,7 @@ def test_translation_ellipse(image_2d_wcs):
     assert_allclose(aperture.theta, region_shape.angle.radian)
 
     region_sky = region_shape.to_sky(image_2d_wcs)
-    aperture_sky = regions2aperture(region_sky)
+    aperture_sky = region_to_aperture(region_sky)
     assert isinstance(aperture_sky, SkyEllipticalAperture)
     assert aperture_sky.positions == region_sky.center  # SkyCoord
     assert_quantity_allclose(aperture_sky.a * 2, region_sky.width)
@@ -92,27 +106,41 @@ def test_translation_ellipse(image_2d_wcs):
     with pytest.raises(ValueError, match='must be a scalar PixCoord'):
         EllipsePixelRegion(
             center=PixCoord(x=[0, 42], y=[1, 43]),
-            width=16, height=10, angle=Angle(30, 'deg'))
+            width=16,
+            height=10,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipsePixelRegion(
             center=PixCoord(x=42, y=43),
-            width=[1, 16], height=10, angle=Angle(30, 'deg'))
+            width=[1, 16],
+            height=10,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipsePixelRegion(
             center=PixCoord(x=42, y=43),
-            width=16, height=[1, 10], angle=Angle(30, 'deg'))
+            width=16,
+            height=[1, 10],
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipsePixelRegion(
             center=PixCoord(x=42, y=43),
-            width=16, height=10, angle=Angle([0, 30], 'deg'))
+            width=16,
+            height=10,
+            angle=Angle([0, 30], 'deg'),
+        )
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_rectangle(image_2d_wcs):
     from regions import PixCoord, RectanglePixelRegion
+
     region_shape = RectanglePixelRegion(
-        center=PixCoord(x=42, y=43), width=16, height=10, angle=Angle(30, 'deg'))
-    aperture = regions2aperture(region_shape)
+        center=PixCoord(x=42, y=43), width=16, height=10, angle=Angle(30, 'deg')
+    )
+    aperture = region_to_aperture(region_shape)
     assert isinstance(aperture, RectangularAperture)
     assert_allclose(aperture.positions, region_shape.center.xy)
     assert_allclose(aperture.w, region_shape.width)
@@ -120,7 +148,7 @@ def test_translation_rectangle(image_2d_wcs):
     assert_allclose(aperture.theta, region_shape.angle.radian)
 
     region_sky = region_shape.to_sky(image_2d_wcs)
-    aperture_sky = regions2aperture(region_sky)
+    aperture_sky = region_to_aperture(region_sky)
     assert isinstance(aperture_sky, SkyRectangularAperture)
     assert aperture_sky.positions == region_sky.center  # SkyCoord
     assert_quantity_allclose(aperture_sky.w, region_sky.width)
@@ -130,35 +158,50 @@ def test_translation_rectangle(image_2d_wcs):
     # NOTE: If these no longer fail, we also have to account for non-scalar inputs.
     # Assume this is representative for the sky counterpart too.
     with pytest.raises(ValueError, match='must be a scalar PixCoord'):
-        RectanglePixelRegion(center=PixCoord(x=[0, 42], y=[1, 43]),
-                             width=16, height=10, angle=Angle(30, 'deg'))
+        RectanglePixelRegion(
+            center=PixCoord(x=[0, 42], y=[1, 43]),
+            width=16,
+            height=10,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectanglePixelRegion(
             center=PixCoord(x=42, y=43),
-            width=[1, 16], height=10, angle=Angle(30, 'deg'))
+            width=[1, 16],
+            height=10,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectanglePixelRegion(
             center=PixCoord(x=42, y=43),
-            width=16, height=[1, 10], angle=Angle(30, 'deg'))
+            width=16,
+            height=[1, 10],
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectanglePixelRegion(
             center=PixCoord(x=42, y=43),
-            width=16, height=10, angle=Angle([0, 30], 'deg'))
+            width=16,
+            height=10,
+            angle=Angle([0, 30], 'deg'),
+        )
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_circle_annulus(image_2d_wcs):
     from regions import CircleAnnulusPixelRegion, PixCoord
+
     region_shape = CircleAnnulusPixelRegion(
-        center=PixCoord(x=42, y=43), inner_radius=5, outer_radius=8)
-    aperture = regions2aperture(region_shape)
+        center=PixCoord(x=42, y=43), inner_radius=5, outer_radius=8
+    )
+    aperture = region_to_aperture(region_shape)
     assert isinstance(aperture, CircularAnnulus)
     assert_allclose(aperture.positions, region_shape.center.xy)
     assert_allclose(aperture.r_in, region_shape.inner_radius)
     assert_allclose(aperture.r_out, region_shape.outer_radius)
 
     region_sky = region_shape.to_sky(image_2d_wcs)
-    aperture_sky = regions2aperture(region_sky)
+    aperture_sky = region_to_aperture(region_sky)
     assert isinstance(aperture_sky, SkyCircularAnnulus)
     assert aperture_sky.positions == region_sky.center  # SkyCoord
     assert_quantity_allclose(aperture_sky.r_in, region_sky.inner_radius)
@@ -168,22 +211,31 @@ def test_translation_circle_annulus(image_2d_wcs):
     # Assume this is representative for the sky counterpart too.
     with pytest.raises(ValueError, match='must be a scalar PixCoord'):
         CircleAnnulusPixelRegion(
-            center=PixCoord(x=[0, 42], y=[1, 43]), inner_radius=5, outer_radius=8)
+            center=PixCoord(x=[0, 42], y=[1, 43]), inner_radius=5, outer_radius=8
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         CircleAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_radius=[1, 5], outer_radius=8)
+            center=PixCoord(x=42, y=43), inner_radius=[1, 5], outer_radius=8
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         CircleAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_radius=5, outer_radius=[8, 10])
+            center=PixCoord(x=42, y=43), inner_radius=5, outer_radius=[8, 10]
+        )
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_ellipse_annulus(image_2d_wcs):
     from regions import EllipseAnnulusPixelRegion, PixCoord
+
     region_shape = EllipseAnnulusPixelRegion(
-        center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=3.5, outer_width=8.5,
-        outer_height=6.5, angle=Angle(30, 'deg'))
-    aperture = regions2aperture(region_shape)
+        center=PixCoord(x=42, y=43),
+        inner_width=5.5,
+        inner_height=3.5,
+        outer_width=8.5,
+        outer_height=6.5,
+        angle=Angle(30, 'deg'),
+    )
+    aperture = region_to_aperture(region_shape)
     assert isinstance(aperture, EllipticalAnnulus)
     assert_allclose(aperture.positions, region_shape.center.xy)
     assert_allclose(aperture.a_in * 2, region_shape.inner_width)
@@ -193,7 +245,7 @@ def test_translation_ellipse_annulus(image_2d_wcs):
     assert_allclose(aperture.theta, region_shape.angle.radian)
 
     region_sky = region_shape.to_sky(image_2d_wcs)
-    aperture_sky = regions2aperture(region_sky)
+    aperture_sky = region_to_aperture(region_sky)
     assert isinstance(aperture_sky, SkyEllipticalAnnulus)
     assert aperture_sky.positions == region_sky.center  # SkyCoord
     assert_quantity_allclose(aperture_sky.a_in * 2, region_sky.inner_width)
@@ -207,42 +259,72 @@ def test_translation_ellipse_annulus(image_2d_wcs):
     with pytest.raises(ValueError, match='must be a scalar PixCoord'):
         EllipseAnnulusPixelRegion(
             center=PixCoord(x=[0, 42], y=[1, 43]),
-            inner_width=5.5, inner_height=3.5,
-            outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
+            inner_width=5.5,
+            inner_height=3.5,
+            outer_width=8.5,
+            outer_height=6.5,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipseAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
-            inner_width=[1, 5.5], inner_height=3.5,
-            outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
+            inner_width=[1, 5.5],
+            inner_height=3.5,
+            outer_width=8.5,
+            outer_height=6.5,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipseAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
-            inner_width=5.5, inner_height=[1, 3.5],
-            outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
+            inner_width=5.5,
+            inner_height=[1, 3.5],
+            outer_width=8.5,
+            outer_height=6.5,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipseAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
-            inner_width=5.5, inner_height=3.5,
-            outer_width=[8.5, 10], outer_height=6.5, angle=Angle(30, 'deg'))
+            inner_width=5.5,
+            inner_height=3.5,
+            outer_width=[8.5, 10],
+            outer_height=6.5,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipseAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
-            inner_width=5.5, inner_height=3.5,
-            outer_width=8.5, outer_height=[6.5, 10], angle=Angle(30, 'deg'))
+            inner_width=5.5,
+            inner_height=3.5,
+            outer_width=8.5,
+            outer_height=[6.5, 10],
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         EllipseAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
-            inner_width=5.5, inner_height=3.5,
-            outer_width=8.5, outer_height=6.5, angle=Angle([0, 30], 'deg'))
+            inner_width=5.5,
+            inner_height=3.5,
+            outer_width=8.5,
+            outer_height=6.5,
+            angle=Angle([0, 30], 'deg'),
+        )
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_rectangle_annulus(image_2d_wcs):
     from regions import PixCoord, RectangleAnnulusPixelRegion
+
     region_shape = RectangleAnnulusPixelRegion(
-        center=PixCoord(x=42, y=43), inner_width=5.5, inner_height=3.5, outer_width=8.5,
-        outer_height=6.5, angle=Angle(30, 'deg'))
-    aperture = regions2aperture(region_shape)
+        center=PixCoord(x=42, y=43),
+        inner_width=5.5,
+        inner_height=3.5,
+        outer_width=8.5,
+        outer_height=6.5,
+        angle=Angle(30, 'deg'),
+    )
+    aperture = region_to_aperture(region_shape)
     assert isinstance(aperture, RectangularAnnulus)
     assert_allclose(aperture.positions, region_shape.center.xy)
     assert_allclose(aperture.w_in, region_shape.inner_width)
@@ -252,7 +334,7 @@ def test_translation_rectangle_annulus(image_2d_wcs):
     assert_allclose(aperture.theta, region_shape.angle.radian)
 
     region_sky = region_shape.to_sky(image_2d_wcs)
-    aperture_sky = regions2aperture(region_sky)
+    aperture_sky = region_to_aperture(region_sky)
     assert isinstance(aperture_sky, SkyRectangularAnnulus)
     assert aperture_sky.positions == region_sky.center  # SkyCoord
     assert_quantity_allclose(aperture_sky.w_in, region_sky.inner_width)
@@ -266,38 +348,63 @@ def test_translation_rectangle_annulus(image_2d_wcs):
     with pytest.raises(ValueError, match='must be a scalar PixCoord'):
         RectangleAnnulusPixelRegion(
             center=PixCoord(x=[0, 42], y=[1, 43]),
-            inner_width=5.5, inner_height=3.5,
-            outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
+            inner_width=5.5,
+            inner_height=3.5,
+            outer_width=8.5,
+            outer_height=6.5,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectangleAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
-            inner_width=[1, 5.5], inner_height=3.5,
-            outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
+            inner_width=[1, 5.5],
+            inner_height=3.5,
+            outer_width=8.5,
+            outer_height=6.5,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectangleAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
-            inner_width=5.5, inner_height=[1, 3.5],
-            outer_width=8.5, outer_height=6.5, angle=Angle(30, 'deg'))
+            inner_width=5.5,
+            inner_height=[1, 3.5],
+            outer_width=8.5,
+            outer_height=6.5,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectangleAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
-            inner_width=5.5, inner_height=3.5,
-            outer_width=[8.5, 10], outer_height=6.5, angle=Angle(30, 'deg'))
+            inner_width=5.5,
+            inner_height=3.5,
+            outer_width=[8.5, 10],
+            outer_height=6.5,
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectangleAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
-            inner_width=5.5, inner_height=3.5,
-            outer_width=8.5, outer_height=[6.5, 10], angle=Angle(30, 'deg'))
+            inner_width=5.5,
+            inner_height=3.5,
+            outer_width=8.5,
+            outer_height=[6.5, 10],
+            angle=Angle(30, 'deg'),
+        )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         RectangleAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
-            inner_width=5.5, inner_height=3.5,
-            outer_width=8.5, outer_height=6.5, angle=Angle([0, 30], 'deg'))
+            inner_width=5.5,
+            inner_height=3.5,
+            outer_width=8.5,
+            outer_height=6.5,
+            angle=Angle([0, 30], 'deg'),
+        )
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_translation_polygon():
     from regions import PixCoord, PolygonPixelRegion
+
     region_shape = PolygonPixelRegion(vertices=PixCoord(x=[1, 2, 2], y=[1, 1, 2]))
     with pytest.raises(NotImplementedError, match='is not supported'):
-        regions2aperture(region_shape)
+        region_to_aperture(region_shape)
