@@ -1412,6 +1412,7 @@ class SegmentationImage:
         .. plot::
             :include-source:
 
+            import matplotlib.pyplot as plt
             import numpy as np
             from photutils.segmentation import SegmentationImage
 
@@ -1503,6 +1504,7 @@ class SegmentationImage:
         .. plot::
             :include-source:
 
+            import matplotlib.pyplot as plt
             import numpy as np
             from photutils.segmentation import SegmentationImage
 

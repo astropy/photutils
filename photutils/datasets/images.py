@@ -184,6 +184,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         :include-source:
 
         import matplotlib.pyplot as plt
+        import numpy as np
         from astropy.modeling.models import Gaussian2D
         from photutils.datasets import make_model_image, make_model_params
 
