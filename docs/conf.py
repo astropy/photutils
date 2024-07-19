@@ -34,6 +34,20 @@ with (Path(__file__).parents[1] / 'pyproject.toml').open('rb') as fh:
     conf = tomllib.load(fh)
     project_meta = conf['project']
 
+# -- Plot configuration -------------------------------------------------------
+plot_rcparams = {
+    'axes.labelsize': 'large',
+    'figure.figsize': (6, 6),
+    'figure.subplot.hspace': 0.5,
+    'savefig.bbox': 'tight',
+    'savefig.facecolor': 'none',
+}
+plot_apply_rcparams = True
+plot_html_show_source_link = True
+plot_formats = ['png', 'hires.png', 'pdf', 'svg']
+# Don't use the default - which includes a numpy and matplotlib import
+plot_pre_code = ''
+
 # -- General configuration ----------------------------------------------------
 # By default, highlight as Python 3.
 highlight_language = 'python3'
@@ -52,8 +66,6 @@ del intersphinx_mapping['h5py']  # noqa: F405
 # directories to ignore when looking for source files.
 # .inc.rst mean *include* files, don't have sphinx process them
 # exclude_patterns += ["_templates", "_pkgtemplate.rst", "**/*.inc.rst"]
-
-plot_formats = ['png', 'hires.png', 'pdf', 'svg']
 
 # This is added to the end of RST files - a good place to put
 # substitutions to be used globally.
