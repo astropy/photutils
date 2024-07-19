@@ -5,12 +5,15 @@ This module defines tools to convert regions.Region to Aperture.
 
 import astropy.units as u
 
-from photutils.aperture import (CircularAnnulus, CircularAperture,
-                                EllipticalAnnulus, EllipticalAperture,
-                                RectangularAnnulus, RectangularAperture,
-                                SkyCircularAnnulus, SkyCircularAperture,
-                                SkyEllipticalAnnulus, SkyEllipticalAperture,
-                                SkyRectangularAnnulus, SkyRectangularAperture)
+from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
+                                       SkyCircularAnnulus, SkyCircularAperture)
+from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
+                                        SkyEllipticalAnnulus,
+                                        SkyEllipticalAperture)
+from photutils.aperture.rectangle import (RectangularAnnulus,
+                                          RectangularAperture,
+                                          SkyRectangularAnnulus,
+                                          SkyRectangularAperture)
 
 __all__ = ['region_to_aperture']
 
