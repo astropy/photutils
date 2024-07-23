@@ -11,6 +11,7 @@ from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.aperture.converters import region_to_aperture
 from photutils.aperture.core import Aperture, SkyAperture
 from photutils.utils._misc import _get_meta
 
@@ -172,21 +173,14 @@ def aperture_photometry(data, apertures, error=None, mask=None,
                                    wcs=wcs)
 
     single_aperture = False
-    try:
-        from regions import Region
+    if not isinstance(apertures, (list, tuple, np.ndarray)):
+        single_aperture = True
+        apertures = (apertures,)
 
-        from photutils.aperture.converters import region_to_aperture
-
-        if isinstance(apertures, (Aperture, Region)):
-            single_aperture = True
-            apertures = (apertures,)
-        # convert regions to apertures
-        apertures = [region_to_aperture(ap) if isinstance(ap, Region) else ap
-                     for ap in apertures]
-    except ModuleNotFoundError:
-        if isinstance(apertures, Aperture):
-            single_aperture = True
-            apertures = (apertures,)
+    # convert regions to apertures if necessary
+    apertures = [region_to_aperture(aper)
+                 if not isinstance(aper, Aperture) else aper
+                 for aper in apertures]
 
     # convert sky to pixel apertures
     skyaper = False
