@@ -8,7 +8,8 @@ import itertools
 import numpy as np
 import pytest
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata import NDData
+from astropy.nddata import (InverseVariance, NDData, StdDevUncertainty,
+                            VarianceUncertainty)
 from astropy.stats import SigmaClip
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
@@ -76,6 +77,42 @@ class TestEPSFBuild:
         assert isinstance(stars, EPSFStars)
         assert isinstance(stars[0], EPSFStars)
         assert stars[0].data.shape == (size, size)
+
+    def test_extract_stars_uncertainties(self):
+        rng = np.random.default_rng(0)
+        shape = self.nddata.data.shape
+        error = np.abs(rng.normal(loc=0, scale=1, size=shape))
+        uncertainty1 = StdDevUncertainty(error)
+        uncertainty2 = uncertainty1.represent_as(VarianceUncertainty)
+        uncertainty3 = uncertainty1.represent_as(InverseVariance)
+        ndd1 = NDData(self.nddata.data, uncertainty=uncertainty1)
+        ndd2 = NDData(self.nddata.data, uncertainty=uncertainty2)
+        ndd3 = NDData(self.nddata.data, uncertainty=uncertainty3)
+
+        size = 25
+        with pytest.warns(AstropyUserWarning, match='were not extracted'):
+            ndd_inputs = (ndd1, ndd2, ndd3)
+            outputs = []
+            for ndd_input in ndd_inputs:
+                outputs.append(extract_stars(ndd_input, self.init_stars,
+                                             size=size))
+
+            for stars in outputs:
+                assert len(stars) == 81
+                assert isinstance(stars, EPSFStars)
+                assert isinstance(stars[0], EPSFStars)
+                assert stars[0].data.shape == (size, size)
+                assert stars[0].weights.shape == (size, size)
+
+        assert_allclose(outputs[0].weights, outputs[1].weights)
+        assert_allclose(outputs[0].weights, outputs[2].weights)
+
+        match = 'One or more weight values is not finite'
+        with pytest.warns(AstropyUserWarning, match='were not extracted'):
+            with pytest.warns(AstropyUserWarning, match=match):
+                uncertainty = StdDevUncertainty(np.zeros(shape))
+                ndd = NDData(self.nddata.data, uncertainty=uncertainty)
+                stars = extract_stars(ndd, self.init_stars, size=size)
 
     def test_epsf_build(self):
         """
