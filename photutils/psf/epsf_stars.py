@@ -7,7 +7,7 @@ structures to hold the cutouts for fitting and building ePSFs.
 import warnings
 
 import numpy as np
-from astropy.nddata import NDData
+from astropy.nddata import NDData, StdDevUncertainty
 from astropy.nddata.utils import NoOverlapError, PartialOverlapError
 from astropy.table import Table
 from astropy.utils import lazyproperty
@@ -717,11 +717,18 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
         if data.uncertainty.uncertainty_type == 'weights':
             weights = np.asanyarray(data.uncertainty.array, dtype=float)
         else:
-            warnings.warn('The data uncertainty attribute has an unsupported '
-                          'type. Only uncertainty_type="weights" can be '
-                          'used to set weights. Weights will be set to 1.',
-                          AstropyUserWarning)
-            weights = np.ones_like(data.data)
+            # other uncertainties are converted to the inverse standard
+            # deviation as the weight;
+            # ignore divide-by-zero RuntimeWarning
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                weights = data.uncertainty.represent_as(StdDevUncertainty)
+                weights = 1.0 / weights.array
+                if np.any(~np.isfinite(weights)):
+                    warnings.warn('One or more weight values is not finite. '
+                                  'Please check the input uncertainty values '
+                                  'in the input NDData object.',
+                                  AstropyUserWarning)
 
     if data.mask is not None:
         weights[data.mask] = 0.0
