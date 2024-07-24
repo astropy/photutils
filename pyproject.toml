@@ -156,9 +156,6 @@ exclude_lines = [
     'def _ipython_key_completions_',
 ]
 
-[tool.build-sphinx]
-github_project = 'astropy/photutils'
-
 [tool.isort]
 skip_glob = [
     'photutils/*__init__.py*',
