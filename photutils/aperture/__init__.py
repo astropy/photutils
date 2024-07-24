@@ -5,6 +5,7 @@ This subpackage contains tools to perform aperture photometry.
 
 from .bounding_box import *  # noqa: F401, F403
 from .circle import *  # noqa: F401, F403
+from .converters import *  # noqa: F401, F403
 from .core import *  # noqa: F401, F403
 from .ellipse import *  # noqa: F401, F403
 from .mask import *  # noqa: F401, F403

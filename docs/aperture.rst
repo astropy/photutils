@@ -35,6 +35,10 @@ coordinates:
 To perform aperture photometry with sky-based apertures, one will need
 to specify a WCS transformation.
 
+The :func:`~photutils.aperture.aperture_photometry` function accepts
+the corresponding classes from `regions` in place of each of the aperture
+classes listed above.
+
 Users can also create their own custom apertures (see
 :ref:`custom-apertures`).
 

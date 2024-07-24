@@ -51,6 +51,7 @@ all = [
     'tqdm',
     'rasterio',
     'shapely',
+    'regions',
 ]
 test = [
     'pytest-astropy>=0.11',
