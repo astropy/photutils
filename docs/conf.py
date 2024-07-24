@@ -94,6 +94,7 @@ package = sys.modules[project]
 version = package.__version__.split('-', 1)[0]
 # The full version, including alpha/beta/rc tags.
 release = package.__version__
+dev = 'dev' in release
 
 # -- Options for HTML output --------------------------------------------------
 # The global astropy configuration uses a custom theme,
@@ -146,6 +147,23 @@ htmlhelp_basename = project + 'doc'
 # Static files to copy after template files
 html_static_path = ['_static']
 html_style = 'photutils.css'
+
+# Set canonical URL from the Read the Docs Domain
+html_baseurl = os.environ.get('READTHEDOCS_CANONICAL_URL', '')
+
+# A dictionary of values to pass into the template engine's context for
+# all pages.
+html_context = {
+    'default_mode': 'light',
+    'to_be_indexed': ['stable', 'latest'],
+    'is_development': dev,
+    'github_user': 'astropy',
+    'github_repo': 'photutils',
+    'github_version': 'main',
+    'doc_path': 'docs',
+    # Tell Jinja2 templates the build is running on Read the Docs
+    'READTHEDOCS': os.environ.get('READTHEDOCS', '') == 'True',
+}
 
 # -- Options for LaTeX output -------------------------------------------------
 # Grouping the document tree into LaTeX files. List of tuples (source
