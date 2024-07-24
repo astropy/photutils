@@ -56,11 +56,10 @@ highlight_language = 'python3'
 needs_sphinx = '3.0'
 
 # Extend astropy intersphinx_mapping with packages we use here
-intersphinx_mapping['skimage'] = ('https://scikit-image.org/docs/stable/', None)  # noqa: F405
-intersphinx_mapping['gwcs'] = ('https://gwcs.readthedocs.io/en/latest/', None)  # noqa: F405
-intersphinx_mapping['regions'] = (  # noqa: F405
-    'https://astropy-regions.readthedocs.io/en/stable/', None
-)
+intersphinx_mapping.update(  # noqa: F405
+    {'regions': ('https://astropy-regions.readthedocs.io/en/stable/', None),
+     'skimage': ('https://scikit-image.org/docs/stable/', None),
+     'gwcs': ('https://gwcs.readthedocs.io/en/latest/', None)})
 
 # Exclude astropy intersphinx_mapping for unused packages
 del intersphinx_mapping['h5py']  # noqa: F405
