@@ -4,6 +4,8 @@
 General
 ^^^^^^^
 
+- The ``regions`` package is now an optional dependency. [#1813]
+
 New Features
 ^^^^^^^^^^^^
 
