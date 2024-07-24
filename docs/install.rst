@@ -15,31 +15,34 @@ Photutils has the following strict requirements:
 
 Photutils also optionally depends on other packages for some features:
 
-* `SciPy <https://scipy.org/>`_ 1.8 or later:  To power a variety of
+* `SciPy <https://scipy.org/>`_ 1.8 or later: Used to power a variety of
   features in several modules (strongly recommended).
 
-* `Matplotlib <https://matplotlib.org/>`_ 3.5 or later:  To power a
+* `Matplotlib <https://matplotlib.org/>`_ 3.5 or later: Used to power a
   variety of plotting features (e.g., plotting apertures).
 
-* `scikit-image <https://scikit-image.org/>`_ 0.20 or later: Used for
-  deblending segmented sources.
+* `Regions <https://astropy-regions.readthedocs.io/>`_ 0.9 or
+  later: Required to perform aperture photometry using region objects.
+
+* `scikit-image <https://scikit-image.org/>`_ 0.20 or later: Required
+  to deblend segmented sources.
 
 * `GWCS <https://gwcs.readthedocs.io/en/stable/>`_ 0.18 or later:
-  Used in `~photutils.datasets.make_gwcs` to create a simple celestial
+  Required in `~photutils.datasets.make_gwcs` to create a simple celestial
   gwcs object.
 
 * `Bottleneck <https://github.com/pydata/bottleneck>`_: Improves the
   performance of sigma clipping and other functionality that may require
   computing statistics on arrays with NaN values.
 
-* `tqdm <https://tqdm.github.io/>`_: Used to display optional progress
-  bars.
+* `tqdm <https://tqdm.github.io/>`_: Required to display optional
+  progress bars.
 
-* `Rasterio <https://rasterio.readthedocs.io/en/stable/>`_: Used for converting
-  source segments into polygon objects.
+* `Rasterio <https://rasterio.readthedocs.io/en/stable/>`_: Required to
+  convert source segments into polygon objects.
 
-* `Shapely <https://shapely.readthedocs.io/en/stable/>`_: Used for converting
-  source segments into polygon objects.
+* `Shapely <https://shapely.readthedocs.io/en/stable/>`_: Required to
+  convert source segments into polygon objects.
 
 
 Installing the latest released version
