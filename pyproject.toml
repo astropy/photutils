@@ -45,13 +45,13 @@ Documentation = 'https://photutils.readthedocs.io/en/stable/'
 all = [
     'scipy>=1.8',
     'matplotlib>=3.5',
+    'regions>=0.9',
     'scikit-image>=0.20',
     'gwcs>=0.18',
     'bottleneck',
     'tqdm',
     'rasterio',
     'shapely',
-    'regions',
 ]
 test = [
     'pytest-astropy>=0.11',
@@ -155,9 +155,6 @@ exclude_lines = [
     'pragma: py{ignore_python_version}',
     'def _ipython_key_completions_',
 ]
-
-[tool.build-sphinx]
-github_project = 'astropy/photutils'
 
 [tool.isort]
 skip_glob = [

@@ -15,6 +15,7 @@
 import os
 import sys
 from datetime import datetime, timezone
+from importlib import metadata
 from pathlib import Path
 
 if sys.version_info < (3, 11):
@@ -31,8 +32,7 @@ except ImportError:
 
 # Get configuration information from pyproject.toml
 with (Path(__file__).parents[1] / 'pyproject.toml').open('rb') as fh:
-    conf = tomllib.load(fh)
-    project_meta = conf['project']
+    project_meta = tomllib.load(fh)['project']
 
 # -- Plot configuration -------------------------------------------------------
 plot_rcparams = {
@@ -56,11 +56,10 @@ highlight_language = 'python3'
 needs_sphinx = '3.0'
 
 # Extend astropy intersphinx_mapping with packages we use here
-intersphinx_mapping['skimage'] = ('https://scikit-image.org/docs/stable/', None)  # noqa: F405
-intersphinx_mapping['gwcs'] = ('https://gwcs.readthedocs.io/en/latest/', None)  # noqa: F405
-intersphinx_mapping['regions'] = (  # noqa: F405
-    'https://astropy-regions.readthedocs.io/en/stable/', None
-)
+intersphinx_mapping.update(  # noqa: F405
+    {'regions': ('https://astropy-regions.readthedocs.io/en/stable/', None),
+     'skimage': ('https://scikit-image.org/docs/stable/', None),
+     'gwcs': ('https://gwcs.readthedocs.io/en/latest/', None)})
 
 # Exclude astropy intersphinx_mapping for unused packages
 del intersphinx_mapping['h5py']  # noqa: F405
@@ -82,18 +81,17 @@ toc_object_entries = False
 # -- Project information ------------------------------------------------------
 project = project_meta['name']
 author = project_meta['authors'][0]['name']
-copyright = f'2011-{datetime.now(tz=timezone.utc).year}, {author}'
+project_copyright = f'2011-{datetime.now(tz=timezone.utc).year}, {author}'
+github_project = 'astropy/photutils'
 
 # The version info for the project you're documenting, acts as
 # replacement for |version| and |release|, also used in various other
 # places throughout the built documents.
-__import__(project)
-package = sys.modules[project]
 
-# The short X.Y version.
-version = package.__version__.split('-', 1)[0]
 # The full version, including alpha/beta/rc tags.
-release = package.__version__
+release = metadata.version(project)
+# The short X.Y version.
+version = '.'.join(release.split('.')[:2])
 dev = 'dev' in release
 
 # -- Options for HTML output --------------------------------------------------
@@ -179,7 +177,6 @@ man_pages = [('index', project.lower(), project + ' Documentation',
               [author], 1)]
 
 # -- Resolving issue number to links in changelog -----------------------------
-github_project = conf['tool']['build-sphinx']['github_project']
 github_issues_url = f'https://github.com/{github_project}/issues/'
 
 # -- Turn on nitpicky mode for sphinx (to warn about references not found) ----
