@@ -16,9 +16,25 @@ if HAS_BOTTLENECK:
 
     def move_tuple_axes_first(array, axis):
         """
+        Move the axes in a tuple to the beginning of the array.
+
         Bottleneck can only take integer axis, not tuple, so this function
         takes all the axes to be operated on and combines them into the
         first dimension of the array so that we can then use axis=0.
+
+        Parameters
+        ----------
+        array : `~numpy.ndarray`
+            The input array.
+
+        axis : tuple of int
+            The axes on which to operate.
+
+        Returns
+        -------
+        array_new : `~numpy.ndarray`
+            Array with the axes being operated on moved into the first
+            dimension.
         """
         # Figure out how many axes we are operating over
         naxis = len(axis)
@@ -45,6 +61,27 @@ if HAS_BOTTLENECK:
 
         This function also takes care to ensure the output is of the
         expected type, i.e., a quantity, numpy array, or numpy scalar.
+
+        Parameters
+        ----------
+        function : callable
+            The bottleneck function to apply.
+
+        array : `~numpy.ndarray`
+            The array on which to operate.
+
+        axis : int or tuple of int, optional
+            The axis or axes on which to operate.
+
+        kwargs : dict, optional
+            Additional keyword arguments to pass to the bottleneck
+            function.
+
+        Returns
+        -------
+        result : `~numpy.ndarray` or float
+            The result of the bottleneck function when called with the
+            ``array``, ``axis``, and ``kwargs``.
         """
         if isinstance(axis, tuple):
             array = move_tuple_axes_first(array, axis=axis)
