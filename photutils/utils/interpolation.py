@@ -238,7 +238,7 @@ class ShepardIDWInterpolator:
                                  'dimensionality of the coordinates used '
                                  'to initialize the interpolator.')
         elif positions.ndim != 2:
-            raise ValueError('The input positions must be an array-like '
+            raise ValueError('The input positions must be an array_like '
                              'object of dimensionality no larger than 2.')
 
         positions = np.reshape(positions, (-1, self.coords_ndim))

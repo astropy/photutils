@@ -73,7 +73,7 @@ if HAS_BOTTLENECK:
         axis : int or tuple of int, optional
             The axis or axes on which to operate.
 
-        kwargs : dict, optional
+        **kwargs : dict, optional
             Additional keyword arguments to pass to the bottleneck
             function.
 
