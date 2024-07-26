@@ -37,9 +37,19 @@ DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
 
 def as_scalar(method):
     """
-    Return a scalar value from a method if the class is scalar.
-    """
+    Return a decorated method where it will always return a scalar value
+    (instead of a length-1 tuple/list/array) if the class is scalar.
 
+    Parameters
+    ----------
+    method : function
+        The method to be decorated.
+
+    Returns
+    -------
+    decorator : function
+        The decorated method.
+    """
     @functools.wraps(method)
     def _decorator(*args, **kwargs):
         result = method(*args, **kwargs)
@@ -308,7 +318,6 @@ class ApertureStats:
         """
         A list of all class lazyproperties (even in superclasses).
         """
-
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
 
@@ -409,6 +418,11 @@ class ApertureStats:
     def copy(self):
         """
         Return a deep copy of this object.
+
+        Returns
+        -------
+        result : `ApertureStats`
+            A deep copy of this object.
         """
         return deepcopy(self)
 
@@ -1584,8 +1598,8 @@ class ApertureStats:
     @as_scalar
     def cxx(self):
         r"""
-        `SourceExtractor`_'s CXX ellipse parameter in units of
-        pixel**(-2).
+        Coefficient for ``x**2`` in the generalized ellipse equation.
+        in units of pixel**(-2).
 
         The ellipse is defined as
 
@@ -1594,9 +1608,10 @@ class ApertureStats:
                 cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
-        units of the axes lengths). `SourceExtractor`_ reports that the
-        isophotal limit of a source is well represented by :math:`R
-        \approx 3`.
+        units of the axes lengths).
+
+        `SourceExtractor`_ reports that the isophotal limit of a source
+        is well represented by :math:`R \approx 3`.
         """
         return ((np.cos(self.orientation) / self.semimajor_sigma)**2
                 + (np.sin(self.orientation) / self.semiminor_sigma)**2)
@@ -1605,8 +1620,8 @@ class ApertureStats:
     @as_scalar
     def cyy(self):
         r"""
-        `SourceExtractor`_'s CYY ellipse parameter in units of
-        pixel**(-2).
+        Coefficient for ``y**2`` in the generalized ellipse equation.
+        in units of pixel**(-2).
 
         The ellipse is defined as
 
@@ -1615,9 +1630,10 @@ class ApertureStats:
                 cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
-        units of the axes lengths). `SourceExtractor`_ reports that the
-        isophotal limit of a source is well represented by :math:`R
-        \approx 3`.
+        units of the axes lengths).
+
+        `SourceExtractor`_ reports that the isophotal limit of a source
+        is well represented by :math:`R \approx 3`.
         """
         return ((np.sin(self.orientation) / self.semimajor_sigma)**2
                 + (np.cos(self.orientation) / self.semiminor_sigma)**2)
@@ -1626,8 +1642,8 @@ class ApertureStats:
     @as_scalar
     def cxy(self):
         r"""
-        `SourceExtractor`_'s CXY ellipse parameter in units of
-        pixel**(-2).
+        Coefficient for ``x * y`` in the generalized ellipse equation.
+        in units of pixel**(-2).
 
         The ellipse is defined as
 
@@ -1636,9 +1652,10 @@ class ApertureStats:
                 cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
-        units of the axes lengths). `SourceExtractor`_ reports that the
-        isophotal limit of a source is well represented by :math:`R
-        \approx 3`.
+        units of the axes lengths).
+
+        `SourceExtractor`_ reports that the isophotal limit of a source
+        is well represented by :math:`R \approx 3`.
         """
         return (2.0 * np.cos(self.orientation) * np.sin(self.orientation)
                 * ((1.0 / self.semimajor_sigma**2)

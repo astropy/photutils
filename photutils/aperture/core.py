@@ -135,7 +135,12 @@ class Aperture(metaclass=abc.ABCMeta):
 
     def copy(self):
         """
-        Make an independent (deep) copy.
+        Make an deep copy of this object.
+
+        Returns
+        -------
+        result : `Aperture`
+            A deep copy of the Aperture object.
         """
         params_copy = {}
         for param in list(self._params):
@@ -144,6 +149,10 @@ class Aperture(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def positions(self):
+        """
+        The aperture positions, as an array of (x, y) coordinates or a
+        `~astropy.coordinates.SkyCoord`.
+        """
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @lazyproperty
@@ -276,7 +285,7 @@ class PixelAperture(Aperture):
     @abc.abstractmethod
     def area(self):
         """
-        The exact analytical area of the aperture shape.
+        The exact geometric area of the aperture shape.
 
         Use the `area_overlap` method to return the area of overlap
         between the data and the aperture, taking into account the
@@ -613,7 +622,7 @@ class PixelAperture(Aperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -622,7 +631,7 @@ class PixelAperture(Aperture):
         xy_positions : `~numpy.ndarray`
             The aperture patch positions.
 
-        patch_params : `dict`
+        patch_params : dict
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
         """
@@ -646,7 +655,7 @@ class PixelAperture(Aperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -674,7 +683,7 @@ class PixelAperture(Aperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -713,7 +722,7 @@ class PixelAperture(Aperture):
 
         Returns
         -------
-        sky_params : `dict`
+        sky_params : dict
             A dictionary of parameters for an equivalent sky aperture.
         """
         sky_params = {}
@@ -794,7 +803,7 @@ class SkyAperture(Aperture):
 
         Returns
         -------
-        pixel_params : `dict`
+        pixel_params : dict
             A dictionary of parameters for an equivalent pixel aperture.
         """
         pixel_params = {}

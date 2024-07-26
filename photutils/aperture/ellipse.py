@@ -193,6 +193,9 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
     @property
     def area(self):
+        """
+        The exact geometric area of the aperture shape.
+        """
         return math.pi * self.a * self.b
 
     def _to_patch(self, origin=(0, 0), **kwargs):
@@ -205,7 +208,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -358,6 +361,9 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     @property
     def area(self):
+        """
+        The exact geometric area of the aperture shape.
+        """
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
     def _to_patch(self, origin=(0, 0), **kwargs):
@@ -370,7 +376,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 

@@ -225,7 +225,7 @@ class BoundingBox:
 
         Parameters
         ----------
-        **kwargs : dict
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -259,8 +259,13 @@ class BoundingBox:
 
     def to_aperture(self):
         """
-        Return a `~photutils.aperture.RectangularAperture` that
-        represents the bounding box.
+        Convert the bounding box to a
+        `~photutils.aperture.RectangularAperture`.
+
+        Returns
+        -------
+        aperture : `~photutils.aperture.RectangularAperture`
+            A rectangular aperture.
         """
         # prevent circular import
         from photutils.aperture.rectangle import RectangularAperture
@@ -284,7 +289,7 @@ class BoundingBox:
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : dict
+        **kwargs : dict, optional
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
 
         Returns
