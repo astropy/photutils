@@ -34,7 +34,7 @@ class RadialProfile(ProfileBase):
 
     Parameters
     ----------
-    data : 2D `numpy.ndarray`
+    data : 2D `~numpy.ndarray`
         The 2D data array. The data should be background-subtracted.
         Non-finite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
@@ -42,14 +42,14 @@ class RadialProfile(ProfileBase):
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
 
-    radii : 1D float `numpy.ndarray`
+    radii : 1D float `~numpy.ndarray`
         An array of radii defining the *edges* of the radial bins.
         ``radii`` must be strictly increasing with a minimum value
         greater than or equal to zero, and contain at least 2 values.
         The radial spacing does not need to be constant. The output
         `radius` attribute will be defined at the bin centers.
 
-    error : 2D `numpy.ndarray`, optional
+    error : 2D `~numpy.ndarray`, optional
         The 1-sigma errors of the input ``data``. ``error`` is assumed
         to include all sources of error, including the Poisson error
         of the sources (see `~photutils.utils.calc_total_error`) .
@@ -57,7 +57,7 @@ class RadialProfile(ProfileBase):
         Non-finite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
 
-    mask : 2D bool `numpy.ndarray`, optional
+    mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from all calculations.

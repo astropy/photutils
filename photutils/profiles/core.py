@@ -21,13 +21,13 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
     Parameters
     ----------
-    data : 2D `numpy.ndarray`
+    data : 2D `~numpy.ndarray`
         The 2D data array. The data should be background-subtracted.
 
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
 
-    radii : 1D float `numpy.ndarray`
+    radii : 1D float `~numpy.ndarray`
         An array of radii defining the radial bins. ``radii``
         must be strictly increasing with a minimum value greater
         than or equal to zero, and contain at least 2 values.
@@ -36,13 +36,13 @@ class ProfileBase(metaclass=abc.ABCMeta):
         *edges* of the radial annulus bins, and the output `radius`
         represents the bin centers.
 
-    error : 2D `numpy.ndarray`, optional
+    error : 2D `~numpy.ndarray`, optional
         The 1-sigma errors of the input ``data``. ``error`` is assumed
         to include all sources of error, including the Poisson error
         of the sources (see `~photutils.utils.calc_total_error`) .
         ``error`` must have the same shape as the input ``data``.
 
-    mask : 2D bool `numpy.ndarray`, optional
+    mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from all calculations.
@@ -260,7 +260,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
             The matplotlib axes on which to plot. If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by `matplotlib.pyplot.plot`.
 
         Returns
@@ -292,7 +292,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
             The matplotlib axes on which to plot. If `None`, then the
             current `~matplotlib.axes.Axes` instance is used.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.pyplot.fill_between`.
 
