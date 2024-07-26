@@ -442,10 +442,6 @@ class CentralPixel(Isophote):
     def pa(self):
         return 0.0
 
-    @property
-    def x0(self):
-        return self.sample.geometry.x0
-
 
 class IsophoteList:
     """
