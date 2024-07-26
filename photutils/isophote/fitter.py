@@ -42,7 +42,7 @@ class EllipseFitter:
     def __init__(self, sample):
         self._sample = sample
 
-    def fit(self, conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
+    def fit(self, *, conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
             maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
             going_inwards=False):
         """
@@ -384,15 +384,16 @@ class CentralEllipseFitter(EllipseFitter):
     the galaxy image.
     """
 
-    def fit(self, conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
-            maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
-            going_inwards=False):
+    def fit(self, **kwargs):
         """
         Perform just a simple 1-pixel extraction at the current (x0, y0)
         position using bilinear interpolation.
 
-        The input parameters are ignored, but included simple to match
-        the calling signature of the parent class.
+        Parameters
+        ----------
+        **kwargs : dict, optional
+            Keyword arguments are ignored, but allowed to match
+            the calling signature of the parent class.
 
         Returns
         -------

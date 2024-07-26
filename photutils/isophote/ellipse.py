@@ -665,8 +665,9 @@ class Ellipse:
             sample = CentralEllipseSample(self.image, 0.0, geometry=geometry)
             fitter = CentralEllipseFitter(sample)
 
-        isophote = fitter.fit(conver, minit, maxit, fflag, maxgerr,
-                              going_inwards)
+        isophote = fitter.fit(conver=conver, minit=minit, maxit=maxit,
+                              fflag=fflag, maxgerr=maxgerr,
+                              going_inwards=going_inwards)
 
         return isophote
 
