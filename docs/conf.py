@@ -1,16 +1,17 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-#
-# Documentation build configuration file.
-#
-# This file is execfile()d with the current directory set to its
-# containing dir.
-#
-# Note that not all possible configuration values are present in this
-# file.
-#
-# All configuration values have a default. Some values are defined in
-# the global Astropy configuration which is loaded here before anything
-# else. See astropy.sphinx.conf for which values are set there.
+"""
+Documentation build configuration file.
+
+This file is execfile()d with the current directory set to its
+containing dir.
+
+Note that not all possible configuration values are present in this
+file.
+
+All configuration values have a default. Some values are defined in the
+global Astropy configuration which is loaded here before anything else.
+See astropy.sphinx.conf for which values are set there.
+"""
 
 import os
 import sys

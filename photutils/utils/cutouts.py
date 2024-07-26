@@ -118,6 +118,12 @@ class CutoutImage:
         """
         Array representation of the cutout data array (e.g., for
         matplotlib).
+
+        Parameters
+        ----------
+        dtype : `~numpy.dtype`, optional
+            The data type of the output array. If `None`, then the
+            data type of the cutout data array is used.
         """
         return np.asarray(self.data, dtype=dtype)
 
@@ -155,6 +161,11 @@ class CutoutImage:
         """
         Calculate the `~photutils.aperture.BoundingBox` of the
         rectangular bounding box from the input slices.
+
+        Parameters
+        ----------
+        slices : tuple of slice
+            The slices for the bounding box.
         """
         return BoundingBox(ixmin=slices[1].start, ixmax=slices[1].stop,
                            iymin=slices[0].start, iymax=slices[0].stop)
@@ -185,6 +196,17 @@ class CutoutImage:
         """
         Calculate the (x, y) origin, taking into account partial
         overlaps.
+
+        Parameters
+        ----------
+        slices : tuple of slice
+            The slices for the bounding box.
+
+        Returns
+        -------
+        xyorigin : `~numpy.ndarray`
+            The ``(x, y)`` integer index of the origin pixel of the
+            cutout with respect to the original array.
         """
         xorigin, yorigin = (slices[1].start, slices[0].start)
 

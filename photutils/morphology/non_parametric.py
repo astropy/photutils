@@ -46,7 +46,7 @@ def gini(data):
 
     Returns
     -------
-    gini : `float`
+    result : float
         The Gini coefficient of the input 2D array.
     """
     flattened = np.sort(np.ravel(data))

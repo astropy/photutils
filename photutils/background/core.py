@@ -285,8 +285,9 @@ class ModeEstimatorBackground(BackgroundBase):
     49.5
     """
 
-    def __init__(self, median_factor=3.0, mean_factor=2.0, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, median_factor=3.0, mean_factor=2.0,
+                 sigma_clip=SIGMA_CLIP):
+        super().__init__(sigma_clip=sigma_clip)
         self.median_factor = median_factor
         self.mean_factor = mean_factor
 
@@ -354,10 +355,9 @@ class MMMBackground(ModeEstimatorBackground):
     49.5
     """
 
-    def __init__(self, **kwargs):
-        kwargs['median_factor'] = 3.0
-        kwargs['mean_factor'] = 2.0
-        super().__init__(**kwargs)
+    def __init__(self, sigma_clip=SIGMA_CLIP):
+        super().__init__(median_factor=3.0, mean_factor=2.0,
+                         sigma_clip=sigma_clip)
 
 
 class SExtractorBackground(BackgroundBase):
@@ -478,8 +478,8 @@ class BiweightLocationBackground(BackgroundBase):
     49.5
     """
 
-    def __init__(self, c=6, M=None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, c=6, M=None, sigma_clip=SIGMA_CLIP):
+        super().__init__(sigma_clip=sigma_clip)
         self.c = c
         self.M = M
 
@@ -672,8 +672,8 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     30.09433848589339
     """
 
-    def __init__(self, c=9.0, M=None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, c=9.0, M=None, sigma_clip=SIGMA_CLIP):
+        super().__init__(sigma_clip=sigma_clip)
         self.c = c
         self.M = M
 

@@ -14,12 +14,12 @@ def py2intround(a):
 
     Parameters
     ----------
-    a : float or array-like
+    a : float or array_like
         The input float or array.
 
     Returns
     -------
-    result : float or array-like
+    result : float or array_like
         The integer-rounded values.
     """
     data = np.atleast_1d(a)

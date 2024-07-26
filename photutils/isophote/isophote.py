@@ -436,10 +436,12 @@ class CentralPixel(Isophote):
 
     @property
     def eps(self):
+        """The ellipticity of the ellipse."""
         return 0.0
 
     @property
     def pa(self):
+        """The position angle (radians) of the ellipse."""
         return 0.0
 
 
@@ -484,15 +486,45 @@ class IsophoteList:
         return self._list.__iter__()
 
     def sort(self):
+        """
+        Sort the list of isophotes by semimajor axis length.
+        """
         self._list.sort()
 
     def insert(self, index, value):
+        """
+        Insert an isophote at a given index.
+
+        Parameters
+        ----------
+        index : int
+            The index where to insert the isophote.
+        value : `~photutils.isophote.Isophote`
+            The isophote to be inserted.
+        """
         self._list.insert(index, value)
 
     def append(self, value):
+        """
+        Append an isophote to the list.
+
+        Parameters
+        ----------
+        value : `~photutils.isophote.Isophote`
+            The isophote to be appended.
+        """
         self.insert(len(self) + 1, value)
 
     def extend(self, value):
+        """
+        Extend the list with the isophotes from another
+        `~photutils.isophote.IsophoteList` instance.
+
+        Parameters
+        ----------
+        value : `~photutils.isophote.IsophoteList`
+            The isophotes to be appended.
+        """
         self._list.extend(value._list)
 
     def __iadd__(self, value):
@@ -772,8 +804,13 @@ class IsophoteList:
 
     def get_names(self):
         """
-        Print the names of the properties of an
+        Get the names of the properties of an
         `~photutils.isophote.IsophoteList` instance.
+
+        Returns
+        -------
+        list_names : list
+            A list of the names of the properties.
         """
         list_names = list(_get_properties(self).keys())
         return list_names
@@ -791,7 +828,7 @@ def _get_properties(isophote_list):
 
     Returns
     -------
-    result : `dict`
+    result : dict
         An dictionary with the list of the isophote_list properties.
     """
     properties = {}
@@ -843,7 +880,7 @@ def _isophote_list_to_table(isophote_list, columns='main'):
 
         Parameters
         ----------
-        properties : `dict`
+        properties : dict
             A dictionary with the list of the isophote_list parameters.
 
         orig_names : list
@@ -855,7 +892,7 @@ def _isophote_list_to_table(isophote_list, columns='main'):
 
         Returns
         -------
-        properties: `dict`
+        properties : dict
             A dictionary with the list of the renamed isophote_list
             parameters.
         """

@@ -19,12 +19,12 @@ __all__ = ['FittableImageModel', 'EPSFModel', 'IntegratedGaussianPRF',
 
 class FittableImageModel(Fittable2DModel):
     r"""
-    A fittable 2D model of an image allowing for image intensity scaling
-    and image translations.
+    A fittable image model allowing for intensity scaling and
+    translations.
 
-    This class takes 2D image data and computes the values of the
-    model at arbitrary locations (including at intra-pixel, fractional
-    positions) within this image using spline interpolation provided by
+    This class takes 2D image data and computes the values of
+    the model at arbitrary locations, including fractional pixel
+    positions, within the image using spline interpolation provided by
     :py:class:`~scipy.interpolate.RectBivariateSpline`.
 
     The fittable model provided by this class has three model
@@ -33,30 +33,19 @@ class FittableImageModel(Fittable2DModel):
     (``x_0`` and ``y_0``) indicating the location of a feature in the
     coordinate grid on which the model is to be evaluated.
 
-    If this class is initialized with ``flux`` (intensity scaling
-    factor) set to `None`, then ``flux`` is going to be estimated as
-    ``sum(data)``.
-
     Parameters
     ----------
-    data : `~numpy.ndarray`
-        Array containing 2D image.
+    data : 2D `~numpy.ndarray`
+        Array containing the 2D image.
 
-    origin : tuple, None, optional
-        A reference point in the input image ``data`` array. When origin
-        is `None`, origin will be set at the middle of the image array.
+    flux : float, optional
+        Intensity scaling factor for image data. If ``flux`` is `None`,
+        then the normalization constant will be computed so that the
+        total flux of the model's image data is 1.0.
 
-        If ``origin`` represents the location of a feature (e.g., the
-        position of an intensity peak) in the input ``data``, then
-        model parameters ``x_0`` and ``y_0`` show the location of this
-        peak in an another target image to which this model was fitted.
-        Fundamentally, it is the coordinate in the model's image data
-        that should map to coordinate (``x_0``, ``y_0``) of the output
-        coordinate system on which the model is evaluated.
-
-        Alternatively, when ``origin`` is set to ``(0, 0)``, then model
-        parameters ``x_0`` and ``y_0`` are shifts by which model's image
-        should be translated in order to match a target image.
+    x_0, y_0 : float, optional
+        Position of a feature in the image in the output coordinate grid
+        on which the model is evaluated.
 
     normalize : bool, optional
         Indicates whether or not the model should be build on normalized
@@ -90,21 +79,37 @@ class FittableImageModel(Fittable2DModel):
         the aperture, and thus the correction is applied as an inversely
         multiplied factor.
 
-    fill_value : float, optional
-        The value to be returned by the `evaluate` or
-        ``astropy.modeling.Model.__call__`` methods when evaluation is
-        performed outside the definition domain of the model.
+    origin : tuple, None, optional
+        A reference point in the input image ``data`` array. When origin
+        is `None`, origin will be set at the middle of the image array.
 
-    kwargs : dict, optional
-        Additional optional keyword arguments to be passed directly to
-        the `compute_interpolator` method. See `compute_interpolator`
-        for more details.
+        If ``origin`` represents the location of a feature (e.g., the
+        position of an intensity peak) in the input ``data``, then
+        model parameters ``x_0`` and ``y_0`` show the location of this
+        peak in an another target image to which this model was fitted.
+        Fundamentally, it is the coordinate in the model's image data
+        that should map to coordinate (``x_0``, ``y_0``) of the output
+        coordinate system on which the model is evaluated.
+
+        Alternatively, when ``origin`` is set to ``(0, 0)``, then model
+        parameters ``x_0`` and ``y_0`` are shifts by which model's image
+        should be translated in order to match a target image.
 
     oversampling : int or array_like (int)
         The integer oversampling factor(s) of the ePSF relative to the
         input ``stars`` along each axis. If ``oversampling`` is a scalar
         then it will be used for both axes. If ``oversampling`` has two
         elements, they must be in ``(y, x)`` order.
+
+    fill_value : float, optional
+        The value to be returned by the `evaluate` or
+        ``astropy.modeling.Model.__call__`` methods when evaluation is
+        performed outside the definition domain of the model.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed directly to
+        the `compute_interpolator` method. See `compute_interpolator`
+        for more details.
     """
 
     flux = Parameter(description='Intensity scaling factor for image data.',
@@ -313,10 +318,10 @@ class FittableImageModel(Fittable2DModel):
         A tuple of ``x`` and ``y`` coordinates of the origin of the
         coordinate system in terms of pixels of model's image.
 
-        When setting the coordinate system origin, a tuple of two `int`
-        or `float` may be used. If origin is set to `None`, the origin
-        of the coordinate system will be set to the middle of the data
-        array (``(npix-1)/2.0``).
+        When setting the coordinate system origin, a tuple of two
+        integers or floats may be used. If origin is set to `None`, the
+        origin of the coordinate system will be set to the middle of the
+        data array (``(npix-1)/2.0``).
 
         .. warning::
             Modifying ``origin`` will not adjust (modify) model's
@@ -448,10 +453,25 @@ class FittableImageModel(Fittable2DModel):
 
         Parameters
         ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            The total flux of the source.
+
+        x_0, y_0 : float
+            The x and y positions of the feature in the image in the
+            output coordinate grid on which the model is evaluated.
+
         use_oversampling : bool, optional
             Whether to use the oversampling factor to calculate the
             model pixel indices. The default is `True`, which means the
             input indices will be multiplied by this factor.
+
+        Returns
+        -------
+        evaluated_model : `~numpy.ndarray`
+            The evaluated model.
         """
         if use_oversampling:
             xi = self._oversampling[1] * (np.asarray(x) - x_0)
@@ -494,15 +514,46 @@ class EPSFModel(FittableImageModel):
 
     Parameters
     ----------
+    data : 2D `~numpy.ndarray`
+        Array containing the 2D image.
+
+    flux : float, optional
+        Intensity scaling factor for image data.
+
+    x_0, y_0 : float, optional
+        Position of a feature in the image in the output coordinate grid
+        on which the model is evaluated.
+
+    normalize : bool, optional
+        Indicates whether or not the model should be build on normalized
+        input image data.
+
+    normalization_correction : float, optional
+        A strictly positive number that represents correction that needs
+        to be applied to model's data normalization.
+
+    origin : tuple, None, optional
+        A reference point in the input image ``data`` array. When origin
+        is `None`, origin will be set at the middle of the image array.
+
     oversampling : int or array_like (int)
         The integer oversampling factor(s) of the ePSF relative to the
         input ``stars`` along each axis. If ``oversampling`` is a scalar
         then it will be used for both axes. If ``oversampling`` has two
         elements, they must be in ``(y, x)`` order.
 
+    fill_value : float, optional
+        The value to be returned when evaluation is performed outside
+        the domain of the model.
+
     norm_radius : float, optional
         The radius inside which the ePSF is normalized by the sum over
         undersampled integer pixel values inside a circular aperture.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed directly to
+        the `compute_interpolator` method. See `compute_interpolator`
+        for more details.
     """
 
     def __init__(self, data, *, flux=1.0, x_0=0.0, y_0=0.0, normalize=True,
@@ -660,6 +711,23 @@ class EPSFModel(FittableImageModel):
         """
         Evaluate the model on some input variables and provided model
         parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            The total flux of the source.
+
+        x_0, y_0 : float
+            The x and y positions of the feature in the image in the
+            output coordinate grid on which the model is evaluated.
+
+        Returns
+        -------
+        evaluated_model : `~numpy.ndarray`
+            The evaluated model.
         """
         xi = np.asarray(x) - x_0 + self._x_origin
         yi = np.asarray(y) - y_0 + self._y_origin
@@ -696,14 +764,21 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
     Parameters
     ----------
-    sigma : float
+    sigma : float, optional
         Width of the Gaussian PSF.
-    flux : float, optional
-        Total integrated flux over the entire PSF.
+
     x_0 : float, optional
         Position of the peak in x direction.
+
     y_0 : float, optional
         Position of the peak in y direction.
+
+    flux : float, optional
+        Total integrated flux over the entire PSF.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` parent class.
 
     Notes
     -----
@@ -739,8 +814,7 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
     def bounding_box(self, factor=5.5):
         """
-        Tuple defining the default ``bounding_box`` limits, ``(x_low,
-        x_high)``.
+        Return a bounding box defining the limits of the model.
 
         Parameters
         ----------
@@ -748,6 +822,11 @@ class IntegratedGaussianPRF(Fittable2DModel):
             The multiple of `sigma` used to define the limits. The
             default is 5.5, corresponding to a relative flux error less
             than 5e-9.
+
+        Returns
+        -------
+        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
+            A bounding box defining the limits of the model.
 
         Examples
         --------
@@ -795,7 +874,28 @@ class IntegratedGaussianPRF(Fittable2DModel):
                          **kwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0, sigma):
-        """Model function Gaussian PSF model."""
+        """
+        Model function Gaussian PSF model.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The coordinates at which to evaluate the model.
+
+        flux : float
+            The total flux of the star.
+
+        x_0, y_0 : float
+            The position of the star.
+
+        sigma : float
+            The width of the Gaussian PRF.
+
+        Returns
+        -------
+        evaluated_model : `~numpy.ndarray`
+            The evaluated model.
+        """
         return (flux / 4
                 * ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma))
                     - self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma)))
@@ -816,27 +916,40 @@ class PRFAdapter(Fittable2DModel):
     psfmodel : a 2D model
         The model to assume as representative of the PSF.
 
-    renormalize_psf : bool
+    renormalize_psf : bool, optional
         If True, the model will be integrated from -inf to inf and
         re-scaled so that the total integrates to 1. Note that this
         renormalization only occurs *once*, so if the total flux of
         ``psfmodel`` depends on position, this will *not* be correct.
 
-    xname : str or None
+    flux : float, optional
+        The total flux of the star.
+
+    x_0 : float, optional
+        The x position of the star.
+
+    y_0 : float, optional
+        The y position of the star.
+
+    xname : str or None, optional
         The name of the ``psfmodel`` parameter that corresponds to the
         x-axis center of the PSF. If None, the model will be assumed to
         be centered at x=0.
 
-    yname : str or None
+    yname : str or None, optional
         The name of the ``psfmodel`` parameter that corresponds to the
         y-axis center of the PSF. If None, the model will be assumed to
         be centered at y=0.
 
-    fluxname : str or None
+    fluxname : str or None, optional
         The name of the ``psfmodel`` parameter that corresponds to
         the total flux of the star. If None, a scaling factor will
         be applied by the ``PRFAdapter`` instead of modifying the
         ``psfmodel``.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` parent class.
 
     Notes
     -----
@@ -875,7 +988,25 @@ class PRFAdapter(Fittable2DModel):
         super().__init__(n_models=1, x_0=x_0, y_0=y_0, flux=flux, **kwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0):
-        """The evaluation function for PRFAdapter."""
+        """
+        The evaluation function for PRFAdapter.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The coordinates at which to evaluate the model.
+
+        flux : float
+            The total flux of the star.
+
+        x_0, y_0 : float
+            The position of the star.
+
+        Returns
+        -------
+        evaluated_model : `~numpy.ndarray`
+            The evaluated model.
+        """
         if not np.isscalar(flux):
             flux = flux[0]
         if not np.isscalar(x_0):

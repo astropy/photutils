@@ -61,6 +61,17 @@ def _get_meta(utc=False):
     """
     Return a metadata dictionary with the package versions and current
     date/time.
+
+    Parameters
+    ----------
+    utc : bool, optional
+        Whether to use the UTC timezone instead of the local timezone.
+
+    Returns
+    -------
+    result : dict
+        A dictionary containing package versions and the current
+        date/time.
     """
     return {'date': _get_date(utc=utc),
             'version': _get_version_info()}

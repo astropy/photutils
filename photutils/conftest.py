@@ -1,7 +1,7 @@
-# This file is used to configure the behavior of pytest when using the Astropy
-# test infrastructure. It needs to live inside the package in order for it to
-# get picked up when running the tests inside an interpreter using
-# packagename.test
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Configuration file for the pytest test suite.
+"""
 
 try:
     from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,

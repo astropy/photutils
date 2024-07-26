@@ -319,11 +319,6 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         `True` value indicates the corresponding element of ``data`` is
         masked.
 
-    error : 2D `~numpy.ndarray`, optional
-        The 2D array of the 1-sigma errors of the input ``data``.
-        ``error`` must have the same shape as ``data``. ``error`` will
-        be used only if supported by the input ``centroid_func``.
-
     centroid_func : callable, optional
         A callable object (e.g., function or class) that is used to
         calculate the centroid of a 2D array. The ``centroid_func``
@@ -332,7 +327,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         a tuple of two 1D `~numpy.ndarray`, representing the x and y
         centroids. The default is `~photutils.centroids.centroid_com`.
 
-    **kwargs : `dict`
+    **kwargs : dict, optional
         Any additional keyword arguments accepted by the
         ``centroid_func``.
 

@@ -508,7 +508,7 @@ class ImageDepth:
             The number of aperture to make.
 
         Returns
-        --------
+        -------
         xycoords : 2xN `~numpy.ndarray`
             The (x, y) coordinates.
         """

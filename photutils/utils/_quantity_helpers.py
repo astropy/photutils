@@ -77,7 +77,7 @@ def isscalar(value):
 
     Parameters
     ----------
-    value : `~astropy.units.Quantity`, scalar, or array-like
+    value : `~astropy.units.Quantity`, scalar, or array_like
         The value to check.
 
     Returns

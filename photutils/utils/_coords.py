@@ -10,6 +10,25 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 
 def apply_separation(xycoords, min_separation):
+    """
+    Apply a minimum separation to a set of (x, y) coordinates.
+
+    Coordinates that are closer than the minimum separation are removed.
+
+    Parameters
+    ----------
+    xycoords : `~numpy.ndarray`
+        The (x, y) coordinates with shape ``(N, 2)``.
+
+    min_separation : float
+        The minimum separation in pixels between coordinates.
+
+    Returns
+    -------
+    xycoords : `~numpy.ndarray`
+        The (x, y) coordinates with shape ``(N, 2)`` after excluding
+        points closer than the minimum separation.
+    """
     from scipy.spatial import KDTree
 
     tree = KDTree(xycoords)

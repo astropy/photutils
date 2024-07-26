@@ -286,6 +286,12 @@ class EllipseSample:
         the values that match the current ``geometry`` attribute, and
         then computes the mean intensity, local gradient, and other
         associated quantities.
+
+        Parameters
+        ----------
+        fixed_parameters : `None` or array_like, optional
+            An array of the fixed parameters. Must have 4 elements,
+            corresponding to x center, y center, PA, and EPS.
         """
         if fixed_parameters is None:
             fixed_parameters = np.array([False, False, False, False])
@@ -390,13 +396,18 @@ class CentralEllipseSample(EllipseSample):
     the special case of the central pixel in the galaxy image.
     """
 
-    def update(self, fixed_parameters):
+    def update(self, fixed_parameters=None):
         """
         Update this `~photutils.isophote.EllipseSample` instance with
         the intensity integrated at the (x0, y0) center position using
         bilinear integration. The local gradient is set to `None`.
 
-        'fixed_parameters' is ignored in this subclass.
+        Parameters
+        ----------
+        fixed_parameters : `None` or array_like, optional
+            An array of the fixed parameters. Must have 4 elements,
+            corresponding to x center, y center, PA, and EPS. This
+            keyword is ignored in this subclass.
         """
         s = self.extract()
         self.mean = s[2][0]

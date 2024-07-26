@@ -216,6 +216,9 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
     @property
     def area(self):
+        """
+        The exact geometric area of the aperture shape.
+        """
         return self.w * self.h
 
     def _to_patch(self, origin=(0, 0), **kwargs):
@@ -228,7 +231,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -385,6 +388,9 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     @property
     def area(self):
+        """
+        The exact geometric area of the aperture shape.
+        """
         return self.w_out * self.h_out - self.w_in * self.h_in
 
     def _to_patch(self, origin=(0, 0), **kwargs):
@@ -397,7 +403,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 

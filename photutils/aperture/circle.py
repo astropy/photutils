@@ -152,6 +152,9 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
     @lazyproperty
     def area(self):
+        """
+        The exact geometric area of the aperture shape.
+        """
         return math.pi * self.r**2
 
     def _to_patch(self, origin=(0, 0), **kwargs):
@@ -164,7 +167,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -278,6 +281,9 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     @lazyproperty
     def area(self):
+        """
+        The exact geometric area of the aperture shape.
+        """
         return math.pi * (self.r_out**2 - self.r_in**2)
 
     def _to_patch(self, origin=(0, 0), **kwargs):
@@ -290,7 +296,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 

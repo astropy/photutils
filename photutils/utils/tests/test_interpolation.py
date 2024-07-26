@@ -84,7 +84,9 @@ class TestShepardIDWInterpolator:
         assert result.dtype == float
 
     def test_positions_0d_nomatch(self):
-        """test when position ndim doesn't match coordinates ndim"""
+        """
+        Test when position ndim doesn't match coordinates ndim.
+        """
         pos = self.rng.random((10, 2))
         val = np.sin(pos[:, 0] + pos[:, 1])
         f = idw(pos, val)
@@ -92,7 +94,9 @@ class TestShepardIDWInterpolator:
             f(0.5)
 
     def test_positions_1d_nomatch(self):
-        """test when position ndim doesn't match coordinates ndim"""
+        """
+        Test when position ndim doesn't match coordinates ndim.
+        """
         pos = self.rng.random((10, 2))
         val = np.sin(pos[:, 0] + pos[:, 1])
         f = idw(pos, val)

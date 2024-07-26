@@ -705,7 +705,7 @@ class Background2D:
         outlines : bool, optional
             Whether or not to plot the box outlines.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`, which is used to draw the box
             outlines. Used only if ``outlines`` is True.

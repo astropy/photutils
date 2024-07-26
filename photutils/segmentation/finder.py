@@ -27,7 +27,7 @@ class SourceFinder:
 
     Parameters
     ----------
-    npixels : int or array-like of 2 int
+    npixels : int or array_like of 2 int
         The minimum number of connected pixels, each greater than a
         specified threshold, that an object must have to be detected. If
         ``npixels`` is an integer, then the value will be used for both

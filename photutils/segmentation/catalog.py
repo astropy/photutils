@@ -43,15 +43,25 @@ DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',
 
 def as_scalar(method):
     """
-    Return a scalar value from a method if the class is scalar.
+    Return a decorated method where it will always return a scalar value
+    (instead of a length-1 tuple/list/array) if the class is scalar.
 
     Note that lazyproperties that begin with '_' should not have this
     decorator applied. Such properties are assumed to always be iterable
     and when slicing (see __getitem__) from a cached multi-object
     catalog to create a single-object catalog, they will no longer be
     scalar.
-    """
 
+    Parameters
+    ----------
+    method : function
+        The method to be decorated.
+
+    Returns
+    -------
+    decorator : function
+        The decorated method.
+    """
     @functools.wraps(method)
     def _as_scalar(*args, **kwargs):
         result = method(*args, **kwargs)
@@ -66,10 +76,19 @@ def as_scalar(method):
 
 def use_detcat(method):
     """
-    Return the value from the detection image catalog instead of
-    using the method to calculate it.
-    """
+    Return a decorated method where it will return the value from the
+    detection image catalog instead of using the method to calculate it.
 
+    Parameters
+    ----------
+    method : function
+        The method to be decorated.
+
+    Returns
+    -------
+    decorator : function
+        The decorated method.
+    """
     @functools.wraps(method)
     def _use_detcat(self, *args, **kwargs):
         if self._detection_cat is None:
@@ -559,6 +578,11 @@ class SourceCatalog:
     def copy(self):
         """
         Return a deep copy of this SourceCatalog.
+
+        Returns
+        -------
+        result : `SourceCatalog`
+            A deep copy of this object.
         """
         return deepcopy(self)
 
@@ -2475,8 +2499,8 @@ class SourceCatalog:
     @as_scalar
     def cxx(self):
         r"""
-        `SourceExtractor`_'s CXX ellipse parameter in units of
-        pixel**(-2).
+        Coefficient for ``x**2`` in the generalized ellipse equation.
+        in units of pixel**(-2).
 
         The ellipse is defined as
 
@@ -2485,9 +2509,10 @@ class SourceCatalog:
                 cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
-        units of the axes lengths). `SourceExtractor`_ reports that the
-        isophotal limit of a source is well represented by :math:`R
-        \approx 3`.
+        units of the axes lengths).
+
+        `SourceExtractor`_ reports that the isophotal limit of a source
+        is well represented by :math:`R \approx 3`.
         """
         return ((np.cos(self.orientation) / self.semimajor_sigma)**2
                 + (np.sin(self.orientation) / self.semiminor_sigma)**2)
@@ -2497,8 +2522,8 @@ class SourceCatalog:
     @as_scalar
     def cyy(self):
         r"""
-        `SourceExtractor`_'s CYY ellipse parameter in units of
-        pixel**(-2).
+        Coefficient for ``y**2`` in the generalized ellipse equation.
+        in units of pixel**(-2).
 
         The ellipse is defined as
 
@@ -2507,9 +2532,10 @@ class SourceCatalog:
                 cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
-        units of the axes lengths). `SourceExtractor`_ reports that the
-        isophotal limit of a source is well represented by :math:`R
-        \approx 3`.
+        units of the axes lengths).
+
+        `SourceExtractor`_ reports that the isophotal limit of a source
+        is well represented by :math:`R \approx 3`.
         """
         return ((np.sin(self.orientation) / self.semimajor_sigma)**2
                 + (np.cos(self.orientation) / self.semiminor_sigma)**2)
@@ -2519,8 +2545,8 @@ class SourceCatalog:
     @as_scalar
     def cxy(self):
         r"""
-        `SourceExtractor`_'s CXY ellipse parameter in units of
-        pixel**(-2).
+        Coefficient for ``x * y`` in the generalized ellipse equation.
+        in units of pixel**(-2).
 
         The ellipse is defined as
 
@@ -2529,9 +2555,10 @@ class SourceCatalog:
                 cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
-        units of the axes lengths). `SourceExtractor`_ reports that the
-        isophotal limit of a source is well represented by :math:`R
-        \approx 3`.
+        units of the axes lengths).
+
+        `SourceExtractor`_ reports that the isophotal limit of a source
+        is well represented by :math:`R \approx 3`.
         """
         return (2.0 * np.cos(self.orientation) * np.sin(self.orientation)
                 * ((1.0 / self.semimajor_sigma**2)
@@ -2816,7 +2843,7 @@ class SourceCatalog:
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -3227,7 +3254,7 @@ class SourceCatalog:
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -3267,7 +3294,7 @@ class SourceCatalog:
         desc : str, optional
             The description displayed before the progress bar.
 
-        **kwargs : dict
+        **kwargs : dict, optional
             Additional keyword arguments passed to the aperture
             ``to_mask`` method.
 
