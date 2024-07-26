@@ -172,7 +172,7 @@ class _StarFinderCatalog:
     data : 2D `~numpy.ndarray`
         The 2D image. The image should be background-subtracted.
 
-    xypos : Nx2 `numpy.ndarray`
+    xypos : Nx2 `~numpy.ndarray`
         A Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 

@@ -101,14 +101,14 @@ class DAOStarFinder(StarFinderBase):
         The upper bound on roundness for object detection.
 
     sky : float or `~astropy.units.Quantity`, optional
-        .. deprecated:: 1.13.0
-
         The background sky level of the image. Setting ``sky`` affects
         only the output values of the object ``peak``, ``flux``, and
         ``mag`` values. The default is 0.0, which should be used to
         replicate the results from `DAOFIND`_. If the star finder is
         run on an image that is a `~astropy.units.Quantity` array, then
         ``sky`` must have the same units.
+
+        .. deprecated:: 1.13.0
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
@@ -334,7 +334,7 @@ class _DAOStarFinderCatalog:
         `~astropy.units.Quantity` array, then ``convolved_data`` must
         have the same units.
 
-    xypos : Nx2 `numpy.ndarray`
+    xypos : Nx2 `~numpy.ndarray`
         A Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
@@ -737,10 +737,11 @@ class _DAOStarFinderCatalog:
     @lazyproperty
     def flux(self):
         """
-        This is DAOStarFinder's definition of "flux", which is the
-        object flux calculated as the peak density in the convolved
-        image divided by the effective detection threshold. This
-        derivation matches that of `DAOFIND`_ if ``sky`` is 0.0.
+        The peak density in the convolved image divided by the effective
+        detection threshold.
+
+        This is DAOStarFinder's definition of "flux" and matches that of
+        `DAOFIND`_ if ``sky`` is 0.0.
         """
         flux = self.convdata_peak / self.threshold_eff
         if self.unit is not None:

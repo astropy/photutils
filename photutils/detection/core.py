@@ -60,16 +60,13 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             Set to `True` to exclude sources found within half the
             size of the convolution kernel from the image borders.
             The default is `False`, which is the mode used by IRAF's
-            `DAOFIND`_ and `starfind`_ tasks.
+            `DAOFIND <https://iraf.net/irafhelp.php?val=daofind>`_ and
+            `starfind <https://iraf.net/irafhelp.php?val=starfind>`_.
 
         Returns
         -------
         result : Nx2 `~numpy.ndarray`
             A Nx2 array containing the (x, y) pixel coordinates.
-
-        .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
-
-        .. _starfind: https://iraf.net/irafhelp.php?val=starfind
         """
         # define a local footprint for the peak finder
         if min_separation == 0.0:  # DAOStarFinder

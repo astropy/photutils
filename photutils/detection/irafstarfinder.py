@@ -70,8 +70,6 @@ class IRAFStarFinder(StarFinderBase):
         The upper bound on roundness for object detection.
 
     sky : float, optional
-        .. deprecated:: 1.13.0
-
         The background sky level of the image. Inputing a ``sky``
         value will override the background sky estimate. Setting
         ``sky`` affects only the output values of the object ``peak``,
@@ -80,6 +78,8 @@ class IRAFStarFinder(StarFinderBase):
         method. If the star finder is run on an image that is a
         `~astropy.units.Quantity` array, then ``sky`` must have the same
         units.
+
+        .. deprecated:: 1.13.0
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
@@ -295,7 +295,7 @@ class _IRAFStarFinderCatalog:
         `~astropy.units.Quantity` array, then ``convolved_data`` must
         have the same units.
 
-    xypos : Nx2 `numpy.ndarray`
+    xypos : Nx2 `~numpy.ndarray`
         A Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
