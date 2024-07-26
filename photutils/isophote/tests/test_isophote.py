@@ -12,7 +12,7 @@ from photutils.datasets import get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.fitter import EllipseFitter
 from photutils.isophote.geometry import EllipseGeometry
-from photutils.isophote.isophote import Isophote, IsophoteList
+from photutils.isophote.isophote import CentralPixel, Isophote, IsophoteList
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils._optional_deps import HAS_SCIPY
@@ -159,6 +159,7 @@ class TestIsophoteList:
         self.isolist_sma10 = self.build_list(data, sma0=10.0, slen=self.slen)
         self.isolist_sma100 = self.build_list(data, sma0=100.0, slen=self.slen)
         self.isolist_sma200 = self.build_list(data, sma0=200.0, slen=self.slen)
+        self.data = data
 
     @staticmethod
     def build_list(data, sma0, slen=5):
@@ -210,6 +211,16 @@ class TestIsophoteList:
         iso = result.get_closest(13.6)
         assert isinstance(iso, Isophote)
         assert_allclose(iso.sma, 14.0, atol=1e-6)
+
+    def test_central_pixel(self):
+        # test the central_pixel method.
+        sample = EllipseSample(self.data, 10.0)
+        sample.update()
+        cenpix = CentralPixel(sample)
+        assert cenpix.x0 == cenpix.sample.geometry.x0
+        assert cenpix.y0 == cenpix.sample.geometry.y0
+        assert cenpix.eps == 0.0
+        assert cenpix.pa == 0.0
 
     def test_extend(self):
         # the extend method shouldn't return anything,
