@@ -532,8 +532,11 @@ class PSFPhotometry(ModelImageMixin):
     @staticmethod
     def _rename_init_columns(init_params, param_maps, find_column_name):
         """
+        Rename the columns in the input ``init_params`` table to the
+        expected names with the "_init" suffix if necessary.
+
         This is a static method to allow the method to be called from
-        IterativePSFPhotometry.
+        `IterativePSFPhotometry`.
         """
         for param in param_maps['model'].keys():
             colname = find_column_name(param, init_params.colnames)
@@ -754,14 +757,14 @@ class PSFPhotometry(ModelImageMixin):
 
         Parameters
         ----------
+        table : `~astropy.table.Table`
+            The input table.
+
         colname : str
             The column name to move.
 
         colname_after : str
             The column name after which to place the moved column.
-
-        table : `~astropy.table.Table`
-            The input table.
 
         Returns
         -------
@@ -1687,7 +1690,7 @@ class IterativePSFPhotometry(ModelImageMixin):
     def _convert_finder_to_init(self, sources):
         """
         Convert the output of the finder to a table with initial (x, y)
-        position column names
+        position column names.
         """
         xcol = self._psfphot._param_maps['init_cols']['x']
         ycol = self._psfphot._param_maps['init_cols']['y']

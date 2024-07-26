@@ -157,6 +157,11 @@ class EPSFStar:
 
         Missing data is filled in by interpolation to better estimate
         the total flux.
+
+        Returns
+        -------
+        flux : float
+            The estimated star's flux.
         """
         if np.any(self.mask):
             data_interp = _interpolate_missing_data(self.data, method='cubic',

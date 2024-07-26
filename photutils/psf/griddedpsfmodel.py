@@ -273,24 +273,36 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
 
     Parameters
     ----------
-    *args : tuple, optional
-        Positional arguments passed through to data reader. If supplied
-        the first argument is typically the input filename.
-    format : str
-        File format specifier.
-    **kwargs : dict, optional
-        Keyword arguments passed through to data reader.
+    instance : object
+        Descriptor calling instance or `None` if no instance.
 
-    Returns
-    -------
-    out : `~photutils.psf.GriddedPSFModel`
-        A gridded ePSF model corresponding to FITS file contents.
+    cls : type
+        Descriptor calling class (either owner class or instance class).
     """
     def __init__(self, instance, cls):
-        super().__init__(instance, cls, 'read', registry=None)
         # uses default global registry
+        super().__init__(instance, cls, 'read', registry=None)
 
     def __call__(self, *args, **kwargs):
+        """
+        Read and parse a FITS file into a `GriddedPSFModel` instance
+        using the registered "read" function.
+
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed through to data reader. The
+            first argument is typically the input filename.
+
+        **kwargs : dict, optional
+            Keyword arguments passed through to data reader. This
+            includes the ``format`` keyword argument.
+
+        Returns
+        -------
+        out : `~photutils.psf.GriddedPSFModel`
+            A gridded ePSF model corresponding to FITS file contents.
+        """
         return self.registry.read(self._cls, *args, **kwargs)
 
 
@@ -313,7 +325,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         `~numpy.ndarray` containing a stack of the 2D ePSFs with a shape
         of ``(N_psf, ePSF_ny, ePSF_nx)``.
 
-        The meta attribute must be `dict` containing the following:
+        The meta attribute must be dictionary containing the following:
 
             * ``'grid_xypos'``: A list of the (x, y) grid positions of
               each reference ePSF. The order of positions should match the
@@ -328,6 +340,17 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         The meta attribute may contain other properties such as the
         telescope, instrument, detector, and filter of the ePSF.
+
+    flux : float, optional
+        The flux scaling factor for the model. The default is 1.0.
+
+    x_0, y_0 : float, optional
+        The (x, y) position in the output coordinate grid where the model
+        is evaluated. The default is (0, 0).
+
+    fill_value : float, optional
+        The value to use for points outside of the input pixel grid.
+        The default is 0.0.
 
     Methods
     -------
@@ -462,6 +485,11 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         Use the `deepcopy` method if you want to copy all of the model
         attributes, including the ePSF grid data.
+
+        Returns
+        -------
+        result : `GriddedPSFModel`
+            A copy of this model with only the model parameters copied.
         """
         newcls = object.__new__(self.__class__)
 
@@ -476,6 +504,11 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     def deepcopy(self):
         """
         Return a deep copy of this model.
+
+        Returns
+        -------
+        result : `GriddedPSFModel`
+            A deep copy of this model.
         """
         return copy.deepcopy(self)
 
@@ -635,6 +668,22 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     def evaluate(self, x, y, flux, x_0, y_0):
         """
         Evaluate the `GriddedPSFModel` for the input parameters.
+
+        Parameters
+        ----------
+        x, y : float or `~numpy.ndarray`
+            The x and y positions at which to evaluate the model.
+
+        flux : float
+            The flux scaling factor for the model.
+
+        x_0, y_0 : float
+            The (x, y) position of the model.
+
+        Returns
+        -------
+        evaluated_model : `~numpy.ndarray`
+            The evaluated model.
         """
         if x.ndim > 2:
             raise ValueError('x and y must be 1D or 2D.')
@@ -1062,16 +1111,28 @@ def webbpsf_reader(filename):
 
 def is_stdpsf(origin, filepath, fileobj, *args, **kwargs):
     """
-    Determine whether `origin` is a STDPSF FITS file.
+    Determine whether a file is a STDPSF FITS file.
 
     Parameters
     ----------
-    origin : str or readable file-like
-        Path or file object containing a potential FITS file.
+    origin : {'read', 'write'}
+        A string indicating whether the file is to be opened for reading
+        or writing.
+
+    filepath : str
+        The file path of the FITS file.
+
+    fileobj : file-like object
+        An open file object to read the file's contents, or `None` if
+        the file could not be opened.
+
+    *args, **kwargs
+        Any additional positional or keyword arguments for the read or
+        write function.
 
     Returns
     -------
-    is_stdpsf : bool
+    result : bool
         Returns `True` if the given file is a STDPSF FITS file.
     """
     if filepath is not None:
@@ -1091,16 +1152,28 @@ def is_stdpsf(origin, filepath, fileobj, *args, **kwargs):
 
 def is_webbpsf(origin, filepath, fileobj, *args, **kwargs):
     """
-    Determine whether `origin` is a WebbPSF FITS file.
+    Determine whether a file is a WebbPSF FITS file.
 
     Parameters
     ----------
-    origin : str or readable file-like
-        Path or file object containing a potential FITS file.
+    origin : {'read', 'write'}
+        A string indicating whether the file is to be opened for reading
+        or writing.
+
+    filepath : str
+        The file path of the FITS file.
+
+    fileobj : file-like object
+        An open file object to read the file's contents, or `None` if
+        the file could not be opened.
+
+    *args, **kwargs
+        Any additional positional or keyword arguments for the read or
+        write function.
 
     Returns
     -------
-    is_webbpsf : bool
+    result : bool
         Returns `True` if the given file is a WebbPSF FITS file.
     """
     if filepath is not None:

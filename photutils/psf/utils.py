@@ -674,7 +674,7 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
         A table containing the (x, y, flux) parameters of the generated
         sources. The column names will correspond to the names of the
         input ``psf_model`` (x, y, flux) parameter names. The table will
-        also contain an ``'id'`` column with unique source IDs
+        also contain an ``'id'`` column with unique source IDs.
 
     Examples
     --------
