@@ -175,3 +175,48 @@ force-exclude = """
 
 [tool.bandit.assert_used]
 skips = ['*_test.py', '*/test_*.py']
+
+[tool.numpydoc_validation]
+checks = [
+    'all',   # report on all checks, except the below
+    'ES01',  # missing extended summary
+    'EX01',  # missing "Examples"
+    'SA01',  # missing "See Also"
+    'SA04',  # missing "See Also" description
+    'RT02',  # only type in "Returns" section (no name)
+    'SS06',  # single-line summary
+    'RT01',  # do not require return type for lazy properties
+]
+
+# don't report on objects that match any of these regex;
+# remember to use single quotes for regex in TOML
+exclude = [
+    '__init__',
+    '\._.*',  # private functions/methods
+    '^test_*',  # test code
+    '^conftest.*$',  # pytest configuration
+
+    # PR02: subclasses without __init__
+    'Background$',
+    'BackgroundRMS$',
+    'RadialProfile$',
+
+    # GL08: docstrings inherited from base classes
+    '\.to_mask$',
+    '\.calc_background$',
+    '\.calc_background_rms$',
+    '\.make_model_image$',
+    '\.make_residual_image$',
+
+    # GL08: property setters
+    '\.normalization_correction$',
+    '\.origin$',
+    '\.fill_value$',
+    '\.make_model_image$',
+    '\.make_residual_image$',
+    '\.cutout_center$',
+    '\.data',
+
+    # GL08: inner function
+    '\.optimize_func$',
+]
