@@ -40,13 +40,13 @@ class SegmentationImage:
     The `SegmentationImage` instance may be sliced, but note that the
     sliced `SegmentationImage` data array will be a view into the
     original `SegmentationImage` array (this is the same behavior as
-    `numpy.ndarray`). Explicitly use the :meth:`SegmentationImage.copy`
+    `~numpy.ndarray`). Explicitly use the :meth:`SegmentationImage.copy`
     method to create a copy of the sliced `SegmentationImage`.
     """
 
     def __init__(self, data):
         if not isinstance(data, np.ndarray):
-            raise TypeError('input data must be a numpy ndarray')
+            raise TypeError('input data must be a numpy array')
         self.data = data
 
     def __str__(self):
@@ -373,7 +373,14 @@ class SegmentationImage:
                                .difference(np.insert(self.labels, 0, 0))))
 
     def copy(self):
-        """Return a deep copy of this class instance."""
+        """
+        Return a deep copy of this object.
+
+        Returns
+        -------
+        result : `SegmentationImage`
+            A deep copy of this object.
+        """
         return deepcopy(self)
 
     def check_label(self, label):
@@ -1275,9 +1282,15 @@ class SegmentationImage:
         scale : float, optional
             The scale factor applied to the polygon vertices.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Polygon`.
+
+        Returns
+        -------
+        patches : list of `~matplotlib.patches.Polygon`
+            A list of matplotlib polygon patches for the source
+            segments.
         """
         from matplotlib.patches import Polygon
 
@@ -1317,7 +1330,7 @@ class SegmentationImage:
             The label numbers whose polygons are to be plotted. If
             `None`, the polygons for all labels will be plotted.
 
-        **kwargs : `dict`
+        **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.Polygon`.
 
