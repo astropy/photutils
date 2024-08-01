@@ -19,7 +19,8 @@ MEDIAN = 'median'
 
 class _Integrator:
     """
-    Base class that supports different kinds of pixel integration methods.
+    Base class that supports different kinds of pixel integration
+    methods.
 
     Parameters
     ----------
@@ -57,9 +58,9 @@ class _Integrator:
 
     def integrate(self, radius, phi):
         """
-        The three input lists (angles, radii, intensities) are
-        appended with one sample point taken from the image by
-        a chosen integration method.
+        The three input lists (angles, radii, intensities) are appended
+        with one sample point taken from the image by a chosen
+        integration method.
 
         Sub classes should implement the actual integration method.
 
@@ -77,8 +78,8 @@ class _Integrator:
         """
         Reset the lists containing results.
 
-        This method is for internal use and shouldn't
-        be used by external callers.
+        This method is for internal use and shouldn't be used by
+        external callers.
         """
         self._angles = []
         self._radii = []

@@ -748,8 +748,8 @@ class SourceCatalog:
     @lazyproperty
     def _segment_img_cutouts(self):
         """
-        A list of segmentation image cutouts using the segmentation image
-        slices.
+        A list of segmentation image cutouts using the segmentation
+        image slices.
         """
         return [self._segment_img.data[slc] for slc in self._slices_iter]
 
@@ -1244,8 +1244,8 @@ class SourceCatalog:
     @as_scalar
     def cutout_centroid(self):
         """
-        The ``(x, y)`` coordinate, relative to the cutout data, of
-        the centroid within the isophotal source segment.
+        The ``(x, y)`` coordinate, relative to the cutout data, of the
+        centroid within the isophotal source segment.
 
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
@@ -1660,8 +1660,8 @@ class SourceCatalog:
     @as_scalar
     def sky_centroid_win(self):
         """
-        The sky coordinate of the "windowed" centroid
-        (`centroid_win`) within the source segment, returned as a
+        The sky coordinate of the "windowed" centroid (`centroid_win`)
+        within the source segment, returned as a
         `~astropy.coordinates.SkyCoord` object.
 
         The output coordinate frame is the same as the input ``wcs``.
@@ -2047,7 +2047,8 @@ class SourceCatalog:
     @as_scalar
     def segment_flux(self):
         r"""
-        The sum of the unmasked ``data`` values within the source segment.
+        The sum of the unmasked ``data`` values within the source
+        segment.
 
         .. math:: F = \sum_{i \in S} I_i
 
@@ -2408,7 +2409,9 @@ class SourceCatalog:
         """
         The angle between the ``x`` axis and the major axis of the 2D
         Gaussian function that has the same second-order moments as the
-        source. The angle increases in the counter-clockwise direction.
+        source.
+
+        The angle increases in the counter-clockwise direction.
         """
         covar = self._covariance
         orient_radians = 0.5 * np.arctan2(2.0 * covar[:, 0, 1],
@@ -2499,8 +2502,8 @@ class SourceCatalog:
     @as_scalar
     def cxx(self):
         r"""
-        Coefficient for ``x**2`` in the generalized ellipse equation.
-        in units of pixel**(-2).
+        Coefficient for ``x**2`` in the generalized ellipse equation in
+        units of pixel**(-2).
 
         The ellipse is defined as
 
@@ -2522,8 +2525,8 @@ class SourceCatalog:
     @as_scalar
     def cyy(self):
         r"""
-        Coefficient for ``y**2`` in the generalized ellipse equation.
-        in units of pixel**(-2).
+        Coefficient for ``y**2`` in the generalized ellipse equation in
+        units of pixel**(-2).
 
         The ellipse is defined as
 
@@ -2545,8 +2548,8 @@ class SourceCatalog:
     @as_scalar
     def cxy(self):
         r"""
-        Coefficient for ``x * y`` in the generalized ellipse equation.
-        in units of pixel**(-2).
+        Coefficient for ``x * y`` in the generalized ellipse equation in
+        units of pixel**(-2).
 
         The ellipse is defined as
 

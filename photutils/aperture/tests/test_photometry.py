@@ -430,7 +430,9 @@ def test_basic_circular_aperture_photometry_unit():
 
 
 def test_aperture_photometry_with_error_units():
-    """Test aperture_photometry when error has units (see #176)."""
+    """
+    Test aperture_photometry when error has units (see #176).
+    """
 
     data1 = np.ones((40, 40), dtype=float)
     data2 = u.Quantity(data1, unit=u.adu)
@@ -449,8 +451,8 @@ def test_aperture_photometry_with_error_units():
 
 def test_aperture_photometry_inputs_with_mask():
     """
-    Test that aperture_photometry does not modify the input
-    data or error array when a mask is input.
+    Test that aperture_photometry does not modify the input data or
+    error array when a mask is input.
     """
 
     data = np.ones((5, 5))
@@ -476,7 +478,8 @@ TEST_ELLIPSE_EXACT_APERTURES = [(3.469906, 3.923861394, 3.0),
 @pytest.mark.parametrize('x,y,r', TEST_ELLIPSE_EXACT_APERTURES)
 def test_ellipse_exact_grid(x, y, r):
     """
-    Test elliptical exact aperture photometry on a grid of pixel positions.
+    Test elliptical exact aperture photometry on a grid of pixel
+    positions.
 
     This is a regression test for the bug discovered in this issue:
     https://github.com/astropy/photutils/issues/198
@@ -492,7 +495,9 @@ def test_ellipse_exact_grid(x, y, r):
 
 @pytest.mark.parametrize('value', [np.nan, np.inf])
 def test_nan_inf_mask(value):
-    """Test that nans and infs are properly masked [267]."""
+    """
+    Test that nans and infs are properly masked [#267].
+    """
 
     data = np.ones((9, 9))
     mask = np.zeros_like(data, dtype=bool)
@@ -794,8 +799,8 @@ def test_nan_in_bbox():
 
 def test_scalar_skycoord():
     """
-    Regression test to check that scalar SkyCoords are added to the table
-    as a length-1 SkyCoord array.
+    Regression test to check that scalar SkyCoords are added to the
+    table as a length-1 SkyCoord array.
     """
 
     data = make_4gaussians_image()

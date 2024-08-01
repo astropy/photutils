@@ -21,7 +21,9 @@ REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestDetectThreshold:
     def test_nsigma(self):
-        """Test basic nsigma."""
+        """
+        Test basic nsigma.
+        """
         threshold = detect_threshold(DATA, nsigma=0.1)
         ref = 0.4 * np.ones((3, 3))
         assert_allclose(threshold, ref)
@@ -31,7 +33,9 @@ class TestDetectThreshold:
         assert_allclose(threshold.value, ref)
 
     def test_nsigma_zero(self):
-        """Test nsigma=0."""
+        """
+        Test nsigma=0.
+        """
         threshold = detect_threshold(DATA, nsigma=0.0)
         ref = (1.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
@@ -108,6 +112,7 @@ class TestDetectThreshold:
     def test_image_mask(self):
         """
         Test detection with image_mask.
+
         Set sigma=10 and iters=1 to prevent sigma clipping after
         applying the mask.
         """
@@ -134,7 +139,9 @@ class TestDetectSources:
         self.kernel = kernel
 
     def test_detection(self):
-        """Test basic detection."""
+        """
+        Test basic detection.
+        """
         segm = detect_sources(self.data, threshold=0.9, npixels=2)
         assert_equal(segm.data, self.refdata)
 
@@ -150,13 +157,16 @@ class TestDetectSources:
             detect_sources(self.data << u.uJy, threshold=0.9 * u.m, npixels=2)
 
     def test_small_sources(self):
-        """Test detection where sources are smaller than npixels size."""
+        """
+        Test detection where sources are smaller than npixels size.
+        """
         with pytest.warns(NoDetectionsWarning, match='No sources were found'):
             detect_sources(self.data, threshold=0.9, npixels=5)
 
     def test_npixels(self):
         """
         Test removal of sources whose size is less than npixels.
+
         Regression tests for #663.
         """
         data = np.zeros((8, 8))
@@ -187,40 +197,54 @@ class TestDetectSources:
             detect_sources(data, 0, npixels=14)
 
     def test_zerothresh(self):
-        """Test detection with zero threshold."""
+        """
+        Test detection with zero threshold.
+        """
         segm = detect_sources(self.data, threshold=0.0, npixels=2)
         assert_equal(segm.data, self.refdata)
 
     def test_zerodet(self):
-        """Test detection with large threshold giving no detections."""
+        """
+        Test detection with large threshold giving no detections.
+        """
         with pytest.warns(NoDetectionsWarning, match='No sources were found'):
             detect_sources(self.data, threshold=7, npixels=2)
 
     def test_8connectivity(self):
-        """Test detection with connectivity=8."""
+        """
+        Test detection with connectivity=8.
+        """
         data = np.eye(3)
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=8)
         assert_equal(segm.data, data)
 
     def test_4connectivity(self):
-        """Test detection with connectivity=4."""
+        """
+        Test detection with connectivity=4.
+        """
         data = np.eye(3)
         ref = np.diag([1, 2, 3])
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=4)
         assert_equal(segm.data, ref)
 
     def test_npixels_nonint(self):
-        """Test if error raises if npixel is non-integer."""
+        """
+        Test if error raises if npixel is non-integer.
+        """
         with pytest.raises(ValueError):
             detect_sources(self.data, threshold=1, npixels=0.1)
 
     def test_npixels_negative(self):
-        """Test if error raises if npixel is negative."""
+        """
+        Test if error raises if npixel is negative.
+        """
         with pytest.raises(ValueError):
             detect_sources(self.data, threshold=1, npixels=-1)
 
     def test_connectivity_invalid(self):
-        """Test if error raises if connectivity is invalid."""
+        """
+        Test if error raises if connectivity is invalid.
+        """
         with pytest.raises(ValueError):
             detect_sources(self.data, threshold=1, npixels=1, connectivity=10)
 

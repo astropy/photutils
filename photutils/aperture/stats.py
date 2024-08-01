@@ -411,7 +411,8 @@ class ApertureStats:
     @lazyproperty
     def isscalar(self):
         """
-        Whether the instance is scalar (e.g., a single aperture position).
+        Whether the instance is scalar (e.g., a single aperture
+        position).
         """
         return self._pixel_aperture.isscalar
 
@@ -705,17 +706,17 @@ class ApertureStats:
     @lazyproperty
     def _aperture_cutouts_center(self):
         """
-        Aperture-weighted cutouts for the data, variance, total mask, and
-        aperture weights using the "center" aperture mask method.
+        Aperture-weighted cutouts for the data, variance, total mask,
+        and aperture weights using the "center" aperture mask method.
         """
         return self._make_aperture_cutouts(self._aperture_masks_center)
 
     @lazyproperty
     def _aperture_cutouts(self):
         """
-        Aperture-weighted cutouts for the data, variance, total mask, and
-        aperture weights using the input ``sum_method`` aperture mask
-        method.
+        Aperture-weighted cutouts for the data, variance, total mask,
+        and aperture weights using the input ``sum_method`` aperture
+        mask method.
         """
         return self._make_aperture_cutouts(self._aperture_masks)
 
@@ -783,8 +784,8 @@ class ApertureStats:
     @as_scalar
     def data_sumcutout(self):
         """
-        A 2D aperture-weighted cutout from the data using the
-        aperture mask with the input ``sum_method`` method as a
+        A 2D aperture-weighted cutout from the data using the aperture
+        mask with the input ``sum_method`` method as a
         `~numpy.ma.MaskedArray`.
 
         The cutout does not have units due to current limitations of
@@ -819,8 +820,8 @@ class ApertureStats:
     @lazyproperty
     def _variance_cutout(self):
         """
-        A 2D aperture-weighted variance cutout using the
-        aperture mask with the input ``sum_method`` method as a
+        A 2D aperture-weighted variance cutout using the aperture mask
+        with the input ``sum_method`` method as a
         `~numpy.ma.MaskedArray`.
 
         The cutout does not have units due to current limitations of
@@ -976,8 +977,8 @@ class ApertureStats:
     @as_scalar
     def cutout_centroid(self):
         """
-        The ``(x, y)`` coordinate, relative to the cutout data, of
-        the centroid within the aperture.
+        The ``(x, y)`` coordinate, relative to the cutout data, of the
+        centroid within the aperture.
 
         The centroid is computed as the center of mass of the unmasked
         pixels within the aperture.
@@ -1067,9 +1068,9 @@ class ApertureStats:
     @as_scalar
     def sky_centroid_icrs(self):
         """
-        The sky coordinate in the International Celestial
-        Reference System (ICRS) frame of the centroid of the
-        unmasked pixels within the aperture, returned as a
+        The sky coordinate in the International Celestial Reference
+        System (ICRS) frame of the centroid of the unmasked pixels
+        within the aperture, returned as a
         `~astropy.coordinates.SkyCoord` object.
 
         `None` if ``wcs`` is not input.
@@ -1598,8 +1599,8 @@ class ApertureStats:
     @as_scalar
     def cxx(self):
         r"""
-        Coefficient for ``x**2`` in the generalized ellipse equation.
-        in units of pixel**(-2).
+        Coefficient for ``x**2`` in the generalized ellipse equation in
+        units of pixel**(-2).
 
         The ellipse is defined as
 
@@ -1620,8 +1621,8 @@ class ApertureStats:
     @as_scalar
     def cyy(self):
         r"""
-        Coefficient for ``y**2`` in the generalized ellipse equation.
-        in units of pixel**(-2).
+        Coefficient for ``y**2`` in the generalized ellipse equation in
+        units of pixel**(-2).
 
         The ellipse is defined as
 
@@ -1642,8 +1643,8 @@ class ApertureStats:
     @as_scalar
     def cxy(self):
         r"""
-        Coefficient for ``x * y`` in the generalized ellipse equation.
-        in units of pixel**(-2).
+        Coefficient for ``x * y`` in the generalized ellipse equation in
+        units of pixel**(-2).
 
         The ellipse is defined as
 

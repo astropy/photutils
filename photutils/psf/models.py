@@ -244,17 +244,23 @@ class FittableImageModel(Fittable2DModel):
 
     @property
     def data(self):
-        """Get original image data."""
+        """
+        Get original image data.
+        """
         return self._data
 
     @property
     def normalized_data(self):
-        """Get normalized and/or intensity-corrected image data."""
+        """
+        Get normalized and/or intensity-corrected image data.
+        """
         return self._normalization_constant * self._data
 
     @property
     def normalization_constant(self):
-        """Get normalization constant."""
+        """
+        Get normalization constant.
+        """
         return self._normalization_constant
 
     @property
@@ -304,12 +310,16 @@ class FittableImageModel(Fittable2DModel):
 
     @property
     def nx(self):
-        """Number of columns in the data array."""
+        """
+        Number of columns in the data array.
+        """
         return self._nx
 
     @property
     def ny(self):
-        """Number of rows in the data array."""
+        """
+        Number of rows in the data array.
+        """
         return self._ny
 
     @property
@@ -342,21 +352,26 @@ class FittableImageModel(Fittable2DModel):
 
     @property
     def x_origin(self):
-        """X-coordinate of the origin of the coordinate system."""
+        """
+        X-coordinate of the origin of the coordinate system.
+        """
         return self._x_origin
 
     @property
     def y_origin(self):
-        """Y-coordinate of the origin of the coordinate system."""
+        """
+        Y-coordinate of the origin of the coordinate system.
+        """
         return self._y_origin
 
     @property
     def fill_value(self):
         """
         Fill value to be returned for coordinates outside of the domain
-        of definition of the interpolator. If ``fill_value`` is `None`,
-        then values outside of the domain of definition are the ones
-        returned by the interpolator.
+        of definition of the interpolator.
+
+        If ``fill_value`` is `None`, then values outside of the domain
+        of definition are the ones returned by the interpolator.
         """
         return self._fill_value
 
@@ -583,8 +598,8 @@ class EPSFModel(FittableImageModel):
 
     def _compute_raw_image_norm(self):
         """
-        Compute the normalization of input image data as the flux
-        within a given radius.
+        Compute the normalization of input image data as the flux within
+        a given radius.
         """
         xypos = (self._nx / 2.0, self._ny / 2.0)
         # TODO: generalize "radius" (ellipse?) is oversampling is
@@ -597,9 +612,11 @@ class EPSFModel(FittableImageModel):
     def _compute_normalization(self, normalize=True):
         """
         Helper function that computes (corrected) normalization factor
-        of the original image data. For the ePSF this is defined as the
-        sum over the inner N (default=5.5) pixels of the non-oversampled
-        image. Will re-normalize the data to the value calculated.
+        of the original image data.
+
+        For the ePSF this is defined as the sum over the inner N
+        (default=5.5) pixels of the non-oversampled image. Will re-
+        normalize the data to the value calculated.
         """
         if normalize:
             if self._img_norm is None:

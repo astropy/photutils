@@ -102,7 +102,9 @@ class EPSFStar:
 
     @property
     def data(self):
-        """The 2D cutout image."""
+        """
+        The 2D cutout image.
+        """
         return self._data
 
     @property
@@ -256,7 +258,9 @@ class EPSFStar:
 
     @lazyproperty
     def _data_values(self):
-        """1D array of unmasked cutout data values."""
+        """
+        1D array of unmasked cutout data values.
+        """
         return self.data[~self.mask].ravel()
 
     @lazyproperty
@@ -337,10 +341,9 @@ class EPSFStars:
     @property
     def cutout_center_flat(self):
         """
-        A `~numpy.ndarray` of the ``(x, y)`` position of all the
-        stars' centers (including linked stars) with respect to the
-        input cutout ``data`` array, as a 2D array (``n_all_stars`` x
-        2).
+        A `~numpy.ndarray` of the ``(x, y)`` position of all the stars'
+        centers (including linked stars) with respect to the input
+        cutout ``data`` array, as a 2D array (``n_all_stars`` x 2).
 
         Note that when `EPSFStars` contains any `LinkedEPSFStar`, the
         ``cutout_center`` attribute will be a nested 3D array.
@@ -404,8 +407,9 @@ class EPSFStars:
     def n_all_stars(self):
         """
         The total number of `EPSFStar` objects, including all the linked
-        stars within `LinkedEPSFStar`. Each linked star is included in
-        the count.
+        stars within `LinkedEPSFStar`.
+
+        Each linked star is included in the count.
         """
         return len(self.all_stars)
 
@@ -414,7 +418,9 @@ class EPSFStars:
         """
         The total number of `EPSFStar` objects, including all the linked
         stars within `LinkedEPSFStar`, that have not been excluded from
-        fitting. Each non-excluded linked star is included in the count.
+        fitting.
+
+        Each non-excluded linked star is included in the count.
         """
         return len(self.all_good_stars)
 

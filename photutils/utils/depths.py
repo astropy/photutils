@@ -363,8 +363,8 @@ class ImageDepth:
 
     def _find_slices(self, data):
         """
-        Calculate a tuple slice for the minimal bounding box for
-        the `True` values of a 2D boolean array.
+        Calculate a tuple slice for the minimal bounding box for the
+        `True` values of a 2D boolean array.
 
         Parameters
         ----------

@@ -19,7 +19,9 @@ from photutils.utils.exceptions import NoDetectionsWarning
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestFindPeaks:
     def test_box_size(self, data):
-        """Test with box_size."""
+        """
+        Test with box_size.
+        """
         tbl = find_peaks(data, 0.1, box_size=3)
         assert tbl['id'][0] == 1
         assert len(tbl) == 25
@@ -42,13 +44,17 @@ class TestFindPeaks:
         assert_equal(tbl[col], tbl2[col].value)
 
     def test_footprint(self, data):
-        """Test with footprint."""
+        """
+        Test with footprint.
+        """
         tbl0 = find_peaks(data, 0.1, box_size=3)
         tbl1 = find_peaks(data, 0.1, footprint=np.ones((3, 3)))
         assert_array_equal(tbl0, tbl1)
 
     def test_mask(self, data):
-        """Test with mask."""
+        """
+        Test with mask.
+        """
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50, :] = True
         tbl0 = find_peaks(data, 0.1, box_size=3)
@@ -56,39 +62,53 @@ class TestFindPeaks:
         assert len(tbl1) < len(tbl0)
 
     def test_maskshape(self, data):
-        """Test if make shape doesn't match data shape."""
+        """
+        Test if make shape doesn't match data shape.
+        """
         with pytest.raises(ValueError):
             find_peaks(data, 0.1, mask=np.ones((5, 5)))
 
     def test_thresholdshape(self, data):
-        """Test if threshold shape doesn't match data shape."""
+        """
+        Test if threshold shape doesn't match data shape.
+        """
         with pytest.raises(ValueError):
             find_peaks(data, np.ones((2, 2)))
 
     def test_npeaks(self, data):
-        """Test npeaks."""
+        """
+        Test npeaks.
+        """
         tbl = find_peaks(data, 0.1, box_size=3, npeaks=1)
         assert len(tbl) == 1
 
     def test_border_width(self, data):
-        """Test border exclusion."""
+        """
+        Test border exclusion.
+        """
         tbl0 = find_peaks(data, 0.1, box_size=3)
         tbl1 = find_peaks(data, 0.1, box_size=3, border_width=25)
         assert len(tbl1) < len(tbl0)
 
     def test_box_size_int(self, data):
-        """Test non-integer box_size."""
+        """
+        Test non-integer box_size.
+        """
         tbl1 = find_peaks(data, 0.1, box_size=5.0)
         tbl2 = find_peaks(data, 0.1, box_size=5.5)
         assert_array_equal(tbl1, tbl2)
 
     def test_centroid_func_callable(self, data):
-        """Test that centroid_func is callable."""
+        """
+        Test that centroid_func is callable.
+        """
         with pytest.raises(TypeError):
             find_peaks(data, 0.1, box_size=2, centroid_func=True)
 
     def test_wcs(self, data):
-        """Test with astropy WCS."""
+        """
+        Test with astropy WCS.
+        """
         columns = ['skycoord_peak', 'skycoord_centroid']
 
         fits_wcs = make_wcs(data.shape)
@@ -101,7 +121,9 @@ class TestFindPeaks:
 
     @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
     def test_gwcs(self, data):
-        """Test with gwcs."""
+        """
+        Test with gwcs.
+        """
         columns = ['skycoord_peak', 'skycoord_centroid']
 
         gwcs_obj = make_gwcs(data.shape)
@@ -121,7 +143,9 @@ class TestFindPeaks:
             assert_quantity_allclose(tbl1[column].dec, tbl2[column].dec)
 
     def test_constant_array(self):
-        """Test for empty output table when data is constant."""
+        """
+        Test for empty output table when data is constant.
+        """
         data = np.ones((10, 10))
         match = 'Input data is constant'
         with pytest.warns(NoDetectionsWarning, match=match):
@@ -153,7 +177,9 @@ class TestFindPeaks:
             assert tbl is None
 
     def test_data_nans(self, data):
-        """Test that data with NaNs does not issue Runtime warning."""
+        """
+        Test that data with NaNs does not issue Runtime warning.
+        """
         data = np.copy(data)
         data[50:, :] = np.nan
         find_peaks(data, 0.1)

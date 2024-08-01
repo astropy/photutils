@@ -87,7 +87,8 @@ class _InverseShift(Shift):
     @staticmethod
     def fit_deriv(x, *params):
         """
-        One dimensional Shift model derivative with respect to parameter.
+        One dimensional Shift model derivative with respect to
+        parameter.
         """
         d_offset = -np.ones_like(x)
         return [d_offset]
@@ -563,8 +564,8 @@ def _validate_psf_model(psf_model):
 
 def _get_psf_model_params(psf_model):
     """
-    Get the names of the PSF model parameters corresponding to
-    x, y, and flux.
+    Get the names of the PSF model parameters corresponding to x, y, and
+    flux.
 
     The PSF model must have parameters called 'x_0', 'y_0', and
     'flux' or it must have 'x_name', 'y_name', and 'flux_name'

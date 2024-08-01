@@ -362,8 +362,8 @@ class MMMBackground(ModeEstimatorBackground):
 
 class SExtractorBackground(BackgroundBase):
     """
-    Class to calculate the background in an array using the
-    Source Extractor algorithm.
+    Class to calculate the background in an array using the Source
+    Extractor algorithm.
 
     The background is calculated using a mode estimator of the form
     ``(2.5 * median) - (1.5 * mean)``. If ``(mean - median) / std >
@@ -509,8 +509,8 @@ class BiweightLocationBackground(BackgroundBase):
 
 class StdBackgroundRMS(BackgroundRMSBase):
     """
-    Class to calculate the background RMS in an array as the
-    (sigma-clipped) standard deviation.
+    Class to calculate the background RMS in an array as the (sigma-
+    clipped) standard deviation.
 
     Parameters
     ----------
@@ -630,8 +630,8 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
 
 class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     """
-    Class to calculate the background RMS in an array as the
-    (sigma-clipped) biweight scale.
+    Class to calculate the background RMS in an array as the (sigma-
+    clipped) biweight scale.
 
     Parameters
     ----------

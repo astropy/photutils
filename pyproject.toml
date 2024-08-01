@@ -240,3 +240,8 @@ exclude = [
     # GL08: inner function
     '\.optimize_func$',
 ]
+
+[tool.docformatter]
+    wrap-summaries = 72
+    pre-summary-newline = true
+    make-summary-multi-line = true

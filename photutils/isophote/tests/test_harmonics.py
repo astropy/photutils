@@ -81,7 +81,9 @@ def test_harmonics_2():
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_harmonics_3():
-    """Tests an upper harmonic fit."""
+    """
+    Tests an upper harmonic fit.
+    """
 
     N = 100
     E = np.linspace(0, 4 * np.pi, N)

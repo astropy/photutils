@@ -447,8 +447,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     def to_sky(self, wcs):
         """
-        Convert the aperture to a `SkyRectangularAnnulus` object
-        defined in celestial coordinates.
+        Convert the aperture to a `SkyRectangularAnnulus` object defined
+        in celestial coordinates.
 
         Parameters
         ----------

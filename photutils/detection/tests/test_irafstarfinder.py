@@ -60,7 +60,9 @@ class TestIRAFStarFinder:
             assert tbl is None
 
     def test_irafstarfind_sharpness(self, data):
-        """Sources found, but none pass the sharpness criteria."""
+        """
+        Sources found, but none pass the sharpness criteria.
+        """
         match = 'Sources were found, but none pass'
         with pytest.warns(NoDetectionsWarning, match=match):
             finder = IRAFStarFinder(threshold=1, fwhm=1.0, sharplo=2.0)
@@ -68,7 +70,9 @@ class TestIRAFStarFinder:
             assert tbl is None
 
     def test_irafstarfind_roundness(self, data):
-        """Sources found, but none pass the roundness criteria."""
+        """
+        Sources found, but none pass the roundness criteria.
+        """
         match = 'Sources were found, but none pass'
         with pytest.warns(NoDetectionsWarning, match=match):
             finder = IRAFStarFinder(threshold=1, fwhm=1.0, roundlo=1.0)
@@ -76,7 +80,9 @@ class TestIRAFStarFinder:
             assert tbl is None
 
     def test_irafstarfind_peakmax(self, data):
-        """Sources found, but none pass the peakmax criteria."""
+        """
+        Sources found, but none pass the peakmax criteria.
+        """
         match = 'Sources were found, but none pass'
         with pytest.warns(NoDetectionsWarning, match=match):
             finder = IRAFStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
@@ -111,7 +117,8 @@ class TestIRAFStarFinder:
 
     def test_irafstarfind_brightest_filtering(self, data):
         """
-        Regression test that only top ``brightest`` objects are selected.
+        Regression test that only top ``brightest`` objects are
+        selected.
         """
         brightest = 10
         finder = IRAFStarFinder(threshold=1.0, fwhm=2, roundlo=-np.inf,
@@ -121,7 +128,9 @@ class TestIRAFStarFinder:
         assert len(tbl) == brightest
 
     def test_irafstarfind_mask(self, data):
-        """Test IRAFStarFinder with a mask."""
+        """
+        Test IRAFStarFinder with a mask.
+        """
         finder = IRAFStarFinder(threshold=1.0, fwhm=1.5)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50, :] = True
