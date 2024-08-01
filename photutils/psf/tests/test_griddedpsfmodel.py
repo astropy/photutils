@@ -164,8 +164,8 @@ class TestGriddedPSFModel:
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_eval(self, psfmodel):
         """
-        Create a simulated image using GriddedPSFModel and test
-        the properties of the generated sources.
+        Create a simulated image using GriddedPSFModel and test the
+        properties of the generated sources.
         """
         shape = (200, 200)
         data = np.zeros(shape)

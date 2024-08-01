@@ -20,8 +20,8 @@ __doctest_requires__ = {'RadialProfile': ['scipy']}
 
 class RadialProfile(ProfileBase):
     """
-    Class to create a radial profile using concentric circular
-    annulus apertures.
+    Class to create a radial profile using concentric circular annulus
+    apertures.
 
     The radial profile represents the azimuthally-averaged flux in
     circular annuli apertures as a function of radius.
@@ -379,8 +379,8 @@ class RadialProfile(ProfileBase):
     @lazyproperty
     def gaussian_fit(self):
         """
-        The fitted 1D Gaussian to the radial profile as
-        a `~astropy.modeling.functional_models.Gaussian1D` model.
+        The fitted 1D Gaussian to the radial profile as a
+        `~astropy.modeling.functional_models.Gaussian1D` model.
         """
         profile = self.profile[self._profile_nanmask]
         radius = self.radius[self._profile_nanmask]

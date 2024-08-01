@@ -141,7 +141,9 @@ class TestEllipse:
             assert not np.any(iso.sample.values[2] == 0)
 
     def test_ellipse_shape(self):
-        """Regression test for #670/673."""
+        """
+        Regression test for #670/673.
+        """
 
         ny = 500
         nx = 150

@@ -23,7 +23,9 @@ def test_resize_psf():
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_create_matching_kernel():
-    """Test with noiseless 2D Gaussians."""
+    """
+    Test with noiseless 2D Gaussians.
+    """
 
     size = 25
     cen = (size - 1) / 2.0
@@ -47,7 +49,9 @@ def test_create_matching_kernel():
 
 
 def test_create_matching_kernel_shapes():
-    """Test with wrong PSF shapes."""
+    """
+    Test with wrong PSF shapes.
+    """
     with pytest.raises(ValueError):
         psf1 = np.ones((5, 5))
         psf2 = np.ones((3, 3))

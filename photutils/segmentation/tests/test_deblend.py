@@ -257,7 +257,9 @@ class TestDeblendSources:
             assert segm.info['warnings']['nonposmin']['input_labels'] == 1
 
     def test_connectivity(self):
-        """Regression test for #341."""
+        """
+        Regression test for #341.
+        """
         data = np.zeros((3, 3))
         data[0, 0] = 2
         data[1, 1] = 2
@@ -276,7 +278,9 @@ class TestDeblendSources:
     def test_data_nan(self):
         """
         Test that deblending occurs even if the data within a segment
-        contains one or more NaNs. Regression test for #658.
+        contains one or more NaNs.
+
+        Regression test for #658.
         """
 
         data = self.data.copy()

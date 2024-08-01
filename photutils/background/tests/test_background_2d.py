@@ -50,7 +50,9 @@ class TestBackground2D:
 
     @pytest.mark.parametrize('data', [DATA1, DATA3, DATA4])
     def test_background_nddata(self, data):
-        """Test with NDData and CCDData, and also test units."""
+        """
+        Test with NDData and CCDData, and also test units.
+        """
         bkg = Background2D(data, (25, 25), filter_size=3)
         assert isinstance(bkg.background, u.Quantity)
         assert isinstance(bkg.background_rms, u.Quantity)
@@ -130,8 +132,10 @@ class TestBackground2D:
     @pytest.mark.parametrize('box_size', ([(25, 25), (23, 22)]))
     def test_background_mask(self, box_size):
         """
-        Test with an input mask. Note that box_size=(23, 22) tests the
-        resizing of the image and mask.
+        Test with an input mask.
+
+        Note that box_size=(23, 22) tests the resizing of the image and
+        mask.
         """
         data = np.copy(DATA)
         data[25:50, 25:50] = 100.0
@@ -204,6 +208,7 @@ class TestBackground2D:
     def test_mask_with_already_masked_nans(self):
         """
         Test masked invalid values.
+
         These tests should not issue a warning.
         """
         data = DATA.copy()
@@ -246,7 +251,9 @@ class TestBackground2D:
             Background2D(DATA, (25, 25), mask=mask)
 
     def test_zero_padding(self):
-        """Test case where padding is added only on one axis."""
+        """
+        Test case where padding is added only on one axis.
+        """
         bkg = Background2D(DATA, (25, 22), filter_size=(1, 1))
         assert_allclose(bkg.background, DATA, rtol=1e-5)
         assert_allclose(bkg.background_rms, BKG_RMS)
@@ -254,7 +261,9 @@ class TestBackground2D:
         assert bkg.background_rms_median == 0.0
 
     def test_exclude_percentile(self):
-        """Only meshes greater than filter_threshold are filtered."""
+        """
+        Only meshes greater than filter_threshold are filtered.
+        """
         data = np.copy(DATA)
         data[0:50, 0:50] = np.nan
         with pytest.warns(AstropyUserWarning,
@@ -264,7 +273,9 @@ class TestBackground2D:
         assert len(bkg._box_idx) == 12
 
     def test_filter_threshold(self):
-        """Only meshes greater than filter_threshold are filtered."""
+        """
+        Only meshes greater than filter_threshold are filtered.
+        """
         data = np.copy(DATA)
         data[25:50, 50:75] = 10.0
         bkg = Background2D(data, (25, 25), filter_size=(3, 3),
@@ -276,7 +287,9 @@ class TestBackground2D:
         assert bkg2.background_mesh[1, 2] == 10
 
     def test_filter_threshold_high(self):
-        """No filtering because filter_threshold is too large."""
+        """
+        No filtering because filter_threshold is too large.
+        """
         data = np.copy(DATA)
         data[25:50, 50:75] = 10.0
         ref_data = np.copy(BKG_MESH)
@@ -286,7 +299,9 @@ class TestBackground2D:
         assert_allclose(b.background_mesh, ref_data)
 
     def test_filter_threshold_nofilter(self):
-        """No filtering because filter_size is (1, 1)."""
+        """
+        No filtering because filter_size is (1, 1).
+        """
         data = np.copy(DATA)
         data[25:50, 50:75] = 10.0
         ref_data = np.copy(BKG_MESH)

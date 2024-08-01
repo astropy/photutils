@@ -192,27 +192,37 @@ class Isophote:
 
     @property
     def sma(self):
-        """The semimajor axis length (pixels)."""
+        """
+        The semimajor axis length (pixels).
+        """
         return self.sample.geometry.sma
 
     @property
     def eps(self):
-        """The ellipticity of the ellipse."""
+        """
+        The ellipticity of the ellipse.
+        """
         return self.sample.geometry.eps
 
     @property
     def pa(self):
-        """The position angle (radians) of the ellipse."""
+        """
+        The position angle (radians) of the ellipse.
+        """
         return self.sample.geometry.pa
 
     @property
     def x0(self):
-        """The center x coordinate (pixel)."""
+        """
+        The center x coordinate (pixel).
+        """
         return self.sample.geometry.x0
 
     @property
     def y0(self):
-        """The center y coordinate (pixel)."""
+        """
+        The center y coordinate (pixel).
+        """
         return self.sample.geometry.y0
 
     def _compute_fluxes(self):
@@ -264,8 +274,10 @@ class Isophote:
     def _compute_deviations(self, sample, n):
         """
         Compute deviations from a perfect ellipse, based on the
-        amplitudes and errors for harmonic "n". Note that we first
-        subtract the first and second harmonics from the raw data.
+        amplitudes and errors for harmonic "n".
+
+        Note that we first subtract the first and second harmonics from
+        the raw data.
         """
         try:
             # upper (third and fourth) harmonics
@@ -436,12 +448,16 @@ class CentralPixel(Isophote):
 
     @property
     def eps(self):
-        """The ellipticity of the ellipse."""
+        """
+        The ellipticity of the ellipse.
+        """
         return 0.0
 
     @property
     def pa(self):
-        """The position angle (radians) of the ellipse."""
+        """
+        The position angle (radians) of the ellipse.
+        """
         return 0.0
 
 
@@ -569,57 +585,79 @@ class IsophoteList:
 
     @property
     def sma(self):
-        """The semimajor axis length (pixels)."""
+        """
+        The semimajor axis length (pixels).
+        """
         return self._collect_as_array('sma')
 
     @property
     def intens(self):
-        """The mean intensity value along the elliptical path."""
+        """
+        The mean intensity value along the elliptical path.
+        """
         return self._collect_as_array('intens')
 
     @property
     def int_err(self):
-        """The error of the mean intensity (rms / sqrt(# data points))."""
+        """
+        The error of the mean intensity (rms / sqrt(# data points)).
+        """
         return self._collect_as_array('int_err')
 
     @property
     def eps(self):
-        """The ellipticity of the ellipse."""
+        """
+        The ellipticity of the ellipse.
+        """
         return self._collect_as_array('eps')
 
     @property
     def ellip_err(self):
-        """The ellipticity error."""
+        """
+        The ellipticity error.
+        """
         return self._collect_as_array('ellip_err')
 
     @property
     def pa(self):
-        """The position angle (radians) of the ellipse."""
+        """
+        The position angle (radians) of the ellipse.
+        """
         return self._collect_as_array('pa')
 
     @property
     def pa_err(self):
-        """The position angle error (radians)."""
+        """
+        The position angle error (radians).
+        """
         return self._collect_as_array('pa_err')
 
     @property
     def x0(self):
-        """The center x coordinate (pixel)."""
+        """
+        The center x coordinate (pixel).
+        """
         return self._collect_as_array('x0')
 
     @property
     def x0_err(self):
-        """The error associated with the center x coordinate."""
+        """
+        The error associated with the center x coordinate.
+        """
         return self._collect_as_array('x0_err')
 
     @property
     def y0(self):
-        """The center y coordinate (pixel)."""
+        """
+        The center y coordinate (pixel).
+        """
         return self._collect_as_array('y0')
 
     @property
     def y0_err(self):
-        """The error associated with the center y coordinate."""
+        """
+        The error associated with the center y coordinate.
+        """
         return self._collect_as_array('y0_err')
 
     @property
@@ -640,14 +678,15 @@ class IsophoteList:
 
     @property
     def grad(self):
-        """The local radial intensity gradient."""
+        """
+        The local radial intensity gradient.
+        """
         return self._collect_as_array('grad')
 
     @property
     def grad_error(self):
         """
-        The measurement error of the local radial intensity
-        gradient.
+        The measurement error of the local radial intensity gradient.
         """
         return self._collect_as_array('grad_error')
 
@@ -660,42 +699,55 @@ class IsophoteList:
 
     @property
     def sarea(self):
-        """The average sector area on the isophote (pixel**2)."""
+        """
+        The average sector area on the isophote (pixel**2).
+        """
         return self._collect_as_array('sarea')
 
     @property
     def ndata(self):
-        """The number of extracted data points."""
+        """
+        The number of extracted data points.
+        """
         return self._collect_as_array('ndata')
 
     @property
     def nflag(self):
         """
-        The number of discarded data points. Data points can be
-        discarded either because they are physically outside the image
-        frame boundaries, because they were rejected by sigma-clipping,
-        or they are masked.
+        The number of discarded data points.
+
+        Data points can be discarded either because they are physically
+        outside the image frame boundaries, because they were rejected
+        by sigma-clipping, or they are masked.
         """
         return self._collect_as_array('nflag')
 
     @property
     def niter(self):
-        """The number of iterations used to fit the isophote."""
+        """
+        The number of iterations used to fit the isophote.
+        """
         return self._collect_as_array('niter')
 
     @property
     def valid(self):
-        """The status of the fitting operation."""
+        """
+        The status of the fitting operation.
+        """
         return self._collect_as_array('valid')
 
     @property
     def stop_code(self):
-        """The fitting stop code."""
+        """
+        The fitting stop code.
+        """
         return self._collect_as_array('stop_code')
 
     @property
     def tflux_e(self):
-        """The sum of all pixels inside the ellipse."""
+        """
+        The sum of all pixels inside the ellipse.
+        """
         return self._collect_as_array('tflux_e')
 
     @property
@@ -708,7 +760,9 @@ class IsophoteList:
 
     @property
     def npix_e(self):
-        """The total number of valid pixels inside the ellipse."""
+        """
+        The total number of valid pixels inside the ellipse.
+        """
         return self._collect_as_array('npix_e')
 
     @property
@@ -722,7 +776,9 @@ class IsophoteList:
     @property
     def a3(self):
         """
-        A third-order harmonic coefficient. See the
+        A third-order harmonic coefficient.
+
+        See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """
@@ -731,7 +787,9 @@ class IsophoteList:
     @property
     def b3(self):
         """
-        A third-order harmonic coefficient. See the
+        A third-order harmonic coefficient.
+
+        See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """
@@ -740,7 +798,9 @@ class IsophoteList:
     @property
     def a4(self):
         """
-        A fourth-order harmonic coefficient. See the
+        A fourth-order harmonic coefficient.
+
+        See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """
@@ -749,7 +809,9 @@ class IsophoteList:
     @property
     def b4(self):
         """
-        A fourth-order harmonic coefficient. See the
+        A fourth-order harmonic coefficient.
+
+        See the
         :func:`~photutils.isophote.fit_upper_harmonic` function for
         details.
         """
@@ -842,8 +904,8 @@ def _get_properties(isophote_list):
 
 def _isophote_list_to_table(isophote_list, columns='main'):
     """
-    Convert an `~photutils.isophote.IsophoteList` instance to
-    a `~astropy.table.QTable`.
+    Convert an `~photutils.isophote.IsophoteList` instance to a
+    `~astropy.table.QTable`.
 
     Parameters
     ----------

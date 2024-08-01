@@ -372,7 +372,8 @@ class PSFPhotometry(ModelImageMixin):
 
     def _define_param_maps(self, psf_model):
         """
-        Map x, y, and flux column names to the PSF model parameter names.
+        Map x, y, and flux column names to the PSF model parameter
+        names.
 
         Also include any extra PSF model parameters that are fit, but do
         not correspond to x, y, or flux.
@@ -716,8 +717,8 @@ class PSFPhotometry(ModelImageMixin):
 
     def _make_psf_model(self, sources):
         """
-        Make a PSF model to fit a single source or several sources within
-        a group.
+        Make a PSF model to fit a single source or several sources
+        within a group.
         """
         init_param_map = self._param_maps['init']
 
@@ -1701,8 +1702,8 @@ class IterativePSFPhotometry(ModelImageMixin):
 
     def _measure_init_fluxes(self, data, mask, sources):
         """
-        Measure initial fluxes for the new sources from the
-        residual data.
+        Measure initial fluxes for the new sources from the residual
+        data.
 
         The fluxes are added in place to the input ``sources`` table.
 

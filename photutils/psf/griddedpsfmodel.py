@@ -557,8 +557,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
     def _find_bounding_points(self, x, y):
         """
-        Find the indices of the grid points that bound the input
-        ``(x, y)`` position.
+        Find the indices of the grid points that bound the input ``(x,
+        y)`` position.
 
         Parameters
         ----------
@@ -957,8 +957,8 @@ def _get_metadata(filename, detector_id):
 
 def stdpsf_reader(filename, detector_id=None):
     """
-    Generate a `~photutils.psf.GriddedPSFModel` from a STScI
-    standard-format ePSF (STDPSF) FITS file.
+    Generate a `~photutils.psf.GriddedPSFModel` from a STScI standard-
+    format ePSF (STDPSF) FITS file.
 
     .. note::
         Instead of being used directly, this function is intended to be
@@ -1047,8 +1047,8 @@ def stdpsf_reader(filename, detector_id=None):
 
 def webbpsf_reader(filename):
     """
-    Generate a `~photutils.psf.GriddedPSFModel` from a WebbPSF
-    FITS file containing a PSF grid.
+    Generate a `~photutils.psf.GriddedPSFModel` from a WebbPSF FITS file
+    containing a PSF grid.
 
     .. note::
         Instead of being used directly, this function is intended to be

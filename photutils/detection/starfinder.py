@@ -287,7 +287,9 @@ class _StarFinderCatalog:
                                                  predicate=islazyproperty)]
 
     def reset_ids(self):
-        """Reset the ID column to be consecutive integers."""
+        """
+        Reset the ID column to be consecutive integers.
+        """
         self.id = np.arange(len(self)) + 1
 
     @lazyproperty
@@ -410,7 +412,9 @@ class _StarFinderCatalog:
         return pa
 
     def apply_filters(self):
-        """Filter the catalog."""
+        """
+        Filter the catalog.
+        """
         # remove all non-finite values - consider these non-detections
         attrs = ('xcentroid', 'ycentroid', 'fwhm', 'roundness', 'pa',
                  'max_value', 'flux')
@@ -437,8 +441,8 @@ class _StarFinderCatalog:
 
     def select_brightest(self):
         """
-        Sort the catalog by the brightest fluxes and select the
-        top brightest sources.
+        Sort the catalog by the brightest fluxes and select the top
+        brightest sources.
         """
         newcat = self
         if self.brightest is not None:

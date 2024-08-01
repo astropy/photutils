@@ -440,8 +440,8 @@ class Background2D:
     def _interpolate_meshes(self, data, n_neighbors=10, eps=0.0, power=1.0,
                             reg=0.0):
         """
-        Use IDW interpolation to fill in any masked pixels in the
-        low-resolution 2D mesh background and background RMS images.
+        Use IDW interpolation to fill in any masked pixels in the low-
+        resolution 2D mesh background and background RMS images.
 
         This is required to use a regular-grid interpolator to expand
         the low-resolution image to the full size image.
@@ -590,8 +590,9 @@ class Background2D:
     def background_mesh_masked(self):
         """
         The background 2D (masked) array mesh prior to any
-        interpolation. The array has NaN values where meshes were
-        excluded.
+        interpolation.
+
+        The array has NaN values where meshes were excluded.
         """
         data = np.full(self.background_mesh.shape, np.nan)
         data[self._mesh_idx] = self.background_mesh[self._mesh_idx]
@@ -601,8 +602,9 @@ class Background2D:
     def background_rms_mesh_masked(self):
         """
         The background RMS 2D (masked) array mesh prior to any
-        interpolation. The array has NaN values where meshes were
-        excluded.
+        interpolation.
+
+        The array has NaN values where meshes were excluded.
         """
         data = np.full(self.background_rms_mesh.shape, np.nan)
         data[self._mesh_idx] = self.background_rms_mesh[self._mesh_idx]
@@ -620,8 +622,9 @@ class Background2D:
     @lazyproperty
     def mesh_nmasked(self):
         """
-        A 2D array of the number of masked pixels in each mesh. NaN
-        values indicate where meshes were excluded.
+        A 2D array of the number of masked pixels in each mesh.
+
+        NaN values indicate where meshes were excluded.
         """
         return self._make_2d_array(
             np.count_nonzero(np.isnan(self._box_data), axis=1))
@@ -654,7 +657,9 @@ class Background2D:
 
     @lazyproperty
     def background(self):
-        """A 2D `~numpy.ndarray` containing the background image."""
+        """
+        A 2D `~numpy.ndarray` containing the background image.
+        """
         bkg = self.interpolator(self.background_mesh, self)
         if self.coverage_mask is not None:
             bkg[self.coverage_mask] = self.fill_value
@@ -664,7 +669,9 @@ class Background2D:
 
     @lazyproperty
     def background_rms(self):
-        """A 2D `~numpy.ndarray` containing the background RMS image."""
+        """
+        A 2D `~numpy.ndarray` containing the background RMS image.
+        """
         bkg_rms = self.interpolator(self.background_rms_mesh, self)
         if self.coverage_mask is not None:
             bkg_rms[self.coverage_mask] = self.fill_value

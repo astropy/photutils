@@ -5,9 +5,10 @@ version: 2
 updates:
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
-    directory: "/"  # checks files in .github/workflows
+    directory: ".github/workflows/"
     schedule:
       interval: "weekly"
-    ignore:
-      - dependency-name: "actions/checkout"
-        versions: ["1"]
+    groups:
+      actions:
+        patterns:
+          - "*"

@@ -57,8 +57,13 @@ repos:
     rev: v3.17.0
     hooks:
       - id: pyupgrade
-        args: ["--py39-plus"]
+        args: ["--py310-plus"]
         exclude: ".*(extern.*)$"
+
+  - repo: https://github.com/scientific-python/cookie
+    rev: 2024.04.23
+    hooks:
+      - id: sp-repo-review
 
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
@@ -94,6 +99,13 @@ repos:
     rev: v1.8.0rc2
     hooks:
       - id: numpydoc-validation
+
+  - repo: https://github.com/PyCQA/docformatter
+    rev: v1.7.5
+    hooks:
+      - id: docformatter
+        additional_dependencies: [tomli]
+        args: [--in-place, --config, ./pyproject.toml]
 
   # - repo: https://github.com/MarcoGorelli/absolufy-imports
   #   rev: v0.3.1

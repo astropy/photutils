@@ -78,7 +78,9 @@ class TestDAOStarFinder:
         assert len(tbl0) > len(tbl1)
 
     def test_daofind_sharpness(self, data):
-        """Sources found, but none pass the sharpness criteria."""
+        """
+        Sources found, but none pass the sharpness criteria.
+        """
         match = 'Sources were found, but none pass'
 
         with pytest.warns(NoDetectionsWarning, match=match):
@@ -87,7 +89,9 @@ class TestDAOStarFinder:
             assert tbl is None
 
     def test_daofind_roundness(self, data):
-        """Sources found, but none pass the roundness criteria."""
+        """
+        Sources found, but none pass the roundness criteria.
+        """
         match = 'Sources were found, but none pass'
         with pytest.warns(NoDetectionsWarning, match=match):
             finder = DAOStarFinder(threshold=1, fwhm=1.0, roundlo=1.0)
@@ -95,7 +99,9 @@ class TestDAOStarFinder:
             assert tbl is None
 
     def test_daofind_peakmax(self, data):
-        """Sources found, but none pass the peakmax criteria."""
+        """
+        Sources found, but none pass the peakmax criteria.
+        """
         match = 'Sources were found, but none pass'
         with pytest.warns(NoDetectionsWarning, match=match):
             finder = DAOStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
@@ -142,7 +148,9 @@ class TestDAOStarFinder:
         assert len(tbl) == 5
 
     def test_daofind_mask(self, data):
-        """Test DAOStarFinder with a mask."""
+        """
+        Test DAOStarFinder with a mask.
+        """
         finder = DAOStarFinder(threshold=1.0, fwhm=1.5)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50, :] = True

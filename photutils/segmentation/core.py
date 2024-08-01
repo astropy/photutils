@@ -139,7 +139,9 @@ class SegmentationImage:
 
     @property
     def data(self):
-        """The segmentation array."""
+        """
+        The segmentation array.
+        """
         return self._data
 
     @property
@@ -184,17 +186,23 @@ class SegmentationImage:
 
     @lazyproperty
     def shape(self):
-        """The shape of the segmentation array."""
+        """
+        The shape of the segmentation array.
+        """
         return self._data.shape
 
     @lazyproperty
     def _ndim(self):
-        """The number of array dimensions of the segmentation array."""
+        """
+        The number of array dimensions of the segmentation array.
+        """
         return self._data.ndim
 
     @lazyproperty
     def labels(self):
-        """The sorted non-zero labels in the segmentation array."""
+        """
+        The sorted non-zero labels in the segmentation array.
+        """
         if '_raw_slices' in self.__dict__:
             labels_all = np.arange(len(self._raw_slices)) + 1
             labels = []
@@ -208,12 +216,16 @@ class SegmentationImage:
 
     @lazyproperty
     def nlabels(self):
-        """The number of non-zero labels in the segmentation array."""
+        """
+        The number of non-zero labels in the segmentation array.
+        """
         return len(self.labels)
 
     @lazyproperty
     def max_label(self):
-        """The maximum label in the segmentation array."""
+        """
+        The maximum label in the segmentation array.
+        """
         if self.nlabels == 0:
             return 0
         return np.max(self.labels)
@@ -299,7 +311,9 @@ class SegmentationImage:
 
     @lazyproperty
     def background_area(self):
-        """The area (in pixel**2) of the background (label=0) region."""
+        """
+        The area (in pixel**2) of the background (label=0) region.
+        """
         return self._data.size - np.count_nonzero(self._data)
 
     @lazyproperty

@@ -19,7 +19,9 @@ def test_apply_poisson_noise():
 
 
 def test_apply_poisson_noise_negative():
-    """Test if negative image values raises ValueError."""
+    """
+    Test if negative image values raises ValueError.
+    """
     with pytest.raises(ValueError):
         shape = (100, 100)
         data = np.zeros(shape) - 1.0
@@ -41,7 +43,9 @@ def test_make_noise_image_poisson():
 
 
 def test_make_noise_image_nomean():
-    """Test invalid inputs."""
+    """
+    Test invalid inputs.
+    """
     shape = (100, 100)
 
     with pytest.raises(ValueError):

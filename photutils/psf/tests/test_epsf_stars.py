@@ -84,8 +84,8 @@ def test_epsf_star_residual_image():
 
 def test_stars_pickleable():
     """
-    Verify that EPSFStars can be successfully
-    pickled/unpickled for use multiprocessing
+    Verify that EPSFStars can be successfully pickled/unpickled for use
+    multiprocessing.
     """
     from multiprocessing.reduction import ForkingPickler
 

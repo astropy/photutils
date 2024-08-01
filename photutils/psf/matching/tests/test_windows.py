@@ -21,7 +21,9 @@ def test_hanning():
 
 
 def test_hanning_numpy():
-    """Test Hanning window against 1D numpy version."""
+    """
+    Test Hanning window against 1D numpy version.
+    """
 
     size = 101
     cen = (size - 1) // 2
@@ -41,7 +43,9 @@ def test_tukey():
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_tukey_scipy():
-    """Test Tukey window against 1D scipy version."""
+    """
+    Test Tukey window against 1D scipy version.
+    """
 
     from scipy.signal.windows import tukey
 
