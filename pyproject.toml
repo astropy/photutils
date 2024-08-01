@@ -163,6 +163,19 @@ exclude_lines = [
     'def _ipython_key_completions_',
 ]
 
+[tool.repo-review]
+ignore = [
+    'MY',  # ignore MyPy
+    'RF',  # ignore Ruff
+    'PC110',
+    'PC111',
+    'PC140',
+    'PC180',
+    'PC190',
+    'PC191',
+    'PC901',
+]
+
 [tool.isort]
 skip_glob = [
     'photutils/*__init__.py*',
