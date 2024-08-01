@@ -116,7 +116,14 @@ norecursedirs = [
 astropy_header = true
 doctest_plus = 'enabled'
 text_file_format = 'rst'
-addopts = '--color=yes --doctest-rst'
+addopts = [
+    '-ra',
+    '--color=yes',
+    '--doctest-rst',
+    '--strict-config',
+    '--strict-markers',
+]
+log_cli_level = 'INFO'
 xfail_strict = true
 remote_data_strict = true
 filterwarnings = [
