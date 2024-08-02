@@ -167,13 +167,14 @@ exclude_lines = [
 ignore = [
     'MY',  # ignore MyPy
     'RF',  # ignore Ruff
-    'PC110',
-    'PC111',
-    'PC140',
-    'PC180',
-    'PC190',
-    'PC191',
-    'PC901',
+    'PC110',  # ignore using black or ruff-format in pre-commit
+    'PC111',  # ignore using blacken-docs in pre-commit
+    'PC140',  # ignore using mypy in pre-commit
+    'PC180',  # ignore using prettier in pre-commit
+    'PC190',  # ignore using Ruff in pre-commit
+    'PC191',  # ignore showing Ruff fixes in pre-commit
+    'PC901',  # ignore using custom pre-commit update message
+    'PY005',  # ignore having a tests/ folder
 ]
 
 [tool.isort]
