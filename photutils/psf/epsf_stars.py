@@ -482,7 +482,8 @@ class LinkedEPSFStar(EPSFStars):
                           'build process.', AstropyUserWarning)
             return
 
-        good_stars = [self._data[i] for i in idx]  # pylint: disable=not-an-iterable
+        good_stars = [self._data[i]
+                      for i in idx]  # pylint: disable=not-an-iterable
 
         coords = []
         for star in good_stars:

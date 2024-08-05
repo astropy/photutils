@@ -762,7 +762,8 @@ class EPSFBuilder:
         pbar = None
         if self.progress_bar:
             desc = f'EPSFBuilder ({self.maxiters} maxiters)'
-            pbar = add_progress_bar(total=self.maxiters, desc=desc)  # pragma: no cover
+            pbar = add_progress_bar(total=self.maxiters,
+                                    desc=desc)  # pragma: no cover
 
         while (iter_num < self.maxiters and not np.all(fit_failed)
                and np.max(center_dist_sq) >= self.center_accuracy_sq):

@@ -100,7 +100,7 @@ def use_detcat(method):
 
 
 class SourceCatalog:
-    r"""
+    """
     Class to create a catalog of photometry and morphological properties
     for sources defined by a segmentation image.
 
@@ -154,7 +154,8 @@ class SourceCatalog:
         values (NaN and inf) in the input ``data`` are automatically
         masked.
 
-    background : float, 2D `~numpy.ndarray`, or `~astropy.units.Quantity`, optional
+    background : float, 2D `~numpy.ndarray`, or `~astropy.units.Quantity`, \
+            optional
         The background level that was *previously* present in the input
         ``data``. ``background`` may either be a scalar value or a 2D
         image with the same shape as the input ``data``. If ``data``
@@ -279,13 +280,13 @@ class SourceCatalog:
     the quadrature sum of the pixel-wise total errors over the
     unmasked pixels within the source segment:
 
-    .. math:: \Delta F = \sqrt{\sum_{i \in S}
-              \sigma_{\mathrm{tot}, i}^2}
+    .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
+              \\sigma_{\\mathrm{tot}, i}^2}
 
-    where :math:`\Delta F` is
+    where :math:`\\Delta F` is
     `~photutils.segmentation.SourceCatalog.segment_fluxerr`,
     :math:`S` are the unmasked pixels in the source segment, and
-    :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
+    :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
     Custom errors for source segments can be calculated using
     the `~photutils.segmentation.SourceCatalog.error_ma` and
