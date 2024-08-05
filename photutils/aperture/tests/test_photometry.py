@@ -433,7 +433,6 @@ def test_aperture_photometry_with_error_units():
     """
     Test aperture_photometry when error has units (see #176).
     """
-
     data1 = np.ones((40, 40), dtype=float)
     data2 = u.Quantity(data1, unit=u.adu)
     error = u.Quantity(data1, unit=u.adu)
@@ -454,7 +453,6 @@ def test_aperture_photometry_inputs_with_mask():
     Test that aperture_photometry does not modify the input data or
     error array when a mask is input.
     """
-
     data = np.ones((5, 5))
     aperture = CircularAperture((2, 2), 2.0)
     mask = np.zeros_like(data, dtype=bool)
@@ -484,7 +482,6 @@ def test_ellipse_exact_grid(x, y, r):
     This is a regression test for the bug discovered in this issue:
     https://github.com/astropy/photutils/issues/198
     """
-
     data = np.ones((10, 10))
 
     aperture = EllipticalAperture((x, y), r, r, 0.0)
@@ -498,7 +495,6 @@ def test_nan_inf_mask(value):
     """
     Test that nans and infs are properly masked [#267].
     """
-
     data = np.ones((9, 9))
     mask = np.zeros_like(data, dtype=bool)
     data[4, 4] = value
@@ -773,7 +769,6 @@ def test_nan_in_bbox():
     Regression test that non-finite data values outside of the aperture
     mask but within the bounding box do not affect the photometry.
     """
-
     data1 = np.ones((101, 101))
     data2 = data1.copy()
     data1[33, 33] = np.nan
@@ -802,7 +797,6 @@ def test_scalar_skycoord():
     Regression test to check that scalar SkyCoords are added to the
     table as a length-1 SkyCoord array.
     """
-
     data = make_4gaussians_image()
     wcs = make_wcs(data.shape)
     skycoord = wcs.pixel_to_world(90, 60)
@@ -850,24 +844,30 @@ class BaseTestRegionPhotometry:
         data = np.ones((40, 40), dtype=float)
         error = np.ones(data.shape, dtype=float)
         region_tables = [
-            aperture_photometry(data, self.region, method='center', error=error),
+            aperture_photometry(data, self.region, method='center',
+                                error=error),
             aperture_photometry(data, self.region,
                                 method='subpixel', subpixels=12,
                                 error=error),
-            aperture_photometry(data, self.region, method='exact', error=error),
+            aperture_photometry(data, self.region, method='exact',
+                                error=error),
         ]
         aperture_tables = [
-            aperture_photometry(data, self.aperture, method='center', error=error),
+            aperture_photometry(data, self.aperture, method='center',
+                                error=error),
             aperture_photometry(data, self.aperture,
                                 method='subpixel', subpixels=12,
                                 error=error),
-            aperture_photometry(data, self.aperture, method='exact', error=error),
+            aperture_photometry(data, self.aperture, method='exact',
+                                error=error),
         ]
 
         for reg_table, ap_table in zip(region_tables, aperture_tables):
-            assert_allclose(reg_table['aperture_sum'], ap_table['aperture_sum'])
+            assert_allclose(reg_table['aperture_sum'],
+                            ap_table['aperture_sum'])
 
-        if isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+        if isinstance(self.aperture, (RectangularAperture,
+                                      RectangularAnnulus)):
             for reg_table, ap_table in zip(region_tables, aperture_tables):
                 assert_allclose(reg_table['aperture_sum_err'],
                                 ap_table['aperture_sum_err'])
@@ -890,7 +890,8 @@ class TestCircleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
         position = (20.0, 20.0)
         r_in = 8.0
         r_out = 10.0
-        self.region = CircleAnnulusPixelRegion(PixCoord(*position), r_in, r_out)
+        self.region = CircleAnnulusPixelRegion(PixCoord(*position), r_in,
+                                               r_out)
         self.aperture = CircularAnnulus(position, r_in, r_out)
 
 
@@ -902,7 +903,8 @@ class TestEllipseRegionPhotometry(BaseTestRegionPhotometry):
         a = 10.0
         b = 5.0
         theta = (-np.pi / 4.0) * u.rad
-        self.region = EllipsePixelRegion(PixCoord(*position), a * 2, b * 2, theta)
+        self.region = EllipsePixelRegion(PixCoord(*position), a * 2, b * 2,
+                                         theta)
         self.aperture = EllipticalAperture(position, a, b, theta=theta)
 
 
@@ -948,8 +950,9 @@ class TestRectangleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
         w_out = 12.0
         h_in = w_in * h_out / w_out
         theta = (np.pi / 8.0) * u.rad
-        self.region = RectangleAnnulusPixelRegion(PixCoord(*position), w_in, w_out,
-                                                  h_in, h_out, theta)
+        self.region = RectangleAnnulusPixelRegion(PixCoord(*position),
+                                                  w_in, w_out, h_in, h_out,
+                                                  theta)
         self.aperture = RectangularAnnulus(position, w_in, w_out,
                                            h_out, h_in, theta)
 

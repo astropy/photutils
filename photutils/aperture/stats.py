@@ -75,7 +75,8 @@ class ApertureStats:
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`, `~astropy.units.Quantity`, `~astropy.nddata.NDData`
+    data : 2D `~numpy.ndarray`, `~astropy.units.Quantity`, \
+            `~astropy.nddata.NDData`
         The 2D array from which to calculate the source properties.
         For accurate source properties, ``data`` should be
         background-subtracted. Non-finite ``data`` values (NaN and inf)
@@ -200,8 +201,11 @@ class ApertureStats:
     >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
     [149.99080259  24.97484633]
 
-    >>> print(aperstats.mean, aperstats.median, aperstats.std) #  doctest: +FLOAT_CMP
-    47.76300955780609 31.913789514433084 39.193655383492974
+    >>> print(aperstats.mean, aperstats.median)  # doctest: +FLOAT_CMP
+    47.76300955780609 31.913789514433084
+
+    >>> print(aperstats.std)  # doctest: +FLOAT_CMP
+    39.193655383492974
 
     >>> print(aperstats.sum)  # doctest: +FLOAT_CMP
     9286.709206410273

@@ -67,7 +67,8 @@ class EllipticalMaskMixin:
 
         Returns
         -------
-        mask : `~photutils.aperture.ApertureMask` or list of `~photutils.aperture.ApertureMask`
+        mask : `~photutils.aperture.ApertureMask` or list of \
+                `~photutils.aperture.ApertureMask`
             A mask for the aperture. If the aperture is scalar then
             a single `~photutils.aperture.ApertureMask` is returned,
             otherwise a list of `~photutils.aperture.ApertureMask` is
@@ -200,7 +201,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
     def _to_patch(self, origin=(0, 0), **kwargs):
         """
-        Return a `~matplotlib.patches.patch` for the aperture.
+        Return a `~matplotlib.patches.Patch` for the aperture.
 
         Parameters
         ----------
@@ -214,10 +215,11 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
         Returns
         -------
-        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+        patch : `~matplotlib.patches.Patch` or list of \
+                `~matplotlib.patches.Patch`
             A patch for the aperture. If the aperture is scalar then a
-            single `~matplotlib.patches.patch` is returned, otherwise a
-            list of `~matplotlib.patches.patch` is returned.
+            single `~matplotlib.patches.Patch` is returned, otherwise a
+            list of `~matplotlib.patches.Patch` is returned.
         """
         import matplotlib.patches as mpatches
 
@@ -368,7 +370,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     def _to_patch(self, origin=(0, 0), **kwargs):
         """
-        Return a `~matplotlib.patches.patch` for the aperture.
+        Return a `~matplotlib.patches.Patch` for the aperture.
 
         Parameters
         ----------
@@ -382,10 +384,11 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
         Returns
         -------
-        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+        patch : `~matplotlib.patches.Patch` or list of \
+                `~matplotlib.patches.Patch`
             A patch for the aperture. If the aperture is scalar then a
-            single `~matplotlib.patches.patch` is returned, otherwise a
-            list of `~matplotlib.patches.patch` is returned.
+            single `~matplotlib.patches.Patch` is returned, otherwise a
+            list of `~matplotlib.patches.Patch` is returned.
         """
         import matplotlib.patches as mpatches
 
