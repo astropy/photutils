@@ -21,7 +21,7 @@ __all__ = ['Ellipse']
 
 
 class Ellipse:
-    r"""
+    """
     Class to fit elliptical isophotes to a galaxy image.
 
     The isophotes in the image are measured using an iterative method
@@ -33,7 +33,8 @@ class Ellipse:
     ----------
     image : 2D `~numpy.ndarray`
         The image array.
-    geometry : `~photutils.isophote.EllipseGeometry` instance or `None`, optional
+    geometry : `~photutils.isophote.EllipseGeometry` instance or `None`, \
+            optional
         The optional geometry that describes the first
         ellipse to be fitted. If `None`, a default
         `~photutils.isophote.EllipseGeometry` instance is created
@@ -68,8 +69,8 @@ class Ellipse:
     fitting to the function:
 
     .. math::
-        y  =  y0 + (A1 * \sin(E)) + (B1 * \cos(E)) + (A2 * \sin(2 * E))
-        + (B2 * \cos(2 * E))
+        y  =  y0 + (A1 * \\sin(E)) + (B1 * \\cos(E)) + (A2 * \\sin(2 * E))
+        + (B2 * \\cos(2 * E))
 
     Each one of the harmonic amplitudes (A1, B1, A2, and B2) is related
     to a specific ellipse geometric parameter in the sense that it
@@ -328,7 +329,8 @@ class Ellipse:
             The number of sigma-clip iterations. The default is 0, which
             means sigma-clipping is skipped.
 
-        integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, optional
+        integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
+                optional
             The area integration mode. The default is 'bilinear'.
 
         linear : bool, optional
@@ -575,7 +577,8 @@ class Ellipse:
             The number of sigma-clip iterations. The default is 0, which
             means sigma-clipping is skipped.
 
-        integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, optional
+        integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
+                optional
             The area integration mode. The default is 'bilinear'.
 
         linear : bool, optional

@@ -247,7 +247,8 @@ class ProfileBase(metaclass=abc.ABCMeta):
         calls to `normalize`.
         """
         self.__dict__['profile'] = self.profile * self.normalization_value
-        self.__dict__['profile_error'] = self.profile_error * self.normalization_value
+        self.__dict__['profile_error'] = (self.profile_error
+                                          * self.normalization_value)
         self.normalization_value = 1.0
 
     def plot(self, ax=None, **kwargs):

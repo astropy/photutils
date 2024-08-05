@@ -45,6 +45,7 @@ def add_progress_bar(iterable=None, desc=None, total=None, text=False):
             except ImportError:  # pragma: no cover
                 from tqdm import tqdm
 
-        iterable = tqdm(iterable=iterable, desc=desc, total=total)  # pragma: no cover
+        iterable = tqdm(iterable=iterable, desc=desc,
+                        total=total)  # pragma: no cover
 
     return iterable
