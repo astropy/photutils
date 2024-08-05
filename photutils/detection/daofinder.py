@@ -295,7 +295,6 @@ class DAOStarFinder(StarFinderBase):
 
             `None` is returned if no stars are found.
         """
-
         # here we validate the units, but do not strip them
         # since sky is deprecated, we do not include it in the
         # validation if it is zero.

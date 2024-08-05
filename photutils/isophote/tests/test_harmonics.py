@@ -84,7 +84,6 @@ def test_harmonics_3():
     """
     Tests an upper harmonic fit.
     """
-
     N = 100
     E = np.linspace(0, 4 * np.pi, N)
     y0_0 = 100.0
@@ -199,7 +198,6 @@ def test_upper_harmonics_sign():
     """
     Regression test for #1486/#1501.
     """
-
     angle = 40.0 * np.pi / 180.0
     g1 = Gaussian2D(100.0, 75, 75, 15, 3, theta=angle)
     g2 = Gaussian2D(100.0, 75, 75, 10, 8, theta=angle)

@@ -746,7 +746,6 @@ def test_scalar_aperture():
     Regression test to check that length-1 aperture list appends a "_0"
     on the column names to be consistent with list inputs.
     """
-
     data = np.ones((20, 20), dtype=float)
 
     ap = CircularAperture((10, 10), r=3.0)

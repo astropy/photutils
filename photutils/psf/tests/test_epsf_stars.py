@@ -61,7 +61,6 @@ def test_epsf_star_residual_image():
     """
     Test to ensure ``compute_residual_image`` gives correct residuals.
     """
-
     size = 100
     yy, xx, = np.mgrid[0:size + 1, 0:size + 1] / 4
     gmodel = IntegratedGaussianPRF().evaluate(xx, yy, 1, 12.5, 12.5, 2.5)

@@ -164,7 +164,6 @@ class TestDeblendSources:
         """
         Regression test to ensure newly-deblended labels are unique.
         """
-
         y, x = np.mgrid[0:201, 0:101]
         y0a = 35
         y1a = 60
@@ -282,7 +281,6 @@ class TestDeblendSources:
 
         Regression test for #658.
         """
-
         data = self.data.copy()
         data[50, 50] = np.nan
         segm2 = deblend_sources(data, self.segm, 5, progress_bar=False)
@@ -296,7 +294,6 @@ class TestDeblendSources:
         particular, if the mask array contains label 512, the watershed
         algorithm fails.
         """
-
         segm = self.segm.copy()
         segm.reassign_label(1, 512)
         result = deblend_sources(self.data, segm, self.npixels,
@@ -311,7 +308,6 @@ class TestDeblendSources:
         For this case, a `NoDetectionsWarning` should not be raised when
         deblending sources.
         """
-
         data = np.copy(self.data3)
         data[50, 50] = 1000.0
         data[50, 70] = 500.0

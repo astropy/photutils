@@ -262,7 +262,6 @@ class IRAFStarFinder(StarFinderBase):
 
             `None` is returned if no stars are found.
         """
-
         inputs = (data, self.threshold, self.sky, self.peakmax)
         names = ('data', 'threshold', 'sky', 'peakmax')
         _ = process_quantities(inputs, names)

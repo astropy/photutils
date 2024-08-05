@@ -32,7 +32,6 @@ def test_scatter(integrmode, amin, amax):
     the noise rms and then compare how close the pixel std dev estimated
     at extraction matches this input noise.
     """
-
     sample = EllipseSample(DATA, 50.0, astep=0.2, integrmode=integrmode)
     sample.update(DEFAULT_FIX)
     iso = Isophote(sample, 0, True, 0)
