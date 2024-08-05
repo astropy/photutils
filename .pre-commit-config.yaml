@@ -78,7 +78,7 @@ repos:
         additional_dependencies: [toml]
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.1.0
+    rev: 7.1.1
     hooks:
       - id: flake8
         args: ["--ignore", "E501,W503"]
