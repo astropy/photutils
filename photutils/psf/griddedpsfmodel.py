@@ -207,7 +207,8 @@ class ModelGridPlotMixin:
             title += ' '
 
         if deltas:
-            ax.set_title(f'{title}(ePSFs − <ePSF>)')
+            minus = '\u2212'
+            ax.set_title(f'{title}(ePSFs {minus} <ePSF>)')
             if peak_norm:
                 label = 'Difference relative to average ePSF peak'
             else:
@@ -354,7 +355,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
     Methods
     -------
-    read(\\*args, \\**kwargs)
+    read(*args, **kwargs)
         Class method to create a `GriddedPSFModel` instance from a
         STDPSF FITS file. This method uses :func:`stdpsf_reader` with
         the provided parameters.
