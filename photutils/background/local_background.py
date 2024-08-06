@@ -35,6 +35,7 @@ class LocalBackground:
         `~photutils.background.MedianBackground` with sigma clipping
         (i.e., sigma-clipped median).
     """
+
     def __init__(self, inner_radius, outer_radius,
                  bkg_estimator=MedianBackground()):
         self.inner_radius = inner_radius
