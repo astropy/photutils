@@ -141,7 +141,7 @@ class TestIRAFStarFinder:
     def test_xycoords(self, data):
         finder0 = IRAFStarFinder(threshold=8.0, fwhm=2)
         tbl0 = finder0(data)
-        xycoords = list(zip(tbl0['xcentroid'], tbl0['ycentroid']))
+        xycoords = list(zip(tbl0['xcentroid'], tbl0['ycentroid'], strict=True))
         xycoords = np.round(xycoords).astype(int)
 
         finder1 = IRAFStarFinder(threshold=8.0, fwhm=2, xycoords=xycoords)

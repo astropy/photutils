@@ -632,7 +632,7 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
                                         use_xy=use_xy))
 
         # transpose the list of lists, to associate linked stars
-        stars = list(map(list, zip(*stars)))
+        stars = list(map(list, zip(*stars, strict=True)))
 
         # remove 'None' stars (i.e., no or partial overlap in one or
         # more images) and handle the case of only one "linked" star
@@ -653,7 +653,7 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
             stars_out.append(good_stars)
     else:  # no linked stars
         stars_out = []
-        for img, cat in zip(data, catalogs):
+        for img, cat in zip(data, catalogs, strict=True):
             stars_out.extend(_extract_stars(img, cat, size=size, use_xy=True))
 
         n_input = len(stars_out)
@@ -746,7 +746,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
         weights[data.mask] = 0.0
 
     stars = []
-    for xcenter, ycenter, obj_id in zip(xcenters, ycenters, ids):
+    for xcenter, ycenter, obj_id in zip(xcenters, ycenters, ids, strict=True):
         try:
             large_slc, _ = overlap_slices(data.data.shape, size,
                                           (ycenter, xcenter), mode='strict')

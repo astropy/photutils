@@ -246,7 +246,7 @@ class PixelAperture(Aperture):
         ymax = self._positions[:, 1] + y_delta
 
         return [BoundingBox.from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax, strict=True)]
 
     @lazyproperty
     def bbox(self):
@@ -273,7 +273,7 @@ class PixelAperture(Aperture):
         functions.
         """
         edges = []
-        for position, bbox in zip(self._positions, self._bbox):
+        for position, bbox in zip(self._positions, self._bbox, strict=True):
             xmin = bbox.ixmin - 0.5 - position[0]
             xmax = bbox.ixmax - 0.5 - position[0]
             ymin = bbox.iymin - 0.5 - position[1]

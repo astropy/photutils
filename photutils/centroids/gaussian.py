@@ -75,7 +75,7 @@ def centroid_1dg(data, error=None, mask=None):
 
     constant_init = np.ma.min(data)
     centroid = []
-    for (data_i, weights_i) in zip(xy_data, xy_weights):
+    for (data_i, weights_i) in zip(xy_data, xy_weights, strict=True):
         params_init = _gaussian1d_moments(data_i)
         g_init = Const1D(constant_init) + Gaussian1D(*params_init)
         fitter = LevMarLSQFitter()

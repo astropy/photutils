@@ -72,7 +72,7 @@ class LocalBackground:
         x = np.atleast_1d(x)
         y = np.atleast_1d(y)
 
-        self._aperture.positions = np.array(list(zip(x, y)))
+        self._aperture.positions = np.array(list(zip(x, y, strict=True)))
         apermasks = self._aperture.to_mask(method='center')
 
         bkg = []

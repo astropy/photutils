@@ -25,7 +25,7 @@ class TestExtractStars:
 
         yy, xx = np.mgrid[0:51, 0:55]
         self.data = np.zeros(xx.shape)
-        for (xi, yi) in zip(stars_tbl['x'], stars_tbl['y']):
+        for (xi, yi) in zip(stars_tbl['x'], stars_tbl['y'], strict=True):
             m = Moffat2D(100, xi, yi, 3, 3)
             self.data += m(xx, yy)
 

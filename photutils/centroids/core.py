@@ -413,7 +413,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
     xcentroids = []
     ycentroids = []
-    for xp, yp in zip(xpos, ypos):
+    for xp, yp in zip(xpos, ypos, strict=True):
         slices_large, slices_small = overlap_slices(data.shape,
                                                     footprint.shape, (yp, xp))
         data_cutout = data[slices_large]

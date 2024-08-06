@@ -127,12 +127,14 @@ class SegmentationImage:
                                                        self.slices,
                                                        self.bbox,
                                                        self.areas,
-                                                       self.polygons):
+                                                       self.polygons,
+                                                       strict=True):
                 segments.append(Segment(self.data, label, slc, bbox, area,
                                         polygon=polygon))
         else:
             for label, slc, bbox, area in zip(self.labels, self.slices,
-                                              self.bbox, self.areas):
+                                              self.bbox, self.areas,
+                                              strict=True):
                 segments.append(Segment(self.data, label, slc, bbox, area))
 
         return segments
@@ -207,7 +209,7 @@ class SegmentationImage:
             labels_all = np.arange(len(self._raw_slices)) + 1
             labels = []
             # if a label is missing, raw_slices will be None instead of a slice
-            for label, slc in zip(labels_all, self._raw_slices):
+            for label, slc in zip(labels_all, self._raw_slices, strict=True):
                 if slc is not None:
                     labels.append(label)
             return np.array(labels)
@@ -327,7 +329,7 @@ class SegmentationImage:
         matches the order of the ``labels`` attribute.
         """
         areas = []
-        for label, slices in zip(self.labels, self.slices):
+        for label, slices in zip(self.labels, self.slices, strict=True):
             areas.append(np.count_nonzero(self._data[slices] == label))
         return np.array(areas)
 

@@ -1057,7 +1057,7 @@ class PRFAdapter(Fittable2DModel):
         # integration step is a *lot* more expensive so its just peanuts
         out = np.empty_like(self.psfmodel(dx, dy))
         outravel = out.ravel()
-        for i, (xi, yi) in enumerate(zip(dx.ravel(), dy.ravel())):
+        for i, (xi, yi) in enumerate(zip(dx.ravel(), dy.ravel(), strict=True)):
             outravel[i] = dblquad(self.psfmodel,
                                   xi - 0.5, xi + 0.5,
                                   lambda x: yi - 0.5, lambda x: yi + 0.5,

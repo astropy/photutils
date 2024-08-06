@@ -352,7 +352,7 @@ class PSFPhotometry(ModelImageMixin):
         #     * ('x_name', 'y_name', 'flux_name') attributes
         main_params = _get_psf_model_params(psf_model)
         main_aliases = ('x', 'y', 'flux')
-        params_map = dict(zip(main_aliases, main_params))
+        params_map = dict(zip(main_aliases, main_params, strict=True))
 
         # define the fitted model parameters
         fitted_params = []
@@ -614,7 +614,8 @@ class PSFPhotometry(ModelImageMixin):
     def _get_aper_fluxes(self, data, mask, init_params):
         xpos = init_params[self._param_maps['init_cols']['x']]
         ypos = init_params[self._param_maps['init_cols']['y']]
-        apertures = CircularAperture(zip(xpos, ypos), r=self.aperture_radius)
+        apertures = CircularAperture(zip(xpos, ypos, strict=True),
+                                     r=self.aperture_radius)
         flux, _ = apertures.do_photometry(data, mask=mask)
         return flux
 
@@ -982,7 +983,7 @@ class PSFPhotometry(ModelImageMixin):
         fit_infos = []
         fit_param_errs = []
         nfitparam = len(self._param_maps['fit_params'].keys())
-        for model, fit_info in zip(group_models, group_fit_infos):
+        for model, fit_info in zip(group_models, group_fit_infos, strict=True):
             model_nsub = model.n_submodels
             npsf_models = model_nsub // psf_nsub
 
@@ -1122,7 +1123,8 @@ class PSFPhotometry(ModelImageMixin):
 
         fit_residuals = []
         for idx, fit_info in zip(split_index,
-                                 self._group_results['fit_infos']):
+                                 self._group_results['fit_infos'],
+                                 strict=True):
             fit_residuals.extend(np.split(fit_info[key], idx))
         fit_residuals = self._order_by_id(fit_residuals)
 
@@ -1135,7 +1137,7 @@ class PSFPhotometry(ModelImageMixin):
             qfit = []
             cfit = []
             for index, (residual, cen_idx_) in enumerate(
-                    zip(fit_residuals, cen_idx)):
+                    zip(fit_residuals, cen_idx, strict=True)):
 
                 flux_fit = results_tbl[fluxcolname][index]
                 if isinstance(flux_fit, u.Quantity):

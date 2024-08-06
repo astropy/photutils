@@ -43,7 +43,8 @@ def process_quantities(values, names):
                          'names.')
 
     all_units = {name: getattr(arr, 'unit', None)
-                 for arr, name in zip(values, names) if arr is not None}
+                 for arr, name in zip(values, names, strict=True)
+                 if arr is not None}
     unit = set(all_units.values())
 
     if len(unit) > 1:

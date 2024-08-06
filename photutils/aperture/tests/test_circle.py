@@ -202,11 +202,11 @@ def test_invalid_positions():
     with pytest.raises(TypeError):
         x = np.arange(3) * u.pix
         y = np.arange(3)
-        xypos = zip(x, y)
+        xypos = zip(x, y, strict=True)
         _ = CircularAperture(xypos, r=3)
 
     with pytest.raises(TypeError):
         x = np.arange(3) * u.pix
         y = np.arange(3) * u.pix
-        xypos = zip(x, y)
+        xypos = zip(x, y, strict=True)
         _ = CircularAperture(xypos, r=3)

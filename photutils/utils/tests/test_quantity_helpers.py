@@ -23,7 +23,7 @@ def test_units(all_units):
     arrs2, unit2 = process_quantities(arrs, names)
     if all_units:
         assert unit2 == unit
-        for (arr, arr2) in zip(arrs, arrs2):
+        for (arr, arr2) in zip(arrs, arrs2, strict=True):
             assert_equal(arr.value, arr2)
     else:
         assert unit2 is None

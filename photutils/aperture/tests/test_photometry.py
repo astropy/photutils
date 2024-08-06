@@ -40,7 +40,8 @@ TEST_APERTURES = list(zip(APERTURE_CL, ((3.0,),
                                         (3.0, 5.0, 1.0),
                                         (3.0, 5.0, 4.0, 12.0 / 5.0, 1.0),
                                         (5, 8, np.pi / 4),
-                                        (8, 12, 8, 16.0 / 3.0, np.pi / 8))))
+                                        (8, 12, 8, 16.0 / 3.0, np.pi / 8)),
+                          strict=True))
 
 
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
@@ -861,13 +862,15 @@ class BaseTestRegionPhotometry:
                                 error=error),
         ]
 
-        for reg_table, ap_table in zip(region_tables, aperture_tables):
+        for reg_table, ap_table in zip(region_tables, aperture_tables,
+                                       strict=True):
             assert_allclose(reg_table['aperture_sum'],
                             ap_table['aperture_sum'])
 
         if isinstance(self.aperture, (RectangularAperture,
                                       RectangularAnnulus)):
-            for reg_table, ap_table in zip(region_tables, aperture_tables):
+            for reg_table, ap_table in zip(region_tables, aperture_tables,
+                                           strict=True):
                 assert_allclose(reg_table['aperture_sum_err'],
                                 ap_table['aperture_sum_err'])
 

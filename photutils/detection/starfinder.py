@@ -380,7 +380,7 @@ class _StarFinderCatalog:
                                              order=2)
                             for arr, xcen_, ycen_ in
                             zip(self.cutout_data, self.cutout_xcentroid,
-                                self.cutout_ycentroid)])
+                                self.cutout_ycentroid, strict=True)])
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]

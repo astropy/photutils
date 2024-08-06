@@ -82,7 +82,7 @@ class CircularMaskMixin:
             raise ValueError('Cannot determine the aperture radius.')
 
         masks = []
-        for bbox, edges in zip(self._bbox, self._centered_edges):
+        for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
             ny, nx = bbox.shape
             mask = circular_overlap_grid(edges[0], edges[1], edges[2],
                                          edges[3], nx, ny, radius, use_exact,

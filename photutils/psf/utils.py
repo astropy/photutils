@@ -507,7 +507,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     # these are checked when GriddedPSFModel is created to make sure they
     # are actually on a grid.
     if grid_xypos is None:
-        grid_xypos = list(zip(x_0s, y_0s))
+        grid_xypos = list(zip(x_0s, y_0s, strict=True))
 
     data_cube = np.stack(data_arrs, axis=0)
 

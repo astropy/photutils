@@ -170,7 +170,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     all_source_data = []
     all_source_segments = []
     all_source_slices = []
-    for label, idx in zip(labels, indices):
+    for label, idx in zip(labels, indices, strict=True):
         source_slice = segment_img.slices[idx]
         source_data = data[source_slice]
         source_segment = object.__new__(SegmentationImage)
@@ -188,7 +188,8 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
 
         all_source_deblends = []
         for source_data, source_segment in zip(all_source_data,
-                                               all_source_segments):
+                                               all_source_segments,
+                                               strict=True):
             deblender = _Deblender(source_data, source_segment, npixels,
                                    footprint, nlevels, contrast, mode)
             source_deblended = deblender.deblend_source()
@@ -199,7 +200,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         args_all = zip(all_source_data, all_source_segments,
                        (npixels,) * nlabels, (footprint,) * nlabels,
                        (nlevels,) * nlabels, (contrast,) * nlabels,
-                       (mode,) * nlabels)
+                       (mode,) * nlabels, strict=True)
 
         if progress_bar:
             desc = 'Deblending'
@@ -212,7 +213,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     nonposmin_labels = []
     nmarkers_labels = []
     for (label, source_deblended, source_slice) in zip(
-            labels, all_source_deblends, all_source_slices):
+            labels, all_source_deblends, all_source_slices, strict=True):
 
         if source_deblended is not None:
             # replace the original source with the deblended source

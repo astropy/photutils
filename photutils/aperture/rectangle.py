@@ -88,7 +88,7 @@ class RectangularMaskMixin:
             raise ValueError('Cannot determine the aperture radius.')
 
         masks = []
-        for bbox, edges in zip(self._bbox, self._centered_edges):
+        for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
             ny, nx = bbox.shape
             mask = rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                             edges[3], nx, ny, w, h,
@@ -432,7 +432,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         patches = []
         theta_deg = self._theta_radians * 180.0 / np.pi
-        for xy_in, xy_out in zip(inner_xy_positions, outer_xy_positions):
+        for xy_in, xy_out in zip(inner_xy_positions, outer_xy_positions,
+                                 strict=True):
             patch_inner = mpatches.Rectangle(xy_in, self.w_in, self.h_in,
                                              angle=theta_deg)
             patch_outer = mpatches.Rectangle(xy_out, self.w_out, self.h_out,

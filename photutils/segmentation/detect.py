@@ -212,7 +212,7 @@ def _detect_sources(data, thresholds, npixels, footprint, inverse_mask, *,
         slices = find_objects(segment_img)
         segm_labels = []
         segm_slices = []
-        for label, slc in zip(labels, slices):
+        for label, slc in zip(labels, slices, strict=True):
             cutout = segment_img[slc]
             segment_mask = (cutout == label)
             if np.count_nonzero(segment_mask) < npixels:
