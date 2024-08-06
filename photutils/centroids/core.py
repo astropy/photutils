@@ -406,10 +406,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
                          'keyword.')
 
     # drop any **kwargs not supported by the centroid_func
-    centroid_kwargs = {}
-    for key, val in kwargs.items():
-        if key in spec.parameters:
-            centroid_kwargs[key] = val
+    centroid_kwargs = {key: val for key, val in kwargs.items()
+                       if key in spec.parameters}
 
     xcentroids = []
     ycentroids = []
