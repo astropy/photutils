@@ -385,7 +385,7 @@ class SegmentationImage:
         missing in the consecutive sequence from one to the maximum
         label number.
         """
-        return np.array(sorted(set(range(0, self.max_label + 1))
+        return np.array(sorted(set(range(self.max_label + 1))
                                .difference(np.insert(self.labels, 0, 0))))
 
     def copy(self):

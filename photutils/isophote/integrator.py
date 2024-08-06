@@ -53,8 +53,8 @@ class _Integrator:
         self._intensities = intensities
 
         # for bounds checking
-        self._i_range = range(0, self._image.shape[1] - 1)
-        self._j_range = range(0, self._image.shape[0] - 1)
+        self._i_range = range(self._image.shape[1] - 1)
+        self._j_range = range(self._image.shape[0] - 1)
 
     def integrate(self, radius, phi):
         """
@@ -279,7 +279,7 @@ class _AreaIntegrator(_Integrator):
 
             # If 6 or less pixels were sampled, get the bilinear
             # interpolated value instead.
-            if npix in range(0, 7):
+            if npix in range(7):
                 # must reset integrator to remove older samples.
                 self._bilinear_integrator._reset()
                 self._bilinear_integrator.integrate(radius, phi)
