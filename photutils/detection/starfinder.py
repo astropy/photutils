@@ -201,10 +201,7 @@ class _StarFinderCatalog:
         _ = process_quantities(inputs, names)
 
         self.data = data
-        if isinstance(data, u.Quantity):
-            unit = data.unit
-        else:
-            unit = None
+        unit = data.unit if isinstance(data, u.Quantity) else None
         self.unit = unit
 
         self.xypos = np.atleast_2d(xypos)
@@ -253,10 +250,7 @@ class _StarFinderCatalog:
             if key in ('slices', 'cutout_data'):  # lists instead of arrays
                 # apply fancy indices to list properties
                 value = np.array(value + [None], dtype=object)[:-1][index]
-                if scalar_index:
-                    value = [value]
-                else:
-                    value = value.tolist()
+                value = [value] if scalar_index else value.tolist()
             else:
                 # value is always at least a 1D array, even for a single
                 # source
@@ -351,11 +345,7 @@ class _StarFinderCatalog:
     @lazyproperty
     def max_value(self):
         peaks = [np.max(arr) for arr in self.cutout_data]
-        if self.unit is not None:
-            peaks = u.Quantity(peaks)
-        else:
-            peaks = np.array(peaks)
-        return peaks
+        return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
 
     @lazyproperty
     def flux(self):

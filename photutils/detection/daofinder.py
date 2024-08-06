@@ -397,10 +397,7 @@ class _DAOStarFinderCatalog:
         _ = process_quantities(inputs, names)
 
         self.data = data
-        if isinstance(data, u.Quantity):
-            unit = data.unit
-        else:
-            unit = None
+        unit = data.unit if isinstance(data, u.Quantity) else None
         self.unit = unit
 
         self.convolved_data = convolved_data

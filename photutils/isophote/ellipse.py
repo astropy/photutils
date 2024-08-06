@@ -386,10 +386,7 @@ class Ellipse:
         # get starting sma from appropriate source: keyword parameter,
         # internal EllipseGeometry instance, or fixed default value.
         if not sma0:
-            if self._geometry:
-                sma = self._geometry.sma
-            else:
-                sma = 10.0
+            sma = self._geometry.sma if self._geometry else 10.0
         else:
             sma = sma0
 

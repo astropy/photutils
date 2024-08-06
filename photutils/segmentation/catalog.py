@@ -2724,10 +2724,7 @@ class SourceCatalog:
 
         data = self._data[slc_lg].astype(float) - local_background
 
-        if self._mask is None:
-            mask_cutout = None
-        else:
-            mask_cutout = self._mask[slc_lg]
+        mask_cutout = None if self._mask is None else self._mask[slc_lg]
         data_mask = self._make_cutout_data_mask(data, mask_cutout)
 
         if make_error and self._error is not None:
@@ -3338,10 +3335,7 @@ class SourceCatalog:
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', RuntimeWarning)
                 values = (aperture_weights * data)[pixel_mask]
-                if values.shape == (0,):
-                    flux_ = np.nan
-                else:
-                    flux_ = np.sum(values)
+                flux_ = np.nan if values.shape == (0,) else np.sum(values)
                 flux.append(flux_)
 
                 if error is None:

@@ -823,10 +823,7 @@ class SkyAperture(Aperture):
         # unexpected results (e.g., results that are dependent of the
         # order of the positions). There is no good way to fix this with
         # the current Aperture API allowing multiple positions.
-        if self.isscalar:
-            skypos = self.positions
-        else:
-            skypos = self.positions[0]
+        skypos = self.positions if self.isscalar else self.positions[0]
         _, pixscale, angle = _pixel_scale_angle_at_skycoord(skypos, wcs)
 
         for param in self._params:

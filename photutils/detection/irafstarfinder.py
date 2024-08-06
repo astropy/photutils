@@ -345,10 +345,7 @@ class _IRAFStarFinderCatalog:
         _ = process_quantities(inputs, names)
 
         self.data = data
-        if isinstance(data, u.Quantity):
-            unit = data.unit
-        else:
-            unit = None
+        unit = data.unit if isinstance(data, u.Quantity) else None
         self.unit = unit
 
         self.convolved_data = convolved_data
@@ -526,11 +523,7 @@ class _IRAFStarFinderCatalog:
     @lazyproperty
     def peak(self):
         peaks = [np.max(arr) for arr in self.cutout_data]
-        if self.unit is not None:
-            peaks = u.Quantity(peaks)
-        else:
-            peaks = np.array(peaks)
-        return peaks
+        return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
 
     @lazyproperty
     def flux(self):

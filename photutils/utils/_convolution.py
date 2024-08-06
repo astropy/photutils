@@ -52,10 +52,7 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
 
     from scipy import ndimage
 
-    if isinstance(kernel, Kernel2D):
-        kernel_array = kernel.array
-    else:
-        kernel_array = kernel
+    kernel_array = kernel.array if isinstance(kernel, Kernel2D) else kernel
 
     if check_normalization:
         if not np.allclose(np.sum(kernel_array), 1.0):

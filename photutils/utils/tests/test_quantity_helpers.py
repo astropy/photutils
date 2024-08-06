@@ -13,10 +13,7 @@ from photutils.utils._quantity_helpers import isscalar, process_quantities
 
 @pytest.mark.parametrize('all_units', (False, True))
 def test_units(all_units):
-    if all_units:
-        unit = u.Jy
-    else:
-        unit = 1.0
+    unit = u.Jy if all_units else 1.0
     arrs = (np.ones(3) * unit, np.ones(3) * unit, np.ones(3) * unit)
     names = ('a', 'b', 'c')
 

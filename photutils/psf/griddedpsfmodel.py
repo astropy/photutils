@@ -814,10 +814,7 @@ def _split_detectors(grid_data, detector_data, detector_id):
     i1 = i0 + nxpsfs
     xgrid = xgrid[i0:i1] - xp * det_size
 
-    if det_idx < nxdet:
-        ygrid = ygrid[:nypsfs]
-    else:
-        ygrid = ygrid[nypsfs:] - det_size
+    ygrid = ygrid[:nypsfs] if det_idx < nxdet else ygrid[nypsfs:] - det_size
 
     return data, xgrid, ygrid
 
