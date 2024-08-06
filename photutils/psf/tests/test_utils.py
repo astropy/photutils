@@ -51,7 +51,7 @@ def test_InverseShift():
     model = _InverseShift(10)
     assert model(1) == -9.0
     assert model(-10) == -20.0
-    assert model.fit_deriv(10)[0] == -1.0
+    assert model.fit_deriv(10, 1)[0] == -1.0
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')

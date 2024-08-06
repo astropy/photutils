@@ -86,12 +86,12 @@ class _InverseShift(Shift):
         return x - offset
 
     @staticmethod
-    def fit_deriv(x, *params):
+    def fit_deriv(x, offset):
         """
         One dimensional Shift model derivative with respect to
         parameter.
         """
-        d_offset = -np.ones_like(x)
+        d_offset = -np.ones_like(x) + offset * 0.0
         return [d_offset]
 
 
