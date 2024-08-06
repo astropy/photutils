@@ -246,3 +246,9 @@ exclude = [
     wrap-summaries = 72
     pre-summary-newline = true
     make-summary-multi-line = true
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+extend-select = ['E501']
