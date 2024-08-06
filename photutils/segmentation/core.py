@@ -708,7 +708,7 @@ class SegmentationImage:
 
         if relabel:
             labels = np.unique(idx[idx != 0])
-            if not len(labels) == 0:
+            if len(labels) != 0:
                 idx2 = np.zeros(max(labels) + 1, dtype=int)
                 idx2[labels] = np.arange(len(labels)) + 1
                 idx = idx2[idx]
