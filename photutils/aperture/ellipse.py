@@ -104,8 +104,8 @@ class EllipticalMaskMixin:
 
         if self.isscalar:
             return masks[0]
-        else:
-            return masks
+
+        return masks
 
     @staticmethod
     def _calc_extents(semimajor_axis, semiminor_axis, theta):
@@ -235,8 +235,8 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
         if self.isscalar:
             return patches[0]
-        else:
-            return patches
+
+        return patches
 
     def to_mask(self, method='exact', subpixels=5):
         return EllipticalMaskMixin.to_mask(self, method=method,
@@ -407,8 +407,8 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
         if self.isscalar:
             return patches[0]
-        else:
-            return patches
+
+        return patches
 
     def to_mask(self, method='exact', subpixels=5):
         return EllipticalMaskMixin.to_mask(self, method=method,

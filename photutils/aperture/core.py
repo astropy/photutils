@@ -54,11 +54,12 @@ class Aperture(metaclass=abc.ABCMeta):
         if isinstance(self, PixelAperture):
             return np.array2string(self.positions, separator=', ',
                                    prefix=prefix)
-        elif isinstance(self, SkyAperture):
+
+        if isinstance(self, SkyAperture):
             return repr(self.positions)
-        else:
-            raise TypeError('Aperture must be a subclass of PixelAperture '
-                            'or SkyAperture')
+
+        raise TypeError('Aperture must be a subclass of PixelAperture '
+                        'or SkyAperture')
 
     def __repr__(self):
         prefix = f'{self.__class__.__name__}'
@@ -162,8 +163,8 @@ class Aperture(metaclass=abc.ABCMeta):
         """
         if isinstance(self.positions, SkyCoord):
             return self.positions.shape
-        else:
-            return self.positions.shape[:-1]
+
+        return self.positions.shape[:-1]
 
     @lazyproperty
     def isscalar(self):
@@ -259,8 +260,8 @@ class PixelAperture(Aperture):
         """
         if self.isscalar:
             return self._bbox[0]
-        else:
-            return self._bbox
+
+        return self._bbox
 
     @lazyproperty
     def _centered_edges(self):
@@ -394,8 +395,8 @@ class PixelAperture(Aperture):
         areas = np.array(areas)
         if self.isscalar:
             return areas[0]
-        else:
-            return areas
+
+        return areas
 
     @abc.abstractmethod
     def to_mask(self, method='exact', subpixels=5):

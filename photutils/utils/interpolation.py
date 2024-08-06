@@ -281,5 +281,5 @@ class ShepardIDWInterpolator:
 
         if len(interp_values) == 1:
             return interp_values[0]
-        else:
-            return interp_values
+
+        return interp_values

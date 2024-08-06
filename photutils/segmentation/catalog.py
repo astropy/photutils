@@ -93,8 +93,8 @@ def use_detcat(method):
     def _use_detcat(self, *args, **kwargs):
         if self._detection_cat is None:
             return method(self, *args, **kwargs)
-        else:
-            return getattr(self._detection_cat, method.__name__)
+
+        return getattr(self._detection_cat, method.__name__)
 
     return _use_detcat
 

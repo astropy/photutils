@@ -88,11 +88,12 @@ if HAS_BOTTLENECK:
         result = function(array, axis=axis, **kwargs)
         if isinstance(array, Quantity):
             return array.__array_wrap__(result)
-        elif isinstance(result, float):
+
+        if isinstance(result, float):
             # For compatibility with numpy, always return a numpy scalar
             return np.float64(result)
-        else:
-            return result
+
+        return result
 
     nanmean = partial(apply_bottleneck, bn.nanmean)
     nanmedian = partial(apply_bottleneck, bn.nanmedian)

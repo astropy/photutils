@@ -88,5 +88,5 @@ def isscalar(value):
     """
     if isinstance(value, u.Quantity):
         return value.isscalar
-    else:
-        return np.isscalar(value)
+
+    return np.isscalar(value)

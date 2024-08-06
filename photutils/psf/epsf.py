@@ -510,7 +510,7 @@ class EPSFBuilder:
             return epsf_data
 
         # do this check first as comparing a ndarray to string causes a warning
-        elif isinstance(self.smoothing_kernel, np.ndarray):
+        if isinstance(self.smoothing_kernel, np.ndarray):
             kernel = self.smoothing_kernel
 
         elif self.smoothing_kernel == 'quartic':

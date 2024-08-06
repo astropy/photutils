@@ -50,5 +50,5 @@ def make_repr(instance, params, ellipsis=(), long=False):
 
     if long:
         return f'<{cls_name}>\n{fmt}'
-    else:
-        return f'{cls_name}({fmt})'
+
+    return f'{cls_name}({fmt})'

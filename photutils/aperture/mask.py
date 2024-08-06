@@ -213,16 +213,16 @@ class ApertureMask:
         cutout = self.cutout(data, fill_value=fill_value)
         if cutout is None:
             return None
-        else:
-            # ignore multiplication with non-finite data values
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                weighted_cutout = cutout * self.data
 
-            # fill values outside of the mask but within the bounding box
-            weighted_cutout[self._mask] = fill_value
+        # ignore multiplication with non-finite data values
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            weighted_cutout = cutout * self.data
 
-            return weighted_cutout
+        # fill values outside of the mask but within the bounding box
+        weighted_cutout[self._mask] = fill_value
+
+        return weighted_cutout
 
     def _get_overlap_cutouts(self, shape, mask=None):
         """

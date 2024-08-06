@@ -259,10 +259,9 @@ class Background2D:
             return None
         if self.mask is None:
             return self.coverage_mask
-        elif self.coverage_mask is None:
+        if self.coverage_mask is None:
             return self.mask
-        else:
-            return np.logical_or(self.mask, self.coverage_mask)
+        return np.logical_or(self.mask, self.coverage_mask)
 
     def _prepare_data(self):
         """

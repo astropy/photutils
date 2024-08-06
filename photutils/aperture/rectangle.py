@@ -106,8 +106,8 @@ class RectangularMaskMixin:
 
         if self.isscalar:
             return masks[0]
-        else:
-            return masks
+
+        return masks
 
     @staticmethod
     def _calc_extents(width, height, theta):
@@ -259,8 +259,8 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
         if self.isscalar:
             return patches[0]
-        else:
-            return patches
+
+        return patches
 
     def to_mask(self, method='exact', subpixels=5):
         return RectangularMaskMixin.to_mask(self, method=method,
@@ -443,8 +443,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         if self.isscalar:
             return patches[0]
-        else:
-            return patches
+
+        return patches
 
     def to_mask(self, method='exact', subpixels=5):
         return RectangularMaskMixin.to_mask(self, method=method,

@@ -74,8 +74,8 @@ class SegmentationImage:
                 and all(isinstance(key[i], slice)
                         and (key[i].start != key[i].stop) for i in (0, 1))):
             return SegmentationImage(self.data[key])
-        else:
-            raise TypeError(f'{key!r} is not a valid 2D slice object')
+
+        raise TypeError(f'{key!r} is not a valid 2D slice object')
 
     def __array__(self):
         """
@@ -213,8 +213,8 @@ class SegmentationImage:
                 if slc is not None:
                     labels.append(label)
             return np.array(labels)
-        else:
-            return self._get_labels(self.data)
+
+        return self._get_labels(self.data)
 
     @lazyproperty
     def nlabels(self):
@@ -1218,9 +1218,9 @@ class SegmentationImage:
         if footprint is None:
             if size is None:
                 return mask
-            else:
-                size = as_pair('size', size, check_odd=False)
-                footprint = np.ones(size, dtype=bool)
+
+            size = as_pair('size', size, check_odd=False)
+            footprint = np.ones(size, dtype=bool)
         footprint = footprint.astype(bool)
 
         if np.all(footprint):
@@ -1230,16 +1230,16 @@ class SegmentationImage:
             # for binary inputs (equivalent to a 2D maximum filter).
             from scipy.ndimage import grey_dilation
             return grey_dilation(mask, footprint=footprint)
-        else:
-            # Binary dilation is very slow, especially for large
-            # footprints. The following is a faster implementation
-            # using fast Fourier transforms (FFTs) that gives identical
-            # results to binary_dilation. Based on the following paper:
-            # "Dilation and Erosion of Gray Images with Spherical
-            # Masks", J. Kukal, D. Majerova, A. Prochazka (Jan 2007).
-            # https://www.researchgate.net/publication/238778666_DILATION_AND_EROSION_OF_GRAY_IMAGES_WITH_SPHERICAL_MASKS
-            from scipy.signal import fftconvolve
-            return fftconvolve(mask, footprint, 'same') > 0.5
+
+        # Binary dilation is very slow, especially for large
+        # footprints. The following is a faster implementation
+        # using fast Fourier transforms (FFTs) that gives identical
+        # results to binary_dilation. Based on the following paper:
+        # "Dilation and Erosion of Gray Images with Spherical
+        # Masks", J. Kukal, D. Majerova, A. Prochazka (Jan 2007).
+        # https://www.researchgate.net/publication/238778666_DILATION_AND_EROSION_OF_GRAY_IMAGES_WITH_SPHERICAL_MASKS
+        from scipy.signal import fftconvolve
+        return fftconvolve(mask, footprint, 'same') > 0.5
 
     @lazyproperty
     def _geo_polygons(self):
@@ -1713,5 +1713,5 @@ class Segment:
         if masked_array:
             mask = (self._segment_data[self.slices] != self.label)
             return np.ma.masked_array(data[self.slices], mask=mask)
-        else:
-            return data[self.slices]
+
+        return data[self.slices]

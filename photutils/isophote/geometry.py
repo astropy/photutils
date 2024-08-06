@@ -437,11 +437,10 @@ class EllipseGeometry:
         # The split in two separate functions helps in
         # the profiling analysis: most of the time is
         # spent in the scalar function.
-
         if isinstance(x, (int, float)):
             return self._to_polar_scalar(x, y)
-        else:
-            return self._to_polar_vectorized(x, y)
+
+        return self._to_polar_vectorized(x, y)
 
     def _to_polar_scalar(self, x, y):
         x1 = x - self.x0
