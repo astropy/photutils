@@ -434,7 +434,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
         centroid_kwargs.update({'mask': mask_cutout})
 
-        error = centroid_kwargs.get('error', None)
+        error = centroid_kwargs.get('error')
         if error is not None:
             centroid_kwargs['error'] = error[slices_large]
 
