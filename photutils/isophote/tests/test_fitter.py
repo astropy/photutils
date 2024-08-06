@@ -41,7 +41,6 @@ def test_fitting_raw():
     This test performs a raw (no EllipseFitter), 1-step correction in
     one single ellipse coefficient.
     """
-
     # pick first guess ellipse that is off in just
     # one of the parameters (eps).
     sample = EllipseSample(DATA, 40.0, eps=2 * 0.2)

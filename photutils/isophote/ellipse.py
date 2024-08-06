@@ -386,10 +386,7 @@ class Ellipse:
         # get starting sma from appropriate source: keyword parameter,
         # internal EllipseGeometry instance, or fixed default value.
         if not sma0:
-            if self._geometry:
-                sma = self._geometry.sma
-            else:
-                sma = 10.0
+            sma = self._geometry.sma if self._geometry else 10.0
         else:
             sma = sma0
 
@@ -443,20 +440,20 @@ class Ellipse:
                 # if two consecutive isophotes failed to fit,
                 # shut off iterative mode. Or, bail out and
                 # change to go inwards.
-                if len(isophote_list) > 2:
-                    if ((isophote.stop_code == 5
-                         and isophote_list[-2].stop_code == 5)
-                            or isophote.stop_code == 1):
-                        if maxsma and maxsma > isophote.sma:
-                            # if a maximum sma value was provided by
-                            # user, and the current sma is smaller than
-                            # maxsma, keep growing sma in non-iterative
-                            # mode until reaching it.
-                            noiter = True
-                        else:
-                            # if no maximum sma, stop growing and change
-                            # to go inwards.
-                            break
+                if (len(isophote_list) > 2
+                    and ((isophote.stop_code == 5
+                          and isophote_list[-2].stop_code == 5)
+                         or isophote.stop_code == 1)):
+                    if maxsma and maxsma > isophote.sma:
+                        # if a maximum sma value was provided by
+                        # user, and the current sma is smaller than
+                        # maxsma, keep growing sma in non-iterative
+                        # mode until reaching it.
+                        noiter = True
+                    else:
+                        # if no maximum sma, stop growing and change
+                        # to go inwards.
+                        break
 
             # reset variable from the actual list, since the last
             # `isophote` instance may no longer be OK.
@@ -668,11 +665,9 @@ class Ellipse:
             sample = CentralEllipseSample(self.image, 0.0, geometry=geometry)
             fitter = CentralEllipseFitter(sample)
 
-        isophote = fitter.fit(conver=conver, minit=minit, maxit=maxit,
-                              fflag=fflag, maxgerr=maxgerr,
-                              going_inwards=going_inwards)
-
-        return isophote
+        return fitter.fit(conver=conver, minit=minit, maxit=maxit,
+                          fflag=fflag, maxgerr=maxgerr,
+                          going_inwards=going_inwards)
 
     def _non_iterative(self, sma, step, linear, geometry, sclip, nclip,
                        integrmode):
@@ -682,9 +677,7 @@ class Ellipse:
         sample.update(geometry.fix)
 
         # build isophote without iterating with an EllipseFitter
-        isophote = Isophote(sample, 0, True, stop_code=4)
-
-        return isophote
+        return Isophote(sample, 0, True, stop_code=4)
 
     @staticmethod
     def _fix_last_isophote(isophote_list, index):

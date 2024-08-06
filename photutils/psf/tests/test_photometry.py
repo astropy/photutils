@@ -712,13 +712,14 @@ def test_psf_photometry_init_params_columns(test_data):
                    'cen', '_cen', 'pos', '_pos', '_0', '0')
     flux_cols = ['flux_init', 'flux_0', 'flux0', 'flux', 'source_sum',
                  'segment_flux', 'kron_flux']
-    flux_cols += flux_cols[0:4]  # pad to have same length as xy_suffixes
+    pad = len(xy_suffixes) - len(flux_cols)
+    flux_cols += flux_cols[0:pad]  # pad to have same length as xy_suffixes
 
     xcols = ['x' + i for i in xy_suffixes]
     ycols = ['y' + i for i in xy_suffixes]
 
     phots = []
-    for xcol, ycol, fluxcol in zip(xcols, ycols, flux_cols):
+    for xcol, ycol, fluxcol in zip(xcols, ycols, flux_cols, strict=True):
         init_params = QTable()
         init_params[xcol] = [42]
         init_params[ycol] = [36]

@@ -144,7 +144,6 @@ class TestEllipse:
         """
         Regression test for #670/673.
         """
-
         ny = 500
         nx = 150
         g = Gaussian2D(100.0, nx / 2.0, ny / 2.0, 20, 12,

@@ -874,8 +874,7 @@ class IsophoteList:
         list_names : list
             A list of the names of the properties.
         """
-        list_names = list(_get_properties(self).keys())
-        return list_names
+        return list(_get_properties(self).keys())
 
 
 def _get_properties(isophote_list):

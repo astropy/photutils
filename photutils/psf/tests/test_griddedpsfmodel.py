@@ -48,9 +48,7 @@ def fixture_griddedpsf_data():
     meta['oversampling'] = 4
 
     nddata = NDData(psfs, meta=meta)
-    psfmodel = GriddedPSFModel(nddata)
-
-    return psfmodel
+    return GriddedPSFModel(nddata)
 
 
 class TestGriddedPSFModel:
@@ -177,7 +175,7 @@ class TestGriddedPSFModel:
         xx = [40, 50, 160, 160]
         yy = [60, 150, 50, 140]
         zz = [100, 100, 100, 100]
-        for xxi, yyi, zzi in zip(xx, yy, zz):
+        for xxi, yyi, zzi in zip(xx, yy, zz, strict=True):
             x0 = np.floor(xxi - (eval_xshape - 1) / 2.0).astype(int)
             y0 = np.floor(yyi - (eval_yshape - 1) / 2.0).astype(int)
             x1 = x0 + eval_xshape

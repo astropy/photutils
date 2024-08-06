@@ -352,7 +352,7 @@ class PSFPhotometry(ModelImageMixin):
         #     * ('x_name', 'y_name', 'flux_name') attributes
         main_params = _get_psf_model_params(psf_model)
         main_aliases = ('x', 'y', 'flux')
-        params_map = dict(zip(main_aliases, main_params))
+        params_map = dict(zip(main_aliases, main_params, strict=True))
 
         # define the fitted model parameters
         fitted_params = []
@@ -524,11 +524,10 @@ class PSFPhotometry(ModelImageMixin):
                 raise ValueError(f'init_params {colname} column has '
                                  'units that are incompatible with '
                                  'the input data units.') from exc
-        else:
-            if self.data_unit is not None:
-                raise ValueError('The input data has units, but the '
-                                 f'init_params {colname} column does not '
-                                 'have units.')
+        elif self.data_unit is not None:
+            raise ValueError('The input data has units, but the '
+                             f'init_params {colname} column does not '
+                             'have units.')
 
         return init_params
 
@@ -614,7 +613,8 @@ class PSFPhotometry(ModelImageMixin):
     def _get_aper_fluxes(self, data, mask, init_params):
         xpos = init_params[self._param_maps['init_cols']['x']]
         ypos = init_params[self._param_maps['init_cols']['y']]
-        apertures = CircularAperture(zip(xpos, ypos), r=self.aperture_radius)
+        apertures = CircularAperture(zip(xpos, ypos, strict=True),
+                                     r=self.aperture_radius)
         flux, _ = apertures.do_photometry(data, mask=mask)
         return flux
 
@@ -688,9 +688,7 @@ class PSFPhotometry(ModelImageMixin):
         colname_order = ['id', 'group_id', 'local_bkg', xcolname, ycolname,
                          fluxcolname]
         colname_order.extend(extra_param_cols)
-        init_params = init_params[colname_order]
-
-        return init_params
+        return init_params[colname_order]
 
     def _get_invalid_positions(self, init_params, shape):
         """
@@ -704,8 +702,7 @@ class PSFPhotometry(ModelImageMixin):
         delta = self.fit_shape / 2
         min_idx = np.ceil(positions - delta)
         max_idx = np.ceil(positions + delta)
-        mask = np.any(max_idx <= 0, axis=1) | np.any(min_idx >= shape, axis=1)
-        return mask
+        return np.any(max_idx <= 0, axis=1) | np.any(min_idx >= shape, axis=1)
 
     def _check_init_positions(self, init_params, shape):
         """
@@ -785,8 +782,7 @@ class PSFPhotometry(ModelImageMixin):
         if old_index > new_index:
             new_index += 1
         colnames.insert(new_index, colnames.pop(old_index))
-        table = table[colnames]
-        return table
+        return table[colnames]
 
     def _model_params_to_table(self, models):
         """
@@ -864,9 +860,7 @@ class PSFPhotometry(ModelImageMixin):
 
         # add parameter error columns
         param_errs = self._param_errors_to_table()
-        out_params = hstack([out_params, param_errs])
-
-        return out_params
+        return hstack([out_params, param_errs])
 
     def _define_fit_data(self, sources, data, mask):
         yi = []
@@ -982,7 +976,7 @@ class PSFPhotometry(ModelImageMixin):
         fit_infos = []
         fit_param_errs = []
         nfitparam = len(self._param_maps['fit_params'].keys())
-        for model, fit_info in zip(group_models, group_fit_infos):
+        for model, fit_info in zip(group_models, group_fit_infos, strict=True):
             model_nsub = model.n_submodels
             npsf_models = model_nsub // psf_nsub
 
@@ -1053,10 +1047,7 @@ class PSFPhotometry(ModelImageMixin):
             psf_model = self._make_psf_model(sources_)
             yi, xi, cutout = self._define_fit_data(sources_, data, mask)
 
-            if error is not None:
-                weights = 1.0 / error[yi, xi]
-            else:
-                weights = None
+            weights = 1.0 / error[yi, xi] if error is not None else None
 
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', AstropyUserWarning)
@@ -1122,7 +1113,8 @@ class PSFPhotometry(ModelImageMixin):
 
         fit_residuals = []
         for idx, fit_info in zip(split_index,
-                                 self._group_results['fit_infos']):
+                                 self._group_results['fit_infos'],
+                                 strict=True):
             fit_residuals.extend(np.split(fit_info[key], idx))
         fit_residuals = self._order_by_id(fit_residuals)
 
@@ -1135,7 +1127,7 @@ class PSFPhotometry(ModelImageMixin):
             qfit = []
             cfit = []
             for index, (residual, cen_idx_) in enumerate(
-                    zip(fit_residuals, cen_idx)):
+                    zip(fit_residuals, cen_idx, strict=True)):
 
                 flux_fit = results_tbl[fluxcolname][index]
                 if isinstance(flux_fit, u.Quantity):

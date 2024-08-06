@@ -188,9 +188,6 @@ def make_imagehdu(data, wcs=None):  # pragma: no cover
     if data.ndim != 2:
         raise ValueError('data must be a 2D array')
 
-    if wcs is not None:
-        header = wcs.to_header()
-    else:
-        header = None
+    header = wcs.to_header() if wcs is not None else None
 
     return fits.ImageHDU(data, header=header)

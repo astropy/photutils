@@ -242,17 +242,16 @@ class DAOStarFinder(StarFinderBase):
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        cat = _DAOStarFinderCatalog(data, convolved_data, xypos,
-                                    self.threshold,
-                                    self.kernel,
-                                    sky=self.sky,
-                                    sharplo=self.sharplo,
-                                    sharphi=self.sharphi,
-                                    roundlo=self.roundlo,
-                                    roundhi=self.roundhi,
-                                    brightest=self.brightest,
-                                    peakmax=self.peakmax)
-        return cat
+        return _DAOStarFinderCatalog(data, convolved_data, xypos,
+                                     self.threshold,
+                                     self.kernel,
+                                     sky=self.sky,
+                                     sharplo=self.sharplo,
+                                     sharphi=self.sharphi,
+                                     roundlo=self.roundlo,
+                                     roundhi=self.roundhi,
+                                     brightest=self.brightest,
+                                     peakmax=self.peakmax)
 
     def find_stars(self, data, mask=None):
         """
@@ -295,7 +294,6 @@ class DAOStarFinder(StarFinderBase):
 
             `None` is returned if no stars are found.
         """
-
         # here we validate the units, but do not strip them
         # since sky is deprecated, we do not include it in the
         # validation if it is zero.
@@ -399,10 +397,7 @@ class _DAOStarFinderCatalog:
         _ = process_quantities(inputs, names)
 
         self.data = data
-        if isinstance(data, u.Quantity):
-            unit = data.unit
-        else:
-            unit = None
+        unit = data.unit if isinstance(data, u.Quantity) else None
         self.unit = unit
 
         self.convolved_data = convolved_data
@@ -555,9 +550,7 @@ class _DAOStarFinderCatalog:
         # ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            roundness1 = 2.0 * sum2 / sum4
-
-        return roundness1
+            return 2.0 * sum2 / sum4
 
     @lazyproperty
     def sharpness(self):
@@ -756,8 +749,7 @@ class _DAOStarFinderCatalog:
             flux = self.flux
             if isinstance(flux, u.Quantity):
                 flux = flux.value
-            mag = -2.5 * np.log10(flux)
-        return mag
+            return -2.5 * np.log10(flux)
 
     @lazyproperty
     def sky(self):

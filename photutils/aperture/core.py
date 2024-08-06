@@ -54,11 +54,12 @@ class Aperture(metaclass=abc.ABCMeta):
         if isinstance(self, PixelAperture):
             return np.array2string(self.positions, separator=', ',
                                    prefix=prefix)
-        elif isinstance(self, SkyAperture):
+
+        if isinstance(self, SkyAperture):
             return repr(self.positions)
-        else:
-            raise TypeError('Aperture must be a subclass of PixelAperture '
-                            'or SkyAperture')
+
+        raise TypeError('Aperture must be a subclass of PixelAperture '
+                        'or SkyAperture')
 
     def __repr__(self):
         prefix = f'{self.__class__.__name__}'
@@ -162,8 +163,8 @@ class Aperture(metaclass=abc.ABCMeta):
         """
         if isinstance(self.positions, SkyCoord):
             return self.positions.shape
-        else:
-            return self.positions.shape[:-1]
+
+        return self.positions.shape[:-1]
 
     @lazyproperty
     def isscalar(self):
@@ -199,10 +200,9 @@ class PixelAperture(Aperture):
             mode = 'subpixel'
             subpixels = 32
 
-        if mode == 'subpixel':
-            if not isinstance(subpixels, int) or subpixels <= 0:
-                raise ValueError('subpixels must be a strictly positive '
-                                 'integer')
+        if ((mode == 'subpixel')
+                and (not isinstance(subpixels, int) or subpixels <= 0)):
+            raise ValueError('subpixels must be a strictly positive integer')
 
         if mode == 'center':
             use_exact = 0
@@ -246,7 +246,7 @@ class PixelAperture(Aperture):
         ymax = self._positions[:, 1] + y_delta
 
         return [BoundingBox.from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax, strict=True)]
 
     @lazyproperty
     def bbox(self):
@@ -259,8 +259,8 @@ class PixelAperture(Aperture):
         """
         if self.isscalar:
             return self._bbox[0]
-        else:
-            return self._bbox
+
+        return self._bbox
 
     @lazyproperty
     def _centered_edges(self):
@@ -273,7 +273,7 @@ class PixelAperture(Aperture):
         functions.
         """
         edges = []
-        for position, bbox in zip(self._positions, self._bbox):
+        for position, bbox in zip(self._positions, self._bbox, strict=True):
             xmin = bbox.ixmin - 0.5 - position[0]
             xmax = bbox.ixmax - 0.5 - position[0]
             ymin = bbox.iymin - 0.5 - position[1]
@@ -394,8 +394,8 @@ class PixelAperture(Aperture):
         areas = np.array(areas)
         if self.isscalar:
             return areas[0]
-        else:
-            return areas
+
+        return areas
 
     @abc.abstractmethod
     def to_mask(self, method='exact', subpixels=5):
@@ -822,10 +822,7 @@ class SkyAperture(Aperture):
         # unexpected results (e.g., results that are dependent of the
         # order of the positions). There is no good way to fix this with
         # the current Aperture API allowing multiple positions.
-        if self.isscalar:
-            skypos = self.positions
-        else:
-            skypos = self.positions[0]
+        skypos = self.positions if self.isscalar else self.positions[0]
         _, pixscale, angle = _pixel_scale_angle_at_skycoord(skypos, wcs)
 
         for param in self._params:
@@ -839,11 +836,10 @@ class SkyAperture(Aperture):
                 # axis). region sky angles are defined relative to the WCS
                 # longitude axis.
                 value = (value + angle).to(u.radian).value
+            elif value.unit.physical_type == 'angle':
+                value = (value / pixscale).to(u.pixel).value
             else:
-                if value.unit.physical_type == 'angle':
-                    value = (value / pixscale).to(u.pixel).value
-                else:
-                    value = value.value
+                value = value.value
 
             pixel_params[param] = value
 

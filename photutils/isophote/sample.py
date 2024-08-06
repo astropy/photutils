@@ -147,10 +147,10 @@ class EllipseSample:
         # multiple calls to the integrator code.
         if self.values is not None:
             return self.values
-        else:
-            s = self._extract()
-            self.values = s
-            return s
+
+        s = self._extract()
+        self.values = s
+        return s
 
     def _extract(self, phi_min=0.05):
         # Here the actual sampling takes place. This is called only once
@@ -237,10 +237,8 @@ class EllipseSample:
         self.actual_points = len(angles)
 
         # pack results in 2-d array
-        result = np.array([np.array(angles), np.array(radii),
-                           np.array(intensities)])
-
-        return result
+        return np.array([np.array(angles), np.array(radii),
+                         np.array(intensities)])
 
     def _sigma_clip(self, angles, radii, intensities):
         if self.nclip > 0:

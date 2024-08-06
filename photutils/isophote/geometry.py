@@ -272,10 +272,9 @@ class EllipseGeometry:
             if verbose:
                 log.info(f'Found center at x0 = {self.x0:5.1f}, '
                          f'y0 = {self.y0:5.1f}')
-        else:
-            if verbose:
-                log.info('Result is below the threshold -- keeping the '
-                         'original coordinates.')
+        elif verbose:
+            log.info('Result is below the threshold -- keeping the '
+                     'original coordinates.')
 
     def radius(self, angle):
         """
@@ -437,11 +436,10 @@ class EllipseGeometry:
         # The split in two separate functions helps in
         # the profiling analysis: most of the time is
         # spent in the scalar function.
-
         if isinstance(x, (int, float)):
             return self._to_polar_scalar(x, y)
-        else:
-            return self._to_polar_vectorized(x, y)
+
+        return self._to_polar_vectorized(x, y)
 
     def _to_polar_scalar(self, x, y):
         x1 = x - self.x0

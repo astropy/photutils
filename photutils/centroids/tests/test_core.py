@@ -215,7 +215,7 @@ class TestCentroidSources:
         data = np.zeros((ysize, xsize))
         xcen = (1, 25, 25, 35, 46)
         ycen = (1, 25, 12, 35, 49)
-        for xc, yc in zip(xcen, ycen):
+        for xc, yc in zip(xcen, ycen, strict=True):
             model = Gaussian2D(10.0, xc, yc, x_stddev=2, y_stddev=2,
                                theta=0)
             data += model(xx, yy)

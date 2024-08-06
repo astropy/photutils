@@ -216,14 +216,13 @@ class IRAFStarFinder(StarFinderBase):
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        cat = _IRAFStarFinderCatalog(data, convolved_data, xypos, self.kernel,
-                                     sky=self.sky, sharplo=self.sharplo,
-                                     sharphi=self.sharphi,
-                                     roundlo=self.roundlo,
-                                     roundhi=self.roundhi,
-                                     brightest=self.brightest,
-                                     peakmax=self.peakmax)
-        return cat
+        return _IRAFStarFinderCatalog(data, convolved_data, xypos, self.kernel,
+                                      sky=self.sky, sharplo=self.sharplo,
+                                      sharphi=self.sharphi,
+                                      roundlo=self.roundlo,
+                                      roundhi=self.roundhi,
+                                      brightest=self.brightest,
+                                      peakmax=self.peakmax)
 
     def find_stars(self, data, mask=None):
         """
@@ -262,7 +261,6 @@ class IRAFStarFinder(StarFinderBase):
 
             `None` is returned if no stars are found.
         """
-
         inputs = (data, self.threshold, self.sky, self.peakmax)
         names = ('data', 'threshold', 'sky', 'peakmax')
         _ = process_quantities(inputs, names)
@@ -347,10 +345,7 @@ class _IRAFStarFinderCatalog:
         _ = process_quantities(inputs, names)
 
         self.data = data
-        if isinstance(data, u.Quantity):
-            unit = data.unit
-        else:
-            unit = None
+        unit = data.unit if isinstance(data, u.Quantity) else None
         self.unit = unit
 
         self.convolved_data = convolved_data
@@ -528,11 +523,7 @@ class _IRAFStarFinderCatalog:
     @lazyproperty
     def peak(self):
         peaks = [np.max(arr) for arr in self.cutout_data]
-        if self.unit is not None:
-            peaks = u.Quantity(peaks)
-        else:
-            peaks = np.array(peaks)
-        return peaks
+        return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
 
     @lazyproperty
     def flux(self):
@@ -556,7 +547,7 @@ class _IRAFStarFinderCatalog:
                                              order=2)
                             for arr, xcen_, ycen_ in
                             zip(self.cutout_data, self.cutout_xcentroid,
-                                self.cutout_ycentroid)])
+                                self.cutout_ycentroid, strict=True)])
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
@@ -590,8 +581,7 @@ class _IRAFStarFinderCatalog:
     def pa(self):
         pa = np.rad2deg(0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
                                          self.mu_diff))
-        pa = np.where(pa < 0, pa + 180, pa)
-        return pa
+        return np.where(pa < 0, pa + 180, pa)
 
     def apply_filters(self):
         """

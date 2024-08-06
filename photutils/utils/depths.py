@@ -429,9 +429,7 @@ class ImageDepth:
         if np.any(mask):
             mask = binary_dilation(mask, structure=self.dilate_footprint)
 
-        mask = self._mask_border(mask)
-
-        return mask
+        return self._mask_border(mask)
 
     def _make_all_coords_no_mask(self, shape):
         """

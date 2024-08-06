@@ -88,7 +88,7 @@ class RectangularMaskMixin:
             raise ValueError('Cannot determine the aperture radius.')
 
         masks = []
-        for bbox, edges in zip(self._bbox, self._centered_edges):
+        for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
             ny, nx = bbox.shape
             mask = rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                             edges[3], nx, ny, w, h,
@@ -106,8 +106,8 @@ class RectangularMaskMixin:
 
         if self.isscalar:
             return masks[0]
-        else:
-            return masks
+
+        return masks
 
     @staticmethod
     def _calc_extents(width, height, theta):
@@ -259,8 +259,8 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
         if self.isscalar:
             return patches[0]
-        else:
-            return patches
+
+        return patches
 
     def to_mask(self, method='exact', subpixels=5):
         return RectangularMaskMixin.to_mask(self, method=method,
@@ -377,9 +377,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
-        else:
-            if not h_out > h_in:
-                raise ValueError('"h_out" must be greater than "h_in"')
+        elif not h_out > h_in:
+            raise ValueError('"h_out" must be greater than "h_in"')
         self.h_in = h_in
 
         self._theta_radians = 0.0  # defined by theta setter
@@ -432,7 +431,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         patches = []
         theta_deg = self._theta_radians * 180.0 / np.pi
-        for xy_in, xy_out in zip(inner_xy_positions, outer_xy_positions):
+        for xy_in, xy_out in zip(inner_xy_positions, outer_xy_positions,
+                                 strict=True):
             patch_inner = mpatches.Rectangle(xy_in, self.w_in, self.h_in,
                                              angle=theta_deg)
             patch_outer = mpatches.Rectangle(xy_out, self.w_out, self.h_out,
@@ -442,8 +442,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         if self.isscalar:
             return patches[0]
-        else:
-            return patches
+
+        return patches
 
     def to_mask(self, method='exact', subpixels=5):
         return RectangularMaskMixin.to_mask(self, method=method,
@@ -611,9 +611,8 @@ class SkyRectangularAnnulus(SkyAperture):
 
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
-        else:
-            if not h_out > h_in:
-                raise ValueError('"h_out" must be greater than "h_in".')
+        elif not h_out > h_in:
+            raise ValueError('"h_out" must be greater than "h_in".')
         self.h_in = h_in
 
         self.theta = theta

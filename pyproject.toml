@@ -246,3 +246,10 @@ exclude = [
     wrap-summaries = 72
     pre-summary-newline = true
     make-summary-multi-line = true
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+extend-select = ['E501', 'D202', 'B905', 'RET504', 'RET505', 'PLR5501',
+                 'SIM108', 'SIM102']

@@ -42,7 +42,7 @@ class TestEPSFBuild:
         # enforce a minimum separation
         min_dist = 25
         coords = [(yy[0], xx[0])]
-        for xxi, yyi in zip(xx, yy):
+        for xxi, yyi in zip(xx, yy, strict=True):
             newcoord = [yyi, xxi]
             dist, _ = cKDTree([newcoord]).query(coords, 1)
             if np.min(dist) > min_dist:

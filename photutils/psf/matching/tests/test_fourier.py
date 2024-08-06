@@ -26,7 +26,6 @@ def test_create_matching_kernel():
     """
     Test with noiseless 2D Gaussians.
     """
-
     size = 25
     cen = (size - 1) / 2.0
     y, x = np.mgrid[0:size, 0:size]

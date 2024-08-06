@@ -86,7 +86,7 @@ class EllipticalMaskMixin:
             raise ValueError('Cannot determine the aperture shape.')
 
         masks = []
-        for bbox, edges in zip(self._bbox, self._centered_edges):
+        for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
             ny, nx = bbox.shape
             mask = elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                            edges[3], nx, ny, a, b,
@@ -104,8 +104,8 @@ class EllipticalMaskMixin:
 
         if self.isscalar:
             return masks[0]
-        else:
-            return masks
+
+        return masks
 
     @staticmethod
     def _calc_extents(semimajor_axis, semiminor_axis, theta):
@@ -235,8 +235,8 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
         if self.isscalar:
             return patches[0]
-        else:
-            return patches
+
+        return patches
 
     def to_mask(self, method='exact', subpixels=5):
         return EllipticalMaskMixin.to_mask(self, method=method,
@@ -349,9 +349,8 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
-        else:
-            if not b_out > b_in:
-                raise ValueError('"b_out" must be greater than "b_in".')
+        elif not b_out > b_in:
+            raise ValueError('"b_out" must be greater than "b_in".')
         self.b_in = b_in
 
         self._theta_radians = 0.0  # defined by theta setter
@@ -407,8 +406,8 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
         if self.isscalar:
             return patches[0]
-        else:
-            return patches
+
+        return patches
 
     def to_mask(self, method='exact', subpixels=5):
         return EllipticalMaskMixin.to_mask(self, method=method,
@@ -567,9 +566,8 @@ class SkyEllipticalAnnulus(SkyAperture):
 
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
-        else:
-            if not b_out > b_in:
-                raise ValueError('"b_out" must be greater than "b_in".')
+        elif not b_out > b_in:
+            raise ValueError('"b_out" must be greater than "b_in".')
         self.b_in = b_in
 
         self.theta = theta

@@ -126,9 +126,9 @@ class ModelGridPlotMixin:
         else:
             fig = plt.gcf()
 
-        if peak_norm:  # normalize relative to peak
-            if data.max() != 0:
-                data /= data.max()
+        if peak_norm and data.max() != 0:
+            # normalize relative to peak
+            data /= data.max()
 
         if deltas:
             if cmap is None:
@@ -660,10 +660,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
             psf_image = self._bilinear_interp(xyref, psfs, x_0, y_0)
 
-        interpolator = RectBivariateSpline(self._xidx, self._yidx,
-                                           psf_image.T, kx=3, ky=3, s=0)
-
-        return interpolator
+        return RectBivariateSpline(self._xidx, self._yidx, psf_image.T,
+                                   kx=3, ky=3, s=0)
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
@@ -769,14 +767,12 @@ def _read_stdpsf(filename):
     # (5, 5)   # NIRCam LW
     # (3, 3)   # MIRI
 
-    grid_data = {'data': data,
-                 'npsfs': npsfs,
-                 'nxpsfs': nxpsfs,
-                 'nypsfs': nypsfs,
-                 'xgrid': xgrid,
-                 'ygrid': ygrid}
-
-    return grid_data
+    return {'data': data,
+            'npsfs': npsfs,
+            'nxpsfs': nxpsfs,
+            'nypsfs': nypsfs,
+            'xgrid': xgrid,
+            'ygrid': ygrid}
 
 
 def _split_detectors(grid_data, detector_data, detector_id):
@@ -818,10 +814,7 @@ def _split_detectors(grid_data, detector_data, detector_id):
     i1 = i0 + nxpsfs
     xgrid = xgrid[i0:i1] - xp * det_size
 
-    if det_idx < nxdet:
-        ygrid = ygrid[:nypsfs]
-    else:
-        ygrid = ygrid[nypsfs:] - det_size
+    ygrid = ygrid[:nypsfs] if det_idx < nxdet else ygrid[nypsfs:] - det_size
 
     return data, xgrid, ygrid
 

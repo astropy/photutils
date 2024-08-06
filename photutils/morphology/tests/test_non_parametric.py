@@ -12,7 +12,6 @@ def test_gini():
     """
     Test Gini coefficient calculation.
     """
-
     data_evenly_distributed = np.ones((100, 100))
     data_point_like = np.zeros((100, 100))
     data_point_like[50, 50] = 1

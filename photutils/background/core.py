@@ -171,10 +171,8 @@ class MeanBackground(BackgroundBase):
     def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis, masked=False)
-        else:
-            # convert to ndarray with masked values as np.nan
-            if isinstance(data, np.ma.MaskedArray):
-                data = data.filled(np.nan)
+        elif isinstance(data, np.ma.MaskedArray):
+            data = data.filled(np.nan)
 
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
@@ -226,10 +224,9 @@ class MedianBackground(BackgroundBase):
     def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis, masked=False)
-        else:
-            # convert to ndarray with masked values as np.nan
-            if isinstance(data, np.ma.MaskedArray):
-                data = data.filled(np.nan)
+        elif isinstance(data, np.ma.MaskedArray):
+            # convert to ndarray with masked values replaced by NaN
+            data = data.filled(np.nan)
 
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
@@ -298,10 +295,9 @@ class ModeEstimatorBackground(BackgroundBase):
     def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis, masked=False)
-        else:
-            # convert to ndarray with masked values as np.nan
-            if isinstance(data, np.ma.MaskedArray):
-                data = data.filled(np.nan)
+        elif isinstance(data, np.ma.MaskedArray):
+            # convert to ndarray with masked values replaced by NaN
+            data = data.filled(np.nan)
 
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
@@ -405,10 +401,9 @@ class SExtractorBackground(BackgroundBase):
     def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis, masked=False)
-        else:
-            # convert to ndarray with masked values as np.nan
-            if isinstance(data, np.ma.MaskedArray):
-                data = data.filled(np.nan)
+        elif isinstance(data, np.ma.MaskedArray):
+            # convert to ndarray with masked values replaced by NaN
+            data = data.filled(np.nan)
 
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
@@ -490,10 +485,9 @@ class BiweightLocationBackground(BackgroundBase):
     def calc_background(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis, masked=False)
-        else:
-            # convert to ndarray with masked values as np.nan
-            if isinstance(data, np.ma.MaskedArray):
-                data = data.filled(np.nan)
+        elif isinstance(data, np.ma.MaskedArray):
+            # convert to ndarray with masked values replaced by NaN
+            data = data.filled(np.nan)
 
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
@@ -546,10 +540,9 @@ class StdBackgroundRMS(BackgroundRMSBase):
     def calc_background_rms(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis, masked=False)
-        else:
-            # convert to ndarray with masked values as np.nan
-            if isinstance(data, np.ma.MaskedArray):
-                data = data.filled(np.nan)
+        elif isinstance(data, np.ma.MaskedArray):
+            # convert to ndarray with masked values replaced by NaN
+            data = data.filled(np.nan)
 
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
@@ -612,10 +605,9 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
     def calc_background_rms(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis, masked=False)
-        else:
-            # convert to ndarray with masked values as np.nan
-            if isinstance(data, np.ma.MaskedArray):
-                data = data.filled(np.nan)
+        elif isinstance(data, np.ma.MaskedArray):
+            # convert to ndarray with masked values replaced by NaN
+            data = data.filled(np.nan)
 
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
@@ -684,10 +676,9 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     def calc_background_rms(self, data, axis=None, masked=False):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis, masked=False)
-        else:
-            # convert to ndarray with masked values as np.nan
-            if isinstance(data, np.ma.MaskedArray):
-                data = data.filled(np.nan)
+        elif isinstance(data, np.ma.MaskedArray):
+            # convert to ndarray with masked values replaced by NaN
+            data = data.filled(np.nan)
 
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():

@@ -432,10 +432,9 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
 
     # make sure, if provided, that ``grid_xypos`` is the same length as
     # ``epsfs``
-    if grid_xypos is not None:
-        if len(grid_xypos) != len(epsfs):
-            raise ValueError('``grid_xypos`` must be the same length as '
-                             '``epsfs``.')
+    if grid_xypos is not None and len(grid_xypos) != len(epsfs):
+        raise ValueError('``grid_xypos`` must be the same length as '
+                         '``epsfs``.')
 
     # loop over input once
     for i, epsf in enumerate(epsfs):
@@ -507,7 +506,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     # these are checked when GriddedPSFModel is created to make sure they
     # are actually on a grid.
     if grid_xypos is None:
-        grid_xypos = list(zip(x_0s, y_0s))
+        grid_xypos = list(zip(x_0s, y_0s, strict=True))
 
     data_cube = np.stack(data_arrs, axis=0)
 
@@ -520,9 +519,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
 
     data = NDData(data_cube, meta=meta)
 
-    grid = GriddedPSFModel(data, fill_value=fill_value)
-
-    return grid
+    return GriddedPSFModel(data, fill_value=fill_value)
 
 
 def _validate_psf_model(psf_model):

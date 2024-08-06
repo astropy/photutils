@@ -25,7 +25,7 @@ class TestExtractStars:
 
         yy, xx = np.mgrid[0:51, 0:55]
         self.data = np.zeros(xx.shape)
-        for (xi, yi) in zip(stars_tbl['x'], stars_tbl['y']):
+        for (xi, yi) in zip(stars_tbl['x'], stars_tbl['y'], strict=True):
             m = Moffat2D(100, xi, yi, 3, 3)
             self.data += m(xx, yy)
 
@@ -61,7 +61,6 @@ def test_epsf_star_residual_image():
     """
     Test to ensure ``compute_residual_image`` gives correct residuals.
     """
-
     size = 100
     yy, xx, = np.mgrid[0:size + 1, 0:size + 1] / 4
     gmodel = IntegratedGaussianPRF().evaluate(xx, yy, 1, 12.5, 12.5, 2.5)

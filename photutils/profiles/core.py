@@ -328,6 +328,4 @@ class ProfileBase(metaclass=abc.ABCMeta):
             profile_error = profile_error.value
         ymin = profile - profile_error
         ymax = profile + profile_error
-        polycoll = ax.fill_between(self.radius, ymin, ymax, **kws)
-
-        return polycoll
+        return ax.fill_between(self.radius, ymin, ymax, **kws)

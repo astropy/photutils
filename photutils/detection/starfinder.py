@@ -110,10 +110,9 @@ class StarFinder(StarFinderBase):
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        cat = _StarFinderCatalog(data, xypos, self.kernel.shape,
-                                 brightest=self.brightest,
-                                 peakmax=self.peakmax)
-        return cat
+        return _StarFinderCatalog(data, xypos, self.kernel.shape,
+                                  brightest=self.brightest,
+                                  peakmax=self.peakmax)
 
     def find_stars(self, data, mask=None):
         """
@@ -202,10 +201,7 @@ class _StarFinderCatalog:
         _ = process_quantities(inputs, names)
 
         self.data = data
-        if isinstance(data, u.Quantity):
-            unit = data.unit
-        else:
-            unit = None
+        unit = data.unit if isinstance(data, u.Quantity) else None
         self.unit = unit
 
         self.xypos = np.atleast_2d(xypos)
@@ -254,10 +250,7 @@ class _StarFinderCatalog:
             if key in ('slices', 'cutout_data'):  # lists instead of arrays
                 # apply fancy indices to list properties
                 value = np.array(value + [None], dtype=object)[:-1][index]
-                if scalar_index:
-                    value = [value]
-                else:
-                    value = value.tolist()
+                value = [value] if scalar_index else value.tolist()
             else:
                 # value is always at least a 1D array, even for a single
                 # source
@@ -352,11 +345,7 @@ class _StarFinderCatalog:
     @lazyproperty
     def max_value(self):
         peaks = [np.max(arr) for arr in self.cutout_data]
-        if self.unit is not None:
-            peaks = u.Quantity(peaks)
-        else:
-            peaks = np.array(peaks)
-        return peaks
+        return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
 
     @lazyproperty
     def flux(self):
@@ -380,7 +369,7 @@ class _StarFinderCatalog:
                                              order=2)
                             for arr, xcen_, ycen_ in
                             zip(self.cutout_data, self.cutout_xcentroid,
-                                self.cutout_ycentroid)])
+                                self.cutout_ycentroid, strict=True)])
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
@@ -408,8 +397,7 @@ class _StarFinderCatalog:
     def pa(self):
         pa = np.rad2deg(0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
                                          self.mu_diff))
-        pa = np.where(pa < 0, pa + 180, pa)
-        return pa
+        return np.where(pa < 0, pa + 180, pa)
 
     def apply_filters(self):
         """

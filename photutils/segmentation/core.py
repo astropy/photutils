@@ -74,8 +74,8 @@ class SegmentationImage:
                 and all(isinstance(key[i], slice)
                         and (key[i].start != key[i].stop) for i in (0, 1))):
             return SegmentationImage(self.data[key])
-        else:
-            raise TypeError(f'{key!r} is not a valid 2D slice object')
+
+        raise TypeError(f'{key!r} is not a valid 2D slice object')
 
     def __array__(self):
         """
@@ -127,12 +127,14 @@ class SegmentationImage:
                                                        self.slices,
                                                        self.bbox,
                                                        self.areas,
-                                                       self.polygons):
+                                                       self.polygons,
+                                                       strict=True):
                 segments.append(Segment(self.data, label, slc, bbox, area,
                                         polygon=polygon))
         else:
             for label, slc, bbox, area in zip(self.labels, self.slices,
-                                              self.bbox, self.areas):
+                                              self.bbox, self.areas,
+                                              strict=True):
                 segments.append(Segment(self.data, label, slc, bbox, area))
 
         return segments
@@ -207,12 +209,12 @@ class SegmentationImage:
             labels_all = np.arange(len(self._raw_slices)) + 1
             labels = []
             # if a label is missing, raw_slices will be None instead of a slice
-            for label, slc in zip(labels_all, self._raw_slices):
+            for label, slc in zip(labels_all, self._raw_slices, strict=True):
                 if slc is not None:
                     labels.append(label)
             return np.array(labels)
-        else:
-            return self._get_labels(self.data)
+
+        return self._get_labels(self.data)
 
     @lazyproperty
     def nlabels(self):
@@ -327,7 +329,7 @@ class SegmentationImage:
         matches the order of the ``labels`` attribute.
         """
         areas = []
-        for label, slices in zip(self.labels, self.slices):
+        for label, slices in zip(self.labels, self.slices, strict=True):
             areas.append(np.count_nonzero(self._data[slices] == label))
         return np.array(areas)
 
@@ -1216,9 +1218,9 @@ class SegmentationImage:
         if footprint is None:
             if size is None:
                 return mask
-            else:
-                size = as_pair('size', size, check_odd=False)
-                footprint = np.ones(size, dtype=bool)
+
+            size = as_pair('size', size, check_odd=False)
+            footprint = np.ones(size, dtype=bool)
         footprint = footprint.astype(bool)
 
         if np.all(footprint):
@@ -1228,16 +1230,16 @@ class SegmentationImage:
             # for binary inputs (equivalent to a 2D maximum filter).
             from scipy.ndimage import grey_dilation
             return grey_dilation(mask, footprint=footprint)
-        else:
-            # Binary dilation is very slow, especially for large
-            # footprints. The following is a faster implementation
-            # using fast Fourier transforms (FFTs) that gives identical
-            # results to binary_dilation. Based on the following paper:
-            # "Dilation and Erosion of Gray Images with Spherical
-            # Masks", J. Kukal, D. Majerova, A. Prochazka (Jan 2007).
-            # https://www.researchgate.net/publication/238778666_DILATION_AND_EROSION_OF_GRAY_IMAGES_WITH_SPHERICAL_MASKS
-            from scipy.signal import fftconvolve
-            return fftconvolve(mask, footprint, 'same') > 0.5
+
+        # Binary dilation is very slow, especially for large
+        # footprints. The following is a faster implementation
+        # using fast Fourier transforms (FFTs) that gives identical
+        # results to binary_dilation. Based on the following paper:
+        # "Dilation and Erosion of Gray Images with Spherical
+        # Masks", J. Kukal, D. Majerova, A. Prochazka (Jan 2007).
+        # https://www.researchgate.net/publication/238778666_DILATION_AND_EROSION_OF_GRAY_IMAGES_WITH_SPHERICAL_MASKS
+        from scipy.signal import fftconvolve
+        return fftconvolve(mask, footprint, 'same') > 0.5
 
     @lazyproperty
     def _geo_polygons(self):
@@ -1274,9 +1276,7 @@ class SegmentationImage:
             polygons.append(shape(geo_poly[0]))
         # shift the vertices so that the (0, 0) origin is at the
         # center of the lower-left pixel
-        polygons = transform(polygons, lambda x: x - [0.5, 0.5])
-
-        return polygons
+        return transform(polygons, lambda x: x - [0.5, 0.5])
 
     def to_patches(self, *, origin=(0, 0), scale=1.0, **kwargs):
         """
@@ -1713,5 +1713,5 @@ class Segment:
         if masked_array:
             mask = (self._segment_data[self.slices] != self.label)
             return np.ma.masked_array(data[self.slices], mask=mask)
-        else:
-            return data[self.slices]
+
+        return data[self.slices]

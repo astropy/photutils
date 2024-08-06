@@ -409,10 +409,8 @@ class EPSFBuilder:
         xcenter = stars._max_shape[0] / 2.0
         ycenter = stars._max_shape[1] / 2.0
 
-        epsf = EPSFModel(data=data, origin=(xcenter, ycenter),
+        return EPSFModel(data=data, origin=(xcenter, ycenter),
                          oversampling=oversampling, norm_radius=norm_radius)
-
-        return epsf
 
     def _resample_residual(self, star, epsf):
         """
@@ -512,7 +510,7 @@ class EPSFBuilder:
             return epsf_data
 
         # do this check first as comparing a ndarray to string causes a warning
-        elif isinstance(self.smoothing_kernel, np.ndarray):
+        if isinstance(self.smoothing_kernel, np.ndarray):
             kernel = self.smoothing_kernel
 
         elif self.smoothing_kernel == 'quartic':

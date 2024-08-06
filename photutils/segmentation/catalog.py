@@ -93,8 +93,8 @@ def use_detcat(method):
     def _use_detcat(self, *args, **kwargs):
         if self._detection_cat is None:
             return method(self, *args, **kwargs)
-        else:
-            return getattr(self._detection_cat, method.__name__)
+
+        return getattr(self._detection_cat, method.__name__)
 
     return _use_detcat
 
@@ -644,12 +644,10 @@ class SourceCatalog:
                 # e.g., Quantity, SkyCoord, Time
                 if not value.isscalar:
                     property_error = True
-            else:
-                if not np.isscalar(value):
-                    property_error = True
-        else:
-            if not self._has_len(value) or len(value) != self.nlabels:
+            elif not np.isscalar(value):
                 property_error = True
+        elif not self._has_len(value) or len(value) != self.nlabels:
+            property_error = True
         if property_error:
             raise ValueError('value must have the same number of elements as '
                              'the catalog in order to add it as an extra '
@@ -811,7 +809,8 @@ class SourceCatalog:
         ``mask`` and non-finite ``data`` values for each source.
         """
         data_masks = []
-        for (data_cutout, mask_cutout) in zip(data_cutouts, mask_cutouts):
+        for (data_cutout, mask_cutout) in zip(data_cutouts, mask_cutouts,
+                                              strict=True):
             data_masks.append(self._make_cutout_data_mask(data_cutout,
                                                           mask_cutout))
         return data_masks
@@ -826,7 +825,7 @@ class SourceCatalog:
         """
         return [segm != label
                 for label, segm in zip(self.labels,
-                                       self._segment_img_cutouts)]
+                                       self._segment_img_cutouts, strict=True)]
 
     @lazyproperty
     def _cutout_data_masks(self):
@@ -851,7 +850,7 @@ class SourceCatalog:
         """
         masks = []
         for mask1, mask2 in zip(self._cutout_segment_masks,
-                                self._cutout_data_masks):
+                                self._cutout_data_masks, strict=True):
             masks.append(mask1 | mask2)
         return masks
 
@@ -874,7 +873,7 @@ class SourceCatalog:
         cutouts = []
         for convdata_cutout, mask_cutout, segmmask_cutout in zip(
                 self._convdata_cutouts, self._mask_cutouts,
-                self._cutout_segment_masks):
+                self._cutout_segment_masks, strict=True):
 
             convdata_mask = (~np.isfinite(convdata_cutout)
                              | (convdata_cutout < 0) | segmmask_cutout)
@@ -905,7 +904,8 @@ class SourceCatalog:
             cutouts = [(cutout << self._data_unit) for cutout in cutouts]
         if masked:
             return [np.ma.masked_array(cutout, mask=mask)
-                    for cutout, mask in zip(cutouts, self._cutout_total_masks)]
+                    for cutout, mask in zip(cutouts, self._cutout_total_masks,
+                                            strict=True)]
 
         return cutouts
 
@@ -1238,7 +1238,7 @@ class SourceCatalog:
         return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
                          zip(self._moment_data_cutouts, cutout_centroid[:, 0],
-                             cutout_centroid[:, 1])])
+                             cutout_centroid[:, 1], strict=True)])
 
     @lazyproperty
     @use_detcat
@@ -1370,7 +1370,8 @@ class SourceCatalog:
         xcen_win = []
         ycen_win = []
         for label, xcen, ycen, rad_hl in zip(labels, self._xcentroid,
-                                             self._ycentroid, radius_hl):
+                                             self._ycentroid, radius_hl,
+                                             strict=True):
 
             if np.any(~np.isfinite((xcen, ycen))):
                 xcen_win.append(np.nan)
@@ -1548,7 +1549,8 @@ class SourceCatalog:
                 desc = 'centroid_quad'
                 cutouts = add_progress_bar(cutouts, desc=desc)
 
-            for data, mask in zip(cutouts, self._cutout_total_masks):
+            for data, mask in zip(cutouts, self._cutout_total_masks,
+                                  strict=True):
                 try:
                     centroid = centroid_quadratic(data, mask=mask,
                                                   fit_boxsize=3)
@@ -1958,7 +1960,7 @@ class SourceCatalog:
         if self.isscalar:
             index = (index,)
         out = []
-        for idx, slc in zip(index, self._slices_iter):
+        for idx, slc in zip(index, self._slices_iter, strict=True):
             out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
         return np.array(out)
 
@@ -1976,7 +1978,7 @@ class SourceCatalog:
         if self.isscalar:
             index = (index,)
         out = []
-        for idx, slc in zip(index, self._slices_iter):
+        for idx, slc in zip(index, self._slices_iter, strict=True):
             out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
         return np.array(out)
 
@@ -2183,7 +2185,7 @@ class SourceCatalog:
         ``data`` values).
         """
         areas = []
-        for label, slices in zip(self.labels, self._slices_iter):
+        for label, slices in zip(self.labels, self._slices_iter, strict=True):
             areas.append(np.count_nonzero(self._segment_img[slices] == label))
         return np.array(areas) << (u.pix**2)
 
@@ -2722,10 +2724,7 @@ class SourceCatalog:
 
         data = self._data[slc_lg].astype(float) - local_background
 
-        if self._mask is None:
-            mask_cutout = None
-        else:
-            mask_cutout = self._mask[slc_lg]
+        mask_cutout = None if self._mask is None else self._mask[slc_lg]
         data_mask = self._make_cutout_data_mask(data, mask_cutout)
 
         if make_error and self._error is not None:
@@ -2786,7 +2785,8 @@ class SourceCatalog:
         for (xcen, ycen, radius_, all_masked) in zip(self._xcentroid,
                                                      self._ycentroid,
                                                      radius,
-                                                     self._all_masked):
+                                                     self._all_masked,
+                                                     strict=True):
             if all_masked or np.any(~np.isfinite((xcen, ycen, radius_))):
                 apertures.append(None)
                 continue
@@ -2967,7 +2967,7 @@ class SourceCatalog:
 
         aperture = []
         for values in zip(xcen, ycen, major_size, minor_size, theta,
-                          self._all_masked):
+                          self._all_masked, strict=True):
             if values[-1] or np.any(~np.isfinite(values[:-1])):
                 aperture.append(None)
                 continue
@@ -3010,7 +3010,8 @@ class SourceCatalog:
 
         kron_radius = []
         for (label, aperture, cxx_, cxy_, cyy_) in zip(labels, apertures,
-                                                       cxx, cxy, cyy):
+                                                       cxx, cxy, cyy,
+                                                       strict=True):
             if aperture is None:
                 kron_radius.append(np.nan)
                 continue
@@ -3138,8 +3139,7 @@ class SourceCatalog:
         # NOTE: if kron_radius = NaN, scale = NaN and kron_aperture = None
         kron_radius = self._calc_kron_radius(kron_params)
         scale = kron_radius.value * kron_params[0]
-        kron_apertures = self._make_elliptical_apertures(scale=scale)
-        return kron_apertures
+        return self._make_elliptical_apertures(scale=scale)
 
     @lazyproperty
     @use_detcat
@@ -3314,7 +3314,7 @@ class SourceCatalog:
         flux = []
         fluxerr = []
         for label, aperture, bkg in zip(labels, apertures,
-                                        self._local_background):
+                                        self._local_background, strict=True):
             # return NaN for completely masked sources or sources where
             # the centroid is not finite
             if aperture is None:
@@ -3335,10 +3335,7 @@ class SourceCatalog:
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', RuntimeWarning)
                 values = (aperture_weights * data)[pixel_mask]
-                if values.shape == (0,):
-                    flux_ = np.nan
-                else:
-                    flux_ = np.sum(values)
+                flux_ = np.nan if values.shape == (0,) else np.sum(values)
                 flux.append(flux_)
 
                 if error is None:
@@ -3546,7 +3543,7 @@ class SourceCatalog:
         args = []
         for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
                 labels, self._xcentroid, self._ycentroid,
-                kron_flux, self._local_background, max_radius):
+                kron_flux, self._local_background, max_radius, strict=True):
 
             if (np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_)))
                     or kronflux == 0):
@@ -3702,7 +3699,7 @@ class SourceCatalog:
         cutouts = []
         for (xcen, ycen, all_masked) in zip(self._xcentroid,
                                             self._ycentroid,
-                                            self._all_masked):
+                                            self._all_masked, strict=True):
 
             if all_masked or np.any(~np.isfinite((xcen, ycen))):
                 cutouts.append(None)

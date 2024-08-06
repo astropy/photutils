@@ -51,9 +51,7 @@ if HAS_BOTTLENECK:
 
         # Collapse the dimensions being operated on into a single dimension
         # so that we can then use axis=0 with the bottleneck functions
-        array_new = array_new.reshape((-1,) + array_new.shape[naxis:])
-
-        return array_new
+        return array_new.reshape((-1,) + array_new.shape[naxis:])
 
     def apply_bottleneck(function, array, axis=None, **kwargs):
         """
@@ -90,11 +88,12 @@ if HAS_BOTTLENECK:
         result = function(array, axis=axis, **kwargs)
         if isinstance(array, Quantity):
             return array.__array_wrap__(result)
-        elif isinstance(result, float):
+
+        if isinstance(result, float):
             # For compatibility with numpy, always return a numpy scalar
             return np.float64(result)
-        else:
-            return result
+
+        return result
 
     nanmean = partial(apply_bottleneck, bn.nanmean)
     nanmedian = partial(apply_bottleneck, bn.nanmedian)

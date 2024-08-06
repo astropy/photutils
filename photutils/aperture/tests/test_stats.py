@@ -41,14 +41,8 @@ class TestApertureStats:
     def test_properties(self, with_units, with_sigmaclip):
         apstats = [self.apstats1.copy(), self.apstats2.copy(),
                    self.apstats1_units.copy(), self.apstats2_units.copy()]
-        if with_sigmaclip:
-            index = [1, 3]
-        else:
-            index = [0, 2]
-        if with_units:
-            index = index[1]
-        else:
-            index = index[0]
+        index = [1, 3] if with_sigmaclip else [0, 2]
+        index = index[1] if with_units else index[0]
         apstats1 = apstats[index]
         apstats2 = apstats1.copy()
 

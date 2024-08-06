@@ -239,9 +239,8 @@ class ApertureStats:
         self._data_unit = unit
         self.aperture = self._validate_aperture(aperture)
 
-        if isinstance(aperture, SkyAperture):
-            if wcs is None:
-                raise ValueError('A wcs is required when using a SkyAperture')
+        if isinstance(aperture, SkyAperture) and wcs is None:
+            raise ValueError('A wcs is required when using a SkyAperture')
 
         self._error = self._validate_array(error, 'error')
         self._mask = self._validate_array(mask, 'mask')
@@ -608,7 +607,7 @@ class ApertureStats:
         """
         cutouts = []
         for (slices, local_bkg) in zip(self._overlap_slices,
-                                       self._local_bkg):
+                                       self._local_bkg, strict=True):
             if slices[0] is None:
                 cutout = None  # no aperture overlap with the data
             else:
@@ -641,8 +640,10 @@ class ApertureStats:
         weight_cutouts = []
         overlaps = []
 
-        for (data_cutout, apermask, slices) in zip(
-                self._data_cutouts, aperture_masks, self._overlap_slices):
+        for (data_cutout, apermask, slices) in zip(self._data_cutouts,
+                                                   aperture_masks,
+                                                   self._overlap_slices,
+                                                   strict=True):
 
             slc_large, slc_small = slices
             if slc_large is None:  # aperture does not overlap the data
@@ -705,7 +706,7 @@ class ApertureStats:
         # use zip (instead of np.transpose) because these may contain
         # arrays that have different shapes
         return list(zip(data_cutouts, variance_cutouts, mask_cutouts,
-                        weight_cutouts, overlaps))
+                        weight_cutouts, overlaps, strict=True))
 
     @lazyproperty
     def _aperture_cutouts_center(self):
@@ -733,7 +734,7 @@ class ApertureStats:
         ``data`` values, the cutout aperture mask using the "center"
         method, and the sigma-clip mask.
         """
-        return list(zip(*self._aperture_cutouts_center))[2]
+        return list(zip(*self._aperture_cutouts_center, strict=True))[2]
 
     @lazyproperty
     def _mask_cutout(self):
@@ -744,7 +745,7 @@ class ApertureStats:
         non-finite ``data`` values, the cutout aperture mask using the
         ``sum_method`` method, and the sigma-clip mask.
         """
-        return list(zip(*self._aperture_cutouts))[2]
+        return list(zip(*self._aperture_cutouts, strict=True))[2]
 
     def _make_masked_array_center(self, array):
         """
@@ -754,7 +755,8 @@ class ApertureStats:
         Units are not applied.
         """
         return [np.ma.masked_array(arr, mask=mask)
-                for arr, mask in zip(array, self._mask_cutout_center)]
+                for arr, mask in zip(array, self._mask_cutout_center,
+                                     strict=True)]
 
     def _make_masked_array(self, array):
         """
@@ -764,7 +766,7 @@ class ApertureStats:
         Units are not applied.
         """
         return [np.ma.masked_array(arr, mask=mask)
-                for arr, mask in zip(array, self._mask_cutout)]
+                for arr, mask in zip(array, self._mask_cutout, strict=True)]
 
     @lazyproperty
     @as_scalar
@@ -782,7 +784,7 @@ class ApertureStats:
         weight.
         """
         return self._make_masked_array_center(
-            list(zip(*self._aperture_cutouts_center))[0])
+            list(zip(*self._aperture_cutouts_center, strict=True))[0])
 
     @lazyproperty
     @as_scalar
@@ -800,7 +802,8 @@ class ApertureStats:
         within the aperture, and pixels where the aperture mask has zero
         weight.
         """
-        return self._make_masked_array(list(zip(*self._aperture_cutouts))[0])
+        return self._make_masked_array(list(zip(*self._aperture_cutouts,
+                                                strict=True))[0])
 
     @lazyproperty
     def _variance_cutout_center(self):
@@ -819,7 +822,7 @@ class ApertureStats:
         if self._error is None:
             return self._null_object
         return self._make_masked_array_center(
-            list(zip(*self._aperture_cutouts_center))[1])
+            list(zip(*self._aperture_cutouts_center, strict=True))[1])
 
     @lazyproperty
     def _variance_cutout(self):
@@ -838,7 +841,8 @@ class ApertureStats:
         """
         if self._error is None:
             return self._null_object
-        return self._make_masked_array(list(zip(*self._aperture_cutouts))[1])
+        return self._make_masked_array(list(zip(*self._aperture_cutouts,
+                                                strict=True))[1])
 
     @lazyproperty
     @as_scalar
@@ -872,7 +876,7 @@ class ApertureStats:
         and inf), and sigma-clipped pixels.
         """
         return self._make_masked_array_center(
-            list(zip(*self._aperture_cutouts_center))[3])
+            list(zip(*self._aperture_cutouts_center, strict=True))[3])
 
     @lazyproperty
     def _weight_cutout(self):
@@ -886,7 +890,8 @@ class ApertureStats:
         pixels from the input ``mask``, non-finite ``data`` values (NaN
         and inf), and sigma-clipped pixels.
         """
-        return self._make_masked_array(list(zip(*self._aperture_cutouts))[3])
+        return self._make_masked_array(list(zip(*self._aperture_cutouts,
+                                                strict=True))[3])
 
     @lazyproperty
     def _moment_data_cutout(self):
@@ -927,7 +932,7 @@ class ApertureStats:
         """
         True if there is no overlap of the aperture with the data.
         """
-        return list(zip(*self._aperture_cutouts_center))[4]
+        return list(zip(*self._aperture_cutouts_center, strict=True))[4]
 
     def _get_values(self, array):
         """
@@ -975,7 +980,7 @@ class ApertureStats:
         return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
                          zip(self._moment_data_cutout, cutout_centroid[:, 0],
-                             cutout_centroid[:, 1])])
+                             cutout_centroid[:, 1], strict=True)])
 
     @lazyproperty
     @as_scalar

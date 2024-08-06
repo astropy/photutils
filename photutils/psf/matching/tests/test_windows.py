@@ -24,7 +24,6 @@ def test_hanning_numpy():
     """
     Test Hanning window against 1D numpy version.
     """
-
     size = 101
     cen = (size - 1) // 2
     shape = (size, size)
@@ -46,7 +45,6 @@ def test_tukey_scipy():
     """
     Test Tukey window against 1D scipy version.
     """
-
     from scipy.signal.windows import tukey
 
     size = 101

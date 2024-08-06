@@ -119,10 +119,9 @@ class EPSFStar:
     def cutout_center(self, value):
         if value is None:
             value = ((self.shape[1] - 1) / 2.0, (self.shape[0] - 1) / 2.0)
-        else:
-            if len(value) != 2:
-                raise ValueError('The "cutout_center" attribute must have '
-                                 'two elements in (x, y) form.')
+        elif len(value) != 2:
+            raise ValueError('The "cutout_center" attribute must have '
+                             'two elements in (x, y) form.')
 
         self._cutout_center = np.asarray(value)
 
@@ -632,7 +631,7 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
                                         use_xy=use_xy))
 
         # transpose the list of lists, to associate linked stars
-        stars = list(map(list, zip(*stars)))
+        stars = list(map(list, zip(*stars, strict=True)))
 
         # remove 'None' stars (i.e., no or partial overlap in one or
         # more images) and handle the case of only one "linked" star
@@ -653,7 +652,7 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
             stars_out.append(good_stars)
     else:  # no linked stars
         stars_out = []
-        for img, cat in zip(data, catalogs):
+        for img, cat in zip(data, catalogs, strict=True):
             stars_out.extend(_extract_stars(img, cat, size=size, use_xy=True))
 
         n_input = len(stars_out)
@@ -725,28 +724,26 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
 
     if data.uncertainty is None:
         weights = np.ones_like(data.data)
+    elif data.uncertainty.uncertainty_type == 'weights':
+        weights = np.asanyarray(data.uncertainty.array, dtype=float)
     else:
-        if data.uncertainty.uncertainty_type == 'weights':
-            weights = np.asanyarray(data.uncertainty.array, dtype=float)
-        else:
-            # other uncertainties are converted to the inverse standard
-            # deviation as the weight;
-            # ignore divide-by-zero RuntimeWarning
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                weights = data.uncertainty.represent_as(StdDevUncertainty)
-                weights = 1.0 / weights.array
-                if np.any(~np.isfinite(weights)):
-                    warnings.warn('One or more weight values is not finite. '
-                                  'Please check the input uncertainty values '
-                                  'in the input NDData object.',
-                                  AstropyUserWarning)
+        # other uncertainties are converted to the inverse standard
+        # deviation as the weight; ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            weights = data.uncertainty.represent_as(StdDevUncertainty)
+            weights = 1.0 / weights.array
+            if np.any(~np.isfinite(weights)):
+                warnings.warn('One or more weight values is not finite. '
+                              'Please check the input uncertainty values '
+                              'in the input NDData object.',
+                              AstropyUserWarning)
 
     if data.mask is not None:
         weights[data.mask] = 0.0
 
     stars = []
-    for xcenter, ycenter, obj_id in zip(xcenters, ycenters, ids):
+    for xcenter, ycenter, obj_id in zip(xcenters, ycenters, ids, strict=True):
         try:
             large_slc, _ = overlap_slices(data.data.shape, size,
                                           (ycenter, xcenter), mode='strict')
