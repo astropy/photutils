@@ -3,6 +3,7 @@
 This module provides utilities for PSF-fitting photometry.
 """
 
+import contextlib
 import re
 
 import numpy as np
@@ -461,11 +462,8 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
             flux = epsf.flux
 
             # if there's a unit, those should also all be the same
-            try:
+            with contextlib.suppress(AttributeError):
                 dat_unit = epsf.data.unit
-            except AttributeError:
-                pass  # just keep as None
-
         else:
             if np.any(epsf.oversampling != oversampling):
                 raise ValueError('All input EPSFModels must have the same '

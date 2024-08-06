@@ -3,6 +3,7 @@
 This module provides classes to perform PSF-fitting photometry.
 """
 
+import contextlib
 import inspect
 import warnings
 from collections import defaultdict
@@ -1054,10 +1055,8 @@ class PSFPhotometry(ModelImageMixin):
                 try:
                     fit_model = self.fitter(psf_model, xi, yi, cutout,
                                             weights=weights, **kwargs)
-                    try:
+                    with contextlib.suppress(AttributeError):
                         fit_model.clear_cache()
-                    except AttributeError:
-                        pass
                 except TypeError as exc:
                     msg = ('For one or more sources, the number of data '
                            'points available to fit is less than the '
