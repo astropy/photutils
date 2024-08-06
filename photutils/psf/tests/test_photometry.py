@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.fitting import LMLSQFitter, SimplexLSQFitter
-from astropy.modeling.models import Gaussian1D, Gaussian2D, custom_model
+from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, Table
 from astropy.utils.exceptions import AstropyUserWarning
@@ -53,12 +53,6 @@ def test_invalid_inputs():
         psf_model = Gaussian1D()
         _ = PSFPhotometry(psf_model, 3)
 
-    @custom_model
-    def my_model(x, y, flux=1, x_0=0, y_0=0, sigma=1):
-        return flux, flux * 2
-    m = my_model()
-    m.n_outputs = 2
-    psf_model = my_model()
     match = 'psf_model must be two-dimensional'
     with pytest.raises(ValueError, match=match):
         psf_model = Gaussian1D()
@@ -252,7 +246,7 @@ def test_psf_photometry_forced(test_data, fit_sigma):
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_nddata(test_data):
-    data, error, sources = test_data
+    data, error, _ = test_data
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     fit_shape = (5, 5)
@@ -1081,11 +1075,9 @@ def test_iterative_psf_photometry_overlap():
     """
     sigma = 1.5
     psf_model = IntegratedGaussianPRF(flux=1, sigma=sigma)
-    data, true_params = make_psf_model_image((150, 150), psf_model,
-                                             n_sources=300,
-                                             model_shape=(11, 11),
-                                             flux=(50, 100),
-                                             min_separation=1, seed=0)
+    data, _ = make_psf_model_image((150, 150), psf_model, n_sources=300,
+                                   model_shape=(11, 11), flux=(50, 100),
+                                   min_separation=1, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=0.01, seed=0)
     data += noise
     error = np.abs(noise)
