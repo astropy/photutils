@@ -1136,10 +1136,8 @@ def is_stdpsf(origin, filepath, fileobj, *args, **kwargs):
                 warnings.simplefilter('ignore', VerifyWarning)
                 header = fits.getheader(filepath)
             keys = ('NAXIS3', 'NXPSFS', 'NYPSFS')
-            for key in keys:
-                if key not in header:
-                    return False
-            return True
+            return all(key in header for key in keys)
+
     return False
 
 
@@ -1177,10 +1175,8 @@ def is_webbpsf(origin, filepath, fileobj, *args, **kwargs):
                 warnings.simplefilter('ignore', VerifyWarning)
                 header = fits.getheader(filepath)
             keys = ('NAXIS3', 'OVERSAMP', 'DET_YX0')
-            for key in keys:
-                if key not in header:
-                    return False
-            return True
+            return all(key in header for key in keys)
+
     return False
 
 
