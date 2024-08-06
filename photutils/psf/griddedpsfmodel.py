@@ -280,6 +280,7 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
     cls : type
         Descriptor calling class (either owner class or instance class).
     """
+
     def __init__(self, instance, cls):
         # uses default global registry
         super().__init__(instance, cls, 'read', registry=None)
@@ -1072,10 +1073,10 @@ def webbpsf_reader(filename):
     # handle the case of only one 2D PSF
     data = np.atleast_3d(data)
 
-    if not any('DET_YX' in key for key in header.keys()):
+    if not any('DET_YX' in key for key in header):
         raise ValueError('Invalid WebbPSF FITS file; missing "DET_YX{}" '
                          'header keys.')
-    if 'OVERSAMP' not in header.keys():
+    if 'OVERSAMP' not in header:
         raise ValueError('Invalid WebbPSF FITS file; missing "OVERSAMP" '
                          'header key.')
 
@@ -1089,7 +1090,7 @@ def webbpsf_reader(filename):
 
     # define grid_xypos from DET_YX{} FITS header keywords
     xypos = []
-    for key in meta.keys():
+    for key in meta:
         if 'det_yx' in key:
             vals = header[key].lstrip('(').rstrip(')').split(',')
             xypos.append((float(vals[0]), float(vals[1])))

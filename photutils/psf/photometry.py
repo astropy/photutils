@@ -308,7 +308,7 @@ class PSFPhotometry(ModelImageMixin):
 
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 0),
                                  check_odd=True)
-        self.grouper = self._validate_grouper(grouper, 'grouper')
+        self.grouper = self._validate_grouper(grouper)
         self.finder = self._validate_callable(finder, 'finder')
         self.fitter = self._validate_callable(fitter, 'fitter')
         self.localbkg_estimator = self._validate_localbkg(
@@ -340,7 +340,7 @@ class PSFPhotometry(ModelImageMixin):
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
 
-    def _validate_grouper(self, grouper, name):
+    def _validate_grouper(self, grouper):
         if grouper is not None and not isinstance(grouper, SourceGrouper):
             raise ValueError('grouper must be a SourceGrouper instance.')
         return grouper
@@ -407,7 +407,7 @@ class PSFPhotometry(ModelImageMixin):
             param_maps[suffix] = pmap
 
         init_cols = {}
-        for key in param_maps['model'].keys():
+        for key in param_maps['model']:
             init_cols[key] = f'{key}_init'
         param_maps['init_cols'] = init_cols
 
@@ -541,7 +541,7 @@ class PSFPhotometry(ModelImageMixin):
         This is a static method to allow the method to be called from
         `IterativePSFPhotometry`.
         """
-        for param in param_maps['model'].keys():
+        for param in param_maps['model']:
             colname = find_column_name(param, init_params.colnames)
             if colname:
                 init_name = param_maps['init_cols'][param]
@@ -845,7 +845,7 @@ class PSFPhotometry(ModelImageMixin):
         for column in out_params.colnames:
             if column == 'id':
                 continue
-            if column not in self._param_maps['fit'].keys():
+            if column not in self._param_maps['fit']:
                 out_params.remove_column(column)
 
         # rename columns to have the "fit" suffix
@@ -1087,7 +1087,7 @@ class PSFPhotometry(ModelImageMixin):
 
         return fit_params
 
-    def _calc_fit_metrics(self, data, results_tbl):
+    def _calc_fit_metrics(self, results_tbl):
         # Keep cen_idx as a list because it can have NaNs with the ints.
         # If NaNs are present, turning it into an array will convert the
         # ints to floats, which cannot be used as slices.
@@ -1396,7 +1396,7 @@ class PSFPhotometry(ModelImageMixin):
         index = results_tbl.index_column('group_id') + 1
         results_tbl.add_column(nmodels, name='group_size', index=index)
 
-        qfit, cfit = self._calc_fit_metrics(data, results_tbl)
+        qfit, cfit = self._calc_fit_metrics(results_tbl)
         results_tbl['qfit'] = qfit
         results_tbl['cfit'] = cfit
 
