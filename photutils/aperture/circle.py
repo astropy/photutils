@@ -377,7 +377,7 @@ class SkyCircularAperture(SkyAperture):
     >>> aper = SkyCircularAperture(positions, 0.5*u.arcsec)
     """
 
-    _params = ('positions', 'r',)
+    _params = ('positions', 'r')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     r = PositiveScalarAngle('The radius in angular units.')
 
