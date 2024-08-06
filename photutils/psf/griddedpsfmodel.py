@@ -126,9 +126,9 @@ class ModelGridPlotMixin:
         else:
             fig = plt.gcf()
 
-        if peak_norm:  # normalize relative to peak
-            if data.max() != 0:
-                data /= data.max()
+        if peak_norm and data.max() != 0:
+            # normalize relative to peak
+            data /= data.max()
 
         if deltas:
             if cmap is None:

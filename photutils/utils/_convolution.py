@@ -54,9 +54,8 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
 
     kernel_array = kernel.array if isinstance(kernel, Kernel2D) else kernel
 
-    if check_normalization:
-        if not np.allclose(np.sum(kernel_array), 1.0):
-            warnings.warn('The kernel is not normalized.', AstropyUserWarning)
+    if check_normalization and not np.allclose(np.sum(kernel_array), 1.0):
+        warnings.warn('The kernel is not normalized.', AstropyUserWarning)
 
     # scipy.ndimage.convolve currently strips units, but be explicit in
     # case that behavior changes

@@ -260,9 +260,8 @@ class ApertureMask:
         multiple associated arrays (e.g., data and error arrays). It is
         used in this way by the `PixelAperture.do_photometry` method.
         """
-        if mask is not None:
-            if mask.shape != shape:
-                raise ValueError('mask and data must have the same shape')
+        if mask is not None and mask.shape != shape:
+            raise ValueError('mask and data must have the same shape')
 
         slc_large, slc_small = self.get_overlap_slices(shape)
         if slc_large is None:  # no overlap

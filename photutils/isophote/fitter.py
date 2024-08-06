@@ -197,12 +197,11 @@ class EllipseFitter:
             residual = values[2] - model
 
             if ((conver * sample.sector_area * np.std(residual))
-                    > np.abs(largest_harmonic)):
-                # Got a valid solution. But before returning, ensure
-                # that a minimum of iterations has run.
-                if i >= minit - 1:
-                    sample.update(fixed_parameters)
-                    return Isophote(sample, i + 1, True, 0)
+                    > np.abs(largest_harmonic)) and (i >= minit - 1):
+                # Got a valid solution and a minimum number of
+                # iterations has run
+                sample.update(fixed_parameters)
+                return Isophote(sample, i + 1, True, 0)
 
             # it may not have converged yet, but the sample contains too
             # many invalid data points: return.

@@ -440,20 +440,20 @@ class Ellipse:
                 # if two consecutive isophotes failed to fit,
                 # shut off iterative mode. Or, bail out and
                 # change to go inwards.
-                if len(isophote_list) > 2:
-                    if ((isophote.stop_code == 5
-                         and isophote_list[-2].stop_code == 5)
-                            or isophote.stop_code == 1):
-                        if maxsma and maxsma > isophote.sma:
-                            # if a maximum sma value was provided by
-                            # user, and the current sma is smaller than
-                            # maxsma, keep growing sma in non-iterative
-                            # mode until reaching it.
-                            noiter = True
-                        else:
-                            # if no maximum sma, stop growing and change
-                            # to go inwards.
-                            break
+                if (len(isophote_list) > 2
+                    and ((isophote.stop_code == 5
+                          and isophote_list[-2].stop_code == 5)
+                         or isophote.stop_code == 1)):
+                    if maxsma and maxsma > isophote.sma:
+                        # if a maximum sma value was provided by
+                        # user, and the current sma is smaller than
+                        # maxsma, keep growing sma in non-iterative
+                        # mode until reaching it.
+                        noiter = True
+                    else:
+                        # if no maximum sma, stop growing and change
+                        # to go inwards.
+                        break
 
             # reset variable from the actual list, since the last
             # `isophote` instance may no longer be OK.

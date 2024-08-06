@@ -239,9 +239,8 @@ class ApertureStats:
         self._data_unit = unit
         self.aperture = self._validate_aperture(aperture)
 
-        if isinstance(aperture, SkyAperture):
-            if wcs is None:
-                raise ValueError('A wcs is required when using a SkyAperture')
+        if isinstance(aperture, SkyAperture) and wcs is None:
+            raise ValueError('A wcs is required when using a SkyAperture')
 
         self._error = self._validate_array(error, 'error')
         self._mask = self._validate_array(mask, 'mask')

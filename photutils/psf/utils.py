@@ -432,10 +432,9 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
 
     # make sure, if provided, that ``grid_xypos`` is the same length as
     # ``epsfs``
-    if grid_xypos is not None:
-        if len(grid_xypos) != len(epsfs):
-            raise ValueError('``grid_xypos`` must be the same length as '
-                             '``epsfs``.')
+    if grid_xypos is not None and len(grid_xypos) != len(epsfs):
+        raise ValueError('``grid_xypos`` must be the same length as '
+                         '``epsfs``.')
 
     # loop over input once
     for i, epsf in enumerate(epsfs):

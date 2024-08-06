@@ -200,10 +200,9 @@ class PixelAperture(Aperture):
             mode = 'subpixel'
             subpixels = 32
 
-        if mode == 'subpixel':
-            if not isinstance(subpixels, int) or subpixels <= 0:
-                raise ValueError('subpixels must be a strictly positive '
-                                 'integer')
+        if ((mode == 'subpixel')
+                and (not isinstance(subpixels, int) or subpixels <= 0)):
+            raise ValueError('subpixels must be a strictly positive integer')
 
         if mode == 'center':
             use_exact = 0
