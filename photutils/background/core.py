@@ -74,7 +74,7 @@ class BackgroundBase(metaclass=abc.ABCMeta):
             `~numpy.ma.MaskedArray` is returned. A scalar result is
             always returned as a float.
         """
-        raise NotImplementedError()  # pragma: no cover
+        raise NotImplementedError  # pragma: no cover
 
 
 class BackgroundRMSBase(metaclass=abc.ABCMeta):
@@ -129,7 +129,7 @@ class BackgroundRMSBase(metaclass=abc.ABCMeta):
             `~numpy.ma.MaskedArray` is returned. A scalar result is
             always returned as a float.
         """
-        raise NotImplementedError()  # pragma: no cover
+        raise NotImplementedError  # pragma: no cover
 
 
 class MeanBackground(BackgroundBase):
