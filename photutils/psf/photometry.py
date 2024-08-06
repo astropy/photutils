@@ -524,11 +524,10 @@ class PSFPhotometry(ModelImageMixin):
                 raise ValueError(f'init_params {colname} column has '
                                  'units that are incompatible with '
                                  'the input data units.') from exc
-        else:
-            if self.data_unit is not None:
-                raise ValueError('The input data has units, but the '
-                                 f'init_params {colname} column does not '
-                                 'have units.')
+        elif self.data_unit is not None:
+            raise ValueError('The input data has units, but the '
+                             f'init_params {colname} column does not '
+                             'have units.')
 
         return init_params
 

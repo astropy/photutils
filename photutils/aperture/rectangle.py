@@ -377,9 +377,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
-        else:
-            if not h_out > h_in:
-                raise ValueError('"h_out" must be greater than "h_in"')
+        elif not h_out > h_in:
+            raise ValueError('"h_out" must be greater than "h_in"')
         self.h_in = h_in
 
         self._theta_radians = 0.0  # defined by theta setter
@@ -612,9 +611,8 @@ class SkyRectangularAnnulus(SkyAperture):
 
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
-        else:
-            if not h_out > h_in:
-                raise ValueError('"h_out" must be greater than "h_in".')
+        elif not h_out > h_in:
+            raise ValueError('"h_out" must be greater than "h_in".')
         self.h_in = h_in
 
         self.theta = theta

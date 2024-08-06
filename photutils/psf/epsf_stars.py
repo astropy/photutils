@@ -119,10 +119,9 @@ class EPSFStar:
     def cutout_center(self, value):
         if value is None:
             value = ((self.shape[1] - 1) / 2.0, (self.shape[0] - 1) / 2.0)
-        else:
-            if len(value) != 2:
-                raise ValueError('The "cutout_center" attribute must have '
-                                 'two elements in (x, y) form.')
+        elif len(value) != 2:
+            raise ValueError('The "cutout_center" attribute must have '
+                             'two elements in (x, y) form.')
 
         self._cutout_center = np.asarray(value)
 
@@ -725,22 +724,20 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
 
     if data.uncertainty is None:
         weights = np.ones_like(data.data)
+    elif data.uncertainty.uncertainty_type == 'weights':
+        weights = np.asanyarray(data.uncertainty.array, dtype=float)
     else:
-        if data.uncertainty.uncertainty_type == 'weights':
-            weights = np.asanyarray(data.uncertainty.array, dtype=float)
-        else:
-            # other uncertainties are converted to the inverse standard
-            # deviation as the weight;
-            # ignore divide-by-zero RuntimeWarning
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                weights = data.uncertainty.represent_as(StdDevUncertainty)
-                weights = 1.0 / weights.array
-                if np.any(~np.isfinite(weights)):
-                    warnings.warn('One or more weight values is not finite. '
-                                  'Please check the input uncertainty values '
-                                  'in the input NDData object.',
-                                  AstropyUserWarning)
+        # other uncertainties are converted to the inverse standard
+        # deviation as the weight; ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            weights = data.uncertainty.represent_as(StdDevUncertainty)
+            weights = 1.0 / weights.array
+            if np.any(~np.isfinite(weights)):
+                warnings.warn('One or more weight values is not finite. '
+                              'Please check the input uncertainty values '
+                              'in the input NDData object.',
+                              AstropyUserWarning)
 
     if data.mask is not None:
         weights[data.mask] = 0.0

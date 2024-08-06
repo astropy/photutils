@@ -272,10 +272,9 @@ class EllipseGeometry:
             if verbose:
                 log.info(f'Found center at x0 = {self.x0:5.1f}, '
                          f'y0 = {self.y0:5.1f}')
-        else:
-            if verbose:
-                log.info('Result is below the threshold -- keeping the '
-                         'original coordinates.')
+        elif verbose:
+            log.info('Result is below the threshold -- keeping the '
+                     'original coordinates.')
 
     def radius(self, angle):
         """

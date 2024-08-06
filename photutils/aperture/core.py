@@ -840,11 +840,10 @@ class SkyAperture(Aperture):
                 # axis). region sky angles are defined relative to the WCS
                 # longitude axis.
                 value = (value + angle).to(u.radian).value
+            elif value.unit.physical_type == 'angle':
+                value = (value / pixscale).to(u.pixel).value
             else:
-                if value.unit.physical_type == 'angle':
-                    value = (value / pixscale).to(u.pixel).value
-                else:
-                    value = value.value
+                value = value.value
 
             pixel_params[param] = value
 

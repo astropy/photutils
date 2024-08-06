@@ -644,12 +644,10 @@ class SourceCatalog:
                 # e.g., Quantity, SkyCoord, Time
                 if not value.isscalar:
                     property_error = True
-            else:
-                if not np.isscalar(value):
-                    property_error = True
-        else:
-            if not self._has_len(value) or len(value) != self.nlabels:
+            elif not np.isscalar(value):
                 property_error = True
+        elif not self._has_len(value) or len(value) != self.nlabels:
+            property_error = True
         if property_error:
             raise ValueError('value must have the same number of elements as '
                              'the catalog in order to add it as an extra '

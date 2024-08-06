@@ -349,9 +349,8 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
-        else:
-            if not b_out > b_in:
-                raise ValueError('"b_out" must be greater than "b_in".')
+        elif not b_out > b_in:
+            raise ValueError('"b_out" must be greater than "b_in".')
         self.b_in = b_in
 
         self._theta_radians = 0.0  # defined by theta setter
@@ -567,9 +566,8 @@ class SkyEllipticalAnnulus(SkyAperture):
 
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
-        else:
-            if not b_out > b_in:
-                raise ValueError('"b_out" must be greater than "b_in".')
+        elif not b_out > b_in:
+            raise ValueError('"b_out" must be greater than "b_in".')
         self.b_in = b_in
 
         self.theta = theta

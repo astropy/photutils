@@ -275,17 +275,16 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
         if variable_shape:
             mod_shape = model_shape[i]
-        else:
-            if model_shape is None:
-                # the bounding box size generally depends on model parameters,
-                # so needs to be calculated for each source
-                if bbox_factor is not None:
-                    bbox = model.bounding_box(factor=bbox_factor)
-                else:
-                    bbox = model.bounding_box.bounding_box()
-                mod_shape = (bbox[0][1] - bbox[0][0], bbox[1][1] - bbox[1][0])
+        elif model_shape is None:
+            # the bounding box size generally depends on model parameters,
+            # so needs to be calculated for each source
+            if bbox_factor is not None:
+                bbox = model.bounding_box(factor=bbox_factor)
             else:
-                mod_shape = model_shape
+                bbox = model.bounding_box.bounding_box()
+            mod_shape = (bbox[0][1] - bbox[0][0], bbox[1][1] - bbox[1][0])
+        else:
+            mod_shape = model_shape
 
         try:
             slc_lg, _ = overlap_slices(shape, mod_shape, (y0, x0), mode='trim')

@@ -191,7 +191,6 @@ class ScalarAngleOrValue(ApertureAttribute):
 
             if not value.unit.physical_type == 'angle':
                 raise ValueError(f'{self.name!r} must have angular units')
-        else:
-            if not np.isscalar(value):
-                raise ValueError(f'If not an angle Quantity, {self.name!r} '
-                                 'must be a scalar float in radians')
+        elif not np.isscalar(value):
+            raise ValueError(f'If not an angle Quantity, {self.name!r} '
+                             'must be a scalar float in radians')
