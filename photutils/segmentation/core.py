@@ -1276,9 +1276,7 @@ class SegmentationImage:
             polygons.append(shape(geo_poly[0]))
         # shift the vertices so that the (0, 0) origin is at the
         # center of the lower-left pixel
-        polygons = transform(polygons, lambda x: x - [0.5, 0.5])
-
-        return polygons
+        return transform(polygons, lambda x: x - [0.5, 0.5])
 
     def to_patches(self, *, origin=(0, 0), scale=1.0, **kwargs):
         """

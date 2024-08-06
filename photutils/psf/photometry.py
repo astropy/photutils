@@ -689,9 +689,7 @@ class PSFPhotometry(ModelImageMixin):
         colname_order = ['id', 'group_id', 'local_bkg', xcolname, ycolname,
                          fluxcolname]
         colname_order.extend(extra_param_cols)
-        init_params = init_params[colname_order]
-
-        return init_params
+        return init_params[colname_order]
 
     def _get_invalid_positions(self, init_params, shape):
         """
@@ -705,8 +703,7 @@ class PSFPhotometry(ModelImageMixin):
         delta = self.fit_shape / 2
         min_idx = np.ceil(positions - delta)
         max_idx = np.ceil(positions + delta)
-        mask = np.any(max_idx <= 0, axis=1) | np.any(min_idx >= shape, axis=1)
-        return mask
+        return np.any(max_idx <= 0, axis=1) | np.any(min_idx >= shape, axis=1)
 
     def _check_init_positions(self, init_params, shape):
         """
@@ -786,8 +783,7 @@ class PSFPhotometry(ModelImageMixin):
         if old_index > new_index:
             new_index += 1
         colnames.insert(new_index, colnames.pop(old_index))
-        table = table[colnames]
-        return table
+        return table[colnames]
 
     def _model_params_to_table(self, models):
         """
@@ -865,9 +861,7 @@ class PSFPhotometry(ModelImageMixin):
 
         # add parameter error columns
         param_errs = self._param_errors_to_table()
-        out_params = hstack([out_params, param_errs])
-
-        return out_params
+        return hstack([out_params, param_errs])
 
     def _define_fit_data(self, sources, data, mask):
         yi = []

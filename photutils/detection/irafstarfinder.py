@@ -216,14 +216,13 @@ class IRAFStarFinder(StarFinderBase):
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        cat = _IRAFStarFinderCatalog(data, convolved_data, xypos, self.kernel,
-                                     sky=self.sky, sharplo=self.sharplo,
-                                     sharphi=self.sharphi,
-                                     roundlo=self.roundlo,
-                                     roundhi=self.roundhi,
-                                     brightest=self.brightest,
-                                     peakmax=self.peakmax)
-        return cat
+        return _IRAFStarFinderCatalog(data, convolved_data, xypos, self.kernel,
+                                      sky=self.sky, sharplo=self.sharplo,
+                                      sharphi=self.sharphi,
+                                      roundlo=self.roundlo,
+                                      roundhi=self.roundhi,
+                                      brightest=self.brightest,
+                                      peakmax=self.peakmax)
 
     def find_stars(self, data, mask=None):
         """
@@ -589,8 +588,7 @@ class _IRAFStarFinderCatalog:
     def pa(self):
         pa = np.rad2deg(0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
                                          self.mu_diff))
-        pa = np.where(pa < 0, pa + 180, pa)
-        return pa
+        return np.where(pa < 0, pa + 180, pa)
 
     def apply_filters(self):
         """

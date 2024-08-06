@@ -237,10 +237,8 @@ class EllipseSample:
         self.actual_points = len(angles)
 
         # pack results in 2-d array
-        result = np.array([np.array(angles), np.array(radii),
-                           np.array(intensities)])
-
-        return result
+        return np.array([np.array(angles), np.array(radii),
+                         np.array(intensities)])
 
     def _sigma_clip(self, angles, radii, intensities):
         if self.nclip > 0:

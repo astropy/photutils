@@ -251,4 +251,4 @@ exclude = [
 line-length = 79
 
 [tool.ruff.lint]
-extend-select = ['E501', 'D202', 'B905']
+extend-select = ['E501', 'D202', 'B905', 'RET504']

@@ -48,9 +48,7 @@ def fixture_griddedpsf_data():
     meta['oversampling'] = 4
 
     nddata = NDData(psfs, meta=meta)
-    psfmodel = GriddedPSFModel(nddata)
-
-    return psfmodel
+    return GriddedPSFModel(nddata)
 
 
 class TestGriddedPSFModel:

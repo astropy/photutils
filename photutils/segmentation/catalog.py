@@ -3144,8 +3144,7 @@ class SourceCatalog:
         # NOTE: if kron_radius = NaN, scale = NaN and kron_aperture = None
         kron_radius = self._calc_kron_radius(kron_params)
         scale = kron_radius.value * kron_params[0]
-        kron_apertures = self._make_elliptical_apertures(scale=scale)
-        return kron_apertures
+        return self._make_elliptical_apertures(scale=scale)
 
     @lazyproperty
     @use_detcat

@@ -390,9 +390,7 @@ class RadialProfile(ProfileBase):
         g_init = Gaussian1D(amplitude=amplitude, mean=0.0, stddev=std)
         g_init.mean.fixed = True
         fitter = LevMarLSQFitter()
-        g_fit = fitter(g_init, radius, profile)
-
-        return g_fit
+        return fitter(g_init, radius, profile)
 
     @lazyproperty
     def gaussian_profile(self):

@@ -668,11 +668,9 @@ class Ellipse:
             sample = CentralEllipseSample(self.image, 0.0, geometry=geometry)
             fitter = CentralEllipseFitter(sample)
 
-        isophote = fitter.fit(conver=conver, minit=minit, maxit=maxit,
-                              fflag=fflag, maxgerr=maxgerr,
-                              going_inwards=going_inwards)
-
-        return isophote
+        return fitter.fit(conver=conver, minit=minit, maxit=maxit,
+                          fflag=fflag, maxgerr=maxgerr,
+                          going_inwards=going_inwards)
 
     def _non_iterative(self, sma, step, linear, geometry, sclip, nclip,
                        integrmode):
@@ -682,9 +680,7 @@ class Ellipse:
         sample.update(geometry.fix)
 
         # build isophote without iterating with an EllipseFitter
-        isophote = Isophote(sample, 0, True, stop_code=4)
-
-        return isophote
+        return Isophote(sample, 0, True, stop_code=4)
 
     @staticmethod
     def _fix_last_isophote(isophote_list, index):

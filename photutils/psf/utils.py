@@ -520,9 +520,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
 
     data = NDData(data_cube, meta=meta)
 
-    grid = GriddedPSFModel(data, fill_value=fill_value)
-
-    return grid
+    return GriddedPSFModel(data, fill_value=fill_value)
 
 
 def _validate_psf_model(psf_model):

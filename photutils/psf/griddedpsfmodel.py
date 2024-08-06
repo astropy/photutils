@@ -660,10 +660,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
             psf_image = self._bilinear_interp(xyref, psfs, x_0, y_0)
 
-        interpolator = RectBivariateSpline(self._xidx, self._yidx,
-                                           psf_image.T, kx=3, ky=3, s=0)
-
-        return interpolator
+        return RectBivariateSpline(self._xidx, self._yidx, psf_image.T,
+                                   kx=3, ky=3, s=0)
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
@@ -769,14 +767,12 @@ def _read_stdpsf(filename):
     # (5, 5)   # NIRCam LW
     # (3, 3)   # MIRI
 
-    grid_data = {'data': data,
-                 'npsfs': npsfs,
-                 'nxpsfs': nxpsfs,
-                 'nypsfs': nypsfs,
-                 'xgrid': xgrid,
-                 'ygrid': ygrid}
-
-    return grid_data
+    return {'data': data,
+            'npsfs': npsfs,
+            'nxpsfs': nxpsfs,
+            'nypsfs': nypsfs,
+            'xgrid': xgrid,
+            'ygrid': ygrid}
 
 
 def _split_detectors(grid_data, detector_data, detector_id):

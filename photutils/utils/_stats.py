@@ -51,9 +51,7 @@ if HAS_BOTTLENECK:
 
         # Collapse the dimensions being operated on into a single dimension
         # so that we can then use axis=0 with the bottleneck functions
-        array_new = array_new.reshape((-1,) + array_new.shape[naxis:])
-
-        return array_new
+        return array_new.reshape((-1,) + array_new.shape[naxis:])
 
     def apply_bottleneck(function, array, axis=None, **kwargs):
         """

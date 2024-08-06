@@ -380,10 +380,9 @@ class _Deblender:
         thresholds = self.compute_thresholds()
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
-            segments = _detect_sources(self.source_data, thresholds,
-                                       self.npixels, self.footprint,
-                                       self.segment_mask, deblend_mode=True)
-        return segments
+            return _detect_sources(self.source_data, thresholds, self.npixels,
+                                   self.footprint, self.segment_mask,
+                                   deblend_mode=True)
 
     def make_markers(self, segments):
         """

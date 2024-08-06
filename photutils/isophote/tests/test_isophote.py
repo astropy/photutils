@@ -168,8 +168,7 @@ class TestIsophoteList:
             sample = EllipseSample(data, float(k + sma0))
             sample.update(DEFAULT_FIX)
             iso_list.append(Isophote(sample, k, True, 0))
-        result = IsophoteList(iso_list)
-        return result
+        return IsophoteList(iso_list)
 
     def test_basic_list(self):
         # make sure it can be indexed as a list.

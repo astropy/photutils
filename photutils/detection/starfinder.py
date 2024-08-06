@@ -110,10 +110,9 @@ class StarFinder(StarFinderBase):
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        cat = _StarFinderCatalog(data, xypos, self.kernel.shape,
-                                 brightest=self.brightest,
-                                 peakmax=self.peakmax)
-        return cat
+        return _StarFinderCatalog(data, xypos, self.kernel.shape,
+                                  brightest=self.brightest,
+                                  peakmax=self.peakmax)
 
     def find_stars(self, data, mask=None):
         """
@@ -408,8 +407,7 @@ class _StarFinderCatalog:
     def pa(self):
         pa = np.rad2deg(0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
                                          self.mu_diff))
-        pa = np.where(pa < 0, pa + 180, pa)
-        return pa
+        return np.where(pa < 0, pa + 180, pa)
 
     def apply_filters(self):
         """

@@ -147,9 +147,7 @@ def load_spitzer_catalog(show_progress=False):  # pragma: no cover
     """
     path = get_path('spitzer_example_catalog.xml', location='remote',
                     show_progress=show_progress)
-    table = Table.read(path)
-
-    return table
+    return Table.read(path)
 
 
 def load_irac_psf(channel, show_progress=False):  # pragma: no cover

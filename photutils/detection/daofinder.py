@@ -242,17 +242,16 @@ class DAOStarFinder(StarFinderBase):
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        cat = _DAOStarFinderCatalog(data, convolved_data, xypos,
-                                    self.threshold,
-                                    self.kernel,
-                                    sky=self.sky,
-                                    sharplo=self.sharplo,
-                                    sharphi=self.sharphi,
-                                    roundlo=self.roundlo,
-                                    roundhi=self.roundhi,
-                                    brightest=self.brightest,
-                                    peakmax=self.peakmax)
-        return cat
+        return _DAOStarFinderCatalog(data, convolved_data, xypos,
+                                     self.threshold,
+                                     self.kernel,
+                                     sky=self.sky,
+                                     sharplo=self.sharplo,
+                                     sharphi=self.sharphi,
+                                     roundlo=self.roundlo,
+                                     roundhi=self.roundhi,
+                                     brightest=self.brightest,
+                                     peakmax=self.peakmax)
 
     def find_stars(self, data, mask=None):
         """
@@ -554,9 +553,7 @@ class _DAOStarFinderCatalog:
         # ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            roundness1 = 2.0 * sum2 / sum4
-
-        return roundness1
+            return 2.0 * sum2 / sum4
 
     @lazyproperty
     def sharpness(self):
@@ -755,8 +752,7 @@ class _DAOStarFinderCatalog:
             flux = self.flux
             if isinstance(flux, u.Quantity):
                 flux = flux.value
-            mag = -2.5 * np.log10(flux)
-        return mag
+            return -2.5 * np.log10(flux)
 
     @lazyproperty
     def sky(self):
