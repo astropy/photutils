@@ -249,7 +249,7 @@ class _StarFinderCatalog:
 
             if key in ('slices', 'cutout_data'):  # lists instead of arrays
                 # apply fancy indices to list properties
-                value = np.array(value + [None], dtype=object)[:-1][index]
+                value = np.array([*value, None], dtype=object)[:-1][index]
                 value = [value] if scalar_index else value.tolist()
             else:
                 # value is always at least a 1D array, even for a single

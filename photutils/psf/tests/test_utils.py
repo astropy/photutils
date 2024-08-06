@@ -334,7 +334,7 @@ class TestGridFromEPSFs:
         meta = {'grid_xypos': 0.0, 'oversampling': 0.0,
                 'fill_value': -999, 'extra_key': 'extra'}
         psf_grid = grid_from_epsfs(self.epsfs, meta=meta)
-        for key in keys + ['extra_key']:
+        for key in [*keys, 'extra_key']:
             assert key in psf_grid.meta
         assert psf_grid.meta['grid_xypos'].sort() == self.grid_xypos.sort()
         assert_equal(psf_grid.meta['oversampling'], [4, 4])

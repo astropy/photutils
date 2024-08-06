@@ -501,7 +501,7 @@ class SourceCatalog:
         # NOTE: None is appended to the list (and then removed) to keep
         # the array only on the outer level (i.e., prevents recursion).
         # Otherwise, the tuple of (y, x) slices are not preserved.
-        value = np.array(getattr(self, attr) + [None],
+        value = np.array([*getattr(self, attr), None],
                          dtype=object)[:-1][index]
         if not newcls.isscalar:
             value = value.tolist()
@@ -532,7 +532,7 @@ class SourceCatalog:
             except TypeError:
                 # apply fancy indices (e.g., array/list or bool
                 # mask) to lists
-                val = (np.array(value + [None],
+                val = (np.array([*value, None],
                                 dtype=object)[:-1][index]).tolist()
 
             newcls.__dict__[key] = val
