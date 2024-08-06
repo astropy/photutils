@@ -270,7 +270,8 @@ class ImageDepth:
         iter_range = range(self.niters)
         if self.progress_bar:
             desc = 'Image Depths'
-            iter_range = add_progress_bar(iter_range, desc=desc)  # pragma: no cover
+            iter_range = add_progress_bar(iter_range,
+                                          desc=desc)  # pragma: no cover
 
         fluxes = []
         flux_limits = []

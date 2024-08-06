@@ -187,7 +187,8 @@ class PSFPhotometry(ModelImageMixin):
         (e.g., ``(5, 5)``) that covers the region with the highest flux
         signal-to-noise.
 
-    finder : callable or `~photutils.detection.StarFinderBase` or `None`, optional
+    finder : callable or `~photutils.detection.StarFinderBase` or `None`, \
+            optional
         A callable used to identify stars in an image. The
         ``finder`` must accept a 2D image as input and return a
         `~astropy.table.Table` containing the x and y centroid
@@ -234,7 +235,8 @@ class PSFPhotometry(ModelImageMixin):
         then no bounds are applied. Either value can also be `None` to
         indicate no bound in that direction.
 
-    localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
+    localbkg_estimator : `~photutils.background.LocalBackground` or `None`, \
+        optional
         The object used to estimate the local background around each
         source. If `None`, then no local background is subtracted. The
         ``local_bkg`` values in ``init_params`` override this keyword.
@@ -1527,7 +1529,8 @@ class IterativePSFPhotometry(ModelImageMixin):
         unsubtracted, data. For the 'all' mode, a source ``grouper``
         must be input. See the Notes section for more details.
 
-    localbkg_estimator : `~photutils.background.LocalBackground` or `None`, optional
+    localbkg_estimator : `~photutils.background.LocalBackground` or `None`, \
+            optional
         The object used to estimate the local background around each
         source. If `None`, then no local background is subtracted. The
         ``local_bkg`` values in ``init_params`` override this keyword.

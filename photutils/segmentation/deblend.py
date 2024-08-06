@@ -183,7 +183,8 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     if nproc == 1:
         if progress_bar:
             desc = 'Deblending'
-            all_source_data = add_progress_bar(all_source_data, desc=desc)  # pragma: no cover
+            all_source_data = add_progress_bar(all_source_data,
+                                               desc=desc)  # pragma: no cover
 
         all_source_deblends = []
         for source_data, source_segment in zip(all_source_data,
@@ -202,7 +203,8 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
 
         if progress_bar:
             desc = 'Deblending'
-            args_all = add_progress_bar(args_all, total=nlabels, desc=desc)  # pragma: no cover
+            args_all = add_progress_bar(args_all, total=nlabels,
+                                        desc=desc)  # pragma: no cover
 
         with get_context('spawn').Pool(processes=nproc) as executor:
             all_source_deblends = executor.starmap(_deblend_source, args_all)

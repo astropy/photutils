@@ -112,7 +112,8 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         position of the sources. This parameter must also be a column
         name in ``params_table``.
 
-    discretize_method : {'center', 'interp', 'oversample', 'integrate'}, optional
+    discretize_method : {'center', 'interp', 'oversample', 'integrate'}, \
+            optional
         One of the following methods for discretizing the model on the
         pixel grid:
 

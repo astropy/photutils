@@ -68,7 +68,8 @@ class RectangularMaskMixin:
 
         Returns
         -------
-        mask : `~photutils.aperture.ApertureMask` or list of `~photutils.aperture.ApertureMask`
+        mask : `~photutils.aperture.ApertureMask` or list of \
+                `~photutils.aperture.ApertureMask`
             A mask for the aperture. If the aperture is scalar then
             a single `~photutils.aperture.ApertureMask` is returned,
             otherwise a list of `~photutils.aperture.ApertureMask` is
@@ -223,7 +224,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
     def _to_patch(self, origin=(0, 0), **kwargs):
         """
-        Return a `~matplotlib.patches.patch` for the aperture.
+        Return a `~matplotlib.patches.Patch` for the aperture.
 
         Parameters
         ----------
@@ -237,10 +238,11 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
         Returns
         -------
-        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+        patch : `~matplotlib.patches.Patch` or list of \
+                `~matplotlib.patches.Patch`
             A patch for the aperture. If the aperture is scalar then a
-            single `~matplotlib.patches.patch` is returned, otherwise a
-            list of `~matplotlib.patches.patch` is returned.
+            single `~matplotlib.patches.Patch` is returned, otherwise a
+            list of `~matplotlib.patches.Patch` is returned.
         """
         import matplotlib.patches as mpatches
 
@@ -350,7 +352,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     >>> pos2 = (30.0, 40.0)
     >>> pos3 = (50.0, 60.0)
     >>> aper = RectangularAnnulus([pos1, pos2, pos3], 3.0, 8.0, 5.0)
-    >>> aper = RectangularAnnulus((pos1, pos2, pos3), 3.0, 8.0, 5.0, theta=theta)
+    >>> aper = RectangularAnnulus((pos1, pos2, pos3), 3.0, 8.0, 5.0,
+    ...                           theta=theta)
     """
 
     _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')
@@ -395,7 +398,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     def _to_patch(self, origin=(0, 0), **kwargs):
         """
-        Return a `~matplotlib.patches.patch` for the aperture.
+        Return a `~matplotlib.patches.Patch` for the aperture.
 
         Parameters
         ----------
@@ -409,10 +412,11 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         Returns
         -------
-        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+        patch : `~matplotlib.patches.Patch` or list of \
+                `~matplotlib.patches.Patch`
             A patch for the aperture. If the aperture is scalar then a
-            single `~matplotlib.patches.patch` is returned, otherwise a
-            list of `~matplotlib.patches.patch` is returned.
+            single `~matplotlib.patches.Patch` is returned, otherwise a
+            list of `~matplotlib.patches.Patch` is returned.
         """
         import matplotlib.patches as mpatches
 
