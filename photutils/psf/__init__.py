@@ -17,10 +17,10 @@ from .utils import *  # noqa: F401, F403
 
 # exclude matching from this list to avoid sphinx warnings
 __all__ = []
-__all__.extend(epsf.__all__)
-__all__.extend(epsf_stars.__all__)
-__all__.extend(griddedpsfmodel.__all__)
-__all__.extend(groupers.__all__)
-__all__.extend(models.__all__)
-__all__.extend(photometry.__all__)
-__all__.extend(utils.__all__)
+__all__ += epsf.__all__
+__all__ += epsf_stars.__all__
+__all__ += griddedpsfmodel.__all__
+__all__ += groupers.__all__
+__all__ += models.__all__
+__all__ += photometry.__all__
+__all__ += utils.__all__
