@@ -246,9 +246,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     if model_shape is None:
         try:
             _ = model.bounding_box
-        except NotImplementedError:
+        except NotImplementedError as exc:
             raise ValueError('model_shape must be specified if the model '
-                             'does not have a bounding_box attribute')
+                             'does not have a bounding_box attribute') from exc
 
     if 'local_bkg' in params_table.colnames:
         local_bkg = params_table['local_bkg']
@@ -306,9 +306,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
                 image <<= subimg.unit
             try:
                 image[slc_lg] += subimg + local_bkg[i]
-            except u.UnitConversionError:
+            except u.UnitConversionError as exc:
                 raise ValueError('The local_bkg column must have the same '
-                                 'flux units as the output image')
+                                 'flux units as the output image') from exc
 
         except NoOverlapError:
             continue

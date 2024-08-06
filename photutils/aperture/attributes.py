@@ -85,9 +85,9 @@ class PixelPositions(ApertureAttribute):
     def _validate(self, value):
         try:
             value = np.asanyarray(value).astype(float)  # np.ndarray
-        except TypeError:
+        except TypeError as exc:
             # value is a zip object containing Quantity objects
-            raise TypeError(f'{self.name!r} must not be a Quantity')
+            raise TypeError(f'{self.name!r} must not be a Quantity') from exc
 
         if isinstance(value, u.Quantity):
             raise TypeError(f'{self.name!r} must not be a Quantity')

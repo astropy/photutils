@@ -737,9 +737,9 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
             model_shape = (int(np.round(bbox[0][1] - bbox[0][0])),
                            int(np.round(bbox[1][1] - bbox[1][0])))
 
-        except NotImplementedError:
+        except NotImplementedError as exc:
             raise ValueError('model_shape must be specified if the model '
-                             'does not have a bounding_box attribute')
+                             'does not have a bounding_box attribute') from exc
 
     if border_size is None:
         border_size = (np.array(model_shape) - 1) // 2
