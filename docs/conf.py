@@ -204,12 +204,13 @@ nitpick_ignore = []
 # Uncomment the following lines to enable the exceptions:
 nitpick_filename = 'nitpick-exceptions.txt'
 if os.path.isfile(nitpick_filename):
-    for line in open(nitpick_filename):
-        if line.strip() == '' or line.startswith('#'):
-            continue
-        dtype, target = line.split(None, 1)
-        target = target.strip()
-        nitpick_ignore.append((dtype, target))
+    with open(nitpick_filename) as fh:
+        for line in fh:
+            if line.strip() == '' or line.startswith('#'):
+                continue
+            dtype, target = line.split(None, 1)
+            target = target.strip()
+            nitpick_ignore.append((dtype, target))
 
 # -- Options for linkcheck output ---------------------------------------------
 linkcheck_retry = 5
