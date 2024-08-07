@@ -386,7 +386,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
     if (np.any(np.min(xpos) < 0) or np.any(np.min(ypos) < 0)
             or np.any(np.max(xpos) > data.shape[1] - 1)
             or np.any(np.max(ypos) > data.shape[0] - 1)):
-        raise ValueError('xpos, ypos values contains point(s) outside of '
+        raise ValueError('xpos, ypos values contains points outside of '
                          'input data')
 
     if footprint is None:
