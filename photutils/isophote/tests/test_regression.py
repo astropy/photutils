@@ -87,9 +87,24 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
     isophote_list = ellipse.fit_image()
     # isophote_list = ellipse.fit_image(sclip=2.0, nclip=3)
 
-    fmt = ('%5.2f  %6.1f    %8.3f %8.3f %8.3f        %9.5f  %6.2f   '
-           '%6.2f %6.2f   %5.2f   %4d  %3d  %3d  %2d')
+    # fmt = ('%5.2f  %6.1f    %8.3f %8.3f %8.3f        %9.5f  %6.2f   '
+    #        '%6.2f %6.2f   %5.2f   %4d  %3d  %3d  %2d')
 
+    ttype = []
+    tsma = []
+    tintens = []
+    tint_err = []
+    tpix_stddev = []
+    trms = []
+    tellip = []
+    tpa = []
+    tx0 = []
+    ty0 = []
+    trerr = []
+    tndata = []
+    tnflag = []
+    tniter = []
+    tstop = []
     for row in range(nrows):
         try:
             iso = isophote_list[row]
@@ -154,16 +169,21 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
         stop_d = 0 if stop_i == stop_t else -1
 
         if verbose:
-            print('* data ' + fmt % (sma_i, intens_i, int_err_i, pix_stddev_i,
-                                     rms_i, ellip_i, pa_i, x0_i, y0_i, rerr_i,
-                                     ndata_i, nflag_i, niter_i, stop_i))
-            print('  ref  ' + fmt % (sma_t, intens_t, int_err_t, pix_stddev_t,
-                                     rms_t, ellip_t, pa_t, x0_t, y0_t, rerr_t,
-                                     ndata_t, nflag_t, niter_t, stop_t))
-            print('  diff ' + fmt % (sma_d, intens_d, int_err_d, pix_stddev_d,
-                                     rms_d, ellip_d, pa_d, x0_d, y0_d, rerr_d,
-                                     ndata_d, nflag_d, niter_d, stop_d))
-            print()
+            ttype.extend(('data', 'ref', 'diff'))
+            tsma.extend((sma_i, sma_t, sma_d))
+            tintens.extend((intens_i, intens_t, intens_d))
+            tint_err.extend((int_err_i, int_err_t, int_err_d))
+            tpix_stddev.extend((pix_stddev_i, pix_stddev_t, pix_stddev_d))
+            trms.extend((rms_i, rms_t, rms_d))
+            tellip.extend((ellip_i, ellip_t, ellip_d))
+            tpa.extend((pa_i, pa_t, pa_d))
+            tx0.extend((x0_i, x0_t, x0_d))
+            ty0.extend((y0_i, y0_t, y0_d))
+            trerr.extend((rerr_i, rerr_t, rerr_d))
+            tndata.extend((ndata_i, ndata_t, ndata_d))
+            tnflag.extend((nflag_i, nflag_t, nflag_d))
+            tniter.extend((niter_i, niter_t, niter_d))
+            tstop.extend((stop_i, stop_t, stop_d))
 
         if name == 'synth_highsnr' and integrmode == BILINEAR:
             assert abs(x0_d) <= 0.21
@@ -188,3 +208,22 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
                     assert abs(pa_d) <= 1.0  # 1 deg.
                 else:
                     assert abs(pa_d) <= 20.0  # 20 deg.
+
+    if verbose:
+        tbl = Table()
+        tbl['type'] = ttype
+        tbl['sma'] = tsma
+        tbl['intens'] = tintens
+        tbl['int_err'] = tint_err
+        tbl['pix_stddev'] = tpix_stddev
+        tbl['rms'] = trms
+        tbl['ellip'] = tellip
+        tbl['pa'] = tpa
+        tbl['x0'] = tx0
+        tbl['y0'] = ty0
+        tbl['rerr'] = trerr
+        tbl['ndata'] = tndata
+        tbl['nflag'] = tnflag
+        tbl['niter'] = tniter
+        tbl['stop'] = tstop
+        tbl.write('test_regression.ecsv', overwrite=True)

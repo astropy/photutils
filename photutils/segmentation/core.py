@@ -1637,7 +1637,6 @@ class Segment:
 
     def _repr_svg_(self):  # pragma: no cover
         if self.polygon is not None:
-            print(repr(self))
             return self.polygon._repr_svg_()
         return None
 

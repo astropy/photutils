@@ -19,16 +19,21 @@ from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
 
+from sphinx.util import logging
+
 if sys.version_info < (3, 11):
     import tomli as tomllib
 else:
     import tomllib
 
+logger = logging.getLogger(__name__)
+
 try:
     from sphinx_astropy.conf.v1 import *  # noqa: F403
 except ImportError:
-    print('ERROR: the documentation requires the sphinx-astropy package to '
-          'be installed')
+    msg = ('The documentation requires the sphinx-astropy package to be '
+           'installed. Please install the "docs" requirements.')
+    logger.error(msg)
     sys.exit(1)
 
 # Get configuration information from pyproject.toml
