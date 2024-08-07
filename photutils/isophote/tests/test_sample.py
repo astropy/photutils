@@ -18,7 +18,7 @@ DATA = make_test_image(background=100.0, i0=0.0, noise=10.0, seed=0)
 
 
 # the median is not so good at estimating rms
-@pytest.mark.parametrize('integrmode, amin, amax',
+@pytest.mark.parametrize(('integrmode', 'amin', 'amax'),
                          [(NEAREST_NEIGHBOR, 7.0, 15.0),
                           (BILINEAR, 7.0, 15.0),
                           (MEAN, 7.0, 15.0),

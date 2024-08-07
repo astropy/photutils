@@ -10,7 +10,8 @@ from numpy.testing import assert_allclose
 from photutils.isophote.geometry import EllipseGeometry
 
 
-@pytest.mark.parametrize('astep, linear_growth', [(0.2, False), (20.0, True)])
+@pytest.mark.parametrize(('astep', 'linear_growth'),
+                         [(0.2, False), (20.0, True)])
 def test_geometry(astep, linear_growth):
     geometry = EllipseGeometry(255.0, 255.0, 100.0, 0.4, np.pi / 2, astep,
                                linear_growth)

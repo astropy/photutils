@@ -138,7 +138,7 @@ def test_moffat_fitting(moffat_source):
 
 # we set the tolerances in flux to be 2-3% because the guessed model
 # parameters are known to be wrong
-@pytest.mark.parametrize('kwargs, tols',
+@pytest.mark.parametrize(('kwargs', 'tols'),
                          [({'x_name': 'x_0', 'y_name': 'y_0',
                             'flux_name': None, 'normalize': True},
                            (1e-3, 0.02)),

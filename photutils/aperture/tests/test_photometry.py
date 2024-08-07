@@ -474,7 +474,7 @@ TEST_ELLIPSE_EXACT_APERTURES = [(3.469906, 3.923861394, 3.0),
                                 (0.3834415188257778, 0.3834415188257778, 0.3)]
 
 
-@pytest.mark.parametrize('x,y,r', TEST_ELLIPSE_EXACT_APERTURES)
+@pytest.mark.parametrize(('x', 'y', 'r'), TEST_ELLIPSE_EXACT_APERTURES)
 def test_ellipse_exact_grid(x, y, r):
     """
     Test elliptical exact aperture photometry on a grid of pixel
