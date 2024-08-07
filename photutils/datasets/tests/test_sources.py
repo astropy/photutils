@@ -61,7 +61,8 @@ def test_make_model_params_nsources():
     Test case when the number of the possible sources is less than
     ``n_sources``.
     """
-    with pytest.warns(AstropyUserWarning):
+    match = r'Unable to produce .* coordinates within the given shape'
+    with pytest.warns(AstropyUserWarning, match=match):
         shape = (200, 500)
         n_sources = 100
         params = make_model_params(shape, n_sources, min_separation=50,
@@ -75,7 +76,8 @@ def test_make_model_params_border_size():
     shape = (10, 10)
     n_sources = 10
     flux = (100, 1000)
-    with pytest.raises(ValueError):
+    match = 'border_size is too large for the given shape'
+    with pytest.raises(ValueError, match=match):
         make_model_params(shape, n_sources, flux=flux, border_size=20)
 
 

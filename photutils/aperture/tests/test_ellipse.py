@@ -26,9 +26,12 @@ class TestEllipticalAperture(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'a' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             EllipticalAperture(POSITIONS, a=radius, b=5.0, theta=np.pi / 2.0)
-        with pytest.raises(ValueError):
+
+        match = "'b' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             EllipticalAperture(POSITIONS, a=10.0, b=radius, theta=np.pi / 2.0)
 
     def test_copy_eq(self):
@@ -45,16 +48,23 @@ class TestEllipticalAnnulus(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'a_in' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             EllipticalAnnulus(POSITIONS, a_in=radius, a_out=20.0, b_out=17.0,
                               theta=np.pi / 3)
-        with pytest.raises(ValueError):
+
+        match = '"a_out" must be greater than "a_in"'
+        with pytest.raises(ValueError, match=match):
             EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=radius, b_out=17.0,
                               theta=np.pi / 3)
-        with pytest.raises(ValueError):
+
+        match = "'b_out' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=20.0, b_out=radius,
                               theta=np.pi / 3)
-        with pytest.raises(ValueError):
+
+        match = "'b_in' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=20.0, b_out=17.0,
                               b_in=radius, theta=np.pi / 3)
 
@@ -72,10 +82,13 @@ class TestSkyEllipticalAperture(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'a' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyEllipticalAperture(SKYCOORD, a=radius * UNIT, b=5.0 * UNIT,
                                   theta=30 * u.deg)
-        with pytest.raises(ValueError):
+
+        match = "'b' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyEllipticalAperture(SKYCOORD, a=10.0 * UNIT, b=radius * UNIT,
                                   theta=30 * u.deg)
 
@@ -94,18 +107,25 @@ class TestSkyEllipticalAnnulus(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'a_in' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyEllipticalAnnulus(SKYCOORD, a_in=radius * UNIT,
                                  a_out=20.0 * UNIT, b_out=17.0 * UNIT,
                                  theta=60 * u.deg)
-        with pytest.raises(ValueError):
+
+        match = '"a_out" must be greater than "a_in"'
+        with pytest.raises(ValueError, match=match):
             SkyEllipticalAnnulus(SKYCOORD, a_in=10.0 * UNIT,
                                  a_out=radius * UNIT, b_out=17.0 * UNIT,
                                  theta=60 * u.deg)
-        with pytest.raises(ValueError):
+
+        match = "'b_out' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyEllipticalAnnulus(SKYCOORD, a_in=10.0 * UNIT, a_out=20.0 * UNIT,
                                  b_out=radius * UNIT, theta=60 * u.deg)
-        with pytest.raises(ValueError):
+
+        match = "'b_in' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyEllipticalAnnulus(SKYCOORD, a_in=10.0 * UNIT, a_out=20.0 * UNIT,
                                  b_out=17.0 * UNIT, b_in=radius * UNIT,
                                  theta=60 * u.deg)

@@ -67,7 +67,8 @@ def test_curve_of_growth_units(profile_data):
     assert cg1.profile.unit == unit
     assert cg1.profile_error.unit == unit
 
-    with pytest.raises(ValueError):
+    match = 'must all have the same units'
+    with pytest.raises(ValueError, match=match):
         CurveOfGrowth(data << unit, xycen, radii, error=error, mask=None)
 
 
@@ -126,12 +127,13 @@ def test_curve_of_growth_normalize(profile_data):
     cg1.unnormalize()
     assert_allclose(cg1.profile, cg2.profile)
 
-    with pytest.raises(ValueError):
+    match = 'invalid method, must be "max" or "sum"'
+    with pytest.raises(ValueError, match=match):
         cg1.normalize(method='invalid')
 
     cg1.__dict__['profile'] -= np.max(cg1.__dict__['profile'])
-    msg = 'The profile cannot be normalized'
-    with pytest.warns(AstropyUserWarning, match=msg):
+    match = 'The profile cannot be normalized'
+    with pytest.warns(AstropyUserWarning, match=match):
         cg1.normalize(method='max')
 
 
@@ -163,27 +165,28 @@ def test_curve_of_growth_interp(profile_data):
 def test_curve_of_growth_inputs(profile_data):
     xycen, data, error, _ = profile_data
 
-    msg = 'radii must be > 0'
+    match = 'radii must be > 0'
     radii = np.arange(10)
-    with pytest.raises(ValueError, match=msg):
+    with pytest.raises(ValueError, match=match):
         CurveOfGrowth(data, xycen, radii, error=None, mask=None)
 
-    msg = 'radii must be a 1D array and have at least two values'
-    with pytest.raises(ValueError, match=msg):
+    match = 'radii must be a 1D array and have at least two values'
+    with pytest.raises(ValueError, match=match):
         CurveOfGrowth(data, xycen, [1], error=None, mask=None)
-    with pytest.raises(ValueError, match=msg):
+    with pytest.raises(ValueError, match=match):
         CurveOfGrowth(data, xycen, np.arange(1, 7).reshape(2, 3), error=None,
                       mask=None)
 
-    msg = 'radii must be strictly increasing'
+    match = 'radii must be strictly increasing'
     radii = np.arange(1, 10)[::-1]
-    with pytest.raises(ValueError, match=msg):
+    with pytest.raises(ValueError, match=match):
         CurveOfGrowth(data, xycen, radii, error=None, mask=None)
 
     unit1 = u.Jy
     unit2 = u.km
     radii = np.arange(1, 36)
-    with pytest.raises(ValueError):
+    match = 'must all have the same units'
+    with pytest.raises(ValueError, match=match):
         CurveOfGrowth(data << unit1, xycen, radii, error=error << unit2)
 
 
@@ -194,7 +197,8 @@ def test_curve_of_growth_plot(profile_data):
     radii = np.arange(1, 36)
     cg1 = CurveOfGrowth(data, xycen, radii, error=None, mask=None)
     cg1.plot()
-    with pytest.warns(AstropyUserWarning, match='Errors were not input'):
+    match = 'Errors were not input'
+    with pytest.warns(AstropyUserWarning, match=match):
         cg1.plot_error()
 
     cg2 = CurveOfGrowth(data, xycen, radii, error=error, mask=None)

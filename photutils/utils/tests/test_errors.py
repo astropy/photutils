@@ -20,18 +20,21 @@ WRONG_SHAPE = np.ones((2, 2))
 
 
 def test_error_shape():
-    with pytest.raises(ValueError):
+    match = 'operands could not be broadcast together with shapes'
+    with pytest.raises(ValueError, match=match):
         calc_total_error(DATA, WRONG_SHAPE, EFFGAIN)
 
 
 def test_gain_shape():
-    with pytest.raises(ValueError):
+    match = 'must have the same shape as the input data'
+    with pytest.raises(ValueError, match=match):
         calc_total_error(DATA, BKG_ERROR, WRONG_SHAPE)
 
 
 @pytest.mark.parametrize('effective_gain', [-1, -100])
 def test_gain_negative(effective_gain):
-    with pytest.raises(ValueError):
+    match = 'effective_gain must be non-zero everywhere'
+    with pytest.raises(ValueError, match=match):
         calc_total_error(DATA, BKG_ERROR, effective_gain)
 
 
@@ -69,25 +72,29 @@ def test_units():
 
 def test_error_units():
     units = u.electron / u.s
-    with pytest.raises(ValueError):
+    match = 'must have the same units'
+    with pytest.raises(ValueError, match=match):
         calc_total_error(DATA * units, BKG_ERROR * u.electron,
                          EFFGAIN * u.s)
 
 
 def test_effgain_units():
     units = u.electron / u.s
-    with pytest.raises(u.UnitsError):
+    match = 'it must have count units'
+    with pytest.raises(u.UnitsError, match=match):
         calc_total_error(DATA * units, BKG_ERROR * units, EFFGAIN * u.km)
 
 
 def test_missing_bkgerror_units():
     units = u.electron / u.s
-    with pytest.raises(ValueError):
+    match = 'all must all have units'
+    with pytest.raises(ValueError, match=match):
         calc_total_error(DATA * units, BKG_ERROR, EFFGAIN * u.s)
 
 
 def test_missing_effgain_units():
     units = u.electron / u.s
-    with pytest.raises(ValueError):
+    match = 'all must all have units'
+    with pytest.raises(ValueError, match=match):
         calc_total_error(DATA * units, BKG_ERROR * units,
                          EFFGAIN)

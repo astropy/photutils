@@ -76,8 +76,8 @@ def test_centroids_nan_withmask(use_mask):
     else:
         mask = None
         nwarn = 1
-        ctx = pytest.warns(AstropyUserWarning,
-                           match='Input data contains non-finite values')
+        match = 'Input data contains non-finite values'
+        ctx = pytest.warns(AstropyUserWarning, match=match)
 
     with ctx as warnlist:
         xc, yc = centroid_1dg(data, mask=mask)
@@ -97,27 +97,30 @@ def test_invalid_mask_shape():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
 
-    with pytest.raises(ValueError):
+    match = 'data and mask must have the same shape'
+    with pytest.raises(ValueError, match=match):
         centroid_1dg(data, mask=mask)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         centroid_2dg(data, mask=mask)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         _gaussian1d_moments(data, mask=mask)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_invalid_error_shape():
     error = np.zeros((2, 2), dtype=bool)
-    with pytest.raises(ValueError):
+    match = 'data and error must have the same shape'
+    with pytest.raises(ValueError, match=match):
         centroid_1dg(np.zeros((4, 4)), error=error)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         centroid_2dg(np.zeros((4, 4)), error=error)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_2dg_dof():
     data = np.ones((2, 2))
-    with pytest.raises(ValueError):
+    match = 'Input data must have a least 7 unmasked values to fit'
+    with pytest.raises(ValueError, match=match):
         centroid_2dg(data)
 
 
@@ -139,8 +142,8 @@ def test_gaussian1d_moments():
     mask = np.zeros(data.shape).astype(bool)
     mask[0] = True
 
-    ctx = pytest.warns(AstropyUserWarning,
-                       match='Input data contains non-finite values')
+    match = 'Input data contains non-finite values'
+    ctx = pytest.warns(AstropyUserWarning, match=match)
     with ctx as warnlist:
         result = _gaussian1d_moments(data, mask=mask)
         assert_allclose(result, desired, rtol=0, atol=1.0e-6)

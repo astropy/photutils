@@ -22,7 +22,8 @@ POSITIONS = [(-20, -20), (-20, 20), (20, -20), (60, 60)]
 def test_mask_input_shapes():
     mask_data = np.ones((10, 10))
     bbox = BoundingBox(5, 10, 5, 10)
-    with pytest.raises(ValueError):
+    match = 'mask data and bounding box must have the same shape'
+    with pytest.raises(ValueError, match=match):
         ApertureMask(mask_data, bbox)
 
 
@@ -80,10 +81,12 @@ def test_mask_cutout_shape():
     bbox = BoundingBox(5, 15, 5, 15)
     mask = ApertureMask(mask_data, bbox)
 
-    with pytest.raises(ValueError):
+    match = 'data must be a 2D array'
+    with pytest.raises(ValueError, match=match):
         mask.cutout(np.arange(10))
 
-    with pytest.raises(ValueError):
+    match = 'input shape must have 2 elements'
+    with pytest.raises(ValueError, match=match):
         mask.to_image((10,))
 
 
@@ -226,7 +229,8 @@ def test_mask_get_values_mask():
     aper = CircularAperture((24.5, 24.5), r=10.0)
     data = np.ones((51, 51))
     mask = aper.to_mask()
-    with pytest.raises(ValueError):
+    match = 'mask and data must have the same shape'
+    with pytest.raises(ValueError, match=match):
         mask.get_values(data, mask=np.ones(3))
 
     arr = mask.get_values(data, mask=None)

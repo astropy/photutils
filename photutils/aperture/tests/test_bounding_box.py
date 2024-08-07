@@ -20,26 +20,29 @@ def test_bounding_box_init():
 
 
 def test_bounding_box_init_minmax():
-    with pytest.raises(ValueError):
+    match = 'ixmin must be <= ixmax'
+    with pytest.raises(ValueError, match=match):
         BoundingBox(100, 1, 1, 100)
-    with pytest.raises(ValueError):
+    match = 'iymin must be <= iymax'
+    with pytest.raises(ValueError, match=match):
         BoundingBox(1, 100, 100, 1)
 
 
 def test_bounding_box_inputs():
-    with pytest.raises(TypeError):
+    match = 'ixmin, ixmax, iymin, and iymax must all be integers'
+    with pytest.raises(TypeError, match=match):
         BoundingBox([1], [10], [2], [9])
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=match):
         BoundingBox([1, 2], 10, 2, 9)
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=match):
         BoundingBox(1.0, 10.0, 2.0, 9.0)
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=match):
         BoundingBox(1.3, 10, 2, 9)
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=match):
         BoundingBox(1, 10.3, 2, 9)
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=match):
         BoundingBox(1, 10, 2.3, 9)
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=match):
         BoundingBox(1, 10, 2, 9.3)
 
 
@@ -60,7 +63,8 @@ def test_bounding_box_eq():
     assert bbox != BoundingBox(1, 10, 9, 20)
     assert bbox != BoundingBox(1, 10, 2, 99)
 
-    with pytest.raises(TypeError):
+    match = 'Can compare BoundingBox only to another BoundingBox'
+    with pytest.raises(TypeError, match=match):
         assert bbox == (1, 10, 2, 20)
 
 
@@ -139,7 +143,8 @@ def test_bounding_box_union():
     assert bbox_union1 == bbox_union_expected
     assert bbox_union1 == bbox_union2
 
-    with pytest.raises(TypeError):
+    match = 'BoundingBox can be joined only with another BoundingBox'
+    with pytest.raises(TypeError, match=match):
         bbox1.union((5, 21, 7, 32))
 
 
@@ -153,7 +158,8 @@ def test_bounding_box_intersect():
     assert bbox_intersect1 == bbox_intersect_expected
     assert bbox_intersect1 == bbox_intersect2
 
-    with pytest.raises(TypeError):
+    match = 'BoundingBox can be intersected only with another BoundingBox'
+    with pytest.raises(TypeError, match=match):
         bbox1.intersection((5, 21, 7, 32))
 
     assert bbox1.intersection(BoundingBox(30, 40, 50, 60)) is None

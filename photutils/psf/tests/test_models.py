@@ -104,9 +104,28 @@ class TestFittableImageModel:
                 _oversamp = tuple(float(o) for o in oversampling)
             assert np.all(fim._oversampling == _oversamp)
 
-        for oversampling in [-1, [-2, 4], (1, 4, 8), ((1, 2), (3, 4)),
-                             np.ones((2, 2, 2)), 2.1, np.nan, (1, np.inf)]:
-            with pytest.raises(ValueError):
+        match = 'oversampling must be > 0'
+        for oversampling in [-1, [-2, 4]]:
+            with pytest.raises(ValueError, match=match):
+                FittableImageModel(data, oversampling=oversampling)
+
+        match = 'oversampling must have 1 or 2 elements'
+        oversampling = (1, 4, 8)
+        with pytest.raises(ValueError, match=match):
+            FittableImageModel(data, oversampling=oversampling)
+
+        match = 'oversampling must be 1D'
+        for oversampling in [((1, 2), (3, 4)), np.ones((2, 2, 2))]:
+            with pytest.raises(ValueError, match=match):
+                FittableImageModel(data, oversampling=oversampling)
+
+        match = 'oversampling must have integer values'
+        with pytest.raises(ValueError, match=match):
+            FittableImageModel(data, oversampling=2.1)
+
+        match = 'oversampling must be a finite value'
+        for oversampling in [np.nan, (1, np.inf)]:
+            with pytest.raises(ValueError, match=match):
                 FittableImageModel(data, oversampling=oversampling)
 
 

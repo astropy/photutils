@@ -79,7 +79,8 @@ class TestImageDepth:
                            progress_bar=False)
         mask = np.zeros(self.data.shape)
         mask[:, 20:] = True
-        with pytest.raises(ValueError):
+        match = 'Too many apertures for given unmasked area'
+        with pytest.raises(ValueError, match=match):
             depth(self.data, mask)
 
         depth = ImageDepth(radius, nsigma=5.0, napers=250, niters=2,
@@ -87,7 +88,8 @@ class TestImageDepth:
                            progress_bar=False)
         mask = np.zeros(self.data.shape)
         mask[:, 100:] = True
-        with pytest.warns(AstropyUserWarning, match='Unable to generate'):
+        match = r'Unable to generate .* non-overlapping apertures'
+        with pytest.warns(AstropyUserWarning, match=match):
             depth(self.data, mask)
 
         # test for zero non-overlapping apertures before slow loop
@@ -97,7 +99,8 @@ class TestImageDepth:
                            progress_bar=False)
         mask = np.zeros(self.data.shape)
         mask[:, 40:] = True
-        with pytest.warns(AstropyUserWarning, match='Unable to generate'):
+        match = r'Unable to generate .* non-overlapping apertures'
+        with pytest.warns(AstropyUserWarning, match=match):
             depth(self.data, mask)
 
     def test_zero_data(self):
@@ -106,8 +109,8 @@ class TestImageDepth:
                            overlap=True, seed=123, progress_bar=False)
         data = np.zeros((300, 400))
         mask = None
-        with pytest.warns(AstropyUserWarning,
-                          match='One or more flux_limit values was zero'):
+        match = 'One or more flux_limit values was zero'
+        with pytest.warns(AstropyUserWarning, match=match):
             limits = depth(data, mask)
             assert_allclose(limits, (0.0, np.inf))
 
@@ -118,21 +121,25 @@ class TestImageDepth:
         data = np.zeros(self.data.shape)
         mask = np.zeros(data.shape, dtype=bool)
         mask[:, 10:] = True
-        with pytest.raises(ValueError):
+        match = 'There are no unmasked pixel values'
+        with pytest.raises(ValueError, match=match):
             depth(data, mask)
 
     def test_inputs(self):
-        with pytest.raises(ValueError):
+        match = 'aper_radius must be > 0'
+        with pytest.raises(ValueError, match=match):
             ImageDepth(0.0, nsigma=5.0, napers=500, niters=2,
                        overlap=True, seed=123, zeropoint=23.9,
                        progress_bar=False)
 
-        with pytest.raises(ValueError):
+        match = 'aper_radius must be > 0'
+        with pytest.raises(ValueError, match=match):
             ImageDepth(-12.4, nsigma=5.0, napers=500, niters=2,
                        overlap=True, seed=123, zeropoint=23.9,
                        progress_bar=False)
 
-        with pytest.raises(ValueError):
+        match = 'mask_pad must be >= 0'
+        with pytest.raises(ValueError, match=match):
             ImageDepth(12.4, nsigma=5.0, napers=500, niters=2,
                        mask_pad=-7.1, overlap=True, seed=123, zeropoint=23.9,
                        progress_bar=False)

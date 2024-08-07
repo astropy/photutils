@@ -25,17 +25,18 @@ def test_footprints():
                        [0, 0, 1, 0, 0]])
     assert_equal(footprint, result)
 
-    with pytest.raises(ValueError):
+    match = 'radius must be a positive, finite integer greater than 0'
+    with pytest.raises(ValueError, match=match):
         circular_footprint(5.1)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         circular_footprint(0)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         circular_footprint(-1)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         circular_footprint(np.inf)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         circular_footprint(np.nan)

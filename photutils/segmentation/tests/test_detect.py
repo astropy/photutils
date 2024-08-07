@@ -58,7 +58,8 @@ class TestDetectThreshold:
 
     def test_background_badshape(self):
         wrong_shape = np.zeros((2, 2))
-        with pytest.raises(ValueError):
+        match = 'input background is 2D, then it must have the same shape'
+        with pytest.raises(ValueError, match=match):
             detect_threshold(DATA, nsigma=2.0, background=wrong_shape)
 
     def test_error(self):
@@ -79,7 +80,8 @@ class TestDetectThreshold:
 
     def test_error_badshape(self):
         wrong_shape = np.zeros((2, 2))
-        with pytest.raises(ValueError):
+        match = 'If input error is 2D, then it must have the same shape'
+        with pytest.raises(ValueError, match=match):
             detect_threshold(DATA, nsigma=2.0, error=wrong_shape)
 
     def test_background_error(self):
@@ -94,10 +96,11 @@ class TestDetectThreshold:
         assert isinstance(threshold, u.Quantity)
         assert_allclose(threshold.value, ref)
 
-        with pytest.raises(ValueError):
+        match = 'must all have the same units'
+        with pytest.raises(ValueError, match=match):
             detect_threshold(DATA << u.Jy, nsigma=2.0, background=10.0,
                              error=1.0 * u.Jy)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             detect_threshold(DATA << u.Jy, nsigma=2.0, background=10.0 * u.m,
                              error=1.0 * u.Jy)
 
@@ -124,7 +127,8 @@ class TestDetectThreshold:
         assert_equal(threshold, ref)
 
     def test_invalid_sigma_clip(self):
-        with pytest.raises(TypeError):
+        match = 'sigma_clip must be a SigmaClip object'
+        with pytest.raises(TypeError, match=match):
             detect_threshold(DATA, 1.0, sigma_clip=10)
 
 
@@ -149,18 +153,20 @@ class TestDetectSources:
                               npixels=2)
         assert_equal(segm.data, self.refdata)
 
-        with pytest.raises(ValueError):
+        match = 'must all have the same units'
+        with pytest.raises(ValueError, match=match):
             detect_sources(self.data << u.uJy, threshold=0.9, npixels=2)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             detect_sources(self.data, threshold=0.9 * u.Jy, npixels=2)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             detect_sources(self.data << u.uJy, threshold=0.9 * u.m, npixels=2)
 
     def test_small_sources(self):
         """
         Test detection where sources are smaller than npixels size.
         """
-        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
+        match = 'No sources were found'
+        with pytest.warns(NoDetectionsWarning, match=match):
             detect_sources(self.data, threshold=0.9, npixels=5)
 
     def test_npixels(self):
@@ -193,7 +199,8 @@ class TestDetectSources:
             assert segm.nlabels == 1
             assert segm.areas[0] == 13
 
-        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
+        match = 'No sources were found'
+        with pytest.warns(NoDetectionsWarning, match=match):
             detect_sources(data, 0, npixels=14)
 
     def test_zerothresh(self):
@@ -207,7 +214,8 @@ class TestDetectSources:
         """
         Test detection with large threshold giving no detections.
         """
-        with pytest.warns(NoDetectionsWarning, match='No sources were found'):
+        match = 'No sources were found'
+        with pytest.warns(NoDetectionsWarning, match=match):
             detect_sources(self.data, threshold=7, npixels=2)
 
     def test_8connectivity(self):
@@ -231,21 +239,24 @@ class TestDetectSources:
         """
         Test if error raises if npixel is non-integer.
         """
-        with pytest.raises(ValueError):
+        match = 'npixels must be a positive integer'
+        with pytest.raises(ValueError, match=match):
             detect_sources(self.data, threshold=1, npixels=0.1)
 
     def test_npixels_negative(self):
         """
         Test if error raises if npixel is negative.
         """
-        with pytest.raises(ValueError):
+        match = 'npixels must be a positive integer'
+        with pytest.raises(ValueError, match=match):
             detect_sources(self.data, threshold=1, npixels=-1)
 
     def test_connectivity_invalid(self):
         """
         Test if error raises if connectivity is invalid.
         """
-        with pytest.raises(ValueError):
+        match = 'Invalid connectivity=10. Options are 4 or 8'
+        with pytest.raises(ValueError, match=match):
             detect_sources(self.data, threshold=1, npixels=1, connectivity=10)
 
     def test_mask(self):
@@ -259,9 +270,11 @@ class TestDetectSources:
 
         # mask with all True
         mask = np.ones(data.shape, dtype=bool)
-        with pytest.raises(ValueError):
+        match = 'mask must not be True for every pixel'
+        with pytest.raises(ValueError, match=match):
             detect_sources(data, 1.0, 1.0, mask=mask)
 
     def test_mask_shape(self):
-        with pytest.raises(ValueError):
+        match = 'mask must have the same shape as the input image'
+        with pytest.raises(ValueError, match=match):
             detect_sources(self.data, 1.0, 1.0, mask=np.ones((5, 5)))

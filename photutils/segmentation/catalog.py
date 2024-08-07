@@ -393,7 +393,7 @@ class SourceCatalog:
     @staticmethod
     def _validate_kron_params(kron_params):
         if np.ndim(kron_params) != 1:
-            raise ValueError('kron_params must by 1D')
+            raise ValueError('kron_params must be 1D')
         nparams = len(kron_params)
         if nparams not in (2, 3):
             raise ValueError('kron_params must have 2 or 3 elements')

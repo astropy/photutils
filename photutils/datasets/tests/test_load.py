@@ -9,7 +9,8 @@ from photutils.datasets import get_path, load
 
 
 def test_get_path():
-    with pytest.raises(ValueError):
+    match = 'Invalid location:'
+    with pytest.raises(ValueError, match=match):
         get_path('filename', location='invalid')
 
 

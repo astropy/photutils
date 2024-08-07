@@ -53,26 +53,31 @@ class TestShepardIDWInterpolator:
         assert_allclose(f([0.5, 0.5, 0.5]), 1.0)
 
     def test_no_coordinates(self):
-        with pytest.raises(ValueError):
+        match = 'You must enter at least one data point'
+        with pytest.raises(ValueError, match=match):
             IDWInterp([], 0)
 
     def test_values_invalid_shape(self):
-        with pytest.raises(ValueError):
+        match = 'The number of values must match the number of coordinates'
+        with pytest.raises(ValueError, match=match):
             IDWInterp(self.x, 0)
 
     def test_weights_invalid_shape(self):
-        with pytest.raises(ValueError):
+        match = 'number of weights must match the number of coordinates'
+        with pytest.raises(ValueError, match=match):
             IDWInterp(self.x, self.y, weights=10)
 
     def test_weights_negative(self):
-        with pytest.raises(ValueError):
+        match = 'All weight values must be non-negative numbers'
+        with pytest.raises(ValueError, match=match):
             IDWInterp(self.x, self.y, weights=-self.y)
 
     def test_n_neighbors_one(self):
         assert_allclose(self.f(0.5, n_neighbors=1), [0.479334], rtol=3e-7)
 
     def test_n_neighbors_negative(self):
-        with pytest.raises(ValueError):
+        match = 'n_neighbors must be a positive integer'
+        with pytest.raises(ValueError, match=match):
             self.f(0.5, n_neighbors=-1)
 
     def test_conf_dist_negative(self):
@@ -90,7 +95,8 @@ class TestShepardIDWInterpolator:
         pos = self.rng.random((10, 2))
         val = np.sin(pos[:, 0] + pos[:, 1])
         f = IDWInterp(pos, val)
-        with pytest.raises(ValueError):
+        match = 'position does not match the dimensionality'
+        with pytest.raises(ValueError, match=match):
             f(0.5)
 
     def test_positions_1d_nomatch(self):
@@ -100,11 +106,13 @@ class TestShepardIDWInterpolator:
         pos = self.rng.random((10, 2))
         val = np.sin(pos[:, 0] + pos[:, 1])
         f = IDWInterp(pos, val)
-        with pytest.raises(ValueError):
+        match = 'was provided as a 1D array, but its length does not match'
+        with pytest.raises(ValueError, match=match):
             f([0.5])
 
     def test_positions_3d(self):
-        with pytest.raises(ValueError):
+        match = 'array_like object of dimensionality no larger than 2'
+        with pytest.raises(ValueError, match=match):
             self.f(np.ones((3, 3, 3)))
 
     def test_scalar_values_1d(self):

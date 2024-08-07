@@ -505,7 +505,8 @@ def test_psf_photometry_mask(test_data):
         assert len(phot) == len(sources)
 
     # mask all True; finder returns no sources
-    with pytest.warns(NoDetectionsWarning):
+    match = 'No sources were found'
+    with pytest.warns(NoDetectionsWarning, match=match):
         mask = np.ones(data.shape, dtype=bool)
         psfphot(data, mask=mask)
 
@@ -989,7 +990,8 @@ def test_iterative_psf_photometry_mode_new(test_data):
                                      mode='new',
                                      localbkg_estimator=localbkg_estimator,
                                      aperture_radius=4)
-    with pytest.warns(NoDetectionsWarning):
+    match = 'No sources were found'
+    with pytest.warns(NoDetectionsWarning, match=match):
         phot = psfphot(data, error=error)
         assert phot is None
 
@@ -1091,7 +1093,8 @@ def test_iterative_psf_photometry_overlap():
                                      finder=daofinder, mode='all',
                                      grouper=grouper, maxiters=3,
                                      aperture_radius=3)
-    with pytest.warns(AstropyUserWarning):
+    match = r'One or more .* may not have converged'
+    with pytest.warns(AstropyUserWarning, match=match):
         phot = psfphot(data, error=error)
         assert len(phot) == 38
 

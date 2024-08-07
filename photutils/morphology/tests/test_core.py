@@ -48,5 +48,6 @@ def test_data_properties_bkg():
     assert props.area.value == 9.0
     assert props.background_sum == 9.0
 
-    with pytest.raises(ValueError):
+    match = 'background must be a 2D array'
+    with pytest.raises(ValueError, match=match):
         data_properties(data, background=[1.0, 2.0])

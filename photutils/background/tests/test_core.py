@@ -210,13 +210,15 @@ def test_background_rms_units(rms_class):
 
 @pytest.mark.parametrize('bkg_class', BKG_CLASS)
 def test_background_invalid_sigmaclip(bkg_class):
-    with pytest.raises(TypeError):
+    match = 'sigma_clip must be an astropy SigmaClip instance or None'
+    with pytest.raises(TypeError, match=match):
         bkg_class(sigma_clip=3)
 
 
 @pytest.mark.parametrize('rms_class', RMS_CLASS)
 def test_background_rms_invalid_sigmaclip(rms_class):
-    with pytest.raises(TypeError):
+    match = 'sigma_clip must be an astropy SigmaClip instance or None'
+    with pytest.raises(TypeError, match=match):
         rms_class(sigma_clip=3)
 
 

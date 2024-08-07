@@ -76,8 +76,8 @@ def test_centroid_comquad_nan_withmask(use_mask):
     else:
         mask = None
         nwarn = 1
-        ctx = pytest.warns(AstropyUserWarning,
-                           match='Input data contains non-finite values')
+        match = 'Input data contains non-finite values'
+        ctx = pytest.warns(AstropyUserWarning, match=match)
 
     with ctx as warnlist:
         xc, yc = centroid_com(data, mask=mask)
@@ -113,7 +113,8 @@ def test_centroid_com_allmask():
 def test_centroid_com_invalid_inputs():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
-    with pytest.raises(ValueError):
+    match = 'data and mask must have the same shape'
+    with pytest.raises(ValueError, match=match):
         centroid_com(data, mask=mask)
 
 
@@ -134,11 +135,14 @@ def test_centroid_quadratic_xypeak():
                                 search_boxsize=5)
     assert_allclose(xycen3, (7, 7))
 
-    with pytest.raises(ValueError):
+    match = 'xpeak is outside of the input data'
+    with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, xpeak=15, ypeak=5)
-    with pytest.raises(ValueError):
+    match = 'ypeak is outside of the input data'
+    with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, xpeak=5, ypeak=15)
-    with pytest.raises(ValueError):
+    match = 'xpeak is outside of the input data'
+    with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, xpeak=15, ypeak=15)
 
 
@@ -163,8 +167,8 @@ def test_centroid_quadratic_npts():
     mask = np.zeros(data.shape, dtype=bool)
     mask[0, :] = True
     mask[2, :] = True
-    with pytest.warns(AstropyUserWarning,
-                      match='at least 6 unmasked data points'):
+    match = 'at least 6 unmasked data points'
+    with pytest.warns(AstropyUserWarning, match=match):
         centroid_quadratic(data, mask=mask)
 
 
@@ -172,17 +176,21 @@ def test_centroid_quadratic_npts():
 def test_centroid_quadratic_invalid_inputs():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
-    with pytest.raises(ValueError):
+    match = 'xpeak and ypeak must both be input or "None"'
+    with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, xpeak=3, ypeak=None)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, xpeak=None, ypeak=3)
-    with pytest.raises(ValueError):
+    match = 'fit_boxsize must have 1 or 2 elements'
+    with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, fit_boxsize=(2, 2, 2))
-    with pytest.raises(ValueError):
+    match = 'fit_boxsize must have an odd value for both axes'
+    with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, fit_boxsize=(-2, 2))
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, fit_boxsize=(2, 2))
-    with pytest.raises(ValueError):
+    match = 'data and mask must have the same shape'
+    with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, mask=mask)
 
 
@@ -200,8 +208,8 @@ def test_centroid_quadratic_edge():
 
     data = np.zeros((5, 5))
     data[0, 0] = 100
-    with pytest.warns(AstropyUserWarning,
-                      match='maximum value is at the edge'):
+    match = 'maximum value is at the edge'
+    with pytest.warns(AstropyUserWarning, match=match):
         xycen = centroid_quadratic(data)
     assert_allclose(xycen, (0, 0))
 
@@ -244,26 +252,33 @@ class TestCentroidSources:
         assert_allclose(xc, (25.67,), atol=1e-1)
         assert_allclose(yc, (26.41,), atol=1e-1)
 
-        with pytest.raises(ValueError):
-            centroid_sources(data, 25, [[26]], box_size=11)
-        with pytest.raises(ValueError):
+        match = 'xpos must be a 1D array'
+        with pytest.raises(ValueError, match=match):
             centroid_sources(data, [[25]], 26, box_size=11)
-        with pytest.raises(ValueError):
+        match = 'ypos must be a 1D array'
+        with pytest.raises(ValueError, match=match):
+            centroid_sources(data, 25, [[26]], box_size=11)
+        match = 'box_size must have 1 or 2 elements'
+        with pytest.raises(ValueError, match=match):
             centroid_sources(data, 25, 26, box_size=(1, 2, 3))
-        with pytest.raises(ValueError):
+        match = 'box_size or footprint must be defined'
+        with pytest.raises(ValueError, match=match):
             centroid_sources(data, 25, 26, box_size=None, footprint=None)
-        with pytest.raises(ValueError):
+        match = 'footprint must be a 2D array'
+        with pytest.raises(ValueError, match=match):
             centroid_sources(data, 25, 26, footprint=np.ones((3, 3, 3)))
 
         def test_func(data):
             return data
 
-        with pytest.raises(ValueError):
+        match = 'The input "centroid_func" must have a "mask" keyword'
+        with pytest.raises(ValueError, match=match):
             centroid_sources(data, [25], 26, centroid_func=test_func)
 
     @pytest.mark.parametrize('centroid_func', CENTROID_FUNCS)
     def test_xypos(self, centroid_func):
-        with pytest.raises(ValueError):
+        match = 'xpos, ypos values contains points outside of input data'
+        with pytest.raises(ValueError, match=match):
             centroid_sources(self.data, 47, 50, box_size=5,
                              centroid_func=centroid_func)
 
@@ -383,15 +398,16 @@ def test_cutout_mask():
     x_init = (25, 91, 151, 160)
     y_init = (40, 61, 24, 71)
     footprint = np.zeros((3, 3))
-    with pytest.raises(ValueError):
+    match = 'is completely masked'
+    with pytest.raises(ValueError, match=match):
         _ = centroid_sources(data, x_init, y_init, footprint=footprint,
                              centroid_func=centroid_com)
 
     footprint = np.zeros(data.shape, dtype=bool)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         _ = centroid_sources(data, x_init, y_init, footprint=footprint,
                              centroid_func=centroid_com)
 
     mask = np.ones(data.shape, dtype=bool)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         _ = centroid_sources(data, x_init, y_init, box_size=11, mask=mask)

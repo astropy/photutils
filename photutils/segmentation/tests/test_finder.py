@@ -36,11 +36,12 @@ class TestSourceFinder:
 
     def test_invalid_units(self):
         finder = SourceFinder(npixels=self.npixels, progress_bar=False)
-        with pytest.raises(ValueError):
+        match = 'must all have the same units'
+        with pytest.raises(ValueError, match=match):
             finder(self.convolved_data << u.uJy, self.threshold)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             finder(self.convolved_data, self.threshold * u.uJy)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             finder(self.convolved_data << u.uJy, self.threshold * u.m)
 
     def test_no_deblend(self):
@@ -52,8 +53,9 @@ class TestSourceFinder:
     def test_no_sources(self):
         finder = SourceFinder(npixels=self.npixels, deblend=True,
                               progress_bar=False)
-        with pytest.warns(NoDetectionsWarning,
-                          match='No sources were found'):
+
+        match = 'No sources were found'
+        with pytest.warns(NoDetectionsWarning, match=match):
             segm = finder(self.convolved_data, 1000)
             assert segm is None
 

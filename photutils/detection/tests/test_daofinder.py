@@ -27,29 +27,37 @@ class TestDAOStarFinder:
         assert_array_equal(tbl0, tbl1)
 
     def test_daofind_inputs(self):
-        with pytest.raises(ValueError):
+        match = 'threshold must be a scalar value'
+        with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=np.ones((2, 2)), fwhm=3.0)
 
-        with pytest.raises(TypeError):
+        match = 'fwhm must be a scalar value'
+        with pytest.raises(TypeError, match=match):
             DAOStarFinder(threshold=3.0, fwhm=np.ones((2, 2)))
 
-        with pytest.raises(ValueError):
+        match = 'fwhm must be positive'
+        with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=3.0, fwhm=-10)
 
-        with pytest.raises(ValueError):
+        match = 'ratio must be positive and less or equal than 1'
+        with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=3.0, fwhm=2, ratio=-10)
 
-        with pytest.raises(ValueError):
+        match = 'sigma_radius must be positive'
+        with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=3.0, fwhm=2, sigma_radius=-10)
 
-        with pytest.raises(ValueError):
+        match = 'brightest must be >= 0'
+        with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=10, fwhm=1.5, brightest=-1)
 
-        with pytest.raises(ValueError):
+        match = 'brightest must be an integer'
+        with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=10, fwhm=1.5, brightest=3.1)
 
         xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
-        with pytest.raises(ValueError):
+        match = 'xycoords must be shaped as a Nx2 array'
+        with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=10, fwhm=1.5, xycoords=xycoords)
 
     def test_daofind_nosources(self, data):
@@ -82,7 +90,6 @@ class TestDAOStarFinder:
         Sources found, but none pass the sharpness criteria.
         """
         match = 'Sources were found, but none pass'
-
         with pytest.warns(NoDetectionsWarning, match=match):
             finder = DAOStarFinder(threshold=1, fwhm=1.0, sharplo=1.0)
             tbl = finder(data)

@@ -17,17 +17,20 @@ def test_as_pair():
 
     assert_equal(as_pair('myparam', 0), (0, 0))
 
-    with pytest.raises(ValueError):
+    match = 'must be > 0'
+    with pytest.raises(ValueError, match=match):
         as_pair('myparam', 0, lower_bound=(0, 1))
 
-    with pytest.raises(ValueError):
+    match = 'must be a finite value'
+    with pytest.raises(ValueError, match=match):
         as_pair('myparam', (1, np.nan))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         as_pair('myparam', (1, np.inf))
 
-    with pytest.raises(ValueError):
+    match = 'must have an odd value for both axes'
+    with pytest.raises(ValueError, match=match):
         as_pair('myparam', (3, 4), check_odd=True)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         as_pair('myparam', 4, check_odd=True)

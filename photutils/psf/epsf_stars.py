@@ -581,11 +581,12 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
 
     for img in data:
         if not isinstance(img, NDData):
-            raise TypeError('data must be a single or list of NDData objects.')
+            raise TypeError('data must be a single NDData or list of NDData '
+                            'objects.')
 
     for cat in catalogs:
         if not isinstance(cat, Table):
-            raise TypeError('catalogs must be a single or list of Table '
+            raise TypeError('catalogs must be a single Table or list of Table '
                             'objects.')
 
     if len(catalogs) == 1 and len(data) > 1:

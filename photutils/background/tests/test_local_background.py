@@ -27,7 +27,8 @@ def test_local_background():
     bkg3 = local_bkg(data, -100, -100)
     assert np.isnan(bkg3)
 
-    with pytest.raises(ValueError):
+    match = "'positions' must not contain any non-finite"
+    with pytest.raises(ValueError, match=match):
         _ = local_bkg(data, x[2], np.inf)
 
     cls_repr = repr(local_bkg)
