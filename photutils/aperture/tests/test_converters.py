@@ -74,9 +74,11 @@ def test_translation_circle(image_2d_wcs):
     # NOTE: If these no longer fail, we also have to account for
     # non-scalar inputs. Assume this is representative for the sky
     # counterpart too.
-    with pytest.raises(ValueError, match='must be a scalar PixCoord'):
+    match = 'must be a scalar PixCoord'
+    with pytest.raises(ValueError, match=match):
         CirclePixelRegion(center=PixCoord(x=[0, 42], y=[1, 43]), radius=4.2)
-    with pytest.raises(ValueError, match=r'must be .* scalar'):
+    match = 'must be a strictly positive scalar'
+    with pytest.raises(ValueError, match=match):
         CirclePixelRegion(center=PixCoord(x=42, y=43), radius=[1, 4.2])
 
 
@@ -107,7 +109,8 @@ def test_translation_ellipse(image_2d_wcs):
     # NOTE: If these no longer fail, we also have to account for
     # non-scalar inputs. Assume this is representative for the sky
     # counterpart too.
-    with pytest.raises(ValueError, match='must be a scalar PixCoord'):
+    match = 'must be a scalar PixCoord'
+    with pytest.raises(ValueError, match=match):
         EllipsePixelRegion(
             center=PixCoord(x=[0, 42], y=[1, 43]),
             width=16,
@@ -164,28 +167,32 @@ def test_translation_rectangle(image_2d_wcs):
     # NOTE: If these no longer fail, we also have to account for
     # non-scalar inputs. Assume this is representative for the sky
     # counterpart too.
-    with pytest.raises(ValueError, match='must be a scalar PixCoord'):
+    match = 'must be a scalar PixCoord'
+    with pytest.raises(ValueError, match=match):
         RectanglePixelRegion(
             center=PixCoord(x=[0, 42], y=[1, 43]),
             width=16,
             height=10,
             angle=Angle(30, 'deg'),
         )
-    with pytest.raises(ValueError, match=r'must be .* scalar'):
+
+    match = 'must be a strictly positive scalar'
+    with pytest.raises(ValueError, match=match):
         RectanglePixelRegion(
             center=PixCoord(x=42, y=43),
             width=[1, 16],
             height=10,
             angle=Angle(30, 'deg'),
         )
-    with pytest.raises(ValueError, match=r'must be .* scalar'):
+    with pytest.raises(ValueError, match=match):
         RectanglePixelRegion(
             center=PixCoord(x=42, y=43),
             width=16,
             height=[1, 10],
             angle=Angle(30, 'deg'),
         )
-    with pytest.raises(ValueError, match=r'must be .* scalar'):
+    match = 'must be a scalar'
+    with pytest.raises(ValueError, match=match):
         RectanglePixelRegion(
             center=PixCoord(x=42, y=43),
             width=16,
@@ -217,7 +224,8 @@ def test_translation_circle_annulus(image_2d_wcs):
     # NOTE: If these no longer fail, we also have to account for
     # non-scalar inputs. Assume this is representative for the sky
     # counterpart too.
-    with pytest.raises(ValueError, match='must be a scalar PixCoord'):
+    match = 'must be a scalar PixCoord'
+    with pytest.raises(ValueError, match=match):
         CircleAnnulusPixelRegion(
             center=PixCoord(x=[0, 42], y=[1, 43]), inner_radius=5,
             outer_radius=8
@@ -267,7 +275,8 @@ def test_translation_ellipse_annulus(image_2d_wcs):
     # NOTE: If these no longer fail, we also have to account for
     # non-scalar inputs. Assume this is representative for the sky
     # counterpart too.
-    with pytest.raises(ValueError, match='must be a scalar PixCoord'):
+    match = 'must be a scalar PixCoord'
+    with pytest.raises(ValueError, match=match):
         EllipseAnnulusPixelRegion(
             center=PixCoord(x=[0, 42], y=[1, 43]),
             inner_width=5.5,
@@ -276,7 +285,8 @@ def test_translation_ellipse_annulus(image_2d_wcs):
             outer_height=6.5,
             angle=Angle(30, 'deg'),
         )
-    with pytest.raises(ValueError, match=r'must be .* scalar'):
+    match = 'must be a strictly positive scalar'
+    with pytest.raises(ValueError, match=match):
         EllipseAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
             inner_width=[1, 5.5],
@@ -285,7 +295,7 @@ def test_translation_ellipse_annulus(image_2d_wcs):
             outer_height=6.5,
             angle=Angle(30, 'deg'),
         )
-    with pytest.raises(ValueError, match=r'must be .* scalar'):
+    with pytest.raises(ValueError, match=match):
         EllipseAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
             inner_width=5.5,
@@ -358,7 +368,8 @@ def test_translation_rectangle_annulus(image_2d_wcs):
     # NOTE: If these no longer fail, we also have to account for
     # non-scalar inputs. Assume this is representative for the sky
     # counterpart too.
-    with pytest.raises(ValueError, match='must be a scalar PixCoord'):
+    match = 'must be a scalar PixCoord'
+    with pytest.raises(ValueError, match=match):
         RectangleAnnulusPixelRegion(
             center=PixCoord(x=[0, 42], y=[1, 43]),
             inner_width=5.5,
@@ -367,7 +378,9 @@ def test_translation_rectangle_annulus(image_2d_wcs):
             outer_height=6.5,
             angle=Angle(30, 'deg'),
         )
-    with pytest.raises(ValueError, match=r'must be .* scalar'):
+
+    match = 'must be a strictly positive scalar'
+    with pytest.raises(ValueError, match=match):
         RectangleAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
             inner_width=[1, 5.5],
@@ -376,7 +389,7 @@ def test_translation_rectangle_annulus(image_2d_wcs):
             outer_height=6.5,
             angle=Angle(30, 'deg'),
         )
-    with pytest.raises(ValueError, match=r'must be .* scalar'):
+    with pytest.raises(ValueError, match=match):
         RectangleAnnulusPixelRegion(
             center=PixCoord(x=42, y=43),
             inner_width=5.5,
@@ -420,5 +433,6 @@ def test_translation_polygon():
 
     region_shape = PolygonPixelRegion(vertices=PixCoord(x=[1, 2, 2],
                                                         y=[1, 1, 2]))
-    with pytest.raises(NotImplementedError, match='is not supported'):
+    match = 'is not supported'
+    with pytest.raises(NotImplementedError, match=match):
         region_to_aperture(region_shape)

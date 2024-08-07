@@ -79,7 +79,8 @@ class TestApertureStats:
             assert_allclose(getattr(pix_apstats, prop),
                             getattr(sky_apstats, prop), atol=1e-7)
 
-        with pytest.raises(ValueError):
+        match = 'A wcs is required when using a SkyAperture'
+        with pytest.raises(ValueError, match=match):
             _ = ApertureStats(self.data, skyaper)
 
     def test_minimal_inputs(self):
@@ -171,14 +172,19 @@ class TestApertureStats:
         apstats2 = ApertureStats(data, self.aperture, local_bkg=local_bkg[0])
         assert_equal(apstats1.sum, apstats2.sum)
 
-        with pytest.raises(ValueError):
+        match = 'local_bkg must be scalar or have the same length as the'
+        with pytest.raises(ValueError, match=match):
             _ = ApertureStats(data, self.aperture, local_bkg=(10, 20))
-        with pytest.raises(ValueError):
+
+        match = 'local_bkg must not contain any non-finite'
+        with pytest.raises(ValueError, match=match):
             _ = ApertureStats(data, self.aperture[0:2], local_bkg=(10, np.nan))
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             _ = ApertureStats(data, self.aperture[0:2],
                               local_bkg=(-np.inf, 10))
-        with pytest.raises(ValueError):
+
+        match = 'local_bkg must be a 1D array'
+        with pytest.raises(ValueError, match=match):
             _ = ApertureStats(data, self.aperture[0:2],
                               local_bkg=np.ones((3, 3)))
 
@@ -254,18 +260,20 @@ class TestApertureStats:
             assert apstat.isscalar
             assert apstat.id == (i + 1)
 
-        with pytest.raises(TypeError):
+        match = "Scalar 'ApertureStats' object has no len"
+        with pytest.raises(TypeError, match=match):
             _ = len(apstats[0])
 
         apstat0 = apstats[0]
-        with pytest.raises(TypeError):
+        match = "A scalar 'ApertureStats' object cannot be indexed"
+        with pytest.raises(TypeError, match=match):
             apstat1 = apstat0[0]
-
         apstat0 = apstats[0]
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match=match):
             apstat1 = apstat0[0]  # can't slice scalar object
 
-        with pytest.raises(ValueError):
+        match = '-1 is not a valid source ID number'
+        with pytest.raises(ValueError, match=match):
             apstat0 = apstats.get_ids([-1, 0])
 
     def test_scalar_aperture_stats(self):
@@ -276,15 +284,24 @@ class TestApertureStats:
         assert len(tbl) == 1
 
     def test_invalid_inputs(self):
-        with pytest.raises(TypeError):
+        match = 'aperture must be an Aperture object'
+        with pytest.raises(TypeError, match=match):
             ApertureStats(self.data, 10.0)
-        with pytest.raises(TypeError):
+
+        match = 'sigma_clip must be a SigmaClip instance'
+        with pytest.raises(TypeError, match=match):
             ApertureStats(self.data, self.aperture, sigma_clip=10)
-        with pytest.raises(ValueError):
+
+        match = 'error must be a 2D array'
+        with pytest.raises(ValueError, match=match):
             ApertureStats(self.data, self.aperture, error=10.0)
-        with pytest.raises(ValueError):
+
+        match = 'error must be a 2D array'
+        with pytest.raises(ValueError, match=match):
             ApertureStats(self.data, self.aperture, error=np.ones(3))
-        with pytest.raises(ValueError):
+
+        match = 'data and error must have the same shape'
+        with pytest.raises(ValueError, match=match):
             ApertureStats(self.data, self.aperture, error=np.ones((3, 3)))
 
     def test_repr_str(self):

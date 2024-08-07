@@ -420,12 +420,13 @@ def test_basic_circular_aperture_photometry_unit():
     assert table2['aperture_sum'].unit == data2.unit == unit
 
     error1 = np.ones((25, 25))
-    with pytest.raises(ValueError):
+    match = 'then they both must have the same units'
+    with pytest.raises(ValueError, match=match):
         # data has unit, but error does not
         aperture_photometry(data2, aper, error=error1)
 
     error2 = u.Quantity(error1 * u.Jy)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         # data and error have different units
         aperture_photometry(data2, aper, error=error2)
 
@@ -832,9 +833,10 @@ def test_nddata_input():
 def test_invalid_subpixels():
     data = np.ones((11, 11))
     aper = CircularAperture((5, 5), r=3)
-    with pytest.raises(ValueError):
+    match = 'subpixels must be a strictly positive integer'
+    with pytest.raises(ValueError, match=match):
         aperture_photometry(data, aper, method='subpixel', subpixels=0)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         aperture_photometry(data, aper, method='subpixel', subpixels=-1)
 
 
@@ -964,5 +966,6 @@ def test_unsupported_region_input():
     from regions import PixCoord, PolygonPixelRegion
     region = PolygonPixelRegion(vertices=PixCoord(x=[1, 2, 3], y=[1, 1, 2]))
     data = np.ones((10, 10))
-    with pytest.raises(NotImplementedError, match='is not supported'):
+    match = 'is not supported'
+    with pytest.raises(NotImplementedError, match=match):
         aperture_photometry(data, region)

@@ -27,9 +27,12 @@ class TestRectangularAperture(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'w' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             RectangularAperture(POSITIONS, w=radius, h=5.0, theta=np.pi / 2.0)
-        with pytest.raises(ValueError):
+
+        match = "'h' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             RectangularAperture(POSITIONS, w=10.0, h=radius, theta=np.pi / 2.0)
 
     def test_copy_eq(self):
@@ -46,16 +49,23 @@ class TestRectangularAnnulus(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'w_in' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             RectangularAnnulus(POSITIONS, w_in=radius, w_out=20.0, h_out=17,
                                theta=np.pi / 3)
-        with pytest.raises(ValueError):
+
+        match = '"w_out" must be greater than "w_in"'
+        with pytest.raises(ValueError, match=match):
             RectangularAnnulus(POSITIONS, w_in=10.0, w_out=radius, h_out=17,
                                theta=np.pi / 3)
-        with pytest.raises(ValueError):
+
+        match = "'h_out' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             RectangularAnnulus(POSITIONS, w_in=10.0, w_out=20.0, h_out=radius,
                                theta=np.pi / 3)
-        with pytest.raises(ValueError):
+
+        match = "'h_in' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             RectangularAnnulus(POSITIONS, w_in=10.0, w_out=20.0, h_out=17,
                                h_in=radius, theta=np.pi / 3)
 
@@ -73,10 +83,13 @@ class TestSkyRectangularAperture(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'w' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyRectangularAperture(SKYCOORD, w=radius * UNIT, h=5.0 * UNIT,
                                    theta=30 * u.deg)
-        with pytest.raises(ValueError):
+
+        match = "'h' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyRectangularAperture(SKYCOORD, w=10.0 * UNIT, h=radius * UNIT,
                                    theta=30 * u.deg)
 
@@ -95,19 +108,26 @@ class TestSkyRectangularAnnulus(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'w_in' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyRectangularAnnulus(SKYCOORD, w_in=radius * UNIT,
                                   w_out=20.0 * UNIT, h_out=17.0 * UNIT,
                                   theta=60 * u.deg)
-        with pytest.raises(ValueError):
+
+        match = '"w_out" must be greater than "w_in"'
+        with pytest.raises(ValueError, match=match):
             SkyRectangularAnnulus(SKYCOORD, w_in=10.0 * UNIT,
                                   w_out=radius * UNIT, h_out=17.0 * UNIT,
                                   theta=60 * u.deg)
-        with pytest.raises(ValueError):
+
+        match = "'h_out' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyRectangularAnnulus(SKYCOORD, w_in=10.0 * UNIT,
                                   w_out=20.0 * UNIT, h_out=radius * UNIT,
                                   theta=60 * u.deg)
-        with pytest.raises(ValueError):
+
+        match = "'h_in' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyRectangularAnnulus(SKYCOORD, w_in=10.0 * UNIT,
                                   w_out=20.0 * UNIT, h_out=17.0 * UNIT,
                                   h_in=radius * UNIT, theta=60 * u.deg)

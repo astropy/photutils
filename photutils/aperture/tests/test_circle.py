@@ -44,7 +44,8 @@ class TestCircularAperture(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'r' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             CircularAperture(POSITIONS, radius)
 
     def test_copy_eq(self):
@@ -79,9 +80,12 @@ class TestCircularAnnulus(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'r_in' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
             CircularAnnulus(POSITIONS, r_in=radius, r_out=7.0)
-        with pytest.raises(ValueError):
+
+        match = 'r_out must be greater than r_in'
+        with pytest.raises(ValueError, match=match):
             CircularAnnulus(POSITIONS, r_in=3.0, r_out=radius)
 
     def test_copy_eq(self):
@@ -97,7 +101,8 @@ class TestSkyCircularAperture(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'r' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyCircularAperture(SKYCOORD, r=radius * UNIT)
 
     def test_copy_eq(self):
@@ -113,9 +118,12 @@ class TestSkyCircularAnnulus(BaseTestAperture):
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)
     def test_invalid_params(radius):
-        with pytest.raises(ValueError):
+        match = "'r_in' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyCircularAnnulus(SKYCOORD, r_in=radius * UNIT, r_out=7.0 * UNIT)
-        with pytest.raises(ValueError):
+
+        match = "'r_out' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
             SkyCircularAnnulus(SKYCOORD, r_in=3.0 * UNIT, r_out=radius * UNIT)
 
     def test_copy_eq(self):
@@ -133,10 +141,12 @@ def test_slicing():
 
     aper3 = aper1[0]
     assert aper3.isscalar
-    with pytest.raises(TypeError):
+    match = "A scalar 'CircularAperture' object has no len"
+    with pytest.raises(TypeError, match=match):
         len(aper3)
 
-    with pytest.raises(TypeError):
+    match = "A scalar 'CircularAperture' object cannot be indexed"
+    with pytest.raises(TypeError, match=match):
         _ = aper3[0]
 
 
@@ -173,40 +183,43 @@ def test_area_overlap_mask():
     assert_allclose(areas, areas_exp)
 
     mask = np.zeros((3, 3), dtype=bool)
-    with pytest.raises(ValueError):
+    match = 'mask and data must have the same shape'
+    with pytest.raises(ValueError, match=match):
         aper.area_overlap(data, mask=mask)
 
 
 def test_invalid_positions():
-    with pytest.raises(ValueError):
+    match = r"'positions' must be a \(x, y\) pixel position or a list"
+    with pytest.raises(ValueError, match=match):
         _ = CircularAperture([], r=3)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         _ = CircularAperture([1], r=3)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         _ = CircularAperture([[1]], r=3)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         _ = CircularAperture([1, 2, 3], r=3)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         _ = CircularAperture([[1, 2, 3]], r=3)
 
     x = np.arange(3)
     y = np.arange(3)
     xypos = np.transpose((x, y)) * u.pix
-    with pytest.raises(TypeError):
+    match = "'positions' must not be a Quantity"
+    with pytest.raises(TypeError, match=match):
         _ = CircularAperture(xypos, r=3)
 
     x = np.arange(3) * u.pix
     y = np.arange(3)
     xypos = zip(x, y, strict=True)
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=match):
         _ = CircularAperture(xypos, r=3)
 
     x = np.arange(3) * u.pix
     y = np.arange(3) * u.pix
     xypos = zip(x, y, strict=True)
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=match):
         _ = CircularAperture(xypos, r=3)
