@@ -154,7 +154,7 @@ def test_fitting_all():
     assert isophote_m.stop_code == 0
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestM51:
     def setup_class(self):
@@ -165,16 +165,10 @@ class TestM51:
         hdu.close()
 
     def test_m51(self):
-        # here we evaluate the detailed convergence behavior
+        # Here we evaluate the detailed convergence behavior
         # for a particular ellipse where we can see the eps
         # parameter jumping back and forth.
-        # sample = EllipseSample(self.data, 13.31000001, eps=0.16,
-        #                        position_angle=((-37.5+90)/180.*np.pi))
-        # sample.update()
-        # fitter = EllipseFitter(sample)
-        # isophote = fitter.fit()
-
-        # we start the fit with initial values taken from
+        # We start the fit with initial values taken from
         # previous isophote, as determined by the old code.
 
         # sample taken in high SNR region
@@ -211,7 +205,8 @@ class TestM51:
         # this code finds central x and y offset by about 0.1 pixel wrt the
         # spp code. In here we use as input the position computed by this
         # code, thus this test is checking just the extraction algorithm.
-        g = EllipseGeometry(257.02, 258.1, 0.0, 0.0, 0.0, 0.1, False)
+        g = EllipseGeometry(257.02, 258.1, 0.0, 0.0, 0.0, 0.1,
+                            linear_growth=False)
         sample = CentralEllipseSample(self.data, 0.0, geometry=g)
         fitter = CentralEllipseFitter(sample)
         isophote = fitter.fit()

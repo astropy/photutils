@@ -20,7 +20,7 @@ from photutils.utils._optional_deps import HAS_SCIPY
 DEFAULT_FIX = np.array([False, False, False, False])
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestIsophote:
     def setup_class(self):
@@ -127,9 +127,9 @@ def test_isophote_comparisons():
     sample0.update(DEFAULT_FIX)
     sample1.update(DEFAULT_FIX)
     sample2.update(DEFAULT_FIX)
-    iso0 = Isophote(sample0, k, True, 0)
-    iso1 = Isophote(sample1, k, True, 0)
-    iso2 = Isophote(sample2, k, True, 0)
+    iso0 = Isophote(sample0, k, valid=True, stop_code=0)
+    iso1 = Isophote(sample1, k, valid=True, stop_code=0)
+    iso2 = Isophote(sample2, k, valid=True, stop_code=0)
 
     assert iso1 < iso2
     assert iso2 > iso1
@@ -167,7 +167,7 @@ class TestIsophoteList:
         for k in range(slen):
             sample = EllipseSample(data, float(k + sma0))
             sample.update(DEFAULT_FIX)
-            iso_list.append(Isophote(sample, k, True, 0))
+            iso_list.append(Isophote(sample, k, valid=True, stop_code=0))
         return IsophoteList(iso_list)
 
     def test_basic_list(self):

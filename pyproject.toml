@@ -166,13 +166,10 @@ exclude_lines = [
 [tool.repo-review]
 ignore = [
     'MY',  # ignore MyPy
-    'RF',  # ignore Ruff
     'PC110',  # ignore using black or ruff-format in pre-commit
     'PC111',  # ignore using blacken-docs in pre-commit
     'PC140',  # ignore using mypy in pre-commit
     'PC180',  # ignore using prettier in pre-commit
-    'PC190',  # ignore using Ruff in pre-commit
-    'PC191',  # ignore showing Ruff fixes in pre-commit
     'PC901',  # ignore using custom pre-commit update message
     'PY005',  # ignore having a tests/ folder
 ]
@@ -250,6 +247,61 @@ exclude = [
 [tool.ruff]
 line-length = 79
 
+[tool.ruff.lint.pylint]
+max-statements = 130
+
 [tool.ruff.lint]
-extend-select = ['E501', 'D202', 'B905', 'RET504', 'RET505', 'PLR5501',
-                 'SIM108', 'SIM102']
+select = ['ALL']
+ignore = [
+    'ANN',
+    'ARG002',
+    'ARG005',
+    'B008',
+    'B023',
+    'B028',
+    'BLE001',
+    'C901',
+    'COM812',
+    'D101',
+    'D102',
+    'D103',
+    'D105',
+    'D107',
+    'D200',
+    'D203',
+    'D205',
+    'D212',
+    'D301',
+    'D401',
+    'D404',
+    'D413',
+    'EM101',
+    'EM102',
+    'FBT002',
+    'FIX002',
+    'I001',
+    'N803',
+    'N803',
+    'PD011',
+    'PERF203',
+    'PLR0912',
+    'PLR0913',
+    'PLR2004',
+    'PLW2901',
+    'PT011',
+    'PTH',
+    'Q000',
+    'RUF015',
+    'RUF100',
+    'S101',
+    'SLF001',
+    'TD002',
+    'TD003',
+    'TRY003',
+    'UP038',
+]
+
+[tool.ruff.lint.per-file-ignores]
+'__init__.py' = ['D104', 'I']
+'docs/conf.py' = ['ERA001', 'INP001', 'TRY400']
+'griddedpsfmodel.py' = ['ARG001']

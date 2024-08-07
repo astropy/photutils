@@ -260,7 +260,7 @@ class ApertureStats:
                 raise ValueError('local_bkg must be a 1D array')
 
             n_local_bkg = len(local_bkg)
-            if n_local_bkg != 1 and n_local_bkg != self.n_apertures:
+            if n_local_bkg not in (1, self.n_apertures):
                 raise ValueError('local_bkg must be scalar or have the same '
                                  'length as the input aperture')
             local_bkg = np.broadcast_to(local_bkg, self.n_apertures)

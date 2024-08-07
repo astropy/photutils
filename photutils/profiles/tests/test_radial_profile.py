@@ -60,32 +60,33 @@ def test_radial_profile_inputs(profile_data):
     xycen, data, _, _ = profile_data
 
     msg = 'minimum radii must be >= 0'
+    edge_radii = np.arange(-1, 10)
     with pytest.raises(ValueError, match=msg):
-        edge_radii = np.arange(-1, 10)
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
     msg = 'radii must be a 1D array and have at least two values'
+    edge_radii = [1]
     with pytest.raises(ValueError, match=msg):
-        edge_radii = [1]
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)
+
+    edge_radii = np.arange(6).reshape(2, 3)
     with pytest.raises(ValueError, match=msg):
-        edge_radii = np.arange(6).reshape(2, 3)
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
     msg = 'radii must be strictly increasing'
+    edge_radii = np.arange(10)[::-1]
     with pytest.raises(ValueError, match=msg):
-        edge_radii = np.arange(10)[::-1]
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
     msg = 'error must have the same shape as data'
+    edge_radii = np.arange(10)
     with pytest.raises(ValueError, match=msg):
-        edge_radii = np.arange(10)
         RadialProfile(data, xycen, edge_radii, error=np.ones(3), mask=None)
 
     msg = 'mask must have the same shape as data'
+    edge_radii = np.arange(10)
+    mask = np.ones(3, dtype=bool)
     with pytest.raises(ValueError, match=msg):
-        edge_radii = np.arange(10)
-        mask = np.ones(3, dtype=bool)
         RadialProfile(data, xycen, edge_radii, error=None, mask=mask)
 
 

@@ -164,8 +164,8 @@ def test_curve_of_growth_inputs(profile_data):
     xycen, data, error, _ = profile_data
 
     msg = 'radii must be > 0'
+    radii = np.arange(10)
     with pytest.raises(ValueError, match=msg):
-        radii = np.arange(10)
         CurveOfGrowth(data, xycen, radii, error=None, mask=None)
 
     msg = 'radii must be a 1D array and have at least two values'
@@ -176,14 +176,14 @@ def test_curve_of_growth_inputs(profile_data):
                       mask=None)
 
     msg = 'radii must be strictly increasing'
+    radii = np.arange(1, 10)[::-1]
     with pytest.raises(ValueError, match=msg):
-        radii = np.arange(1, 10)[::-1]
         CurveOfGrowth(data, xycen, radii, error=None, mask=None)
 
+    unit1 = u.Jy
+    unit2 = u.km
+    radii = np.arange(1, 36)
     with pytest.raises(ValueError):
-        unit1 = u.Jy
-        unit2 = u.km
-        radii = np.arange(1, 36)
         CurveOfGrowth(data << unit1, xycen, radii, error=error << unit2)
 
 

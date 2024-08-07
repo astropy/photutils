@@ -127,7 +127,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         data = data.value
 
     if not isinstance(segment_img, SegmentationImage):
-        raise ValueError('segment_img must be a SegmentationImage')
+        raise TypeError('segment_img must be a SegmentationImage')
 
     if segment_img.shape != data.shape:
         raise ValueError('The data and segmentation image must have '

@@ -93,9 +93,9 @@ class TestDeblendSources:
                                  progress_bar=False)
         assert result.nlabels == 2
 
-    @pytest.mark.parametrize('contrast, nlabels',
-                             ((0.001, 6), (0.017, 5), (0.06, 4), (0.1, 3),
-                              (0.15, 2), (0.45, 1)))
+    @pytest.mark.parametrize(('contrast', 'nlabels'),
+                             [(0.001, 6), (0.017, 5), (0.06, 4), (0.1, 3),
+                              (0.15, 2), (0.45, 1)])
     def test_deblend_contrast(self, contrast, nlabels):
         y, x = np.mgrid[0:51, 0:151]
         y0 = 25
@@ -203,7 +203,7 @@ class TestDeblendSources:
 
     def test_segment_img(self):
         segm_wrong = np.ones((2, 2), dtype=int)  # ndarray
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             deblend_sources(self.data, segm_wrong, self.npixels,
                             progress_bar=False)
 

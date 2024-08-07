@@ -3,6 +3,7 @@
 This module provides utilities for PSF-fitting photometry.
 """
 
+import contextlib
 import re
 
 import numpy as np
@@ -85,12 +86,12 @@ class _InverseShift(Shift):
         return x - offset
 
     @staticmethod
-    def fit_deriv(x, *params):
+    def fit_deriv(x, offset):
         """
         One dimensional Shift model derivative with respect to
         parameter.
         """
-        d_offset = -np.ones_like(x)
+        d_offset = -np.ones_like(x) + offset * 0.0
         return [d_offset]
 
 
@@ -441,8 +442,8 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
 
         # check input type
         if not isinstance(epsf, EPSFModel):
-            raise ValueError('All input `epsfs` must be of type '
-                             '`photutils.psf.models.EPSFModel`.')
+            raise TypeError('All input `epsfs` must be of type '
+                            '`photutils.psf.models.EPSFModel`.')
 
         # get data array from EPSF
         data_arrs.append(epsf.data)
@@ -461,11 +462,8 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
             flux = epsf.flux
 
             # if there's a unit, those should also all be the same
-            try:
+            with contextlib.suppress(AttributeError):
                 dat_unit = epsf.data.unit
-            except AttributeError:
-                pass  # just keep as None
-
         else:
             if np.any(epsf.oversampling != oversampling):
                 raise ValueError('All input EPSFModels must have the same '
@@ -739,9 +737,9 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
             model_shape = (int(np.round(bbox[0][1] - bbox[0][0])),
                            int(np.round(bbox[1][1] - bbox[1][0])))
 
-        except NotImplementedError:
+        except NotImplementedError as exc:
             raise ValueError('model_shape must be specified if the model '
-                             'does not have a bounding_box attribute')
+                             'does not have a bounding_box attribute') from exc
 
     if border_size is None:
         border_size = (np.array(model_shape) - 1) // 2

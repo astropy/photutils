@@ -22,9 +22,9 @@ def test_apply_poisson_noise_negative():
     """
     Test if negative image values raises ValueError.
     """
+    shape = (100, 100)
+    data = np.zeros(shape) - 1.0
     with pytest.raises(ValueError):
-        shape = (100, 100)
-        data = np.zeros(shape) - 1.0
         apply_poisson_noise(data)
 
 

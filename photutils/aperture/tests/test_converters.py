@@ -20,7 +20,7 @@ from photutils.aperture.converters import region_to_aperture
 from photutils.utils._optional_deps import HAS_REGIONS
 
 
-@pytest.fixture
+@pytest.fixture()
 def image_2d_wcs():
     return WCS(
         {

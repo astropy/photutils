@@ -85,9 +85,9 @@ class PixelPositions(ApertureAttribute):
     def _validate(self, value):
         try:
             value = np.asanyarray(value).astype(float)  # np.ndarray
-        except TypeError:
+        except TypeError as exc:
             # value is a zip object containing Quantity objects
-            raise TypeError(f'{self.name!r} must not be a Quantity')
+            raise TypeError(f'{self.name!r} must not be a Quantity') from exc
 
         if isinstance(value, u.Quantity):
             raise TypeError(f'{self.name!r} must not be a Quantity')
@@ -112,7 +112,7 @@ class SkyCoordPositions(ApertureAttribute):
 
     def _validate(self, value):
         if not isinstance(value, SkyCoord):
-            raise ValueError(f'{self.name!r} must be a SkyCoord instance')
+            raise TypeError(f'{self.name!r} must be a SkyCoord instance')
 
 
 class PositiveScalar(ApertureAttribute):
@@ -140,7 +140,7 @@ class ScalarAngle(ApertureAttribute):
             if not value.unit.physical_type == 'angle':
                 raise ValueError(f'{self.name!r} must have angular units')
         else:
-            raise ValueError(f'{self.name!r} must be a scalar angle')
+            raise TypeError(f'{self.name!r} must be a scalar angle')
 
 
 class PositiveScalarAngle(ApertureAttribute):
@@ -161,7 +161,7 @@ class PositiveScalarAngle(ApertureAttribute):
             if not value.unit.physical_type == 'angle':
                 raise ValueError(f'{self.name!r} must have angular units')
         else:
-            raise ValueError(f'{self.name!r} must be a scalar angle')
+            raise TypeError(f'{self.name!r} must be a scalar angle')
 
 
 class ScalarAngleOrValue(ApertureAttribute):

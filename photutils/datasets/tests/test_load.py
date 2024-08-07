@@ -13,7 +13,7 @@ def test_get_path():
         get_path('filename', location='invalid')
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 def test_load_star_image():
     hdu = load.load_star_image()
     assert len(hdu.header) == 106

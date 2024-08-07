@@ -19,7 +19,7 @@ class TestApertureStats:
     data = make_100gaussians_image()
     error = np.sqrt(np.abs(data))
     wcs = make_wcs(data.shape)
-    positions = [(145.1, 168.3), (84.7, 224.1), (48.3, 200.3)]
+    positions = ((145.1, 168.3), (84.7, 224.1), (48.3, 200.3))
     aperture = CircularAperture(positions, r=5)
 
     sigclip = SigmaClip(sigma=3.0, maxiters=10)
@@ -36,8 +36,8 @@ class TestApertureStats:
                                    error=error * u.Jy, wcs=wcs,
                                    sigma_clip=sigclip)
 
-    @pytest.mark.parametrize('with_units', (True, False))
-    @pytest.mark.parametrize('with_sigmaclip', (True, False))
+    @pytest.mark.parametrize('with_units', [True, False])
+    @pytest.mark.parametrize('with_sigmaclip', [True, False])
     def test_properties(self, with_units, with_sigmaclip):
         apstats = [self.apstats1.copy(), self.apstats2.copy(),
                    self.apstats1_units.copy(), self.apstats2_units.copy()]
@@ -93,7 +93,7 @@ class TestApertureStats:
         apstats = ApertureStats(self.data, self.aperture, sum_method='center')
         assert set(apstats._variance_cutout_center) == {None}
 
-    @pytest.mark.parametrize('sum_method', ('exact', 'subpixel'))
+    @pytest.mark.parametrize('sum_method', ['exact', 'subpixel'])
     def test_sum_method(self, sum_method):
         apstats1 = ApertureStats(self.data, self.aperture, error=self.error,
                                  sum_method='center')
@@ -257,12 +257,12 @@ class TestApertureStats:
         with pytest.raises(TypeError):
             _ = len(apstats[0])
 
+        apstat0 = apstats[0]
         with pytest.raises(TypeError):
-            apstat0 = apstats[0]
             apstat1 = apstat0[0]
 
+        apstat0 = apstats[0]
         with pytest.raises(TypeError):
-            apstat0 = apstats[0]
             apstat1 = apstat0[0]  # can't slice scalar object
 
         with pytest.raises(ValueError):
@@ -306,7 +306,7 @@ class TestApertureStats:
         assert apstats.xcentroid == 12.0
         assert apstats.ycentroid == 12.0
 
-    @pytest.mark.parametrize('with_units', (True, False))
+    @pytest.mark.parametrize('with_units', [True, False])
     def test_nddata_input(self, with_units):
         mask = np.zeros(self.data.shape, dtype=bool)
         mask[225:240, 80:90] = True  # partially mask id=2

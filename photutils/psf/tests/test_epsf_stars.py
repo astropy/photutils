@@ -43,10 +43,10 @@ class TestExtractStars:
         assert stars.center.shape == (len(stars), 2)
 
     def test_extract_stars_inputs(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             extract_stars(np.ones(3), self.stars_tbl)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             extract_stars(self.nddata, [(1, 1), (2, 2), (3, 3)])
 
         with pytest.raises(ValueError):

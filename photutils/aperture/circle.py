@@ -185,10 +185,8 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
                                                                **kwargs)
 
-        patches = []
-        for xy_position in xy_positions:
-            patches.append(mpatches.Circle(xy_position, self.r,
-                                           **patch_kwargs))
+        patches = [mpatches.Circle(xy_position, self.r, **patch_kwargs)
+                   for xy_position in xy_positions]
 
         if self.isscalar:
             return patches[0]
@@ -377,7 +375,7 @@ class SkyCircularAperture(SkyAperture):
     >>> aper = SkyCircularAperture(positions, 0.5*u.arcsec)
     """
 
-    _params = ('positions', 'r',)
+    _params = ('positions', 'r')
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     r = PositiveScalarAngle('The radius in angular units.')
 

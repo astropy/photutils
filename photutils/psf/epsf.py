@@ -346,8 +346,8 @@ class EPSFBuilder:
         self.progress_bar = progress_bar
 
         if not isinstance(sigma_clip, SigmaClip):
-            raise ValueError('sigma_clip must be an '
-                             'astropy.stats.SigmaClip instance.')
+            raise TypeError('sigma_clip must be an astropy.stats.SigmaClip '
+                            'instance.')
         self._sigma_clip = sigma_clip
 
         # store each ePSF build iteration

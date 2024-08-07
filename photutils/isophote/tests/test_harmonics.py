@@ -24,13 +24,13 @@ def test_harmonics_1():
     from scipy.optimize import leastsq
 
     # this is an almost as-is example taken from stackoverflow
-    N = 100  # number of data points
-    t = np.linspace(0, 4 * np.pi, N)
+    npts = 100  # number of data points
+    theta = np.linspace(0, 4 * np.pi, npts)
 
     # create artificial data with noise:
     # mean = 0.5, amplitude = 3.0, phase = 0.1, noise-std = 0.01
     rng = np.random.default_rng(0)
-    data = 3.0 * np.sin(t + 0.1) + 0.5 + 0.01 * rng.standard_normal(N)
+    data = 3.0 * np.sin(theta + 0.1) + 0.5 + 0.01 * rng.standard_normal(npts)
 
     # first guesses for harmonic parameters
     guess_mean = np.mean(data)
@@ -39,15 +39,14 @@ def test_harmonics_1():
 
     # Minimize the difference between the actual data and our "guessed"
     # parameters
-    # optimize_func = lambda x: x[0] * np.sin(t + x[1]) + x[2] - data
     def optimize_func(x):
-        return x[0] * np.sin(t + x[1]) + x[2] - data
+        return x[0] * np.sin(theta + x[1]) + x[2] - data
 
     est_std, est_phase, est_mean = leastsq(
         optimize_func, [guess_std, guess_phase, guess_mean])[0]
 
     # recreate the fitted curve using the optimized parameters
-    data_fit = est_std * np.sin(t + est_phase) + est_mean
+    data_fit = est_std * np.sin(theta + est_phase) + est_mean
     residual = data - data_fit
 
     assert_allclose(np.mean(residual), 0.0, atol=0.001)
@@ -57,8 +56,8 @@ def test_harmonics_1():
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_harmonics_2():
     # this uses the actual functional form used for fitting ellipses
-    N = 100
-    E = np.linspace(0, 4 * np.pi, N)
+    npts = 100
+    theta = np.linspace(0, 4 * np.pi, npts)
 
     y0_0 = 100.0
     a1_0 = 10.0
@@ -66,13 +65,15 @@ def test_harmonics_2():
     a2_0 = 8.0
     b2_0 = 2.0
     rng = np.random.default_rng(0)
-    data = (y0_0 + a1_0 * np.sin(E) + b1_0 * np.cos(E) + a2_0 * np.sin(2 * E)
-            + b2_0 * np.cos(2 * E) + 0.01 * rng.standard_normal(N))
+    data = (y0_0 + a1_0 * np.sin(theta) + b1_0 * np.cos(theta)
+            + a2_0 * np.sin(2 * theta) + b2_0 * np.cos(2 * theta)
+            + 0.01 * rng.standard_normal(npts))
 
-    harmonics = fit_first_and_second_harmonics(E, data)
+    harmonics = fit_first_and_second_harmonics(theta, data)
     y0, a1, b1, a2, b2 = harmonics[0]
-    data_fit = (y0 + a1 * np.sin(E) + b1 * np.cos(E) + a2 * np.sin(2 * E)
-                + b2 * np.cos(2 * E) + 0.01 * rng.standard_normal(N))
+    data_fit = (y0 + a1 * np.sin(theta) + b1 * np.cos(theta)
+                + a2 * np.sin(2 * theta) + b2 * np.cos(2 * theta)
+                + 0.01 * rng.standard_normal(npts))
     residual = data - data_fit
 
     assert_allclose(np.mean(residual), 0.0, atol=0.01)
@@ -84,21 +85,21 @@ def test_harmonics_3():
     """
     Tests an upper harmonic fit.
     """
-    N = 100
-    E = np.linspace(0, 4 * np.pi, N)
+    npts = 100
+    theta = np.linspace(0, 4 * np.pi, npts)
     y0_0 = 100.0
     a1_0 = 10.0
     b1_0 = 5.0
     order = 3
     rng = np.random.default_rng(0)
-    data = (y0_0 + a1_0 * np.sin(order * E) + b1_0 * np.cos(order * E)
-            + 0.01 * rng.standard_normal(N))
+    data = (y0_0 + a1_0 * np.sin(order * theta) + b1_0 * np.cos(order * theta)
+            + 0.01 * rng.standard_normal(npts))
 
-    harmonic = fit_upper_harmonic(E, data, order)
+    harmonic = fit_upper_harmonic(theta, data, order)
     y0, a1, b1 = harmonic[0]
     rng = np.random.default_rng(0)
-    data_fit = (y0 + a1 * np.sin(order * E) + b1 * np.cos(order * E)
-                + 0.01 * rng.standard_normal(N))
+    data_fit = (y0 + a1 * np.sin(order * theta) + b1 * np.cos(order * theta)
+                + 0.01 * rng.standard_normal(npts))
     residual = data - data_fit
 
     assert_allclose(np.mean(residual), 0.0, atol=0.01)

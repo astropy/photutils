@@ -47,11 +47,11 @@ for x, y, flux in SOURCES:
                               mode='oversample')
 
 
-def test_InverseShift():
+def test_inverse_shift():
     model = _InverseShift(10)
     assert model(1) == -9.0
     assert model(-10) == -20.0
-    assert model.fit_deriv(10)[0] == -1.0
+    assert model.fit_deriv(10, 1)[0] == -1.0
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -103,8 +103,8 @@ def test_integrate_model():
                          subsample=-1)
 
     match = 'model x and y positions must be finite'
+    model = Gaussian2D(1, np.inf, 5, 1, 1)
     with pytest.raises(ValueError, match=match):
-        model = Gaussian2D(1, np.inf, 5, 1, 1)
         _integrate_model(model, x_name='x_mean', y_name='y_mean')
 
 
@@ -114,9 +114,6 @@ def moffat_source():
 
     # this is the analytic value needed to get a total flux of 1
     model.amplitude = (model.alpha - 1.0) / (np.pi * model.gamma**2)
-
-    # make sure it really is normalized
-    # assert (1.0 - integrate.dblquad(model, -10, 10, -10, 10)[0]) < 1e-6
 
     xx, yy = np.meshgrid(*([np.linspace(-2, 2, 100)] * 2))
 
@@ -141,7 +138,7 @@ def test_moffat_fitting(moffat_source):
 
 # we set the tolerances in flux to be 2-3% because the guessed model
 # parameters are known to be wrong
-@pytest.mark.parametrize('kwargs, tols',
+@pytest.mark.parametrize(('kwargs', 'tols'),
                          [({'x_name': 'x_0', 'y_name': 'y_0',
                             'flux_name': None, 'normalize': True},
                            (1e-3, 0.02)),
@@ -231,7 +228,7 @@ def test_make_psf_model_offset():
     assert moffat(10, 0) == psfmod1(10, 0) == psfmod2(10, 0) == 1.0
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestGridFromEPSFs:
     """
@@ -334,7 +331,7 @@ class TestGridFromEPSFs:
         meta = {'grid_xypos': 0.0, 'oversampling': 0.0,
                 'fill_value': -999, 'extra_key': 'extra'}
         psf_grid = grid_from_epsfs(self.epsfs, meta=meta)
-        for key in keys + ['extra_key']:
+        for key in [*keys, 'extra_key']:
             assert key in psf_grid.meta
         assert psf_grid.meta['grid_xypos'].sort() == self.grid_xypos.sort()
         assert_equal(psf_grid.meta['oversampling'], [4, 4])
@@ -396,18 +393,18 @@ def test_make_psf_model_image_inputs():
         make_psf_model_image(shape, None, 2)
 
     match = 'psf_model must be two-dimensional'
+    model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
+    model.n_inputs = 3
     with pytest.raises(ValueError, match=match):
-        model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
-        model.n_inputs = 3
         make_psf_model_image(shape, model, 2)
 
     match = 'model_shape must be specified if the model does not have'
+    model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
+    model.bounding_box = None
     with pytest.raises(ValueError, match=match):
-        model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
-        model.bounding_box = None
         make_psf_model_image(shape, model, 2)
 
     match = 'Invalid PSF model - could not find PSF parameter names'
+    model = Gaussian2D()
     with pytest.raises(ValueError, match=match):
-        model = Gaussian2D()
         make_psf_model_image(shape, model, 2)

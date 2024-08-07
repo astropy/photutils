@@ -382,16 +382,16 @@ def test_cutout_mask():
     data = make_4gaussians_image()
     x_init = (25, 91, 151, 160)
     y_init = (40, 61, 24, 71)
+    footprint = np.zeros((3, 3))
     with pytest.raises(ValueError):
-        footprint = np.zeros((3, 3))
         _ = centroid_sources(data, x_init, y_init, footprint=footprint,
                              centroid_func=centroid_com)
 
+    footprint = np.zeros(data.shape, dtype=bool)
     with pytest.raises(ValueError):
-        footprint = np.zeros(data.shape, dtype=bool)
         _ = centroid_sources(data, x_init, y_init, footprint=footprint,
                              centroid_func=centroid_com)
 
+    mask = np.ones(data.shape, dtype=bool)
     with pytest.raises(ValueError):
-        mask = np.ones(data.shape, dtype=bool)
         _ = centroid_sources(data, x_init, y_init, box_size=11, mask=mask)

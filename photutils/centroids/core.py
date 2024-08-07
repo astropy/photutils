@@ -205,7 +205,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
             yidx += slc_data[0].start
 
     # if peak is at the edge of the data, return the position of the maximum
-    if xidx == 0 or xidx == nx - 1 or yidx == 0 or yidx == ny - 1:
+    if xidx in (0, nx - 1) or yidx in (0, ny - 1):
         warnings.warn('maximum value is at the edge of the data and its '
                       'position was returned; no quadratic fit was '
                       'performed', AstropyUserWarning)
@@ -406,10 +406,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
                          'keyword.')
 
     # drop any **kwargs not supported by the centroid_func
-    centroid_kwargs = {}
-    for key, val in kwargs.items():
-        if key in spec.parameters:
-            centroid_kwargs[key] = val
+    centroid_kwargs = {key: val for key, val in kwargs.items()
+                       if key in spec.parameters}
 
     xcentroids = []
     ycentroids = []
@@ -436,7 +434,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
         centroid_kwargs.update({'mask': mask_cutout})
 
-        error = centroid_kwargs.get('error', None)
+        error = centroid_kwargs.get('error')
         if error is not None:
             centroid_kwargs['error'] = error[slices_large]
 

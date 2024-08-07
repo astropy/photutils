@@ -217,7 +217,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         raise ValueError('shape must be a 2-tuple')
 
     if not isinstance(model, Model):
-        raise ValueError('model must be a Model instance')
+        raise TypeError('model must be a Model instance')
     if model.n_inputs != 2 or model.n_outputs != 1:
         raise ValueError('model must be a 2D model')
     if x_name not in model.param_names:
@@ -226,7 +226,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         raise ValueError(f'y_name "{y_name}" not in model parameter names')
 
     if not isinstance(params_table, Table):
-        raise ValueError('params_table must be an astropy Table')
+        raise TypeError('params_table must be an astropy Table')
     if x_name not in params_table.colnames:
         raise ValueError(f'x_name "{x_name}" not in psf_params column names')
     if y_name not in params_table.colnames:
@@ -246,9 +246,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     if model_shape is None:
         try:
             _ = model.bounding_box
-        except NotImplementedError:
+        except NotImplementedError as exc:
             raise ValueError('model_shape must be specified if the model '
-                             'does not have a bounding_box attribute')
+                             'does not have a bounding_box attribute') from exc
 
     if 'local_bkg' in params_table.colnames:
         local_bkg = params_table['local_bkg']
@@ -306,9 +306,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
                 image <<= subimg.unit
             try:
                 image[slc_lg] += subimg + local_bkg[i]
-            except u.UnitConversionError:
+            except u.UnitConversionError as exc:
                 raise ValueError('The local_bkg column must have the same '
-                                 'flux units as the output image')
+                                 'flux units as the output image') from exc
 
         except NoOverlapError:
             continue
@@ -355,10 +355,8 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
     image = np.zeros(shape, dtype=float)
     yidx, xidx = np.indices(shape)
 
-    params_to_set = []
-    for param in source_table.colnames:
-        if param in model.param_names:
-            params_to_set.append(param)
+    params_to_set = [param for param in source_table.colnames
+                     if param in model.param_names]
 
     # Save the initial parameter values so we can set them back when
     # done with the loop. It's best not to copy a model, because some

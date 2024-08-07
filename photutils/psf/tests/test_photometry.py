@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.fitting import LMLSQFitter, SimplexLSQFitter
-from astropy.modeling.models import Gaussian1D, Gaussian2D, custom_model
+from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, Table
 from astropy.utils.exceptions import AstropyUserWarning
@@ -49,24 +49,18 @@ def test_invalid_inputs():
         _ = PSFPhotometry(1, 3)
 
     match = 'psf_model must be two-dimensional'
+    psf_model = Gaussian1D()
     with pytest.raises(ValueError, match=match):
-        psf_model = Gaussian1D()
         _ = PSFPhotometry(psf_model, 3)
 
-    @custom_model
-    def my_model(x, y, flux=1, x_0=0, y_0=0, sigma=1):
-        return flux, flux * 2
-    m = my_model()
-    m.n_outputs = 2
-    psf_model = my_model()
     match = 'psf_model must be two-dimensional'
+    psf_model = Gaussian1D()
     with pytest.raises(ValueError, match=match):
-        psf_model = Gaussian1D()
         _ = PSFPhotometry(psf_model, 3)
 
     match = 'Invalid PSF model - could not find PSF parameter names'
+    psf_model = Gaussian2D()
     with pytest.raises(ValueError, match=match):
-        psf_model = Gaussian2D()
         _ = PSFPhotometry(psf_model, 3)
 
     match = 'fit_shape must have an odd value for both axes'
@@ -90,8 +84,8 @@ def test_invalid_inputs():
             _ = PSFPhotometry(model, 1, **{key: val})
 
     match = 'localbkg_estimator must be a LocalBackground instance'
+    localbkg = MMMBackground()
     with pytest.raises(ValueError, match=match):
-        localbkg = MMMBackground()
         _ = PSFPhotometry(model, 1, localbkg_estimator=localbkg)
 
     match = 'aperture_radius must be a strictly-positive scalar'
@@ -109,35 +103,35 @@ def test_invalid_inputs():
         _ = psfphot(np.arange(3))
 
     match = 'data and error must have the same shape.'
+    data = np.ones((11, 11))
+    error = np.ones((3, 3))
     with pytest.raises(ValueError, match=match):
-        data = np.ones((11, 11))
-        error = np.ones((3, 3))
         _ = psfphot(data, error=error)
 
     match = 'data and mask must have the same shape.'
+    data = np.ones((11, 11))
+    mask = np.ones((3, 3))
     with pytest.raises(ValueError, match=match):
-        data = np.ones((11, 11))
-        mask = np.ones((3, 3))
         _ = psfphot(data, mask=mask)
 
     match = 'init_params must be an astropy Table'
+    data = np.ones((11, 11))
     with pytest.raises(TypeError, match=match):
-        data = np.ones((11, 11))
         _ = psfphot(data, init_params=1)
 
     match = ('init_param must contain valid column names for the x and y '
              'source positions')
+    tbl = Table()
+    tbl['a'] = np.arange(3)
+    data = np.ones((11, 11))
     with pytest.raises(ValueError, match=match):
-        tbl = Table()
-        tbl['a'] = np.arange(3)
-        data = np.ones((11, 11))
         _ = psfphot(data, init_params=tbl)
 
     # test no finder or init_params
     match = 'finder must be defined if init_params is not input'
     psfphot = PSFPhotometry(model, (3, 3), aperture_radius=5)
+    data = np.ones((11, 11))
     with pytest.raises(ValueError, match=match):
-        data = np.ones((11, 11))
         _ = psfphot(data)
 
     # data has unmasked non-finite value
@@ -146,27 +140,27 @@ def test_invalid_inputs():
     init_params = Table()
     init_params['x_init'] = [1, 2]
     init_params['y_init'] = [1, 2]
+    data = np.ones((11, 11))
+    data[5, 5] = np.nan
     with pytest.warns(AstropyUserWarning, match=match):
-        data = np.ones((11, 11))
-        data[5, 5] = np.nan
         _ = psfphot2(data, init_params=init_params)
 
     # mask is input, but data has unmasked non-finite value
     match = 'Input data contains unmasked non-finite values'
+    data = np.ones((11, 11))
+    data[5, 5] = np.nan
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[7, 7] = True
     with pytest.warns(AstropyUserWarning, match=match):
-        data = np.ones((11, 11))
-        data[5, 5] = np.nan
-        mask = np.zeros(data.shape, dtype=bool)
-        mask[7, 7] = True
         _ = psfphot2(data, mask=mask, init_params=init_params)
 
     match = 'init_params local_bkg column contains non-finite values'
+    tbl = Table()
+    init_params['x_init'] = [1, 2]
+    init_params['y_init'] = [1, 2]
+    init_params['local_bkg'] = [0.1, np.inf]
+    data = np.ones((11, 11))
     with pytest.raises(ValueError, match=match):
-        tbl = Table()
-        init_params['x_init'] = [1, 2]
-        init_params['y_init'] = [1, 2]
-        init_params['local_bkg'] = [0.1, np.inf]
-        data = np.ones((11, 11))
         _ = psfphot(data, init_params=init_params)
 
 
@@ -218,7 +212,7 @@ def test_psf_photometry(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.parametrize('fit_sigma', (False, True))
+@pytest.mark.parametrize('fit_sigma', [False, True])
 def test_psf_photometry_forced(test_data, fit_sigma):
     data, error, sources = test_data
 
@@ -252,7 +246,7 @@ def test_psf_photometry_forced(test_data, fit_sigma):
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_nddata(test_data):
-    data, error, sources = test_data
+    data, error, _ = test_data
 
     psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
     fit_shape = (5, 5)
@@ -328,7 +322,7 @@ def test_model_residual_image(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.parametrize('fit_stddev', (False, True))
+@pytest.mark.parametrize('fit_stddev', [False, True])
 def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
     """
     Test compound models output from ``make_psf_model``.
@@ -518,25 +512,25 @@ def test_psf_photometry_mask(test_data):
     # completely masked source
     match = ('is completely masked. Remove the source from init_params '
              'or correct the input mask')
+    init_params = QTable()
+    init_params['x'] = [63]
+    init_params['y'] = [49]
+    mask = np.ones(data.shape, dtype=bool)
     with pytest.raises(ValueError, match=match):
-        init_params = QTable()
-        init_params['x'] = [63]
-        init_params['y'] = [49]
-        mask = np.ones(data.shape, dtype=bool)
         _ = psfphot(data, mask=mask, init_params=init_params)
 
     # completely masked source
     match = ('the number of data points available to fit is less than the '
              'number of fit parameters')
+    init_params = QTable()
+    init_params['x'] = [63]
+    init_params['y'] = [49]
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[48:50, :] = True
+    mask[50, 63:65] = True
+    psfphot = PSFPhotometry(psf_model, (3, 3), finder=finder,
+                            aperture_radius=4)
     with pytest.raises(ValueError, match=match):
-        init_params = QTable()
-        init_params['x'] = [63]
-        init_params['y'] = [49]
-        mask = np.zeros(data.shape, dtype=bool)
-        mask[48:50, :] = True
-        mask[50, 63:65] = True
-        psfphot = PSFPhotometry(psf_model, (3, 3), finder=finder,
-                                aperture_radius=4)
         _ = psfphot(data_orig, mask=mask, init_params=init_params)
 
     # masked central pixel
@@ -581,9 +575,9 @@ def test_psf_photometry_init_params(test_data):
     assert len(phot) == 1
 
     match = 'aperture_radius must be defined if init_params is not input'
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=None)
     with pytest.raises(ValueError, match=match):
-        psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                                aperture_radius=None)
         _ = psfphot(data, error=error, init_params=init_params)
 
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -1081,11 +1075,9 @@ def test_iterative_psf_photometry_overlap():
     """
     sigma = 1.5
     psf_model = IntegratedGaussianPRF(flux=1, sigma=sigma)
-    data, true_params = make_psf_model_image((150, 150), psf_model,
-                                             n_sources=300,
-                                             model_shape=(11, 11),
-                                             flux=(50, 100),
-                                             min_separation=1, seed=0)
+    data, _ = make_psf_model_image((150, 150), psf_model, n_sources=300,
+                                   model_shape=(11, 11), flux=(50, 100),
+                                   min_separation=1, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=0.01, seed=0)
     data += noise
     error = np.abs(noise)

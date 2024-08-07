@@ -263,7 +263,7 @@ class TestInputNDData(BaseTestDifferentData):
         self.fluxunit = u.adu
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 def test_wcs_based_photometry_to_catalog():
     pathcat = get_path('spitzer_example_catalog.xml', location='remote')
     pathhdu = get_path('spitzer_example_image.fits', location='remote')
@@ -474,7 +474,7 @@ TEST_ELLIPSE_EXACT_APERTURES = [(3.469906, 3.923861394, 3.0),
                                 (0.3834415188257778, 0.3834415188257778, 0.3)]
 
 
-@pytest.mark.parametrize('x,y,r', TEST_ELLIPSE_EXACT_APERTURES)
+@pytest.mark.parametrize(('x', 'y', 'r'), TEST_ELLIPSE_EXACT_APERTURES)
 def test_ellipse_exact_grid(x, y, r):
     """
     Test elliptical exact aperture photometry on a grid of pixel
@@ -684,7 +684,7 @@ def test_elliptical_bbox():
 
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
-@pytest.mark.parametrize('wcs_type', ('wcs', 'gwcs'))
+@pytest.mark.parametrize('wcs_type', ['wcs', 'gwcs'])
 def test_to_sky_pixel(wcs_type):
     data = make_4gaussians_image()
 

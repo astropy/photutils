@@ -165,7 +165,7 @@ class EllipseFitter:
                 s = str(sample.geometry.sma)
                 log.warning('Too small sample to warrant a fit. SMA is ' + s)
                 sample.geometry.fix = fixed_parameters
-                return Isophote(sample, i + 1, False, 3)
+                return Isophote(sample, i + 1, valid=False, stop_code=3)
 
             # Fit harmonic coefficients. Failure in fitting is
             # a fatal error; terminate immediately with sample
@@ -176,7 +176,7 @@ class EllipseFitter:
             except Exception as e:
                 log.warning(e)
                 sample.geometry.fix = fixed_parameters
-                return Isophote(sample, i + 1, False, 3)
+                return Isophote(sample, i + 1, valid=False, stop_code=3)
 
             # Mask out coefficients that control fixed ellipse parameters.
             free_coeffs = np.ma.masked_array(coeffs[1:], mask=fixed_parameters)
@@ -201,7 +201,7 @@ class EllipseFitter:
                 # Got a valid solution and a minimum number of
                 # iterations has run
                 sample.update(fixed_parameters)
-                return Isophote(sample, i + 1, True, 0)
+                return Isophote(sample, i + 1, valid=True, stop_code=0)
 
             # it may not have converged yet, but the sample contains too
             # many invalid data points: return.
@@ -209,7 +209,8 @@ class EllipseFitter:
                 # when too many data points were flagged, return the
                 # best fit sample instead of the current one.
                 minimum_amplitude_sample.update(fixed_parameters)
-                return Isophote(minimum_amplitude_sample, i + 1, True, 1)
+                return Isophote(minimum_amplitude_sample, i + 1, valid=True,
+                                stop_code=1)
 
             # pick appropriate corrector code.
             corrector = _CORRECTORS[largest_harmonic_index]
@@ -233,26 +234,18 @@ class EllipseFitter:
 
             if not proceed:
                 sample.update(fixed_parameters)
-                return Isophote(sample, i + 1, True, -1)
+                return Isophote(sample, i + 1, valid=True, stop_code=-1)
 
         # Got to the maximum number of iterations. Return with
         # code 2, and handle it as a valid isophote. Use the
         # best fit sample instead of the current one.
         minimum_amplitude_sample.update(fixed_parameters)
-        return Isophote(minimum_amplitude_sample, maxit, True, 2)
+        return Isophote(minimum_amplitude_sample, maxit, valid=True,
+                        stop_code=2)
 
     @staticmethod
     def _check_conditions(sample, maxgerr, going_inwards, lexceed):
         proceed = True
-
-        # If center wandered more than allowed, put it back
-        # in place and signal the end of iterative mode.
-        # if wander:
-        #     if abs(dx) > WANDER(al)) or abs(dy) > WANDER(al):
-        #         sample.geometry.x0 -= dx
-        #         sample.geometry.y0 -= dy
-        #         STOP(al) = ST_NONITERATE
-        #         proceed = False
 
         # check if an acceptable gradient value could be computed.
         if sample.gradient_error and sample.gradient_relative_error:

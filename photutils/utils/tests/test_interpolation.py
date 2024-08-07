@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from photutils.utils import ShepardIDWInterpolator as idw
+from photutils.utils import ShepardIDWInterpolator as IDWInterp
 from photutils.utils._optional_deps import HAS_SCIPY
 
 SHAPE = (5, 5)
@@ -25,23 +25,23 @@ class TestShepardIDWInterpolator:
         self.rng = np.random.default_rng(0)
         self.x = self.rng.random(100)
         self.y = np.sin(self.x)
-        self.f = idw(self.x, self.y)
+        self.f = IDWInterp(self.x, self.y)
 
     @pytest.mark.parametrize('positions', [0.4, np.arange(2, 5) * 0.1])
     def test_idw_1d(self, positions):
-        f = idw(self.x, self.y)
+        f = IDWInterp(self.x, self.y)
         assert_allclose(f(positions), np.sin(positions), atol=1e-2)
 
     def test_idw_weights(self):
         weights = self.y * 0.1
-        f = idw(self.x, self.y, weights=weights)
+        f = IDWInterp(self.x, self.y, weights=weights)
         pos = 0.4
         assert_allclose(f(pos), np.sin(pos), atol=1e-2)
 
     def test_idw_2d(self):
         pos = self.rng.random((1000, 2))
         val = np.sin(pos[:, 0] + pos[:, 1])
-        f = idw(pos, val)
+        f = IDWInterp(pos, val)
         x = 0.5
         y = 0.6
         assert_allclose(f([x, y]), np.sin(x + y), atol=1e-2)
@@ -49,24 +49,24 @@ class TestShepardIDWInterpolator:
     def test_idw_3d(self):
         val = np.ones((3, 3, 3))
         pos = np.indices(val.shape)
-        f = idw(pos, val)
+        f = IDWInterp(pos, val)
         assert_allclose(f([0.5, 0.5, 0.5]), 1.0)
 
     def test_no_coordinates(self):
         with pytest.raises(ValueError):
-            idw([], 0)
+            IDWInterp([], 0)
 
     def test_values_invalid_shape(self):
         with pytest.raises(ValueError):
-            idw(self.x, 0)
+            IDWInterp(self.x, 0)
 
     def test_weights_invalid_shape(self):
         with pytest.raises(ValueError):
-            idw(self.x, self.y, weights=10)
+            IDWInterp(self.x, self.y, weights=10)
 
     def test_weights_negative(self):
         with pytest.raises(ValueError):
-            idw(self.x, self.y, weights=-self.y)
+            IDWInterp(self.x, self.y, weights=-self.y)
 
     def test_n_neighbors_one(self):
         assert_allclose(self.f(0.5, n_neighbors=1), [0.479334], rtol=3e-7)
@@ -89,7 +89,7 @@ class TestShepardIDWInterpolator:
         """
         pos = self.rng.random((10, 2))
         val = np.sin(pos[:, 0] + pos[:, 1])
-        f = idw(pos, val)
+        f = IDWInterp(pos, val)
         with pytest.raises(ValueError):
             f(0.5)
 
@@ -99,7 +99,7 @@ class TestShepardIDWInterpolator:
         """
         pos = self.rng.random((10, 2))
         val = np.sin(pos[:, 0] + pos[:, 1])
-        f = idw(pos, val)
+        f = IDWInterp(pos, val)
         with pytest.raises(ValueError):
             f([0.5])
 
@@ -109,7 +109,7 @@ class TestShepardIDWInterpolator:
 
     def test_scalar_values_1d(self):
         value = 10.0
-        f = idw(2, value)
+        f = IDWInterp(2, value)
         assert_allclose(f(2), value)
         assert_allclose(f(-1), value)
         assert_allclose(f(0), value)
@@ -117,14 +117,14 @@ class TestShepardIDWInterpolator:
 
     def test_scalar_values_2d(self):
         value = 10.0
-        f = idw([[1, 2]], value)
+        f = IDWInterp([[1, 2]], value)
         assert_allclose(f([1, 2]), value)
         assert_allclose(f([-1, 0]), value)
         assert_allclose(f([142, 213]), value)
 
     def test_scalar_values_3d(self):
         value = 10.0
-        f = idw([[7, 4, 1]], value)
+        f = IDWInterp([[7, 4, 1]], value)
         assert_allclose(f([7, 4, 1]), value)
         assert_allclose(f([-1, 0, 7]), value)
         assert_allclose(f([142, 213, 5]), value)

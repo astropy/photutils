@@ -19,16 +19,21 @@ from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
 
+from sphinx.util import logging
+
 if sys.version_info < (3, 11):
     import tomli as tomllib
 else:
     import tomllib
 
+logger = logging.getLogger(__name__)
+
 try:
     from sphinx_astropy.conf.v1 import *  # noqa: F403
 except ImportError:
-    print('ERROR: the documentation requires the sphinx-astropy package to '
-          'be installed')
+    msg = ('The documentation requires the sphinx-astropy package to be '
+           'installed. Please install the "docs" requirements.')
+    logger.error(msg)
     sys.exit(1)
 
 # Get configuration information from pyproject.toml
@@ -199,12 +204,13 @@ nitpick_ignore = []
 # Uncomment the following lines to enable the exceptions:
 nitpick_filename = 'nitpick-exceptions.txt'
 if os.path.isfile(nitpick_filename):
-    for line in open(nitpick_filename):
-        if line.strip() == '' or line.startswith('#'):
-            continue
-        dtype, target = line.split(None, 1)
-        target = target.strip()
-        nitpick_ignore.append((dtype, target))
+    with open(nitpick_filename) as fh:
+        for line in fh:
+            if line.strip() == '' or line.startswith('#'):
+                continue
+            dtype, target = line.split(None, 1)
+            target = target.strip()
+            nitpick_ignore.append((dtype, target))
 
 # -- Options for linkcheck output ---------------------------------------------
 linkcheck_retry = 5

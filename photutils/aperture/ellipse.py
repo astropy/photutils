@@ -226,12 +226,10 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
                                                                **kwargs)
 
-        patches = []
         theta_deg = self._theta_radians * 180.0 / np.pi
-        for xy_position in xy_positions:
-            patches.append(mpatches.Ellipse(xy_position, 2.0 * self.a,
-                                            2.0 * self.b, angle=theta_deg,
-                                            **patch_kwargs))
+        patches = [mpatches.Ellipse(xy_position, 2.0 * self.a, 2.0 * self.b,
+                                    angle=theta_deg, **patch_kwargs)
+                   for xy_position in xy_positions]
 
         if self.isscalar:
             return patches[0]

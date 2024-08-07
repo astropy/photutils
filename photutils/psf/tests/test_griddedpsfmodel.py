@@ -102,9 +102,9 @@ class TestGriddedPSFModel:
             psfmodel._bilinear_interp([1, 1], 1, 1, 1)
 
         # test if refxy points form a rectangle
+        xyref = [[0, 0], [0, 1], [1, 0], [2, 2]]
+        zref = np.ones((4, 4, 4))
         with pytest.raises(ValueError):
-            xyref = [[0, 0], [0, 1], [1, 0], [2, 2]]
-            zref = np.ones((4, 4, 4))
             psfmodel._bilinear_interp(xyref, zref, 1, 1)
 
         # test if xi and yi are outside of xyref

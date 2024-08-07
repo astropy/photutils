@@ -3,6 +3,7 @@
 This module provides classes to perform PSF-fitting photometry.
 """
 
+import contextlib
 import inspect
 import warnings
 from collections import defaultdict
@@ -307,7 +308,7 @@ class PSFPhotometry(ModelImageMixin):
 
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 0),
                                  check_odd=True)
-        self.grouper = self._validate_grouper(grouper, 'grouper')
+        self.grouper = self._validate_grouper(grouper)
         self.finder = self._validate_callable(finder, 'finder')
         self.fitter = self._validate_callable(fitter, 'fitter')
         self.localbkg_estimator = self._validate_localbkg(
@@ -339,7 +340,7 @@ class PSFPhotometry(ModelImageMixin):
         self.fit_results = defaultdict(list)
         self._group_results = defaultdict(list)
 
-    def _validate_grouper(self, grouper, name):
+    def _validate_grouper(self, grouper):
         if grouper is not None and not isinstance(grouper, SourceGrouper):
             raise ValueError('grouper must be a SourceGrouper instance.')
         return grouper
@@ -362,10 +363,7 @@ class PSFPhotometry(ModelImageMixin):
 
         # define the "extra" fitted model parameters that do not
         # correspond to x, y, or flux
-        extra_params = []
-        for key in fitted_params:
-            if key not in main_params:
-                extra_params.append(key)
+        extra_params = [key for key in fitted_params if key not in main_params]
         other_params = {key: key for key in extra_params}
 
         params_map.update(other_params)
@@ -406,7 +404,7 @@ class PSFPhotometry(ModelImageMixin):
             param_maps[suffix] = pmap
 
         init_cols = {}
-        for key in param_maps['model'].keys():
+        for key in param_maps['model']:
             init_cols[key] = f'{key}_init'
         param_maps['init_cols'] = init_cols
 
@@ -540,7 +538,7 @@ class PSFPhotometry(ModelImageMixin):
         This is a static method to allow the method to be called from
         `IterativePSFPhotometry`.
         """
-        for param in param_maps['model'].keys():
+        for param in param_maps['model']:
             colname = find_column_name(param, init_params.colnames)
             if colname:
                 init_name = param_maps['init_cols'][param]
@@ -844,7 +842,7 @@ class PSFPhotometry(ModelImageMixin):
         for column in out_params.colnames:
             if column == 'id':
                 continue
-            if column not in self._param_maps['fit'].keys():
+            if column not in self._param_maps['fit']:
                 out_params.remove_column(column)
 
         # rename columns to have the "fit" suffix
@@ -1054,10 +1052,8 @@ class PSFPhotometry(ModelImageMixin):
                 try:
                     fit_model = self.fitter(psf_model, xi, yi, cutout,
                                             weights=weights, **kwargs)
-                    try:
+                    with contextlib.suppress(AttributeError):
                         fit_model.clear_cache()
-                    except AttributeError:
-                        pass
                 except TypeError as exc:
                     msg = ('For one or more sources, the number of data '
                            'points available to fit is less than the '
@@ -1088,15 +1084,14 @@ class PSFPhotometry(ModelImageMixin):
 
         return fit_params
 
-    def _calc_fit_metrics(self, data, results_tbl):
+    def _calc_fit_metrics(self, results_tbl):
         # Keep cen_idx as a list because it can have NaNs with the ints.
         # If NaNs are present, turning it into an array will convert the
         # ints to floats, which cannot be used as slices.
         cen_idx = self._ungroup(self._group_results['psfcenter_indices'])
 
-        split_index = []
-        for npixfit in self._group_results['npixfit']:
-            split_index.append(np.cumsum(npixfit)[:-1])
+        split_index = [np.cumsum(npixfit)[:-1]
+                       for npixfit in self._group_results['npixfit']]
 
         # find the key with the fit residual (fitter dependent)
         finfo_keys = self._group_results['fit_infos'][0].keys()
@@ -1397,7 +1392,7 @@ class PSFPhotometry(ModelImageMixin):
         index = results_tbl.index_column('group_id') + 1
         results_tbl.add_column(nmodels, name='group_size', index=index)
 
-        qfit, cfit = self._calc_fit_metrics(data, results_tbl)
+        qfit, cfit = self._calc_fit_metrics(results_tbl)
         results_tbl['qfit'] = qfit
         results_tbl['cfit'] = cfit
 

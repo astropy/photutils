@@ -51,7 +51,7 @@ def test_create_matching_kernel_shapes():
     """
     Test with wrong PSF shapes.
     """
+    psf1 = np.ones((5, 5))
+    psf2 = np.ones((3, 3))
     with pytest.raises(ValueError):
-        psf1 = np.ones((5, 5))
-        psf2 = np.ones((3, 3))
         create_matching_kernel(psf1, psf2)

@@ -26,6 +26,7 @@ class SourceGrouper:
         separated by less than this distance will be placed in the same
         group if the ``min_size`` criteria is also met.
     """
+
     def __init__(self, min_separation):
         self.min_separation = min_separation
 

@@ -91,8 +91,8 @@ def test_make_model_image_units():
     assert image.unit == unit
 
     match = 'The local_bkg column must have the same flux units'
+    params['local_bkg'] = [0.1, 0.2, 0.3]
     with pytest.raises(ValueError, match=match):
-        params['local_bkg'] = [0.1, 0.2, 0.3]
         make_model_image(shape, model, params, model_shape=model_shape)
 
 
@@ -132,50 +132,51 @@ def test_make_model_image_inputs():
         make_model_image(100, Moffat2D(), QTable())
 
     match = 'model must be a Model instance'
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(TypeError, match=match):
         make_model_image((100, 100), None, QTable())
 
     match = 'model must be a 2D model'
+    model = Moffat2D()
+    model.n_inputs = 1
     with pytest.raises(ValueError, match=match):
-        model = Moffat2D()
-        model.n_inputs = 1
         make_model_image((100, 100), model, QTable())
 
     match = 'params_table must be an astropy Table'
-    with pytest.raises(ValueError, match=match):
-        model = Moffat2D()
+    model = Moffat2D()
+    with pytest.raises(TypeError, match=match):
         make_model_image((100, 100), model, None)
 
     match = 'not in model parameter names'
+    model = Moffat2D()
     with pytest.raises(ValueError, match=match):
-        model = Moffat2D()
         make_model_image((100, 100), model, QTable(), x_name='invalid')
+
+    model = Moffat2D()
     with pytest.raises(ValueError, match=match):
-        model = Moffat2D()
         make_model_image((100, 100), model, QTable(), y_name='invalid')
 
     match = '"x_0" not in psf_params column names'
+    model = Moffat2D()
+    params = QTable()
     with pytest.raises(ValueError, match=match):
-        model = Moffat2D()
-        params = QTable()
         make_model_image((100, 100), model, params)
 
     match = '"y_0" not in psf_params column names'
+    model = Moffat2D()
+    params = QTable()
+    params['x_0'] = [50, 70, 90]
     with pytest.raises(ValueError, match=match):
-        model = Moffat2D()
-        params = QTable()
-        params['x_0'] = [50, 70, 90]
         make_model_image((100, 100), model, params)
 
     match = 'model_shape must be specified if the model does not have'
+    params = QTable()
+    params['x_0'] = [50]
+    params['y_0'] = [50]
+    params['gamma'] = [1.7]
+    params['alpha'] = [2.9]
+    model = Moffat2D(amplitude=1)
+    shape = (100, 100)
     with pytest.raises(ValueError, match=match):
-        params = QTable()
-        params['x_0'] = [50]
-        params['y_0'] = [50]
-        params['gamma'] = [1.7]
-        params['alpha'] = [2.9]
-        model = Moffat2D(amplitude=1)
-        shape = (100, 100)
         make_model_image(shape, model, params)
 
 
