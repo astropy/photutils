@@ -58,7 +58,7 @@ def make_test_image(nx=512, ny=512, x0=None, y0=None,
         xcen = x0
         ycen = y0
 
-    g = EllipseGeometry(xcen, ycen, sma, eps, pa, 0.1, False)
+    g = EllipseGeometry(xcen, ycen, sma, eps, pa, 0.1, linear_growth=False)
 
     y, x = np.mgrid[0:ny, 0:nx]
     radius, angle = g.to_polar(x, y)

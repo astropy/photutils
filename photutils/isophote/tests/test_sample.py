@@ -34,7 +34,7 @@ def test_scatter(integrmode, amin, amax):
     """
     sample = EllipseSample(DATA, 50.0, astep=0.2, integrmode=integrmode)
     sample.update(DEFAULT_FIX)
-    iso = Isophote(sample, 0, True, 0)
+    iso = Isophote(sample, 0, valid=True, stop_code=0)
 
     assert iso.pix_stddev < amax
     assert iso.pix_stddev > amin

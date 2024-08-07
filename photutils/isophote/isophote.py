@@ -411,7 +411,7 @@ class CentralPixel(Isophote):
     """
 
     def __init__(self, sample):
-        super().__init__(sample, 0, True, 0)
+        super().__init__(sample, 0, valid=True, stop_code=0)
 
         self.intens = sample.mean
 

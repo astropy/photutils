@@ -205,7 +205,8 @@ class TestM51:
         # this code finds central x and y offset by about 0.1 pixel wrt the
         # spp code. In here we use as input the position computed by this
         # code, thus this test is checking just the extraction algorithm.
-        g = EllipseGeometry(257.02, 258.1, 0.0, 0.0, 0.0, 0.1, False)
+        g = EllipseGeometry(257.02, 258.1, 0.0, 0.0, 0.0, 0.1,
+                            linear_growth=False)
         sample = CentralEllipseSample(self.data, 0.0, geometry=g)
         fitter = CentralEllipseFitter(sample)
         isophote = fitter.fit()

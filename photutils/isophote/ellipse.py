@@ -677,7 +677,7 @@ class Ellipse:
         sample.update(geometry.fix)
 
         # build isophote without iterating with an EllipseFitter
-        return Isophote(sample, 0, True, stop_code=4)
+        return Isophote(sample, 0, valid=True, stop_code=4)
 
     @staticmethod
     def _fix_last_isophote(isophote_list, index):
