@@ -266,9 +266,7 @@ class TestSourceCatalog:
             self.cat.get_labels([1, 2, 1000])
 
     def test_iter(self):
-        labels = []
-        for obj in self.cat:
-            labels.append(obj.label)
+        labels = [obj.label for obj in self.cat]
         assert len(labels) == len(self.cat)
 
     def test_table(self):

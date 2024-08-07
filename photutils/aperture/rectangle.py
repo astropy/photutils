@@ -251,11 +251,10 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         xy_positions = self._lower_left_positions(xy_positions, self.w,
                                                   self.h, self._theta_radians)
 
-        patches = []
         theta_deg = self._theta_radians * 180.0 / np.pi
-        for xy_position in xy_positions:
-            patches.append(mpatches.Rectangle(xy_position, self.w, self.h,
-                                              angle=theta_deg, **patch_kwargs))
+        patches = [mpatches.Rectangle(xy_position, self.w, self.h,
+                                      angle=theta_deg, **patch_kwargs)
+                   for xy_position in xy_positions]
 
         if self.isscalar:
             return patches[0]

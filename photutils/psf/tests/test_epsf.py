@@ -92,10 +92,9 @@ class TestEPSFBuild:
         size = 25
         with pytest.warns(AstropyUserWarning, match='were not extracted'):
             ndd_inputs = (ndd1, ndd2, ndd3)
-            outputs = []
-            for ndd_input in ndd_inputs:
-                outputs.append(extract_stars(ndd_input, self.init_stars,
-                                             size=size))
+
+            outputs = [extract_stars(ndd_input, self.init_stars, size=size)
+                       for ndd_input in ndd_inputs]
 
             for stars in outputs:
                 assert len(stars) == 81

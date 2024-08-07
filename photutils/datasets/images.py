@@ -355,10 +355,8 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
     image = np.zeros(shape, dtype=float)
     yidx, xidx = np.indices(shape)
 
-    params_to_set = []
-    for param in source_table.colnames:
-        if param in model.param_names:
-            params_to_set.append(param)
+    params_to_set = [param for param in source_table.colnames
+                     if param in model.param_names]
 
     # Save the initial parameter values so we can set them back when
     # done with the loop. It's best not to copy a model, because some

@@ -80,10 +80,7 @@ def test_background_axis(bkg_class):
     bkg = bkg_class(sigma_clip=SIGMA_CLIP)
 
     bkg_arr = bkg.calc_background(DATA, axis=0)
-    bkgi = []
-    for i in range(100):
-        bkgi.append(bkg.calc_background(DATA[:, i]))
-    bkgi = np.array(bkgi)
+    bkgi = np.array([bkg.calc_background(DATA[:, i]) for i in range(100)])
     assert_allclose(bkg_arr, bkgi)
 
     bkg_arr = bkg.calc_background(DATA, axis=1)
@@ -119,10 +116,8 @@ def test_background_rms_axis(rms_class):
     bkgrms = rms_class(sigma_clip=SIGMA_CLIP)
 
     rms_arr = bkgrms.calc_background_rms(DATA, axis=0)
-    rmsi = []
-    for i in range(100):
-        rmsi.append(bkgrms.calc_background_rms(DATA[:, i]))
-    rmsi = np.array(rmsi)
+    rmsi = np.array([bkgrms.calc_background_rms(DATA[:, i])
+                     for i in range(100)])
     assert_allclose(rms_arr, rmsi)
 
     rms_arr = bkgrms.calc_background_rms(DATA, axis=1)

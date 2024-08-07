@@ -363,10 +363,7 @@ class PSFPhotometry(ModelImageMixin):
 
         # define the "extra" fitted model parameters that do not
         # correspond to x, y, or flux
-        extra_params = []
-        for key in fitted_params:
-            if key not in main_params:
-                extra_params.append(key)
+        extra_params = [key for key in fitted_params if key not in main_params]
         other_params = {key: key for key in extra_params}
 
         params_map.update(other_params)
@@ -1093,9 +1090,8 @@ class PSFPhotometry(ModelImageMixin):
         # ints to floats, which cannot be used as slices.
         cen_idx = self._ungroup(self._group_results['psfcenter_indices'])
 
-        split_index = []
-        for npixfit in self._group_results['npixfit']:
-            split_index.append(np.cumsum(npixfit)[:-1])
+        split_index = [np.cumsum(npixfit)[:-1]
+                       for npixfit in self._group_results['npixfit']]
 
         # find the key with the fit residual (fitter dependent)
         finfo_keys = self._group_results['fit_infos'][0].keys()

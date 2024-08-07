@@ -623,11 +623,9 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         if len(data) > 1:
             use_xy = False  # linked stars require skycoord positions
 
-        stars = []
         # stars is a list of lists, one list of stars in each image
-        for img in data:
-            stars.append(_extract_stars(img, catalogs[0], size=size,
-                                        use_xy=use_xy))
+        stars = [_extract_stars(img, catalogs[0], size=size, use_xy=use_xy)
+                 for img in data]
 
         # transpose the list of lists, to associate linked stars
         stars = list(map(list, zip(*stars, strict=True)))

@@ -894,9 +894,7 @@ class SourceCatalog:
             raise ValueError('Both units and masked cannot be True')
 
         if dtype is not None:
-            cutouts = []
-            for cutout in arrays:
-                cutouts.append(cutout.astype(dtype, copy=True))
+            cutouts = [cutout.astype(dtype, copy=True) for cutout in arrays]
         else:
             cutouts = arrays
 
@@ -1764,10 +1762,8 @@ class SourceCatalog:
         """
         Lower-left *outside* pixel corner location (not index).
         """
-        xypos = []
-        for bbox_ in self._bbox:
-            xypos.append((bbox_.ixmin - 0.5, bbox_.iymin - 0.5))
-        return np.array(xypos)
+        return np.array([(bbox_.ixmin - 0.5, bbox_.iymin - 0.5)
+                         for bbox_ in self._bbox])
 
     @lazyproperty
     @use_detcat
@@ -1775,10 +1771,8 @@ class SourceCatalog:
         """
         Upper-left *outside* pixel corner location (not index).
         """
-        xypos = []
-        for bbox_ in self._bbox:
-            xypos.append((bbox_.ixmin - 0.5, bbox_.iymax + 0.5))
-        return np.array(xypos)
+        return np.array([(bbox_.ixmin - 0.5, bbox_.iymax + 0.5)
+                         for bbox_ in self._bbox])
 
     @lazyproperty
     @use_detcat
@@ -1786,10 +1780,8 @@ class SourceCatalog:
         """
         Lower-right *outside* pixel corner location (not index).
         """
-        xypos = []
-        for bbox_ in self._bbox:
-            xypos.append((bbox_.ixmax + 0.5, bbox_.iymin - 0.5))
-        return np.array(xypos)
+        return np.array([(bbox_.ixmax + 0.5, bbox_.iymin - 0.5)
+                         for bbox_ in self._bbox])
 
     @lazyproperty
     @use_detcat
@@ -1797,10 +1789,8 @@ class SourceCatalog:
         """
         Upper-right *outside* pixel corner location (not index).
         """
-        xypos = []
-        for bbox_ in self._bbox:
-            xypos.append((bbox_.ixmax + 0.5, bbox_.iymax + 0.5))
-        return np.array(xypos)
+        return np.array([(bbox_.ixmax + 0.5, bbox_.iymax + 0.5)
+                         for bbox_ in self._bbox])
 
     @lazyproperty
     @use_detcat

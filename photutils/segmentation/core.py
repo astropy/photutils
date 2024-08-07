@@ -52,10 +52,8 @@ class SegmentationImage:
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
 
-        cls_info = []
         params = ['shape', 'nlabels']
-        for param in params:
-            cls_info.append((param, getattr(self, param)))
+        cls_info = [(param, getattr(self, param)) for param in params]
         cls_info.append(('labels', self.labels))
         with np.printoptions(threshold=25, edgeitems=5):
             fmt = [f'{key}: {val}' for key, val in cls_info]
@@ -1271,9 +1269,8 @@ class SegmentationImage:
         from shapely import transform
         from shapely.geometry import shape
 
-        polygons = []
-        for geo_poly in self._geo_polygons:
-            polygons.append(shape(geo_poly[0]))
+        polygons = [shape(geo_poly[0]) for geo_poly in self._geo_polygons]
+
         # shift the vertices so that the (0, 0) origin is at the
         # center of the lower-left pixel
         return transform(polygons, lambda x: x - [0.5, 0.5])
@@ -1624,10 +1621,9 @@ class Segment:
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
 
-        cls_info = []
         params = ['label', 'slices', 'area']
-        for param in params:
-            cls_info.append((param, getattr(self, param)))
+        cls_info = [(param, getattr(self, param)) for param in params]
+
         fmt = [f'{key}: {val}' for key, val in cls_info]
 
         return f'{cls_name}\n' + '\n'.join(fmt)
