@@ -116,8 +116,8 @@ class TestIntegratedGaussianPRF:
     Tests for IntegratedGaussianPRF.
     """
 
-    widths = [0.001, 0.01, 0.1, 1]
-    sigmas = [0.5, 1.0, 2.0, 10.0, 12.34]
+    widths = (0.001, 0.01, 0.1, 1)
+    sigmas = (0.5, 1.0, 2.0, 10.0, 12.34)
 
     @pytest.mark.parametrize('width', widths)
     def test_subpixel_gauss_psf(self, width):
