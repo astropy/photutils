@@ -189,8 +189,8 @@ class TestBackground2D:
         coverage_mask = np.zeros(DATA.shape, dtype=bool)
         mask[:50, :25] = True
         coverage_mask[:50, 25:50] = True
-        with pytest.warns(AstropyUserWarning,
-                          match='Input data contains invalid values'):
+        match = 'Input data contains invalid values'
+        with pytest.warns(AstropyUserWarning, match=match):
             bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
                                 coverage_mask=mask, fill_value=0.0,
                                 bkg_estimator=MeanBackground())
@@ -200,8 +200,8 @@ class TestBackground2D:
     def test_mask_nonfinite(self):
         data = DATA.copy()
         data[0, 0:50] = np.nan
-        with pytest.warns(AstropyUserWarning,
-                          match='Input data contains invalid values'):
+        match = 'Input data contains invalid values'
+        with pytest.warns(AstropyUserWarning, match=match):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1))
         assert_allclose(bkg.background, DATA, rtol=1e-5)
 
@@ -247,7 +247,8 @@ class TestBackground2D:
 
     def test_completely_masked(self):
         mask = np.ones(DATA.shape, dtype=bool)
-        with pytest.raises(ValueError):
+        match = 'All boxes contain'
+        with pytest.raises(ValueError, match=match):
             Background2D(DATA, (25, 25), mask=mask)
 
     def test_zero_padding(self):
@@ -266,8 +267,8 @@ class TestBackground2D:
         """
         data = np.copy(DATA)
         data[0:50, 0:50] = np.nan
-        with pytest.warns(AstropyUserWarning,
-                          match='Input data contains invalid values'):
+        match = 'Input data contains invalid values'
+        with pytest.warns(AstropyUserWarning, match=match):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1),
                                exclude_percentile=100.0)
         assert len(bkg._box_idx) == 12
@@ -317,18 +318,20 @@ class TestBackground2D:
         assert_allclose(bkg1.background_rms, bkg2.background_rms)
 
     def test_invalid_box_size(self):
-        with pytest.raises(ValueError):
+        match = 'box_size must have 1 or 2 elements'
+        with pytest.raises(ValueError, match=match):
             Background2D(DATA, (5, 5, 3))
 
     def test_invalid_filter_size(self):
-        with pytest.raises(ValueError):
+        match = 'filter_size must have 1 or 2 elements'
+        with pytest.raises(ValueError, match=match):
             Background2D(DATA, (5, 5), filter_size=(3, 3, 3))
 
     def test_invalid_exclude_percentile(self):
-        with pytest.raises(ValueError):
+        match = 'exclude_percentile must be between 0 and 100'
+        with pytest.raises(ValueError, match=match):
             Background2D(DATA, (5, 5), exclude_percentile=-1)
-
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             Background2D(DATA, (5, 5), exclude_percentile=101)
 
     def test_mask_nomask(self):
@@ -341,31 +344,37 @@ class TestBackground2D:
         assert bkg.coverage_mask is None
 
     def test_invalid_mask(self):
-        with pytest.raises(ValueError):
+        match = 'data and mask must have the same shape'
+        with pytest.raises(ValueError, match=match):
             Background2D(DATA, (25, 25), filter_size=(1, 1),
                          mask=np.zeros((2, 2)))
 
-        with pytest.raises(ValueError):
+        match = 'mask must be a 2D array'
+        with pytest.raises(ValueError, match=match):
             Background2D(DATA, (25, 25), filter_size=(1, 1),
                          mask=np.zeros((2, 2, 2)))
 
     def test_invalid_coverage_mask(self):
-        with pytest.raises(ValueError):
+        match = 'data and coverage_mask must have the same shape'
+        with pytest.raises(ValueError, match=match):
             Background2D(DATA, (25, 25), filter_size=(1, 1),
                          coverage_mask=np.zeros((2, 2)))
 
-        with pytest.raises(ValueError):
+        match = 'coverage_mask must be a 2D array'
+        with pytest.raises(ValueError, match=match):
             Background2D(DATA, (25, 25), filter_size=(1, 1),
                          coverage_mask=np.zeros((2, 2, 2)))
 
     def test_invalid_edge_method(self):
-        with pytest.raises(ValueError):
+        match = 'edge_method must be "pad" or "crop"'
+        with pytest.raises(ValueError, match=match):
             Background2D(DATA, (23, 22), filter_size=(1, 1),
                          edge_method='not_valid')
 
     def test_invalid_mesh_idx_len(self):
         bkg = Background2D(DATA, (25, 25), filter_size=(1, 1))
-        with pytest.raises(ValueError):
+        match = 'shape mismatch: value array of shape'
+        with pytest.raises(ValueError, match=match):
             bkg._make_2d_array(np.arange(3))
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
