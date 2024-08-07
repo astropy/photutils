@@ -24,7 +24,8 @@ def test_apply_poisson_noise_negative():
     """
     shape = (100, 100)
     data = np.zeros(shape) - 1.0
-    with pytest.raises(ValueError):
+    match = 'data must not contain any negative values'
+    with pytest.raises(ValueError, match=match):
         apply_poisson_noise(data)
 
 
@@ -47,12 +48,14 @@ def test_make_noise_image_nomean():
     Test invalid inputs.
     """
     shape = (100, 100)
-
-    with pytest.raises(ValueError):
+    match = 'Invalid distribution:'
+    with pytest.raises(ValueError, match=match):
         make_noise_image(shape, 'invalid', mean=0, stddev=2.0)
 
-    with pytest.raises(ValueError):
+    match = '"mean" must be input'
+    with pytest.raises(ValueError, match=match):
         make_noise_image(shape, 'gaussian', stddev=2.0)
 
-    with pytest.raises(ValueError):
+    match = '"stddev" must be input for Gaussian noise'
+    with pytest.raises(ValueError, match=match):
         make_noise_image(shape, 'gaussian', mean=2.0)
