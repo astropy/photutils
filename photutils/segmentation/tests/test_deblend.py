@@ -156,7 +156,8 @@ class TestDeblendSources:
                                 progress_bar=False)
         assert segm2.nlabels == 3
 
-        with pytest.raises(ValueError):
+        match = 'Deblending failed for source'
+        with pytest.raises(ValueError, match=match):
             deblend_sources(data, segm, 1, mode='linear', connectivity=4,
                             progress_bar=False)
 
@@ -203,32 +204,38 @@ class TestDeblendSources:
 
     def test_segment_img(self):
         segm_wrong = np.ones((2, 2), dtype=int)  # ndarray
-        with pytest.raises(TypeError):
+        match = 'segment_img must be a SegmentationImage'
+        with pytest.raises(TypeError, match=match):
             deblend_sources(self.data, segm_wrong, self.npixels,
                             progress_bar=False)
 
         segm_wrong = SegmentationImage(segm_wrong)  # wrong shape
-        with pytest.raises(ValueError):
+        match = 'The data and segmentation image must have the same shape'
+        with pytest.raises(ValueError, match=match):
             deblend_sources(self.data, segm_wrong, self.npixels,
                             progress_bar=False)
 
     def test_invalid_nlevels(self):
-        with pytest.raises(ValueError):
+        match = 'nlevels must be >= 1'
+        with pytest.raises(ValueError, match=match):
             deblend_sources(self.data, self.segm, self.npixels, nlevels=0,
                             progress_bar=False)
 
     def test_invalid_contrast(self):
-        with pytest.raises(ValueError):
+        match = 'contrast must be >= 0 and <= 1'
+        with pytest.raises(ValueError, match=match):
             deblend_sources(self.data, self.segm, self.npixels, contrast=-1,
                             progress_bar=False)
 
     def test_invalid_mode(self):
-        with pytest.raises(ValueError):
+        match = 'mode must be "exponential", "linear", or "sinh"'
+        with pytest.raises(ValueError, match=match):
             deblend_sources(self.data, self.segm, self.npixels,
                             mode='invalid', progress_bar=False)
 
     def test_invalid_connectivity(self):
-        with pytest.raises(ValueError):
+        match = 'Invalid connectivity'
+        with pytest.raises(ValueError, match=match):
             deblend_sources(self.data, self.segm, self.npixels,
                             connectivity='invalid', progress_bar=False)
 
@@ -242,7 +249,8 @@ class TestDeblendSources:
     def test_source_with_negval(self):
         data = self.data.copy()
         data -= 20
-        with pytest.warns(AstropyUserWarning, match='The deblending mode'):
+        match = 'The deblending mode of one or more source labels from the'
+        with pytest.warns(AstropyUserWarning, match=match):
             segm = deblend_sources(data, self.segm, self.npixels,
                                    progress_bar=False)
             assert segm.info['warnings']['nonposmin']['input_labels'] == 1
@@ -250,7 +258,8 @@ class TestDeblendSources:
     def test_source_zero_min(self):
         data = self.data.copy()
         data -= data[self.segm.data > 0].min()
-        with pytest.warns(AstropyUserWarning, match='The deblending mode'):
+        match = 'The deblending mode of one or more source labels from the'
+        with pytest.warns(AstropyUserWarning, match=match):
             segm = deblend_sources(data, self.segm, self.npixels,
                                    progress_bar=False)
             assert segm.info['warnings']['nonposmin']['input_labels'] == 1
@@ -270,7 +279,8 @@ class TestDeblendSources:
         segm_deblend = deblend_sources(data, segm, npixels=1, connectivity=8,
                                        progress_bar=False)
         assert segm_deblend.nlabels == 1
-        with pytest.raises(ValueError):
+        match = 'Deblending failed for source'
+        with pytest.raises(ValueError, match=match):
             deblend_sources(data, segm, npixels=1, connectivity=4,
                             progress_bar=False)
 
@@ -342,7 +352,8 @@ def test_nmarkers_fallback():
     data[50:60, 50:60] = 10.0
 
     segm = detect_sources(data, 0.01, 10)
-    with pytest.warns(AstropyUserWarning, match='The deblending mode'):
+    match = 'The deblending mode of one or more source labels from the'
+    with pytest.warns(AstropyUserWarning, match=match):
         segm2 = deblend_sources(data, segm, 1, mode='exponential')
         assert segm2.info['warnings']['nmarkers']['input_labels'][0] == 1
         mesg = segm2.info['warnings']['nmarkers']['message']

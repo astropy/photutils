@@ -46,7 +46,7 @@ class SegmentationImage:
 
     def __init__(self, data):
         if not isinstance(data, np.ndarray):
-            raise TypeError('input data must be a numpy array')
+            raise TypeError('Input data must be a numpy array')
         self.data = data
 
     def __str__(self):

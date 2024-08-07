@@ -107,7 +107,8 @@ class TestSourceCatalog:
         for prop in props:
             assert_equal(getattr(obj, prop), getattr(cat1, prop)[idx])
 
-        with pytest.raises(ValueError):
+        match = 'Both units and masked cannot be True'
+        with pytest.raises(ValueError, match=match):
             cat1._prepare_cutouts(cat1._segment_img_cutouts, units=True,
                                   masked=True)
 
@@ -144,48 +145,48 @@ class TestSourceCatalog:
 
         assert_equal(cat1.kron_radius, cat3.kron_radius)
         # assert not equal
-        with pytest.raises(AssertionError):
+        match = 'Arrays are not equal'
+        with pytest.raises(AssertionError, match=match):
             assert_equal(cat1.kron_radius, cat2.kron_radius)
-
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(cat2.kron_flux, cat3.kron_flux)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(cat2.kron_fluxerr, cat3.kron_fluxerr)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(cat1.kron_flux, cat3.kron_flux)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(cat1.kron_fluxerr, cat3.kron_fluxerr)
 
         flux1, fluxerr1 = cat1.circular_photometry(1.0)
         flux2, fluxerr2 = cat2.circular_photometry(1.0)
         flux3, fluxerr3 = cat3.circular_photometry(1.0)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(flux2, flux3)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(fluxerr2, fluxerr3)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(flux1, flux2)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(fluxerr1, fluxerr2)
 
         flux1, fluxerr1 = cat1.kron_photometry((2.5, 1.4))
         flux2, fluxerr2 = cat2.kron_photometry((2.5, 1.4))
         flux3, fluxerr3 = cat3.kron_photometry((2.5, 1.4))
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(flux2, flux3)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(fluxerr2, fluxerr3)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(flux1, flux2)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(fluxerr1, fluxerr2)
 
         radius1 = cat1.fluxfrac_radius(0.5)
         radius2 = cat2.fluxfrac_radius(0.5)
         radius3 = cat3.fluxfrac_radius(0.5)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(radius2, radius3)
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match=match):
             assert_equal(radius1, radius2)
 
         cat4 = cat3[0:1]
@@ -255,13 +256,13 @@ class TestSourceCatalog:
         assert len(obj7) == 4
 
         obj1 = self.cat[0]
-        with pytest.raises(TypeError):
+        match = "A scalar 'SourceCatalog' object cannot be indexed"
+        with pytest.raises(TypeError, match=match):
             obj2 = obj1[0]
 
         match = 'is invalid'
         with pytest.raises(ValueError, match=match):
             self.cat.get_label(1000)
-
         with pytest.raises(ValueError, match=match):
             self.cat.get_labels([1, 2, 1000])
 
@@ -277,86 +278,100 @@ class TestSourceCatalog:
 
     def test_invalid_inputs(self):
         segm = SegmentationImage(np.zeros(self.data.shape, dtype=int))
-        with pytest.raises(ValueError):
+        match = 'segment_img must have at least one non-zero label'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, segm)
 
         # test 1D arrays
         img1d = np.arange(4)
         segm = SegmentationImage(img1d)
-        with pytest.raises(ValueError):
+        match = 'data must be a 2D array'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(img1d, segm)
 
         wrong_shape = np.ones((3, 3), dtype=int)
-        with pytest.raises(ValueError):
+        match = 'segment_img and data must have the same shape'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(wrong_shape, self.segm)
 
-        with pytest.raises(ValueError):
+        match = 'data and error must have the same shape'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, error=wrong_shape)
 
-        with pytest.raises(ValueError):
+        match = 'data and background must have the same shape'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, background=wrong_shape)
 
-        with pytest.raises(ValueError):
+        match = 'data and mask must have the same shape'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, mask=wrong_shape)
 
         segm = SegmentationImage(wrong_shape)
-        with pytest.raises(ValueError):
+        match = 'segment_img and data must have the same shape'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, segm)
 
-        with pytest.raises(TypeError):
+        match = 'segment_img must be a SegmentationImage'
+        with pytest.raises(TypeError, match=match):
             SourceCatalog(self.data, wrong_shape)
 
         obj = SourceCatalog(self.data, self.segm)[0]
-        with pytest.raises(TypeError):
+        match = "Scalar 'SourceCatalog' object has no len()"
+        with pytest.raises(TypeError, match=match):
             len(obj)
 
-        with pytest.raises(ValueError):
+        match = 'localbkg_width must be >= 0'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, localbkg_width=-1)
-        with pytest.raises(ValueError):
+        match = 'localbkg_width must be an integer'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, localbkg_width=3.4)
 
         apermask_method = 'invalid'
-        with pytest.raises(ValueError):
+        match = 'Invalid apermask_method value'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm,
                           apermask_method=apermask_method)
 
         kron_params = (0.0, 1.0)
-        with pytest.raises(ValueError):
+        match = r'kron_params\[0\] must be > 0'
+        with pytest.raises(ValueError, match=match):
+            SourceCatalog(self.data, self.segm, kron_params=kron_params)
+        kron_params = (-2.5, 0.0)
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
 
         kron_params = (2.5, 0.0)
-        with pytest.raises(ValueError):
+        match = r'kron_params\[1\] must be > 0'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
-
-        kron_params = (-2.5, 0.0)
-        with pytest.raises(ValueError):
-            SourceCatalog(self.data, self.segm, kron_params=kron_params)
-
         kron_params = (2.5, -4.0)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
 
         kron_params = (2.5, 1.4, -2.0)
-        with pytest.raises(ValueError):
+        match = r'kron_params\[2\] must be >= 0'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
 
     def test_invalid_units(self):
         unit = u.uJy
         wrong_unit = u.km
 
-        with pytest.raises(ValueError):
+        match = 'must all have the same units'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data << unit, self.segm,
                           error=self.error << wrong_unit)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data << unit, self.segm,
                           background=self.background << wrong_unit)
 
         # all array inputs must have the same unit
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data << unit, self.segm, error=self.error)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm,
                           background=self.background << unit)
 
@@ -464,7 +479,9 @@ class TestSourceCatalog:
         segm = self.segm.copy()
         segm.remove_labels((6, 7))
         cat = SourceCatalog(self.data, segm)
-        with pytest.raises(ValueError):
+
+        match = 'detection_cat must have same segment_img as the input'
+        with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, detection_cat=cat)
 
     def test_kron_minradius(self):
@@ -532,13 +549,18 @@ class TestSourceCatalog:
         _, fluxerr = cat.kron_photometry((2.0, 1.4))
         assert np.all(np.isnan(fluxerr))
 
-        with pytest.raises(ValueError):
+        match = 'kron_params must be 1D'
+        with pytest.raises(ValueError, match=match):
             self.cat.kron_photometry(2.5)
-        with pytest.raises(ValueError):
-            self.cat.kron_photometry((2.5, 0.0))
-        with pytest.raises(ValueError):
+
+        match = r'kron_params\[0\] must be > 0'
+        with pytest.raises(ValueError, match=match):
             self.cat.kron_photometry((0.0, 1.4))
-        with pytest.raises(ValueError):
+
+        match = r'kron_params\[1\] must be > 0'
+        with pytest.raises(ValueError, match=match):
+            self.cat.kron_photometry((2.5, 0.0))
+        with pytest.raises(ValueError, match=match):
             self.cat.kron_photometry((2.5, 0.0, 1.5))
 
     def test_circular_photometry(self):
@@ -573,13 +595,14 @@ class TestSourceCatalog:
         assert np.all(np.isnan(flux1[2:4]))
         assert np.all(np.isnan(fluxerr1[2:4]))
 
-        with pytest.raises(ValueError):
+        match = 'radius must be > 0'
+        with pytest.raises(ValueError, match=match):
             self.cat.circular_photometry(0.0)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             self.cat.circular_photometry(-1.0)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             self.cat.make_circular_apertures(0.0)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             self.cat.make_circular_apertures(-1.0)
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
@@ -622,9 +645,10 @@ class TestSourceCatalog:
         assert radius.isscalar  # Quantity radius - can't use np.isscalar
         assert_allclose(radius.value, 7.899648)
 
-        with pytest.raises(ValueError):
+        match = 'fluxfrac must be > 0 and <= 1'
+        with pytest.raises(ValueError, match=match):
             radius = self.cat.fluxfrac_radius(0)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             radius = self.cat.fluxfrac_radius(-1)
 
         cat = SourceCatalog(self.data - 50.0, self.segm, error=self.error,
@@ -651,19 +675,21 @@ class TestSourceCatalog:
 
         segment_snr = cat.segment_flux / cat.segment_fluxerr
 
-        with pytest.raises(ValueError):
+        match = 'cannot be set because it is a built-in attribute'
+        with pytest.raises(ValueError, match=match):
             # built-in attribute
             cat.add_extra_property('_data', segment_snr)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             # built-in property
             cat.add_extra_property('label', segment_snr)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             # built-in lazyproperty
             cat.add_extra_property('area', segment_snr)
 
         cat.add_extra_property('segment_snr', segment_snr)
 
-        with pytest.raises(ValueError):
+        match = 'already exists as an attribute'
+        with pytest.raises(ValueError, match=match):
             # already exists
             cat.add_extra_property('segment_snr', segment_snr)
 
@@ -672,7 +698,8 @@ class TestSourceCatalog:
         assert len(cat.extra_properties) == 1
         assert_equal(cat.segment_snr, 2.0 * segment_snr)
 
-        with pytest.raises(ValueError):
+        match = 'is not a defined extra property'
+        with pytest.raises(ValueError, match=match):
             cat.remove_extra_property('invalid')
 
         cat.remove_extra_property(cat.extra_properties)
@@ -693,7 +720,8 @@ class TestSourceCatalog:
 
         # key in extra_properties, but not a defined attribute
         cat._extra_properties.append('invalid')
-        with pytest.raises(ValueError):
+        match = 'already exists in the "extra_properties" attribute'
+        with pytest.raises(ValueError, match=match):
             cat.add_extra_property('invalid', segment_snr)
         cat._extra_properties.remove('invalid')
 
@@ -702,21 +730,22 @@ class TestSourceCatalog:
 
     def test_extra_properties_invalid(self):
         cat = SourceCatalog(self.data, self.segm)
-        with pytest.raises(ValueError):
+        match = 'value must have the same number of elements as the catalog'
+        with pytest.raises(ValueError, match=match):
             cat.add_extra_property('invalid', 1.0)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             cat.add_extra_property('invalid', (1.0, 2.0))
 
         obj = cat[1]
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             obj.add_extra_property('invalid', (1.0, 2.0))
 
         val = np.arange(2) << u.km
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             obj.add_extra_property('invalid', val)
 
         coord = SkyCoord([42, 43], [44, 45], unit='deg')
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             obj.add_extra_property('invalid', coord)
 
     def test_properties(self):
@@ -789,7 +818,8 @@ class TestSourceCatalog:
 
         shape = (100, 100)
 
-        with pytest.raises(ValueError):
+        match = 'mode must be "partial" or "trim"'
+        with pytest.raises(ValueError, match=match):
             cat.make_cutouts(shape, mode='strict')
 
         cutouts = cat.make_cutouts(shape, mode='trim')

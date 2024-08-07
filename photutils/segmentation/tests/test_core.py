@@ -43,11 +43,12 @@ class TestSegmentationImage:
         assert_equal(segm2.labels, [3, 5])
         assert segm2.data.sum() == 16
 
-        with pytest.raises(TypeError):
+        match = 'is not a valid 2D slice object'
+        with pytest.raises(TypeError, match=match):
             self.segm[1]
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match=match):
             self.segm[1:10]
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match=match):
             self.segm[1:1, 2:4]
 
     def test_data_all_zeros(self):
@@ -56,8 +57,8 @@ class TestSegmentationImage:
         assert segm.max_label == 0
         assert not segm.is_consecutive
         assert segm.cmap is None
-        with pytest.warns(AstropyUserWarning,
-                          match='segmentation image of all zeros'):
+        match = 'segmentation image of all zeros'
+        with pytest.warns(AstropyUserWarning, match=match):
             segm.relabel_consecutive()
 
     def test_data_reassignment(self):
@@ -68,30 +69,35 @@ class TestSegmentationImage:
     def test_invalid_data(self):
         # is float dtype
         data = np.zeros((3, 3), dtype=float)
-        with pytest.raises(TypeError):
+        match = 'data must be have integer type'
+        with pytest.raises(TypeError, match=match):
             SegmentationImage(data)
 
         # contains a negative value
         data = np.arange(-1, 8).reshape(3, 3).astype(int)
-        with pytest.raises(ValueError):
+        match = 'The segmentation image cannot contain negative integers'
+        with pytest.raises(ValueError, match=match):
             SegmentationImage(data)
 
         # is not ndarray
         data = [[1, 1], [0, 1]]
-        with pytest.raises(TypeError):
+        match = 'Input data must be a numpy array'
+        with pytest.raises(TypeError, match=match):
             SegmentationImage(data)
 
     @pytest.mark.parametrize('label', [0, -1, 2])
     def test_invalid_label(self, label):
         # test with scalar labels
-        with pytest.raises(ValueError):
+        match = 'is invalid'
+        with pytest.raises(ValueError, match=match):
             self.segm.check_label(label)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             self.segm.check_labels(label)
 
     def test_invalid_label_array(self):
         # test with array of labels
-        with pytest.raises(ValueError):
+        match = 'are invalid'
+        with pytest.raises(ValueError, match=match):
             self.segm.check_labels([0, -1, 2])
 
     def test_data_ma(self):
@@ -144,7 +150,8 @@ class TestSegmentationImage:
         assert_allclose(cutout.shape, (3, 3))
 
     def test_segment_make_cutout_input(self):
-        with pytest.raises(ValueError):
+        match = 'data must have the same shape as the segmentation array'
+        with pytest.raises(ValueError, match=match):
             self.segm.segments[0].make_cutout(np.arange(10))
 
     def test_labels(self):
@@ -182,16 +189,20 @@ class TestSegmentationImage:
         assert_allclose(self.segm.missing_labels, [2, 6])
 
     def test_check_labels(self):
-        with pytest.raises(ValueError):
+        match = 'is invalid'
+        with pytest.raises(ValueError, match=match):
             self.segm.check_label(2)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             self.segm.check_labels([2])
-        with pytest.raises(ValueError):
+
+        match = 'are invalid'
+        with pytest.raises(ValueError, match=match):
             self.segm.check_labels([2, 6])
 
     def test_bbox_1d(self):
         segm = SegmentationImage(np.array([0, 0, 1, 1, 0, 2, 2, 0]))
-        with pytest.raises(ValueError):
+        match = 'The "bbox" attribute requires a 2D segmentation image'
+        with pytest.raises(ValueError, match=match):
             _ = segm.bbox
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
@@ -260,7 +271,8 @@ class TestSegmentationImage:
     @pytest.mark.parametrize('start_label', [0, -1])
     def test_relabel_consecutive_start_invalid(self, start_label):
         segm = SegmentationImage(self.data.copy())
-        with pytest.raises(ValueError):
+        match = 'start_label must be > 0'
+        with pytest.raises(ValueError, match=match):
             segm.relabel_consecutive(start_label=start_label)
 
     def test_keep_labels(self):
@@ -320,7 +332,8 @@ class TestSegmentationImage:
 
     def test_remove_border_labels_border_width(self):
         segm = SegmentationImage(self.data.copy())
-        with pytest.raises(ValueError):
+        match = 'border_width must be smaller than half the array size'
+        with pytest.raises(ValueError, match=match):
             segm.remove_border_labels(border_width=3)
 
     def test_remove_border_labels_no_remaining_segments(self):
@@ -359,7 +372,8 @@ class TestSegmentationImage:
     def test_remove_masked_segments_mask_shape(self):
         segm = SegmentationImage(np.ones((5, 5), dtype=int))
         mask = np.zeros((3, 3), dtype=bool)
-        with pytest.raises(ValueError):
+        match = 'mask must have the same shape as the segmentation array'
+        with pytest.raises(ValueError, match=match):
             segm.remove_masked_labels(mask)
 
     def test_make_source_mask(self):
