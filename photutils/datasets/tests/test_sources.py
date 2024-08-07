@@ -95,9 +95,9 @@ def test_make_random_models_table():
 def test_make_random_gaussians_table():
     with pytest.warns(AstropyDeprecationWarning):
         n_sources = 5
-        param_ranges = dict([('amplitude', [500, 1000]), ('x_mean', [0, 500]),
-                             ('y_mean', [0, 300]), ('x_stddev', [1, 5]),
-                             ('y_stddev', [1, 5]), ('theta', [0, np.pi])])
+        param_ranges = {'amplitude': [500, 1000], 'x_mean': [0, 500],
+                        'y_mean': [0, 300], 'x_stddev': [1, 5],
+                        'y_stddev': [1, 5], 'theta': [0, np.pi]}
 
         table = make_random_gaussians_table(n_sources, param_ranges, seed=0)
         assert 'flux' in table.colnames
@@ -107,8 +107,8 @@ def test_make_random_gaussians_table():
 def test_make_random_gaussians_table_no_stddev():
     with pytest.warns(AstropyDeprecationWarning):
         n_sources = 5
-        param_ranges = dict([('amplitude', [500, 1000]), ('x_mean', [0, 500]),
-                             ('y_mean', [0, 300])])
+        param_ranges = {'amplitude': [500, 1000], 'x_mean': [0, 500],
+                        'y_mean': [0, 300]}
 
         table = make_random_gaussians_table(n_sources, param_ranges, seed=0)
         assert 'flux' in table.colnames
@@ -120,9 +120,9 @@ def test_make_random_gaussians_table_no_stddev():
 def test_make_random_gaussians_table_flux():
     with pytest.warns(AstropyDeprecationWarning):
         n_sources = 5
-        param_ranges = dict([('flux', [500, 1000]), ('x_mean', [0, 500]),
-                             ('y_mean', [0, 300]), ('x_stddev', [1, 5]),
-                             ('y_stddev', [1, 5]), ('theta', [0, np.pi])])
+        param_ranges = {'flux': [500, 1000], 'x_mean': [0, 500],
+                        'y_mean': [0, 300], 'x_stddev': [1, 5],
+                        'y_stddev': [1, 5], 'theta': [0, np.pi]}
         table = make_random_gaussians_table(n_sources, param_ranges, seed=0)
         assert 'amplitude' in table.colnames
         assert len(table) == n_sources
