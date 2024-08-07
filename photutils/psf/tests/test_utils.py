@@ -103,8 +103,8 @@ def test_integrate_model():
                          subsample=-1)
 
     match = 'model x and y positions must be finite'
+    model = Gaussian2D(1, np.inf, 5, 1, 1)
     with pytest.raises(ValueError, match=match):
-        model = Gaussian2D(1, np.inf, 5, 1, 1)
         _integrate_model(model, x_name='x_mean', y_name='y_mean')
 
 
@@ -393,18 +393,18 @@ def test_make_psf_model_image_inputs():
         make_psf_model_image(shape, None, 2)
 
     match = 'psf_model must be two-dimensional'
+    model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
+    model.n_inputs = 3
     with pytest.raises(ValueError, match=match):
-        model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
-        model.n_inputs = 3
         make_psf_model_image(shape, model, 2)
 
     match = 'model_shape must be specified if the model does not have'
+    model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
+    model.bounding_box = None
     with pytest.raises(ValueError, match=match):
-        model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
-        model.bounding_box = None
         make_psf_model_image(shape, model, 2)
 
     match = 'Invalid PSF model - could not find PSF parameter names'
+    model = Gaussian2D()
     with pytest.raises(ValueError, match=match):
-        model = Gaussian2D()
         make_psf_model_image(shape, model, 2)

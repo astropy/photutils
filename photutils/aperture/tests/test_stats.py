@@ -257,12 +257,12 @@ class TestApertureStats:
         with pytest.raises(TypeError):
             _ = len(apstats[0])
 
+        apstat0 = apstats[0]
         with pytest.raises(TypeError):
-            apstat0 = apstats[0]
             apstat1 = apstat0[0]
 
+        apstat0 = apstats[0]
         with pytest.raises(TypeError):
-            apstat0 = apstats[0]
             apstat1 = apstat0[0]  # can't slice scalar object
 
         with pytest.raises(ValueError):

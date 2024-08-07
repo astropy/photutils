@@ -86,6 +86,7 @@ class TestSegmentationImage:
         # test with scalar labels
         with pytest.raises(ValueError):
             self.segm.check_label(label)
+        with pytest.raises(ValueError):
             self.segm.check_labels(label)
 
     def test_invalid_label_array(self):
@@ -183,8 +184,8 @@ class TestSegmentationImage:
     def test_check_labels(self):
         with pytest.raises(ValueError):
             self.segm.check_label(2)
+        with pytest.raises(ValueError):
             self.segm.check_labels([2])
-
         with pytest.raises(ValueError):
             self.segm.check_labels([2, 6])
 
@@ -258,8 +259,8 @@ class TestSegmentationImage:
 
     @pytest.mark.parametrize('start_label', [0, -1])
     def test_relabel_consecutive_start_invalid(self, start_label):
+        segm = SegmentationImage(self.data.copy())
         with pytest.raises(ValueError):
-            segm = SegmentationImage(self.data.copy())
             segm.relabel_consecutive(start_label=start_label)
 
     def test_keep_labels(self):
@@ -318,8 +319,8 @@ class TestSegmentationImage:
         assert_allclose(segm.data, ref_data)
 
     def test_remove_border_labels_border_width(self):
+        segm = SegmentationImage(self.data.copy())
         with pytest.raises(ValueError):
-            segm = SegmentationImage(self.data.copy())
             segm.remove_border_labels(border_width=3)
 
     def test_remove_border_labels_no_remaining_segments(self):

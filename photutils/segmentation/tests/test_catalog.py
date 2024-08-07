@@ -254,8 +254,8 @@ class TestSourceCatalog:
         assert obj7.nlabels == 4
         assert len(obj7) == 4
 
+        obj1 = self.cat[0]
         with pytest.raises(TypeError):
-            obj1 = self.cat[0]
             obj2 = obj1[0]
 
         match = 'is invalid'
@@ -299,39 +299,45 @@ class TestSourceCatalog:
         with pytest.raises(ValueError):
             SourceCatalog(self.data, self.segm, mask=wrong_shape)
 
+        segm = SegmentationImage(wrong_shape)
         with pytest.raises(ValueError):
-            segm = SegmentationImage(wrong_shape)
             SourceCatalog(self.data, segm)
 
         with pytest.raises(TypeError):
             SourceCatalog(self.data, wrong_shape)
 
+        obj = SourceCatalog(self.data, self.segm)[0]
         with pytest.raises(TypeError):
-            obj = SourceCatalog(self.data, self.segm)[0]
             len(obj)
 
         with pytest.raises(ValueError):
             SourceCatalog(self.data, self.segm, localbkg_width=-1)
         with pytest.raises(ValueError):
             SourceCatalog(self.data, self.segm, localbkg_width=3.4)
+
+        apermask_method = 'invalid'
         with pytest.raises(ValueError):
-            apermask_method = 'invalid'
             SourceCatalog(self.data, self.segm,
                           apermask_method=apermask_method)
+
+        kron_params = (0.0, 1.0)
         with pytest.raises(ValueError):
-            kron_params = (0.0, 1.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
+
+        kron_params = (2.5, 0.0)
         with pytest.raises(ValueError):
-            kron_params = (2.5, 0.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
+
+        kron_params = (-2.5, 0.0)
         with pytest.raises(ValueError):
-            kron_params = (-2.5, 0.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
+
+        kron_params = (2.5, -4.0)
         with pytest.raises(ValueError):
-            kron_params = (2.5, -4.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
+
+        kron_params = (2.5, 1.4, -2.0)
         with pytest.raises(ValueError):
-            kron_params = (2.5, 1.4, -2.0)
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
 
     def test_invalid_units(self):
@@ -455,10 +461,10 @@ class TestSourceCatalog:
         with pytest.raises(TypeError):
             SourceCatalog(data2, self.segm, detection_cat=np.arange(4))
 
+        segm = self.segm.copy()
+        segm.remove_labels((6, 7))
+        cat = SourceCatalog(self.data, segm)
         with pytest.raises(ValueError):
-            segm = self.segm.copy()
-            segm.remove_labels((6, 7))
-            cat = SourceCatalog(self.data, segm)
             SourceCatalog(self.data, self.segm, detection_cat=cat)
 
     def test_kron_minradius(self):
@@ -704,11 +710,13 @@ class TestSourceCatalog:
         obj = cat[1]
         with pytest.raises(ValueError):
             obj.add_extra_property('invalid', (1.0, 2.0))
+
+        val = np.arange(2) << u.km
         with pytest.raises(ValueError):
-            val = np.arange(2) << u.km
             obj.add_extra_property('invalid', val)
+
+        coord = SkyCoord([42, 43], [44, 45], unit='deg')
         with pytest.raises(ValueError):
-            coord = SkyCoord([42, 43], [44, 45], unit='deg')
             obj.add_extra_property('invalid', coord)
 
     def test_properties(self):

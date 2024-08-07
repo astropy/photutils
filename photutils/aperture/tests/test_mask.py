@@ -20,9 +20,9 @@ POSITIONS = [(-20, -20), (-20, 20), (20, -20), (60, 60)]
 
 
 def test_mask_input_shapes():
+    mask_data = np.ones((10, 10))
+    bbox = BoundingBox(5, 10, 5, 10)
     with pytest.raises(ValueError):
-        mask_data = np.ones((10, 10))
-        bbox = BoundingBox(5, 10, 5, 10)
         ApertureMask(mask_data, bbox)
 
 

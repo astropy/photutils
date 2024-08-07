@@ -246,8 +246,8 @@ class TestBackground2D:
         assert_allclose(bkg2.background, bkg3.background, rtol=1e-5)
 
     def test_completely_masked(self):
+        mask = np.ones(DATA.shape, dtype=bool)
         with pytest.raises(ValueError):
-            mask = np.ones(DATA.shape, dtype=bool)
             Background2D(DATA, (25, 25), mask=mask)
 
     def test_zero_padding(self):
@@ -364,8 +364,8 @@ class TestBackground2D:
                          edge_method='not_valid')
 
     def test_invalid_mesh_idx_len(self):
+        bkg = Background2D(DATA, (25, 25), filter_size=(1, 1))
         with pytest.raises(ValueError):
-            bkg = Background2D(DATA, (25, 25), filter_size=(1, 1))
             bkg._make_2d_array(np.arange(3))
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')

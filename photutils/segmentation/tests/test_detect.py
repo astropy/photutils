@@ -258,8 +258,8 @@ class TestDetectSources:
         assert segm2.areas[0] == segm1.areas[0] - mask.sum()
 
         # mask with all True
+        mask = np.ones(data.shape, dtype=bool)
         with pytest.raises(ValueError):
-            mask = np.ones(data.shape, dtype=bool)
             detect_sources(data, 1.0, 1.0, mask=mask)
 
     def test_mask_shape(self):

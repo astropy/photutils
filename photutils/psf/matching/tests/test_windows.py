@@ -79,6 +79,6 @@ def test_tophat():
 
 
 def test_invalid_shape():
+    win = HanningWindow()
     with pytest.raises(ValueError):
-        win = HanningWindow()
         win((5,))
