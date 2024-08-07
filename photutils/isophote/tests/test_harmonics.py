@@ -39,7 +39,6 @@ def test_harmonics_1():
 
     # Minimize the difference between the actual data and our "guessed"
     # parameters
-    # optimize_func = lambda x: x[0] * np.sin(t + x[1]) + x[2] - data
     def optimize_func(x):
         return x[0] * np.sin(t + x[1]) + x[2] - data
 

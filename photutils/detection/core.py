@@ -260,7 +260,7 @@ class _StarFinderKernel:
         self.gaussian_kernel_unmasked = np.exp(-self.elliptical_radius)
         self.gaussian_kernel = self.gaussian_kernel_unmasked * self.mask
 
-        # denom = variance * npixels
+        # The denom represents (variance * npixels)
         denom = ((self.gaussian_kernel**2).sum()
                  - (self.gaussian_kernel.sum()**2 / self.npixels))
         self.relerr = 1.0 / np.sqrt(denom)

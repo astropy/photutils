@@ -43,16 +43,16 @@ def test_cutout_partial_overlap():
     data = make_100gaussians_image()
     shape = (24, 57)
 
-    # mode = 'trim'
+    # 'trim' mode
     cutout = CutoutImage(data, (11, 10), shape)
     assert cutout.input_shape == shape
     assert cutout.shape == (23, 39)
 
-    # mode = 'strict'
+    # 'strict' mode
     with pytest.raises(PartialOverlapError):
         CutoutImage(data, (11, 10), shape, mode='strict')
 
-    # mode = 'partial'
+    # 'partial' mode
     cutout = CutoutImage(data, (11, 10), shape, mode='partial')
     assert cutout.input_shape == shape
     assert cutout.shape == shape

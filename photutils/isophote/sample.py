@@ -157,11 +157,8 @@ class EllipseSample:
         # during the life of an EllipseSample instance, because it's an
         # expensive calculation. This method should not be called from
         # external code.
-        # If one wants to force it to re-run, then do:
-        #
-        #   sample.values = None
-        #
-        # before calling sample.extract()
+        # To force it to re-run, set "sample.values = None"
+        # before calling sample.extract().
 
         # individual extracted sample points will be stored in here
         angles = []
@@ -314,9 +311,6 @@ class EllipseSample:
         previous_gradient = self.gradient
         if not previous_gradient:
             previous_gradient = gradient + gradient_error
-
-            # solution adopted before 08/12/2019
-            # previous_gradient = -0.05  # good enough, based on usage
 
         if gradient >= (previous_gradient / 3.0):  # gradient is negative!
             gradient, gradient_error = self._get_gradient(2 * step)

@@ -160,7 +160,7 @@ class ModelGridPlotMixin:
         # Set up the coordinate axes to later set tick labels based on
         # detector ePSF coordinates. This sets up axes to have, behind the
         # scenes, the ePSFs centered at integer coords 0, 1, 2, 3 etc.
-        # extent = (left, right, bottom, top)
+        # extent order: left, right, bottom, top
         nypsfs = self._ygrid.shape[0]
         nxpsfs = self._xgrid.shape[0]
         extent = [-0.5, nxpsfs - 0.5, -0.5, nypsfs - 0.5]
@@ -757,17 +757,17 @@ def _read_stdpsf(filename):
     xgrid = np.array(xgrid) - 1
     ygrid = np.array(ygrid) - 1
 
-    # (nypsfs, nxpsfs)
-    # (6, 6)   # WFPC2, 4 det
-    # (1, 1)   # ACS/HRC
-    # (10, 9)  # ACS/WFC, 2 det
-    # (3, 3)   # WFC3/IR
-    # (8, 7)   # WFC3/UVIS, 2 det
-    # (5, 5)   # NIRISS
-    # (5, 5)   # NIRCam SW
-    # (10, 20) # NIRCam SW (NRCSW), 8 det
-    # (5, 5)   # NIRCam LW
-    # (3, 3)   # MIRI
+    # nypsfs, nxpsfs, detector
+    # 6, 6     WFPC2, 4 det
+    # 1, 1     ACS/HRC
+    # 10, 9    ACS/WFC, 2 det
+    # 3, 3     WFC3/IR
+    # 8, 7     WFC3/UVIS, 2 det
+    # 5, 5     NIRISS
+    # 5, 5     NIRCam SW
+    # 10, 20   NIRCam SW (NRCSW), 8 det
+    # 5, 5     NIRCam LW
+    # 3, 3     MIRI
 
     return {'data': data,
             'npsfs': npsfs,

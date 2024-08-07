@@ -85,10 +85,6 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
 
     ellipse = Ellipse(data)
     isophote_list = ellipse.fit_image()
-    # isophote_list = ellipse.fit_image(sclip=2.0, nclip=3)
-
-    # fmt = ('%5.2f  %6.1f    %8.3f %8.3f %8.3f        %9.5f  %6.2f   '
-    #        '%6.2f %6.2f   %5.2f   %4d  %3d  %3d  %2d')
 
     ttype = []
     tsma = []

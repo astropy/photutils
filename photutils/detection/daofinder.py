@@ -652,8 +652,6 @@ class _DAOStarFinderCatalog:
             # compute fit amplitude
             hx = hx_numer / hx_denom
 
-            # sky = (data_sum - (hx * kern_sum)) / wt_sum
-
             # compute centroid shift
             dx = ((kern_dkern_dx_sum
                    - (data_dkern_dx_sum - dkern_dx_sum * data_sum))

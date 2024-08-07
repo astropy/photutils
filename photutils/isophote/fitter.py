@@ -245,15 +245,6 @@ class EllipseFitter:
     def _check_conditions(sample, maxgerr, going_inwards, lexceed):
         proceed = True
 
-        # If center wandered more than allowed, put it back
-        # in place and signal the end of iterative mode.
-        # if wander:
-        #     if abs(dx) > WANDER(al)) or abs(dy) > WANDER(al):
-        #         sample.geometry.x0 -= dx
-        #         sample.geometry.y0 -= dy
-        #         STOP(al) = ST_NONITERATE
-        #         proceed = False
-
         # check if an acceptable gradient value could be computed.
         if sample.gradient_error and sample.gradient_relative_error:
             if not going_inwards and (

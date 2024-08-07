@@ -21,7 +21,6 @@ def test_angles(phi_min=0.05, phi_max=0.2):
     astep = 1.1
     eps = 0.1
 
-    # r = a
     a1 = a * (1.0 - ((1.0 - 1.0 / astep) / 2.0))
     a2 = a * (1.0 + (astep - 1.0) / 2.0)
     r3 = a2

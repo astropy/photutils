@@ -115,9 +115,6 @@ def moffat_source():
     # this is the analytic value needed to get a total flux of 1
     model.amplitude = (model.alpha - 1.0) / (np.pi * model.gamma**2)
 
-    # make sure it really is normalized
-    # assert (1.0 - integrate.dblquad(model, -10, 10, -10, 10)[0]) < 1e-6
-
     xx, yy = np.meshgrid(*([np.linspace(-2, 2, 100)] * 2))
 
     return model, (xx, yy, model(xx, yy))

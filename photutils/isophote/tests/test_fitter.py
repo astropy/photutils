@@ -165,16 +165,10 @@ class TestM51:
         hdu.close()
 
     def test_m51(self):
-        # here we evaluate the detailed convergence behavior
+        # Here we evaluate the detailed convergence behavior
         # for a particular ellipse where we can see the eps
         # parameter jumping back and forth.
-        # sample = EllipseSample(self.data, 13.31000001, eps=0.16,
-        #                        position_angle=((-37.5+90)/180.*np.pi))
-        # sample.update()
-        # fitter = EllipseFitter(sample)
-        # isophote = fitter.fit()
-
-        # we start the fit with initial values taken from
+        # We start the fit with initial values taken from
         # previous isophote, as determined by the old code.
 
         # sample taken in high SNR region
