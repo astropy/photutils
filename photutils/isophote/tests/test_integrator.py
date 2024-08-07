@@ -14,7 +14,7 @@ from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
 from photutils.isophote.sample import EllipseSample
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 class TestData:
     def setup_class(self):
         path = get_path('isophote/synth_highsnr.fits',
@@ -38,7 +38,7 @@ class TestData:
         return s, sample
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 class TestUnmasked(TestData):
     def test_bilinear(self):
         s, sample = self.make_sample()
@@ -128,7 +128,7 @@ class TestUnmasked(TestData):
         assert sample.actual_points == 64
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 class TestMasked(TestData):
     def test_bilinear(self):
         s, sample = self.make_sample(masked=True, integrmode=BILINEAR)

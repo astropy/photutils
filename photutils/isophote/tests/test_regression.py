@@ -64,7 +64,7 @@ from photutils.utils._optional_deps import HAS_SCIPY
 # @pytest.mark.parametrize('name', ['M51', 'synth', 'synth_lowsnr',
 #                                   'synth_highsnr'])
 @pytest.mark.parametrize('name', ['synth_highsnr'])
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 def test_regression(name, integrmode=BILINEAR, verbose=False):
     """
     NOTE: The original code in SPP won't create the right table

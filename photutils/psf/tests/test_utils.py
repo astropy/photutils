@@ -228,7 +228,7 @@ def test_make_psf_model_offset():
     assert moffat(10, 0) == psfmod1(10, 0) == psfmod2(10, 0) == 1.0
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestGridFromEPSFs:
     """

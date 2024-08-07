@@ -20,7 +20,7 @@ from photutils.utils._optional_deps import HAS_SCIPY
 DEFAULT_FIX = np.array([False, False, False, False])
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestIsophote:
     def setup_class(self):

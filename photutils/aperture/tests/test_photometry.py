@@ -263,7 +263,7 @@ class TestInputNDData(BaseTestDifferentData):
         self.fluxunit = u.adu
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 def test_wcs_based_photometry_to_catalog():
     pathcat = get_path('spitzer_example_catalog.xml', location='remote')
     pathhdu = get_path('spitzer_example_image.fits', location='remote')

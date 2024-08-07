@@ -154,7 +154,7 @@ def test_fitting_all():
     assert isophote_m.stop_code == 0
 
 
-@pytest.mark.remote_data
+@pytest.mark.remote_data()
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestM51:
     def setup_class(self):
