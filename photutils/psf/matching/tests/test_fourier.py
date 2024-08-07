@@ -53,5 +53,6 @@ def test_create_matching_kernel_shapes():
     """
     psf1 = np.ones((5, 5))
     psf2 = np.ones((3, 3))
-    with pytest.raises(ValueError):
+    match = 'source_psf and target_psf must have the same shape'
+    with pytest.raises(ValueError, match=match):
         create_matching_kernel(psf1, psf2)

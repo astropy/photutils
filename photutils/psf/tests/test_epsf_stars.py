@@ -43,16 +43,20 @@ class TestExtractStars:
         assert stars.center.shape == (len(stars), 2)
 
     def test_extract_stars_inputs(self):
-        with pytest.raises(TypeError):
+        match = 'data must be a single NDData or list of NDData objects'
+        with pytest.raises(TypeError, match=match):
             extract_stars(np.ones(3), self.stars_tbl)
 
-        with pytest.raises(TypeError):
+        match = 'catalogs must be a single Table or list of Table objects'
+        with pytest.raises(TypeError, match=match):
             extract_stars(self.nddata, [(1, 1), (2, 2), (3, 3)])
 
-        with pytest.raises(ValueError):
+        match = 'number of catalogs must match the number of input images'
+        with pytest.raises(ValueError, match=match):
             extract_stars(self.nddata, [self.stars_tbl, self.stars_tbl])
 
-        with pytest.raises(ValueError):
+        match = 'the catalog must have a "skycoord" column'
+        with pytest.raises(ValueError, match=match):
             extract_stars([self.nddata, self.nddata], self.stars_tbl)
 
 

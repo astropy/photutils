@@ -98,21 +98,24 @@ class TestGriddedPSFModel:
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_interp(self, psfmodel):
         # test xyref length
-        with pytest.raises(TypeError):
-            psfmodel._bilinear_interp([1, 1], 1, 1, 1)
+        match = 'object is not iterable'
+        with pytest.raises(TypeError, match=match):
+            psfmodel._bilinear_interp(([1, 1]), 1, 1, 1)
 
         # test if refxy points form a rectangle
         xyref = [[0, 0], [0, 1], [1, 0], [2, 2]]
         zref = np.ones((4, 4, 4))
-        with pytest.raises(ValueError):
+        match = 'The refxy points do not form a rectangle'
+        with pytest.raises(ValueError, match=match):
             psfmodel._bilinear_interp(xyref, zref, 1, 1)
 
         # test if xi and yi are outside of xyref
         xyref = [[0, 0], [0, 1], [1, 0], [1, 1]]
         zref = np.ones((4, 4, 4))
-        with pytest.raises(ValueError):
+        match = 'input is not within the rectangle defined by xyref'
+        with pytest.raises(ValueError, match=match):
             psfmodel._bilinear_interp(xyref, zref, 100, 1)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=match):
             psfmodel._bilinear_interp(xyref, zref, 1, 100)
 
         # test non-scalar xi and yi
@@ -127,36 +130,42 @@ class TestGriddedPSFModel:
         data = np.ones((4, 3, 3))
 
         # check if NDData
-        with pytest.raises(TypeError):
+        match = 'data must be an NDData instance'
+        with pytest.raises(TypeError, match=match):
             GriddedPSFModel(data)
 
         # check PSF data dimension
-        with pytest.raises(ValueError):
+        match = 'The NDData data attribute must be a 3D numpy ndarray'
+        with pytest.raises(ValueError, match=match):
             GriddedPSFModel(NDData(np.ones((3, 3))))
 
         # check that grid_xypos is in meta
         meta = {'oversampling': 4}
         nddata = NDData(data, meta=meta)
-        with pytest.raises(ValueError):
+        match = '"grid_xypos" must be in the nddata meta dictionary'
+        with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
         # check grid_xypos length
         meta = {'grid_xypos': [[0, 0], [1, 0], [1, 0]], 'oversampling': 4}
         nddata = NDData(data, meta=meta)
-        with pytest.raises(ValueError):
+        match = 'length of grid_xypos must match the number of input ePSFs'
+        with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
         # check if grid_xypos is a regular grid
         meta = {'grid_xypos': [[0, 0], [1, 0], [1, 0], [3, 4]],
                 'oversampling': 4}
         nddata = NDData(data, meta=meta)
-        with pytest.raises(ValueError):
+        match = '"grid_xypos" must form a regular grid'
+        with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
         # check that oversampling is in meta
         meta = {'grid_xypos': [[0, 0], [0, 1], [1, 0], [1, 1]]}
         nddata = NDData(data, meta=meta)
-        with pytest.raises(ValueError):
+        match = '"oversampling" must be in the nddata meta dictionary'
+        with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
     @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')

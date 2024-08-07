@@ -70,7 +70,8 @@ class TestEPSFBuild:
 
     def test_extract_stars(self):
         size = 25
-        with pytest.warns(AstropyUserWarning, match='were not extracted'):
+        match = 'were not extracted because their cutout region extended'
+        with pytest.warns(AstropyUserWarning, match=match):
             stars = extract_stars(self.nddata, self.init_stars, size=size)
 
         assert len(stars) == 81
@@ -90,7 +91,8 @@ class TestEPSFBuild:
         ndd3 = NDData(self.nddata.data, uncertainty=uncertainty3)
 
         size = 25
-        with pytest.warns(AstropyUserWarning, match='were not extracted'):
+        match = 'were not extracted because their cutout region extended'
+        with pytest.warns(AstropyUserWarning, match=match):
             ndd_inputs = (ndd1, ndd2, ndd3)
 
             outputs = [extract_stars(ndd_input, self.init_stars, size=size)
@@ -120,7 +122,8 @@ class TestEPSFBuild:
         """
         size = 25
         oversampling = 4
-        with pytest.warns(AstropyUserWarning, match='were not extracted'):
+        match = 'were not extracted because their cutout region extended'
+        with pytest.warns(AstropyUserWarning, match=match):
             stars = extract_stars(self.nddata, self.init_stars, size=size)
         epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=15,
                                    progress_bar=False, norm_radius=25,
@@ -146,7 +149,8 @@ class TestEPSFBuild:
     def test_epsf_fitting_bounds(self):
         size = 25
         oversampling = 4
-        with pytest.warns(AstropyUserWarning, match='were not extracted'):
+        match = 'were not extracted because their cutout region extended'
+        with pytest.warns(AstropyUserWarning, match=match):
             stars = extract_stars(self.nddata, self.init_stars, size=size)
         epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=8,
                                    progress_bar=True, norm_radius=25,
@@ -155,32 +159,40 @@ class TestEPSFBuild:
                                    smoothing_kernel='quadratic')
         # With a boxsize larger than the cutout we expect the fitting to
         # fail for all stars, due to star._fit_error_status
-        with pytest.raises(ValueError), pytest.warns(AstropyUserWarning):
+        match1 = 'The ePSF fitting failed for all stars'
+        match2 = r'The star at .* cannot be fit because its fitting region '
+        with (pytest.raises(ValueError, match=match1),
+                pytest.warns(AstropyUserWarning, match=match2)):
             epsf_builder(stars)
 
     def test_epsf_build_invalid_fitter(self):
         """
         Test that the input fitter is an EPSFFitter instance.
         """
-        with pytest.raises(TypeError):
+        match = 'fitter must be an EPSFFitter instance'
+        with pytest.raises(TypeError, match=match):
             EPSFBuilder(fitter=EPSFFitter, maxiters=3)
 
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match=match):
             EPSFBuilder(fitter=LevMarLSQFitter(), maxiters=3)
 
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match=match):
             EPSFBuilder(fitter=LevMarLSQFitter, maxiters=3)
 
 
 def test_epsfbuilder_inputs():
     # invalid inputs
-    with pytest.raises(ValueError):
+    match = "'oversampling' must be specified"
+    with pytest.raises(ValueError, match=match):
         EPSFBuilder(oversampling=None)
-    with pytest.raises(ValueError):
+    match = 'oversampling must be > 0'
+    with pytest.raises(ValueError, match=match):
         EPSFBuilder(oversampling=-1)
-    with pytest.raises(ValueError):
+    match = "'maxiters' must be a positive number"
+    with pytest.raises(ValueError, match=match):
         EPSFBuilder(maxiters=-1)
-    with pytest.raises(ValueError):
+    match = 'oversampling must be > 0'
+    with pytest.raises(ValueError, match=match):
         EPSFBuilder(oversampling=[-1, 4])
 
     # valid inputs
@@ -189,7 +201,8 @@ def test_epsfbuilder_inputs():
 
     # invalid inputs
     for sigma_clip in [None, [], 'a']:
-        with pytest.raises(TypeError):
+        match = 'sigma_clip must be an astropy.stats.SigmaClip instance'
+        with pytest.raises(TypeError, match=match):
             EPSFBuilder(sigma_clip=sigma_clip)
 
     # valid inputs
@@ -198,26 +211,49 @@ def test_epsfbuilder_inputs():
 
 def test_epsfmodel_inputs():
     data = np.array([[], []])
-    with pytest.raises(ValueError):
+    match = 'Image data array cannot be zero-sized'
+    with pytest.raises(ValueError, match=match):
         EPSFModel(data)
 
     data = np.ones((5, 5), dtype=float)
     data[2, 2] = np.inf
-    with pytest.raises(ValueError, match='must be finite'):
+    match = 'must be finite'
+    with pytest.raises(ValueError, match=match):
         EPSFModel(data)
 
     data[2, 2] = np.nan
-    with pytest.raises(ValueError, match='must be finite'):
+    with pytest.raises(ValueError, match=match):
         EPSFModel(data, flux=None)
 
     data[2, 2] = 1
-    for oversampling in [-1, [-2, 4], (1, 4, 8), ((1, 2), (3, 4)),
-                         np.ones((2, 2, 2)), 2.1, np.nan, (1, np.inf)]:
-        with pytest.raises(ValueError):
+    match = 'oversampling must be > 0'
+    for oversampling in [-1, [-2, 4]]:
+        with pytest.raises(ValueError, match=match):
+            EPSFModel(data, oversampling=oversampling)
+
+    match = 'oversampling must have 1 or 2 elements'
+    oversampling = (1, 4, 8)
+    with pytest.raises(ValueError, match=match):
+        EPSFModel(data, oversampling=oversampling)
+
+    match = 'oversampling must have integer values'
+    oversampling = 2.1
+    with pytest.raises(ValueError, match=match):
+        EPSFModel(data, oversampling=oversampling)
+
+    match = 'oversampling must be 1D'
+    for oversampling in [((1, 2), (3, 4)), np.ones((2, 2, 2))]:
+        with pytest.raises(ValueError, match=match):
+            EPSFModel(data, oversampling=oversampling)
+
+    match = 'oversampling must be a finite value'
+    for oversampling in [np.nan, (1, np.inf)]:
+        with pytest.raises(ValueError, match=match):
             EPSFModel(data, oversampling=oversampling)
 
     origin = (1, 2, 3)
-    with pytest.raises(TypeError):
+    match = 'Parameter "origin" must be either None or an iterable with'
+    with pytest.raises(TypeError, match=match):
         EPSFModel(data, origin=origin)
 
 

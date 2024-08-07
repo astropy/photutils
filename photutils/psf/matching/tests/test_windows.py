@@ -80,5 +80,6 @@ def test_tophat():
 
 def test_invalid_shape():
     win = HanningWindow()
-    with pytest.raises(ValueError):
+    match = 'shape must have only 2 elements'
+    with pytest.raises(ValueError, match=match):
         win((5,))
