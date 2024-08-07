@@ -132,7 +132,7 @@ def test_make_model_image_inputs():
         make_model_image(100, Moffat2D(), QTable())
 
     match = 'model must be a Model instance'
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(TypeError, match=match):
         make_model_image((100, 100), None, QTable())
 
     match = 'model must be a 2D model'
@@ -142,7 +142,7 @@ def test_make_model_image_inputs():
         make_model_image((100, 100), model, QTable())
 
     match = 'params_table must be an astropy Table'
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(TypeError, match=match):
         model = Moffat2D()
         make_model_image((100, 100), model, None)
 

@@ -189,7 +189,7 @@ def test_epsfbuilder_inputs():
 
     # invalid inputs
     for sigma_clip in [None, [], 'a']:
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             EPSFBuilder(sigma_clip=sigma_clip)
 
     # valid inputs

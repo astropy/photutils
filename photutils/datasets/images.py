@@ -217,7 +217,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         raise ValueError('shape must be a 2-tuple')
 
     if not isinstance(model, Model):
-        raise ValueError('model must be a Model instance')
+        raise TypeError('model must be a Model instance')
     if model.n_inputs != 2 or model.n_outputs != 1:
         raise ValueError('model must be a 2D model')
     if x_name not in model.param_names:
@@ -226,7 +226,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         raise ValueError(f'y_name "{y_name}" not in model parameter names')
 
     if not isinstance(params_table, Table):
-        raise ValueError('params_table must be an astropy Table')
+        raise TypeError('params_table must be an astropy Table')
     if x_name not in params_table.colnames:
         raise ValueError(f'x_name "{x_name}" not in psf_params column names')
     if y_name not in params_table.colnames:

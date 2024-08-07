@@ -442,8 +442,8 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
 
         # check input type
         if not isinstance(epsf, EPSFModel):
-            raise ValueError('All input `epsfs` must be of type '
-                             '`photutils.psf.models.EPSFModel`.')
+            raise TypeError('All input `epsfs` must be of type '
+                            '`photutils.psf.models.EPSFModel`.')
 
         # get data array from EPSF
         data_arrs.append(epsf.data)

@@ -203,7 +203,7 @@ class TestDeblendSources:
 
     def test_segment_img(self):
         segm_wrong = np.ones((2, 2), dtype=int)  # ndarray
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             deblend_sources(self.data, segm_wrong, self.npixels,
                             progress_bar=False)
 

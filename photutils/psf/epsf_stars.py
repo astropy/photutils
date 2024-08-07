@@ -294,8 +294,8 @@ class EPSFStars:
         elif isinstance(stars_list, list):
             self._data = stars_list
         else:
-            raise ValueError('stars_list must be a list of EPSFStar and/or '
-                             'LinkedEPSFStar objects.')
+            raise TypeError('stars_list must be a list of EPSFStar and/or '
+                            'LinkedEPSFStar objects.')
 
     def __len__(self):
         return len(self._data)
@@ -452,8 +452,8 @@ class LinkedEPSFStar(EPSFStars):
     def __init__(self, stars_list):
         for star in stars_list:
             if not isinstance(star, EPSFStar):
-                raise ValueError('stars_list must contain only EPSFStar '
-                                 'objects.')
+                raise TypeError('stars_list must contain only EPSFStar '
+                                'objects.')
             if star.wcs_large is None:
                 raise ValueError('Each EPSFStar object must have a valid '
                                  'wcs_large attribute.')
@@ -581,13 +581,12 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
 
     for img in data:
         if not isinstance(img, NDData):
-            raise ValueError('data must be a single or list of NDData '
-                             'objects.')
+            raise TypeError('data must be a single or list of NDData objects.')
 
     for cat in catalogs:
         if not isinstance(cat, Table):
-            raise ValueError('catalogs must be a single or list of Table '
-                             'objects.')
+            raise TypeError('catalogs must be a single or list of Table '
+                            'objects.')
 
     if len(catalogs) == 1 and len(data) > 1:
         if 'skycoord' not in catalogs[0].colnames:
