@@ -65,14 +65,16 @@ class TestFindPeaks:
         """
         Test if make shape doesn't match data shape.
         """
-        with pytest.raises(ValueError):
+        match = 'data and mask must have the same shape'
+        with pytest.raises(ValueError, match=match):
             find_peaks(data, 0.1, mask=np.ones((5, 5)))
 
     def test_thresholdshape(self, data):
         """
         Test if threshold shape doesn't match data shape.
         """
-        with pytest.raises(ValueError):
+        match = 'threshold array must have the same shape as the input data'
+        with pytest.raises(ValueError, match=match):
             find_peaks(data, np.ones((2, 2)))
 
     def test_npeaks(self, data):
@@ -102,7 +104,8 @@ class TestFindPeaks:
         """
         Test that centroid_func is callable.
         """
-        with pytest.raises(TypeError):
+        match = 'centroid_func must be a callable object'
+        with pytest.raises(TypeError, match=match):
             find_peaks(data, 0.1, box_size=2, centroid_func=True)
 
     def test_wcs(self, data):

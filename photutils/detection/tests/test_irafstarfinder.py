@@ -28,20 +28,25 @@ class TestIRAFStarFinder:
         assert_array_equal(tbl0, tbl1)
 
     def test_irafstarfind_inputs(self):
-        with pytest.raises(TypeError):
+        match = 'threshold must be a scalar value'
+        with pytest.raises(TypeError, match=match):
             IRAFStarFinder(threshold=np.ones((2, 2)), fwhm=3.0)
 
-        with pytest.raises(TypeError):
+        match = 'fwhm must be a scalar value'
+        with pytest.raises(TypeError, match=match):
             IRAFStarFinder(threshold=3.0, fwhm=np.ones((2, 2)))
 
-        with pytest.raises(ValueError):
+        match = 'brightest must be >= 0'
+        with pytest.raises(ValueError, match=match):
             IRAFStarFinder(10, 1.5, brightest=-1)
 
-        with pytest.raises(ValueError):
+        match = 'brightest must be an integer'
+        with pytest.raises(ValueError, match=match):
             IRAFStarFinder(10, 1.5, brightest=3.1)
 
         xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
-        with pytest.raises(ValueError):
+        match = 'xycoords must be shaped as a Nx2 array'
+        with pytest.raises(ValueError, match=match):
             IRAFStarFinder(threshold=10, fwhm=1.5, xycoords=xycoords)
 
     def test_irafstarfind_nosources(self):

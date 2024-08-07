@@ -38,11 +38,14 @@ class TestStarFinder:
                 assert_equal(tbl3[col], tbl1[col])
 
     def test_inputs(self, kernel):
-        with pytest.raises(ValueError):
+        match = 'min_separation must be >= 0'
+        with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, min_separation=-1)
-        with pytest.raises(ValueError):
+        match = 'brightest must be >= 0'
+        with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, brightest=-1)
-        with pytest.raises(ValueError):
+        match = 'brightest must be an integer'
+        with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, brightest=3.1)
 
     def test_nosources(self, data, kernel):
