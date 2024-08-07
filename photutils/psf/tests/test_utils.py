@@ -47,7 +47,7 @@ for x, y, flux in SOURCES:
                               mode='oversample')
 
 
-def test_InverseShift():
+def test_inverse_shift():
     model = _InverseShift(10)
     assert model(1) == -9.0
     assert model(-10) == -20.0
