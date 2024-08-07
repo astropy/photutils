@@ -49,7 +49,8 @@ def test_cutout_partial_overlap():
     assert cutout.shape == (23, 39)
 
     # 'strict' mode
-    with pytest.raises(PartialOverlapError):
+    match = 'Arrays overlap only partially'
+    with pytest.raises(PartialOverlapError, match=match):
         CutoutImage(data, (11, 10), shape, mode='strict')
 
     # 'partial' mode

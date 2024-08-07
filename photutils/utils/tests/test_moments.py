@@ -36,5 +36,6 @@ def test_moments_central_nonsquare():
 
 def test_moments_central_invalid_dim():
     data = np.arange(27).reshape(3, 3, 3)
-    with pytest.raises(ValueError):
+    match = 'data must be a 2D array'
+    with pytest.raises(ValueError, match=match):
         _moments_central(data, order=3)

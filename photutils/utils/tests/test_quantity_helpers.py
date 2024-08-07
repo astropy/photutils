@@ -28,10 +28,10 @@ def test_units(all_units):
 
 
 def test_mixed_units():
-    match = 'must all have the same units'
     arrs = (np.ones(3) * u.Jy, np.ones(3) * u.km)
     names = ('a', 'b')
 
+    match = 'must all have the same units'
     with pytest.raises(ValueError, match=match):
         _, _ = process_quantities(arrs, names)
 
