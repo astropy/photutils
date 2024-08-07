@@ -59,34 +59,34 @@ def test_radial_profile(profile_data):
 def test_radial_profile_inputs(profile_data):
     xycen, data, _, _ = profile_data
 
-    msg = 'minimum radii must be >= 0'
+    match = 'minimum radii must be >= 0'
     edge_radii = np.arange(-1, 10)
-    with pytest.raises(ValueError, match=msg):
+    with pytest.raises(ValueError, match=match):
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
-    msg = 'radii must be a 1D array and have at least two values'
+    match = 'radii must be a 1D array and have at least two values'
     edge_radii = [1]
-    with pytest.raises(ValueError, match=msg):
+    with pytest.raises(ValueError, match=match):
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
     edge_radii = np.arange(6).reshape(2, 3)
-    with pytest.raises(ValueError, match=msg):
+    with pytest.raises(ValueError, match=match):
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
-    msg = 'radii must be strictly increasing'
+    match = 'radii must be strictly increasing'
     edge_radii = np.arange(10)[::-1]
-    with pytest.raises(ValueError, match=msg):
+    with pytest.raises(ValueError, match=match):
         RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
-    msg = 'error must have the same shape as data'
+    match = 'error must have the same shape as data'
     edge_radii = np.arange(10)
-    with pytest.raises(ValueError, match=msg):
+    with pytest.raises(ValueError, match=match):
         RadialProfile(data, xycen, edge_radii, error=np.ones(3), mask=None)
 
-    msg = 'mask must have the same shape as data'
+    match = 'mask must have the same shape as data'
     edge_radii = np.arange(10)
     mask = np.ones(3, dtype=bool)
-    with pytest.raises(ValueError, match=msg):
+    with pytest.raises(ValueError, match=match):
         RadialProfile(data, xycen, edge_radii, error=None, mask=mask)
 
 
@@ -118,7 +118,8 @@ def test_radial_profile_unit(profile_data):
     assert rp1.profile.unit == unit
     assert rp1.profile_error.unit == unit
 
-    with pytest.raises(ValueError):
+    match = 'must all have the same units'
+    with pytest.raises(ValueError, match=match):
         RadialProfile(data << unit, xycen, edge_radii, error=error, mask=None)
 
 
@@ -163,13 +164,13 @@ def test_radial_profile_nonfinite(profile_data):
     rp2 = RadialProfile(data2, xycen, edge_radii, error=error, mask=mask)
     assert_allclose(rp1.profile, rp2.profile)
 
-    msg = 'Input data contains non-finite values'
-    with pytest.warns(AstropyUserWarning, match=msg):
+    match = 'Input data contains non-finite values'
+    with pytest.warns(AstropyUserWarning, match=match):
         rp3 = RadialProfile(data2, xycen, edge_radii, error=error, mask=None)
         assert_allclose(rp1.profile, rp3.profile)
 
     error2 = error.copy()
     error2[40, 40] = np.inf
-    with pytest.warns(AstropyUserWarning, match=msg):
+    with pytest.warns(AstropyUserWarning, match=match):
         rp4 = RadialProfile(data, xycen, edge_radii, error=error2, mask=None)
         assert_allclose(rp1.profile, rp4.profile)
