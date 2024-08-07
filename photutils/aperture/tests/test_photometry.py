@@ -684,7 +684,7 @@ def test_elliptical_bbox():
 
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
-@pytest.mark.parametrize('wcs_type', ('wcs', 'gwcs'))
+@pytest.mark.parametrize('wcs_type', ['wcs', 'gwcs'])
 def test_to_sky_pixel(wcs_type):
     data = make_4gaussians_image()
 

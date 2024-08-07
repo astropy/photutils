@@ -29,7 +29,7 @@ def test_gain_shape():
         calc_total_error(DATA, BKG_ERROR, WRONG_SHAPE)
 
 
-@pytest.mark.parametrize('effective_gain', (-1, -100))
+@pytest.mark.parametrize('effective_gain', [-1, -100])
 def test_gain_negative(effective_gain):
     with pytest.raises(ValueError):
         calc_total_error(DATA, BKG_ERROR, effective_gain)

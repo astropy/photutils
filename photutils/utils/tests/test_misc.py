@@ -8,7 +8,7 @@ import pytest
 from photutils.utils._misc import _get_meta
 
 
-@pytest.mark.parametrize('utc', (False, True))
+@pytest.mark.parametrize('utc', [False, True])
 def test_get_meta(utc):
     meta = _get_meta(utc)
     keys = ('date', 'version')

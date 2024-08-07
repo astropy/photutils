@@ -212,7 +212,7 @@ def test_psf_photometry(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.parametrize('fit_sigma', (False, True))
+@pytest.mark.parametrize('fit_sigma', [False, True])
 def test_psf_photometry_forced(test_data, fit_sigma):
     data, error, sources = test_data
 
@@ -322,7 +322,7 @@ def test_model_residual_image(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.parametrize('fit_stddev', (False, True))
+@pytest.mark.parametrize('fit_stddev', [False, True])
 def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
     """
     Test compound models output from ``make_psf_model``.

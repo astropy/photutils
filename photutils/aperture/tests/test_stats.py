@@ -36,8 +36,8 @@ class TestApertureStats:
                                    error=error * u.Jy, wcs=wcs,
                                    sigma_clip=sigclip)
 
-    @pytest.mark.parametrize('with_units', (True, False))
-    @pytest.mark.parametrize('with_sigmaclip', (True, False))
+    @pytest.mark.parametrize('with_units', [True, False])
+    @pytest.mark.parametrize('with_sigmaclip', [True, False])
     def test_properties(self, with_units, with_sigmaclip):
         apstats = [self.apstats1.copy(), self.apstats2.copy(),
                    self.apstats1_units.copy(), self.apstats2_units.copy()]
@@ -93,7 +93,7 @@ class TestApertureStats:
         apstats = ApertureStats(self.data, self.aperture, sum_method='center')
         assert set(apstats._variance_cutout_center) == {None}
 
-    @pytest.mark.parametrize('sum_method', ('exact', 'subpixel'))
+    @pytest.mark.parametrize('sum_method', ['exact', 'subpixel'])
     def test_sum_method(self, sum_method):
         apstats1 = ApertureStats(self.data, self.aperture, error=self.error,
                                  sum_method='center')
@@ -306,7 +306,7 @@ class TestApertureStats:
         assert apstats.xcentroid == 12.0
         assert apstats.ycentroid == 12.0
 
-    @pytest.mark.parametrize('with_units', (True, False))
+    @pytest.mark.parametrize('with_units', [True, False])
     def test_nddata_input(self, with_units):
         mask = np.zeros(self.data.shape, dtype=bool)
         mask[225:240, 80:90] = True  # partially mask id=2

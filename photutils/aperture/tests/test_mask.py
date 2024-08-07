@@ -162,7 +162,7 @@ def test_mask_multiply_quantity():
     assert data_weighted[10, 10].value == 1.0
 
 
-@pytest.mark.parametrize('value', (np.nan, np.inf))
+@pytest.mark.parametrize('value', [np.nan, np.inf])
 def test_mask_nonfinite_fill_value(value):
     aper = CircularAnnulus((0, 0), 10, 20)
     data = np.ones((101, 101)).astype(int)

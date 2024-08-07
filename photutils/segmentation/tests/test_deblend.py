@@ -94,8 +94,8 @@ class TestDeblendSources:
         assert result.nlabels == 2
 
     @pytest.mark.parametrize(('contrast', 'nlabels'),
-                             ((0.001, 6), (0.017, 5), (0.06, 4), (0.1, 3),
-                              (0.15, 2), (0.45, 1)))
+                             [(0.001, 6), (0.017, 5), (0.06, 4), (0.1, 3),
+                              (0.15, 2), (0.45, 1)])
     def test_deblend_contrast(self, contrast, nlabels):
         y, x = np.mgrid[0:51, 0:151]
         y0 = 25

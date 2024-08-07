@@ -70,7 +70,7 @@ class TestSourceCatalog:
                                        mask=self.mask, wcs=self.wcs,
                                        localbkg_width=24)
 
-    @pytest.mark.parametrize('with_units', (True, False))
+    @pytest.mark.parametrize('with_units', [True, False])
     def test_catalog(self, with_units):
         if with_units:
             cat1 = self.cat_units.copy()
@@ -111,7 +111,7 @@ class TestSourceCatalog:
             cat1._prepare_cutouts(cat1._segment_img_cutouts, units=True,
                                   masked=True)
 
-    @pytest.mark.parametrize('with_units', (True, False))
+    @pytest.mark.parametrize('with_units', [True, False])
     def test_catalog_detection_cat(self, with_units):
         """
         Test aperture-based properties with an input detection catalog.
@@ -637,7 +637,7 @@ class TestSourceCatalog:
         for arr in ndarray:
             assert not isinstance(arr, u.Quantity)
 
-    @pytest.mark.parametrize('scalar', (True, False))
+    @pytest.mark.parametrize('scalar', [True, False])
     def test_extra_properties(self, scalar):
         cat = SourceCatalog(self.data, self.segm)
         if scalar:
