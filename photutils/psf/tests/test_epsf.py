@@ -106,12 +106,13 @@ class TestEPSFBuild:
         assert_allclose(outputs[0].weights, outputs[1].weights)
         assert_allclose(outputs[0].weights, outputs[2].weights)
 
-        match = 'One or more weight values is not finite'
-        with pytest.warns(AstropyUserWarning, match='were not extracted'):
-            with pytest.warns(AstropyUserWarning, match=match):
-                uncertainty = StdDevUncertainty(np.zeros(shape))
-                ndd = NDData(self.nddata.data, uncertainty=uncertainty)
-                stars = extract_stars(ndd, self.init_stars, size=size)
+        match1 = 'were not extracted'
+        match2 = 'One or more weight values is not finite'
+        with (pytest.warns(AstropyUserWarning, match=match1),
+              pytest.warns(AstropyUserWarning, match=match2)):
+            uncertainty = StdDevUncertainty(np.zeros(shape))
+            ndd = NDData(self.nddata.data, uncertainty=uncertainty)
+            stars = extract_stars(ndd, self.init_stars, size=size)
 
     def test_epsf_build(self):
         """
