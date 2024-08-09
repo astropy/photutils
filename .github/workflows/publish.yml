@@ -63,5 +63,12 @@ jobs:
         - cp311*win_amd64
         - cp312*win_amd64
 
+      # Developer wheels
+      upload_to_anaconda: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+      anaconda_user: astropy
+      anaconda_package: photutils
+      anaconda_keep_n_latest: 10
+
     secrets:
       pypi_token: ${{ secrets.pypi_token }}
+      anaconda_token: ${{ secrets.anaconda_token }}
