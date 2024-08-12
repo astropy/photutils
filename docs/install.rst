@@ -138,11 +138,10 @@ the "-e" option::
 
     pip install -e ".[all]"
 
-Alternatively, `pip`_ can be used to retrieve, build, and install the
-latest development version from `GitHub`_::
+Alternatively, `pip`_ can be used to retrieve and install the
+latest development pre-built wheel::
 
-    pip install "photutils[all] @ git+https://github.com/astropy/photutils.git"
-
+    pip install --upgrade --extra-index-url https://pypi.anaconda.org/astropy/simple photutils[all] --pre
 
 Testing an installed Photutils
 ==============================
