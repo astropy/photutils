@@ -141,7 +141,7 @@ the "-e" option::
 Alternatively, `pip`_ can be used to retrieve and install the
 latest development pre-built wheel::
 
-    pip install --upgrade --index-url https://pypi.anaconda.org/astropy/simple photutils[all] --pre
+    pip install --upgrade --extra-index-url https://pypi.anaconda.org/astropy/simple photutils[all] --pre
 
 Testing an installed Photutils
 ==============================
