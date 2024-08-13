@@ -98,6 +98,12 @@ class GaussianPSF(Fittable2DModel):
 
         \rm{FWHM}_{y} = 2 \sigma_{y} \sqrt{2 \ln{2}}
 
+    The model is normalized such that:
+
+    .. math::
+
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Gaussian_function
@@ -417,6 +423,12 @@ class CircularGaussianPSF(Fittable2DModel):
     .. math::
 
         \rm{FWHM} = 2 \sigma \sqrt{2 \ln{2}}
+
+    The model is normalized such that:
+
+    .. math::
+
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
 
     References
     ----------
