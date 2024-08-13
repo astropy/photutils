@@ -6,15 +6,300 @@ This module provides models for doing PSF/PRF-fitting photometry.
 import copy
 import warnings
 
+import astropy.units as u
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
+from astropy.units import UnitsError
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
 from photutils.utils._parameters import as_pair
 
-__all__ = ['FittableImageModel', 'EPSFModel', 'IntegratedGaussianPRF',
-           'PRFAdapter']
+__all__ = ['GaussianPSF', 'FittableImageModel', 'EPSFModel',
+           'IntegratedGaussianPRF', 'PRFAdapter']
+
+
+GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+
+
+class GaussianPSF(Fittable2DModel):
+    r"""
+    A 2D Gaussian PSF model.
+
+    This model is evaluated by sampling the 2D Gaussian at the input
+    coordinates. The Gaussian is normalized such that the analytical
+    integral over the entire 2D plane is equal to the total flux.
+
+    Parameters
+    ----------
+    flux : float, optional
+        Total integrated flux over the entire PSF.
+
+    x_0 : float, optional
+        Position of the peak along the x axis.
+
+    y_0 : float, optional
+        Position of the peak along the y axis.
+
+    x_fwhm : float, optional
+        The full width at half maximum (FWHM) of the Gaussian along the
+        x axis.
+
+    y_fwhm : float, optional
+        FWHM of the Gaussian along the y axis.
+
+    theta : float, optional
+        The counterclockwise rotation angle either as a float (in
+        degrees) or a `~astropy.units.Quantity` angle (optional).
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` base class.
+
+    Notes
+    -----
+    The Gaussian function is defined as:
+
+    .. math::
+
+        f(x, y) = \frac{F}{2 \pi \sigma_{x} \sigma_{y}}
+                  \exp \left( -a\left(x - x_{0}\right)^{2}
+                  - b \left(x - x_{0}\right) \left(y - y_{0}\right)
+                  - c \left(y - y_{0}\right)^{2} \right)
+
+    where :math:`F` is the total integrated flux, :math:`(x_{0},
+    y_{0})` is the position of the peak, and :math:`\sigma_{x}` and
+    :math:`\sigma_{y}` are the standard deviations along the x and y
+    axes, respectively.
+
+    .. math::
+
+        a = \frac{\cos^{2}{\theta}}{2 \sigma_{x}^{2}}
+            + \frac{\sin^{2}{\theta}}{2 \sigma_{y}^{2}}
+
+        b = \frac{\sin{2 \theta}}{2 \sigma_{x}^{2}}
+            - \frac{\sin{2 \theta}}{2 \sigma_{y}^{2}}
+
+        c = \frac{\sin^{2}{\theta}} {2 \sigma_{x}^{2}}
+            + \frac{\cos^{2}{\theta}}{2 \sigma_{y}^{2}}
+
+    where :math:`\theta` is the rotation angle of the Gaussian.
+
+    The FWHMs of the Gaussian along the x and y axes are given by:
+
+    .. math::
+
+        \rm{FWHM}_{x} = 2 \sigma_{x} \sqrt{2 \ln{2}}
+
+        \rm{FWHM}_{y} = 2 \sigma_{y} \sqrt{2 \ln{2}}
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Gaussian_function
+    """
+
+    flux = Parameter(
+        default=1, description='Total integrated flux over the entire PSF.')
+    x_0 = Parameter(
+        default=0, description='Position of the peak along the x axis')
+    y_0 = Parameter(
+        default=0, description='Position of the peak along the y axis')
+    x_fwhm = Parameter(
+        default=1, description='FWHM of the Gaussian along the x axis')
+    y_fwhm = Parameter(
+        default=1, description='FWHM of the Gaussian along the y axis')
+    theta = Parameter(
+        default=0.0, description=('CCW rotation angle either as a float (in '
+                                  'degrees) or a Quantity angle (optional)'))
+
+    def __init__(self, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+                 x_fwhm=x_fwhm.default, y_fwhm=y_fwhm.default,
+                 theta=theta.default, **kwargs):
+        super().__init__(flux=flux, x_0=x_0, y_0=y_0, x_fwhm=x_fwhm,
+                         y_fwhm=y_fwhm, theta=theta, **kwargs)
+
+    @property
+    def x_sigma(self):
+        """
+        Gaussian sigma (standard deviation) along the x axis.
+        """
+        return self.x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+
+    @property
+    def y_sigma(self):
+        """
+        Gaussian sigma (standard deviation) along the y axis.
+        """
+        return self.y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+
+    def evaluate(self, x, y, flux, x_0, y_0, x_fwhm, y_fwhm, theta):
+        """
+        Calculate the value of the 2D Gaussian model at the input
+        coordinates.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        x_fwhm, y_fwhm : float
+            FWHM of the Gaussian along the x and y axes.
+
+        theta : float
+            The counterclockwise rotation angle either as a float (in
+            degrees) or a `~astropy.units.Quantity` angle (optional).
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The value of the model evaluated at the input coordinates.
+        """
+        if not isinstance(theta, u.Quantity):
+            theta = np.deg2rad(theta)
+        cost2 = np.cos(theta) ** 2
+        sint2 = np.sin(theta) ** 2
+        sin2t = np.sin(2.0 * theta)
+        xstd = x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        ystd = y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        xstd2 = xstd ** 2
+        ystd2 = ystd ** 2
+        xdiff = x - x_0
+        ydiff = y - y_0
+        a = 0.5 * ((cost2 / xstd2) + (sint2 / ystd2))
+        b = 0.5 * ((sin2t / xstd2) - (sin2t / ystd2))
+        c = 0.5 * ((sint2 / xstd2) + (cost2 / ystd2))
+        amplitude = flux / (2 * np.pi * xstd * ystd)
+        return amplitude * np.exp(
+            -(a * xdiff**2) - (b * xdiff * ydiff) - (c * ydiff**2))
+
+    @staticmethod
+    def fit_deriv(x, y, flux, x_0, y_0, x_fwhm, y_fwhm, theta):
+        """
+        Calculate the partial derivatives of the 2D Gaussian function
+        with respect to the parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        x_fwhm, y_fwhm : float
+            FWHM of the Gaussian along the x and y axes.
+
+        theta : float
+            The counterclockwise rotation angle either as a float (in
+            degrees) or a `~astropy.units.Quantity` angle (optional).
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to each
+            parameter.
+        """
+        if not isinstance(theta, u.Quantity):
+            theta = np.deg2rad(theta)
+
+        cost = np.cos(theta)
+        sint = np.sin(theta)
+        cost2 = cost ** 2
+        sint2 = sint ** 2
+        cos2t = np.cos(2.0 * theta)
+        sin2t = np.sin(2.0 * theta)
+        xstd = x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        ystd = y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        xstd2 = xstd ** 2
+        ystd2 = ystd ** 2
+        xstd3 = xstd ** 3
+        ystd3 = ystd ** 3
+        xdiff = x - x_0
+        ydiff = y - y_0
+        xdiff2 = xdiff ** 2
+        ydiff2 = ydiff ** 2
+        a = 0.5 * ((cost2 / xstd2) + (sint2 / ystd2))
+        b = 0.5 * ((sin2t / xstd2) - (sin2t / ystd2))
+        c = 0.5 * ((sint2 / xstd2) + (cost2 / ystd2))
+        amplitude = flux / (2 * np.pi * xstd * ystd)
+        exp = np.exp(-(a * xdiff2) - (b * xdiff * ydiff) - (c * ydiff2))
+        g = amplitude * exp
+
+        da_dtheta = sint * cost * ((1.0 / ystd2) - (1.0 / xstd2))
+        db_dtheta = (cos2t / xstd2) - (cos2t / ystd2)
+        dc_dtheta = -da_dtheta
+
+        da_dxstd = -cost2 / xstd3
+        db_dxstd = -sin2t / xstd3
+        dc_dxstd = -sint2 / xstd3
+
+        da_dystd = -sint2 / ystd3
+        db_dystd = sin2t / ystd3
+        dc_dystd = -cost2 / ystd3
+
+        dg_dflux = g / flux
+        dg_dx_0 = g * ((2.0 * a * xdiff) + (b * ydiff))
+        dg_dy_0 = g * ((b * xdiff) + (2.0 * c * ydiff))
+
+        damp_dxstd = -amplitude / xstd
+        damp_dystd = -amplitude / ystd
+        dexp_dxstd = -exp * (da_dxstd * xdiff2
+                             + db_dxstd * xdiff * ydiff
+                             + dc_dxstd * ydiff2)
+        dexp_dystd = -exp * (da_dystd * xdiff2
+                             + db_dystd * xdiff * ydiff
+                             + dc_dystd * ydiff2)
+        dg_dxstd = damp_dxstd * exp + amplitude * dexp_dxstd
+        dg_dystd = damp_dystd * exp + amplitude * dexp_dystd
+
+        # chain rule for change of variables from sigma to fwhm
+        # std => fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        # dstd/dfwhm => GAUSSIAN_FWHM_TO_SIGMA
+        dg_dxfwhm = dg_dxstd * GAUSSIAN_FWHM_TO_SIGMA
+        dg_dyfwhm = dg_dystd * GAUSSIAN_FWHM_TO_SIGMA
+
+        dg_dtheta = g * (-(da_dtheta * xdiff2 + db_dtheta * xdiff * ydiff
+                           + dc_dtheta * ydiff2))
+        # chain rule for unit change;
+        # theta[rad] => theta[deg] * pi / 180; drad/dtheta = pi / 180
+        dg_dtheta *= np.pi / 180.0
+
+        return [dg_dflux, dg_dx_0, dg_dy_0, dg_dxfwhm, dg_dyfwhm, dg_dtheta]
+
+    @property
+    def input_units(self):
+        """
+        The input units of the model.
+        """
+        x_unit = self.x_0.input_unit
+        y_unit = self.y_0.input_unit
+        if x_unit is None and y_unit is None:
+            return None
+
+        return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
+
+    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
+        # Note that here we need to make sure that x and y are in the same
+        # units otherwise this can lead to issues since rotation is not well
+        # defined.
+        if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
+            raise UnitsError("Units of 'x' and 'y' inputs should match")
+
+        return {'x_0': inputs_unit[self.inputs[0]],
+                'y_0': inputs_unit[self.inputs[0]],
+                'x_fwhm': inputs_unit[self.inputs[0]],
+                'y_fwhm': inputs_unit[self.inputs[0]],
+                'theta': u.deg,
+                'flux': outputs_unit[self.outputs[0]]}
 
 
 class FittableImageModel(Fittable2DModel):
