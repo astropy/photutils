@@ -9,6 +9,7 @@ import warnings
 import astropy.units as u
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
+from astropy.modeling.utils import ellipse_extent
 from astropy.units import UnitsError
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -131,6 +132,46 @@ class GaussianPSF(Fittable2DModel):
         Gaussian sigma (standard deviation) along the y axis.
         """
         return self.y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+
+    def bounding_box(self, factor=5.5):
+        """
+        Return a bounding box defining the limits of the model.
+
+        The default offset from the mean is 5.5-sigma, corresponding to
+        a relative error < 1e-7. The limits are adjusted for rotation.
+
+        Parameters
+        ----------
+        factor : float, optional
+            The multiple of the x and y standard deviations used to
+            define the limits. The default is 5.5.
+
+        Returns
+        -------
+        bounding_box : tuple
+            A bounding box defining the limits of the model in each
+            dimension as ``((y_low, y_high), (x_low, x_high))``.
+
+        Examples
+        --------
+        >>> from photutils.psf import GaussianPSF
+        >>> model = GaussianPSF(x_0=0, y_0=0, x_fwhm=1, y_fwhm=2)
+        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-2.33563, upper=2.33563)
+                y: Interval(lower=-4.67127, upper=4.67127)
+            }
+            model=GaussianPSF(inputs=('x', 'y'))
+            order='C'
+        )
+        """
+        a = factor * self.x_sigma
+        b = factor * self.y_sigma
+        dx, dy = ellipse_extent(a, b, self.theta)
+
+        return ((self.y_0 - dy, self.y_0 + dy),
+                (self.x_0 - dx, self.x_0 + dx))
 
     def evaluate(self, x, y, flux, x_0, y_0, x_fwhm, y_fwhm, theta):
         """
