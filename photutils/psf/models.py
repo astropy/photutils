@@ -16,8 +16,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.aperture import CircularAperture
 from photutils.utils._parameters import as_pair
 
-__all__ = ['GaussianPSF', 'FittableImageModel', 'EPSFModel',
-           'IntegratedGaussianPRF', 'PRFAdapter']
+__all__ = ['GaussianPSF', 'CircularGaussianPSF', 'FittableImageModel',
+           'EPSFModel', 'IntegratedGaussianPRF', 'PRFAdapter']
 
 
 GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
@@ -56,6 +56,10 @@ class GaussianPSF(Fittable2DModel):
     **kwargs : dict, optional
         Additional optional keyword arguments to be passed to the
         `astropy.modeling.Model` base class.
+
+    See Also
+    --------
+    CircularGaussianPSF
 
     Notes
     -----
@@ -361,6 +365,212 @@ class GaussianPSF(Fittable2DModel):
                 'x_fwhm': inputs_unit[self.inputs[0]],
                 'y_fwhm': inputs_unit[self.inputs[0]],
                 'theta': u.deg,
+                'flux': outputs_unit[self.outputs[0]]}
+
+
+class CircularGaussianPSF(Fittable2DModel):
+    r"""
+    A circular 2D Gaussian PSF model.
+
+    This model is evaluated by sampling the 2D Gaussian at the input
+    coordinates. The Gaussian is normalized such that the analytical
+    integral over the entire 2D plane is equal to the total flux.
+
+    Parameters
+    ----------
+    flux : float, optional
+        Total integrated flux over the entire PSF.
+
+    x_0 : float, optional
+        Position of the peak along the x axis.
+
+    y_0 : float, optional
+        Position of the peak along the y axis.
+
+    fwhm : float, optional
+        The full width at half maximum (FWHM) of the Gaussian.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` base class.
+
+    See Also
+    --------
+    GaussianPSF
+
+    Notes
+    -----
+    The circular Gaussian function is defined as:
+
+    .. math::
+
+        f(x, y) = \frac{F}{2 \pi \sigma^{2}}
+                  \exp \left( {\frac{-(x - x_{0})^{2} - (y - y_{0})^{2}}
+                             {2 \sigma^{2}}} \right)
+
+    where :math:`F` is the total integrated flux, :math:`(x_{0}, y_{0})`
+    is the position of the peak, and :math:`\sigma` is the standard
+    deviation, respectively.
+
+    The FWHM of the Gaussian is given by:
+
+    .. math::
+
+        \rm{FWHM} = 2 \sigma \sqrt{2 \ln{2}}
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Gaussian_function
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from photutils.psf import CircularGaussianPSF
+        model = CircularGaussianPSF(flux=71.4, x_0=24.3, y_0=25.2, fwhm=10.1)
+        yy, xx = np.mgrid[0:51, 0:51]
+        data = model(xx, yy)
+        plt.imshow(data, origin='lower', interpolation='nearest')
+    """
+
+    flux = Parameter(
+        default=1, description='Total integrated flux over the entire PSF.')
+    x_0 = Parameter(
+        default=0, description='Position of the peak along the x axis')
+    y_0 = Parameter(
+        default=0, description='Position of the peak along the y axis')
+    fwhm = Parameter(
+        default=1, description='FWHM of the Gaussian')
+
+    def __init__(self, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+                 fwhm=fwhm.default, **kwargs):
+        super().__init__(flux=flux, x_0=x_0, y_0=y_0, fwhm=fwhm, **kwargs)
+
+    @property
+    def amplitude(self):
+        """
+        The peak amplitude of the Gaussian.
+        """
+        return self.flux / (2 * np.pi * self.x_sigma * self.y_sigma)
+
+    @property
+    def sigma(self):
+        """
+        Gaussian sigma (standard deviation).
+        """
+        return self.fwhm * GAUSSIAN_FWHM_TO_SIGMA
+
+    def bounding_box(self, factor=5.5):
+        """
+        Return a bounding box defining the limits of the model.
+
+        The default offset from the mean is 5.5-sigma, corresponding to
+        a relative error < 1e-7.
+
+        Parameters
+        ----------
+        factor : float, optional
+            The multiple of the standard deviation used to define the
+            limits. The default is 5.5.
+
+        Returns
+        -------
+        bounding_box : tuple
+            A bounding box defining the limits of the model in each
+            dimension as ``((y_low, y_high), (x_low, x_high))``.
+
+        Examples
+        --------
+        >>> from photutils.psf import CircularGaussianPSF
+        >>> model = CircularGaussianPSF(x_0=0, y_0=0, fwhm=2)
+        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-4.67127, upper=4.67127)
+                y: Interval(lower=-4.67127, upper=4.67127)
+            }
+            model=CircularGaussianPSF(inputs=('x', 'y'))
+            order='C'
+        )
+        """
+        dx = factor * self.sigma
+        return ((self.y_0 - dx, self.y_0 + dx),
+                (self.x_0 - dx, self.x_0 + dx))
+
+    def evaluate(self, x, y, flux, x_0, y_0, fwhm):
+        """
+        Calculate the value of the 2D Gaussian model at the input
+        coordinates.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        fwhm : float
+            FWHM of the Gaussian.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The value of the model evaluated at the input coordinates.
+        """
+        return GaussianPSF().evaluate(x, y, flux, x_0, y_0, fwhm, fwhm, 0.0)
+
+    @staticmethod
+    def fit_deriv(x, y, flux, x_0, y_0, fwhm):
+        """
+        Calculate the partial derivatives of the 2D Gaussian function
+        with respect to the parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        fwhm : float
+            FWHM of the Gaussian.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to each
+            parameter.
+        """
+        return GaussianPSF().fit_deriv(x, y, flux, x_0, y_0, fwhm, fwhm,
+                                       0.0)[:-2]
+
+    @property
+    def input_units(self):
+        """
+        The input units of the model.
+        """
+        x_unit = self.x_0.input_unit
+        y_unit = self.y_0.input_unit
+        if x_unit is None and y_unit is None:
+            return None
+
+        return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
+
+    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
+        return {'x_0': inputs_unit[self.inputs[0]],
+                'y_0': inputs_unit[self.inputs[0]],
+                'fwhm': inputs_unit[self.inputs[0]],
                 'flux': outputs_unit[self.outputs[0]]}
 
 
