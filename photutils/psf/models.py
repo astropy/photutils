@@ -134,6 +134,13 @@ class GaussianPSF(Fittable2DModel):
                          y_fwhm=y_fwhm, theta=theta, **kwargs)
 
     @property
+    def amplitude(self):
+        """
+        The peak amplitude of the Gaussian.
+        """
+        return self.flux / (2 * np.pi * self.x_sigma * self.y_sigma)
+
+    @property
     def x_sigma(self):
         """
         Gaussian sigma (standard deviation) along the x axis.
