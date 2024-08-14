@@ -60,7 +60,7 @@ class GaussianPSF(Fittable2DModel):
 
     See Also
     --------
-    CircularGaussianPSF
+    CircularGaussianPSF, GaussianPRF, CircularGaussianPRF
 
     Notes
     -----
@@ -414,7 +414,7 @@ class CircularGaussianPSF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF
+    GaussianPSF, GaussianPRF, CircularGaussianPRF
 
     Notes
     -----
@@ -643,7 +643,7 @@ class GaussianPRF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, CircularGaussianPSF
+    GaussianPSF, CircularGaussianPSF, CircularGaussianPRF
 
     Notes
     -----
