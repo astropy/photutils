@@ -16,8 +16,9 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.aperture import CircularAperture
 from photutils.utils._parameters import as_pair
 
-__all__ = ['GaussianPSF', 'CircularGaussianPSF', 'FittableImageModel',
-           'EPSFModel', 'IntegratedGaussianPRF', 'PRFAdapter']
+__all__ = ['GaussianPSF', 'CircularGaussianPSF', 'GaussianPRF',
+           'FittableImageModel', 'EPSFModel', 'IntegratedGaussianPRF',
+           'PRFAdapter']
 
 
 GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
@@ -583,6 +584,262 @@ class CircularGaussianPSF(Fittable2DModel):
         return {'x_0': inputs_unit[self.inputs[0]],
                 'y_0': inputs_unit[self.inputs[0]],
                 'fwhm': inputs_unit[self.inputs[0]],
+                'flux': outputs_unit[self.outputs[0]]}
+
+
+class GaussianPRF(Fittable2DModel):
+    r"""
+    A 2D Gaussian PSF model integrated over pixels.
+
+    This model is evaluated by integrating the 2D Gaussian over the
+    input coordinate pixels, and is equivalent to assuming the PSF is
+    2D Gaussian at a *sub-pixel* level.
+
+    The Gaussian is normalized such that the analytical integral over
+    the entire 2D plane is equal to the total flux.
+
+    Parameters
+    ----------
+    flux : float, optional
+        Total integrated flux over the entire PSF.
+
+    x_0 : float, optional
+        Position of the peak along the x axis.
+
+    y_0 : float, optional
+        Position of the peak along the y axis.
+
+    x_fwhm : float, optional
+        The full width at half maximum (FWHM) of the Gaussian along the
+        x axis.
+
+    y_fwhm : float, optional
+        FWHM of the Gaussian along the y axis.
+
+    theta : float, optional
+        The counterclockwise rotation angle either as a float (in
+        degrees) or a `~astropy.units.Quantity` angle (optional).
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` base class.
+
+    See Also
+    --------
+    GaussianPSF, CircularGaussianPSF
+
+    Notes
+    -----
+    The Gaussian function is defined as:
+
+    .. math::
+
+        f(x, y) =
+            \frac{F}{4}
+            \left[
+                {\rm erf} \left(
+                    \frac{x^\prime + 0.5}{\sqrt{2} \sigma_{x}} \right) -
+                {\rm erf} \left(
+                    \frac{x^\prime - 0.5}{\sqrt{2} \sigma_{x}} \right)
+            \right]
+            \left[
+                {\rm erf} \left(
+                    \frac{y^\prime + 0.5}{\sqrt{2} \sigma_{y}} \right) -
+                {\rm erf} \left(
+                    \frac{y^\prime - 0.5}{\sqrt{2} \sigma_{y}} \right)
+            \right]
+
+    where :math:`F` is the total integrated flux, :math:`\sigma_{x}`
+    and :math:`\sigma_{y}` are the standard deviations along the x
+    and y axes, respectively, and :math:`{\rm erf}` denotes the error
+    function.
+
+    .. math::
+
+        x^\prime = (x - x_0) \cos(\theta) + (y - y_0) \sin(\theta)
+
+        y^\prime = -(x - x_0) \sin(\theta) + (y - y_0) \cos(\theta)
+
+    where :math:`(x_{0}, y_{0})` is the position of the peak and
+    :math:`\theta` is the rotation angle of the Gaussian.
+
+    The FWHMs of the Gaussian along the x and y axes are given by:
+
+    .. math::
+
+        \rm{FWHM}_{x} = 2 \sigma_{x} \sqrt{2 \ln{2}}
+
+        \rm{FWHM}_{y} = 2 \sigma_{y} \sqrt{2 \ln{2}}
+
+    The model is normalized such that:
+
+    .. math::
+
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Gaussian_function
+    """
+
+    flux = Parameter(
+        default=1, description='Total integrated flux over the entire PSF.')
+    x_0 = Parameter(
+        default=0, description='Position of the peak along the x axis')
+    y_0 = Parameter(
+        default=0, description='Position of the peak along the y axis')
+    x_fwhm = Parameter(
+        default=1, description='FWHM of the Gaussian along the x axis')
+    y_fwhm = Parameter(
+        default=1, description='FWHM of the Gaussian along the y axis')
+    theta = Parameter(
+        default=0.0, description=('CCW rotation angle either as a float (in '
+                                  'degrees) or a Quantity angle (optional)'))
+
+    _erf = None
+
+    def __init__(self, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+                 x_fwhm=x_fwhm.default, y_fwhm=y_fwhm.default,
+                 theta=theta.default, **kwargs):
+
+        if self._erf is None:
+            from scipy.special import erf
+            self.__class__._erf = erf
+
+        super().__init__(flux=flux, x_0=x_0, y_0=y_0, x_fwhm=x_fwhm,
+                         y_fwhm=y_fwhm, theta=theta, **kwargs)
+
+    @property
+    def amplitude(self):
+        """
+        The peak amplitude of the Gaussian.
+        """
+        return self.flux / (2 * np.pi * self.x_sigma * self.y_sigma)
+
+    @property
+    def x_sigma(self):
+        """
+        Gaussian sigma (standard deviation) along the x axis.
+        """
+        return self.x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+
+    @property
+    def y_sigma(self):
+        """
+        Gaussian sigma (standard deviation) along the y axis.
+        """
+        return self.y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+
+    def bounding_box(self, factor=5.5):
+        """
+        Return a bounding box defining the limits of the model.
+
+        The default offset from the mean is 5.5-sigma, corresponding to
+        a relative error < 1e-7. The limits are adjusted for rotation.
+
+        Parameters
+        ----------
+        factor : float, optional
+            The multiple of the x and y standard deviations used to
+            define the limits. The default is 5.5.
+
+        Returns
+        -------
+        bounding_box : tuple
+            A bounding box defining the limits of the model in each
+            dimension as ``((y_low, y_high), (x_low, x_high))``.
+
+        Examples
+        --------
+        >>> from photutils.psf import GaussianPRF
+        >>> model = GaussianPRF(x_0=0, y_0=0, x_fwhm=1, y_fwhm=2)
+        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-2.33563, upper=2.33563)
+                y: Interval(lower=-4.67127, upper=4.67127)
+            }
+            model=GaussianPRF(inputs=('x', 'y'))
+            order='C'
+        )
+        """
+        a = factor * self.x_sigma
+        b = factor * self.y_sigma
+        dx, dy = ellipse_extent(a, b, self.theta)
+
+        return ((self.y_0 - dy, self.y_0 + dy),
+                (self.x_0 - dx, self.x_0 + dx))
+
+    def evaluate(self, x, y, flux, x_0, y_0, x_fwhm, y_fwhm, theta):
+        """
+        Calculate the value of the 2D Gaussian model at the input
+        coordinates.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        x_fwhm, y_fwhm : float
+            FWHM of the Gaussian along the x and y axes.
+
+        theta : float
+            The counterclockwise rotation angle either as a float (in
+            degrees) or a `~astropy.units.Quantity` angle (optional).
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The value of the model evaluated at the input coordinates.
+        """
+        if not isinstance(theta, u.Quantity):
+            theta = np.deg2rad(theta)
+
+        x_sigma = x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        y_sigma = y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        dx = x - x_0
+        dy = y - y_0
+        cost = np.cos(theta)
+        sint = np.sin(theta)
+        x0 = dx * cost + dy * sint
+        y0 = -dx * sint + dy * cost
+
+        return (flux / 4.0
+                * ((self._erf((x0 + 0.5) / (np.sqrt(2) * x_sigma))
+                    - self._erf((x0 - 0.5) / (np.sqrt(2) * x_sigma)))
+                   * (self._erf((y0 + 0.5) / (np.sqrt(2) * y_sigma))
+                      - self._erf((y0 - 0.5) / (np.sqrt(2) * y_sigma)))))
+
+    @property
+    def input_units(self):
+        """
+        The input units of the model.
+        """
+        x_unit = self.x_0.input_unit
+        y_unit = self.y_0.input_unit
+        if x_unit is None and y_unit is None:
+            return None
+
+        return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
+
+    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
+        # Note that here we need to make sure that x and y are in the same
+        # units otherwise this can lead to issues since rotation is not well
+        # defined.
+        if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
+            raise UnitsError("Units of 'x' and 'y' inputs should match")
+
+        return {'x_0': inputs_unit[self.inputs[0]],
+                'y_0': inputs_unit[self.inputs[0]],
+                'x_fwhm': inputs_unit[self.inputs[0]],
+                'y_fwhm': inputs_unit[self.inputs[0]],
+                'theta': u.deg,
                 'flux': outputs_unit[self.outputs[0]]}
 
 
