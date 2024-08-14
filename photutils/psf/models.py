@@ -705,6 +705,20 @@ class GaussianPRF(Fittable2DModel):
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Gaussian_function
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from photutils.psf import GaussianPRF
+        model = GaussianPRF(flux=71.4, x_0=24.3, y_0=25.2, x_fwhm=10.1,
+                            y_fwhm=5.82, theta=21.7)
+        yy, xx = np.mgrid[0:51, 0:51]
+        data = model(xx, yy)
+        plt.imshow(data, origin='lower', interpolation='nearest')
     """
 
     flux = Parameter(
@@ -951,6 +965,19 @@ class CircularGaussianPRF(Fittable2DModel):
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Gaussian_function
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from photutils.psf import CircularGaussianPRF
+        model = CircularGaussianPRF(flux=71.4, x_0=24.3, y_0=25.2, fwhm=10.1)
+        yy, xx = np.mgrid[0:51, 0:51]
+        data = model(xx, yy)
+        plt.imshow(data, origin='lower', interpolation='nearest')
     """
 
     flux = Parameter(
