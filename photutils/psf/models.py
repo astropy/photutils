@@ -593,7 +593,8 @@ class GaussianPRF(Fittable2DModel):
 
     This model is evaluated by integrating the 2D Gaussian over the
     input coordinate pixels, and is equivalent to assuming the PSF is
-    2D Gaussian at a *sub-pixel* level.
+    2D Gaussian at a *sub-pixel* level. Because it is integrated over
+    pixels, this model is considered a PRF instead of a PSF.
 
     The Gaussian is normalized such that the analytical integral over
     the entire 2D plane is equal to the total flux.
@@ -849,7 +850,8 @@ class CircularGaussianPRF(Fittable2DModel):
 
     This model is evaluated by integrating the 2D Gaussian over the
     input coordinate pixels, and is equivalent to assuming the PSF is
-    2D Gaussian at a *sub-pixel* level.
+    2D Gaussian at a *sub-pixel* level. Because it is integrated over
+    pixels, this model is considered a PRF instead of a PSF.
 
     The Gaussian is normalized such that the analytical integral over
     the entire 2D plane is equal to the total flux.
@@ -1033,6 +1035,175 @@ class CircularGaussianPRF(Fittable2DModel):
                 'y_0': inputs_unit[self.inputs[0]],
                 'fwhm': inputs_unit[self.inputs[0]],
                 'flux': outputs_unit[self.outputs[0]]}
+
+
+class IntegratedGaussianPRF(Fittable2DModel):
+    r"""
+    A circular 2D Gaussian PSF model integrated over pixels.
+
+    This model is evaluated by integrating the 2D Gaussian over the
+    input coordinate pixels, and is equivalent to assuming the PSF is
+    2D Gaussian at a *sub-pixel* level. Because it is integrated over
+    pixels, this model is considered a PRF instead of a PSF.
+
+    The Gaussian is normalized such that the analytical integral over
+    the entire 2D plane is equal to the total flux.
+
+    Parameters
+    ----------
+    sigma : float, optional
+        Width of the Gaussian PSF.
+
+    x_0 : float, optional
+        Position of the peak in x direction.
+
+    y_0 : float, optional
+        Position of the peak in y direction.
+
+    flux : float, optional
+        Total integrated flux over the entire PSF.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` parent class.
+
+    Notes
+    -----
+    This model is evaluated according to the following formula:
+
+    .. math::
+
+        f(x, y) =
+            \frac{F}{4}
+            \left[
+                {\rm erf} \left(\frac{x - x_0 + 0.5}
+                                     {\sqrt{2} \sigma} \right)  -
+                {\rm erf} \left(\frac{x - x_0 - 0.5}
+                                     {\sqrt{2} \sigma} \right)
+            \right]
+            \left[
+                {\rm erf} \left(\frac{y - y_0 + 0.5}
+                                     {\sqrt{2} \sigma} \right) -
+                {\rm erf} \left(\frac{y - y_0 - 0.5}
+                                     {\sqrt{2} \sigma} \right)
+            \right]
+
+    where :math:`F` is the total integrated flux, :math:`(x_{0},
+    y_{0})` is the position of the peak, :math:`\sigma` is the standard
+    deviation of the Gaussian, and :math:`{\rm erf}` denotes the error
+    function.
+
+    The model is normalized such that:
+
+    .. math::
+
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Gaussian_function
+    """
+
+    flux = Parameter(
+        default=1, description='Total integrated flux over the entire PSF.')
+    x_0 = Parameter(
+        default=0, description='Position of the peak along the x axis')
+    y_0 = Parameter(
+        default=0, description='Position of the peak along the y axis')
+    sigma = Parameter(
+        default=1, description='Sigma (standard deviation) of the Gaussian',
+        fixed=True)
+
+    _erf = None
+
+    def __init__(self, sigma=sigma.default, x_0=x_0.default, y_0=y_0.default,
+                 flux=flux.default, **kwargs):
+
+        if self._erf is None:
+            from scipy.special import erf
+            self.__class__._erf = erf
+
+        super().__init__(sigma=sigma, x_0=x_0, y_0=y_0, flux=flux, **kwargs)
+
+    def bounding_box(self, factor=5.5):
+        """
+        Return a bounding box defining the limits of the model.
+
+        Parameters
+        ----------
+        factor : float
+            The multiple of `sigma` used to define the limits. The
+            default is 5.5, corresponding to a relative flux error less
+            than 5e-9.
+
+        Returns
+        -------
+        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
+            A bounding box defining the limits of the model.
+
+        Examples
+        --------
+        >>> from photutils.psf import IntegratedGaussianPRF
+        >>> model = IntegratedGaussianPRF(x_0=0, y_0=0, sigma=2)
+        >>> model.bounding_box
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-11.0, upper=11.0)
+                y: Interval(lower=-11.0, upper=11.0)
+            }
+            model=IntegratedGaussianPRF(inputs=('x', 'y'))
+            order='C'
+        )
+
+        This range can be set directly (see: `Model.bounding_box
+        <astropy.modeling.Model.bounding_box>`) or by using a different
+        factor, like:
+
+        >>> model.bounding_box = model.bounding_box(factor=2)
+        >>> model.bounding_box
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-4.0, upper=4.0)
+                y: Interval(lower=-4.0, upper=4.0)
+            }
+            model=IntegratedGaussianPRF(inputs=('x', 'y'))
+            order='C'
+        )
+        """
+        delta = factor * self.sigma
+        return (
+            (self.y_0 - delta, self.y_0 + delta),
+            (self.x_0 - delta, self.x_0 + delta),
+        )
+
+    def evaluate(self, x, y, flux, x_0, y_0, sigma):
+        """
+        Model function Gaussian PSF model.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The coordinates at which to evaluate the model.
+
+        flux : float
+            The total flux of the star.
+
+        x_0, y_0 : float
+            The position of the star.
+
+        sigma : float
+            The width of the Gaussian PRF.
+
+        Returns
+        -------
+        evaluated_model : `~numpy.ndarray`
+            The evaluated model.
+        """
+        return (flux / 4
+                * ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma))
+                    - self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma)))
+                   * (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma))
+                      - self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
 
 
 class FittableImageModel(Fittable2DModel):
@@ -1779,163 +1950,6 @@ class EPSFModel(FittableImageModel):
             evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
-
-
-class IntegratedGaussianPRF(Fittable2DModel):
-    r"""
-    Circular Gaussian model integrated over pixels.
-
-    Because it is integrated, this model is considered a PRF, *not* a
-    PSF (see :ref:`psf-terminology` for more about the terminology used
-    here.)
-
-    This model is a Gaussian *integrated* over an area of
-    ``1`` (in units of the model input coordinates, e.g., 1
-    pixel). This is in contrast to the apparently similar
-    `astropy.modeling.functional_models.Gaussian2D`, which is the value
-    of a 2D Gaussian *at* the input coordinates, with no integration.
-    So this model is equivalent to assuming the PSF is Gaussian at a
-    *sub-pixel* level.
-
-    Parameters
-    ----------
-    sigma : float, optional
-        Width of the Gaussian PSF.
-
-    x_0 : float, optional
-        Position of the peak in x direction.
-
-    y_0 : float, optional
-        Position of the peak in y direction.
-
-    flux : float, optional
-        Total integrated flux over the entire PSF.
-
-    **kwargs : dict, optional
-        Additional optional keyword arguments to be passed to the
-        `astropy.modeling.Model` parent class.
-
-    Notes
-    -----
-    This model is evaluated according to the following formula:
-
-        .. math::
-
-            f(x, y) =
-                \frac{F}{4}
-                \left[
-                {\rm erf} \left(\frac{x - x_0 + 0.5}
-                {\sqrt{2} \sigma} \right) -
-                {\rm erf} \left(\frac{x - x_0 - 0.5}
-                {\sqrt{2} \sigma} \right)
-                \right]
-                \left[
-                {\rm erf} \left(\frac{y - y_0 + 0.5}
-                {\sqrt{2} \sigma} \right) -
-                {\rm erf} \left(\frac{y - y_0 - 0.5}
-                {\sqrt{2} \sigma} \right)
-                \right]
-
-    where ``erf`` denotes the error function and ``F`` the total
-    integrated flux.
-    """
-
-    flux = Parameter(default=1)
-    x_0 = Parameter(default=0)
-    y_0 = Parameter(default=0)
-    sigma = Parameter(default=1, fixed=True)
-
-    _erf = None
-
-    def bounding_box(self, factor=5.5):
-        """
-        Return a bounding box defining the limits of the model.
-
-        Parameters
-        ----------
-        factor : float
-            The multiple of `sigma` used to define the limits. The
-            default is 5.5, corresponding to a relative flux error less
-            than 5e-9.
-
-        Returns
-        -------
-        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
-            A bounding box defining the limits of the model.
-
-        Examples
-        --------
-        >>> from photutils.psf import IntegratedGaussianPRF
-        >>> model = IntegratedGaussianPRF(x_0=0, y_0=0, sigma=2)
-        >>> model.bounding_box
-        ModelBoundingBox(
-            intervals={
-                x: Interval(lower=-11.0, upper=11.0)
-                y: Interval(lower=-11.0, upper=11.0)
-            }
-            model=IntegratedGaussianPRF(inputs=('x', 'y'))
-            order='C'
-        )
-
-        This range can be set directly (see: `Model.bounding_box
-        <astropy.modeling.Model.bounding_box>`) or by using a different
-        factor, like:
-
-        >>> model.bounding_box = model.bounding_box(factor=2)
-        >>> model.bounding_box
-        ModelBoundingBox(
-            intervals={
-                x: Interval(lower=-4.0, upper=4.0)
-                y: Interval(lower=-4.0, upper=4.0)
-            }
-            model=IntegratedGaussianPRF(inputs=('x', 'y'))
-            order='C'
-        )
-        """
-        delta = factor * self.sigma
-        return (
-            (self.y_0 - delta, self.y_0 + delta),
-            (self.x_0 - delta, self.x_0 + delta),
-        )
-
-    def __init__(self, sigma=sigma.default,
-                 x_0=x_0.default, y_0=y_0.default, flux=flux.default,
-                 **kwargs):
-        if self._erf is None:
-            from scipy.special import erf
-            self.__class__._erf = erf
-
-        super().__init__(n_models=1, sigma=sigma, x_0=x_0, y_0=y_0, flux=flux,
-                         **kwargs)
-
-    def evaluate(self, x, y, flux, x_0, y_0, sigma):
-        """
-        Model function Gaussian PSF model.
-
-        Parameters
-        ----------
-        x, y : float or array_like
-            The coordinates at which to evaluate the model.
-
-        flux : float
-            The total flux of the star.
-
-        x_0, y_0 : float
-            The position of the star.
-
-        sigma : float
-            The width of the Gaussian PRF.
-
-        Returns
-        -------
-        evaluated_model : `~numpy.ndarray`
-            The evaluated model.
-        """
-        return (flux / 4
-                * ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma))
-                    - self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma)))
-                   * (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma))
-                      - self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
 
 
 class PRFAdapter(Fittable2DModel):
