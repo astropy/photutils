@@ -105,6 +105,14 @@ class GaussianPSF(Fittable2DModel):
 
         \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
 
+    The ``x_fwhm``, ``y_fwhm``, and ``theta`` parameters are fixed by
+    default. If you wish to fit these parameters, set the ``fixed``
+    attribute to `False`, e.g.,::
+
+        >>> model.x_fwhm.fixed = False
+        >>> model.y_fwhm.fixed = False
+        >>> model.theta.fixed = False
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Gaussian_function
@@ -131,12 +139,15 @@ class GaussianPSF(Fittable2DModel):
     y_0 = Parameter(
         default=0, description='Position of the peak along the y axis')
     x_fwhm = Parameter(
-        default=1, description='FWHM of the Gaussian along the x axis')
+        default=1, description='FWHM of the Gaussian along the x axis',
+        fixed=True)
     y_fwhm = Parameter(
-        default=1, description='FWHM of the Gaussian along the y axis')
+        default=1, description='FWHM of the Gaussian along the y axis',
+        fixed=True)
     theta = Parameter(
         default=0.0, description=('CCW rotation angle either as a float (in '
-                                  'degrees) or a Quantity angle (optional)'))
+                                  'degrees) or a Quantity angle (optional)'),
+        fixed=True)
 
     def __init__(self, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  x_fwhm=x_fwhm.default, y_fwhm=y_fwhm.default,
@@ -431,6 +442,11 @@ class CircularGaussianPSF(Fittable2DModel):
 
         \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
 
+    The ``fwhm`` parameter is fixed by default. If you wish to fit this
+    parameter, set the ``fixed`` attribute to `False`, e.g.,::
+
+        >>> model.fwhm.fixed = False
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Gaussian_function
@@ -456,7 +472,7 @@ class CircularGaussianPSF(Fittable2DModel):
     y_0 = Parameter(
         default=0, description='Position of the peak along the y axis')
     fwhm = Parameter(
-        default=1, description='FWHM of the Gaussian')
+        default=1, description='FWHM of the Gaussian', fixed=True)
 
     def __init__(self, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  fwhm=fwhm.default, **kwargs):
@@ -678,6 +694,14 @@ class GaussianPRF(Fittable2DModel):
 
         \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
 
+    The ``x_fwhm``, ``y_fwhm``, and ``theta`` parameters are fixed by
+    default. If you wish to fit these parameters, set the ``fixed``
+    attribute to `False`, e.g.,::
+
+        >>> model.x_fwhm.fixed = False
+        >>> model.y_fwhm.fixed = False
+        >>> model.theta.fixed = False
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Gaussian_function
@@ -690,12 +714,15 @@ class GaussianPRF(Fittable2DModel):
     y_0 = Parameter(
         default=0, description='Position of the peak along the y axis')
     x_fwhm = Parameter(
-        default=1, description='FWHM of the Gaussian along the x axis')
+        default=1, description='FWHM of the Gaussian along the x axis',
+        fixed=True)
     y_fwhm = Parameter(
-        default=1, description='FWHM of the Gaussian along the y axis')
+        default=1, description='FWHM of the Gaussian along the y axis',
+        fixed=True)
     theta = Parameter(
         default=0.0, description=('CCW rotation angle either as a float (in '
-                                  'degrees) or a Quantity angle (optional)'))
+                                  'degrees) or a Quantity angle (optional)'),
+        fixed=True)
 
     _erf = None
 
@@ -916,6 +943,11 @@ class CircularGaussianPRF(Fittable2DModel):
 
         \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
 
+    The ``fwhm`` parameter is fixed by default. If you wish to fit this
+    parameter, set the ``fixed`` attribute to `False`, e.g.,::
+
+        >>> model.fwhm.fixed = False
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Gaussian_function
@@ -928,7 +960,7 @@ class CircularGaussianPRF(Fittable2DModel):
     y_0 = Parameter(
         default=0, description='Position of the peak along the y axis')
     fwhm = Parameter(
-        default=1, description='FWHM of the Gaussian')
+        default=1, description='FWHM of the Gaussian', fixed=True)
 
     _erf = None
 
