@@ -48,9 +48,6 @@ Photutils also optionally depends on other packages for some features:
 Installing the latest released version
 ======================================
 
-The latest released (stable) version of Photutils can be installed
-either with `pip`_ or `conda`_.
-
 Using pip
 ---------
 
@@ -83,11 +80,14 @@ Do **not** install Photutils or other third-party packages using
 Using conda
 -----------
 
-Photutils can be installed with `conda`_ if you have installed
-`Anaconda <https://www.anaconda.com/download>`_ or
-`Miniconda <https://docs.conda.io/en/latest/miniconda.html>`_.  To
-install Photutils using the `conda-forge Anaconda channel
-<https://anaconda.org/conda-forge/photutils>`_, run::
+Photutils can also be installed using the ``conda`` package manager.
+There are several methods for installing ``conda`` and many different
+ways to set up your Python environment, but that is beyond the
+scope of this documentation. We recommend installing `miniforge
+<https://github.com/conda-forge/miniforge/#miniforge>`__.
+
+Once you have installed ``conda``, you can install Photutils using the
+``conda-forge`` channel::
 
     conda install -c conda-forge photutils
 
@@ -141,7 +141,7 @@ the "-e" option::
 Alternatively, `pip`_ can be used to retrieve and install the
 latest development pre-built wheel::
 
-    pip install --upgrade --extra-index-url https://pypi.anaconda.org/astropy/simple photutils[all] --pre
+    pip install --upgrade --extra-index-url https://pypi.anaconda.org/astropy/simple "photutils[all]" --pre
 
 Testing an installed Photutils
 ==============================
@@ -160,7 +160,6 @@ Any test failures can be reported to the `Photutils issue tracker
 
 
 .. _pip: https://pip.pypa.io/en/latest/
-.. _conda: https://docs.conda.io/en/latest/
 .. _GitHub: https://github.com/astropy/photutils
 .. _Xcode: https://developer.apple.com/xcode/
 .. _pytest: https://docs.pytest.org/en/latest/
