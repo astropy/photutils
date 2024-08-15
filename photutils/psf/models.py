@@ -151,7 +151,7 @@ class GaussianPSF(Fittable2DModel):
                                   'degrees) or a Quantity angle (optional)'),
         fixed=True)
 
-    def __init__(self, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+    def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  x_fwhm=x_fwhm.default, y_fwhm=y_fwhm.default,
                  theta=theta.default, **kwargs):
         super().__init__(flux=flux, x_0=x_0, y_0=y_0, x_fwhm=x_fwhm,
@@ -478,7 +478,7 @@ class CircularGaussianPSF(Fittable2DModel):
     fwhm = Parameter(
         default=1, description='FWHM of the Gaussian', fixed=True)
 
-    def __init__(self, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+    def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  fwhm=fwhm.default, **kwargs):
         super().__init__(flux=flux, x_0=x_0, y_0=y_0, fwhm=fwhm, **kwargs)
 
@@ -746,7 +746,7 @@ class GaussianPRF(Fittable2DModel):
 
     _erf = None
 
-    def __init__(self, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+    def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  x_fwhm=x_fwhm.default, y_fwhm=y_fwhm.default,
                  theta=theta.default, **kwargs):
 
@@ -999,7 +999,7 @@ class CircularGaussianPRF(Fittable2DModel):
 
     _erf = None
 
-    def __init__(self, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+    def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  fwhm=fwhm.default, **kwargs):
 
         if self._erf is None:
