@@ -303,3 +303,8 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = 'numpy'
+
+[tool.codespell]
+ignore-words-list = """
+    ned,
+"""
