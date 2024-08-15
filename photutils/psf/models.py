@@ -1364,6 +1364,15 @@ class MoffatPSF(Fittable2DModel):
 
         \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
 
+    The ``alpha`` and ``beta`` parameters are fixed by default. If
+    you wish to fit these parameters, set the ``fixed`` attribute to
+    `False`, e.g.,::
+
+        >>> from photutils.psf import MoffatPSF
+        >>> model = MoffatPSF()
+        >>> model.alpha.fixed = False
+        >>> model.beta.fixed = False
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Moffat_distribution
@@ -1378,9 +1387,11 @@ class MoffatPSF(Fittable2DModel):
     y_0 = Parameter(
         default=0, description='Position of the peak along the y axis')
     alpha = Parameter(
-        default=1, description='Characteristic radius of the Moffat profile')
+        default=1, description='Characteristic radius of the Moffat profile',
+        fixed=True)
     beta = Parameter(
-        default=1, description='Power-law index of the Moffat profile')
+        default=1, description='Power-law index of the Moffat profile',
+        fixed=True)
 
     def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  alpha=alpha.default, beta=beta.default, **kwargs):
