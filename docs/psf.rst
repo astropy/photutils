@@ -11,9 +11,10 @@ photometry, often called "PSF photometry".
 
 Terminology
 -----------
+
 Different astronomy subfields use the terms "PSF", "PRF", or related
 terms somewhat differently, especially when colloquial usage is taken
-into account. This package aims to be at the very least internally
+into account. The `photutils.psf` package aims to be internally
 consistent, following the definitions described here.
 
 We take the Point Spread Function (PSF), or instrumental Point
@@ -21,27 +22,32 @@ Spread Function (iPSF) to be the infinite-resolution and
 infinite-signal-to-noise flux distribution from a point source on
 the detector, after passing through optics, dust, atmosphere, etc.
 By contrast, the function describing the responsivity variations
-across individual *pixels* is the Pixel Response Function (sometimes
-called "PRF", but that acronym is not used here for reasons that will
-soon be apparent). The convolution of the PSF and pixel response
-function, when discretized onto the detector (i.e., a rectilinear
-CCD grid), is the effective PSF (ePSF) or Point Response Function
-(PRF) (this latter terminology is the definition used by `Spitzer
+across individual *pixels* is the pixel response function. The
+pixel response function is sometimes called the "PRF", but we
+do not use that acronym here to avoid confusion with the "Point
+Response Function" (see below). The convolution of the PSF and
+pixel response function, when discretized onto the detector
+(i.e., a rectilinear grid), is the effective PSF (ePSF) or Point
+Response Function (PRF). The PRF terminology is sometimes used to
+emphasize that the model function describes the response of the
+detector to a point source, rather than the intrinsic instrumental
+PSF (e.g., see the `Spitzer Space Telescope MOPEX documentation
 <https://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools
-/mopex/mopexusersguide/89/>`_). In many cases the PSF/ePSF/PRF
-distinction is unimportant, and the ePSF/PRF are simply called
-the "PSF", but the distinction can be critical when dealing
-carefully with undersampled data or detectors with significant
-intra-pixel sensitivity variations. For a more detailed
-description of this formalism, see `Anderson & King 2000
+/mopex/mopexusersguide/89/>`_).
+
+In many cases the PSF/ePSF/PRF distinction is unimportant, and the
+PSF/ePSF/PRF are simply called the "PSF" model, but the distinction
+can be critical when dealing carefully with undersampled data or
+detectors with significant intra-pixel sensitivity variations. For a
+more detailed description of this formalism, see `Anderson & King 2000
 <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_.
 
-All this said, in colloquial usage "PSF photometry" sometimes refers
-to the more general task of model-fitting photometry (with the effects
-of the PSF either implicitly or explicitly included in the models),
-regardless of exactly what kind of model is actually being fit. For
-brevity (e.g., ``photutils.psf``), we use "PSF photometry" in this way,
-as a shorthand for the general approach.
+In colloquial usage, "PSF photometry" sometimes refers to the more
+general task of model-fitting photometry with the effects of the PSF
+either implicitly or explicitly included in the models, regardless of
+exactly what kind of model is actually being fit. For brevity (e.g.,
+``photutils.psf``), we use "PSF photometry" in this way, as a shorthand
+for the general approach.
 
 
 PSF Photometry
