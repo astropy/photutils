@@ -17,8 +17,8 @@ from photutils.aperture import CircularAperture
 from photutils.utils._parameters import as_pair
 
 __all__ = ['GaussianPSF', 'CircularGaussianPSF', 'GaussianPRF',
-           'CircularGaussianPRF', 'FittableImageModel', 'EPSFModel',
-           'IntegratedGaussianPRF', 'PRFAdapter']
+           'CircularGaussianPRF', 'IntegratedGaussianPRF', 'MoffatPSF',
+           'FittableImageModel', 'EPSFModel', 'PRFAdapter']
 
 
 GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
@@ -60,7 +60,7 @@ class GaussianPSF(Fittable2DModel):
 
     See Also
     --------
-    CircularGaussianPSF, GaussianPRF, CircularGaussianPRF
+    CircularGaussianPSF, GaussianPRF, CircularGaussianPRF, MoffatPSF
 
     Notes
     -----
@@ -416,7 +416,7 @@ class CircularGaussianPSF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, GaussianPRF, CircularGaussianPRF
+    GaussianPSF, GaussianPRF, CircularGaussianPRF, MoffatPSF
 
     Notes
     -----
@@ -647,7 +647,7 @@ class GaussianPRF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, CircularGaussianPSF, CircularGaussianPRF
+    GaussianPSF, CircularGaussianPSF, CircularGaussianPRF, MoffatPSF
 
     Notes
     -----
@@ -923,7 +923,7 @@ class CircularGaussianPRF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPRF, GaussianPSF, CircularGaussianPSF
+    GaussianPRF, GaussianPSF, CircularGaussianPSF, MoffatPSF
 
     Notes
     -----
@@ -1296,6 +1296,179 @@ class IntegratedGaussianPRF(Fittable2DModel):
                     - self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma)))
                    * (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma))
                       - self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
+
+
+class MoffatPSF(Fittable2DModel):
+    r"""
+    A 2D Moffat PSF model.
+
+    This model is evaluated by sampling the 2D Moffat function at the
+    input coordinates. The Moffat profile is normalized such that the
+    analytical integral over the entire 2D plane is equal to the total
+    flux.
+
+    Parameters
+    ----------
+    flux : float, optional
+        Total integrated flux over the entire PSF.
+
+    x_0 : float, optional
+        Position of the peak along the x axis.
+
+    y_0 : float, optional
+        Position of the peak along the y axis.
+
+    alpha : float, optional
+        The characteristic radius of the Moffat profile.
+
+    beta : float, optional
+        The asymptotic power-law slope of the Moffat profile wings at
+        large radial distances. Larger values provide less flux in the
+        profile wings. For large ``beta``, this profile approaches a
+        Gaussian profile. ``beta`` must be greater than 1. If ``beta``
+        is set to 1, then the Moffat profile is a Lorentz function,
+        whose integral is infinite. For this normalized model, if
+        ``beta`` is set to 1, then the profile will be zero everywhere.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` base class.
+
+    See Also
+    --------
+    GaussianPSF, CircularGaussianPSF, GaussianPRF, CircularGaussianPRF
+
+    Notes
+    -----
+    The Moffat profile is defined as:
+
+    .. math::
+
+       f(x, y) = F \frac{\beta - 1}{\pi \alpha^2}
+           \left(1 + \frac{\left(x - x_{0}\right)^{2}
+               + \left(y - y_{0}\right)^{2}}{\alpha^{2}}\right)^{-\beta}
+
+    where :math:`F` is the total integrated flux and :math:`(x_{0},
+    y_{0})` is the position of the peak. Note that :math:`\beta` must be
+    greater than 1.
+
+    The FWHM of the Moffat profile is given by:
+
+    .. math::
+
+        \rm{FWHM} = 2 \alpha \sqrt{2^{-\beta} - 1}
+
+    The model is normalized such that, for :math:`\beta > 1`:
+
+    .. math::
+
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Moffat_distribution
+
+    .. [2] https://ned.ipac.caltech.edu/level5/Stetson/Stetson2_2_1.html
+    """
+
+    flux = Parameter(
+        default=1, description='Total integrated flux over the entire PSF.')
+    x_0 = Parameter(
+        default=0, description='Position of the peak along the x axis')
+    y_0 = Parameter(
+        default=0, description='Position of the peak along the y axis')
+    alpha = Parameter(
+        default=1, description='Characteristic radius of the Moffat profile')
+    beta = Parameter(
+        default=1, description='Power-law index of the Moffat profile')
+
+    def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+                 alpha=alpha.default, beta=beta.default, **kwargs):
+
+        super().__init__(flux=flux, x_0=x_0, y_0=y_0, alpha=alpha, beta=beta,
+                         **kwargs)
+
+    @property
+    def fwhm(self):
+        """
+        The FWHM of the Moffat profile.
+        """
+        return 2.0 * self.alpha * np.sqrt(2 ** (-self.beta) - 1)
+
+    def bounding_box(self, factor=5.5):
+        """
+        Return a bounding box defining the limits of the model.
+
+        The default offset from the mean is 5.5-sigma, corresponding to
+        a relative error < 1e-7. The limits are adjusted for rotation.
+
+        Parameters
+        ----------
+        factor : float, optional
+            The multiple of the FWHM used to define the limits. The
+            default is 5.5.
+
+        Returns
+        -------
+        bounding_box : tuple
+            A bounding box defining the limits of the model in each
+            dimension as ``((y_low, y_high), (x_low, x_high))``.
+
+        Examples
+        --------
+        >>> from photutils.psf import MoffatPSF
+        >>> model = MoffatPSF(x_0=0, y_0=0, alpha=2, beta=3)
+        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-2.33563, upper=2.33563)
+                y: Interval(lower=-4.67127, upper=4.67127)
+            }
+            model=GaussianPSF(inputs=('x', 'y'))
+            order='C'
+        )
+        """
+        delta = factor * self.fwhm
+        return ((self.y_0 - delta, self.y_0 + delta),
+                (self.x_0 - delta, self.x_0 + delta))
+
+    def evaluate(self, x, y, flux, x_0, y_0, alpha, beta):
+        """
+        Calculate the value of the 2D Gaussian model at the input
+        coordinates.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        alpha : float, optional
+            The characteristic radius of the Moffat profile.
+
+        beta : float, optional
+            The asymptotic power-law slope of the Moffat profile wings
+            at large radial distances. Larger values provide less flux
+            in the profile wings. For large ``beta``, this profile
+            approaches a Gaussian profile. ``beta`` must be greater
+            than 1. If ``beta`` is set to 1, then the Moffat profile is
+            a Lorentz function, whose integral is infinite. For this
+            normalized model, if ``beta`` is set to 1, then the profile
+            will be zero everywhere.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The value of the model evaluated at the input coordinates.
+        """
+        amp = flux * (beta - 1) / (np.pi * alpha ** 2)
+        r2 = (x - x_0) ** 2 + (y - y_0) ** 2
+        return amp * (1 + (r2 / alpha**2)) ** (-beta)
 
 
 class FittableImageModel(Fittable2DModel):
