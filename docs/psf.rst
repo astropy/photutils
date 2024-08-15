@@ -561,8 +561,8 @@ other:
     ...                         grouper=grouper, aperture_radius=4)
     >>> phot = psfphot(data, error=error)
 
-The ``group_id`` column shows that six groups were identified (each with
-two stars). The stars in each group were simultaneously fit.
+The ``group_id`` column shows that seven groups were identified. The
+stars in each group were simultaneously fit.
 
 .. doctest-requires:: scipy
 
