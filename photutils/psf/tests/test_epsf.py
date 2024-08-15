@@ -293,7 +293,7 @@ def test_epsf_build_oversampling(oversamp):
     size = epsf.data.shape[0]
     cen = (size - 1) / 2
     sigma2 = oversamp * sigma
-    m = IntegratedGaussianPRF(sigma2, x_0=cen, y_0=cen, flux=1)
+    m = IntegratedGaussianPRF(flux=1, x_0=cen, y_0=cen, sigma=sigma2)
     yy, xx = np.mgrid[0:size, 0:size]
     psf = m(xx, yy)
 

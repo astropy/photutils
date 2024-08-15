@@ -1118,8 +1118,8 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
     Parameters
     ----------
-    sigma : float, optional
-        Width of the Gaussian PSF.
+    flux : float, optional
+        Total integrated flux over the entire PSF.
 
     x_0 : float, optional
         Position of the peak in x direction.
@@ -1127,8 +1127,8 @@ class IntegratedGaussianPRF(Fittable2DModel):
     y_0 : float, optional
         Position of the peak in y direction.
 
-    flux : float, optional
-        Total integrated flux over the entire PSF.
+    sigma : float, optional
+        Width of the Gaussian PSF.
 
     **kwargs : dict, optional
         Additional optional keyword arguments to be passed to the
@@ -1201,8 +1201,8 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
     _erf = None
 
-    def __init__(self, sigma=sigma.default, x_0=x_0.default, y_0=y_0.default,
-                 flux=flux.default, **kwargs):
+    def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+                 sigma=sigma.default, **kwargs):
 
         if self._erf is None:
             from scipy.special import erf

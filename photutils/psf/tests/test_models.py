@@ -144,7 +144,7 @@ class TestIntegratedGaussianPRF:
         Test subpixel accuracy of IntegratedGaussianPRF by checking the
         sum of pixels.
         """
-        gauss_psf = IntegratedGaussianPRF(width)
+        gauss_psf = IntegratedGaussianPRF(sigma=width)
         y, x = np.mgrid[-10:11, -10:11]
         assert_allclose(gauss_psf(x, y).sum(), 1)
 
