@@ -109,6 +109,8 @@ class GaussianPSF(Fittable2DModel):
     default. If you wish to fit these parameters, set the ``fixed``
     attribute to `False`, e.g.,::
 
+        >>> from photutils.psf import GaussianPSF
+        >>> model = GaussianPSF()
         >>> model.x_fwhm.fixed = False
         >>> model.y_fwhm.fixed = False
         >>> model.theta.fixed = False
@@ -445,6 +447,8 @@ class CircularGaussianPSF(Fittable2DModel):
     The ``fwhm`` parameter is fixed by default. If you wish to fit this
     parameter, set the ``fixed`` attribute to `False`, e.g.,::
 
+        >>> from photutils.psf import CircularGaussianPSF
+        >>> model = CircularGaussianPSF()
         >>> model.fwhm.fixed = False
 
     References
@@ -698,6 +702,8 @@ class GaussianPRF(Fittable2DModel):
     default. If you wish to fit these parameters, set the ``fixed``
     attribute to `False`, e.g.,::
 
+        >>> from photutils.psf import GaussianPRF
+        >>> model = GaussianPRF()
         >>> model.x_fwhm.fixed = False
         >>> model.y_fwhm.fixed = False
         >>> model.theta.fixed = False
@@ -960,6 +966,8 @@ class CircularGaussianPRF(Fittable2DModel):
     The ``fwhm`` parameter is fixed by default. If you wish to fit this
     parameter, set the ``fixed`` attribute to `False`, e.g.,::
 
+        >>> from photutils.psf import CircularGaussianPRF
+        >>> model = CircularGaussianPRF()
         >>> model.fwhm.fixed = False
 
     References
