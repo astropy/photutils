@@ -1170,6 +1170,13 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
         \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
 
+    The ``sigma`` parameter is fixed by default. If you wish to fit this
+    parameter, set the ``fixed`` attribute to `False`, e.g.,::
+
+        >>> from photutils.psf import IntegratedGaussianPRF
+        >>> model = IntegratedGaussianPRF()
+        >>> model.sigma.fixed = False
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Gaussian_function
