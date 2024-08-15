@@ -1378,6 +1378,19 @@ class MoffatPSF(Fittable2DModel):
     .. [1] https://en.wikipedia.org/wiki/Moffat_distribution
 
     .. [2] https://ned.ipac.caltech.edu/level5/Stetson/Stetson2_2_1.html
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from photutils.psf import MoffatPSF
+        model = MoffatPSF(flux=71.4, x_0=24.3, y_0=25.2, alpha=5.1, beta=3.2)
+        yy, xx = np.mgrid[0:51, 0:51]
+        data = model(xx, yy)
+        plt.imshow(data, origin='lower', interpolation='nearest')
     """
 
     flux = Parameter(
