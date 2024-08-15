@@ -1377,7 +1377,9 @@ class MoffatPSF(Fittable2DModel):
     ----------
     .. [1] https://en.wikipedia.org/wiki/Moffat_distribution
 
-    .. [2] https://ned.ipac.caltech.edu/level5/Stetson/Stetson2_2_1.html
+    .. [2] https://ui.adsabs.harvard.edu/abs/1969A%26A.....3..455M/abstract
+
+    .. [3] https://ned.ipac.caltech.edu/level5/Stetson/Stetson2_2_1.html
 
     Examples
     --------
