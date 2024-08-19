@@ -22,7 +22,7 @@ from photutils.tests.helper import PYTEST_LT_80
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
-@pytest.mark.remote_data()
+@pytest.mark.remote_data
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_model():
     path = get_path('isophote/M105-S001-RGB.fits',
