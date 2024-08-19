@@ -182,30 +182,28 @@ class GaussianPSF(Fittable2DModel):
         """
         Return a bounding box defining the limits of the model.
 
-        The default offset from the mean is 5.5-sigma, corresponding to
-        a relative error < 1e-7. The limits are adjusted for rotation.
+        The limits are adjusted for rotation.
 
         Parameters
         ----------
         factor : float, optional
-            The multiple of the x and y standard deviations used to
-            define the limits. The default is 5.5.
+            The multiple of the x and y standard deviations (sigma) used
+            to define the limits.
 
         Returns
         -------
-        bounding_box : tuple
-            A bounding box defining the limits of the model in each
-            dimension as ``((y_low, y_high), (x_low, x_high))``.
+        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
+            A bounding box defining the limits of the model.
 
         Examples
         --------
         >>> from photutils.psf import GaussianPSF
-        >>> model = GaussianPSF(x_0=0, y_0=0, x_fwhm=1, y_fwhm=2)
+        >>> model = GaussianPSF(x_0=0, y_0=0, x_fwhm=2, y_fwhm=3)
         >>> model.bounding_box  # doctest: +FLOAT_CMP
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-2.33563, upper=2.33563)
-                y: Interval(lower=-4.67127, upper=4.67127)
+                x: Interval(lower=-4.6712699, upper=4.6712699)
+                y: Interval(lower=-7.0069049, upper=7.0069048)
             }
             model=GaussianPSF(inputs=('x', 'y'))
             order='C'
@@ -507,20 +505,16 @@ class CircularGaussianPSF(Fittable2DModel):
         """
         Return a bounding box defining the limits of the model.
 
-        The default offset from the mean is 5.5-sigma, corresponding to
-        a relative error < 1e-7.
-
         Parameters
         ----------
         factor : float, optional
-            The multiple of the standard deviation used to define the
-            limits. The default is 5.5.
+            The multiple of the standard deviations (sigma) used to
+            define the limits.
 
         Returns
         -------
-        bounding_box : tuple
-            A bounding box defining the limits of the model in each
-            dimension as ``((y_low, y_high), (x_low, x_high))``.
+        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
+            A bounding box defining the limits of the model.
 
         Examples
         --------
@@ -529,16 +523,16 @@ class CircularGaussianPSF(Fittable2DModel):
         >>> model.bounding_box  # doctest: +FLOAT_CMP
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-4.67127, upper=4.67127)
-                y: Interval(lower=-4.67127, upper=4.67127)
+                x: Interval(lower=-4.6712699, upper=4.6712699)
+                y: Interval(lower=-4.6712699, upper=4.6712699)
             }
             model=CircularGaussianPSF(inputs=('x', 'y'))
             order='C'
         )
         """
-        dx = factor * self.sigma
-        return ((self.y_0 - dx, self.y_0 + dx),
-                (self.x_0 - dx, self.x_0 + dx))
+        delta = factor * self.sigma
+        return ((self.y_0 - delta, self.y_0 + delta),
+                (self.x_0 - delta, self.x_0 + delta))
 
     def evaluate(self, x, y, flux, x_0, y_0, fwhm):
         """
@@ -789,37 +783,35 @@ class GaussianPRF(Fittable2DModel):
         """
         Return a bounding box defining the limits of the model.
 
-        The default offset from the mean is 5.5-sigma, corresponding to
-        a relative error < 1e-7. The limits are adjusted for rotation.
+        The limits are adjusted for rotation.
 
         Parameters
         ----------
         factor : float, optional
-            The multiple of the x and y standard deviations used to
-            define the limits. The default is 5.5.
+            The multiple of the x and y standard deviations (sigma) used
+            to define the limits.
 
         Returns
         -------
-        bounding_box : tuple
-            A bounding box defining the limits of the model in each
-            dimension as ``((y_low, y_high), (x_low, x_high))``.
+        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
+            A bounding box defining the limits of the model.
 
         Examples
         --------
         >>> from photutils.psf import GaussianPRF
-        >>> model = GaussianPRF(x_0=0, y_0=0, x_fwhm=1, y_fwhm=2)
+        >>> model = GaussianPRF(x_0=0, y_0=0, x_fwhm=2, y_fwhm=3)
         >>> model.bounding_box  # doctest: +FLOAT_CMP
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-2.33563, upper=2.33563)
-                y: Interval(lower=-4.67127, upper=4.67127)
+                x: Interval(lower=-4.6712699, upper=4.6712699)
+                y: Interval(lower=-7.0069049, upper=7.0069048)
             }
             model=GaussianPRF(inputs=('x', 'y'))
             order='C'
         )
         """
-        a = factor * self.x_sigma
-        b = factor * self.y_sigma
+        a = factor * self.x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        b = factor * self.y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
         dx, dy = ellipse_extent(a, b, self.theta)
 
         return ((self.y_0 - dy, self.y_0 + dy),
@@ -1037,38 +1029,34 @@ class CircularGaussianPRF(Fittable2DModel):
         """
         Return a bounding box defining the limits of the model.
 
-        The default offset from the mean is 5.5-sigma, corresponding to
-        a relative error < 1e-7. The limits are adjusted for rotation.
-
         Parameters
         ----------
         factor : float, optional
-            The multiple of the x and y standard deviations used to
-            define the limits. The default is 5.5.
+            The multiple of the standard deviations (sigma) used to
+            define the limits.
 
         Returns
         -------
-        bounding_box : tuple
-            A bounding box defining the limits of the model in each
-            dimension as ``((y_low, y_high), (x_low, x_high))``.
+        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
+            A bounding box defining the limits of the model.
 
         Examples
         --------
         >>> from photutils.psf import CircularGaussianPRF
-        >>> model = CircularGaussianPRF(x_0=0, y_0=0, fwhm=1)
+        >>> model = CircularGaussianPRF(x_0=0, y_0=0, fwhm=2)
         >>> model.bounding_box  # doctest: +FLOAT_CMP
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-2.33563, upper=2.33563)
-                y: Interval(lower=-2.33563, upper=2.33563)
+                x: Interval(lower=-4.6712699, upper=4.6712699)
+                y: Interval(lower=-4.6712699, upper=4.6712699)
             }
             model=CircularGaussianPRF(inputs=('x', 'y'))
             order='C'
         )
         """
-        dx = factor * self.sigma
-        return ((self.y_0 - dx, self.y_0 + dx),
-                (self.x_0 - dx, self.x_0 + dx))
+        delta = factor * self.fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        return ((self.y_0 - delta, self.y_0 + delta),
+                (self.x_0 - delta, self.x_0 + delta))
 
     def evaluate(self, x, y, flux, x_0, y_0, fwhm):
         """
@@ -1248,10 +1236,9 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
         Parameters
         ----------
-        factor : float
-            The multiple of `sigma` used to define the limits. The
-            default is 5.5, corresponding to a relative flux error less
-            than 5e-9.
+        factor : float, optional
+            The multiple of the standard deviations (sigma) used to
+            define the limits.
 
         Returns
         -------
@@ -1287,11 +1274,9 @@ class IntegratedGaussianPRF(Fittable2DModel):
             order='C'
         )
         """
-        delta = factor * self.sigma
-        return (
-            (self.y_0 - delta, self.y_0 + delta),
-            (self.x_0 - delta, self.x_0 + delta),
-        )
+        delta = factor * self.fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        return ((self.y_0 - delta, self.y_0 + delta),
+                (self.x_0 - delta, self.x_0 + delta))
 
     def evaluate(self, x, y, flux, x_0, y_0, sigma):
         """
@@ -1472,26 +1457,21 @@ class MoffatPSF(Fittable2DModel):
         """
         The FWHM of the Moffat profile.
         """
-        return 2.0 * self.alpha * np.sqrt(2 ** (-self.beta) - 1)
+        return 2.0 * self.alpha * np.sqrt(2 ** (1.0 / self.beta) - 1)
 
-    def bounding_box(self, factor=5.5):
+    def bounding_box(self, factor=3.0):
         """
         Return a bounding box defining the limits of the model.
-
-        The default offset from the mean is 5.5-sigma, corresponding to
-        a relative error < 1e-7. The limits are adjusted for rotation.
 
         Parameters
         ----------
         factor : float, optional
-            The multiple of the FWHM used to define the limits. The
-            default is 5.5.
+            The multiple of the FWHM used to define the limits.
 
         Returns
         -------
-        bounding_box : tuple
-            A bounding box defining the limits of the model in each
-            dimension as ``((y_low, y_high), (x_low, x_high))``.
+        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
+            A bounding box defining the limits of the model.
 
         Examples
         --------
@@ -1500,8 +1480,8 @@ class MoffatPSF(Fittable2DModel):
         >>> model.bounding_box  # doctest: +FLOAT_CMP
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-2.33563, upper=2.33563)
-                y: Interval(lower=-4.67127, upper=4.67127)
+                x: Interval(lower=-11.21614, upper=11.21614)
+                y: Interval(lower=-11.21614, upper=11.21614)
             }
             model=GaussianPSF(inputs=('x', 'y'))
             order='C'
