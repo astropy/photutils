@@ -260,6 +260,12 @@ class GaussianPSF(Fittable2DModel):
         a = 0.5 * ((cost2 / xstd2) + (sint2 / ystd2))
         b = 0.5 * ((sin2t / xstd2) - (sin2t / ystd2))
         c = 0.5 * ((sint2 / xstd2) + (cost2 / ystd2))
+
+        # output units should match the input flux units
+        if isinstance(xstd, u.Quantity):
+            xstd = xstd.value
+            ystd = ystd.value
+
         amplitude = flux / (2 * np.pi * xstd * ystd)
         return amplitude * np.exp(
             -(a * xdiff**2) - (b * xdiff * ydiff) - (c * ydiff**2))
@@ -316,6 +322,7 @@ class GaussianPSF(Fittable2DModel):
         a = 0.5 * ((cost2 / xstd2) + (sint2 / ystd2))
         b = 0.5 * ((sin2t / xstd2) - (sin2t / ystd2))
         c = 0.5 * ((sint2 / xstd2) + (cost2 / ystd2))
+
         amplitude = flux / (2 * np.pi * xstd * ystd)
         exp = np.exp(-(a * xdiff2) - (b * xdiff * ydiff) - (c * ydiff2))
         g = amplitude * exp
@@ -858,11 +865,15 @@ class GaussianPRF(Fittable2DModel):
         x0 = dx * cost + dy * sint
         y0 = -dx * sint + dy * cost
 
+        dpix = 0.5
+        if isinstance(x_0, u.Quantity):
+            dpix *= x_0.unit
+
         return (flux / 4.0
-                * ((self._erf((x0 + 0.5) / (np.sqrt(2) * x_sigma))
-                    - self._erf((x0 - 0.5) / (np.sqrt(2) * x_sigma)))
-                   * (self._erf((y0 + 0.5) / (np.sqrt(2) * y_sigma))
-                      - self._erf((y0 - 0.5) / (np.sqrt(2) * y_sigma)))))
+                * ((self._erf((x0 + dpix) / (np.sqrt(2) * x_sigma))
+                    - self._erf((x0 - dpix) / (np.sqrt(2) * x_sigma)))
+                   * (self._erf((y0 + dpix) / (np.sqrt(2) * y_sigma))
+                      - self._erf((y0 - dpix) / (np.sqrt(2) * y_sigma)))))
 
     @property
     def input_units(self):
