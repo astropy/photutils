@@ -1228,6 +1228,20 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
         super().__init__(sigma=sigma, x_0=x_0, y_0=y_0, flux=flux, **kwargs)
 
+    @property
+    def amplitude(self):
+        """
+        The peak amplitude of the Gaussian.
+        """
+        return _gaussian_amplitude(self.flux, self.sigma, self.sigma)
+
+    @property
+    def fwhm(self):
+        """
+        Gaussian FWHM.
+        """
+        return self.sigma / GAUSSIAN_FWHM_TO_SIGMA
+
     def bounding_box(self, factor=5.5):
         """
         Return a bounding box defining the limits of the model.
@@ -1302,11 +1316,39 @@ class IntegratedGaussianPRF(Fittable2DModel):
         evaluated_model : `~numpy.ndarray`
             The evaluated model.
         """
+        dpix = 0.5
+        if isinstance(x_0, u.Quantity):
+            dpix *= x_0.unit
+
         return (flux / 4
-                * ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma))
-                    - self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma)))
-                   * (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma))
-                      - self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
+                * ((self._erf((x - x_0 + dpix) / (np.sqrt(2) * sigma))
+                    - self._erf((x - x_0 - dpix) / (np.sqrt(2) * sigma)))
+                   * (self._erf((y - y_0 + dpix) / (np.sqrt(2) * sigma))
+                      - self._erf((y - y_0 - dpix) / (np.sqrt(2) * sigma)))))
+
+    @property
+    def input_units(self):
+        """
+        The input units of the model.
+        """
+        x_unit = self.x_0.input_unit
+        y_unit = self.y_0.input_unit
+        if x_unit is None and y_unit is None:
+            return None
+
+        return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
+
+    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
+        # Note that here we need to make sure that x and y are in the same
+        # units otherwise this can lead to issues since rotation is not well
+        # defined.
+        if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
+            raise UnitsError("Units of 'x' and 'y' inputs should match")
+
+        return {'x_0': inputs_unit[self.inputs[0]],
+                'y_0': inputs_unit[self.inputs[0]],
+                'sigma': inputs_unit[self.inputs[0]],
+                'flux': outputs_unit[self.outputs[0]]}
 
 
 class MoffatPSF(Fittable2DModel):
