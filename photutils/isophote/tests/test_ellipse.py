@@ -38,7 +38,7 @@ class TestEllipse:
         # centered, tilted galaxy
         self.data = make_test_image(pa=PA, seed=0)
 
-    @pytest.mark.remote_data()
+    @pytest.mark.remote_data
     def test_find_center(self):
         path = get_path('isophote/M51.fits', location='photutils-datasets',
                         cache=True)
