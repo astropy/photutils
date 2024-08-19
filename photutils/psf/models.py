@@ -162,7 +162,7 @@ class GaussianPSF(Fittable2DModel):
         """
         The peak amplitude of the Gaussian.
         """
-        return self.flux / (2 * np.pi * self.x_sigma * self.y_sigma)
+        return _gaussian_amplitude(self.flux, self.x_sigma, self.y_sigma)
 
     @property
     def x_sigma(self):
@@ -487,7 +487,7 @@ class CircularGaussianPSF(Fittable2DModel):
         """
         The peak amplitude of the Gaussian.
         """
-        return self.flux / (2 * np.pi * self.x_sigma * self.y_sigma)
+        return _gaussian_amplitude(self.flux, self.sigma, self.sigma)
 
     @property
     def sigma(self):
@@ -762,7 +762,7 @@ class GaussianPRF(Fittable2DModel):
         """
         The peak amplitude of the Gaussian.
         """
-        return self.flux / (2 * np.pi * self.x_sigma * self.y_sigma)
+        return _gaussian_amplitude(self.flux, self.x_sigma, self.y_sigma)
 
     @property
     def x_sigma(self):
@@ -1013,7 +1013,7 @@ class CircularGaussianPRF(Fittable2DModel):
         """
         The peak amplitude of the Gaussian.
         """
-        return self.flux / (2 * np.pi * self.sigma**2)
+        return _gaussian_amplitude(self.flux, self.sigma, self.sigma)
 
     @property
     def sigma(self):
@@ -2386,3 +2386,12 @@ class PRFAdapter(Fittable2DModel):
                                   lambda x: yi - 0.5, lambda x: yi + 0.5,
                                   **self._dblquadkwargs)[0]
         return out
+
+
+def _gaussian_amplitude(flux, xsigma, ysigma):
+    # output units should match the input flux units
+    if isinstance(xsigma, u.Quantity):
+        xsigma = xsigma.value
+        ysigma = ysigma.value
+
+    return flux / (2.0 * np.pi * xsigma * ysigma)
