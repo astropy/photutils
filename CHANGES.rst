@@ -18,6 +18,11 @@ New Features
   - The ``extract_stars`` function can now accept ``NDData`` inputs with
     uncertainty types other than ``weights``. [#1821]
 
+  - Added new ``GaussianPSF``, ``CircularGaussianPSF``, ``GaussianPRF``,
+    ``CircularGaussianPRF``, and ``MoffatPSF`` PSF model classes. [#1838]
+
+  - The ``IntegratedGaussianPRF`` model now supports units. [#1838]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -43,6 +48,17 @@ API Changes
 
   - The ``build_ellipse_model`` function now raises a ``ValueError`` if
     the input ``isolist`` is empty. [#1809]
+
+- ``photutils.psf``
+
+  - The ``IntegratedGaussianPRF`` class now must be initialized using
+    keyword-only arguments. [#1838]
+
+  - The ``IntegratedGaussianPRF`` class has been moved to the new
+    ``functional_models`` module. [#1838]
+
+  - The ``models`` and ``griddedpsfmodel`` modules have been renamed to
+    ``image_models`` and ``gridded_models``, respectively. [#1838]
 
 
 1.13.0 (2024-06-28)
