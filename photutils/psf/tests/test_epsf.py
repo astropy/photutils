@@ -18,7 +18,8 @@ from numpy.testing import assert_allclose, assert_almost_equal
 from photutils.datasets import make_model_image
 from photutils.psf.epsf import EPSFBuilder, EPSFFitter
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
-from photutils.psf.models import EPSFModel, IntegratedGaussianPRF
+from photutils.psf.functional_models import IntegratedGaussianPRF
+from photutils.psf.image_models import EPSFModel
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
@@ -293,7 +294,7 @@ def test_epsf_build_oversampling(oversamp):
     size = epsf.data.shape[0]
     cen = (size - 1) / 2
     sigma2 = oversamp * sigma
-    m = IntegratedGaussianPRF(sigma2, x_0=cen, y_0=cen, flux=1)
+    m = IntegratedGaussianPRF(flux=1, x_0=cen, y_0=cen, sigma=sigma2)
     yy, xx = np.mgrid[0:size, 0:size]
     psf = m(xx, yy)
 

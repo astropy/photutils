@@ -299,7 +299,12 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 '__init__.py' = ['D104', 'I']
 'docs/conf.py' = ['ERA001', 'INP001', 'TRY400']
-'griddedpsfmodel.py' = ['ARG001']
+'gridded_models.py' = ['ARG001']
 
 [tool.ruff.lint.pydocstyle]
 convention = 'numpy'
+
+[tool.codespell]
+ignore-words-list = """
+    ned,
+"""

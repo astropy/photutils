@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for the gridded PSF model module.
+Tests for the gridded_models module.
 """
 
 import os.path as op

@@ -11,7 +11,8 @@ from astropy.table import Table
 from numpy.testing import assert_allclose
 
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
-from photutils.psf.models import EPSFModel, IntegratedGaussianPRF
+from photutils.psf.functional_models import IntegratedGaussianPRF
+from photutils.psf.image_models import EPSFModel
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
