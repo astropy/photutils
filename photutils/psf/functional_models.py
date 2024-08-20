@@ -1116,6 +1116,10 @@ class IntegratedGaussianPRF(Fittable2DModel):
     The Gaussian is normalized such that the analytical integral over
     the entire 2D plane is equal to the total flux.
 
+    This model is equivalent to `CircularGaussianPRF`, but it is
+    parameterized in terms of the standard deviation (sigma) instead of
+    the full width at half maximum (FWHM).
+
     Parameters
     ----------
     flux : float, optional
