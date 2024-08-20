@@ -12,6 +12,7 @@ from astropy.units import UnitsError
 __all__ = ['GaussianPSF', 'CircularGaussianPSF', 'GaussianPRF',
            'CircularGaussianPRF', 'IntegratedGaussianPRF', 'MoffatPSF']
 
+__doctest_requires__ = {'*': ['scipy']}
 
 GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
