@@ -300,8 +300,8 @@ provided by the :ref:`photutils.datasets <datasets>` module:
 
     >>> import numpy as np
     >>> from photutils.datasets import make_noise_image
-    >>> from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
-    >>> psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> from photutils.psf import CircularGaussianPRF, make_psf_model_image
+    >>> psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_shape = (9, 9)
     >>> n_sources = 10
     >>> shape = (101, 101)
@@ -319,9 +319,9 @@ Let's plot the image:
 
     import matplotlib.pyplot as plt
     from photutils.datasets import make_noise_image
-    from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+    from photutils.psf import CircularGaussianPRF, make_psf_model_image
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     psf_shape = (9, 9)
     n_sources = 10
     shape = (101, 101)
@@ -350,14 +350,14 @@ We'll use the `~photutils.detection.DAOStarFinder` class for
 source detection. We'll estimate the initial fluxes of each
 source using a circular aperture with a radius 4 pixels. The
 central 5x5 pixel region of each star will be fit using an
-`~photutils.psf.IntegratedGaussianPRF` PSF model. First, let's create an
+`~photutils.psf.CircularGaussianPRF` PSF model. First, let's create an
 instance of the `~photutils.psf.PSFPhotometry` class:
 
 .. doctest-requires:: scipy
 
     >>> from photutils.detection import DAOStarFinder
     >>> from photutils.psf import PSFPhotometry
-    >>> psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> fit_shape = (5, 5)
     >>> finder = DAOStarFinder(6.0, 2.0)
     >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -405,16 +405,16 @@ print the source ID along with the fit x, y, and flux values:
     >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id  x_fit   y_fit  flux_fit
     --- ------- ------- --------
-      1 54.5658  7.7644 514.0129
-      2 29.0865 25.6111 536.5818
-      3 79.6281 28.7487 618.7551
-      4 63.2340 48.6408 563.3426
-      5 88.8848 54.1202 619.8874
-      6 79.8763 61.1380 648.1679
-      7 90.9606 72.0861 601.8609
-      8  7.8038 78.5734 635.6392
-      9  5.5350 89.8870 539.6850
-     10 71.8414 90.5842 692.3331
+      1 54.5658  7.7644 514.0091
+      2 29.0865 25.6111 536.5793
+      3 79.6281 28.7487 618.7642
+      4 63.2340 48.6408 563.3437
+      5 88.8848 54.1202 619.8904
+      6 79.8763 61.1380 648.1658
+      7 90.9606 72.0861 601.8593
+      8  7.8038 78.5734 635.6317
+      9  5.5350 89.8870 539.6831
+     10 71.8414 90.5842 692.3373
 
 Let's create the residual image:
 
@@ -431,10 +431,10 @@ and plot it:
     from astropy.visualization import simple_norm
     from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
-    from photutils.psf import (IntegratedGaussianPRF, PSFPhotometry,
+    from photutils.psf import (CircularGaussianPRF, PSFPhotometry,
                                make_psf_model_image)
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     psf_shape = (9, 9)
     n_sources = 10
     shape = (101, 101)
@@ -447,7 +447,7 @@ and plot it:
     data += noise
     error = np.abs(noise)
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -486,16 +486,16 @@ astropy table):
     >>> print(psfphot.finder_results)  # doctest: +FLOAT_CMP
      id xcentroid ycentroid sharpness ... sky   peak   flux    mag
     --- --------- --------- --------- ... --- ------- ------ -------
-      1   54.5301    7.7460    0.6002 ... 0.0 53.4082 6.9430 -2.1039
-      2   29.0927   25.5994    0.5950 ... 0.0 56.9892 7.5179 -2.1902
-      3   79.6186   28.7516    0.5953 ... 0.0 65.4845 8.5872 -2.3346
-      4   63.2485   48.6135    0.5797 ... 0.0 58.1835 7.6933 -2.2153
-      5   88.8820   54.1311    0.5943 ... 0.0 68.9214 9.3947 -2.4322
-      6   79.8728   61.1207    0.6212 ... 0.0 73.8172 9.7648 -2.4742
-      7   90.9621   72.0803    0.6163 ... 0.0 68.1552 9.1005 -2.3977
-      8    7.7962   78.5467    0.5975 ... 0.0 65.9807 8.4028 -2.3111
-      9    5.5854   89.8663    0.5737 ... 0.0 54.1899 7.0039 -2.1134
-     10   71.8303   90.5626    0.6034 ... 0.0 73.3127 9.5152 -2.4460
+      1   54.5299    7.7460    0.6006 ... 0.0 53.5953 6.9777 -2.1093
+      2   29.0927   25.5992    0.5955 ... 0.0 57.1982 7.5568 -2.1958
+      3   79.6185   28.7515    0.5957 ... 0.0 65.7175 8.6306 -2.3401
+      4   63.2485   48.6134    0.5802 ... 0.0 58.3985 7.7333 -2.2209
+      5   88.8820   54.1311    0.5948 ... 0.0 69.1869 9.4443 -2.4379
+      6   79.8727   61.1208    0.6216 ... 0.0 74.0935 9.8165 -2.4799
+      7   90.9621   72.0803    0.6167 ... 0.0 68.4157 9.1492 -2.4035
+      8    7.7962   78.5465    0.5979 ... 0.0 66.2173 8.4468 -2.3167
+      9    5.5858   89.8664    0.5741 ... 0.0 54.3786 7.0389 -2.1188
+     10   71.8303   90.5624    0.6038 ... 0.0 73.5747 9.5639 -2.4516
 
 The ``fit_results`` attribute contains a dictionary with detailed
 information returned from the ``fitter`` for each source:
@@ -566,10 +566,10 @@ the location of the star that was fit and subtracted.
     from photutils.aperture import CircularAperture
     from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
-    from photutils.psf import (IntegratedGaussianPRF, PSFPhotometry,
+    from photutils.psf import (CircularGaussianPRF, PSFPhotometry,
                                make_psf_model_image)
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     psf_shape = (9, 9)
     n_sources = 10
     shape = (101, 101)
@@ -582,7 +582,7 @@ the location of the star that was fit and subtracted.
     data += noise
     error = np.abs(noise)
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -624,11 +624,11 @@ do that by setting the ``fixed`` attribute on the model parameters:
 
 .. doctest-requires:: scipy
 
-    >>> psf_model2 = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_model2 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model2.x_0.fixed = True
     >>> psf_model2.y_0.fixed = True
     >>> psf_model2.fixed
-    {'flux': False, 'x_0': True, 'y_0': True, 'sigma': True}
+    {'flux': False, 'x_0': True, 'y_0': True, 'fwhm': True}
 
 Now when the model is fit, the flux will be varied but, the (x, y)
 position will be fixed at its initial position for every source. Let's
@@ -652,7 +652,7 @@ fit:
     ...             'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id x_init y_init flux_init x_fit y_fit flux_fit
     --- ------ ------ --------- ----- ----- --------
-      1     63     49  556.4444  63.0  49.0 500.4789
+      1     63     49  556.5067  63.0  49.0 500.2997
 
 
 .. _psf-bounded-parameters:
@@ -682,10 +682,10 @@ parameters. Here we constrain the flux to be greater than or equal to 0:
 
 .. doctest-requires:: scipy
 
-    >>> psf_model3 = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (0, None)
     >>> psf_model3.bounds
-    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'sigma': (None, None)}
+    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (None, None)}
 
 The model parameter ``bounds`` can also be set using the ``min`` and/or
 ``max`` attributes. Here we set the minimum flux to be 0:
@@ -694,17 +694,17 @@ The model parameter ``bounds`` can also be set using the ``min`` and/or
 
     >>> psf_model3.flux.min = 0
     >>> psf_model3.bounds
-    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'sigma': (None, None)}
+    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (None, None)}
 
 For this example, let's constrain the flux value to be between between
 400 and 600:
 
 .. doctest-requires:: scipy
 
-    >>> psf_model3 = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (400, 600)
     >>> psf_model3.bounds
-    {'flux': (400.0, 600.0), 'x_0': (None, None), 'y_0': (None, None), 'sigma': (None, None)}
+    {'flux': (400.0, 600.0), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (None, None)}
 
 
 Source Grouping
@@ -777,15 +777,15 @@ The local background values are output in the table:
     >>> print(phot[('id', 'local_bkg')])  # doctest: +FLOAT_CMP
      id local_bkg
     --- ---------
-      1   -0.0840
+      1   -0.0839
       2    0.1784
       3    0.2593
       4   -0.0574
-      5    0.2934
-      6   -0.0826
+      5    0.2492
+      6   -0.0818
       7   -0.1130
-      8   -0.2138
-      9    0.0089
+      8   -0.2166
+      9    0.0102
      10    0.3926
 
 The local background values can also be input directly using the
@@ -832,16 +832,16 @@ the source was detected:
     >>> print(phot[('id', 'iter_detected', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id iter_detected  x_fit   y_fit  flux_fit
     --- ------------- ------- ------- --------
-      1             1 54.5665  7.7641 514.2679
-      2             1 29.0883 25.6092 534.0753
-      3             1 79.6273 28.7479 613.0246
-      4             2 63.2340 48.6415 564.1535
-      5             2 88.8857 54.1203 614.6949
-      6             2 79.8765 61.1358 649.9802
-      7             2 90.9631 72.0881 603.7519
-      8             2  7.8202 78.5821 641.7541
-      9             2  5.5350 89.8869 539.5465
-     10             2 71.8485 90.5830 687.4396
+      1             1 54.5665  7.7641 514.2650
+      2             1 29.0883 25.6092 534.0850
+      3             1 79.6273 28.7480 613.0496
+      4             2 63.2340 48.6415 564.1528
+      5             2 88.8856 54.1203 615.4907
+      6             2 79.8765 61.1359 649.9589
+      7             2 90.9631 72.0880 603.7433
+      8             2  7.8203 78.5821 641.8223
+      9             2  5.5350 89.8870 539.5237
+     10             2 71.8485 90.5830 687.4573
 
 
 Reference/API
