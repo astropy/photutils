@@ -176,6 +176,12 @@ the `WebbPSF <https://webbpsf.readthedocs.io/>`_ Python software for
 creating PSF models. In particular, WebbPSF outputs gridded PSF models
 directly as Photutils `~photutils.psf.GriddedPSFModel` instances.
 
+If you cannot obtain a PSF model from an empirical library or
+observatory-provided tool, Photutils provides tools for creating an
+empirical PSF model from the data itself, provided you have a large
+number of isolated stars. Please see :ref:`build-epsf` for more
+information and an example.
+
 The `photutils.psf` subpackage provides several PSF models that
 can be used for PSF photometry. The PSF models are based on the
 :ref:`Astropy models and fitting <astropy:astropy-modeling>` framework.
