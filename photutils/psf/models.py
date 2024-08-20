@@ -1525,9 +1525,32 @@ class MoffatPSF(Fittable2DModel):
         result : `~numpy.ndarray`
             The value of the model evaluated at the input coordinates.
         """
-        amp = flux * (beta - 1) / (np.pi * alpha ** 2)
+        # output units should match the input flux units
+        alpha2 = alpha.copy()
+        if isinstance(alpha, u.Quantity):
+            alpha2 = alpha.value
+
+        amp = flux * (beta - 1) / (np.pi * alpha2 ** 2)
         r2 = (x - x_0) ** 2 + (y - y_0) ** 2
         return amp * (1 + (r2 / alpha**2)) ** (-beta)
+
+    @property
+    def input_units(self):
+        """
+        The input units of the model.
+        """
+        x_unit = self.x_0.input_unit
+        y_unit = self.y_0.input_unit
+        if x_unit is None and y_unit is None:
+            return None
+
+        return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
+
+    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
+        return {'x_0': inputs_unit[self.inputs[0]],
+                'y_0': inputs_unit[self.inputs[0]],
+                'alpha': inputs_unit[self.inputs[0]],
+                'flux': outputs_unit[self.outputs[0]]}
 
 
 class FittableImageModel(Fittable2DModel):
