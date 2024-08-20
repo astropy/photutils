@@ -401,7 +401,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
 
     Parameters
     ----------
-    epsfs : list of `photutils.psf.models.EPSFModel`
+    epsfs : list of `photutils.psf.EPSFModel`
         A list of EPSFModels representing the individual PSFs.
     grid_xypos : list, optional
         A list of fiducial points (x_0, y_0) for each PSF. If not

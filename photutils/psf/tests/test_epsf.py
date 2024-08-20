@@ -18,7 +18,8 @@ from numpy.testing import assert_allclose, assert_almost_equal
 from photutils.datasets import make_model_image
 from photutils.psf.epsf import EPSFBuilder, EPSFFitter
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
-from photutils.psf.models import EPSFModel, IntegratedGaussianPRF
+from photutils.psf.functional_models import IntegratedGaussianPRF
+from photutils.psf.image_models import EPSFModel
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
