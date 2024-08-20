@@ -6,6 +6,8 @@ General
 
 - The ``regions`` package is now an optional dependency. [#1813]
 
+- The minimum required Astropy is now 5.3. [#1839]
+
 New Features
 ^^^^^^^^^^^^
 
