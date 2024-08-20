@@ -6,8 +6,8 @@ PSF Photometry (`photutils.psf`)
 The `photutils.psf` subpackage contains tools for model-fitting
 photometry, often called "PSF photometry".
 
-.. _psf-terminology:
 
+.. _psf-terminology:
 
 Terminology
 -----------
@@ -35,8 +35,8 @@ PSF (e.g., see the `Spitzer Space Telescope MOPEX documentation
 <https://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools
 /mopex/mopexusersguide/89/>`_).
 
-In many cases the PSF/ePSF/PRF distinction is unimportant, and the
-PSF/ePSF/PRF are simply called the "PSF" model, but the distinction
+In many cases the PSF/PRF/ePSF distinction is unimportant, and the
+PSF/PRF/ePSF are simply called the "PSF" model, but the distinction
 can be critical when dealing carefully with undersampled data or
 detectors with significant intra-pixel sensitivity variations. For a
 more detailed description of this formalism, see `Anderson & King 2000
@@ -50,8 +50,8 @@ exactly what kind of model is actually being fit. For brevity (e.g.,
 for the general approach.
 
 
-PSF Photometry
---------------
+PSF Photometry Overview
+-----------------------
 
 Photutils provides a modular set of tools to perform PSF photometry
 for different science cases. The tools are implemented as classes that
@@ -63,11 +63,17 @@ and `~photutils.psf.IterativePSFPhotometry`.
 `~photutils.psf.PSFPhotometry` provides the framework for a flexible PSF
 photometry workflow that can find sources in an image, optionally group
 overlapping sources, fit the PSF model to the sources, and subtract the
-fit PSF models from the image. `~photutils.psf.IterativePSFPhotometry`
-is an iterative version of `~photutils.psf.PSFPhotometry` where
-after the fit sources are subtracted, the process repeats until no
-additional sources are detected or a maximum number of iterations has
-been reached. When used with the `~photutils.detection.DAOStarFinder`,
+fit PSF models from the image.
+
+`~photutils.psf.IterativePSFPhotometry` is an iterative version of
+`~photutils.psf.PSFPhotometry` where new sources are detected in the
+residual image after the fit sources are subtracted. The iterative
+process can be useful for crowded fields where sources are blended. A
+``mode`` keyword is provided to control the behavior of the iterative
+process, where either all sources or only the newly-detected sources are
+fit in subsequent iterations. The process repeats until no additional
+sources are detected or a maximum number of iterations has been
+reached. When used with the `~photutils.detection.DAOStarFinder`,
 `~photutils.psf.IterativePSFPhotometry` is essentially an implementation
 of the DAOPHOT algorithm described by Stetson in his `seminal paper
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_ for
@@ -124,7 +130,7 @@ respectively.
 
 For `~photutils.psf.IterativePSFPhotometry`, the above steps can be
 repeated until no additional sources are detected (or until a maximum
-number of iterations).
+number of iterations is reached).
 
 The `~photutils.psf.PSFPhotometry` and
 `~photutils.psf.IterativePSFPhotometry` classes provide the structure
@@ -137,8 +143,148 @@ the source centers, fluxes, group identifiers, and local backgrounds.
 This is also useful if one is interested in fitting only one or a few
 sources in an image.
 
-Example Usage
--------------
+
+.. _psf-models:
+
+PSF Models
+----------
+
+As mentioned above, PSF photometry fundamentally involves fitting
+models to data. As such, the PSF model is a critical component of PSF
+photometry. For accurate results, both for photometry and astrometry,
+the PSF model should be a good representation of the actual data. The
+PSF model can be a simple analytic function, such as a 2D Gaussian
+or Moffat profile, or it can be a more complex model derived from a
+2D PSF image, e.g., an effective PSF (ePSF). The PSF model can also
+encapsulate changes in the PSF across the detector, e.g., due to optical
+aberrations.
+
+For image-based PSF models, the PSF model is typically derived from
+observed data or from detailed optical modeling. The PSF model can
+be a single PSF model for the entire image or a grid of PSF models
+at fiducial detector positions. The PSF model image is also often
+oversampled to increase the accuracy of the PSF model.
+
+The observatory that obtained the data may provide tools for creating
+PSF models for their data or an empirical library of PSF models
+based on previous observations. For example, the `Hubble Space
+Telescope <https://www.stsci.edu/hst>`_ provides the `TinyTim
+<https://www.stsci.edu/hst/instrumentation/focus-and-pointing/focus/tiny
+-tim-hst-psf-modeling>`_ software for creating PSF models. Similarly,
+the `James Webb Space Telescope <https://www.stsci.edu/jwst>`_ provides
+the `WebbPSF <https://webbpsf.readthedocs.io/>`_ Python software for
+creating PSF models. In particular, WebbPSF outputs gridded PSF models
+directly as Photutils `~photutils.psf.GriddedPSFModel` instances.
+
+The `photutils.psf` subpackage provides several PSF models that
+can be used for PSF photometry. The PSF models are based on the
+:ref:`Astropy models and fitting <astropy:astropy-modeling>` framework.
+The PSF models are used as input (via the ``psf_model`` parameter)
+to the PSF photometry classes `~photutils.psf.PSFPhotometry` and
+`~photutils.psf.IterativePSFPhotometry`. The PSF models are fitted to
+the data using an Astropy fitter class. Typically, the model position
+(``x_0`` and ``y_0``) and flux (``flux``) parameters are varied
+during the fitting process. The PSF model can also include additional
+parameters, such as the full width at half maximum (FWHM) or sigma of
+a Gaussian PSF or the alpha and beta parameters of a Moffat PSF. By
+default, these additional parameters are "fixed" (i.e., not varied
+during the fitting process). The user can choose to also vary these
+parameters by setting the ``fixed`` attribute on the model parameter
+to `False`. The position and/or flux parameters can also be fixed
+during the fitting process if needed, e.g., for forced photometry (see
+:ref:`psf-forced-photometry`). Any of the model parameters can also be
+bounded during the fitting process (see :ref:`psf-bounded-parameters`).
+
+You can also create your own custom PSF model using the Astropy modeling
+framework. The PSF model must be a 2D model that is a subclass of
+`~astropy.modeling.Fittable2DModel`. It must have parameters called
+``x_0``, ``y_0``, and ``flux``, specifying the central position and
+total integrated flux, and it should be normalized to unit flux.
+
+
+Analytic PSF Models
+^^^^^^^^^^^^^^^^^^^
+
+- `~photutils.psf.GaussianPSF`: a general 2D Gaussian PSF model
+  parameterized in terms of the position, total flux, and full width
+  at half maximum (FWHM) along the x and y axes. Rotation can also be
+  included.
+
+- `~photutils.psf.CircularGaussianPSF`: a circular 2D Gaussian PSF model
+  parameterized in terms of the position, total flux, and FWHM.
+
+- `~photutils.psf.GaussianPRF`: a general 2D Gaussian PSF model
+  parameterized in terms of the position, total flux, and FWHM
+  along the x and y axes. Rotation can also be included.
+
+- `~photutils.psf.CircularGaussianPRF`: a circular 2D Gaussian PRF model
+  parameterized in terms of the position, total flux, and FWHM.
+
+- `~photutils.psf.IntegratedGaussianPRF`: a circular 2D Gaussian PRF
+  model parameterized in terms of the position, total flux, and sigma
+  (standard deviation).
+
+- `~photutils.psf.MoffatPSF`: a 2D Moffat PSF model parameterized in
+  terms of the position, total flux, :math:`\alpha`, and :math:`\beta`
+  parameters.
+
+Note there are two types of defined models, PSF and PRF models. The PSF
+models are evaluated by sampling the analytic function at the input (x,
+y) coordinates. The PRF models are evaluated by integrating the analytic
+function over the pixel areas.
+
+Note that the non-circular Gaussian and Moffat models above have
+additional parameters beyond the standard PSF model parameters of
+position and flux (``x_0``, ``y_0``, and ``flux``). By default, these
+other parameters are "fixed" (i.e., not varied during the fitting
+process). The user can choose to also vary these parameters by setting
+the ``fixed`` attribute on the model parameter to `False`.
+
+Photutils also provides a convenience function called
+:func:`~photutils.psf.make_psf_model` that creates a PSF model from an
+Astropy fittable 2D model. However, if possible, it is recommended to
+use the PSF models provided by `photutils.psf` as they are optimized for
+PSF photometry. One can also create a custom PSF model using the Astropy
+modeling framework that will provide better performance than using
+:func:`~photutils.psf.make_psf_model`.
+
+Similarly, Photutils provides a convenience PSF model class called
+`~photutils.psf.PRFAdapter` that adapts a supplied PSF model to act as a
+PRF, i.e., it integrates the PSF model over the pixel areas. This class
+is extremely slow due to its use of numerical integrations and should be
+used only when absolutely necessary. It is also experimental and may be
+removed in the future. If a model class of this type is needed, it is
+strongly recommended that you create a custom PRF model instead.
+
+
+Image-based PSF Models
+^^^^^^^^^^^^^^^^^^^^^^
+
+Image-based PSF models are typically derived from observed data or from
+detailed optical modeling. The PSF model can be a single PSF model for
+the entire image or a grid of PSF models at fiducial detector positions,
+which are then interpolated for specific locations.
+
+The model classes below provide the tools needed to perform PSF
+photometry within Photutils using the Astropy modeling and fitting
+framework. The user must provide the image-based PSF model as an input
+to these classes. The input image(s) can be oversampled to increase the
+accuracy of the PSF model.
+
+- `~photutils.psf.FittableImageModel`: a general class for image-based
+  PSF models that allows for intensity scaling and translations.
+
+- `~photutils.psf.EPSFModel`: similar to
+  `~photutils.psf.FittableImageModel`, but with a different normalization.
+
+- `~photutils.psf.GriddedPSFModel`: a PSF model that contains a grid of
+  image-based ePSF models at fiducial detector positions.
+
+
+.. _psf-photometry-examples:
+
+PSF Photometry Examples
+-----------------------
 
 Let's start with a simple example using simulated stars whose PSF is
 assumed to be Gaussian. We'll create a synthetic image using tools
@@ -458,6 +604,8 @@ the location of the star that was fit and subtracted.
     plt.tight_layout()
 
 
+.. _psf-forced-photometry:
+
 Forced Photometry (Fixed Model Parameters)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -500,6 +648,8 @@ fit:
     --- ------ ------ --------- ----- ----- --------
       1     63     49  556.4444  63.0  49.0 500.4789
 
+
+.. _psf-bounded-parameters:
 
 Bounded Model Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^
