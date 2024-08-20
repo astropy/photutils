@@ -688,22 +688,6 @@ the source was detected:
      10             2 71.8485 90.5830 687.4396
 
 
-References
-----------
-
-`Spitzer PSF vs. PRF
-<https://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
-
-`The Kepler Pixel Response Function
-<https://ui.adsabs.harvard.edu/abs/2010ApJ...713L..97B/abstract>`_
-
-`Stetson (1987 PASP 99, 191)
-<https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_
-
-`Anderson and King (2000 PASP 112, 1360)
-<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
-
-
 Reference/API
 -------------
 
