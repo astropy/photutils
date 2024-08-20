@@ -13,7 +13,7 @@ from numpy.testing import assert_allclose
 
 from photutils.psf import (CircularGaussianPRF, CircularGaussianPSF,
                            FittableImageModel, GaussianPRF, GaussianPSF,
-                           IntegratedGaussianPRF, PRFAdapter)
+                           IntegratedGaussianPRF, MoffatPSF, PRFAdapter)
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
@@ -187,6 +187,48 @@ def test_gaussian_bounding_boxes():
 
     model5 = IntegratedGaussianPRF(x_0=0, y_0=0, sigma=2)
     assert_allclose(model5.bounding_box, ((-11, 11), (-11, 11)))
+
+
+@pytest.mark.parametrize('use_units', [False, True])
+def test_moffat_psf_model(use_units):
+    model = MoffatPSF(flux=71.4, x_0=24.3, y_0=25.2, alpha=8.1, beta=7.2)
+    model_init = MoffatPSF(flux=50, x_0=20, y_0=30, alpha=5, beta=4)
+    model_init.alpha.fixed = False
+    model_init.beta.fixed = False
+
+    yy, xx = np.mgrid[0:51, 0:51]
+
+    if use_units:
+        unit = u.cm
+        xx <<= unit
+        yy <<= unit
+        model.x_0 <<= unit
+        model.y_0 <<= unit
+        model.alpha <<= unit
+
+    data = model(xx, yy)
+    assert_allclose(data.sum(), model.flux.value, rtol=5e-6)
+    fwhm = 2 * model.alpha * np.sqrt(2**(1 / model.beta) - 1)
+    assert_allclose(model.fwhm, fwhm)
+
+    fitter = LevMarLSQFitter()
+    fit_model = fitter(model_init, xx, yy, data)
+    assert_allclose(fit_model.x_0.value, model.x_0.value)
+    assert_allclose(fit_model.y_0.value, model.y_0.value)
+    assert_allclose(fit_model.alpha.value, model.alpha.value)
+    assert_allclose(fit_model.beta.value, model.beta.value)
+
+    # test the model derivatives
+    fit_model2 = fitter(model_init, xx, yy, data, estimate_jacobian=True)
+    assert_allclose(fit_model2.x_0, fit_model.x_0)
+    assert_allclose(fit_model2.y_0, fit_model.y_0)
+    assert_allclose(fit_model2.alpha, fit_model.alpha)
+    assert_allclose(fit_model2.beta, fit_model.beta)
+
+    # test bounding box
+    model = MoffatPSF(x_0=0, y_0=0, alpha=1.0, beta=2.0)
+    bbox = 3.861565517
+    assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
