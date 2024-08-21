@@ -343,8 +343,8 @@ Now let's use `~photutils.psf.PSFPhotometry` to perform PSF photometry
 on the stars in this image. Note that the input image must be
 background-subtracted prior to using the photometry classes. See
 :ref:`background` for tools to subtract a global background from an
-image. This is not needed for our synthetic image because it does not
-include background.
+image. This step is not needed for our synthetic image because it does
+not include background.
 
 We'll use the `~photutils.detection.DAOStarFinder` class for
 source detection. We'll estimate the initial fluxes of each
@@ -526,7 +526,7 @@ Fitting a single source
 In some cases, one may want to fit only a single source (or few sources)
 in an image. We can do that by defining a table of the sources that
 we want to fit. For this example, let's fit the single star at ``(x,
-y) = (42, 36)``. We first define a table with this position and then
+y) = (63, 49)``. We first define a table with this position and then
 pass that table into the ``init_params`` keyword when calling the PSF
 photometry class on the data:
 
@@ -744,8 +744,10 @@ stars in each group were simultaneously fit.
 
 Care should be taken in defining the star groups. As noted above,
 simultaneously fitting very large star groups is computationally
-expensive and error-prone. A warning will be raised if the number of
-sources in a group exceeds 25.
+expensive and error-prone. Due to the way compound Astropy models are
+constructed, large groups currently also require large amounts of
+memory. A warning will be raised if the number of sources in a group
+exceeds 25.
 
 
 Local Background Subtraction
