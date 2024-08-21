@@ -1486,10 +1486,10 @@ class MoffatPSF(Fittable2DModel):
         >>> model.bounding_box  # doctest: +FLOAT_CMP
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-11.21614, upper=11.21614)
-                y: Interval(lower=-11.21614, upper=11.21614)
+                x: Interval(lower=-6.117894, upper=6.117894)
+                y: Interval(lower=-6.117894, upper=6.117894)
             }
-            model=GaussianPSF(inputs=('x', 'y'))
+            model=MoffatPSF(inputs=('x', 'y'))
             order='C'
         )
         """
@@ -1499,7 +1499,7 @@ class MoffatPSF(Fittable2DModel):
 
     def evaluate(self, x, y, flux, x_0, y_0, alpha, beta):
         """
-        Calculate the value of the 2D Gaussian model at the input
+        Calculate the value of the 2D Moffat model at the input
         coordinates.
 
         Parameters
