@@ -1400,7 +1400,7 @@ class MoffatPSF(Fittable2DModel):
 
     .. math::
 
-        \rm{FWHM} = 2 \alpha \sqrt{2^{-\beta} - 1}
+        \rm{FWHM} = 2 \alpha \sqrt{2^{1 / \beta} - 1}
 
     The model is normalized such that, for :math:`\beta > 1`:
 
