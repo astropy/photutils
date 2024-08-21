@@ -35,10 +35,10 @@ using `~photutils.psf.make_psf_model_image`.
 
 .. doctest-requires:: scipy
 
-    >>> from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+    >>> from photutils.psf import CircularGaussianPRF, make_psf_model_image
     >>> shape = (256, 256)
-    >>> sigma = 2.0
-    >>> psf_model = IntegratedGaussianPRF(sigma=sigma)
+    >>> fwhm = 4.7
+    >>> psf_model = CircularGaussianPRF(fwhm=fwhm)
     >>> psf_shape = (11, 11)
     >>> n_sources = 100
     >>> flux = (500, 1000)
@@ -59,11 +59,11 @@ Let's display the image:
 .. plot::
 
     import matplotlib.pyplot as plt
-    from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+    from photutils.psf import CircularGaussianPRF, make_psf_model_image
 
     shape = (256, 256)
-    sigma = 2.0
-    psf_model = IntegratedGaussianPRF(sigma=sigma)
+    fwhm = 4.7
+    psf_model = CircularGaussianPRF(fwhm=fwhm)
     psf_shape = (11, 11)
     n_sources = 100
     flux = (500, 1000)
@@ -77,8 +77,9 @@ Let's display the image:
     plt.show()
 
 The ``make_psf_model_image`` function returns the simulated image
-(``data``) and a table of the star positions and fluxes (``stars``). The
-star positions are stored in the 'x_0' and 'y_0' columns of the table.
+(``data``) and a table of the star positions and fluxes (``stars``).
+The star positions are stored in the ``x_0`` and ``y_0`` columns of the
+table.
 
 Now, let's find the stellar groups. We start by creating
 a `~photutils.psf.SourceGrouper` object. Here we set the
@@ -89,9 +90,8 @@ profiles.
 
 .. doctest-requires:: scipy
 
-    >>> from astropy.stats import gaussian_sigma_to_fwhm
     >>> from photutils.psf import SourceGrouper
-    >>> fwhm = sigma * gaussian_sigma_to_fwhm
+    >>> fwhm = 4.7
     >>> min_separation = 2.5 * fwhm
     >>> grouper = SourceGrouper(min_separation)
 
@@ -148,25 +148,23 @@ the same group have the same aperture color:
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.stats import gaussian_sigma_to_fwhm
     from photutils.aperture import CircularAperture
-    from photutils.psf import (IntegratedGaussianPRF, SourceGrouper,
+    from photutils.psf import (CircularGaussianPRF, SourceGrouper,
                                make_psf_model_image)
     from photutils.utils import make_random_cmap
 
     shape = (256, 256)
     psf_shape = (11, 11)
-    border_size = (6, 6)
+    border_size = (7, 7)
     flux = (500, 1000)
-    sigma = 2.0
-    psf_model = IntegratedGaussianPRF(sigma=sigma)
+    fwhm = 4.7
+    psf_model = CircularGaussianPRF(fwhm=fwhm)
     n_sources = 100
     data, stars = make_psf_model_image(shape, psf_model, n_sources,
                                        flux=flux,
                                        model_shape=psf_shape,
                                        border_size=border_size, seed=123)
 
-    fwhm = sigma * gaussian_sigma_to_fwhm
     min_separation = 2.5 * fwhm
     grouper = SourceGrouper(min_separation)
 

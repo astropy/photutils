@@ -29,15 +29,19 @@ in `Anderson (2016; WFC3 ISR 2016-12)
 process involves iterating between the ePSF itself and the stars used to
 build it.
 
-To begin, we must first define a sample of stars used to build the
-ePSF. Ideally these stars should be bright (high S/N) and isolated to
-prevent contamination from nearby stars. One may use the star-finding
-tools in Photutils (e.g., :class:`~photutils.detection.DAOStarFinder`
-or :class:`~photutils.detection.IRAFStarFinder`) to identify an initial
+To begin, we must first define a large (e.g., several hundred)
+sample of stars used to build the ePSF. Ideally these stars
+should be bright (high S/N) and isolated to prevent contamination
+from nearby stars. One may use the star-finding tools in
+Photutils (e.g., :class:`~photutils.detection.DAOStarFinder` or
+:class:`~photutils.detection.IRAFStarFinder`) to identify an initial
 sample of stars. However, the step of creating a good sample of stars
 generally requires visual inspection and manual selection to ensure
 stars are sufficiently isolated and of good quality (e.g., no cosmic
-rays, detector artifacts, etc.).
+rays, detector artifacts, etc.). To produce a good ePSF, one should have
+a large sample (e.g., several hundred) of stars in order to fully sample
+the PSF over the oversampled grid and to help reduce the effects of
+noise. Otherwise, the resulting ePSF may have holes or may be noisy.
 
 Let's start by loading a simulated HST/WFC3 image in the F160W band::
 

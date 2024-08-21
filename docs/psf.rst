@@ -6,14 +6,15 @@ PSF Photometry (`photutils.psf`)
 The `photutils.psf` subpackage contains tools for model-fitting
 photometry, often called "PSF photometry".
 
-.. _psf-terminology:
 
+.. _psf-terminology:
 
 Terminology
 -----------
+
 Different astronomy subfields use the terms "PSF", "PRF", or related
 terms somewhat differently, especially when colloquial usage is taken
-into account. This package aims to be at the very least internally
+into account. The `photutils.psf` package aims to be internally
 consistent, following the definitions described here.
 
 We take the Point Spread Function (PSF), or instrumental Point
@@ -21,31 +22,36 @@ Spread Function (iPSF) to be the infinite-resolution and
 infinite-signal-to-noise flux distribution from a point source on
 the detector, after passing through optics, dust, atmosphere, etc.
 By contrast, the function describing the responsivity variations
-across individual *pixels* is the Pixel Response Function (sometimes
-called "PRF", but that acronym is not used here for reasons that will
-soon be apparent). The convolution of the PSF and pixel response
-function, when discretized onto the detector (i.e., a rectilinear
-CCD grid), is the effective PSF (ePSF) or Point Response Function
-(PRF) (this latter terminology is the definition used by `Spitzer
+across individual *pixels* is the pixel response function. The
+pixel response function is sometimes called the "PRF", but we
+do not use that acronym here to avoid confusion with the "Point
+Response Function" (see below). The convolution of the PSF and
+pixel response function, when discretized onto the detector
+(i.e., a rectilinear grid), is the effective PSF (ePSF) or Point
+Response Function (PRF). The PRF terminology is sometimes used to
+emphasize that the model function describes the response of the
+detector to a point source, rather than the intrinsic instrumental
+PSF (e.g., see the `Spitzer Space Telescope MOPEX documentation
 <https://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools
-/mopex/mopexusersguide/89/>`_). In many cases the PSF/ePSF/PRF
-distinction is unimportant, and the ePSF/PRF are simply called
-the "PSF", but the distinction can be critical when dealing
-carefully with undersampled data or detectors with significant
-intra-pixel sensitivity variations. For a more detailed
-description of this formalism, see `Anderson & King 2000
+/mopex/mopexusersguide/89/>`_).
+
+In many cases the PSF/PRF/ePSF distinction is unimportant, and the
+PSF/PRF/ePSF are simply called the "PSF" model, but the distinction
+can be critical when dealing carefully with undersampled data or
+detectors with significant intra-pixel sensitivity variations. For a
+more detailed description of this formalism, see `Anderson & King 2000
 <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_.
 
-All this said, in colloquial usage "PSF photometry" sometimes refers
-to the more general task of model-fitting photometry (with the effects
-of the PSF either implicitly or explicitly included in the models),
-regardless of exactly what kind of model is actually being fit. For
-brevity (e.g., ``photutils.psf``), we use "PSF photometry" in this way,
-as a shorthand for the general approach.
+In colloquial usage, "PSF photometry" sometimes refers to the more
+general task of model-fitting photometry with the effects of the PSF
+either implicitly or explicitly included in the models, regardless of
+exactly what kind of model is actually being fit. For brevity (e.g.,
+``photutils.psf``), we use "PSF photometry" in this way, as a shorthand
+for the general approach.
 
 
-PSF Photometry
---------------
+PSF Photometry Overview
+-----------------------
 
 Photutils provides a modular set of tools to perform PSF photometry
 for different science cases. The tools are implemented as classes that
@@ -57,11 +63,17 @@ and `~photutils.psf.IterativePSFPhotometry`.
 `~photutils.psf.PSFPhotometry` provides the framework for a flexible PSF
 photometry workflow that can find sources in an image, optionally group
 overlapping sources, fit the PSF model to the sources, and subtract the
-fit PSF models from the image. `~photutils.psf.IterativePSFPhotometry`
-is an iterative version of `~photutils.psf.PSFPhotometry` where
-after the fit sources are subtracted, the process repeats until no
-additional sources are detected or a maximum number of iterations has
-been reached. When used with the `~photutils.detection.DAOStarFinder`,
+fit PSF models from the image.
+
+`~photutils.psf.IterativePSFPhotometry` is an iterative version of
+`~photutils.psf.PSFPhotometry` where new sources are detected in the
+residual image after the fit sources are subtracted. The iterative
+process can be useful for crowded fields where sources are blended. A
+``mode`` keyword is provided to control the behavior of the iterative
+process, where either all sources or only the newly-detected sources are
+fit in subsequent iterations. The process repeats until no additional
+sources are detected or a maximum number of iterations has been
+reached. When used with the `~photutils.detection.DAOStarFinder`,
 `~photutils.psf.IterativePSFPhotometry` is essentially an implementation
 of the DAOPHOT algorithm described by Stetson in his `seminal paper
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_ for
@@ -118,7 +130,7 @@ respectively.
 
 For `~photutils.psf.IterativePSFPhotometry`, the above steps can be
 repeated until no additional sources are detected (or until a maximum
-number of iterations).
+number of iterations is reached).
 
 The `~photutils.psf.PSFPhotometry` and
 `~photutils.psf.IterativePSFPhotometry` classes provide the structure
@@ -131,8 +143,154 @@ the source centers, fluxes, group identifiers, and local backgrounds.
 This is also useful if one is interested in fitting only one or a few
 sources in an image.
 
-Example Usage
--------------
+
+.. _psf-models:
+
+PSF Models
+----------
+
+As mentioned above, PSF photometry fundamentally involves fitting
+models to data. As such, the PSF model is a critical component of PSF
+photometry. For accurate results, both for photometry and astrometry,
+the PSF model should be a good representation of the actual data. The
+PSF model can be a simple analytic function, such as a 2D Gaussian
+or Moffat profile, or it can be a more complex model derived from a
+2D PSF image, e.g., an effective PSF (ePSF). The PSF model can also
+encapsulate changes in the PSF across the detector, e.g., due to optical
+aberrations.
+
+For image-based PSF models, the PSF model is typically derived from
+observed data or from detailed optical modeling. The PSF model can
+be a single PSF model for the entire image or a grid of PSF models
+at fiducial detector positions. The PSF model image is also often
+oversampled to increase the accuracy of the PSF model.
+
+The observatory that obtained the data may provide tools for creating
+PSF models for their data or an empirical library of PSF models
+based on previous observations. For example, the `Hubble Space
+Telescope <https://www.stsci.edu/hst>`_ provides the `TinyTim
+<https://www.stsci.edu/hst/instrumentation/focus-and-pointing/focus/tiny
+-tim-hst-psf-modeling>`_ software for creating PSF models. Similarly,
+the `James Webb Space Telescope <https://www.stsci.edu/jwst>`_ provides
+the `WebbPSF <https://webbpsf.readthedocs.io/>`_ Python software for
+creating PSF models. In particular, WebbPSF outputs gridded PSF models
+directly as Photutils `~photutils.psf.GriddedPSFModel` instances.
+
+If you cannot obtain a PSF model from an empirical library or
+observatory-provided tool, Photutils provides tools for creating an
+empirical PSF model from the data itself, provided you have a large
+number of isolated stars. Please see :ref:`build-epsf` for more
+information and an example.
+
+The `photutils.psf` subpackage provides several PSF models that
+can be used for PSF photometry. The PSF models are based on the
+:ref:`Astropy models and fitting <astropy:astropy-modeling>` framework.
+The PSF models are used as input (via the ``psf_model`` parameter)
+to the PSF photometry classes `~photutils.psf.PSFPhotometry` and
+`~photutils.psf.IterativePSFPhotometry`. The PSF models are fitted to
+the data using an Astropy fitter class. Typically, the model position
+(``x_0`` and ``y_0``) and flux (``flux``) parameters are varied
+during the fitting process. The PSF model can also include additional
+parameters, such as the full width at half maximum (FWHM) or sigma of
+a Gaussian PSF or the alpha and beta parameters of a Moffat PSF. By
+default, these additional parameters are "fixed" (i.e., not varied
+during the fitting process). The user can choose to also vary these
+parameters by setting the ``fixed`` attribute on the model parameter
+to `False`. The position and/or flux parameters can also be fixed
+during the fitting process if needed, e.g., for forced photometry (see
+:ref:`psf-forced-photometry`). Any of the model parameters can also be
+bounded during the fitting process (see :ref:`psf-bounded-parameters`).
+
+You can also create your own custom PSF model using the Astropy modeling
+framework. The PSF model must be a 2D model that is a subclass of
+`~astropy.modeling.Fittable2DModel`. It must have parameters called
+``x_0``, ``y_0``, and ``flux``, specifying the central position and
+total integrated flux, and it should be normalized to unit flux.
+
+
+Analytic PSF Models
+^^^^^^^^^^^^^^^^^^^
+
+- `~photutils.psf.GaussianPSF`: a general 2D Gaussian PSF model
+  parameterized in terms of the position, total flux, and full width
+  at half maximum (FWHM) along the x and y axes. Rotation can also be
+  included.
+
+- `~photutils.psf.CircularGaussianPSF`: a circular 2D Gaussian PSF model
+  parameterized in terms of the position, total flux, and FWHM.
+
+- `~photutils.psf.GaussianPRF`: a general 2D Gaussian PSF model
+  parameterized in terms of the position, total flux, and FWHM
+  along the x and y axes. Rotation can also be included.
+
+- `~photutils.psf.CircularGaussianPRF`: a circular 2D Gaussian PRF model
+  parameterized in terms of the position, total flux, and FWHM.
+
+- `~photutils.psf.IntegratedGaussianPRF`: a circular 2D Gaussian PRF
+  model parameterized in terms of the position, total flux, and sigma
+  (standard deviation).
+
+- `~photutils.psf.MoffatPSF`: a 2D Moffat PSF model parameterized in
+  terms of the position, total flux, :math:`\alpha`, and :math:`\beta`
+  parameters.
+
+Note there are two types of defined models, PSF and PRF models. The PSF
+models are evaluated by sampling the analytic function at the input (x,
+y) coordinates. The PRF models are evaluated by integrating the analytic
+function over the pixel areas.
+
+Note that the non-circular Gaussian and Moffat models above have
+additional parameters beyond the standard PSF model parameters of
+position and flux (``x_0``, ``y_0``, and ``flux``). By default, these
+other parameters are "fixed" (i.e., not varied during the fitting
+process). The user can choose to also vary these parameters by setting
+the ``fixed`` attribute on the model parameter to `False`.
+
+Photutils also provides a convenience function called
+:func:`~photutils.psf.make_psf_model` that creates a PSF model from an
+Astropy fittable 2D model. However, if possible, it is recommended to
+use the PSF models provided by `photutils.psf` as they are optimized for
+PSF photometry. One can also create a custom PSF model using the Astropy
+modeling framework that will provide better performance than using
+:func:`~photutils.psf.make_psf_model`.
+
+Similarly, Photutils provides a convenience PSF model class called
+`~photutils.psf.PRFAdapter` that adapts a supplied PSF model to act as a
+PRF, i.e., it integrates the PSF model over the pixel areas. This class
+is extremely slow due to its use of numerical integrations and should be
+used only when absolutely necessary. It is also experimental and may be
+removed in the future. If a model class of this type is needed, it is
+strongly recommended that you create a custom PRF model instead.
+
+
+Image-based PSF Models
+^^^^^^^^^^^^^^^^^^^^^^
+
+Image-based PSF models are typically derived from observed data or from
+detailed optical modeling. The PSF model can be a single PSF model for
+the entire image or a grid of PSF models at fiducial detector positions,
+which are then interpolated for specific locations.
+
+The model classes below provide the tools needed to perform PSF
+photometry within Photutils using the Astropy modeling and fitting
+framework. The user must provide the image-based PSF model as an input
+to these classes. The input image(s) can be oversampled to increase the
+accuracy of the PSF model.
+
+- `~photutils.psf.FittableImageModel`: a general class for image-based
+  PSF models that allows for intensity scaling and translations.
+
+- `~photutils.psf.EPSFModel`: similar to
+  `~photutils.psf.FittableImageModel`, but with a different normalization.
+
+- `~photutils.psf.GriddedPSFModel`: a PSF model that contains a grid of
+  image-based ePSF models at fiducial detector positions.
+
+
+.. _psf-photometry-examples:
+
+PSF Photometry Examples
+-----------------------
 
 Let's start with a simple example using simulated stars whose PSF is
 assumed to be Gaussian. We'll create a synthetic image using tools
@@ -142,8 +300,8 @@ provided by the :ref:`photutils.datasets <datasets>` module:
 
     >>> import numpy as np
     >>> from photutils.datasets import make_noise_image
-    >>> from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
-    >>> psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> from photutils.psf import CircularGaussianPRF, make_psf_model_image
+    >>> psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_shape = (9, 9)
     >>> n_sources = 10
     >>> shape = (101, 101)
@@ -161,9 +319,9 @@ Let's plot the image:
 
     import matplotlib.pyplot as plt
     from photutils.datasets import make_noise_image
-    from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+    from photutils.psf import CircularGaussianPRF, make_psf_model_image
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     psf_shape = (9, 9)
     n_sources = 10
     shape = (101, 101)
@@ -185,21 +343,21 @@ Now let's use `~photutils.psf.PSFPhotometry` to perform PSF photometry
 on the stars in this image. Note that the input image must be
 background-subtracted prior to using the photometry classes. See
 :ref:`background` for tools to subtract a global background from an
-image. This is not needed for our synthetic image because it does not
-include background.
+image. This step is not needed for our synthetic image because it does
+not include background.
 
 We'll use the `~photutils.detection.DAOStarFinder` class for
 source detection. We'll estimate the initial fluxes of each
 source using a circular aperture with a radius 4 pixels. The
 central 5x5 pixel region of each star will be fit using an
-`~photutils.psf.IntegratedGaussianPRF` PSF model. First, let's create an
+`~photutils.psf.CircularGaussianPRF` PSF model. First, let's create an
 instance of the `~photutils.psf.PSFPhotometry` class:
 
 .. doctest-requires:: scipy
 
     >>> from photutils.detection import DAOStarFinder
     >>> from photutils.psf import PSFPhotometry
-    >>> psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> fit_shape = (5, 5)
     >>> finder = DAOStarFinder(6.0, 2.0)
     >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -247,16 +405,16 @@ print the source ID along with the fit x, y, and flux values:
     >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id  x_fit   y_fit  flux_fit
     --- ------- ------- --------
-      1 54.5658  7.7644 514.0129
-      2 29.0865 25.6111 536.5818
-      3 79.6281 28.7487 618.7551
-      4 63.2340 48.6408 563.3426
-      5 88.8848 54.1202 619.8874
-      6 79.8763 61.1380 648.1679
-      7 90.9606 72.0861 601.8609
-      8  7.8038 78.5734 635.6392
-      9  5.5350 89.8870 539.6850
-     10 71.8414 90.5842 692.3331
+      1 54.5658  7.7644 514.0091
+      2 29.0865 25.6111 536.5793
+      3 79.6281 28.7487 618.7642
+      4 63.2340 48.6408 563.3437
+      5 88.8848 54.1202 619.8904
+      6 79.8763 61.1380 648.1658
+      7 90.9606 72.0861 601.8593
+      8  7.8038 78.5734 635.6317
+      9  5.5350 89.8870 539.6831
+     10 71.8414 90.5842 692.3373
 
 Let's create the residual image:
 
@@ -273,10 +431,10 @@ and plot it:
     from astropy.visualization import simple_norm
     from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
-    from photutils.psf import (IntegratedGaussianPRF, PSFPhotometry,
+    from photutils.psf import (CircularGaussianPRF, PSFPhotometry,
                                make_psf_model_image)
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     psf_shape = (9, 9)
     n_sources = 10
     shape = (101, 101)
@@ -289,7 +447,7 @@ and plot it:
     data += noise
     error = np.abs(noise)
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -328,16 +486,16 @@ astropy table):
     >>> print(psfphot.finder_results)  # doctest: +FLOAT_CMP
      id xcentroid ycentroid sharpness ... sky   peak   flux    mag
     --- --------- --------- --------- ... --- ------- ------ -------
-      1   54.5301    7.7460    0.6002 ... 0.0 53.4082 6.9430 -2.1039
-      2   29.0927   25.5994    0.5950 ... 0.0 56.9892 7.5179 -2.1902
-      3   79.6186   28.7516    0.5953 ... 0.0 65.4845 8.5872 -2.3346
-      4   63.2485   48.6135    0.5797 ... 0.0 58.1835 7.6933 -2.2153
-      5   88.8820   54.1311    0.5943 ... 0.0 68.9214 9.3947 -2.4322
-      6   79.8728   61.1207    0.6212 ... 0.0 73.8172 9.7648 -2.4742
-      7   90.9621   72.0803    0.6163 ... 0.0 68.1552 9.1005 -2.3977
-      8    7.7962   78.5467    0.5975 ... 0.0 65.9807 8.4028 -2.3111
-      9    5.5854   89.8663    0.5737 ... 0.0 54.1899 7.0039 -2.1134
-     10   71.8303   90.5626    0.6034 ... 0.0 73.3127 9.5152 -2.4460
+      1   54.5299    7.7460    0.6006 ... 0.0 53.5953 6.9777 -2.1093
+      2   29.0927   25.5992    0.5955 ... 0.0 57.1982 7.5568 -2.1958
+      3   79.6185   28.7515    0.5957 ... 0.0 65.7175 8.6306 -2.3401
+      4   63.2485   48.6134    0.5802 ... 0.0 58.3985 7.7333 -2.2209
+      5   88.8820   54.1311    0.5948 ... 0.0 69.1869 9.4443 -2.4379
+      6   79.8727   61.1208    0.6216 ... 0.0 74.0935 9.8165 -2.4799
+      7   90.9621   72.0803    0.6167 ... 0.0 68.4157 9.1492 -2.4035
+      8    7.7962   78.5465    0.5979 ... 0.0 66.2173 8.4468 -2.3167
+      9    5.5858   89.8664    0.5741 ... 0.0 54.3786 7.0389 -2.1188
+     10   71.8303   90.5624    0.6038 ... 0.0 73.5747 9.5639 -2.4516
 
 The ``fit_results`` attribute contains a dictionary with detailed
 information returned from the ``fitter`` for each source:
@@ -368,7 +526,7 @@ Fitting a single source
 In some cases, one may want to fit only a single source (or few sources)
 in an image. We can do that by defining a table of the sources that
 we want to fit. For this example, let's fit the single star at ``(x,
-y) = (42, 36)``. We first define a table with this position and then
+y) = (63, 49)``. We first define a table with this position and then
 pass that table into the ``init_params`` keyword when calling the PSF
 photometry class on the data:
 
@@ -408,10 +566,10 @@ the location of the star that was fit and subtracted.
     from photutils.aperture import CircularAperture
     from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
-    from photutils.psf import (IntegratedGaussianPRF, PSFPhotometry,
+    from photutils.psf import (CircularGaussianPRF, PSFPhotometry,
                                make_psf_model_image)
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     psf_shape = (9, 9)
     n_sources = 10
     shape = (101, 101)
@@ -424,7 +582,7 @@ the location of the star that was fit and subtracted.
     data += noise
     error = np.abs(noise)
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -452,6 +610,8 @@ the location of the star that was fit and subtracted.
     plt.tight_layout()
 
 
+.. _psf-forced-photometry:
+
 Forced Photometry (Fixed Model Parameters)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -464,11 +624,11 @@ do that by setting the ``fixed`` attribute on the model parameters:
 
 .. doctest-requires:: scipy
 
-    >>> psf_model2 = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_model2 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model2.x_0.fixed = True
     >>> psf_model2.y_0.fixed = True
     >>> psf_model2.fixed
-    {'flux': False, 'x_0': True, 'y_0': True, 'sigma': True}
+    {'flux': False, 'x_0': True, 'y_0': True, 'fwhm': True}
 
 Now when the model is fit, the flux will be varied but, the (x, y)
 position will be fixed at its initial position for every source. Let's
@@ -492,8 +652,10 @@ fit:
     ...             'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id x_init y_init flux_init x_fit y_fit flux_fit
     --- ------ ------ --------- ----- ----- --------
-      1     63     49  556.4444  63.0  49.0 500.4789
+      1     63     49  556.5067  63.0  49.0 500.2997
 
+
+.. _psf-bounded-parameters:
 
 Bounded Model Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -520,10 +682,10 @@ parameters. Here we constrain the flux to be greater than or equal to 0:
 
 .. doctest-requires:: scipy
 
-    >>> psf_model3 = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (0, None)
     >>> psf_model3.bounds
-    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'sigma': (None, None)}
+    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (None, None)}
 
 The model parameter ``bounds`` can also be set using the ``min`` and/or
 ``max`` attributes. Here we set the minimum flux to be 0:
@@ -532,17 +694,17 @@ The model parameter ``bounds`` can also be set using the ``min`` and/or
 
     >>> psf_model3.flux.min = 0
     >>> psf_model3.bounds
-    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'sigma': (None, None)}
+    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (None, None)}
 
 For this example, let's constrain the flux value to be between between
 400 and 600:
 
 .. doctest-requires:: scipy
 
-    >>> psf_model3 = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (400, 600)
     >>> psf_model3.bounds
-    {'flux': (400.0, 600.0), 'x_0': (None, None), 'y_0': (None, None), 'sigma': (None, None)}
+    {'flux': (400.0, 600.0), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (None, None)}
 
 
 Source Grouping
@@ -561,8 +723,8 @@ other:
     ...                         grouper=grouper, aperture_radius=4)
     >>> phot = psfphot(data, error=error)
 
-The ``group_id`` column shows that six groups were identified (each with
-two stars). The stars in each group were simultaneously fit.
+The ``group_id`` column shows that seven groups were identified. The
+stars in each group were simultaneously fit.
 
 .. doctest-requires:: scipy
 
@@ -582,8 +744,10 @@ two stars). The stars in each group were simultaneously fit.
 
 Care should be taken in defining the star groups. As noted above,
 simultaneously fitting very large star groups is computationally
-expensive and error-prone. A warning will be raised if the number of
-sources in a group exceeds 25.
+expensive and error-prone. Due to the way compound Astropy models are
+constructed, large groups currently also require large amounts of
+memory. A warning will be raised if the number of sources in a group
+exceeds 25.
 
 
 Local Background Subtraction
@@ -615,15 +779,15 @@ The local background values are output in the table:
     >>> print(phot[('id', 'local_bkg')])  # doctest: +FLOAT_CMP
      id local_bkg
     --- ---------
-      1   -0.0840
+      1   -0.0839
       2    0.1784
       3    0.2593
       4   -0.0574
-      5    0.2934
-      6   -0.0826
+      5    0.2492
+      6   -0.0818
       7   -0.1130
-      8   -0.2138
-      9    0.0089
+      8   -0.2166
+      9    0.0102
      10    0.3926
 
 The local background values can also be input directly using the
@@ -670,32 +834,16 @@ the source was detected:
     >>> print(phot[('id', 'iter_detected', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
      id iter_detected  x_fit   y_fit  flux_fit
     --- ------------- ------- ------- --------
-      1             1 54.5665  7.7641 514.2679
-      2             1 29.0883 25.6092 534.0753
-      3             1 79.6273 28.7479 613.0246
-      4             2 63.2340 48.6415 564.1535
-      5             2 88.8857 54.1203 614.6949
-      6             2 79.8765 61.1358 649.9802
-      7             2 90.9631 72.0881 603.7519
-      8             2  7.8202 78.5821 641.7541
-      9             2  5.5350 89.8869 539.5465
-     10             2 71.8485 90.5830 687.4396
-
-
-References
-----------
-
-`Spitzer PSF vs. PRF
-<https://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
-
-`The Kepler Pixel Response Function
-<https://ui.adsabs.harvard.edu/abs/2010ApJ...713L..97B/abstract>`_
-
-`Stetson (1987 PASP 99, 191)
-<https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_
-
-`Anderson and King (2000 PASP 112, 1360)
-<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
+      1             1 54.5665  7.7641 514.2650
+      2             1 29.0883 25.6092 534.0850
+      3             1 79.6273 28.7480 613.0496
+      4             2 63.2340 48.6415 564.1528
+      5             2 88.8856 54.1203 615.4907
+      6             2 79.8765 61.1359 649.9589
+      7             2 90.9631 72.0880 603.7433
+      8             2  7.8203 78.5821 641.8223
+      9             2  5.5350 89.8870 539.5237
+     10             2 71.8485 90.5830 687.4573
 
 
 Reference/API
