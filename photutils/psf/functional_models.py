@@ -1565,7 +1565,7 @@ class MoffatPSF(Fittable2DModel):
         """
         return 2.0 * self.alpha * np.sqrt(2 ** (1.0 / self.beta) - 1)
 
-    def bounding_box(self, factor=3.0):
+    def bounding_box(self, factor=10.0):
         """
         Return a bounding box defining the limits of the model.
 
@@ -1586,8 +1586,8 @@ class MoffatPSF(Fittable2DModel):
         >>> model.bounding_box  # doctest: +FLOAT_CMP
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-6.117894, upper=6.117894)
-                y: Interval(lower=-6.117894, upper=6.117894)
+                x: Interval(lower=-20.3929811, upper=20.3929811)
+                y: Interval(lower=-20.3929811, upper=20.3929811)
             }
             model=MoffatPSF(inputs=('x', 'y'))
             order='C'
