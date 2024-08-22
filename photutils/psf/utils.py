@@ -222,9 +222,8 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
         This function is needed only in cases where the 2D PSF model
         does not have ``x_0``, ``y_0``, and ``flux`` parameters.
 
-        It is *not* needed for any of the PSF models provided
-        by Photutils (e.g., `~photutils.psf.GriddedPSFModel`,
-        `~photutils.psf.IntegratedGaussianPRF`).
+        It is *not* needed for any of the PSF models provided by
+        Photutils.
 
     Parameters
     ----------
@@ -674,9 +673,9 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
 
     Examples
     --------
-    >>> from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+    >>> from photutils.psf import CircularGaussianPRF, make_psf_model_image
     >>> shape = (150, 200)
-    >>> psf_model= IntegratedGaussianPRF(sigma=1.5)
+    >>> psf_model= CircularGaussianPRF(fwhm=3.5)
     >>> n_sources = 10
     >>> data, params = make_psf_model_image(shape, psf_model, n_sources,
     ...                                     flux=(100, 250),
@@ -703,9 +702,9 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+        from photutils.psf import CircularGaussianPRF, make_psf_model_image
         shape = (150, 200)
-        psf_model= IntegratedGaussianPRF(sigma=1.5)
+        psf_model= CircularGaussianPRF(fwhm=3.5)
         n_sources = 10
         data, params = make_psf_model_image(shape, psf_model, n_sources,
                                             flux=(100, 250),
@@ -717,9 +716,9 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
         :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+        from photutils.psf import CircularGaussianPRF, make_psf_model_image
         shape = (150, 200)
-        psf_model= IntegratedGaussianPRF(sigma=1.5)
+        psf_model= CircularGaussianPRF(fwhm=3.5)
         n_sources = 10
         data, params = make_psf_model_image(shape, psf_model, n_sources,
                                             flux=(100, 250),
