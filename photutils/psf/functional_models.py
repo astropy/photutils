@@ -1791,7 +1791,7 @@ class AiryDiskPSF(Fittable2DModel):
         """
         return 2.0 * 1.616339948310703 * self.radius / self._rz / np.pi
 
-    def bounding_box(self, factor=3.0):
+    def bounding_box(self, factor=10.0):
         """
         Return a bounding box defining the limits of the model.
 
@@ -1808,12 +1808,12 @@ class AiryDiskPSF(Fittable2DModel):
         Examples
         --------
         >>> from photutils.psf import AiryDiskPSF
-        >>> model = AiryDiskPSF(x_0=0, y_0=0, radius=10)
+        >>> model = AiryDiskPSF(x_0=0, y_0=0, radius=3)
         >>> model.bounding_box  # doctest: +FLOAT_CMP
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-25.3099788, upper=25.3099788)
-                y: Interval(lower=-25.3099788, upper=25.3099788)
+                x: Interval(lower=-25.30997880, upper=25.30997880)
+                y: Interval(lower=-25.30997880, upper=25.30997880)
             }
             model=AiryDiskPSF(inputs=('x', 'y'))
             order='C'
