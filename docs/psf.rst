@@ -234,6 +234,10 @@ Analytic PSF Models
   terms of the position, total flux, :math:`\alpha`, and :math:`\beta`
   parameters.
 
+- `~photutils.psf.AiryDiskPSF`: a 2D Airy disk PSF model parameterized
+  in terms of the position, total flux, and radius of the first dark
+  ring.
+
 Note there are two types of defined models, PSF and PRF models. The PSF
 models are evaluated by sampling the analytic function at the input (x,
 y) coordinates. The PRF models are evaluated by integrating the analytic
