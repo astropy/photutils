@@ -10,9 +10,9 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.stats import gaussian_fwhm_to_sigma
 from numpy.testing import assert_allclose
 
-from photutils.psf import (CircularGaussianPRF, CircularGaussianPSF,
-                           GaussianPRF, GaussianPSF, IntegratedGaussianPRF,
-                           MoffatPSF)
+from photutils.psf import (AiryDiskPSF, CircularGaussianPRF,
+                           CircularGaussianPSF, GaussianPRF, GaussianPSF,
+                           IntegratedGaussianPRF, MoffatPSF)
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
@@ -225,4 +225,38 @@ def test_moffat_psf_model(use_units):
     # test bounding box
     model = MoffatPSF(x_0=0, y_0=0, alpha=1.0, beta=2.0)
     bbox = 3.861565517
+    assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.parametrize('use_units', [False, True])
+def test_airydisk_psf_model(use_units):
+    model = AiryDiskPSF(flux=71.4, x_0=24.3, y_0=25.2, radius=2.1)
+    model_init = AiryDiskPSF(flux=50, x_0=20, y_0=30, radius=2.5)
+    model_init.radius.fixed = False
+
+    yy, xx = np.mgrid[0:51, 0:51]
+
+    if use_units:
+        unit = u.cm
+        xx <<= unit
+        yy <<= unit
+        model.x_0 <<= unit
+        model.y_0 <<= unit
+        model.radius <<= unit
+
+    data = model(xx, yy)
+    assert_allclose(data.sum(), model.flux.value, rtol=0.015)
+    fwhm = 0.8436659602162364 * model.radius
+    assert_allclose(model.fwhm, fwhm)
+
+    fitter = LevMarLSQFitter()
+    fit_model = fitter(model_init, xx, yy, data)
+    assert_allclose(fit_model.x_0.value, model.x_0.value)
+    assert_allclose(fit_model.y_0.value, model.y_0.value)
+    assert_allclose(fit_model.radius.value, model.radius.value)
+
+    # test bounding box
+    model = AiryDiskPSF(x_0=0, y_0=0, radius=5)
+    bbox = 12.65498940
     assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))
