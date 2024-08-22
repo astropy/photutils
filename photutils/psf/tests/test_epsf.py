@@ -18,7 +18,7 @@ from numpy.testing import assert_allclose, assert_almost_equal
 from photutils.datasets import make_model_image
 from photutils.psf.epsf import EPSFBuilder, EPSFFitter
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
-from photutils.psf.functional_models import IntegratedGaussianPRF
+from photutils.psf.functional_models import CircularGaussianPRF
 from photutils.psf.image_models import EPSFModel
 from photutils.utils._optional_deps import HAS_SCIPY
 
@@ -52,15 +52,15 @@ class TestEPSFBuild:
         zz = rng.uniform(low=0, high=200000, size=len(xx))
 
         # define a table of model parameters
-        self.stddev = 2.0
+        self.fwhm = 4.7
         sources = Table()
         sources['amplitude'] = zz
         sources['x_0'] = xx
         sources['y_0'] = yy
-        sources['sigma'] = np.zeros(len(xx)) + self.stddev
+        sources['fwhm'] = np.zeros(len(xx)) + self.fwhm
         sources['theta'] = 0.0
 
-        psf_model = IntegratedGaussianPRF(sigma=self.stddev)
+        psf_model = CircularGaussianPRF(fwhm=self.fwhm)
         self.data = make_model_image(shape, psf_model, sources)
         self.nddata = NDData(self.data)
 
@@ -137,10 +137,10 @@ class TestEPSFBuild:
         y0 = (ref_size - 1) / 2 / oversampling
         y = np.arange(ref_size, dtype=float) / oversampling
 
-        psf_model = IntegratedGaussianPRF(sigma=self.stddev)
+        psf_model = CircularGaussianPRF(fwhm=self.fwhm)
         z = epsf.data
         x = psf_model.evaluate(y.reshape(-1, 1), y.reshape(1, -1), 1, y0, y0,
-                               self.stddev)
+                               self.fwhm)
         assert_allclose(z, x, rtol=1e-2, atol=1e-5)
 
         resid_star = fitted_stars[0].compute_residual_image(epsf)
@@ -268,7 +268,7 @@ def test_epsf_build_oversampling(oversamp):
     ydithers = np.transpose(xydithers)[1]
 
     nstars = oversamp**2
-    sigma = 3.0
+    fwhm = 7.0
     sources = Table()
     offset = 50
     size = oversamp * offset + offset
@@ -276,9 +276,9 @@ def test_epsf_build_oversampling(oversamp):
     sources['amplitude'] = np.full((nstars,), 100.0)
     sources['x_0'] = x.ravel() + xdithers
     sources['y_0'] = y.ravel() + ydithers
-    sources['sigma'] = np.full((nstars,), sigma)
+    sources['fwhm'] = np.full((nstars,), fwhm)
 
-    psf_model = IntegratedGaussianPRF(sigma=sigma)
+    psf_model = CircularGaussianPRF(fwhm=fwhm)
     shape = (size, size)
     data = make_model_image(shape, psf_model, sources)
     nddata = NDData(data=data)
@@ -293,8 +293,8 @@ def test_epsf_build_oversampling(oversamp):
     # input PSF shape
     size = epsf.data.shape[0]
     cen = (size - 1) / 2
-    sigma2 = oversamp * sigma
-    m = IntegratedGaussianPRF(flux=1, x_0=cen, y_0=cen, sigma=sigma2)
+    fwhm2 = oversamp * fwhm
+    m = CircularGaussianPRF(flux=1, x_0=cen, y_0=cen, fwhm=fwhm2)
     yy, xx = np.mgrid[0:size, 0:size]
     psf = m(xx, yy)
 

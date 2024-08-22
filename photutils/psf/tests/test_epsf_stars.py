@@ -11,7 +11,7 @@ from astropy.table import Table
 from numpy.testing import assert_allclose
 
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
-from photutils.psf.functional_models import IntegratedGaussianPRF
+from photutils.psf.functional_models import CircularGaussianPRF
 from photutils.psf.image_models import EPSFModel
 from photutils.utils._optional_deps import HAS_SCIPY
 
@@ -68,7 +68,7 @@ def test_epsf_star_residual_image():
     """
     size = 100
     yy, xx, = np.mgrid[0:size + 1, 0:size + 1] / 4
-    gmodel = IntegratedGaussianPRF().evaluate(xx, yy, 1, 12.5, 12.5, 2.5)
+    gmodel = CircularGaussianPRF().evaluate(xx, yy, 1, 12.5, 12.5, 2.5)
     epsf = EPSFModel(gmodel, oversampling=4, norm_radius=100)
     _size = 25
     data = np.zeros((_size, _size))
@@ -79,7 +79,7 @@ def test_epsf_star_residual_image():
     tbl['y'] = [12]
     stars = extract_stars(NDData(data), tbl, size=23)
     residual = stars[0].compute_residual_image(epsf)
-    # As current EPSFStar instances cannot accept IntegratedGaussianPRF
+    # As current EPSFStar instances cannot accept CircularGaussianPRF
     # as input, we have to accept some loss of precision from the
     # conversion to ePSF, and spline fitting (twice), so assert_allclose
     # cannot be more precise than 0.001 currently.

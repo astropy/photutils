@@ -16,7 +16,7 @@ from numpy.testing import assert_allclose, assert_equal
 from photutils.background import LocalBackground, MMMBackground
 from photutils.datasets import make_model_image, make_noise_image
 from photutils.detection import DAOStarFinder
-from photutils.psf import (IntegratedGaussianPRF, IterativePSFPhotometry,
+from photutils.psf import (CircularGaussianPRF, IterativePSFPhotometry,
                            PSFPhotometry, SourceGrouper, make_psf_model,
                            make_psf_model_image)
 from photutils.utils._optional_deps import HAS_SCIPY
@@ -25,7 +25,7 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 @pytest.fixture(name='test_data')
 def fixture_test_data():
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     model_shape = (9, 9)
     n_sources = 10
     shape = (101, 101)
@@ -42,7 +42,7 @@ def fixture_test_data():
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_invalid_inputs():
-    model = IntegratedGaussianPRF(sigma=1.0)
+    model = CircularGaussianPRF(fwhm=1.0)
 
     match = 'psf_model must be an Astropy Model subclass'
     with pytest.raises(TypeError, match=match):
@@ -168,7 +168,7 @@ def test_invalid_inputs():
 def test_psf_photometry(test_data):
     data, error, sources = test_data
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -212,15 +212,15 @@ def test_psf_photometry(test_data):
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.parametrize('fit_sigma', [False, True])
-def test_psf_photometry_forced(test_data, fit_sigma):
+@pytest.mark.parametrize('fit_fwhm', [False, True])
+def test_psf_photometry_forced(test_data, fit_fwhm):
     data, error, sources = test_data
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     psf_model.x_0.fixed = True
     psf_model.y_0.fixed = True
-    if fit_sigma:
-        psf_model.sigma.fixed = False
+    if fit_fwhm:
+        psf_model.fwhm.fixed = False
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -236,8 +236,8 @@ def test_psf_photometry_forced(test_data, fit_sigma):
     assert phot.colnames[:4] == ['id', 'group_id', 'group_size', 'local_bkg']
     assert_equal(phot['x_init'], phot['x_fit'])
 
-    if fit_sigma:
-        col = 'sigma'
+    if fit_fwhm:
+        col = 'fwhm'
         suffixes = ('_init', '_fit', '_err')
         colnames = [col + suffix for suffix in suffixes]
         for colname in colnames:
@@ -248,7 +248,7 @@ def test_psf_photometry_forced(test_data, fit_sigma):
 def test_psf_photometry_nddata(test_data):
     data, error, _ = test_data
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
 
@@ -288,7 +288,7 @@ def test_model_residual_image(test_data):
     data, error, _ = test_data
 
     data = data + 10
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(16.0, 2.0)
     bkgstat = MMMBackground()
@@ -328,7 +328,7 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
     Test compound models output from ``make_psf_model``.
     """
     data, error, sources = test_data
-    x_stddev = y_stddev = 1.7
+    x_stddev = y_stddev = 1.2
     psf_func = Gaussian2D(amplitude=1, x_mean=0, y_mean=0, x_stddev=x_stddev,
                           y_stddev=y_stddev)
     psf_model = make_psf_model(psf_func, x_name='x_mean', y_name='y_mean')
@@ -382,11 +382,11 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
         for colname in colnames:
             assert colname in phot.colnames
 
-    # test results when fit does not converge (fitter_maxiters=10)
+    # test results when fit does not converge (fitter_maxiters=3)
     match = r'One or more fit\(s\) may not have converged.'
     with pytest.warns(AstropyUserWarning, match=match):
         psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                                aperture_radius=4, fitter_maxiters=10)
+                                aperture_radius=4, fitter_maxiters=3)
         phot = psfphot(data, error=error)
         columns1 = ['x_err', 'y_err', 'flux_err']
         if fit_stddev:
@@ -471,7 +471,7 @@ def test_iterative_psf_photometry_compound(mode):
 def test_psf_photometry_mask(test_data):
     data, error, sources = test_data
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -562,7 +562,7 @@ def test_psf_photometry_init_params(test_data):
     data, error, _ = test_data
     data = data.copy()
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -647,7 +647,7 @@ def test_psf_photometry_init_params_units(test_data):
     data2 <<= unit
     error2 <<= unit
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
                             aperture_radius=4)
@@ -698,7 +698,7 @@ def test_psf_photometry_init_params_columns(test_data):
     data, error, _ = test_data
     data = data.copy()
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder)
@@ -734,7 +734,7 @@ def test_psf_photometry_init_params_columns(test_data):
 def test_grouper(test_data):
     data, error, sources = test_data
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     grouper = SourceGrouper(min_separation=20)
@@ -749,7 +749,7 @@ def test_grouper(test_data):
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_large_group_warning():
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=1.0)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2)
     grouper = SourceGrouper(min_separation=50)
     model_shape = (5, 5)
     fit_shape = (5, 5)
@@ -769,7 +769,7 @@ def test_large_group_warning():
 def test_local_bkg(test_data):
     data, error, sources = test_data
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     grouper = SourceGrouper(min_separation=20)
@@ -788,7 +788,7 @@ def test_local_bkg(test_data):
 def test_fixed_params(test_data):
     data, error, _ = test_data
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     psf_model.x_0.fixed = True
     psf_model.y_0.fixed = True
     psf_model.flux.fixed = True
@@ -809,7 +809,7 @@ def test_fixed_params(test_data):
 def test_fit_warning(test_data):
     data, _, _ = test_data
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     psf_model.flux.fixed = False
     fit_shape = (5, 5)
     fitter = LMLSQFitter()  # uses "status" instead of "ierr"
@@ -833,7 +833,7 @@ def test_fitter_no_maxiters_no_metrics(test_data):
     """
     data, error, _ = test_data
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     psf_model.flux.fixed = False
     fit_shape = (5, 5)
     fitter = SimplexLSQFitter()  # does not produce residual array
@@ -851,7 +851,7 @@ def test_fitter_no_maxiters_no_metrics(test_data):
 def test_xy_bounds(test_data):
     data, error, _ = test_data
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     init_params = QTable()
     init_params['x'] = [65]
@@ -912,7 +912,7 @@ def test_xy_bounds(test_data):
 def test_iterative_psf_photometry_mode_new(test_data):
     data, error, sources = test_data
 
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     bkgstat = MMMBackground()
     localbkg_estimator = LocalBackground(5, 10, bkgstat)
@@ -1004,7 +1004,7 @@ def test_iterative_psf_photometry_mode_all():
     sources['flux'] = [1000, 100, 50, 1000, 100, 1000, 100]
 
     shape = (101, 101)
-    psf_model = IntegratedGaussianPRF(flux=500, sigma=4.0)
+    psf_model = CircularGaussianPRF(flux=500, fwhm=9.4)
     psf_shape = (41, 41)
     data = make_model_image(shape, psf_model, sources, model_shape=psf_shape)
 
@@ -1075,8 +1075,8 @@ def test_iterative_psf_photometry_overlap():
 
     A ValueError should not be raised for no overlap.
     """
-    sigma = 1.5
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=sigma)
+    fwhm = 3.5
+    psf_model = CircularGaussianPRF(flux=1, fwhm=fwhm)
     data, _ = make_psf_model_image((150, 150), psf_model, n_sources=300,
                                    model_shape=(11, 11), flux=(50, 100),
                                    min_separation=1, seed=0)
@@ -1087,8 +1087,8 @@ def test_iterative_psf_photometry_overlap():
     data = data[slc]
     error = error[slc]
 
-    daofinder = DAOStarFinder(threshold=0.5, fwhm=sigma)
-    grouper = SourceGrouper(min_separation=3.0 * sigma)
+    daofinder = DAOStarFinder(threshold=0.5, fwhm=fwhm)
+    grouper = SourceGrouper(min_separation=1.3 * fwhm)
     psfphot = IterativePSFPhotometry(psf_model, fit_shape=(5, 5),
                                      finder=daofinder, mode='all',
                                      grouper=grouper, maxiters=3,
@@ -1096,12 +1096,12 @@ def test_iterative_psf_photometry_overlap():
     match = r'One or more .* may not have converged'
     with pytest.warns(AstropyUserWarning, match=match):
         phot = psfphot(data, error=error)
-        assert len(phot) == 38
+        assert len(phot) == 49
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_iterative_psf_photometry_inputs():
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(10.0, 2.0)
 
@@ -1138,7 +1138,7 @@ def test_negative_xy():
     sources['y_0'] = [-0.3, -0.4, 18.7]
     sources['sigma'] = 3.1
     shape = (31, 31)
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=3.1)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=3.1)
     data = make_model_image(shape, psf_model, sources)
     fit_shape = (11, 11)
     psfphot = PSFPhotometry(psf_model, fit_shape, aperture_radius=10)
@@ -1157,7 +1157,7 @@ def test_out_of_bounds_centroids():
     sources['sigma'] = 3.1
 
     shape = (51, 51)
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=3.1)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=3.1)
     data = make_model_image(shape, psf_model, sources)
     fit_shape = (11, 11)
     psfphot = PSFPhotometry(psf_model, fit_shape, aperture_radius=10)
@@ -1219,7 +1219,7 @@ def test_make_psf_model():
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_move_column():
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=2.7 / 2.35)
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
