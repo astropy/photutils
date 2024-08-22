@@ -59,6 +59,7 @@ class TestSourceFinder:
             segm = finder(self.convolved_data, 1000)
             assert segm is None
 
+    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_npixels_tuple(self):
         g1 = Gaussian2D(10, 35, 45, 5, 5)
         g2 = Gaussian2D(10, 50, 50, 5, 5)
