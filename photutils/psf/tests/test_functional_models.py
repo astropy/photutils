@@ -217,7 +217,7 @@ def test_moffat_psf_model(use_units):
 
     # test bounding box
     model = MoffatPSF(x_0=0, y_0=0, alpha=1.0, beta=2.0)
-    bbox = 3.861565517
+    bbox = 12.871885058111655
     assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))
 
 
@@ -251,5 +251,5 @@ def test_airydisk_psf_model(use_units):
 
     # test bounding box
     model = AiryDiskPSF(x_0=0, y_0=0, radius=5)
-    bbox = 12.65498940
+    bbox = 42.18329801081182
     assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))
