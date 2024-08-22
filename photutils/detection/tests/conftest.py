@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
 
-from photutils.psf import IntegratedGaussianPRF, make_psf_model_image
+from photutils.psf import CircularGaussianPRF, make_psf_model_image
 
 
 @pytest.fixture(name='kernel')
@@ -23,7 +23,8 @@ def fixture_kernel():
 def fixture_data():
     shape = (101, 101)
     model_shape = (11, 11)
-    psf_model = IntegratedGaussianPRF(flux=1, sigma=1.5)
+    fwhm = 1.5 * 2.0 * np.sqrt(2.0 * np.log(2.0))
+    psf_model = CircularGaussianPRF(flux=1, fwhm=fwhm)
     n_sources = 25
     data, _ = make_psf_model_image(shape, psf_model, n_sources,
                                    model_shape=model_shape,

@@ -15,7 +15,7 @@ from numpy.testing import assert_allclose
 from photutils.datasets import (make_gaussian_prf_sources_image,
                                 make_gaussian_sources_image, make_model_image,
                                 make_model_sources_image, make_test_psf_data)
-from photutils.psf import IntegratedGaussianPRF
+from photutils.psf import CircularGaussianSigmaPRF
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
@@ -75,7 +75,7 @@ def test_make_model_image_units():
     params['x_0'] = [30, 50, 70.5]
     params['y_0'] = [50, 50, 50.5]
     params['flux'] = [1, 2, 3] * unit
-    model = IntegratedGaussianPRF(sigma=1.5)
+    model = CircularGaussianSigmaPRF(sigma=1.5)
     shape = (300, 500)
     model_shape = (11, 11)
     image = make_model_image(shape, model, params, model_shape=model_shape)
@@ -232,7 +232,7 @@ def test_make_gaussian_prf_sources_image(source_params_prf):
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_test_psf_data():
     with pytest.warns(AstropyDeprecationWarning):
-        psf_model = IntegratedGaussianPRF(flux=100, sigma=1.5)
+        psf_model = CircularGaussianSigmaPRF(flux=100, sigma=1.5)
         psf_shape = (5, 5)
         nsources = 10
         shape = (100, 100)
