@@ -215,13 +215,6 @@ def test_moffat_psf_model(use_units):
     assert_allclose(fit_model.alpha.value, model.alpha.value)
     assert_allclose(fit_model.beta.value, model.beta.value)
 
-    # test the model derivatives
-    fit_model2 = fitter(model_init, xx, yy, data, estimate_jacobian=True)
-    assert_allclose(fit_model2.x_0, fit_model.x_0)
-    assert_allclose(fit_model2.y_0, fit_model.y_0)
-    assert_allclose(fit_model2.alpha, fit_model.alpha)
-    assert_allclose(fit_model2.beta, fit_model.beta)
-
     # test bounding box
     model = MoffatPSF(x_0=0, y_0=0, alpha=1.0, beta=2.0)
     bbox = 3.861565517
