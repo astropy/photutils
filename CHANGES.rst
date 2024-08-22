@@ -25,6 +25,8 @@ New Features
 
   - Added new ``AiryDiskPSF`` PSF model class. [#1843]
 
+  - Added new ``CircularGaussianSigmaPRF`` PSF model class. [#1845]
+
   - The ``IntegratedGaussianPRF`` model now supports units. [#1838]
 
 Bug Fixes
@@ -63,6 +65,10 @@ API Changes
 
   - The ``models`` and ``griddedpsfmodel`` modules have been renamed to
     ``image_models`` and ``gridded_models``, respectively. [#1838]
+
+  - The ``IntegratedGaussianPRF`` model class has been renamed to
+    ``CircularGaussianPRF``. ``IntegratedGaussianPRF`` is now
+    deprecated. [#1845]
 
 
 1.13.0 (2024-06-28)

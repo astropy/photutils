@@ -14,7 +14,7 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils import datasets
 from photutils.detection import find_peaks
-from photutils.psf import (EPSFBuilder, IntegratedGaussianPRF, extract_stars,
+from photutils.psf import (CircularGaussianPRF, EPSFBuilder, extract_stars,
                            grid_from_epsfs, make_psf_model,
                            make_psf_model_image)
 from photutils.psf.utils import (_integrate_model, _interpolate_missing_data,
@@ -342,7 +342,7 @@ class TestGridFromEPSFs:
 def test_make_psf_model_image():
     shape = (401, 451)
     n_sources = 100
-    model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
+    model = CircularGaussianPRF(fwhm=2.7)
     data, params = make_psf_model_image(shape, model, n_sources)
     assert data.shape == shape
     assert isinstance(params, Table)
@@ -355,21 +355,21 @@ def test_make_psf_model_image():
     assert len(params2) == n_sources
 
     flux = (100, 200)
-    sigma = (1, 2)
+    fwhm = (2.5, 4.5)
     alpha = (0, 1)
     n_sources = 10
     data, params = make_psf_model_image(shape, model, n_sources,
-                                        seed=0, flux=flux, sigma=sigma,
+                                        seed=0, flux=flux, fwhm=fwhm,
                                         alpha=alpha)
     assert len(params) == n_sources
-    colnames = ('id', 'x_0', 'y_0', 'flux', 'sigma')
+    colnames = ('id', 'x_0', 'y_0', 'flux', 'fwhm')
     for colname in colnames:
         assert colname in params.colnames
     assert 'alpha' not in params.colnames
     assert np.min(params['flux']) >= flux[0]
     assert np.max(params['flux']) <= flux[1]
-    assert np.min(params['sigma']) >= sigma[0]
-    assert np.max(params['sigma']) <= sigma[1]
+    assert np.min(params['fwhm']) >= fwhm[0]
+    assert np.max(params['fwhm']) <= fwhm[1]
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
@@ -393,13 +393,13 @@ def test_make_psf_model_image_inputs():
         make_psf_model_image(shape, None, 2)
 
     match = 'psf_model must be two-dimensional'
-    model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
+    model = CircularGaussianPRF(fwhm=2.7)
     model.n_inputs = 3
     with pytest.raises(ValueError, match=match):
         make_psf_model_image(shape, model, 2)
 
     match = 'model_shape must be specified if the model does not have'
-    model = IntegratedGaussianPRF(sigma=2.7 / 2.35)
+    model = CircularGaussianPRF(fwhm=2.7)
     model.bounding_box = None
     with pytest.raises(ValueError, match=match):
         make_psf_model_image(shape, model, 2)

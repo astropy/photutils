@@ -11,8 +11,8 @@ from astropy.stats import gaussian_fwhm_to_sigma
 from numpy.testing import assert_allclose
 
 from photutils.psf import (AiryDiskPSF, CircularGaussianPRF,
-                           CircularGaussianPSF, GaussianPRF, GaussianPSF,
-                           IntegratedGaussianPRF, MoffatPSF)
+                           CircularGaussianPSF, CircularGaussianSigmaPRF,
+                           GaussianPRF, GaussianPSF, MoffatPSF)
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
@@ -49,11 +49,11 @@ def make_gaussian_models(name):
         model = CircularGaussianPRF(flux=flux, x_0=x_0, y_0=y_0, fwhm=x_fwhm)
         model_init = CircularGaussianPRF(flux=flux_i, x_0=x_0_i, y_0=y_0_i,
                                          fwhm=x_fwhm_i)
-    elif name == 'IntegratedGaussianPRF':
-        model = IntegratedGaussianPRF(flux=flux, x_0=x_0, y_0=y_0,
-                                      sigma=x_fwhm / 2.35)
-        model_init = IntegratedGaussianPRF(flux=flux_i, x_0=x_0_i, y_0=y_0_i,
-                                           sigma=x_fwhm_i / 2.35)
+    elif name == 'CircularGaussianSigmaPRF':
+        model = CircularGaussianSigmaPRF(flux=flux, x_0=x_0, y_0=y_0,
+                                         sigma=x_fwhm / 2.35)
+        model_init = CircularGaussianSigmaPRF(flux=flux_i, x_0=x_0_i,
+                                              y_0=y_0_i, sigma=x_fwhm_i / 2.35)
 
     return model, model_init
 
@@ -114,7 +114,7 @@ def gaussian_tests(name, use_units):
         assert_allclose(fit_model.y_fwhm.value, model.y_fwhm.value)
         assert_allclose(fit_model.theta.value, model.theta.value)
     except AttributeError:
-        if name == 'IntegratedGaussianPRF':
+        if name == 'CircularGaussianSigmaPRF':
             assert_allclose(fit_model.sigma.value, model.sigma.value)
         else:
             assert_allclose(fit_model.fwhm.value, model.fwhm.value)
@@ -147,7 +147,7 @@ def test_gaussian_psfs(name, use_units):
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('name', ['GaussianPRF', 'CircularGaussianPRF',
-                                  'IntegratedGaussianPRF'])
+                                  'CircularGaussianSigmaPRF'])
 @pytest.mark.parametrize('use_units', [False, True])
 def test_gaussian_prfs(name, use_units):
     gaussian_tests(name, use_units)
@@ -161,7 +161,7 @@ def test_gaussian_prf_sums():
     """
     model1 = GaussianPRF(x_0=0, y_0=0, x_fwhm=0.001, y_fwhm=0.001)
     model2 = CircularGaussianPRF(x_0=0, y_0=0, fwhm=0.001)
-    model3 = IntegratedGaussianPRF(x_0=0, y_0=0, sigma=0.001)
+    model3 = CircularGaussianSigmaPRF(x_0=0, y_0=0, sigma=0.001)
     yy, xx = np.mgrid[-10:11, -10:11]
     for model in (model1, model2, model3):
         assert_allclose(model(xx, yy).sum(), 1.0)
@@ -181,7 +181,7 @@ def test_gaussian_bounding_boxes():
     for model in (model3, model4):
         assert_allclose(model.bounding_box, (xbbox, xbbox))
 
-    model5 = IntegratedGaussianPRF(x_0=0, y_0=0, sigma=2)
+    model5 = CircularGaussianSigmaPRF(x_0=0, y_0=0, sigma=2)
     assert_allclose(model5.bounding_box, ((-11, 11), (-11, 11)))
 
 

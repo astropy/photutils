@@ -8,10 +8,11 @@ import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.utils import ellipse_extent
 from astropy.units import UnitsError
+from astropy.utils.decorators import deprecated
 
 __all__ = ['GaussianPSF', 'CircularGaussianPSF', 'GaussianPRF',
-           'CircularGaussianPRF', 'IntegratedGaussianPRF', 'MoffatPSF',
-           'AiryDiskPSF']
+           'CircularGaussianPRF', 'CircularGaussianSigmaPRF',
+           'IntegratedGaussianPRF', 'MoffatPSF', 'AiryDiskPSF']
 
 __doctest_requires__ = {'*': ['scipy']}
 
@@ -1106,7 +1107,7 @@ class CircularGaussianPRF(Fittable2DModel):
                 'flux': outputs_unit[self.outputs[0]]}
 
 
-class IntegratedGaussianPRF(Fittable2DModel):
+class CircularGaussianSigmaPRF(Fittable2DModel):
     r"""
     A circular 2D Gaussian PSF model integrated over pixels.
 
@@ -1179,8 +1180,8 @@ class IntegratedGaussianPRF(Fittable2DModel):
     The ``sigma`` parameter is fixed by default. If you wish to fit this
     parameter, set the ``fixed`` attribute to `False`, e.g.,::
 
-        >>> from photutils.psf import IntegratedGaussianPRF
-        >>> model = IntegratedGaussianPRF()
+        >>> from photutils.psf import CircularGaussianSigmaPRF
+        >>> model = CircularGaussianSigmaPRF()
         >>> model.sigma.fixed = False
 
     References
@@ -1194,9 +1195,9 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
         import matplotlib.pyplot as plt
         import numpy as np
-        from photutils.psf import IntegratedGaussianPRF
-        model = IntegratedGaussianPRF(flux=71.4, x_0=24.3, y_0=25.2,
-                                      sigma=5.1)
+        from photutils.psf import CircularGaussianSigmaPRF
+        model = CircularGaussianSigmaPRF(flux=71.4, x_0=24.3, y_0=25.2,
+                                         sigma=5.1)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
         plt.imshow(data, origin='lower', interpolation='nearest')
@@ -1254,15 +1255,15 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
         Examples
         --------
-        >>> from photutils.psf import IntegratedGaussianPRF
-        >>> model = IntegratedGaussianPRF(x_0=0, y_0=0, sigma=2)
+        >>> from photutils.psf import CircularGaussianPRF
+        >>> model = CircularGaussianPRF(x_0=0, y_0=0, sigma=2)
         >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-11.0, upper=11.0)
                 y: Interval(lower=-11.0, upper=11.0)
             }
-            model=IntegratedGaussianPRF(inputs=('x', 'y'))
+            model=CircularGaussianPRF(inputs=('x', 'y'))
             order='C'
         )
 
@@ -1277,7 +1278,7 @@ class IntegratedGaussianPRF(Fittable2DModel):
                 x: Interval(lower=-4.0, upper=4.0)
                 y: Interval(lower=-4.0, upper=4.0)
             }
-            model=IntegratedGaussianPRF(inputs=('x', 'y'))
+            model=CircularGaussianPRF(inputs=('x', 'y'))
             order='C'
         )
         """
@@ -1341,6 +1342,104 @@ class IntegratedGaussianPRF(Fittable2DModel):
                 'y_0': inputs_unit[self.inputs[0]],
                 'sigma': inputs_unit[self.inputs[0]],
                 'flux': outputs_unit[self.outputs[0]]}
+
+
+@deprecated('1.14.0', alternative='CircularGaussianSigmaPRF')
+class IntegratedGaussianPRF(CircularGaussianSigmaPRF):
+    r"""
+    A circular 2D Gaussian PSF model integrated over pixels.
+
+    This model is evaluated by integrating the 2D Gaussian over the
+    input coordinate pixels, and is equivalent to assuming the PSF is
+    2D Gaussian at a *sub-pixel* level. Because it is integrated over
+    pixels, this model is considered a PRF instead of a PSF.
+
+    The Gaussian is normalized such that the analytical integral over
+    the entire 2D plane is equal to the total flux.
+
+    This model is equivalent to `CircularGaussianPRF`, but it is
+    parameterized in terms of the standard deviation (sigma) instead of
+    the full width at half maximum (FWHM).
+
+    Parameters
+    ----------
+    flux : float, optional
+        Total integrated flux over the entire PSF.
+
+    x_0 : float, optional
+        Position of the peak in x direction.
+
+    y_0 : float, optional
+        Position of the peak in y direction.
+
+    sigma : float, optional
+        Width of the Gaussian PSF.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` parent class.
+
+    See Also
+    --------
+    GaussianPSF, GaussianPRF, CircularGaussianPSF, CircularGaussianPRF
+
+    Notes
+    -----
+    The circular Gaussian function is defined as:
+
+    .. math::
+
+        f(x, y) =
+            \frac{F}{4}
+            \left[
+                {\rm erf} \left(\frac{x - x_0 + 0.5}
+                                     {\sqrt{2} \sigma} \right)  -
+                {\rm erf} \left(\frac{x - x_0 - 0.5}
+                                     {\sqrt{2} \sigma} \right)
+            \right]
+            \left[
+                {\rm erf} \left(\frac{y - y_0 + 0.5}
+                                     {\sqrt{2} \sigma} \right) -
+                {\rm erf} \left(\frac{y - y_0 - 0.5}
+                                     {\sqrt{2} \sigma} \right)
+            \right]
+
+    where :math:`F` is the total integrated flux, :math:`(x_{0},
+    y_{0})` is the position of the peak, :math:`\sigma` is the standard
+    deviation of the Gaussian, and :math:`{\rm erf}` denotes the error
+    function.
+
+    The model is normalized such that:
+
+    .. math::
+
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Gaussian_function
+    """
+
+    flux = Parameter(
+        default=1, description='Total integrated flux over the entire PSF.')
+    x_0 = Parameter(
+        default=0, description='Position of the peak along the x axis')
+    y_0 = Parameter(
+        default=0, description='Position of the peak along the y axis')
+    sigma = Parameter(
+        default=1, description='Sigma (standard deviation) of the Gaussian',
+        fixed=True)
+
+    _erf = None
+
+    def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+                 sigma=sigma.default, **kwargs):
+
+        if self._erf is None:
+            from scipy.special import erf
+            self.__class__._erf = erf
+
+        super().__init__(sigma=sigma, x_0=x_0, y_0=y_0, flux=flux, **kwargs)
 
 
 class MoffatPSF(Fittable2DModel):

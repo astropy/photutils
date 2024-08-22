@@ -462,9 +462,9 @@ def make_gaussian_prf_sources_image(shape, source_table):
     image : 2D `~numpy.ndarray`
         Image containing 2D Gaussian sources.
     """
-    from photutils.psf import IntegratedGaussianPRF
+    from photutils.psf import CircularGaussianSigmaPRF
 
-    model = IntegratedGaussianPRF(sigma=1)
+    model = CircularGaussianSigmaPRF(sigma=1)
 
     if 'sigma' in source_table.colnames:
         sigma = source_table['sigma']
