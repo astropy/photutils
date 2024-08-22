@@ -106,7 +106,7 @@ class GaussianPSF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``x_fwhm``, ``y_fwhm``, and ``theta`` parameters are fixed by
     default. If you wish to fit these parameters, set the ``fixed``
@@ -450,7 +450,7 @@ class CircularGaussianPSF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``fwhm`` parameter is fixed by default. If you wish to fit this
     parameter, set the ``fixed`` attribute to `False`, e.g.,::
@@ -700,7 +700,7 @@ class GaussianPRF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``x_fwhm``, ``y_fwhm``, and ``theta`` parameters are fixed by
     default. If you wish to fit these parameters, set the ``fixed``
@@ -933,7 +933,7 @@ class CircularGaussianPRF(Fittable2DModel):
 
     Notes
     -----
-    The Gaussian function is defined as:
+    The circular Gaussian function is defined as:
 
     .. math::
 
@@ -967,7 +967,7 @@ class CircularGaussianPRF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``fwhm`` parameter is fixed by default. If you wish to fit this
     parameter, set the ``fixed`` attribute to `False`, e.g.,::
@@ -1146,7 +1146,7 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
     Notes
     -----
-    This model is evaluated according to the following formula:
+    The circular Gaussian function is defined as:
 
     .. math::
 
@@ -1174,7 +1174,7 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``sigma`` parameter is fixed by default. If you wish to fit this
     parameter, set the ``fixed`` attribute to `False`, e.g.,::
@@ -1407,7 +1407,7 @@ class MoffatPSF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``alpha`` and ``beta`` parameters are fixed by default. If
     you wish to fit these parameters, set the ``fixed`` attribute to
@@ -1632,8 +1632,8 @@ class AiryDiskPSF(Fittable2DModel):
 
     .. math::
 
-        \int_{0}^{2 \pi} \int_{0}^{\infty} f(r) \, r \, dr \, d\theta =
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \, dx \, dy = F
+        \int_{0}^{2 \pi} \int_{0}^{\infty} f(r) \,r \,dr \,d\theta =
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``radius`` parameter is fixed by default. If you wish to fit
     this parameter, set the ``fixed`` attribute to `False`, e.g.,::
