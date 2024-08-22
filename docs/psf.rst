@@ -226,7 +226,7 @@ Analytic PSF Models
 - `~photutils.psf.CircularGaussianPRF`: a circular 2D Gaussian PRF model
   parameterized in terms of the position, total flux, and FWHM.
 
-- `~photutils.psf.IntegratedGaussianPRF`: a circular 2D Gaussian PRF
+- `~photutils.psf.CircularGaussianSigmaPRF`: a circular 2D Gaussian PRF
   model parameterized in terms of the position, total flux, and sigma
   (standard deviation).
 
