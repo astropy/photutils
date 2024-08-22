@@ -10,7 +10,8 @@ from astropy.modeling.utils import ellipse_extent
 from astropy.units import UnitsError
 
 __all__ = ['GaussianPSF', 'CircularGaussianPSF', 'GaussianPRF',
-           'CircularGaussianPRF', 'IntegratedGaussianPRF', 'MoffatPSF']
+           'CircularGaussianPRF', 'IntegratedGaussianPRF', 'MoffatPSF',
+           'AiryDiskPSF']
 
 __doctest_requires__ = {'*': ['scipy']}
 
@@ -105,7 +106,7 @@ class GaussianPSF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``x_fwhm``, ``y_fwhm``, and ``theta`` parameters are fixed by
     default. If you wish to fit these parameters, set the ``fixed``
@@ -449,7 +450,7 @@ class CircularGaussianPSF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``fwhm`` parameter is fixed by default. If you wish to fit this
     parameter, set the ``fixed`` attribute to `False`, e.g.,::
@@ -699,7 +700,7 @@ class GaussianPRF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``x_fwhm``, ``y_fwhm``, and ``theta`` parameters are fixed by
     default. If you wish to fit these parameters, set the ``fixed``
@@ -932,7 +933,7 @@ class CircularGaussianPRF(Fittable2DModel):
 
     Notes
     -----
-    The Gaussian function is defined as:
+    The circular Gaussian function is defined as:
 
     .. math::
 
@@ -966,7 +967,7 @@ class CircularGaussianPRF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``fwhm`` parameter is fixed by default. If you wish to fit this
     parameter, set the ``fixed`` attribute to `False`, e.g.,::
@@ -1145,7 +1146,7 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
     Notes
     -----
-    This model is evaluated according to the following formula:
+    The circular Gaussian function is defined as:
 
     .. math::
 
@@ -1173,7 +1174,7 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``sigma`` parameter is fixed by default. If you wish to fit this
     parameter, set the ``fixed`` attribute to `False`, e.g.,::
@@ -1406,7 +1407,7 @@ class MoffatPSF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) dx dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
     The ``alpha`` and ``beta`` parameters are fixed by default. If
     you wish to fit these parameters, set the ``fixed`` attribute to
@@ -1556,4 +1557,235 @@ class MoffatPSF(Fittable2DModel):
         return {'x_0': inputs_unit[self.inputs[0]],
                 'y_0': inputs_unit[self.inputs[0]],
                 'alpha': inputs_unit[self.inputs[0]],
+                'flux': outputs_unit[self.outputs[0]]}
+
+
+class AiryDiskPSF(Fittable2DModel):
+    r"""
+    A 2D Airy disk PSF model.
+
+    This model is evaluated by sampling the 2D Airy disk function at the
+    input coordinates. The Airy disk profile is normalized such that the
+    analytical integral over the entire 2D plane is equal to the total
+    flux.
+
+    Parameters
+    ----------
+    flux : float, optional
+        Total integrated flux over the entire PSF.
+
+    x_0 : float, optional
+        Position of the peak along the x axis.
+
+    y_0 : float, optional
+        Position of the peak along the y axis.
+
+    radius : float, optional
+        The radius of the Airy disk at the first zero.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` base class.
+
+    See Also
+    --------
+    GaussianPSF, CircularGaussianPSF, MoffatPSF
+
+    Notes
+    -----
+    The Airy disk profile is defined as:
+
+    .. math::
+
+        f(r) = \frac{F}{4 \pi (R / R_z)^2}
+               \left[ \frac{2 J_1\left(\frac{\pi r}{R / R_z}\right)}
+                      {\frac{\pi r}{R / R_z}} \right]^2
+
+    where :math:`r` is radial distance from the peak
+
+    .. math::
+
+        r = \sqrt{(x - x_0)^2 + (y - y_0)^2}
+
+    :math:`F` is the total integrated flux,
+    :math:`J_1` is the first order `Bessel function
+    <https://en.wikipedia.org/wiki/Bessel_function>`_ of the first
+    kind, :math:`R` is the input ``radius`` parameter, and :math:`R_z =
+    1.2196698912665045` is the solution to the equation :math:`J_1(\pi
+    R_z) = 0`.
+
+    For an optical system, the radius of the first zero represents the
+    limiting angular resolution. The limiting angular resolution is
+    approximately :math:`1.22 \, \lambda / D`, where :math:`\lambda` is
+    the wavelength of the light and :math:`D` is the diameter of the
+    aperture.
+
+    The full width at half maximum (FWHM) of the Airy disk profile is
+    given by:
+
+    .. math::
+
+        \rm{FWHM} = 1.028993969962188 \, \frac{R}{R_z}
+                  = 0.8436659602162364 \, R
+
+    The model is normalized such that:
+
+    .. math::
+
+        \int_{0}^{2 \pi} \int_{0}^{\infty} f(r) \,r \,dr \,d\theta =
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
+
+    The ``radius`` parameter is fixed by default. If you wish to fit
+    this parameter, set the ``fixed`` attribute to `False`, e.g.,::
+
+        >>> from photutils.psf import AiryDiskPSF
+        >>> model = AiryDiskPSF()
+        >>> model.radius.fixed = False
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Airy_disk
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.visualization import simple_norm
+        from photutils.psf import AiryDiskPSF
+        model = AiryDiskPSF(flux=71.4, x_0=24.3, y_0=25.2, radius=5)
+        yy, xx = np.mgrid[0:51, 0:51]
+        data = model(xx, yy)
+        norm = simple_norm(data, 'sqrt')
+        plt.imshow(data, norm=norm, origin='lower', interpolation='nearest')
+    """
+
+    flux = Parameter(
+        default=1, description='Total integrated flux over the entire PSF.')
+    x_0 = Parameter(
+        default=0, description='Position of the peak along the x axis')
+    y_0 = Parameter(
+        default=0, description='Position of the peak along the y axis')
+    radius = Parameter(
+        default=1, description='Radius of the Airy disk at the first zero',
+        fixed=True)
+
+    _rz = None
+    _j1 = None
+
+    def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+                 radius=radius.default, **kwargs):
+
+        if self._rz is None:
+            from scipy.special import j1, jn_zeros
+            self.__class__._rz = jn_zeros(1, 1)[0] / np.pi
+            self.__class__._j1 = j1
+
+        super().__init__(flux=flux, x_0=x_0, y_0=y_0, radius=radius, **kwargs)
+
+    @property
+    def fwhm(self):
+        """
+        The FWHM of the Airy disk profile.
+        """
+        return 2.0 * 1.616339948310703 * self.radius / self._rz / np.pi
+
+    def bounding_box(self, factor=3.0):
+        """
+        Return a bounding box defining the limits of the model.
+
+        Parameters
+        ----------
+        factor : float, optional
+            The multiple of the FWHM used to define the limits.
+
+        Returns
+        -------
+        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
+            A bounding box defining the limits of the model.
+
+        Examples
+        --------
+        >>> from photutils.psf import AiryDiskPSF
+        >>> model = AiryDiskPSF(x_0=0, y_0=0, radius=10)
+        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-25.3099788, upper=25.3099788)
+                y: Interval(lower=-25.3099788, upper=25.3099788)
+            }
+            model=AiryDiskPSF(inputs=('x', 'y'))
+            order='C'
+        )
+        """
+        delta = factor * self.fwhm
+        return ((self.y_0 - delta, self.y_0 + delta),
+                (self.x_0 - delta, self.x_0 + delta))
+
+    def evaluate(self, x, y, flux, x_0, y_0, radius):
+        """
+        Calculate the value of the 2D Airy disk model at the input
+        coordinates.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        radius : float, optional
+            The radius of the Airy disk at the first zero.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The value of the model evaluated at the input coordinates.
+        """
+        r = np.sqrt((x - x_0) ** 2 + (y - y_0) ** 2) / (radius / self._rz)
+
+        if isinstance(r, u.Quantity):
+            # scipy function cannot handle Quantity, so turn into array
+            r = r.to_value(u.dimensionless_unscaled)
+
+        # Since r can be zero, we have to take care to treat that case
+        # separately so as not to raise a numpy warning
+        z = np.ones(r.shape)
+        rt = np.pi * r[r > 0]
+        z[r > 0] = (2.0 * self._j1(rt) / rt) ** 2
+
+        if isinstance(flux, u.Quantity):
+            # make z a quantity to allow in-place multiplication
+            z <<= u.dimensionless_unscaled
+
+        normalization = (4.0 / np.pi) * (radius / self._rz) ** 2
+        if isinstance(normalization, u.Quantity):
+            normalization = normalization.value
+
+        z *= (flux / normalization)
+
+        return z
+
+    @property
+    def input_units(self):
+        """
+        The input units of the model.
+        """
+        x_unit = self.x_0.input_unit
+        y_unit = self.y_0.input_unit
+        if x_unit is None and y_unit is None:
+            return None
+
+        return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
+
+    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
+        return {'x_0': inputs_unit[self.inputs[0]],
+                'y_0': inputs_unit[self.inputs[0]],
+                'radius': inputs_unit[self.inputs[0]],
                 'flux': outputs_unit[self.outputs[0]]}
