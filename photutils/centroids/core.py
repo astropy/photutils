@@ -338,7 +338,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         will be returned where the centroid failed. This is usually due
         a ``box_size`` that is too small when using a fitting-based
         centroid function (e.g., `centroid_1dg`, `centroid_2dg`, or
-        `centroid_quadratic`.
+        `centroid_quadratic`).
 
     Examples
     --------
