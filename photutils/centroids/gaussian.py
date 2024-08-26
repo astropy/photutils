@@ -185,6 +185,34 @@ def centroid_2dg(data, error=None, mask=None):
     -------
     centroid : `~numpy.ndarray`
         The ``x, y`` coordinates of the centroid.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> from photutils.centroids import centroid_2dg
+    >>> data = make_4gaussians_image()
+    >>> data -= np.median(data[0:30, 0:125])
+    >>> data = data[40:80, 70:110]
+    >>> x1, y1 = centroid_2dg(data)
+    >>> print(np.array((x1, y1)))
+    [19.9850329  20.01484321]
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from photutils.centroids import centroid_2dg
+        from photutils.datasets import make_4gaussians_image
+
+        data = make_4gaussians_image()
+        data -= np.median(data[0:30, 0:125])
+        data = data[40:80, 70:110]
+        xycen = centroid_2dg(data)
+        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        ax.imshow(data, origin='lower', interpolation='nearest')
+        ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
+        ax.legend(loc='lower right')
     """
     # prevent circular import
     from photutils.morphology import data_properties
