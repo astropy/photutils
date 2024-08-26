@@ -211,7 +211,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))
         ax.imshow(data, origin='lower', interpolation='nearest')
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
-        ax.legend(loc='lower right')
+        ax.legend()
     """
     if ((xpeak is None and ypeak is not None)
             or (xpeak is not None and ypeak is None)):
