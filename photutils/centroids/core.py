@@ -15,6 +15,8 @@ from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
+__doctest_requires__ = {('centroid_quadratic'): ['scipy']}
+
 
 def centroid_com(data, mask=None):
     """
@@ -179,8 +181,37 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     References
     ----------
-    .. [1] Vakili and Hogg 2016; arXiv:1610.05873
-        (https://arxiv.org/abs/1610.05873)
+    .. [1] Vakili and Hogg 2016, "Do fast stellar centroiding methods
+           saturate the Cramér-Rao lower bound?", `arXiv:1610.05873
+           <https://arxiv.org/abs/1610.05873>`_
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> from photutils.centroids import centroid_quadratic
+    >>> data = make_4gaussians_image()
+    >>> data -= np.median(data[0:30, 0:125])
+    >>> data = data[40:80, 70:110]
+    >>> x1, y1 = centroid_quadratic(data)
+    >>> print(np.array((x1, y1)))
+    [19.94009505 20.06884997]
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_4gaussians_image
+
+        data = make_4gaussians_image()
+        data -= np.median(data[0:30, 0:125])
+        data = data[40:80, 70:110]
+        xycen = centroid_quadratic(data)
+        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        ax.imshow(data, origin='lower', interpolation='nearest')
+        ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
+        ax.legend(loc='lower right')
     """
     if ((xpeak is None and ypeak is not None)
             or (xpeak is not None and ypeak is None)):
