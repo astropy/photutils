@@ -313,7 +313,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         for the input ``footprint``. ``box_size=(n, m)`` is equivalent
         to ``footprint=np.ones((n, m))``. Either ``box_size`` or
         ``footprint`` must be defined. If they are both defined, then
-        ``footprint`` overrides ``box_size``.
+        ``footprint`` overrides ``box_size``. The same ``footprint`` is
+        used for all sources.
 
     mask : 2D bool `~numpy.ndarray`, optional
         A 2D boolean array with the same shape as ``data``, where a
