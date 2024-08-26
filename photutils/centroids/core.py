@@ -18,8 +18,9 @@ __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
 def centroid_com(data, mask=None):
     """
-    Calculate the centroid of an n-dimensional array as its "center of
-    mass" determined from moments.
+    Calculate the centroid of an n-dimensional array as
+    its "center of mass" determined from `image moments
+    <https://en.wikipedia.org/wiki/Image_moment>`_.
 
     Non-finite values (e.g., NaN or inf) in the ``data`` array are
     automatically masked.
