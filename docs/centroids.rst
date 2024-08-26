@@ -71,6 +71,8 @@ centroiding functions::
     >>> print(np.array((x1, y1)))  # doctest: +FLOAT_CMP
     [19.9796724  20.00992593]
 
+::
+
     >>> x2, y2 = centroid_quadratic(data)
     >>> print(np.array((x2, y2)))  # doctest: +FLOAT_CMP
     [19.94009505 20.06884997]
