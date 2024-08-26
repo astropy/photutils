@@ -12,7 +12,7 @@ from astropy.table import QTable
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture.converters import region_to_aperture
-from photutils.aperture.core import Aperture, SkyAperture
+from photutils.aperture.core import Aperture, SkyAperture, _aperture_metadata
 from photutils.utils._misc import _get_meta
 
 __all__ = ['aperture_photometry']
@@ -182,6 +182,14 @@ def aperture_photometry(data, apertures, error=None, mask=None,
                  if not isinstance(aper, Aperture) else aper
                  for aper in apertures]
 
+    # create table metadata using the input apertures, not the converted
+    # ones
+    aper_meta = {}
+
+    for i, aperture in enumerate(apertures):
+        i = '' if single_aperture else i
+        aper_meta.update(_aperture_metadata(aperture, i))
+
     # convert sky to pixel apertures
     skyaper = False
     if isinstance(apertures[0], SkyAperture):
@@ -207,6 +215,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     meta = _get_meta()
     calling_args = f"method='{method}', subpixels={subpixels}"
     meta['aperture_photometry_args'] = calling_args
+    meta.update(aper_meta)
 
     tbl = QTable()
     tbl.meta.update(meta)  # keep tbl.meta type

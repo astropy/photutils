@@ -19,6 +19,7 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture
+from photutils.aperture.core import _aperture_metadata
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _moments, _moments_central
 from photutils.utils._quantity_helpers import process_quantities
@@ -273,6 +274,7 @@ class ApertureStats:
         self._ids = np.arange(self.n_apertures) + 1
         self.default_columns = DEFAULT_COLUMNS
         self.meta = _get_meta()
+        self.meta.update(_aperture_metadata(aperture))
 
     @staticmethod
     def _unpack_nddata(data, error, mask, wcs):
