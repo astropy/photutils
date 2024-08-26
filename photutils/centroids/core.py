@@ -15,11 +15,14 @@ from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
+__doctest_requires__ = {('centroid_quadratic', 'centroid_sources'): ['scipy']}
+
 
 def centroid_com(data, mask=None):
     """
-    Calculate the centroid of an n-dimensional array as its "center of
-    mass" determined from moments.
+    Calculate the centroid of an n-dimensional array as
+    its "center of mass" determined from `image moments
+    <https://en.wikipedia.org/wiki/Image_moment>`_.
 
     Non-finite values (e.g., NaN or inf) in the ``data`` array are
     automatically masked.
@@ -39,6 +42,34 @@ def centroid_com(data, mask=None):
     centroid : `~numpy.ndarray`
         The coordinates of the centroid in pixel order (e.g., ``(x, y)``
         or ``(x, y, z)``), not numpy axis order.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> from photutils.centroids import centroid_com
+    >>> data = make_4gaussians_image()
+    >>> data -= np.median(data[0:30, 0:125])
+    >>> data = data[40:80, 70:110]
+    >>> x1, y1 = centroid_com(data)
+    >>> print(np.array((x1, y1)))
+    [19.9796724  20.00992593]
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from photutils.centroids import centroid_com
+        from photutils.datasets import make_4gaussians_image
+
+        data = make_4gaussians_image()
+        data -= np.median(data[0:30, 0:125])
+        data = data[40:80, 70:110]
+        xycen = centroid_com(data)
+        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        ax.imshow(data, origin='lower', interpolation='nearest')
+        ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
+        ax.legend()
     """
     # preserve input data - which should be a small cutout image
     data = data.copy()
@@ -150,8 +181,37 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     References
     ----------
-    .. [1] Vakili and Hogg 2016; arXiv:1610.05873
-        (https://arxiv.org/abs/1610.05873)
+    .. [1] Vakili and Hogg 2016, "Do fast stellar centroiding methods
+           saturate the Cramér-Rao lower bound?", `arXiv:1610.05873
+           <https://arxiv.org/abs/1610.05873>`_
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> from photutils.centroids import centroid_quadratic
+    >>> data = make_4gaussians_image()
+    >>> data -= np.median(data[0:30, 0:125])
+    >>> data = data[40:80, 70:110]
+    >>> x1, y1 = centroid_quadratic(data)
+    >>> print(np.array((x1, y1)))
+    [19.94009505 20.06884997]
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_4gaussians_image
+
+        data = make_4gaussians_image()
+        data -= np.median(data[0:30, 0:125])
+        data = data[40:80, 70:110]
+        xycen = centroid_quadratic(data)
+        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        ax.imshow(data, origin='lower', interpolation='nearest')
+        ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
+        ax.legend()
     """
     if ((xpeak is None and ypeak is not None)
             or (xpeak is not None and ypeak is None)):
@@ -312,7 +372,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         for the input ``footprint``. ``box_size=(n, m)`` is equivalent
         to ``footprint=np.ones((n, m))``. Either ``box_size`` or
         ``footprint`` must be defined. If they are both defined, then
-        ``footprint`` overrides ``box_size``.
+        ``footprint`` overrides ``box_size``. The same ``footprint`` is
+        used for all sources.
 
     mask : 2D bool `~numpy.ndarray`, optional
         A 2D boolean array with the same shape as ``data``, where a
@@ -342,34 +403,35 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
     Examples
     --------
-    >>> from photutils.centroids import centroid_com, centroid_sources
+    >>> import matplotlib.pyplot as plt
+    >>> import numpy as np
+    >>> from photutils.centroids import centroid_2dg, centroid_sources
     >>> from photutils.datasets import make_4gaussians_image
-    >>> from photutils.utils import circular_footprint
-    >>> data = make_4gaussians_image()
 
+    >>> data = make_4gaussians_image()
+    >>> data -= np.median(data[0:30, 0:125])
     >>> x_init = (25, 91, 151, 160)
     >>> y_init = (40, 61, 24, 71)
-    >>> footprint = circular_footprint(5.0)
-    >>> x, y = centroid_sources(data, x_init, y_init, footprint=footprint,
-    ...                         centroid_func=centroid_com)
+    >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
+    ...                         centroid_func=centroid_2dg)
     >>> print(x)  # doctest: +FLOAT_CMP
-    [ 24.97314968  90.86925938 150.46696217 159.89689388]
+    [ 24.9673919   89.98674593 149.96533358 160.18767122]
     >>> print(y)  # doctest: +FLOAT_CMP
-    [40.00381216 60.93309607 24.48681544 70.6215995 ]
+    [40.03744529 60.01821736 24.96773872 69.80462556]
 
     .. plot::
-        :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils.centroids import centroid_com, centroid_sources
+        import numpy as np
+        from photutils.centroids import centroid_2dg, centroid_sources
         from photutils.datasets import make_4gaussians_image
-        from photutils.utils import circular_footprint
+
         data = make_4gaussians_image()
+        data -= np.median(data[0:30, 0:125])
         x_init = (25, 91, 151, 160)
         y_init = (40, 61, 24, 71)
-        footprint = circular_footprint(5.0)
-        x, y = centroid_sources(data, x_init, y_init, footprint=footprint,
-                                centroid_func=centroid_com)
+        x, y = centroid_sources(data, x_init, y_init, box_size=25,
+                                centroid_func=centroid_2dg)
         plt.figure(figsize=(8, 4))
         plt.imshow(data, origin='lower', interpolation='nearest')
         plt.scatter(x, y, marker='+', s=80, color='red', label='Centroids')
