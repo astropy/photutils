@@ -865,3 +865,29 @@ class SkyAperture(Aperture):
             A `PixelAperture` object.
         """
         raise NotImplementedError('Needs to be implemented in a subclass.')
+
+
+def _aperture_metadata(aperture, index=''):
+    """
+    Return a dictionary of aperture metadata.
+
+    Parameters
+    ----------
+    aperture : `Aperture`
+        An aperture object.
+
+    index : str, optional
+        A string that will be prepended to each metadata key.
+
+    Returns
+    -------
+    meta : dict
+        A dictionary of aperture metadata
+    """
+    params = aperture._params
+    meta = {}
+    for param in params:
+        if param != 'positions':
+            meta[f'aperture{index}'] = aperture.__class__.__name__
+            meta[f'aperture{index}_{param}'] = getattr(aperture, param)
+    return meta
