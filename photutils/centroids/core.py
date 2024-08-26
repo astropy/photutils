@@ -69,7 +69,7 @@ def centroid_com(data, mask=None):
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))
         ax.imshow(data, origin='lower', interpolation='nearest')
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
-        ax.legend(loc='lower right')
+        ax.legend()
     """
     # preserve input data - which should be a small cutout image
     data = data.copy()
