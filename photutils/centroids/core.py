@@ -40,6 +40,34 @@ def centroid_com(data, mask=None):
     centroid : `~numpy.ndarray`
         The coordinates of the centroid in pixel order (e.g., ``(x, y)``
         or ``(x, y, z)``), not numpy axis order.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> from photutils.centroids import centroid_com
+    >>> data = make_4gaussians_image()
+    >>> data -= np.median(data[0:30, 0:125])
+    >>> data = data[40:80, 70:110]
+    >>> x1, y1 = centroid_com(data)
+    >>> print(np.array((x1, y1)))
+    [19.9796724  20.00992593]
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from photutils.centroids import centroid_com
+        from photutils.datasets import make_4gaussians_image
+
+        data = make_4gaussians_image()
+        data -= np.median(data[0:30, 0:125])
+        data = data[40:80, 70:110]
+        xycen = centroid_com(data)
+        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        ax.imshow(data, origin='lower', interpolation='nearest')
+        ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
+        ax.legend(loc='lower right')
     """
     # preserve input data - which should be a small cutout image
     data = data.copy()
@@ -344,34 +372,35 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
     Examples
     --------
-    >>> from photutils.centroids import centroid_com, centroid_sources
+    >>> import matplotlib.pyplot as plt
+    >>> import numpy as np
+    >>> from photutils.centroids import centroid_2dg, centroid_sources
     >>> from photutils.datasets import make_4gaussians_image
-    >>> from photutils.utils import circular_footprint
-    >>> data = make_4gaussians_image()
 
+    >>> data = make_4gaussians_image()
+    >>> data -= np.median(data[0:30, 0:125])
     >>> x_init = (25, 91, 151, 160)
     >>> y_init = (40, 61, 24, 71)
-    >>> footprint = circular_footprint(5.0)
-    >>> x, y = centroid_sources(data, x_init, y_init, footprint=footprint,
-    ...                         centroid_func=centroid_com)
+    >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
+    ...                         centroid_func=centroid_2dg)
     >>> print(x)  # doctest: +FLOAT_CMP
-    [ 24.97314968  90.86925938 150.46696217 159.89689388]
+    [ 24.9673919   89.98674593 149.96533358 160.18767122]
     >>> print(y)  # doctest: +FLOAT_CMP
-    [40.00381216 60.93309607 24.48681544 70.6215995 ]
+    [40.03744529 60.01821736 24.96773872 69.80462556]
 
     .. plot::
-        :include-source:
 
         import matplotlib.pyplot as plt
-        from photutils.centroids import centroid_com, centroid_sources
+        import numpy as np
+        from photutils.centroids import centroid_2dg, centroid_sources
         from photutils.datasets import make_4gaussians_image
-        from photutils.utils import circular_footprint
+
         data = make_4gaussians_image()
+        data -= np.median(data[0:30, 0:125])
         x_init = (25, 91, 151, 160)
         y_init = (40, 61, 24, 71)
-        footprint = circular_footprint(5.0)
-        x, y = centroid_sources(data, x_init, y_init, footprint=footprint,
-                                centroid_func=centroid_com)
+        x, y = centroid_sources(data, x_init, y_init, box_size=25,
+                                centroid_func=centroid_2dg)
         plt.figure(figsize=(8, 4))
         plt.imshow(data, origin='lower', interpolation='nearest')
         plt.scatter(x, y, marker='+', s=80, color='red', label='Centroids')
