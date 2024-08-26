@@ -65,7 +65,7 @@ def centroid_1dg(data, error=None, mask=None):
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))
         ax.imshow(data, origin='lower', interpolation='nearest')
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
-        ax.legend(loc='lower right')
+        ax.legend()
     """
     data = np.ma.asanyarray(data)
 
