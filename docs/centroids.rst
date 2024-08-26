@@ -146,38 +146,44 @@ initial guesses for their central positions. This function can be used
 with any of the above centroiding functions or a custom user-defined
 centroiding function.
 
-Here is a simple example using
-:func:`~photutils.centroids.centroid_com`. A cutout image is made
-centered at each initial position of size ``box_size``. A centroid is
-then calculated within the cutout image for each source:
+For each source, a cutout image is made that is centered at each initial
+position of size ``box_size``. Optionally, a non-rectangular local
+``footprint`` mask can be input instead of ``box_size``. The centroids
+for each source are then calculated within their cutout images:
 
 .. doctest-requires:: scipy
 
-    >>> from photutils.centroids import centroid_sources
+    >>> import matplotlib.pyplot as plt
+    >>> import numpy as np
+    >>> from photutils.centroids import centroid_2dg, centroid_sources
+    >>> from photutils.datasets import make_4gaussians_image
+
     >>> data = make_4gaussians_image()
+    >>> data -= np.median(data[0:30, 0:125])
     >>> x_init = (25, 91, 151, 160)
     >>> y_init = (40, 61, 24, 71)
-    >>> x, y = centroid_sources(data, x_init, y_init, box_size=21,
-    ...                         centroid_func=centroid_com)
+    >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
+    ...                         centroid_func=centroid_2dg)
     >>> print(x)  # doctest: +FLOAT_CMP
-    [ 25.01202863  90.39269745 150.22699671 160.02054966]
+    [ 24.9673919   89.98674593 149.96533358 160.18767122]
     >>> print(y)  # doctest: +FLOAT_CMP
-    [39.8963082  60.5920161  24.76769128 70.38147784]
+    [40.03744529 60.01821736 24.96773872 69.80462556]
 
 Let's plot the results:
 
 .. plot::
-    :include-source:
 
     import matplotlib.pyplot as plt
-    from photutils.centroids import centroid_com, centroid_sources
+    import numpy as np
+    from photutils.centroids import centroid_2dg, centroid_sources
     from photutils.datasets import make_4gaussians_image
 
     data = make_4gaussians_image()
+    data -= np.median(data[0:30, 0:125])
     x_init = (25, 91, 151, 160)
     y_init = (40, 61, 24, 71)
-    x, y = centroid_sources(data, x_init, y_init, box_size=21,
-                            centroid_func=centroid_com)
+    x, y = centroid_sources(data, x_init, y_init, box_size=25,
+                            centroid_func=centroid_2dg)
     plt.figure(figsize=(8, 4))
     plt.imshow(data, origin='lower', interpolation='nearest')
     plt.scatter(x, y, marker='+', s=80, color='red', label='Centroids')
