@@ -185,7 +185,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     # create table metadata using the input apertures, not the converted
     # ones
     aper_meta = {}
+
     for i, aperture in enumerate(apertures):
+        i = '' if single_aperture else i
         aper_meta.update(_aperture_metadata(aperture, i))
 
     # convert sky to pixel apertures
