@@ -12,6 +12,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 __all__ = ['centroid_1dg', 'centroid_2dg']
 
+__doctest_requires__ = {('centroid_1dg', 'centroid_2dg'): ['scipy']}
+
 
 def centroid_1dg(data, error=None, mask=None):
     """

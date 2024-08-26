@@ -157,7 +157,6 @@ for each source are then calculated within their cutout images:
     >>> import numpy as np
     >>> from photutils.centroids import centroid_2dg, centroid_sources
     >>> from photutils.datasets import make_4gaussians_image
-
     >>> data = make_4gaussians_image()
     >>> data -= np.median(data[0:30, 0:125])
     >>> x_init = (25, 91, 151, 160)

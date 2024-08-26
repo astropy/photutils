@@ -15,7 +15,7 @@ from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
-__doctest_requires__ = {('centroid_quadratic'): ['scipy']}
+__doctest_requires__ = {('centroid_quadratic', 'centroid_sources'): ['scipy']}
 
 
 def centroid_com(data, mask=None):
