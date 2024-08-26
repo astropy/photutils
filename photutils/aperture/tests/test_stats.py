@@ -10,7 +10,11 @@ from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import SigmaClip
 from numpy.testing import assert_allclose, assert_equal
 
-from photutils.aperture.circle import CircularAperture
+from photutils.aperture.circle import CircularAnnulus, CircularAperture
+from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
+                                        SkyEllipticalAnnulus)
+from photutils.aperture.rectangle import (RectangularAnnulus,
+                                          RectangularAperture)
 from photutils.aperture.stats import ApertureStats
 from photutils.datasets import make_100gaussians_image, make_wcs
 
@@ -363,3 +367,43 @@ class TestApertureStats:
         assert_allclose(apstats[1].covariance,
                         [(np.nan, np.nan), (np.nan, np.nan)] * u.pix**2)
         assert_allclose(apstats.fwhm, [0.67977799, np.nan] * u.pix)
+
+
+def test_aperture_metadata():
+    x = [10, 20, 3]
+    y = [3, 5, 10]
+    xypos = list(zip(x, y, strict=False))
+    a1 = CircularAperture(xypos, r=3)
+    a2 = CircularAperture(xypos, r=4)
+    a3 = CircularAnnulus(xypos, 5, 10)
+    a4 = EllipticalAperture(xypos, 10, 5, theta=10 * u.deg)
+    a5 = EllipticalAnnulus(xypos, a_in=5, a_out=10, b_in=3, b_out=5,
+                           theta=20 * u.deg)
+    a6 = RectangularAperture(xypos, 10, 5, theta=30 * u.deg)
+    a7 = RectangularAnnulus(xypos, w_in=5, w_out=10, h_in=3, h_out=5,
+                            theta=40 * u.deg)
+    apers = (a1, a2, a3, a4, a5, a6, a7)
+    data = np.ones((50, 50))
+
+    for aper in apers:
+        apstats = ApertureStats(data, aper)
+        tbl = apstats.to_table()
+        assert tbl.meta['aperture'] == aper.__class__.__name__
+        params = aper._params
+        for param in params:
+            if param != 'positions':
+                assert tbl.meta[f'aperture_{param}'] == getattr(aper, param)
+
+    wcs = make_wcs(data.shape)
+    skycoord = wcs.pixel_to_world(10, 10)
+    unit = u.arcsec
+    saper = SkyEllipticalAnnulus(skycoord, a_in=0.1 * unit, a_out=0.2 * unit,
+                                 b_in=0.05 * unit, b_out=0.1 * unit,
+                                 theta=10 * u.deg)
+    apstats = ApertureStats(data, saper, wcs=wcs)
+    tbl = apstats.to_table()
+    assert tbl.meta['aperture'] == saper.__class__.__name__
+    assert tbl.meta['aperture_a_in'] == saper.a_in
+    assert tbl.meta['aperture_a_out'] == saper.a_out
+    assert tbl.meta['aperture_b_out'] == saper.b_out
+    assert tbl.meta['aperture_theta'] == saper.theta
