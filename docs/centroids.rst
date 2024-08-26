@@ -22,7 +22,8 @@ centroid of a single source:
 
 Masks can be input into each of these functions to mask bad pixels.
 Error arrays can be input into the two Gaussian fitting methods to
-weight the fits.
+weight the fits. Non-finite values (e.g., NaN or inf) in the data or
+error arrays are automatically masked
 
 To calculate the centroids of many sources in an image, use the
 :func:`~photutils.centroids.centroid_sources` function. This function
@@ -30,77 +31,106 @@ can be used with any of the above centroiding functions or a custom
 user-defined centroiding function.
 
 
-Getting Started
----------------
+Centroid of single source
+-------------------------
 
 Let's extract a single object from a synthetic dataset and find its
-centroid with each of these methods.  For this simple example we will
-not subtract the background from the data (but in practice, one should
-subtract the background)::
+centroid with each of these methods. First, let's create the data::
 
     >>> import numpy as np
     >>> from photutils.datasets import make_4gaussians_image
     >>> from photutils.centroids import (centroid_1dg, centroid_2dg,
     ...                                  centroid_com, centroid_quadratic)
+    >>> data = make_4gaussians_image()
 
-    >>> data = make_4gaussians_image()[43:79, 76:104]
+.. plot::
+
+    import matplotlib.pyplot as plt
+    from photutils.datasets import make_4gaussians_image
+
+    data = make_4gaussians_image()
+    plt.figure(figsize=(8, 4))
+    plt.imshow(data, origin='lower', interpolation='nearest')
+    plt.tight_layout()
+
+Next, we need to subtract the background from the data. For this
+example, we'll estimate the background by taking the median of a blank
+part of the image::
+
+    >>> data -= np.median(data[0:30, 0:125])
+
+The data is a 2D image of four Gaussian sources.  Let's extract a
+single object from the data::
+
+    >>> data = data[40:80, 70:110]
+
+Now we can calculate the centroid of the object using each of the
+centroiding functions::
 
     >>> x1, y1 = centroid_com(data)
     >>> print(np.array((x1, y1)))  # doctest: +FLOAT_CMP
-    [13.87628017 17.0965772 ]
+    [19.9796724  20.00992593]
 
     >>> x2, y2 = centroid_quadratic(data)
     >>> print(np.array((x2, y2)))  # doctest: +FLOAT_CMP
-    [13.94009505 17.06884997]
+    [19.94009505 20.06884997]
 
 .. doctest-requires:: scipy
 
     >>> x3, y3 = centroid_1dg(data)
     >>> print(np.array((x3, y3)))  # doctest: +FLOAT_CMP
-    [13.97702781 17.01026203]
+    [19.96524237 20.04921073]
 
 .. doctest-requires:: scipy
 
     >>> x4, y4 = centroid_2dg(data)
     >>> print(np.array((x4, y4)))  # doctest: +FLOAT_CMP
-    [13.98397984 17.01241918]
+    [19.9850329  20.01484321]
+
+The measured centroids are all very close to the true centroid of the object
+in the cutout image of ``(20, 20)``.
 
 Now let's plot the results.  Because the centroids are all very
 similar, we also include an inset plot zoomed in near the centroid:
 
 .. plot::
-    :include-source:
 
     import matplotlib.pyplot as plt
+    import numpy as np
     from mpl_toolkits.axes_grid1.inset_locator import (mark_inset,
                                                        zoomed_inset_axes)
     from photutils.centroids import (centroid_1dg, centroid_2dg,
                                      centroid_com, centroid_quadratic)
     from photutils.datasets import make_4gaussians_image
 
-    data = make_4gaussians_image()[43:79, 76:104]  # extract single object
+    data = make_4gaussians_image()
+    data -= np.median(data[0:30, 0:125])
+    data = data[40:80, 70:110]
     xycen1 = centroid_com(data)
     xycen2 = centroid_quadratic(data)
     xycen3 = centroid_1dg(data)
     xycen4 = centroid_2dg(data)
     xycens = [xycen1, xycen2, xycen3, xycen4]
-    fig, ax = plt.subplots(1, 1, figsize=(4, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(8, 8))
     ax.imshow(data, origin='lower', interpolation='nearest')
     marker = '+'
-    ms, mew = 15, 2.0
-    colors = ('white', 'black', 'red', 'blue')
-    for xycen, color in zip(xycens, colors):
-        plt.plot(*xycen, color=color, marker=marker, ms=ms, mew=mew)
+    ms = 60
+    colors = ('white', 'cyan', 'red', 'blue')
+    labels = ('Center of Mass', 'Quadratic', '1D Gaussian', '2D Gaussian')
+    for xycen, color, label in zip(xycens, colors, labels):
+        ax.scatter(*xycen, color=color, marker=marker, s=ms, label=label)
+
+    ax.legend(loc='lower right', fontsize=12)
 
     ax2 = zoomed_inset_axes(ax, zoom=6, loc=9)
     ax2.imshow(data, vmin=190, vmax=220, origin='lower',
                interpolation='nearest')
-    ms, mew = 30, 2.0
+    ms = 1000
     for xycen, color in zip(xycens, colors):
-        ax2.plot(*xycen, color=color, marker=marker, ms=ms, mew=mew)
-    ax2.set_xlim(13, 15)
-    ax2.set_ylim(16, 18)
-    mark_inset(ax, ax2, loc1=3, loc2=4, fc='none', ec='0.5')
+        ax2.scatter(*xycen, color=color, marker=marker, s=ms)
+    ax2.set_xlim(19, 21)
+    ax2.set_ylim(19, 21)
+    mark_inset(ax, ax2, loc1=3, loc2=4, fc='none', ec='black')
     ax2.axes.get_xaxis().set_visible(False)
     ax2.axes.get_yaxis().set_visible(False)
     ax.set_xlim(0, data.shape[1] - 1)
@@ -112,9 +142,9 @@ Centroiding several sources in an image
 
 The :func:`~photutils.centroids.centroid_sources` function can be used
 to calculate the centroids of many sources in a single image given
-initial guesses for their positions. This function can be used with any
-of the above centroiding functions or a custom user-defined centroiding
-function.
+initial guesses for their central positions. This function can be used
+with any of the above centroiding functions or a custom user-defined
+centroiding function.
 
 Here is a simple example using
 :func:`~photutils.centroids.centroid_com`. A cutout image is made
