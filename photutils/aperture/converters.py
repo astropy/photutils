@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines tools to convert regions.Region to Aperture.
+This module defines tools to convert `regions.Region` objects to
+Aperture objects.
 """
 
 import astropy.units as u
@@ -17,15 +18,18 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
 
 __all__ = ['region_to_aperture']
 
+__doctest_requires__ = {'region_to_aperture': ['regions']}
+
 
 def region_to_aperture(region):
     """
-    Convert a given `regions` object to ``photutils`` aperture.
+    Convert a given `regions.Region` object to an
+    `~photutils.aperture.Aperture` object.
 
     Parameters
     ----------
     region : `regions.Region`
-        A supported `regions` object.
+        A supported `regions.Region` object.
 
     Returns
     -------
@@ -34,8 +38,49 @@ def region_to_aperture(region):
 
     Raises
     ------
-    NotImplementedError
-        The given `regions` object is not supported.
+    `TypeError`
+        The given `regions.Region` object is not supported.
+
+    Notes
+    -----
+    .. |rarr| unicode:: U+0279E .. RIGHTWARDS ARROW
+
+    The following `regions.Region` objects are supported, shown with
+    their equivalent `~photutils.aperture.Aperture` object:
+
+    - `~regions.CirclePixelRegion` |rarr|
+      `~photutils.aperture.CircularAperture`
+    - `~regions.CircleSkyRegion` |rarr|
+      `~photutils.aperture.SkyCircularAperture`
+    - `~regions.EllipsePixelRegion` |rarr|
+      `~photutils.aperture.EllipticalAperture`
+    - `~regions.EllipseSkyRegion` |rarr|
+      `~photutils.aperture.SkyEllipticalAperture`
+    - `~regions.RectanglePixelRegion` |rarr|
+      `~photutils.aperture.RectangularAperture`
+    - `~regions.RectangleSkyRegion` |rarr|
+      `~photutils.aperture.SkyRectangularAperture`
+    - `~regions.CircleAnnulusPixelRegion` |rarr|
+      `~photutils.aperture.CircularAnnulus`
+    - `~regions.CircleAnnulusSkyRegion` |rarr|
+      `~photutils.aperture.SkyCircularAnnulus`
+    - `~regions.EllipseAnnulusPixelRegion` |rarr|
+      `~photutils.aperture.EllipticalAnnulus`
+    - `~regions.EllipseAnnulusSkyRegion` |rarr|
+      `~photutils.aperture.SkyEllipticalAnnulus`
+    - `~regions.RectangleAnnulusPixelRegion` |rarr|
+      `~photutils.aperture.RectangularAnnulus`
+    - `~regions.RectangleAnnulusSkyRegion` |rarr|
+      `~photutils.aperture.SkyRectangularAnnulus`
+
+    Examples
+    --------
+    >>> from regions import CirclePixelRegion, PixCoord
+    >>> from photutils.aperture import region_to_aperture
+    >>> region = CirclePixelRegion(center=PixCoord(x=10, y=20), radius=5)
+    >>> aperture = region_to_aperture(region)
+    >>> aperture
+    <CircularAperture([10., 20.], r=5.0)>
     """
     from regions import (CircleAnnulusPixelRegion, CircleAnnulusSkyRegion,
                          CirclePixelRegion, CircleSkyRegion,
@@ -110,7 +155,7 @@ def region_to_aperture(region):
             theta=(region.angle - (90 * u.deg)))
 
     else:
-        raise NotImplementedError(f'{region.__class__.__name__}'
-                                  ' is not supported')
+        raise TypeError(f'Cannot convert {region.__class__.__name__!r} to '
+                        'an Aperture object')
 
     return aperture

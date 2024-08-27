@@ -11,6 +11,12 @@ The :func:`~photutils.aperture.aperture_photometry` function and the
 perform aperture photometry on an astronomical image for a given set of
 apertures.
 
+
+.. _photutils-apertures:
+
+Apertures
+---------
+
 Photutils provides several apertures defined in pixel or sky
 coordinates.  The aperture classes that are defined in pixel
 coordinates are:
@@ -35,9 +41,18 @@ coordinates:
 To perform aperture photometry with sky-based apertures, one will need
 to specify a WCS transformation.
 
-The :func:`~photutils.aperture.aperture_photometry` function accepts
-the corresponding classes from `regions` in place of each of the aperture
-classes listed above.
+The :func:`~photutils.aperture.aperture_photometry` function
+and the :class:`~photutils.aperture.ApertureStats` class both
+accept `~photutils.aperture.Aperture` objects. They can also
+accept a supported `regions.Region` object, i.e. a region
+that corresponds to the above aperture classes, as input. The
+:func:`~photutils.aperture.aperture_photometry` function also accepts a
+list of `~photutils.aperture.Aperture` or `regions.Region` objects if
+each aperture/region has identical positions.
+
+The :func:`~photutils.aperture.region_to_aperture` convenience
+function can also be used to convert a `regions.Region` object to a
+`~photutils.aperture.Aperture` object.
 
 Users can also create their own custom apertures (see
 :ref:`custom-apertures`).
