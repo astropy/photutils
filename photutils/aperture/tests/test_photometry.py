@@ -964,10 +964,11 @@ class TestRectangleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_unsupported_region_input():
     from regions import PixCoord, PolygonPixelRegion
+
     region = PolygonPixelRegion(vertices=PixCoord(x=[1, 2, 3], y=[1, 1, 2]))
     data = np.ones((10, 10))
-    match = 'is not supported'
-    with pytest.raises(NotImplementedError, match=match):
+    match = r'Cannot convert .* to an Aperture object'
+    with pytest.raises(TypeError, match=match):
         aperture_photometry(data, region)
 
 

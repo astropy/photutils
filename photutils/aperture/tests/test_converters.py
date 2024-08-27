@@ -433,6 +433,6 @@ def test_translation_polygon():
 
     region_shape = PolygonPixelRegion(vertices=PixCoord(x=[1, 2, 2],
                                                         y=[1, 1, 2]))
-    match = 'is not supported'
-    with pytest.raises(NotImplementedError, match=match):
+    match = r'Cannot convert .* to an Aperture object'
+    with pytest.raises(TypeError, match=match):
         region_to_aperture(region_shape)

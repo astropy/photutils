@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines tools to convert regions.Region to Aperture.
+This module defines tools to convert `regions.Region` objects to
+Aperture objects.
 """
 
 import astropy.units as u
@@ -34,7 +35,7 @@ def region_to_aperture(region):
 
     Raises
     ------
-    NotImplementedError
+    `TypeError`
         The given `regions` object is not supported.
 
     Examples
@@ -119,7 +120,7 @@ def region_to_aperture(region):
             theta=(region.angle - (90 * u.deg)))
 
     else:
-        raise NotImplementedError(f'{region.__class__.__name__}'
-                                  ' is not supported')
+        raise TypeError(f'Cannot convert {region.__class__.__name__!r} to '
+                        'an Aperture object')
 
     return aperture
