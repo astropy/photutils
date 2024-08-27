@@ -165,10 +165,14 @@ be a single PSF model for the entire image or a grid of PSF models
 at fiducial detector positions. The PSF model image is also often
 oversampled to increase the accuracy of the PSF model.
 
-The observatory that obtained the data may provide tools for creating
-PSF models for their data or an empirical library of PSF models
-based on previous observations. For example, the `Hubble Space
-Telescope <https://www.stsci.edu/hst>`_ provides the `TinyTim
+The observatory that obtained the data may provide tools for
+creating PSF models for their data or an empirical library of
+PSF models based on previous observations. For example, the
+`Hubble Space Telescope <https://www.stsci.edu/hst>`_ provides
+both libraries of empirical PSF models (e.g., `WFC3 PSF Search
+<https://www.stsci.edu/hst/instrumentation/wfc3/data-analysis/psf/psf-se
+arch>`_ and `ACS ePSF Generator
+<https://acspsf.stsci.edu/>`_) and the `TinyTim
 <https://www.stsci.edu/hst/instrumentation/focus-and-pointing/focus/tiny
 -tim-hst-psf-modeling>`_ software for creating PSF models. Similarly,
 the `James Webb Space Telescope <https://www.stsci.edu/jwst>`_ provides
