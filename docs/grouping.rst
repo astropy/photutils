@@ -7,19 +7,20 @@ Introduction
 ------------
 
 In Point Spread Function (PSF) photometry, a grouping algorithm can be
-used to combine stars into optimum groups. The stars in each group are
-usually defined as those close enough together such that they need to be
-fit simultaneously, i.e., their profiles overlap.
+used to combine stars into groups that can be fit simultaneously. The
+goal is to separate the stars into groups such that the profile of each
+star does not extend into the fitting region of any other star. This
+reduces the number of stars that need to be fit simultaneously, which
+can be computationally expensive.
 
 Stetson (`1987, PASP 99, 191
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_),
-provided a simple and powerful grouping algorithm to decide whether
-the profile of a given star extends into the fitting region of any
-other star. The paper defines this in terms of a "critical separation"
-parameter, which is defined as the minimal distance that any two stars
-must be separated by in order to be in different groups. The critical
-separation is generally defined as a multiple of the stellar full width
-at half maximum (FWHM).
+provided a simple grouping algorithm to decide whether the profile of a
+given star extends into the fitting region of any other star. The paper
+defines this in terms of a "critical separation" parameter, which is
+defined as the minimal distance that any two stars must be separated by
+in order to be in different groups. The critical separation is generally
+defined as a multiple of the stellar full width at half maximum (FWHM).
 
 
 Getting Started
@@ -83,10 +84,9 @@ table.
 
 Now, let's find the stellar groups. We start by creating
 a `~photutils.psf.SourceGrouper` object. Here we set the
-``min_separation`` parameter ``2.5 * fwhm``, where the ``fwhm`` is
-calculated from the 2D Gaussian standard deviation used to generate
-the stars. In general one will need to measure the FWHM of the stellar
-profiles.
+``min_separation`` parameter ``2.5 * fwhm``, where the ``fwhm`` is taken
+from the 2D Gaussian PSF model used to generate the stars. In general,
+one will need to measure the FWHM of the stellar profiles.
 
 .. doctest-requires:: scipy
 
@@ -95,10 +95,10 @@ profiles.
     >>> min_separation = 2.5 * fwhm
     >>> grouper = SourceGrouper(min_separation)
 
-We then call the class instance on arrays of the star (x, y) positions.
-Here will use the known positions of the stars when we generated the
-image. In general, one can use a star finder (:ref:`source_detection`)
-to find the sources.
+We then call the class instance on arrays of the star ``(x, y)``
+positions. Here will use the known positions of the stars when
+we generated the image. In general, one can use a star finder
+(:ref:`source_detection`) to find the sources.
 
 .. doctest-requires:: scipy
 
@@ -108,8 +108,8 @@ to find the sources.
    >>> groups = grouper(x, y)
 
 The ``groups`` output is an array of integers (ordered the same as the
-(x, y) inputs) containing the group indices.  Stars with the same group
-index are in the same group.
+``(x, y)`` inputs) containing the group indices. Stars with the same
+group index are in the same group.
 
 For example, to find all the stars in group 3:
 
@@ -119,7 +119,7 @@ For example, to find all the stars in group 3:
    >>> x[mask], y[mask]
    (array([60.32708921, 58.73063714]), array([147.24184586, 158.0612346 ]))
 
-Here the grouping algorithm separated the 100 stars into 65 distinct groups:
+The grouping algorithm separated the 100 stars into 65 distinct groups:
 
 .. doctest-skip::
 
