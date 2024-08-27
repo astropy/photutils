@@ -315,9 +315,13 @@ class ApertureStats:
 
     @staticmethod
     def _validate_aperture(aperture):
-        from regions import Region
+        try:
+            from regions import Region
+            aper_types = (Aperture, Region)
+        except ImportError:
+            aper_types = Aperture
 
-        if not isinstance(aperture, (Aperture, Region)):
+        if not isinstance(aperture, aper_types):
             raise TypeError('aperture must be an Aperture or Region object')
         return aperture
 

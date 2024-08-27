@@ -18,6 +18,8 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
 
 __all__ = ['region_to_aperture']
 
+__doctest_requires__ = {'region_to_aperture': ['regions']}
+
 
 def region_to_aperture(region):
     """

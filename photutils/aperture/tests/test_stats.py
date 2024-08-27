@@ -17,6 +17,7 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture)
 from photutils.aperture.stats import ApertureStats
 from photutils.datasets import make_100gaussians_image, make_wcs
+from photutils.utils._optional_deps import HAS_REGIONS
 
 
 class TestApertureStats:
@@ -369,6 +370,7 @@ class TestApertureStats:
         assert_allclose(apstats.fwhm, [0.67977799, np.nan] * u.pix)
 
 
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_aperture_stats_region():
     from regions import CirclePixelRegion, PixCoord
     region = CirclePixelRegion(center=PixCoord(5, 5), radius=3)
