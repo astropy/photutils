@@ -288,7 +288,7 @@ class TestApertureStats:
         assert len(tbl) == 1
 
     def test_invalid_inputs(self):
-        match = 'aperture must be an Aperture object'
+        match = 'aperture must be an Aperture or Region object'
         with pytest.raises(TypeError, match=match):
             ApertureStats(self.data, 10.0)
 
@@ -367,6 +367,20 @@ class TestApertureStats:
         assert_allclose(apstats[1].covariance,
                         [(np.nan, np.nan), (np.nan, np.nan)] * u.pix**2)
         assert_allclose(apstats.fwhm, [0.67977799, np.nan] * u.pix)
+
+
+def test_aperture_stats_region():
+    from regions import CirclePixelRegion, PixCoord
+    region = CirclePixelRegion(center=PixCoord(5, 5), radius=3)
+    aperture = CircularAperture((5, 5), r=3)
+    data = np.ones((10, 10))
+    apstats1 = ApertureStats(data, region)
+    apstats2 = ApertureStats(data, aperture)
+    tbl = apstats1.to_table()
+    for colname in tbl.colnames:
+        val1 = getattr(apstats1, colname)
+        if val1 is not None:
+            assert_allclose(val1, getattr(apstats2, colname))
 
 
 def test_aperture_metadata():
