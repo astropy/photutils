@@ -36,6 +36,15 @@ def region_to_aperture(region):
     ------
     NotImplementedError
         The given `regions` object is not supported.
+
+    Examples
+    --------
+    >>> from regions import CirclePixelRegion, PixCoord
+    >>> from photutils.aperture import region_to_aperture
+    >>> region = CirclePixelRegion(center=PixCoord(x=10, y=20), radius=5)
+    >>> aperture = region_to_aperture(region)
+    >>> aperture
+    <CircularAperture([10., 20.], r=5.0)>
     """
     from regions import (CircleAnnulusPixelRegion, CircleAnnulusSkyRegion,
                          CirclePixelRegion, CircleSkyRegion,
