@@ -1714,11 +1714,11 @@ class AiryDiskPSF(Fittable2DModel):
     1.2196698912665045` is the solution to the equation :math:`J_1(\pi
     R_z) = 0`.
 
-    For an optical system, the radius of the first zero represents the
-    limiting angular resolution. The limiting angular resolution is
-    approximately :math:`1.22 \, \lambda / D`, where :math:`\lambda` is
-    the wavelength of the light and :math:`D` is the diameter of the
-    aperture.
+    For an optical system, the radius of the first zero represents
+    the limiting angular resolution. The limiting angular resolution
+    is :math:`R_z \, \lambda / D \approx 1.22 \, \lambda / D`, where
+    :math:`\lambda` is the wavelength of the light and :math:`D` is the
+    diameter of the aperture.
 
     The full width at half maximum (FWHM) of the Airy disk profile is
     given by:
