@@ -18,7 +18,7 @@ from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.aperture import Aperture, SkyAperture
+from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture.core import _aperture_metadata
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _moments, _moments_central
@@ -83,11 +83,13 @@ class ApertureStats:
         background-subtracted. Non-finite ``data`` values (NaN and inf)
         are automatically masked.
 
-    aperture : `~photutils.aperture.Aperture`
-        The aperture to apply to the data. The aperture object
-        may contain more than one position. If ``aperture`` is a
-        `~photutils.aperture.SkyAperture` object, then a WCS must be
-        input using the ``wcs`` keyword.
+    aperture : `~photutils.aperture.Aperture` or supported `~regions.Region`
+        The aperture or region to apply to the data. The aperture
+        or region object may contain more than one position. If the
+        input ``aperture`` is a `~photutils.aperture.SkyAperture` or
+        `~regions.SkyRegion` object, then a WCS must be input using
+        the ``wcs`` keyword. Region objects are converted to aperture
+        objects.
 
     error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The total error array corresponding to the input ``data``
@@ -113,9 +115,10 @@ class ApertureStats:
         A world coordinate system (WCS) transformation that
         supports the `astropy shared interface for WCS
         <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). ``wcs`` is required if the
-        input ``aperture`` is a `~photutils.aperture.SkyAperture`. If
-        `None`, then all sky-based properties will be set to `None`.
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). ``wcs`` is required if
+        the input ``aperture`` is a `~photutils.aperture.SkyAperture`
+        or `~regions.SkyRegion` object. If `None`, then all sky-based
+        properties will be set to `None`.
 
     sigma_clip : `None` or `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
@@ -172,6 +175,9 @@ class ApertureStats:
     properties. In addition to global background subtraction, local
     background subtraction can be performed using the ``local_bkg``
     keyword values.
+
+    `~regions.Region` objects are converted to `Aperture` objects using
+    the :func:`region_to_aperture` function.
 
     Most source properties are calculated using the "center"
     aperture-mask method, which gives aperture weights of 0 or 1. This
@@ -238,10 +244,16 @@ class ApertureStats:
 
         self._data = self._validate_array(data, 'data', shape=False)
         self._data_unit = unit
-        self.aperture = self._validate_aperture(aperture)
+        self._input_aperture = self._validate_aperture(aperture)
+        aperture_meta = _aperture_metadata(aperture)  # use input aperture
 
         if isinstance(aperture, SkyAperture) and wcs is None:
             raise ValueError('A wcs is required when using a SkyAperture')
+
+        # convert region to aperture if necessary
+        if not isinstance(aperture, Aperture):
+            aperture = region_to_aperture(aperture)
+        self.aperture = aperture
 
         self._error = self._validate_array(error, 'error')
         self._mask = self._validate_array(mask, 'mask')
@@ -274,7 +286,7 @@ class ApertureStats:
         self._ids = np.arange(self.n_apertures) + 1
         self.default_columns = DEFAULT_COLUMNS
         self.meta = _get_meta()
-        self.meta.update(_aperture_metadata(aperture))
+        self.meta.update(aperture_meta)
 
     @staticmethod
     def _unpack_nddata(data, error, mask, wcs):
@@ -303,8 +315,10 @@ class ApertureStats:
 
     @staticmethod
     def _validate_aperture(aperture):
-        if not isinstance(aperture, Aperture):
-            raise TypeError('aperture must be an Aperture object')
+        from regions import Region
+
+        if not isinstance(aperture, (Aperture, Region)):
+            raise TypeError('aperture must be an Aperture or Region object')
         return aperture
 
     def _validate_array(self, array, name, ndim=2, shape=True):
