@@ -11,6 +11,12 @@ The :func:`~photutils.aperture.aperture_photometry` function and the
 perform aperture photometry on an astronomical image for a given set of
 apertures.
 
+
+.. _photutils-apertures:
+
+Apertures
+---------
+
 Photutils provides several apertures defined in pixel or sky
 coordinates.  The aperture classes that are defined in pixel
 coordinates are:

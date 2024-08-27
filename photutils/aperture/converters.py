@@ -38,6 +38,38 @@ def region_to_aperture(region):
     `TypeError`
         The given `regions` object is not supported.
 
+    Notes
+    -----
+    .. |rarr| unicode:: U+0279E .. RIGHTWARDS ARROW
+
+    The following `regions` objects are supported, shown with their
+    equivalent ``photutils`` :ref:`photutils-apertures`:
+
+    - `~regions.CirclePixelRegion` |rarr|
+      `~photutils.aperture.CircularAperture`
+    - `~regions.CircleSkyRegion` |rarr|
+      `~photutils.aperture.SkyCircularAperture`
+    - `~regions.EllipsePixelRegion` |rarr|
+      `~photutils.aperture.EllipticalAperture`
+    - `~regions.EllipseSkyRegion` |rarr|
+      `~photutils.aperture.SkyEllipticalAperture`
+    - `~regions.RectanglePixelRegion` |rarr|
+      `~photutils.aperture.RectangularAperture`
+    - `~regions.RectangleSkyRegion` |rarr|
+      `~photutils.aperture.SkyRectangularAperture`
+    - `~regions.CircleAnnulusPixelRegion` |rarr|
+      `~photutils.aperture.CircularAnnulus`
+    - `~regions.CircleAnnulusSkyRegion` |rarr|
+      `~photutils.aperture.SkyCircularAnnulus`
+    - `~regions.EllipseAnnulusPixelRegion` |rarr|
+      `~photutils.aperture.EllipticalAnnulus`
+    - `~regions.EllipseAnnulusSkyRegion` |rarr|
+      `~photutils.aperture.SkyEllipticalAnnulus`
+    - `~regions.RectangleAnnulusPixelRegion` |rarr|
+      `~photutils.aperture.RectangularAnnulus`
+    - `~regions.RectangleAnnulusSkyRegion` |rarr|
+      `~photutils.aperture.SkyRectangularAnnulus`
+
     Examples
     --------
     >>> from regions import CirclePixelRegion, PixCoord
