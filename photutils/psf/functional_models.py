@@ -1344,7 +1344,8 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
                 'flux': outputs_unit[self.outputs[0]]}
 
 
-@deprecated('1.14.0', alternative='CircularGaussianSigmaPRF')
+@deprecated('1.14.0', alternative='`CircularGaussianSigmaPRF` or '
+            '`CircularGaussianPRF`')
 class IntegratedGaussianPRF(CircularGaussianSigmaPRF):
     r"""
     A circular 2D Gaussian PSF model integrated over pixels.
