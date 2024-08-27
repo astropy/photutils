@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import SigmaClip
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
@@ -356,6 +357,12 @@ class TestApertureStats:
 
         if with_units:
             assert apstats1.sum.unit == unit
+
+        match = 'keyword will be ignored'
+        nddata = NDData(self.data, uncertainty=uncertainty, mask=mask,
+                        wcs=self.wcs, unit=unit)
+        with pytest.warns(AstropyUserWarning, match=match):
+            ApertureStats(nddata, self.aperture, mask=mask)
 
     def test_tiny_source(self):
         data = np.zeros((21, 21))
