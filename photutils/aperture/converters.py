@@ -21,12 +21,13 @@ __all__ = ['region_to_aperture']
 
 def region_to_aperture(region):
     """
-    Convert a given `regions` object to ``photutils`` aperture.
+    Convert a given `regions.Region` object to an
+    `~photutils.aperture.Aperture` object.
 
     Parameters
     ----------
     region : `regions.Region`
-        A supported `regions` object.
+        A supported `regions.Region` object.
 
     Returns
     -------
@@ -36,14 +37,14 @@ def region_to_aperture(region):
     Raises
     ------
     `TypeError`
-        The given `regions` object is not supported.
+        The given `regions.Region` object is not supported.
 
     Notes
     -----
     .. |rarr| unicode:: U+0279E .. RIGHTWARDS ARROW
 
-    The following `regions` objects are supported, shown with their
-    equivalent ``photutils`` :ref:`photutils-apertures`:
+    The following `regions.Region` objects are supported, shown with
+    their equivalent `~photutils.aperture.Aperture` object:
 
     - `~regions.CirclePixelRegion` |rarr|
       `~photutils.aperture.CircularAperture`

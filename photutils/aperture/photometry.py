@@ -42,10 +42,13 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     apertures : `~photutils.aperture.Aperture`, supported `regions.Region`, \
         list of `~photutils.aperture.Aperture` or `regions.Region`
-        The aperture(s) to use for the photometry. If ``apertures`` is a
-        list of `~photutils.aperture.Aperture` then they all must have
-        the same position(s). `regions.Region` are converted to
-        `~photutils.aperture.Aperture`.
+        The aperture(s) to use for the photometry. If ``apertures`` is
+        a list of `~photutils.aperture.Aperture` or `regions.Region`,
+        then then they all must have the same position(s). If
+        ``apertures`` contains a `~photutils.aperture.SkyAperture` or
+        `~regions.SkyRegion` object, then a WCS must be input using
+        the ``wcs`` keyword. Region objects are converted to aperture
+        objects.
 
     error : array_like or `~astropy.units.Quantity`, optional
         The pixel-wise Gaussian 1-sigma errors of the input
@@ -97,7 +100,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         supports the `astropy shared interface for WCS
         <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`). Used only if the input
-        ``apertures`` contains a `SkyAperture` object.
+        ``apertures`` contains a `SkyAperture` or `~regions.SkyRegion`
+        object.
 
     Returns
     -------
@@ -129,6 +133,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     Notes
     -----
+    `~regions.Region` objects are converted to `Aperture` objects using
+    the :func:`region_to_aperture` function.
+
     `RectangularAperture` and `RectangularAnnulus` photometry with the
     "exact" method uses a subpixel approximation by subdividing each
     data pixel by a factor of 1024 (``subpixels = 32``). For rectangular
