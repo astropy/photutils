@@ -85,6 +85,14 @@ API Changes
     ``CircularGaussianPRF``. ``IntegratedGaussianPRF`` is now
     deprecated. [#1845]
 
+  - Some PSF tools have moved to new modules. The ``PRFAdapter``
+    class and the ``make_psf_model`` and ``grid_from_epsfs``
+    functions have been moved to the new ``model_helpers`` module.
+    The ``make_psf_model_image`` function has been moved to the new
+    ``simulations`` module. It is recommended that all of these tools be
+    imported from ``photutils.psf`` without using the submodule name.
+    [#1854]
+
 
 1.13.0 (2024-06-28)
 -------------------
