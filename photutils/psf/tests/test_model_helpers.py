@@ -55,8 +55,8 @@ def test_integrate_model():
         _integrate_model(model, x_name='x_mean', y_name='y_mean')
 
 
-@pytest.fixture(scope='module')
-def moffat_source():
+@pytest.fixture(name='moffat_source', scope='module')
+def fixture_moffat_source():
     model = Moffat2D(alpha=4.8)
 
     # this is the analytic value needed to get a total flux of 1
@@ -227,7 +227,7 @@ class TestGridFromEPSFs:
 
             epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
                                        progress_bar=False)
-            epsf, fitted_stars = epsf_builder(stars)
+            epsf, _ = epsf_builder(stars)
 
             # set x_0, y_0 to fiducial point
             epsf.y_0 = quad_stars[q]['fiducial'][0]
@@ -235,8 +235,8 @@ class TestGridFromEPSFs:
 
             quad_stars[q]['epsf'] = epsf
 
-        self.epsfs = [quad_stars[x]['epsf'] for x in quad_stars]
-        self.grid_xypos = [quad_stars[x]['fiducial'] for x in quad_stars]
+        self.epsfs = [val['epsf'] for val in quad_stars.values()]
+        self.grid_xypos = [val['fiducial'] for val in quad_stars.values()]
 
     def test_basic_test_grid_from_epsfs(self):
         psf_grid = grid_from_epsfs(self.epsfs)
