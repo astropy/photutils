@@ -5,8 +5,12 @@ Tests for the utils module.
 
 import numpy as np
 import pytest
+from astropy.modeling.models import Gaussian1D, Gaussian2D
 
-from photutils.psf.utils import _interpolate_missing_data
+from photutils.psf import CircularGaussianPSF
+from photutils.psf.utils import (_get_psf_model_params,
+                                 _interpolate_missing_data,
+                                 _validate_psf_model)
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
@@ -33,3 +37,41 @@ def test_interpolate_missing_data():
     match = 'Unsupported interpolation method'
     with pytest.raises(ValueError, match=match):
         _interpolate_missing_data(data, mask, method='invalid')
+
+
+def test_validate_psf_model():
+    model = np.arange(10)
+
+    match = 'psf_model must be an Astropy Model subclass'
+    with pytest.raises(TypeError, match=match):
+        _validate_psf_model(model)
+
+    match = 'psf_model must be two-dimensional'
+    model = Gaussian1D()
+    with pytest.raises(ValueError, match=match):
+        _validate_psf_model(model)
+
+    match = 'psf_model must be two-dimensional'
+    model = Gaussian1D()
+    with pytest.raises(ValueError, match=match):
+        _validate_psf_model(model)
+
+
+def test_get_psf_model_params():
+    model = CircularGaussianPSF(fwhm=1.0)
+    params = _get_psf_model_params(model)
+    assert len(params) == 3
+    assert params == ('x_0', 'y_0', 'flux')
+
+    match = 'Invalid PSF model - could not find PSF parameter names'
+    model = Gaussian2D()
+    with pytest.raises(ValueError, match=match):
+        _get_psf_model_params(model)
+
+    set_params = ('x_mean', 'y_mean', 'amplitude')
+    model.x_name = set_params[0]
+    model.y_name = set_params[1]
+    model.flux_name = set_params[2]
+    params = _get_psf_model_params(model)
+    assert len(params) == 3
+    assert params == set_params
