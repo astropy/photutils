@@ -56,8 +56,8 @@ has more options and is significantly faster than the now-deprecated
 ``mask_model_sources_image`` function.
 
 A new :func:`~photutils.datasets.make_model_params` function was also
-added to make a table of randomly generated model positions and fluxes
-for simulated sources.
+added to make a table of randomly generated model positions, fluxes, or
+other parameters for simulated sources.
 
 These two new functions along with the existing
 :func:`~photutils.datasets.make_random_models_table` function provide a
@@ -74,8 +74,8 @@ Making simulated images with a PSF model
 ========================================
 
 A specialized function, :func:`~photutils.psf.make_psf_model_image`
-function was also added to generated simulated images from a PSF model.
-This function returns both an image and a table of the model parameters.
+function was added to generate simulated images from a PSF model. This
+function returns both an image and a table of the model parameters.
 
 
 PSF photometry initial parameter guesses
@@ -85,7 +85,7 @@ The ``init_params`` table input when calling
 the `~photutils.psf.PSFPhotometry` or
 `~photutils.psf.IterativePSFPhotometry` class now allows the user to
 input columns for additional model parameters other than x, y, and flux
-if those parameters are free vary in the fitting routine (i.e., not
+if those parameters are free to vary in the fitting routine (i.e., not
 fixed parameters). The column names must match the parameter names in
 the PSF model. They can also be suffixed with either the "_init" or
 "_fit" suffix.
