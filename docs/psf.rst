@@ -750,12 +750,13 @@ stars in each group were simultaneously fit.
       9        6          2
      10        7          1
 
-Care should be taken in defining the star groups. As noted above,
-simultaneously fitting very large star groups is computationally
-expensive and error-prone. Due to the way compound Astropy models are
-constructed, large groups currently also require large amounts of
-memory. A warning will be raised if the number of sources in a group
-exceeds 25.
+Care should be taken in defining the star groups. Simultaneously fitting
+very large star groups is computationally expensive and error-prone.
+Internally, source grouping requires the creation of a compound Astropy
+model. Due to the way compound Astropy models are currently constructed,
+large groups also require excessively large amounts of memory; this will
+hopefully be fixed in a future Astropy version. A warning will be raised
+if the number of sources in a group exceeds 25.
 
 
 Local Background Subtraction

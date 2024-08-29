@@ -296,6 +296,15 @@ class PSFPhotometry(ModelImageMixin):
     issue if the sources are well-separated. However, for crowded
     fields, please use the ``localbkg_estimator`` (or ``local_bkg``
     column in ``init_params``) with care.
+
+    Care should be taken in defining the star groups. Simultaneously
+    fitting very large star groups is computationally expensive and
+    error-prone. Internally, source grouping requires the creation of a
+    compound Astropy model. Due to the way compound Astropy models are
+    currently constructed, large groups also require excessively large
+    amounts of memory; this will hopefully be fixed in a future Astropy
+    version. A warning will be raised if the number of sources in a
+    group exceeds 25.
     """
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
@@ -1604,6 +1613,15 @@ class IterativePSFPhotometry(ModelImageMixin):
     mode) to combine close sources to be fit simultaneously, improving
     the fit. Again, the process is repeated until no new sources are
     detected or a maximum number of iterations is reached.
+
+    Care should be taken in defining the star groups. Simultaneously
+    fitting very large star groups is computationally expensive and
+    error-prone. Internally, source grouping requires the creation of a
+    compound Astropy model. Due to the way compound Astropy models are
+    currently constructed, large groups also require excessively large
+    amounts of memory; this will hopefully be fixed in a future Astropy
+    version. A warning will be raised if the number of sources in a
+    group exceeds 25.
     """
 
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
