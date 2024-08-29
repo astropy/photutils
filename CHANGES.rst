@@ -17,10 +17,9 @@ New Features
     ``ApertureStats`` now include the aperture name and shape
     parameters. [#1849]
 
-  - The ``aperture_photometry`` and ``ApertureStats`` functions now
-    accept supported ``regions.Region`` objects, i.e., those
-    corresponding to circular, elliptical, and rectangular apertures.
-    [#1813, #1852]
+  - ``aperture_photometry`` and ``ApertureStats`` now accept supported
+    ``regions.Region`` objects, i.e., those corresponding to circular,
+    elliptical, and rectangular apertures. [#1813, #1852]
 
   - A new ``region_to_aperture`` convenience function has been added to
     convert supported ``regions.Region`` objects to ``Aperture`` objects.
@@ -113,8 +112,8 @@ New Features
     ``make_model_sources_image`` function. [#1759, #1790]
 
   - Added a ``make_model_params`` function to make a table of randomly
-    generated model positions and fluxes for simulated sources. [#1766,
-    #1796]
+    generated model positions, fluxes, or other parameters for simulated
+    sources. [#1766, #1796]
 
 - ``photutils.detection``
 
