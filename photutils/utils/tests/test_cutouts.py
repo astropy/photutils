@@ -35,6 +35,9 @@ def test_cutout():
 
     assert_equal(cutout.xyorigin, np.array((23, 88)))
 
+    cutouts2 = CutoutImage(data, yxpos, np.array(shape))
+    assert cutouts2.input_shape == shape
+
     assert f'Shape: {shape}' in repr(cutout)
     assert f'Shape: {shape}' in str(cutout)
 

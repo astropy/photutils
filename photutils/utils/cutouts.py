@@ -95,7 +95,7 @@ class CutoutImage:
     def __init__(self, data, position, shape, mode='trim', fill_value=np.nan,
                  copy=False):
         self.position = position
-        self.input_shape = shape
+        self.input_shape = tuple(shape)
         self.mode = mode
         self.fill_value = fill_value
         self.copy = copy
