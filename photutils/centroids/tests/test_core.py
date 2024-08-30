@@ -5,6 +5,7 @@ Tests for the core module.
 
 from contextlib import nullcontext
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
@@ -49,8 +50,12 @@ def fixture_test_data():
 @pytest.mark.parametrize('x_std', [3.2, 4.0])
 @pytest.mark.parametrize('y_std', [5.7, 4.1])
 @pytest.mark.parametrize('theta', np.deg2rad([30.0, 45.0]))
-def test_centroid_comquad(test_simple_data, x_std, y_std, theta):
+@pytest.mark.parametrize('units', [True, False])
+def test_centroid_comquad(test_simple_data, x_std, y_std, theta, units):
     data, xcen, ycen = test_simple_data
+
+    if units:
+        data = data * u.nJy
 
     model = Gaussian2D(2.4, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
                        theta=theta)

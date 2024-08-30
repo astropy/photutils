@@ -5,6 +5,7 @@ Tests for the core module.
 
 from contextlib import nullcontext
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian1D, Gaussian2D
@@ -32,20 +33,30 @@ def fixture_test_data():
 @pytest.mark.parametrize('x_std', [3.2, 4.0])
 @pytest.mark.parametrize('y_std', [5.7, 4.1])
 @pytest.mark.parametrize('theta', np.deg2rad([30.0, 45.0]))
-def test_centroids(test_data, x_std, y_std, theta):
-    data, xcen, ycen = test_data
+@pytest.mark.parametrize('units', [True, False])
+def test_centroids(x_std, y_std, theta, units):
+    xcen = 25.7
+    ycen = 26.2
 
     model = Gaussian2D(2.4, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
                        theta=theta)
     y, x = np.mgrid[0:50, 0:47]
+
     data = model(x, y)
+    error = np.sqrt(data)
+    value = 1.0e5
+    if units:
+        unit = u.nJy
+        data = data * unit
+        error = error * unit
+        value *= unit
+
     xc, yc = centroid_1dg(data)
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data)
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
 
     # test with errors
-    error = np.sqrt(data)
     xc, yc = centroid_1dg(data, error=error)
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data, error=error)
@@ -53,7 +64,7 @@ def test_centroids(test_data, x_std, y_std, theta):
 
     # test with mask
     mask = np.zeros(data.shape, dtype=bool)
-    data[10, 10] = 1.0e5
+    data[10, 10] = value
     mask[10, 10] = True
     xc, yc = centroid_1dg(data, mask=mask)
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
