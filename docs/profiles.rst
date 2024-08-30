@@ -103,6 +103,9 @@ propagated errors::
      0.25551933 0.27675376 0.25553986 0.23421017 0.22966813 0.21747036
      0.23654884 0.22760386 0.23941711 0.20661313 0.18999134 0.17469024]
 
+Normalization
+^^^^^^^^^^^^^
+
 If desired, the radial profile can be normalized using the
 :meth:`~photutils.profiles.RadialProfile.normalize` method. By default
 (``method='max'``), the profile is normalized such that its maximum
@@ -116,6 +119,9 @@ back to the original values prior to running any calls to the
 :meth:`~photutils.profiles.RadialProfile.normalize` method::
 
     >> rp.unnormalize()
+
+Plotting
+^^^^^^^^
 
 There are also convenience methods to plot the radial profile and
 its error. These methods plot ``rp.radius`` versus ``rp.profile`` (with
@@ -191,9 +197,13 @@ the data:
     rp.apertures[10].plot(color='C1', lw=2)
     rp.apertures[15].plot(color='C3', lw=2)
 
+Fitting the profile with a 1D Gaussian
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Now let's fit a 1D Gaussian to the radial profile and return the
 `~astropy.modeling.functional_models.Gaussian1D` model using the
-`~photutils.profiles.RadialProfile.gaussian_fit` attribute:
+`~photutils.profiles.RadialProfile.gaussian_fit` attribute. The returned
+value is a 1D Gaussian model fit to the radial profile:
 
 .. doctest-requires:: scipy
 
@@ -284,6 +294,8 @@ profile and propagated errors::
       68.71042311  72.71899201  76.54959872  81.33806741  85.98568713
       91.34841248  95.5173253   99.22190499 102.51980185 106.83601366]
 
+Normalization
+^^^^^^^^^^^^^
 
 If desired, the curve-of-growth profile can be normalized using the
 :meth:`~photutils.profiles.CurveOfGrowth.normalize` method. By default
@@ -298,6 +310,9 @@ back to the original values prior to running any calls to the
 :meth:`~photutils.profiles.CurveOfGrowth.normalize` method::
 
     >> cog.unnormalize()
+
+Plotting
+^^^^^^^^
 
 There are also convenience methods to plot the curve of growth and its
 error. These methods plot ``cog.radius`` versus ``cog.profile`` (with
