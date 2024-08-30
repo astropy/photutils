@@ -312,14 +312,15 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     try:
         c = np.linalg.lstsq(coeff_matrix, cutout, rcond=None)[0]
-    except np.linalg.LinAlgError:
+    except np.linalg.LinAlgError:  # pragma: no cover
         warnings.warn('quadratic fit failed', AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
     # analytically find the maximum of the polynomial
     _, c10, c01, c11, c20, c02 = c
     det = 4 * c20 * c02 - c11**2
-    if det <= 0 or ((c20 > 0.0 and c02 >= 0.0) or (c20 >= 0.0 and c02 > 0.0)):
+    if det <= 0 or ((c20 > 0.0 and c02 >= 0.0)
+                    or (c20 >= 0.0 and c02 > 0.0)):  # pragma: no cover
         warnings.warn('quadratic fit does not have a maximum',
                       AstropyUserWarning)
         return np.array((np.nan, np.nan))
@@ -328,7 +329,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     ym = (c10 * c11 - 2.0 * c20 * c01) / det
     if 0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0):
         xycen = np.array((xm, ym), dtype=float)
-    else:
+    else:  # pragma: no cover
         warnings.warn('quadratic polynomial maximum value falls outside '
                       'of the image', AstropyUserWarning)
         return np.array((np.nan, np.nan))
@@ -415,9 +416,9 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
     >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
     ...                         centroid_func=centroid_2dg)
     >>> print(x)  # doctest: +FLOAT_CMP
-    [ 24.9673919   89.98674593 149.96533358 160.18767122]
+    [ 24.96807828  89.98684636 149.96545721 160.18810915]
     >>> print(y)  # doctest: +FLOAT_CMP
-    [40.03744529 60.01821736 24.96773872 69.80462556]
+    [40.03657613 60.01836631 24.96777946 69.80208702]
 
     .. plot::
 
