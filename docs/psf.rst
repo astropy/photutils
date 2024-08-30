@@ -855,6 +855,43 @@ the source was detected:
      10             2 71.8485 90.5830 687.4573
 
 
+Estimating the FWHM of sources
+------------------------------
+
+The `photutils.psf` package also provides a convenience function
+called `~photutils.psf.fit_fwhm` to estimate the full width
+at half maximum (FWHM) of one or more sources in an image.
+This function fits the source(s) with a circular 2D Gaussian
+PSF model (`~photutils.psf.CircularGaussianPSF`) using the
+`~photutils.psf.PSFPhotometry` class. If your sources are not
+circular or non-Gaussian, you can fit your sources using the
+`~photutils.psf.PSFPhotometry` class using a different PSF model.
+
+For example, let's estimate the FWHM of the sources in our example image
+defined above:
+
+.. doctest-requires:: scipy
+
+   >>> from photutils.psf import fit_fwhm
+   >>> finder = DAOStarFinder(6.0, 2.0)
+   >>> finder_tbl = finder(data)
+   >>> xypos = list(zip(finder_tbl['xcentroid'], finder_tbl['ycentroid']))
+   >>> fwhm = fit_fwhm(data, xypos=xypos, error=error, fit_shape=(5, 5))
+   >>> fwhm  # doctest: +FLOAT_CMP
+   array([2.78318472, 2.78834154, 2.77986989, 2.79650315, 2.77475841,
+          2.78849262, 2.78781809, 2.76465724, 2.79742412, 2.79036633])
+
+
+Convenience Gaussian Fitting Function
+-------------------------------------
+
+The `photutils.psf` package also provides a convenience function called
+:func:`~photutils.psf.fit_2dgaussian` for fitting one or more sources
+with a 2D Gaussian PSF model (`~photutils.psf.CircularGaussianPSF`)
+using the `~photutils.psf.PSFPhotometry` class. See the function
+documentation for more details and examples.
+
+
 Reference/API
 -------------
 
