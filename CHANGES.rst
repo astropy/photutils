@@ -43,6 +43,9 @@ New Features
 
   - The ``IntegratedGaussianPRF`` model now supports units. [#1838]
 
+  - A new ``results`` attribute was added to ``PSFPhotometry`` to store
+    the returned table of fit results. [#1858]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -91,6 +94,9 @@ API Changes
     ``simulations`` module. It is recommended that all of these tools be
     imported from ``photutils.psf`` without using the submodule name.
     [#1854]
+
+  - The ``PSFPhotometry`` ``fit_results`` attribute has been renamed to
+    ``fit_info``. ``fit_results`` is now deprecated. [#1858]
 
 
 1.13.0 (2024-06-28)
