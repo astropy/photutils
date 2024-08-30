@@ -415,9 +415,9 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
     >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
     ...                         centroid_func=centroid_2dg)
     >>> print(x)  # doctest: +FLOAT_CMP
-    [ 24.9673919   89.98674593 149.96533358 160.18767122]
+    [ 24.96807828  89.98684636 149.96545721 160.18810915]
     >>> print(y)  # doctest: +FLOAT_CMP
-    [40.03744529 60.01821736 24.96773872 69.80462556]
+    [40.03657613 60.01836631 24.96777946 69.80208702]
 
     .. plot::
 

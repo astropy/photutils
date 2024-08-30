@@ -132,7 +132,7 @@ def test_invalid_error_shape():
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_2dg_dof():
     data = np.ones((2, 2))
-    match = 'Input data must have a least 7 unmasked values to fit'
+    match = 'Input data must have a least 6 unmasked values to fit'
     with pytest.raises(ValueError, match=match):
         centroid_2dg(data)
 

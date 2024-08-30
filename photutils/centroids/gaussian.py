@@ -7,7 +7,7 @@ import warnings
 
 import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.modeling.models import Const1D, Const2D, Gaussian1D, Gaussian2D
+from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._quantity_helpers import process_quantities
@@ -53,7 +53,7 @@ def centroid_1dg(data, error=None, mask=None):
     >>> data = data[40:80, 70:110]
     >>> x1, y1 = centroid_1dg(data)
     >>> print(np.array((x1, y1)))
-    [19.96524237 20.04921073]
+    [19.96553246 20.04952841]
 
     .. plot::
 
@@ -107,15 +107,14 @@ def centroid_1dg(data, error=None, mask=None):
 
     xy_data = [np.ma.sum(data, axis=i).data for i in (0, 1)]
 
-    constant_init = np.ma.min(data)
     centroid = []
     for (data_i, weights_i) in zip(xy_data, xy_weights, strict=True):
         params_init = _gaussian1d_moments(data_i)
-        g_init = Const1D(constant_init) + Gaussian1D(*params_init)
+        g_init = Gaussian1D(*params_init)
         fitter = LevMarLSQFitter()
         x = np.arange(data_i.size)
         g_fit = fitter(g_init, x, data_i, weights=weights_i)
-        centroid.append(g_fit.mean_1.value)
+        centroid.append(g_fit.mean.value)
 
     return np.array(centroid)
 
@@ -168,8 +167,8 @@ def _gaussian1d_moments(data, mask=None):
 
 def centroid_2dg(data, error=None, mask=None):
     """
-    Calculate the centroid of a 2D array by fitting a 2D Gaussian (plus
-    a constant) to the array.
+    Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
+    array.
 
     Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
     arrays are automatically masked. These masks are combined.
@@ -202,7 +201,7 @@ def centroid_2dg(data, error=None, mask=None):
     >>> data = data[40:80, 70:110]
     >>> x1, y1 = centroid_2dg(data)
     >>> print(np.array((x1, y1)))
-    [19.9850329  20.01484321]
+    [19.9851945  20.01490155]
 
     .. plot::
 
@@ -248,9 +247,9 @@ def centroid_2dg(data, error=None, mask=None):
     else:
         weights = np.ones(data.shape)
 
-    if np.ma.count(data) < 7:
-        raise ValueError('Input data must have a least 7 unmasked values to '
-                         'fit a 2D Gaussian plus a constant.')
+    if np.ma.count(data) < 6:
+        raise ValueError('Input data must have a least 6 unmasked values to '
+                         'fit a 2D Gaussian.')
 
     # assign zero weight to masked pixels
     if data.mask is not np.ma.nomask:
@@ -260,21 +259,20 @@ def centroid_2dg(data, error=None, mask=None):
     data.fill_value = 0.0
     data = data.filled()
 
-    # Subtract the minimum of the data as a rough background estimate.
-    # This will also make the data values positive, preventing issues with
-    # the moment estimation in data_properties. Moments from negative data
-    # values can yield undefined Gaussian parameters, e.g., x/y_stddev.
+    # Subtract the minimum of the data to make the data values positive.
+    # This prevents issues with the moment estimation in data_properties.
+    # Moments from negative data values can yield undefined Gaussian
+    # parameters, e.g., x/y_stddev.
     props = data_properties(data - np.min(data), mask=mask)
 
-    constant_init = 0.0  # subtracted data minimum above
-    g_init = (Const2D(constant_init)
-              + Gaussian2D(amplitude=np.ptp(data),
-                           x_mean=props.xcentroid,
-                           y_mean=props.ycentroid,
-                           x_stddev=props.semimajor_sigma.value,
-                           y_stddev=props.semiminor_sigma.value,
-                           theta=props.orientation.value))
+    g_init = Gaussian2D(amplitude=np.ptp(data),
+                        x_mean=props.xcentroid,
+                        y_mean=props.ycentroid,
+                        x_stddev=props.semimajor_sigma.value,
+                        y_stddev=props.semiminor_sigma.value,
+                        theta=props.orientation.value)
     fitter = LevMarLSQFitter()
     y, x = np.indices(data.shape)
     gfit = fitter(g_init, x, y, data, weights=weights)
-    return np.array([gfit.x_mean_1.value, gfit.y_mean_1.value])
+
+    return np.array([gfit.x_mean.value, gfit.y_mean.value])

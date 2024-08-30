@@ -36,13 +36,13 @@ def fixture_test_data():
     xsize = 47
     yy, xx = np.mgrid[0:ysize, 0:xsize]
     data = np.zeros((ysize, xsize))
-    xcen = (1, 25, 25, 35, 46)
-    ycen = (1, 25, 12, 35, 49)
-    for xc, yc in zip(xcen, ycen, strict=True):
+    xpos = (1, 25, 25, 35, 46)
+    ypos = (1, 25, 12, 35, 49)
+    for xc, yc in zip(xpos, ypos, strict=True):
         model = Gaussian2D(10.0, xc, yc, x_stddev=2, y_stddev=2,
                            theta=0)
         data += model(xx, yy)
-    return data, xcen, ycen
+    return data, xpos, ypos
 
 
 # NOTE: the fitting routines in astropy use scipy.optimize
@@ -294,11 +294,7 @@ class TestCentroidSources:
         data, xpos, ypos = test_data
         xcen, ycen = centroid_sources(data, xpos, ypos, box_size=3,
                                       centroid_func=centroid_1dg)
-        assert_allclose(xcen, np.full(5, np.nan))
-        assert_allclose(ycen, np.full(5, np.nan))
 
-        xcen, ycen = centroid_sources(data, xpos, ypos, box_size=3,
-                                      centroid_func=centroid_2dg)
         xres = np.copy(xpos).astype(float)
         yres = np.copy(ypos).astype(float)
         xres[-1] = np.nan
@@ -306,10 +302,15 @@ class TestCentroidSources:
         assert_allclose(xcen, xres)
         assert_allclose(ycen, yres)
 
-        xcen, ycen = centroid_sources(data, xpos, ypos, box_size=5,
-                                      centroid_func=centroid_1dg)
+        xcen, ycen = centroid_sources(data, xpos, ypos, box_size=3,
+                                      centroid_func=centroid_2dg)
         assert_allclose(xcen, xres)
         assert_allclose(ycen, yres)
+
+        xcen, ycen = centroid_sources(data, xpos, ypos, box_size=5,
+                                      centroid_func=centroid_1dg)
+        assert_allclose(xcen, xpos)
+        assert_allclose(ycen, ypos)
 
         xcen, ycen = centroid_sources(data, xpos, ypos, box_size=3,
                                       centroid_func=centroid_quadratic)
