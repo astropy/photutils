@@ -1,10 +1,118 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides helper utilities for PSF-fitting photometry.
+This module provides utilities for PSF-fitting photometry.
 """
 
 import numpy as np
 from astropy.modeling import Model
+from astropy.table import QTable
+from astropy.units import Quantity
+
+from photutils.centroids import centroid_com
+from photutils.psf.functional_models import CircularGaussianPSF
+from photutils.utils import CutoutImage
+from photutils.utils._parameters import as_pair
+
+__all__ = ['fit_2dgaussian']
+
+
+def fit_2dgaussian(data, *, xypos=None, fit_shape=None, mask=None, error=None,
+                   fix_fwhm=True):
+    """
+    Fit a 2D Gaussian model to one or more sources in an image.
+
+    This convenience function uses a
+    `~photutils.psf.CircularGaussianPSF` model to fit the sources using
+    the `~photutils.psf.PSFPhotometry` class.
+
+    Non-finite values (e.g., NaN or inf) in the ``data`` array are
+    automatically masked.
+
+    Parameters
+    ----------
+    data : 2D array
+        The 2D array of the image. The input array must be background
+        subtracted.
+
+    xypos : array-like, optional
+        The (x, y) pixel coordinates of the sources. If `None`, then
+        one source will be fit with an initial position using the
+        center-of-mass centroid of the ``data`` array.
+
+    fit_shape : int or tuple of two ints, optional
+        The shape of the fitting region. If a scalar, then it is assumed
+        to be a square. If `None`, then the shape of the input ``data``
+        will be used.
+
+    mask : array-like (bool), optional
+        A boolean mask with the same shape as the input ``data``, where
+        a `True` value indicates the corresponding element of ``data``
+        is masked.
+
+    error : 2D array, optional
+        The pixel-wise Gaussian 1-sigma errors of the input
+        ``data``. ``error`` is assumed to include *all* sources
+        of error, including the Poisson error of the sources (see
+        `~photutils.utils.calc_total_error`) . ``error`` must have the
+        same shape as the input ``data``. If a `~astropy.units.Quantity`
+        array, then ``data`` must also be a `~astropy.units.Quantity`
+        array with the same units.
+
+    fix_fwhm : bool, optional
+        Whether to fix the FWHM of the Gaussian PSF model during the
+        fitting process. If `False`, the initial guess for the FWHM is
+        the half the mean of the x and y sizes of the ``fit_shape``
+        values.
+
+    Returns
+    -------
+    result : `~photutils.psf.PSFPhotometry`
+        The PSF-fitting photometry results.
+
+    Notes
+    -----
+    The source(s) are fit with a `~photutils.psf.CircularGaussianPSF`
+    model using the `~photutils.psf.PSFPhotometry` class. The initial
+    guess for the flux is the sum of the pixel values within the fitting
+    region. The initial guess for the FWHM is half the mean of the x and
+    y sizes of the ``fit_shape`` values.
+    """
+    # prevent circular import
+    from photutils.psf.photometry import PSFPhotometry
+
+    if xypos is None:
+        xypos = centroid_com(data)
+    xypos = np.atleast_2d(xypos)
+
+    if fit_shape is None:
+        fit_shape = data.shape
+    else:
+        fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 0),
+                            check_odd=True)
+
+    yxpos = xypos[:, ::-1]
+    flux_init = []
+    for yxpos_ in yxpos:
+        cutout = CutoutImage(data, yxpos_, tuple(fit_shape))
+        flux_init.append(np.sum(cutout.data))
+
+    if isinstance(data, Quantity):
+        flux_init <<= data.unit
+
+    init_params = QTable()
+    init_params['x'] = xypos[:, 0]
+    init_params['y'] = xypos[:, 1]
+    init_params['flux'] = flux_init
+
+    model = CircularGaussianPSF()
+    if not fix_fwhm:
+        init_params['fwhm'] = np.mean(fit_shape) / 2.0
+        model.fwhm.fixed = False
+
+    phot = PSFPhotometry(model, fit_shape)
+    _ = phot(data, mask=mask, error=error, init_params=init_params)
+
+    return phot
 
 
 def _interpolate_missing_data(data, mask, method='cubic'):
