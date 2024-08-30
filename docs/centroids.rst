@@ -81,7 +81,7 @@ centroiding functions::
 
     >>> x3, y3 = centroid_1dg(data)
     >>> print(np.array((x3, y3)))  # doctest: +FLOAT_CMP
-    [19.96524237 20.04921073]
+    [19.96553246 20.04952841]
 
 .. doctest-requires:: scipy
 
@@ -166,9 +166,13 @@ for each source are then calculated within their cutout images:
     >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
     ...                         centroid_func=centroid_2dg)
     >>> print(x)  # doctest: +FLOAT_CMP
-    [ 24.9673919   89.98674593 149.96533358 160.18767122]
+    [ 24.96807828  89.98684636 149.96545721 160.18810915]
     >>> print(y)  # doctest: +FLOAT_CMP
-    [40.03744529 60.01821736 24.96773872 69.80462556]
+    [40.03657613 60.01836631 24.96777946 69.80208702]
+
+The measured centroids are all very close to the true centroids of the
+simulated objects in the image, which have ``(x, y)`` values of ``(25,
+40)``, ``(90, 60)``, ``(150, 25)``, and ``(160, 70)``.
 
 Let's plot the results:
 
