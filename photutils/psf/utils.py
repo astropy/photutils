@@ -13,7 +13,7 @@ from photutils.psf.functional_models import CircularGaussianPSF
 from photutils.utils import CutoutImage
 from photutils.utils._parameters import as_pair
 
-__all__ = ['fit_2dgaussian']
+__all__ = ['fit_2dgaussian', 'fit_fwhm']
 
 
 def fit_2dgaussian(data, *, xypos=None, fit_shape=None, mask=None, error=None,
@@ -113,6 +113,67 @@ def fit_2dgaussian(data, *, xypos=None, fit_shape=None, mask=None, error=None,
     _ = phot(data, mask=mask, error=error, init_params=init_params)
 
     return phot
+
+
+def fit_fwhm(data, *, xypos=None, fit_shape=None, mask=None, error=None):
+    """
+    Fit the FWHM of one or more sources in an image.
+
+    This convenience function uses a
+    `~photutils.psf.CircularGaussianPSF` model to fit the sources using
+    the `~photutils.psf.PSFPhotometry` class.
+
+    Non-finite values (e.g., NaN or inf) in the ``data`` array are
+    automatically masked.
+
+    Parameters
+    ----------
+    data : 2D array
+        The 2D array of the image. The input array must be background
+        subtracted.
+
+    xypos : array-like, optional
+        The (x, y) pixel coordinates of the sources. If `None`, then
+        one source will be fit with an initial position using the
+        center-of-mass centroid of the ``data`` array.
+
+    fit_shape : int or tuple of two ints, optional
+        The shape of the fitting region. If a scalar, then it is assumed
+        to be a square. If `None`, then the shape of the input ``data``
+        will be used.
+
+    mask : array-like (bool), optional
+        A boolean mask with the same shape as the input ``data``, where
+        a `True` value indicates the corresponding element of ``data``
+        is masked.
+
+    error : 2D array, optional
+        The pixel-wise Gaussian 1-sigma errors of the input
+        ``data``. ``error`` is assumed to include *all* sources
+        of error, including the Poisson error of the sources (see
+        `~photutils.utils.calc_total_error`) . ``error`` must have the
+        same shape as the input ``data``. If a `~astropy.units.Quantity`
+        array, then ``data`` must also be a `~astropy.units.Quantity`
+        array with the same units.
+
+    Returns
+    -------
+    fwhm : `~numpy.ndarray`
+        The FWHM of the sources. Note that the returned FWHM values are
+        always positive.
+
+    Notes
+    -----
+    The source(s) are fit using the :func:`fit_2dgaussian` function,
+    which uses a `~photutils.psf.CircularGaussianPSF` model with the
+    `~photutils.psf.PSFPhotometry` class. The initial guess for the
+    flux is the sum of the pixel values within the fitting region. The
+    initial guess for the FWHM is half the mean of the x and y sizes of
+    the ``fit_shape`` values.
+    """
+    phot = fit_2dgaussian(data, xypos=xypos, fit_shape=fit_shape, mask=mask,
+                          error=error, fix_fwhm=False)
+    return np.abs(np.array(phot.results['fwhm_fit']))
 
 
 def _interpolate_missing_data(data, mask, method='cubic'):
