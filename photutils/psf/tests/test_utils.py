@@ -8,12 +8,13 @@ import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.table import QTable
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
 from photutils.psf import CircularGaussianPSF, make_psf_model_image
 from photutils.psf.utils import (_get_psf_model_params,
                                  _interpolate_missing_data,
-                                 _validate_psf_model, fit_2dgaussian)
+                                 _validate_psf_model, fit_2dgaussian, fit_fwhm)
 from photutils.utils._optional_deps import HAS_SCIPY
 
 
@@ -75,6 +76,41 @@ def test_fit_2dgaussian_multiple(test_data, fix_fwhm, with_units):
         for column in fit_tbl.colnames:
             if 'flux' in column:
                 assert fit_tbl['flux_fit'].unit == unit
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_fit_fwhm_single():
+    yy, xx = np.mgrid[:51, :51]
+    fwhm0 = 3.123
+    model = CircularGaussianPSF(x_0=22.17, y_0=28.87, fwhm=fwhm0)
+    data = model(xx, yy)
+
+    fwhm = fit_fwhm(data)
+    assert isinstance(fwhm, np.ndarray)
+    assert len(fwhm) == 1
+    assert_allclose(fwhm, fwhm0)
+
+    # test warning message
+    match = 'may not have converged. Please carefully check your results'
+    with pytest.warns(AstropyUserWarning, match=match):
+        fwhm = fit_fwhm(data + 100)
+    assert len(fwhm) == 1
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+@pytest.mark.parametrize('with_units', [False, True])
+def test_fit_fwhm_multiple(test_data, with_units):
+    data, sources = test_data
+
+    unit = u.nJy
+    if with_units:
+        data = data * unit
+
+    xypos = list(zip(sources['x_0'], sources['y_0'], strict=True))
+    fwhms = fit_fwhm(data, xypos=xypos, fit_shape=(5, 5))
+    assert isinstance(fwhms, np.ndarray)
+    assert len(fwhms) == len(sources)
+    assert_allclose(fwhms, sources['fwhm'])
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
