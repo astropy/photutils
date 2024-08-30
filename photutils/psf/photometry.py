@@ -338,6 +338,7 @@ class PSFPhotometry(ModelImageMixin):
         self.init_params = None
         self.fit_params = None
         self._fit_model_params = None
+        self.results = None
         self.fit_info = defaultdict(list)
         self._group_results = defaultdict(list)
 
@@ -350,6 +351,7 @@ class PSFPhotometry(ModelImageMixin):
         self.init_params = None
         self.fit_params = None
         self._fit_model_params = None
+        self.results = None
         self.fit_info = defaultdict(list)
         self._group_results = defaultdict(list)
 
@@ -1425,6 +1427,7 @@ class PSFPhotometry(ModelImageMixin):
 
         # convert results from defaultdict to dict
         self.fit_info = dict(self.fit_info)
+        self.results = results_tbl
 
         return results_tbl
 

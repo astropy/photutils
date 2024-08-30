@@ -178,6 +178,7 @@ def test_psf_photometry(test_data):
 
     assert isinstance(psfphot.finder_results, QTable)
     assert isinstance(phot, QTable)
+    assert isinstance(psfphot.results, QTable)
     assert len(phot) == len(sources)
     assert isinstance(resid_data, np.ndarray)
     assert resid_data.shape == data.shape
