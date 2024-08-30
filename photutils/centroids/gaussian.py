@@ -10,6 +10,8 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling.models import Const1D, Const2D, Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.utils._quantity_helpers import process_quantities
+
 __all__ = ['centroid_1dg', 'centroid_2dg']
 
 __doctest_requires__ = {('centroid_1dg', 'centroid_2dg'): ['scipy']}
@@ -69,6 +71,8 @@ def centroid_1dg(data, error=None, mask=None):
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
+    (data, error), _ = process_quantities((data, error), ('data', 'error'))
+
     data = np.ma.asanyarray(data)
 
     if mask is not None and mask is not np.ma.nomask:
@@ -218,6 +222,8 @@ def centroid_2dg(data, error=None, mask=None):
     """
     # prevent circular import
     from photutils.morphology import data_properties
+
+    (data, error), _ = process_quantities((data, error), ('data', 'error'))
 
     data = np.ma.asanyarray(data)
 
