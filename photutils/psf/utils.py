@@ -71,6 +71,10 @@ def fit_2dgaussian(data, *, xypos=None, fit_shape=None, mask=None, error=None,
     result : `~photutils.psf.PSFPhotometry`
         The PSF-fitting photometry results.
 
+    See Also
+    --------
+    fit_fwhm : Fit the FWHM of one or more sources in an image.
+
     Notes
     -----
     The source(s) are fit with a `~photutils.psf.CircularGaussianPSF`
@@ -218,6 +222,11 @@ def fit_fwhm(data, *, xypos=None, fit_shape=None, mask=None, error=None):
         The FWHM of the sources. Note that the returned FWHM values are
         always positive.
 
+    See Also
+    --------
+    fit_2dgaussian : Fit a 2D Gaussian model to one or more sources in an
+                     image.
+
     Notes
     -----
     The source(s) are fit using the :func:`fit_2dgaussian` function,
@@ -226,6 +235,37 @@ def fit_fwhm(data, *, xypos=None, fit_shape=None, mask=None, error=None):
     flux is the sum of the pixel values within the fitting region. The
     initial guess for the FWHM is half the mean of the x and y sizes of
     the ``fit_shape`` values.
+
+    Examples
+    --------
+    Fit the FWHM of a single source (e.g., a cutout image):
+
+    >>> import numpy as np
+    >>> from photutils.psf import CircularGaussianPSF, fit_fwhm
+    >>> yy, xx = np.mgrid[:51, :51]
+    >>> model = CircularGaussianPSF(x_0=22.17, y_0=28.87, fwhm=3.123, flux=9.7)
+    >>> data = model(xx, yy)
+    >>> fwhm = fit_fwhm(data)
+    >>> fwhm  # doctest: +FLOAT_CMP
+    array([3.123])
+
+    Fit the FWHMs of multiple sources in an image:
+
+    >>> import numpy as np
+    >>> from photutils.detection import DAOStarFinder
+    >>> from photutils.psf import (CircularGaussianPSF, fit_fwhm,
+    ...                            make_psf_model_image)
+    >>> model = CircularGaussianPSF()
+    >>> data, sources = make_psf_model_image((100, 100), model, 5,
+    ...                                      min_separation=25,
+    ...                                      model_shape=(15, 15),
+    ...                                      flux=(100, 200), fwhm=[3, 8])
+    >>> finder = DAOStarFinder(0.1, 5)
+    >>> finder_tbl = finder(data)
+    >>> xypos = list(zip(sources['x_0'], sources['y_0']))
+    >>> fwhms = fit_fwhm(data, xypos=xypos, fit_shape=7)
+    >>> fwhms  # doctest: +FLOAT_CMP
+    array([5.69467204, 5.21376414, 7.65508658, 3.20255356, 6.66003098])
     """
     with warnings.catch_warnings(record=True) as fit_warnings:
         phot = fit_2dgaussian(data, xypos=xypos, fit_shape=fit_shape,
