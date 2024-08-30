@@ -3,8 +3,6 @@
 Tests for the rectangular_overlap_grid module.
 """
 
-import itertools
-
 import pytest
 from numpy.testing import assert_allclose
 
@@ -16,9 +14,10 @@ angles = [0.0, 0.5, 1.0]
 subsamples = [1, 5, 10]
 
 
-@pytest.mark.parametrize(('grid_size', 'rect_size', 'angle', 'subsample'),
-                         list(itertools.product(grid_sizes, rect_sizes,
-                                                angles, subsamples)))
+@pytest.mark.parametrize('grid_size', grid_sizes)
+@pytest.mark.parametrize('rect_size', rect_sizes)
+@pytest.mark.parametrize('angle', angles)
+@pytest.mark.parametrize('subsample', subsamples)
 def test_rectangular_overlap_grid(grid_size, rect_size, angle, subsample):
     """
     Test normalization of the overlap grid to make sure that a fully

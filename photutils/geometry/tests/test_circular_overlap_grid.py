@@ -3,8 +3,6 @@
 Tests for the circular_overlap_grid module.
 """
 
-import itertools
-
 import pytest
 from numpy.testing import assert_allclose
 
@@ -16,9 +14,10 @@ use_exacts = [0, 1]
 subsamples = [1, 5, 10]
 
 
-@pytest.mark.parametrize(('grid_size', 'circ_size', 'use_exact', 'subsample'),
-                         list(itertools.product(grid_sizes, circ_sizes,
-                                                use_exacts, subsamples)))
+@pytest.mark.parametrize('grid_size', grid_sizes)
+@pytest.mark.parametrize('circ_size', circ_sizes)
+@pytest.mark.parametrize('use_exact', use_exacts)
+@pytest.mark.parametrize('subsample', subsamples)
 def test_circular_overlap_grid(grid_size, circ_size, use_exact, subsample):
     """
     Test normalization of the overlap grid to make sure that a fully

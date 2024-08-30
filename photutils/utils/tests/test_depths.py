@@ -3,8 +3,6 @@
 Tests for the depths module.
 """
 
-import itertools
-
 import astropy.units as u
 import numpy as np
 import pytest
@@ -37,8 +35,8 @@ class TestImageDepth:
         self.data = data
         self.mask = segment_map.make_source_mask()
 
-    @pytest.mark.parametrize(('units', 'overlap'),
-                             list(itertools.product(bool_vals, bool_vals)))
+    @pytest.mark.parametrize('units', bool_vals)
+    @pytest.mark.parametrize('overlap', bool_vals)
     def test_image_depth(self, units, overlap):
         radius = 4
         depth = ImageDepth(radius, nsigma=5.0, napers=100, niters=2,

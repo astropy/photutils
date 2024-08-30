@@ -3,8 +3,6 @@
 Tests for the elliptical_overlap_grid module.
 """
 
-import itertools
-
 import pytest
 from numpy.testing import assert_allclose
 
@@ -18,11 +16,12 @@ use_exacts = [0, 1]
 subsamples = [1, 5, 10]
 
 
-@pytest.mark.parametrize(('grid_size', 'maj_size', 'min_size', 'angle',
-                          'use_exact', 'subsample'),
-                         list(itertools.product(grid_sizes, maj_sizes,
-                                                min_sizes, angles, use_exacts,
-                                                subsamples)))
+@pytest.mark.parametrize('grid_size', grid_sizes)
+@pytest.mark.parametrize('maj_size', maj_sizes)
+@pytest.mark.parametrize('min_size', min_sizes)
+@pytest.mark.parametrize('angle', angles)
+@pytest.mark.parametrize('use_exact', use_exacts)
+@pytest.mark.parametrize('subsample', subsamples)
 def test_elliptical_overlap_grid(grid_size, maj_size, min_size, angle,
                                  use_exact, subsample):
     """

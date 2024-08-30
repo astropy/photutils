@@ -3,8 +3,6 @@
 Tests for the background_2d module.
 """
 
-import itertools
-
 import astropy.units as u
 import numpy as np
 import pytest
@@ -35,9 +33,8 @@ DATA4 = CCDData(DATA, unit=u.ct)
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestBackground2D:
-    @pytest.mark.parametrize(('filter_size', 'interpolator'),
-                             list(itertools.product(FILTER_SIZES,
-                                                    INTERPOLATORS)))
+    @pytest.mark.parametrize('filter_size', FILTER_SIZES)
+    @pytest.mark.parametrize('interpolator', INTERPOLATORS)
     def test_background(self, filter_size, interpolator):
         bkg = Background2D(DATA, (25, 25), filter_size=filter_size,
                            interpolator=interpolator)
