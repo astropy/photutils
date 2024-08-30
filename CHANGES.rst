@@ -46,6 +46,13 @@ New Features
   - A new ``results`` attribute was added to ``PSFPhotometry`` to store
     the returned table of fit results. [#1858]
 
+  - Added new ``fit_fwhm`` convenience function to estimate the FWHM of
+    one or more sources in an image by fitting a circular 2D Gaussian PSF
+    model. [#1859]
+
+  - Added new ``fit_2dgaussian`` convenience function to fit a circular 2D
+    Gaussian PSF to one or more sources in an image. [#1859]
+
 Bug Fixes
 ^^^^^^^^^
 
