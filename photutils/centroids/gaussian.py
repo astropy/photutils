@@ -273,6 +273,12 @@ def centroid_2dg(data, error=None, mask=None):
                         theta=props.orientation.value)
     fitter = LevMarLSQFitter()
     y, x = np.indices(data.shape)
-    gfit = fitter(g_init, x, y, data, weights=weights)
+
+    with warnings.catch_warnings(record=True) as fit_warnings:
+        gfit = fitter(g_init, x, y, data, weights=weights)
+
+    if len(fit_warnings) > 0:
+        warnings.warn('The fit may not have converged. Please check your '
+                      'results.', AstropyUserWarning)
 
     return np.array([gfit.x_mean.value, gfit.y_mean.value])

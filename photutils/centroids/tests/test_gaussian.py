@@ -161,3 +161,14 @@ def test_gaussian1d_moments():
         result = _gaussian1d_moments(data, mask=mask)
         assert_allclose(result, desired, rtol=0, atol=1.0e-6)
         assert len(warnlist) == 1
+
+
+@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
+def test_gaussian2d_warning():
+    yy, xx = np.mgrid[:51, :51]
+    model = Gaussian2D(x_mean=24.17, y_mean=25.87, x_stddev=1.7, y_stddev=4.7)
+    data = model(xx, yy)
+
+    match = 'The fit may not have converged'
+    with pytest.warns(AstropyUserWarning, match=match):
+        centroid_2dg(data + 100000)
