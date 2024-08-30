@@ -2,11 +2,13 @@
 """
 This module provides utilities for PSF-fitting photometry.
 """
+import warnings
 
 import numpy as np
 from astropy.modeling import Model
 from astropy.table import QTable
 from astropy.units import Quantity
+from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.centroids import centroid_com
 from photutils.psf.functional_models import CircularGaussianPSF
@@ -171,8 +173,16 @@ def fit_fwhm(data, *, xypos=None, fit_shape=None, mask=None, error=None):
     initial guess for the FWHM is half the mean of the x and y sizes of
     the ``fit_shape`` values.
     """
-    phot = fit_2dgaussian(data, xypos=xypos, fit_shape=fit_shape, mask=mask,
-                          error=error, fix_fwhm=False)
+    with warnings.catch_warnings(record=True) as fit_warnings:
+        phot = fit_2dgaussian(data, xypos=xypos, fit_shape=fit_shape,
+                              mask=mask, error=error, fix_fwhm=False)
+
+    if len(fit_warnings) > 0:
+        warnings.warn('One or more fit(s) may not have converged. Please '
+                      'carefully check your results. You may need to change '
+                      'the input "xypos" and "fit_shape" parameters.',
+                      AstropyUserWarning)
+
     return np.abs(np.array(phot.results['fwhm_fit']))
 
 
