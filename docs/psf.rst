@@ -505,12 +505,12 @@ astropy table):
       9    5.5858   89.8664    0.5741 ... 0.0 54.3786 7.0389 -2.1188
      10   71.8303   90.5624    0.6038 ... 0.0 73.5747 9.5639 -2.4516
 
-The ``fit_results`` attribute contains a dictionary with detailed
+The ``fit_info`` attribute contains a dictionary with detailed
 information returned from the ``fitter`` for each source:
 
 .. doctest-requires:: scipy
 
-    >>> psfphot.fit_results.keys()
+    >>> psfphot.fit_info.keys()
     dict_keys(['fit_infos', 'fit_error_indices'])
 
 The ``fit_error_indices`` key contains the indices of sources for which
@@ -522,7 +522,7 @@ covariance matrix):
 
 .. doctest-skip::
 
-    >>> psfphot.fit_results['fit_infos'][0]['param_cov']  # doctest: +FLOAT_CMP
+    >>> psfphot.fit_info['fit_infos'][0]['param_cov']  # doctest: +FLOAT_CMP
     array([[ 7.27034774e-01,  8.86845334e-04,  3.98593038e-03],
            [ 8.86845334e-04,  2.92871525e-06, -6.36805464e-07],
            [ 3.98593038e-03, -6.36805464e-07,  4.29520185e-05]])
