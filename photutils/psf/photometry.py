@@ -16,6 +16,7 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import NDData, NoOverlapError, StdDevUncertainty
 from astropy.table import QTable, Table, hstack, join, vstack
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_attribute
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
@@ -307,6 +308,9 @@ class PSFPhotometry(ModelImageMixin):
     group exceeds 25.
     """
 
+    fit_results = deprecated_attribute('fit_results', '1.13.0',
+                                       alternative='fit_info')
+
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
                  fitter=LevMarLSQFitter(), fitter_maxiters=100,
                  xy_bounds=None, localbkg_estimator=None, aperture_radius=None,
@@ -334,7 +338,7 @@ class PSFPhotometry(ModelImageMixin):
         self.init_params = None
         self.fit_params = None
         self._fit_model_params = None
-        self.fit_results = defaultdict(list)
+        self.fit_info = defaultdict(list)
         self._group_results = defaultdict(list)
 
     def _reset_results(self):
@@ -346,7 +350,7 @@ class PSFPhotometry(ModelImageMixin):
         self.init_params = None
         self.fit_params = None
         self._fit_model_params = None
-        self.fit_results = defaultdict(list)
+        self.fit_info = defaultdict(list)
         self._group_results = defaultdict(list)
 
     def _validate_grouper(self, grouper):
@@ -819,7 +823,7 @@ class PSFPhotometry(ModelImageMixin):
         return table
 
     def _param_errors_to_table(self):
-        param_err = self.fit_results.pop('fit_param_errs')
+        param_err = self.fit_info.pop('fit_param_errs')
 
         err_param_map = self._param_maps['err']
         table = QTable()
@@ -958,7 +962,7 @@ class PSFPhotometry(ModelImageMixin):
 
     def _get_fit_error_indices(self):
         indices = []
-        for index, fit_info in enumerate(self.fit_results['fit_infos']):
+        for index, fit_info in enumerate(self.fit_info['fit_infos']):
             ierr = fit_info.get('ierr', None)
             # check if in good flags defined by scipy
             if ierr is not None:
@@ -1017,9 +1021,9 @@ class PSFPhotometry(ModelImageMixin):
         fit_infos = self._order_by_id(fit_infos)
         fit_param_errs = np.array(self._order_by_id(fit_param_errs))
 
-        self.fit_results['fit_infos'] = fit_infos
-        self.fit_results['fit_error_indices'] = self._get_fit_error_indices()
-        self.fit_results['fit_param_errs'] = fit_param_errs
+        self.fit_info['fit_infos'] = fit_infos
+        self.fit_info['fit_error_indices'] = self._get_fit_error_indices()
+        self.fit_info['fit_param_errs'] = fit_param_errs
 
         return fit_models
 
@@ -1169,10 +1173,10 @@ class PSFPhotometry(ModelImageMixin):
             if row[fluxcolname] <= 0:
                 flags[index] += 4
 
-        flags[self.fit_results['fit_error_indices']] += 8
+        flags[self.fit_info['fit_error_indices']] += 8
 
         try:
-            for index, fit_info in enumerate(self.fit_results['fit_infos']):
+            for index, fit_info in enumerate(self.fit_info['fit_infos']):
                 if fit_info['param_cov'] is None:
                     flags[index] += 16
         except KeyError:
@@ -1414,13 +1418,13 @@ class PSFPhotometry(ModelImageMixin):
             meta[attr] = getattr(self, attr)
         results_tbl.meta = meta
 
-        if len(self.fit_results['fit_error_indices']) > 0:
+        if len(self.fit_info['fit_error_indices']) > 0:
             warnings.warn('One or more fit(s) may not have converged. Please '
                           'check the "flags" column in the output table.',
                           AstropyUserWarning)
 
         # convert results from defaultdict to dict
-        self.fit_results = dict(self.fit_results)
+        self.fit_info = dict(self.fit_info)
 
         return results_tbl
 

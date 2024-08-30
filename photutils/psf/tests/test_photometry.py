@@ -189,11 +189,11 @@ def test_psf_photometry(test_data):
 
     keys = ('fit_infos', 'fit_error_indices')
     for key in keys:
-        assert key in psfphot.fit_results
+        assert key in psfphot.fit_info
 
     # test that repeated calls reset the results
     phot = psfphot(data, error=error)
-    assert len(psfphot.fit_results['fit_infos']) == len(phot)
+    assert len(psfphot.fit_info['fit_infos']) == len(phot)
 
     # test units
     unit = u.Jy
@@ -822,7 +822,7 @@ def test_fit_warning(test_data):
     match = r'One or more fit\(s\) may not have converged.'
     with pytest.warns(AstropyUserWarning, match=match):
         _ = psfphot(data)
-        assert len(psfphot.fit_results['fit_error_indices']) > 0
+        assert len(psfphot.fit_info['fit_error_indices']) > 0
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
