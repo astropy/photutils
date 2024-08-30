@@ -3,7 +3,6 @@
 Tests for the core module.
 """
 
-import itertools
 from contextlib import nullcontext
 
 import numpy as np
@@ -16,47 +15,50 @@ from photutils.centroids.gaussian import (_gaussian1d_moments, centroid_1dg,
                                           centroid_2dg)
 from photutils.utils._optional_deps import HAS_SCIPY
 
-XCEN = 25.7
-YCEN = 26.2
-XSTDS = [3.2, 4.0]
-YSTDS = [5.7, 4.1]
-THETAS = np.array([30.0, 45.0]) * np.pi / 180.0
 
-DATA = np.zeros((3, 3))
-DATA[0:2, 1] = 1.0
-DATA[1, 0:2] = 1.0
-DATA[1, 1] = 2.0
+@pytest.fixture(name='test_data')
+def fixture_test_data():
+    xcen = 25.7
+    ycen = 26.2
+    data = np.zeros((3, 3))
+    data[0:2, 1] = 1.0
+    data[1, 0:2] = 1.0
+    data[1, 1] = 2.0
+    return data, xcen, ycen
 
 
 # NOTE: the fitting routines in astropy use scipy.optimize
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-@pytest.mark.parametrize(('x_std', 'y_std', 'theta'),
-                         list(itertools.product(XSTDS, YSTDS, THETAS)))
-def test_centroids(x_std, y_std, theta):
-    model = Gaussian2D(2.4, XCEN, YCEN, x_stddev=x_std, y_stddev=y_std,
+@pytest.mark.parametrize('x_std', [3.2, 4.0])
+@pytest.mark.parametrize('y_std', [5.7, 4.1])
+@pytest.mark.parametrize('theta', np.deg2rad([30.0, 45.0]))
+def test_centroids(test_data, x_std, y_std, theta):
+    data, xcen, ycen = test_data
+
+    model = Gaussian2D(2.4, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
                        theta=theta)
     y, x = np.mgrid[0:50, 0:47]
     data = model(x, y)
     xc, yc = centroid_1dg(data)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
 
     # test with errors
     error = np.sqrt(data)
     xc, yc = centroid_1dg(data, error=error)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data, error=error)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
 
     # test with mask
     mask = np.zeros(data.shape, dtype=bool)
     data[10, 10] = 1.0e5
     mask[10, 10] = True
     xc, yc = centroid_1dg(data, mask=mask)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data, mask=mask)
-    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
 
 
 @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
