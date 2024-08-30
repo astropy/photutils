@@ -25,6 +25,11 @@ New Features
     convert supported ``regions.Region`` objects to ``Aperture`` objects.
     [#1813, #1852]
 
+- ``photutils.centroids``
+
+  - ``Quantity`` arrays can now be input to ``centroid_1dg`` and
+    ``centroid_2dg``. [#1861]
+
 - ``photutils.psf``
 
   - Added new ``xy_bounds`` keyword to ``PSFPhotometry`` and
@@ -73,6 +78,14 @@ API Changes
 - The ``sklearn`` version information has been removed from the meta
   attribute in output tables. ``sklearn`` was removed as an optional
   dependency in 1.13.0. [#1807]
+
+- ``photutils.centroids``
+
+  - For consistency with other fitting functions (including PSF
+    fitting), the ``centroid_1dg`` and ``centroid_2dg`` functions
+    now fit only a 1D or 2D Gaussian model, respectively, excluding
+    any constant component. The input data are required to be
+    background-subtracted. [#1861]
 
 - ``photutils.isophote``
 
