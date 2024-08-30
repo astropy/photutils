@@ -277,8 +277,8 @@ class TestGriddedPSFModel:
         assert_equal(psfmodel.oversampling, [4, 4])
         assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
 
-    @pytest.mark.parametrize(('filename', 'detector_id'),
-                             list(product(STDPSF_FILENAMES[1:], (1, 2))))
+    @pytest.mark.parametrize('filename', STDPSF_FILENAMES[1:])
+    @pytest.mark.parametrize('detector_id', [1, 2])
     def test_read_stdpsf_multi_detector(self, filename, detector_id):
         """
         Test STDPSF read for a multiple detectors.
