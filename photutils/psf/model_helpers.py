@@ -512,7 +512,18 @@ class PRFAdapter(Fittable2DModel):
     -----
     This current implementation of this class (using numerical
     integration for each pixel) is extremely slow, and only suited for
-    experimentation over relatively few small regions.
+    experimentation over relatively few small regions. It should be used
+    only when absolutely necessary. It is also experimental and may be
+    deprecated and removed in the future. If a model class of this type
+    is needed, it is strongly recommended that you create a custom PRF
+    model instead.
+
+    If one needs a PRF model from an analytical PSF model, a more
+    efficient option is to discretize the model on a grid using
+    `astropy.convolution.discretize_model` using the ``'oversample'`` or
+    ``'integrate'`` ``mode``. The resulting 2D image can then be used as
+    the input to ``FittableImageModel`` to create an ePSF model. This
+    will be *much* faster than using this class.
     """
 
     flux = Parameter(default=1)

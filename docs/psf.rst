@@ -263,12 +263,18 @@ modeling framework that will provide better performance than using
 :func:`~photutils.psf.make_psf_model`.
 
 Similarly, Photutils provides a convenience PSF model class called
-`~photutils.psf.PRFAdapter` that adapts a supplied PSF model to act as a
-PRF, i.e., it integrates the PSF model over the pixel areas. This class
-is extremely slow due to its use of numerical integrations and should be
-used only when absolutely necessary. It is also experimental and may be
-removed in the future. If a model class of this type is needed, it is
-strongly recommended that you create a custom PRF model instead.
+`~photutils.psf.PRFAdapter` that adapts a supplied PSF model to act as
+a PRF, i.e., it integrates the PSF model over the pixel areas. This
+class is extremely slow due to its use of numerical integrations for
+each pixel and is only suited for experimentation over small regions. It
+should be used only when absolutely necessary. It is also experimental
+and may be deprecated and removed in the future. If a model class of
+this type is needed, it is strongly recommended that you create a custom
+PRF model instead. If one needs a PRF model from an analytical PSF
+model, a more efficient option is to discretize the model on a grid
+using `astropy.convolution.discretize_model` using the ``'oversample'``
+or ``'integrate'`` ``mode``. The resulting 2D image can then be used as
+the input to ``FittableImageModel`` to create an ePSF model.
 
 
 Image-based PSF Models
