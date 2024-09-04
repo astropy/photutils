@@ -10,6 +10,7 @@ import numpy as np
 from astropy.modeling import CompoundModel, Fittable2DModel, Parameter
 from astropy.modeling.models import Const2D, Identity, Shift
 from astropy.nddata import NDData
+from astropy.utils.decorators import deprecated
 
 __all__ = ['make_psf_model', 'grid_from_epsfs', 'PRFAdapter']
 
@@ -460,6 +461,8 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     return GriddedPSFModel(data, fill_value=fill_value)
 
 
+@deprecated('1.14.0', alternative='a FittableImageModel derived from the '
+            'discretize_model function in astropy.convolution')
 class PRFAdapter(Fittable2DModel):
     """
     A model that adapts a supplied PSF model to act as a PRF.
@@ -512,18 +515,17 @@ class PRFAdapter(Fittable2DModel):
     -----
     This current implementation of this class (using numerical
     integration for each pixel) is extremely slow, and only suited for
-    experimentation over relatively few small regions. It should be used
-    only when absolutely necessary. It is also experimental and may be
-    deprecated and removed in the future. If a model class of this type
+    experimentation over relatively few small regions. It should be
+    used only when absolutely necessary. If a model class of this type
     is needed, it is strongly recommended that you create a custom PRF
     model instead.
 
-    If one needs a PRF model from an analytical PSF model, a more
-    efficient option is to discretize the model on a grid using
-    `astropy.convolution.discretize_model` using the ``'oversample'`` or
-    ``'integrate'`` ``mode``. The resulting 2D image can then be used as
-    the input to ``FittableImageModel`` to create an ePSF model. This
-    will be *much* faster than using this class.
+    If one needs a PRF model from an analytical PSF model, a
+    more efficient option is to discretize the model on a grid
+    using :func:`~astropy.convolution.discretize_model` using the
+    ``'oversample'`` or ``'integrate'`` ``mode``. The resulting 2D image
+    can then be used as the input to ``FittableImageModel`` to create an
+    ePSF model. This will be *much* faster than using this class.
     """
 
     flux = Parameter(default=1)
