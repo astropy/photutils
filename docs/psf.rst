@@ -247,6 +247,13 @@ models are evaluated by sampling the analytic function at the input (x,
 y) coordinates. The PRF models are evaluated by integrating the analytic
 function over the pixel areas.
 
+If one needs a custom PRF model based on an analytical PSF model, an
+efficient option is to first discretize the model on a grid using
+:func:`~astropy.convolution.discretize_model` with the ``'oversample'``
+or ``'integrate'`` ``mode``. The resulting 2D image can then be used as
+the input to ``FittableImageModel`` (see :ref:`psf-image_models` below)
+to create an ePSF model.
+
 Note that the non-circular Gaussian and Moffat models above have
 additional parameters beyond the standard PSF model parameters of
 position and flux (``x_0``, ``y_0``, and ``flux``). By default, these
@@ -255,27 +262,14 @@ process). The user can choose to also vary these parameters by setting
 the ``fixed`` attribute on the model parameter to `False`.
 
 Photutils also provides a convenience function called
-:func:`~photutils.psf.make_psf_model` that creates a PSF model from an
-Astropy fittable 2D model. However, if possible, it is recommended to
-use the PSF models provided by `photutils.psf` as they are optimized for
-PSF photometry. One can also create a custom PSF model using the Astropy
-modeling framework that will provide better performance than using
-:func:`~photutils.psf.make_psf_model`.
+:func:`~photutils.psf.make_psf_model` that creates a PSF model from
+an Astropy fittable 2D model. However, it is recommended that one use
+the PSF models provided by `photutils.psf` (if possible) as they are
+optimized for PSF photometry. If a custom PSF model is needed, one can
+be created using the Astropy modeling framework that will provide better
+performance than using :func:`~photutils.psf.make_psf_model`.
 
-Similarly, Photutils provides a convenience PSF model class called
-`~photutils.psf.PRFAdapter` that adapts a supplied PSF model to act as
-a PRF, i.e., it integrates the PSF model over the pixel areas. This
-class is extremely slow due to its use of numerical integrations for
-each pixel and is only suited for experimentation over small regions. It
-should be used only when absolutely necessary. It is also experimental
-and may be deprecated and removed in the future. If a model class of
-this type is needed, it is strongly recommended that you create a custom
-PRF model instead. If one needs a PRF model from an analytical PSF
-model, a more efficient option is to discretize the model on a grid
-using `astropy.convolution.discretize_model` using the ``'oversample'``
-or ``'integrate'`` ``mode``. The resulting 2D image can then be used as
-the input to ``FittableImageModel`` to create an ePSF model.
-
+.. _psf-image_models:
 
 Image-based PSF Models
 ^^^^^^^^^^^^^^^^^^^^^^

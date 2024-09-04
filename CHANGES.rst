@@ -118,6 +118,10 @@ API Changes
   - The ``PSFPhotometry`` ``fit_results`` attribute has been renamed to
     ``fit_info``. ``fit_results`` is now deprecated. [#1858]
 
+  - The ``PRFAdapter`` class has been deprecated. Instead, use a
+    ``FittableImageModel`` derived from the ``discretize_model`` function
+    in ``astropy.convolution``. [#1865]
+
 
 1.13.0 (2024-06-28)
 -------------------
