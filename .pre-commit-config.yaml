@@ -60,13 +60,6 @@ repos:
       - id: ruff
         args: ["--fix", "--show-fixes"]
 
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.17.0
-    hooks:
-      - id: pyupgrade
-        args: ["--py310-plus"]
-        exclude: ".*(extern.*)$"
-
   - repo: https://github.com/scientific-python/cookie
     rev: 2024.08.19
     hooks:
@@ -88,11 +81,6 @@ repos:
     hooks:
       - id: flake8
         args: ["--ignore", "E501,W503"]
-
-  - repo: https://github.com/asottile/yesqa
-    rev: v1.5.0
-    hooks:
-      - id: yesqa
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.3.0
