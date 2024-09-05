@@ -389,3 +389,11 @@ class TestBackground2D:
         bkg = Background2D(data, (74, 99), edge_method='crop')
         cls_repr = repr(bkg)
         assert cls_repr.startswith(f'{bkg.__class__.__name__}')
+
+    def test_str(self):
+        data = np.ones((300, 500))
+        bkg = Background2D(data, (74, 99), edge_method='crop')
+        cls_str = str(bkg)
+        cls_name = bkg.__class__.__name__
+        cls_name = f'{bkg.__class__.__module__}.{cls_name}'
+        assert cls_str.startswith(f'<{cls_name}>')
