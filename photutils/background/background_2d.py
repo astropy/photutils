@@ -248,7 +248,7 @@ class Background2D:
         self._min_bkg_stats = np.nanmin(self._bkg_stats)
 
         # update the interpolator keyword arguments
-        self._interp_kwargs['mesh_yxcen'] = self._mesh_yxcen
+        self._interp_kwargs['mesh_yxcen'] = self._calculate_mesh_yxcen()
 
     def __repr__(self):
         ellipsis = ('coverage_mask',)
@@ -656,12 +656,11 @@ class Background2D:
 
         return filtdata
 
-    @lazyproperty
-    def _mesh_yxcen(self):
+    def _calculate_mesh_yxcen(self):
         """
-        The y and x positions of the centers of the low-resolution
-        background and background RMS meshes with respect to the input
-        data array.
+        Calculate the y and x positions of the centers of the low-
+        resolution background and background RMS meshes with respect to
+        the input data array.
 
         This is used by the interpolator to expand the low-resolution
         mesh to the full-size image. It is also used to plot the mesh
@@ -821,7 +820,7 @@ class Background2D:
         if ax is None:
             ax = plt.gca()
 
-        mesh_xycen = np.flipud(self._mesh_yxcen)
+        mesh_xycen = np.flipud(self._interp_kwargs['mesh_yxcen'])
         ax.scatter(*mesh_xycen, s=markersize, marker=marker, color=color,
                    alpha=alpha)
 
