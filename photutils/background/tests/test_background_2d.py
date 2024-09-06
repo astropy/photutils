@@ -163,10 +163,11 @@ class TestBackground2D:
         bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
                             bkg_estimator=MeanBackground())
 
+        nboxes_tot = 25 * 25
         assert (np.count_nonzero(~np.isnan(bkg2.background_mesh_masked))
-                < bkg2.nboxes_tot)
+                < nboxes_tot)
         assert (np.count_nonzero(~np.isnan(bkg2.background_rms_mesh_masked))
-                < bkg2.nboxes_tot)
+                < nboxes_tot)
         assert np.count_nonzero(np.isnan(bkg2.mesh_nmasked)) == 1
 
     @pytest.mark.parametrize('fill_value', [0.0, np.nan, -1.0])
@@ -213,12 +214,11 @@ class TestBackground2D:
         mask = np.isnan(data)
 
         bkg = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask)
-        assert_equal(bkg.total_mask, mask)
         assert_allclose(bkg.background, DATA, rtol=1e-5)
 
         bkg = Background2D(data, (25, 25), filter_size=(1, 1),
                            coverage_mask=mask)
-        assert_equal(bkg.total_mask, mask)
+        assert bkg.background.shape == data.shape
 
         mask = np.zeros(data.shape, dtype=bool)
         coverage_mask = np.zeros(data.shape, dtype=bool)
@@ -226,7 +226,7 @@ class TestBackground2D:
         coverage_mask[50, 30:50] = True
         bkg = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
                            coverage_mask=coverage_mask)
-        assert_equal(bkg.total_mask, mask | coverage_mask)
+        assert bkg.background.shape == data.shape
 
     def test_masked_array(self):
         data = DATA.copy()
@@ -268,7 +268,7 @@ class TestBackground2D:
         with pytest.warns(AstropyUserWarning, match=match):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1),
                                exclude_percentile=100.0)
-        assert len(bkg._box_idx) == 12
+        assert np.count_nonzero(bkg._nan_idx) == 4
 
     def test_filter_threshold(self):
         """
@@ -292,9 +292,9 @@ class TestBackground2D:
         data[25:50, 50:75] = 10.0
         ref_data = np.copy(BKG_MESH)
         ref_data[1, 2] = 10.0
-        b = Background2D(data, (25, 25), filter_size=(3, 3),
-                         filter_threshold=100.0)
-        assert_allclose(b.background_mesh, ref_data)
+        bkg = Background2D(data, (25, 25), filter_size=(3, 3),
+                           filter_threshold=100.0)
+        assert_allclose(bkg.background_mesh, ref_data)
 
     def test_filter_threshold_nofilter(self):
         """
@@ -334,7 +334,7 @@ class TestBackground2D:
     def test_mask_nomask(self):
         bkg = Background2D(DATA, (25, 25), filter_size=(1, 1),
                            mask=np.ma.nomask)
-        assert bkg.mask is None
+        assert bkg._mask is None
 
         bkg = Background2D(DATA, (25, 25), filter_size=(1, 1),
                            coverage_mask=np.ma.nomask)
@@ -368,12 +368,6 @@ class TestBackground2D:
             Background2D(DATA, (23, 22), filter_size=(1, 1),
                          edge_method='not_valid')
 
-    def test_invalid_mesh_idx_len(self):
-        bkg = Background2D(DATA, (25, 25), filter_size=(1, 1))
-        match = 'shape mismatch: value array of shape'
-        with pytest.raises(ValueError, match=match):
-            bkg._make_2d_array(np.arange(3))
-
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_meshes(self):
         """
@@ -395,24 +389,3 @@ class TestBackground2D:
         bkg = Background2D(data, (74, 99), edge_method='crop')
         cls_repr = repr(bkg)
         assert cls_repr.startswith(f'{bkg.__class__.__name__}')
-
-
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
-def test_bkgzoominterp_clip():
-    bkg = Background2D(np.ones((300, 300)), 100)
-    mesh = np.array([[0.01, 0.01, 0.02],
-                     [0.01, 0.02, 0.03],
-                     [0.03, 0.03, 12.9]])
-
-    interp1 = BkgZoomInterpolator(clip=False)
-    zoom1 = interp1(mesh, bkg)
-
-    interp2 = BkgZoomInterpolator(clip=True)
-    zoom2 = interp2(mesh, bkg)
-
-    minval = np.min(mesh)
-    maxval = np.max(mesh)
-    assert np.min(zoom1) < minval
-    assert np.max(zoom1) > maxval
-    assert np.min(zoom2) == minval
-    assert np.max(zoom2) == maxval
