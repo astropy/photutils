@@ -121,10 +121,11 @@ class Background2D:
           of boxes is only slightly larger than the ``data`` size to
           minimize the amount of padding.
         * ``'crop'``: crop the image along the top and/or right edges.
-          This method should be used sparingly. Best results will occur
-          when ``box_size`` is chosen such that an integer number of
-          boxes is only slightly smaller than the ``data`` size to
-          minimize the amount of cropping.
+          This method should be used sparingly, and it may be deprecated
+          in the future. Best results will occur when ``box_size`` is
+          chosen such that an integer number of boxes is only slightly
+          smaller than the ``data`` size to minimize the amount of
+          cropping.
 
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
