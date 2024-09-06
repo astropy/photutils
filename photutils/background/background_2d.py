@@ -740,7 +740,7 @@ class Background2D:
         return data
 
     @property
-    @deprecated('1.14.0')
+    @deprecated('1.14.0', alternative='npixels_mesh')
     def mesh_nmasked(self):
         """
         A 2D array of the number of masked pixels in each mesh.
@@ -750,6 +750,14 @@ class Background2D:
         data = (np.prod(self.box_size) - self._ngood).astype(float)
         data[self._nan_idx] = np.nan
         return data
+
+    @property
+    def npixels_mesh(self):
+        """
+        A 2D array of the number pixels used to compute the statistics
+        in each mesh.
+        """
+        return self._ngood
 
     @lazyproperty
     def background_median(self):
