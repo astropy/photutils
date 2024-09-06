@@ -11,7 +11,7 @@ import numpy as np
 from astropy.nddata import NDData, reshape_as_blocks
 from astropy.stats import SigmaClip
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated
+from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import RectangularAperture
@@ -110,6 +110,12 @@ class Background2D:
         (default).
 
     edge_method : {'pad', 'crop'}, optional
+        This keyword will be removed in a future version and the default
+        version of ``'pad'`` will always be used. The ``'crop'`` option
+        has been strongly discouraged for some time now. Its usage
+        creates a undesirable scaling of the low-resolution maps that
+        leads to incorrect results.
+
         The method used to determine how to handle the case where the
         image size is not an integer multiple of the ``box_size``
         in either dimension. Both options will resize the image for
@@ -181,6 +187,7 @@ class Background2D:
     .. _bottleneck:  https://github.com/pydata/bottleneck
     """
 
+    @deprecated_renamed_argument('edge_method', None, '1.14.0')
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
                  fill_value=0.0, exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, edge_method='pad',

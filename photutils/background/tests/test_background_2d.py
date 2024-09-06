@@ -92,7 +92,7 @@ class TestBackground2D:
         assert_allclose(bkg1.background_mesh, bkg_low_res)
         assert bkg1.background.shape == data.shape
         bkg2 = Background2D(data, (25, 25), filter_size=(1, 1),
-                            edge_method='pad', interpolator=interpolator)
+                            interpolator=interpolator)
         assert_allclose(bkg2.background_mesh, bkg_low_res)
         assert bkg2.background.shape == data.shape
 
@@ -108,10 +108,12 @@ class TestBackground2D:
 
     @pytest.mark.parametrize('filter_size', FILTER_SIZES)
     def test_resizing(self, filter_size):
-        bkg1 = Background2D(DATA, (23, 22), filter_size=filter_size,
-                            bkg_estimator=MeanBackground(), edge_method='crop')
+        with pytest.warns(AstropyDeprecationWarning):
+            bkg1 = Background2D(DATA, (23, 22), filter_size=filter_size,
+                                bkg_estimator=MeanBackground(),
+                                edge_method='crop')
         bkg2 = Background2D(DATA, (23, 22), filter_size=filter_size,
-                            bkg_estimator=MeanBackground(), edge_method='pad')
+                            bkg_estimator=MeanBackground())
         assert_allclose(bkg1.background, bkg2.background, rtol=2e-6)
         assert_allclose(bkg1.background_rms, bkg2.background_rms)
 
@@ -145,8 +147,10 @@ class TestBackground2D:
         assert_allclose(bkg.background_rms, BKG_RMS)
 
         # test edge crop with mask
-        bkg2 = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
-                            bkg_estimator=MeanBackground(), edge_method='crop')
+        with pytest.warns(AstropyDeprecationWarning):
+            bkg2 = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
+                                bkg_estimator=MeanBackground(),
+                                edge_method='crop')
         assert_allclose(bkg2.background, DATA, rtol=2.0e-5)
 
     def test_mask(self):
@@ -372,7 +376,8 @@ class TestBackground2D:
 
     def test_invalid_edge_method(self):
         match = 'edge_method must be "pad" or "crop"'
-        with pytest.raises(ValueError, match=match):
+        with (pytest.warns(AstropyDeprecationWarning),
+              pytest.raises(ValueError, match=match)):
             Background2D(DATA, (23, 22), filter_size=(1, 1),
                          edge_method='not_valid')
 
@@ -387,20 +392,21 @@ class TestBackground2D:
 
     def test_crop(self):
         data = np.ones((300, 500))
-        bkg = Background2D(data, (74, 99), edge_method='crop')
+        with pytest.warns(AstropyDeprecationWarning):
+            bkg = Background2D(data, (74, 99), edge_method='crop')
         assert_allclose(bkg.background_median, 1.0)
         assert_allclose(bkg.background_rms_median, 0.0)
         assert_allclose(bkg.background_mesh.shape, (4, 5))
 
     def test_repr(self):
         data = np.ones((300, 500))
-        bkg = Background2D(data, (74, 99), edge_method='crop')
+        bkg = Background2D(data, (74, 99))
         cls_repr = repr(bkg)
         assert cls_repr.startswith(f'{bkg.__class__.__name__}')
 
     def test_str(self):
         data = np.ones((300, 500))
-        bkg = Background2D(data, (74, 99), edge_method='crop')
+        bkg = Background2D(data, (74, 99))
         cls_str = str(bkg)
         cls_name = bkg.__class__.__name__
         cls_name = f'{bkg.__class__.__module__}.{cls_name}'
