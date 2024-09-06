@@ -8,7 +8,7 @@ import warnings
 
 import astropy.units as u
 import numpy as np
-from astropy.nddata import NDData
+from astropy.nddata import NDData, reshape_as_blocks
 from astropy.stats import SigmaClip
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
@@ -79,19 +79,19 @@ class Background2D:
         maps where the input ``coverage_mask`` is `True`.
 
     exclude_percentile : float in the range of [0, 100], optional
-        The percentage of masked pixels in a box, used as a threshold
-        for determining if the box is excluded. If a box has more
-        than ``exclude_percentile`` percent of its pixels masked
-        then it will be excluded from the low-resolution map.
-        Masked pixels include those from the input ``mask`` and
-        ``coverage_mask``, those resulting from the data padding
-        (i.e., if ``edge_method='pad'``), and those resulting
-        from sigma clipping (if ``sigma_clip`` is used). Setting
-        ``exclude_percentile=0`` will exclude boxes that have any masked
-        pixels. Note that completely masked boxes are always excluded.
-        For best results, ``exclude_percentile`` should be kept as
-        low as possible (as long as there are sufficient pixels for
-        reasonable statistical estimates). The default is 10.0.
+        The percentage of masked pixels allowed in a box for it to be
+        included in the low-resolution map. If a box has more than
+        ``exclude_percentile`` percent of its pixels masked then it
+        will be excluded from the low-resolution map. Masked pixels
+        include those from the input ``mask`` and ``coverage_mask``,
+        non-finite ``data`` values, any padded area at the data
+        edges, and those resulting from any sigma clipping. Setting
+        ``exclude_percentile=0`` will exclude boxes that have any that
+        have any masked pixels. Note that completely masked boxes are
+        always excluded. In general, ``exclude_percentile`` should be
+        kept as low as possible to ensure there are a sufficient number
+        of unmasked pixels in each box for reasonable statistical
+        estimates. The default is 10.0.
 
     filter_size : int or array_like (int), optional
         The window size of the 2D median filter to apply to the
@@ -188,16 +188,16 @@ class Background2D:
                  interpolator=BkgZoomInterpolator()):
 
         if isinstance(data, (u.Quantity, NDData)):  # includes CCDData
-            self.unit = data.unit
+            self._unit = data.unit
             data = data.data
         else:
-            self.unit = None
+            self._unit = None
 
-        self.data = self._validate_array(data, 'data', shape=False)
-        self.mask = self._validate_array(mask, 'mask')
+        self._data = self._validate_array(data, 'data', shape=False)
+
+        self._mask = self._validate_array(mask, 'mask')
         self.coverage_mask = self._validate_array(coverage_mask,
                                                   'coverage_mask')
-        self.total_mask = self._combine_masks()
 
         # box_size cannot be larger than the data array size
         self.box_size = as_pair('box_size', box_size, lower_bound=(0, 1),
@@ -211,244 +211,341 @@ class Background2D:
         self.filter_size = as_pair('filter_size', filter_size,
                                    lower_bound=(0, 1), check_odd=True)
         self.filter_threshold = filter_threshold
+        if edge_method not in ('pad', 'crop'):
+            raise ValueError('edge_method must be "pad" or "crop"')
         self.edge_method = edge_method
         self.sigma_clip = sigma_clip
+        self.interpolator = interpolator
+
+        # we perform sigma clipping as a separate step to avoid
+        # calling it twice for the background and background RMS
         bkg_estimator.sigma_clip = None
         bkgrms_estimator.sigma_clip = None
         self.bkg_estimator = bkg_estimator
         self.bkgrms_estimator = bkgrms_estimator
-        self.interpolator = interpolator
 
-        self.nboxes = None
-        self.box_npixels = None
-        self.nboxes_tot = None
-        self._box_data = None
-        self._box_idx = None
-        self._mesh_idx = None
-        self._bkg_stats = None
-        self._bkgrms_stats = None
-
-        self._prepare_box_data()
-
-        self._params = ('data', 'box_size', 'mask', 'coverage_mask',
+        self._box_npixels = None
+        self._params = ('box_size', 'coverage_mask',
                         'fill_value', 'exclude_percentile', 'filter_size',
                         'filter_threshold', 'edge_method', 'sigma_clip',
                         'bkg_estimator', 'bkgrms_estimator', 'interpolator')
 
+        # store the interpolator keyword arguments for later use
+        # (before self._data is deleted in self._calculate_stats)
+        self._interp_kwargs = {'shape': self._data.shape,
+                               'dtype': self._data.dtype,
+                               'box_size': self.box_size,
+                               'edge_method': self.edge_method}
+
+        # perform the initial calculations to avoid storing large data
+        # arrays and keep the memory usage minimal
+        self._prepare_data()
+        (self._bkg_stats,
+         self._bkgrms_stats,
+         self._ngood) = self._calculate_stats()
+
+        # this is used to selectively filter the low-resolution maps
+        self._min_bkg_stats = np.nanmin(self._bkg_stats)
+
+        # update the interpolator keyword arguments
+        self._interp_kwargs['mesh_yxcen'] = self._mesh_yxcen
+
     def __repr__(self):
-        ellipsis = ('data', 'mask', 'coverage_mask')
+        ellipsis = ('coverage_mask',)
         return make_repr(self, self._params, ellipsis=ellipsis)
 
     def __str__(self):
-        ellipsis = ('data', 'mask', 'coverage_mask')
+        ellipsis = ('coverage_mask',)
         return make_repr(self, self._params, ellipsis=ellipsis, long=True)
 
     def _validate_array(self, array, name, shape=True):
+        """
+        Validate the input data, mask, and coverage_mask arrays.
+        """
         if name in ('mask', 'coverage_mask') and array is np.ma.nomask:
             array = None
         if array is not None:
             array = np.asanyarray(array)
             if array.ndim != 2:
                 raise ValueError(f'{name} must be a 2D array.')
-            if shape and array.shape != self.data.shape:
+            if shape and array.shape != self._data.shape:
                 raise ValueError(f'data and {name} must have the same shape.')
         return array
 
-    def _combine_masks(self):
-        if self.mask is None and self.coverage_mask is None:
+    def _apply_units(self, data):
+        """
+        Apply units to the data.
+
+        The units are based on the units of the input ``data`` array.
+
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            The input data array.
+
+        Returns
+        -------
+        data : `~numpy.ndarray`
+            The data array with units applied.
+        """
+        if self._unit is not None:
+            data <<= self._unit
+        return data
+
+    def _combine_input_masks(self):
+        """
+        Combine the input mask and coverage_mask.
+        """
+        if self._mask is None and self.coverage_mask is None:
             return None
-        if self.mask is None:
+        if self._mask is None:
             return self.coverage_mask
         if self.coverage_mask is None:
-            return self.mask
-        return np.logical_or(self.mask, self.coverage_mask)
+            return self._mask
+
+        mask = np.logical_or(self._mask, self.coverage_mask)
+        del self._mask
+        return mask
+
+    def _combine_all_masks(self, mask):
+        """
+        Combine the input masks (mask and coverage_mask) with the mask
+        of invalid data values.
+        """
+        input_mask = self._combine_input_masks()
+
+        msg = ('Input data contains invalid values (NaNs or infs), which '
+               'were automatically masked.')
+
+        if input_mask is None:
+            if np.any(mask):
+                warnings.warn(msg, AstropyUserWarning)
+            return mask
+
+        total_mask = np.logical_or(input_mask, mask)
+
+        if input_mask is not None:
+            condition = np.logical_and(np.logical_not(input_mask), mask)
+            if np.any(condition):
+                warnings.warn(msg, AstropyUserWarning)
+
+        return total_mask
 
     def _prepare_data(self):
         """
         Prepare the data.
 
         This method:
-          * converts the data to float dtype (and makes a copy)
-          * automatically masks non-finite values that aren't already masked
+          * makes a copy of the input data array and converts it to
+            float dtype
+          * automatically masks non-finite values that aren't already
+            masked
           * replaces all masked values with NaN
           * converts MaskedArray to ndarray using NaN as masked values
         """
-        # float array type is needed to insert nans into the array
-        self.data = self.data.astype(float)  # makes a copy
+        # Make a copy of the input data array so that it is not
+        # modified. We also need to convert the data to a float array
+        # to insert NaNs into the array.
+        self._data = self._data.astype(float)  # also makes a copy
 
-        # add non-finite values not already masked to the total mask
-        bad_mask = np.isfinite(self.data)
-
-        if self.total_mask is not None:
-            bad_mask |= self.total_mask
-        bad_mask = np.invert(bad_mask, out=bad_mask)
-
-        if np.any(bad_mask):
-            if self.total_mask is None:
-                self.total_mask = bad_mask
-            else:
-                self.total_mask |= bad_mask
-            warnings.warn('Input data contains invalid values (NaNs or '
-                          'infs), which were automatically masked.',
-                          AstropyUserWarning)
-
-        # replace all masked values with NaN
-        if self.total_mask is not None:
-            self.data[self.total_mask] = np.nan
+        # replace nall masked values with NaN
+        total_mask = self._combine_all_masks(~np.isfinite(self._data))
+        if np.any(total_mask):
+            self._data[total_mask] = np.nan
 
         # convert MaskedArray to ndarray using np.nan as masked values
-        if isinstance(self.data, np.ma.MaskedArray):
-            self.data = self.data.filled(np.nan)
-
-    def _reshape_data(self):
-        """
-        First, pad or crop the 2D data array so that there are an
-        integer number of boxes in both dimensions.
-
-        Then reshape it into a different 2D array where each row
-        represents the data in a single box.
-        """
-        self.nboxes = self.data.shape // self.box_size
-        extra_size = self.data.shape % self.box_size
-
-        if np.sum(extra_size) != 0:
-            # pad or crop the data
-            if self.edge_method == 'pad':
-                pad_size = (np.ceil(self.data.shape
-                                    / self.box_size).astype(int)
-                            * self.box_size) - self.data.shape
-                pad_width = ((0, pad_size[0]), (0, pad_size[1]))
-                data = np.pad(self.data, pad_width, mode='constant',
-                              constant_values=np.nan)
-                self.nboxes = data.shape // self.box_size
-            elif self.edge_method == 'crop':
-                crop_size = self.nboxes * self.box_size
-                crop_slc = np.index_exp[0:crop_size[0], 0:crop_size[1]]
-                data = self.data[crop_slc]
-            else:
-                raise ValueError('edge_method must be "pad" or "crop"')
-        else:
-            data = self.data
-
-        self.box_npixels = np.prod(self.box_size)
-        self.nboxes_tot = np.prod(self.nboxes)
-
-        # a reshaped 2D array with box data along the x axis
-        self._box_data = np.swapaxes(data.reshape(
-            self.nboxes[0], self.box_size[0],
-            self.nboxes[1], self.box_size[1]),
-            1, 2).reshape(self.nboxes_tot, self.box_npixels)
+        if isinstance(self._data, np.ma.MaskedArray):
+            self._data = self._data.filled(np.nan)
 
     @lazyproperty
-    def _box_npixels_threshold(self):
-        # * boxes that are completely masked are always excluded
-        # * boxes that contain more than ``exclude_percentile`` percent
-        #   masked pixels are also excluded:
-        #     - for exclude_percentile=0, only boxes where nmasked=0 will
-        #       be included
-        #     - for exclude_percentile=100, all boxes will be included
-        #       *unless* they are completely masked
-        threshold = self.exclude_percentile / 100.0 * self.box_npixels
-
-        # always exclude completely masked boxes
-        if self.exclude_percentile == 100:
-            threshold -= 1
-        return threshold
-
-    def _get_box_indices(self):
+    def _good_npixels_threshold(self):
         """
-        Define the x and y indices of the boxes that will be used to
-        compute background statistics.
+        The minimum number of required unmasked pixels in a box used for
+        it to be included in the low-resolution map.
 
-        The box array (self._box_data) is a 2D array where each row
-        represents the data in a single box.
+        For exclude_percentile=0, only boxes where nmasked=0 will be
+        included. For exclude_percentile=100, all boxes will be included
+        *unless* they are completely masked.
 
-        The ``exclude_percentile`` keyword determines which boxes are
-        not used for the background interpolation.
+        Boxes that are completely masked are always excluded.
         """
-        # the number of NaN pixels in each box
-        nmasked = np.count_nonzero(np.isnan(self._box_data), axis=1)
+        return (1 - (self.exclude_percentile / 100.0)) * self._box_npixels
 
-        # define indices of good (included) boxes
-        box_idx = np.where(nmasked <= self._box_npixels_threshold)[0]
-
-        if box_idx.size == 0:
-            raise ValueError('All boxes contain > '
-                             f'{self._box_npixels_threshold} '
-                             f'({self.exclude_percentile} percent per '
-                             'box) masked pixels (or all are completely '
-                             'masked). Please check your data or increase '
-                             '"exclude_percentile" to allow more boxes to '
-                             'be included.')
-
-        return box_idx
-
-    def _select_initial_boxes(self):
-        # perform a first cut on rejecting boxes
-        self._box_idx = self._get_box_indices()
-        if self._box_idx.size != self._box_data.shape[0]:
-            self._box_data = self._box_data[self._box_idx, :]
-
-    def _sigmaclip_boxes(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', category=AstropyUserWarning)
-            if self.sigma_clip is not None:
-                self._box_data = self.sigma_clip(self._box_data, axis=1,
-                                                 masked=False)
-
-        # perform box rejection on sigma-clipped data (i.e., for any
-        # newly-masked pixels)
-        idx = self._get_box_indices()
-        self._box_idx = self._box_idx[idx]
-        if self._box_idx.size != self._box_data.shape[0]:
-            self._box_data = self._box_data[idx, :]
-
-        # the indices of the good pixels in the low-resolution 2D mesh
-        self._mesh_idx = np.unravel_index(self._box_idx, self.nboxes)
-
-    def _prepare_box_data(self):
+    def _sigmaclip_boxes(self, data, axis):
         """
-        Prepare the box data by reshaping, masking (with NaNs), and
-        sigma clipping the data.
-        """
-        self._prepare_data()
-        self._reshape_data()
-        self._select_initial_boxes()
-        self._sigmaclip_boxes()
+        Sigma clip the boxes along the specified axis.
 
-    def _make_2d_array(self, data):
-        """
-        Convert a 1D array of values to a 2D array given the indices in
-        ``self._mesh_idx``.
+        This method sigma clips the boxes along the specified axis and
+        returns the sigma-clipped data. The input ``data`` is typically
+        a 4D array where the first two dimensions represent the y and x
+        positions of the boxes and the last two dimensions represent the
+        y and x positions within each box.
+
+        We perform sigma clipping as a separate step to avoid performing
+        sigma clipping for both the background and background RMS
+        estimators.
 
         Parameters
         ----------
-        data : 1D `~numpy.ndarray`
-            A 1D array of values.
+        data : `~numpy.ndarray`
+            The 4D array of box data.
+
+        axis : int or tuple of int
+            The axis or axes along which to sigma clip the data.
 
         Returns
         -------
-        result : 2D `~numpy.ndarray`
-            A 2D array. Pixels not defined in ``mesh_idx`` are assigned
-            a value of np.nan.
+        data : `~numpy.ndarray`
+            The sigma-clipped data.
         """
-        data2d = np.full(self.nboxes, np.nan)
-        data2d[self._mesh_idx] = data
-        return data2d
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=AstropyUserWarning)
+            if self.sigma_clip is not None:
+                data = self.sigma_clip(data, axis=axis, masked=False)
 
-    def _interpolate_meshes(self, data, n_neighbors=10, eps=0.0, power=1.0,
-                            reg=0.0):
+        return data
+
+    def _compute_box_statistics(self, data, axis=None):
         """
-        Use IDW interpolation to fill in any masked pixels in the low-
-        resolution 2D mesh background and background RMS images.
+        Compute the background and background RMS statistics in each
+        box.
+
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            The 4D array of box data.
+
+        axis : int or tuple of int, optional
+            The axis or axes along which to compute the statistics.
+
+        Returns
+        -------
+        bkg : 2D `~numpy.ndarray` or float
+            The background statistics in each box.
+
+        bkgrms : 2D `~numpy.ndarray` or float
+            The background RMS statistics in each box.
+        """
+        data = self._sigmaclip_boxes(data, axis=axis)
+
+        # make 2D arrays of the box statistics
+        bkg = self.bkg_estimator(data, axis=axis)
+        bkgrms = self.bkgrms_estimator(data, axis=axis)
+
+        # mask boxes with too few unmasked pixels
+        ngood = np.count_nonzero(~np.isnan(data), axis=axis)
+        box_mask = ngood <= self._good_npixels_threshold
+
+        if np.ndim(bkg) == 0:
+            if box_mask:  # single corner box
+                bkg = np.nan
+                bkgrms = np.nan
+        else:
+            bkg[box_mask] = np.nan
+            bkgrms[box_mask] = np.nan
+
+        return bkg, bkgrms, ngood
+
+    def _calculate_stats(self):
+        """
+        Calculate the background and background RMS statistics in each
+        box.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D input data array. The data array is assumed to have
+            been prepared by the ``_prepare_data`` method, where NaNs
+            are used to mask invalid data values.
+
+        Returns
+        -------
+        bkg : 2D `~numpy.ndarray`
+            The background statistics in each box.
+
+        bkgrms : 2D `~numpy.ndarray`
+            The background RMS statistics in each box.
+
+        ngood : 2D `~numpy.ndarray`
+            The number of unmasked pixels in each box.
+        """
+        self._box_npixels = np.prod(self.box_size)
+        nboxes = self._data.shape // self.box_size
+        y1, x1 = nboxes * self.box_size
+
+        # core boxes
+        core = reshape_as_blocks(self._data[:y1, :x1], self.box_size)
+
+        bkg, bkgrms, ngood = self._compute_box_statistics(core, axis=(2, 3))
+
+        extra_row = y1 < self._data.shape[0]
+        extra_col = x1 < self._data.shape[1]
+        if self.edge_method == 'pad' and (extra_row or extra_col):
+            # extra row
+            if extra_row:
+                row_data = reshape_as_blocks(self._data[y1:, :x1],
+                                             (1, self.box_size[1]))
+                row_bkg, row_bkgrms, row_ngood = self._compute_box_statistics(
+                    row_data, axis=(0, 3))
+
+            # extra column
+            if extra_col:
+                col_data = reshape_as_blocks(self._data[:y1, x1:],
+                                             (self.box_size[0], 1))
+                col_bkg, col_bkgrms, col_ngood = self._compute_box_statistics(
+                    col_data, axis=(2, 1))
+
+            # extra corner box -- append to extra column
+            if extra_row and extra_col:
+                crn_bkg, crn_bkgrms, crn_ngood = self._compute_box_statistics(
+                    self._data[y1:, x1:], axis=None)
+                col_bkg = np.vstack((col_bkg, crn_bkg))
+                col_bkgrms = np.vstack((col_bkgrms, crn_bkgrms))
+                col_ngood = np.vstack((col_ngood, crn_ngood))
+
+            # combine the core and extra boxes to construct the
+            # complete 2D bkg and bkgrms arrays
+            if extra_row:
+                bkg = np.vstack([bkg, row_bkg[:, 0]])
+                bkgrms = np.vstack([bkgrms, row_bkgrms[:, 0]])
+                ngood = np.vstack([ngood, row_ngood[:, 0]])
+
+            if extra_col:
+                bkg = np.hstack([bkg, col_bkg])
+                bkgrms = np.hstack([bkgrms, col_bkgrms])
+                ngood = np.hstack([ngood, col_ngood])
+
+        if np.all(np.isnan(bkg)):
+            raise ValueError('All boxes contain <= '
+                             f'{self._good_npixels_threshold} good pixels. '
+                             'Please check your data or increase '
+                             '"exclude_percentile" to allow more boxes to '
+                             'be included.')
+
+        # we no longer need the copy of the input array
+        del self._data
+
+        # TEMP: remove when background_mesh_masked,
+        # background_rms_mesh_masked, and mesh_nmasked are removed
+        self._nan_idx = np.where(np.isnan(bkg))
+
+        return bkg, bkgrms, ngood
+
+    def _interpolate_grid(self, data, n_neighbors=10, eps=0.0, power=1.0,
+                          reg=0.0):
+        """
+        Fill in any NaN values in the low-resolution 2D mesh background
+        and background RMS images.
+
+        IDW interpolation is used to replace the NaN pixels.
 
         This is required to use a regular-grid interpolator to expand
         the low-resolution image to the full size image.
 
         Parameters
         ----------
-        data : 1D `~numpy.ndarray`
-            A 1D array of mesh values.
+        data : 2D `~numpy.ndarray`
+            A 2D array of the box statistics.
 
         n_neighbors : int, optional
             The maximum number of nearest neighbors to use during the
@@ -472,41 +569,37 @@ class Background2D:
         Returns
         -------
         result : 2D `~numpy.ndarray`
-            A 2D array of the mesh values where masked pixels have been
+            A 2D array of the box values where NaN values have been
             filled by IDW interpolation.
         """
-        yx = np.column_stack(self._mesh_idx)
-        interp_func = ShepardIDWInterpolator(yx, data)
+        if not np.any(np.isnan(data)):
+            return data
 
-        yi, xi = np.mgrid[0:self.nboxes[0], 0:self.nboxes[1]]
-        yx_indices = np.column_stack((yi.ravel(), xi.ravel()))
-        img1d = interp_func(yx_indices, n_neighbors=n_neighbors, power=power,
-                            eps=eps, reg=reg)
+        mask = ~np.isnan(data)
+        idx = np.where(mask)
+        yx = np.column_stack(idx)
+        interp_func = ShepardIDWInterpolator(yx, data[mask])
 
-        return img1d.reshape(self.nboxes)
+        # interpolate the masked pixels where data is NaN
+        idx = np.where(np.isnan(data))
+        yx_indices = np.column_stack(idx)
+        interp_values = interp_func(yx_indices, n_neighbors=n_neighbors,
+                                    power=power, eps=eps, reg=reg)
 
-    def _make_mesh_image(self, box_stats):
-        """
-        Calculate the filtered low-resolution background or background
-        RMS "mesh" image from the 1D box statistics data.
-        """
-        # make the unfiltered 2D mesh arrays (these are not masked)
-        if box_stats.size == self.nboxes_tot:
-            # no masked boxes
-            mesh_img = self._make_2d_array(box_stats)
-        else:
-            # interpolate masked boxes
-            mesh_img = self._interpolate_meshes(box_stats)
+        interp_data = np.copy(data)  # copy to avoid modifying the input data
+        interp_data[idx] = interp_values
 
-        return mesh_img
+        return interp_data
 
     def _selective_filter(self, data):
         """
-        Filter only pixels above ``filter_threshold`` in the background
-        mesh.
+        Filter only pixels above ``filter_threshold`` in a low-
+        resolution 2D image.
 
-        The same pixels are filtered in both the background and
-        background RMS meshes.
+        The pixels to be filtered are determined by applying the
+        ``filter_threshold`` to the low-resolution background mesh. The
+        same pixels are filtered in both the background and background
+        RMS meshes.
 
         Parameters
         ----------
@@ -515,32 +608,44 @@ class Background2D:
 
         Returns
         -------
-        filtered_data : 2D `~numpy.ndarray`
+        result : 2D `~numpy.ndarray`
             The filtered 2D array of mesh values.
         """
-        data_out = np.copy(data)
+        data_filtered = np.copy(data)
+        bkg_stats_interp = self._interpolate_grid(self._bkg_stats)
         yx_indices = np.column_stack(
-            np.nonzero(self._unfiltered_background_mesh
-                       > self.filter_threshold))
+            np.nonzero(bkg_stats_interp > self.filter_threshold))
+
+        yfs, xfs = self.filter_size
+        hyfs, hxfs = yfs // 2, xfs // 2
         for i, j in yx_indices:
-            yfs, xfs = self.filter_size
-            hyfs, hxfs = yfs // 2, xfs // 2
             yidx0 = max(i - hyfs, 0)
             yidx1 = min(i - hyfs + yfs, data.shape[0])
             xidx0 = max(j - hxfs, 0)
             xidx1 = min(j - hxfs + xfs, data.shape[1])
-            data_out[i, j] = np.median(data[yidx0:yidx1, xidx0:xidx1])
+            data_filtered[i, j] = np.median(data[yidx0:yidx1, xidx0:xidx1])
 
-        return data_out
+        return data_filtered
 
-    def _filter_meshes(self, data):
+    def _filter_grid(self, data):
         """
-        Apply a 2D median filter to a low-resolution 2D mesh image.
+        Apply a 2D median filter to a low-resolution 2D image.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            A 2D array of mesh values.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The filtered 2D array of mesh values.
         """
-        if np.array_equal(self.filter_size, [1, 1]):
+        if tuple(self.filter_size) == (1, 1):
             return data
 
-        if self.filter_threshold is None:
+        if (self.filter_threshold is None
+                or self.filter_threshold < self._min_bkg_stats):
             # filter the entire array
             from scipy.ndimage import generic_filter
             filtdata = generic_filter(data, nanmedian, size=self.filter_size,
@@ -552,81 +657,79 @@ class Background2D:
         return filtdata
 
     @lazyproperty
-    def _unfiltered_background_mesh(self):
+    def _mesh_yxcen(self):
         """
-        The unfiltered low-resolution background image.
+        The y and x positions of the centers of the low-resolution
+        background and background RMS meshes with respect to the input
+        data array.
 
-        This array is needed separately from background_mesh to
-        compute which pixels are to be selectively filtered (if
-        ``filter_threshold`` is input).
+        This is used by the interpolator to expand the low-resolution
+        mesh to the full-size image. It is also used to plot the mesh
+        boxes on the input image.
         """
-        self._bkg_stats = self.bkg_estimator(self._box_data, axis=1)
-        return self._make_mesh_image(self._bkg_stats)
+        mesh_idx = np.where(~np.isnan(self._bkg_stats))
+        box_cen = (self.box_size - 1) / 2.0
+        return (mesh_idx * self.box_size[:, None]) + box_cen[:, None]
 
     @lazyproperty
     def background_mesh(self):
         """
         The low-resolution background image.
 
-        This image is equivalent to the low-resolution "MINIBACKGROUND"
-        background map in SourceExtractor.
+        This image is equivalent to the low-resolution "MINIBACK"
+        background map check image in SourceExtractor.
         """
-        return self._filter_meshes(self._unfiltered_background_mesh)
+        data = self._interpolate_grid(self._bkg_stats)
+        if self.filter_threshold is None:
+            self._bkg_stats = None  # delete to save memory
+        return self._apply_units(self._filter_grid(data))
 
     @lazyproperty
     def background_rms_mesh(self):
         """
         The low-resolution background RMS image.
 
-        This image is equivalent to the low-resolution "MINIBACKGROUND"
-        background rms map in SourceExtractor.
+        This image is equivalent to the low-resolution "MINIBACK_RMS"
+        background rms map check image in SourceExtractor.
         """
-        self._bkgrms_stats = self.bkgrms_estimator(self._box_data, axis=1)
-        mesh_img = self._make_mesh_image(self._bkgrms_stats)
-        return self._filter_meshes(mesh_img)
+        data = self._interpolate_grid(self._bkgrms_stats)
+        self._bkgrms_stats = None  # delete to save memory
+        return self._apply_units(self._filter_grid(data))
 
-    @lazyproperty
+    @property
     def background_mesh_masked(self):
         """
-        The background 2D (masked) array mesh prior to any
-        interpolation.
+        The low-resolution background image prior to any interpolation
+        to fill NaN values.
 
         The array has NaN values where meshes were excluded.
         """
-        data = np.full(self.background_mesh.shape, np.nan)
-        data[self._mesh_idx] = self.background_mesh[self._mesh_idx]
+        data = self.background_mesh.copy()
+        data[self._nan_idx] = np.nan
         return data
 
-    @lazyproperty
+    @property
     def background_rms_mesh_masked(self):
         """
-        The background RMS 2D (masked) array mesh prior to any
-        interpolation.
+        The low-resolution background RMS image prior to any
+        interpolation to fill NaN values.
 
         The array has NaN values where meshes were excluded.
         """
-        data = np.full(self.background_rms_mesh.shape, np.nan)
-        data[self._mesh_idx] = self.background_rms_mesh[self._mesh_idx]
+        data = self.background_rms_mesh.copy()
+        data[self._nan_idx] = np.nan
         return data
 
-    @lazyproperty
-    def _mesh_yxpos(self):
-        box_cen = (self.box_size - 1) / 2.0
-        return (self._mesh_idx * self.box_size[:, None]) + box_cen[:, None]
-
-    @lazyproperty
-    def _mesh_xypos(self):
-        return np.flipud(self._mesh_yxpos)
-
-    @lazyproperty
+    @property
     def mesh_nmasked(self):
         """
         A 2D array of the number of masked pixels in each mesh.
 
         NaN values indicate where meshes were excluded.
         """
-        return self._make_2d_array(
-            np.count_nonzero(np.isnan(self._box_data), axis=1))
+        data = (np.prod(self.box_size) - self._ngood).astype(float)
+        data[self._nan_idx] = np.nan
+        return data
 
     @lazyproperty
     def background_median(self):
@@ -636,10 +739,7 @@ class Background2D:
         This is equivalent to the value SourceExtractor prints to stdout
         (i.e., "(M+D) Background: <value>").
         """
-        _median = np.median(self.background_mesh)
-        if self.unit is not None:
-            _median <<= self.unit
-        return _median
+        return self._apply_units(np.median(self.background_mesh))
 
     @lazyproperty
     def background_rms_median(self):
@@ -649,34 +749,33 @@ class Background2D:
         This is equivalent to the value SourceExtractor prints to stdout
         (i.e., "(M+D) RMS: <value>").
         """
-        _rms_median = np.median(self.background_rms_mesh)
-        if self.unit is not None:
-            _rms_median <<= self.unit
-        return _rms_median
+        return self._apply_units(np.median(self.background_rms_mesh))
 
-    @lazyproperty
+    def _calculate_image(self, data):
+        """
+        Calculate the full-sized background or background rms image from
+        the low-resolution mesh.
+        """
+        data = self.interpolator(data, **self._interp_kwargs)
+
+        if self.coverage_mask is not None:
+            data[self.coverage_mask] = self.fill_value
+
+        return self._apply_units(data)
+
+    @property
     def background(self):
         """
         A 2D `~numpy.ndarray` containing the background image.
         """
-        bkg = self.interpolator(self.background_mesh, self)
-        if self.coverage_mask is not None:
-            bkg[self.coverage_mask] = self.fill_value
-        if self.unit is not None:
-            bkg <<= self.unit
-        return bkg
+        return self._calculate_image(self.background_mesh)
 
-    @lazyproperty
+    @property
     def background_rms(self):
         """
         A 2D `~numpy.ndarray` containing the background RMS image.
         """
-        bkg_rms = self.interpolator(self.background_rms_mesh, self)
-        if self.coverage_mask is not None:
-            bkg_rms[self.coverage_mask] = self.fill_value
-        if self.unit is not None:
-            bkg_rms <<= self.unit
-        return bkg_rms
+        return self._calculate_image(self.background_rms_mesh)
 
     def plot_meshes(self, *, ax=None, marker='+', markersize=None,
                     color='blue', alpha=None, outlines=False, **kwargs):
@@ -722,11 +821,12 @@ class Background2D:
         if ax is None:
             ax = plt.gca()
 
-        ax.scatter(*self._mesh_xypos, s=markersize, marker=marker,
-                   color=color, alpha=alpha)
+        mesh_xycen = np.flipud(self._mesh_yxcen)
+        ax.scatter(*mesh_xycen, s=markersize, marker=marker, color=color,
+                   alpha=alpha)
 
         if outlines:
-            xypos = np.column_stack(self._mesh_xypos)
-            apers = RectangularAperture(xypos, self.box_size[1],
-                                        self.box_size[0], 0.0)
+            xycen = np.column_stack(mesh_xycen)
+            apers = RectangularAperture(xycen, w=self.box_size[1],
+                                        h=self.box_size[0], theta=0.0)
             apers.plot(ax=ax, alpha=alpha, **kwargs)
