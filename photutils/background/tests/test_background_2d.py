@@ -7,7 +7,8 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import CCDData, NDData
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background.background_2d import Background2D
@@ -156,19 +157,26 @@ class TestBackground2D:
         bkg1 = Background2D(data, (25, 25), filter_size=(1, 1), mask=None,
                             bkg_estimator=MeanBackground())
 
-        assert_equal(bkg1.background_mesh, bkg1.background_mesh_masked)
-        assert_equal(bkg1.background_rms_mesh, bkg1.background_rms_mesh_masked)
-        assert np.count_nonzero(np.isnan(bkg1.mesh_nmasked)) == 0
+        with pytest.warns(AstropyDeprecationWarning):
+            assert_equal(bkg1.background_mesh, bkg1.background_mesh_masked)
+        with pytest.warns(AstropyDeprecationWarning):
+            assert_equal(bkg1.background_rms_mesh,
+                         bkg1.background_rms_mesh_masked)
+        with pytest.warns(AstropyDeprecationWarning):
+            assert np.count_nonzero(np.isnan(bkg1.mesh_nmasked)) == 0
 
         bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
                             bkg_estimator=MeanBackground())
 
         nboxes_tot = 25 * 25
-        assert (np.count_nonzero(~np.isnan(bkg2.background_mesh_masked))
-                < nboxes_tot)
-        assert (np.count_nonzero(~np.isnan(bkg2.background_rms_mesh_masked))
-                < nboxes_tot)
-        assert np.count_nonzero(np.isnan(bkg2.mesh_nmasked)) == 1
+        with pytest.warns(AstropyDeprecationWarning):
+            assert (np.count_nonzero(~np.isnan(bkg2.background_mesh_masked))
+                    < nboxes_tot)
+        with pytest.warns(AstropyDeprecationWarning):
+            assert (np.count_nonzero(~np.isnan(
+                bkg2.background_rms_mesh_masked)) < nboxes_tot)
+        with pytest.warns(AstropyDeprecationWarning):
+            assert np.count_nonzero(np.isnan(bkg2.mesh_nmasked)) == 1
 
     @pytest.mark.parametrize('fill_value', [0.0, np.nan, -1.0])
     def test_coverage_mask(self, fill_value):
