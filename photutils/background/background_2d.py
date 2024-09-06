@@ -240,6 +240,7 @@ class Background2D:
         # perform the initial calculations to avoid storing large data
         # arrays and keep the memory usage minimal
         self._prepare_data()
+
         (self._bkg_stats,
          self._bkgrms_stats,
          self._ngood) = self._calculate_stats()
@@ -525,7 +526,7 @@ class Background2D:
         # we no longer need the copy of the input array
         del self._data
 
-        # TEMP: remove when background_mesh_masked,
+        # TEMP: can probably remove this when background_mesh_masked,
         # background_rms_mesh_masked, and mesh_nmasked are removed
         self._nan_idx = np.where(np.isnan(bkg))
 
@@ -679,7 +680,8 @@ class Background2D:
         background map check image in SourceExtractor.
         """
         data = self._interpolate_grid(self._bkg_stats)
-        if self.filter_threshold is None:
+        if ('background_rms_mesh' in self.__dict__
+                or self.filter_threshold is None):
             self._bkg_stats = None  # delete to save memory
         return self._apply_units(self._filter_grid(data))
 
