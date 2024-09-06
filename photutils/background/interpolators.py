@@ -5,6 +5,7 @@ This module defines interpolator classes for Background2D.
 
 import numpy as np
 from astropy.units import Quantity
+from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._repr import make_repr
@@ -38,6 +39,11 @@ class BkgZoomInterpolator:
         The value used for points outside the boundaries of the input if
         ``mode='constant'``. Default is 0.0.
 
+    clip : bool, optional
+        Whether to clip the output to the range of values in the
+        input image. This is enabled by default, since higher order
+        interpolation may produce values outside the given input range.
+
     grid_mode : bool, optional
         If `True` (default), the samples are considered as the centers
         of regularly-spaced grid elements. If `False`, the samples
@@ -47,14 +53,14 @@ class BkgZoomInterpolator:
         `skimage.transform.resize`. The `False` option is provided only
         for backwards-compatibility.
 
-    clip : bool, optional
-        Whether to clip the output to the range of values in the
-        input image. This is enabled by default, since higher order
-        interpolation may produce values outside the given input range.
+        .. deprecated:: 1.14.0
+           When this keyword is removed, the behavior will be
+           ``grid_mode=True``.
     """
 
-    def __init__(self, *, order=3, mode='reflect', cval=0.0, grid_mode=True,
-                 clip=True):
+    @deprecated_renamed_argument('grid_mode', None, '1.14.0')
+    def __init__(self, *, order=3, mode='reflect', cval=0.0, clip=True,
+                 grid_mode=True):
         self.order = order
         self.mode = mode
         self.cval = cval
@@ -62,7 +68,7 @@ class BkgZoomInterpolator:
         self.clip = clip
 
     def __repr__(self):
-        params = ('order', 'mode', 'cval', 'grid_mode', 'clip')
+        params = ('order', 'mode', 'cval', 'clip', 'grid_mode')
         return make_repr(self, params)
 
     def __call__(self, data, **kwargs):
