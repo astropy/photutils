@@ -475,29 +475,36 @@ class Background2D:
         y1, x1 = nboxes * self.box_size
 
         # core boxes
+        # combine the last two axes for performance
         core = reshape_as_blocks(self._data[:y1, :x1], self.box_size)
-
-        bkg, bkgrms, ngood = self._compute_box_statistics(core, axis=(2, 3))
+        core = core.reshape((*nboxes, -1))
+        bkg, bkgrms, ngood = self._compute_box_statistics(core, axis=-1)
 
         extra_row = y1 < self._data.shape[0]
         extra_col = x1 < self._data.shape[1]
         if self.edge_method == 'pad' and (extra_row or extra_col):
-            # extra row
             if extra_row:
+                # extra row of boxes
+                # move the axes and combine the last two for performance
                 row_data = reshape_as_blocks(self._data[y1:, :x1],
                                              (1, self.box_size[1]))
+                row_data = np.moveaxis(row_data, 0, -1)
+                row_data = row_data.reshape((*row_data.shape[:-2], -1))
                 row_bkg, row_bkgrms, row_ngood = self._compute_box_statistics(
-                    row_data, axis=(0, 3))
+                    row_data, axis=-1)
 
-            # extra column
             if extra_col:
+                # extra column of boxes
+                # move the axes and combine the last two for performance
                 col_data = reshape_as_blocks(self._data[:y1, x1:],
                                              (self.box_size[0], 1))
+                col_data = np.transpose(col_data, (0, 3, 1, 2))
+                col_data = col_data.reshape((*col_data.shape[:-2], -1))
                 col_bkg, col_bkgrms, col_ngood = self._compute_box_statistics(
-                    col_data, axis=(2, 1))
+                    col_data, axis=-1)
 
-            # extra corner box -- append to extra column
             if extra_row and extra_col:
+                # extra corner box -- append to extra column
                 crn_bkg, crn_bkgrms, crn_ngood = self._compute_box_statistics(
                     self._data[y1:, x1:], axis=None)
                 col_bkg = np.vstack((col_bkg, crn_bkg))
