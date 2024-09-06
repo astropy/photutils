@@ -4,6 +4,7 @@ This module defines interpolator classes for Background2D.
 """
 
 import numpy as np
+from astropy.units import Quantity
 
 from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._repr import make_repr
@@ -64,47 +65,49 @@ class BkgZoomInterpolator:
         params = ('order', 'mode', 'cval', 'grid_mode', 'clip')
         return make_repr(self, params)
 
-    def __call__(self, mesh, bkg2d_obj):
+    def __call__(self, data, **kwargs):
         """
         Resize the 2D mesh array.
 
         Parameters
         ----------
-        mesh : 2D `~numpy.ndarray`
+        data : 2D `~numpy.ndarray`
             The low-resolution 2D mesh array.
 
-        bkg2d_obj : `Background2D` object
-            The `Background2D` object that prepared the ``mesh`` array.
+        **kwargs : dict
+            Additional keyword arguments passed to the interpolator.
 
         Returns
         -------
         result : 2D `~numpy.ndarray`
             The resized background or background RMS image.
         """
-        mesh = np.asanyarray(mesh)
-        if np.ptp(mesh) == 0:
-            return np.zeros_like(bkg2d_obj.data) + np.min(mesh)
+        data = np.asanyarray(data)
+        if isinstance(data, Quantity):
+            data = data.value
+        if np.ptp(data) == 0:
+            return np.full(kwargs['shape'], np.min(data),
+                           dtype=kwargs['dtype'])
 
         from scipy.ndimage import zoom
 
-        if bkg2d_obj.edge_method == 'pad':
+        if kwargs['edge_method'] == 'pad':
             # The mesh is first resized to the larger padded-data size
             # (i.e., zoom_factor should be an integer) and then cropped
             # back to the final data size.
-            zoom_factor = bkg2d_obj.box_size
-            result = zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
+            zoom_factor = kwargs['box_size']
+            result = zoom(data, zoom_factor, order=self.order, mode=self.mode,
                           cval=self.cval, grid_mode=self.grid_mode)
-            result = result[0:bkg2d_obj.data.shape[0],
-                            0:bkg2d_obj.data.shape[1]]
+            result = result[0:kwargs['shape'][0], 0:kwargs['shape'][1]]
         else:
             # The mesh is resized directly to the final data size.
-            zoom_factor = np.array(bkg2d_obj.data.shape) / mesh.shape
-            result = zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
+            zoom_factor = np.array(kwargs['shape']) / data.shape
+            result = zoom(data, zoom_factor, order=self.order, mode=self.mode,
                           cval=self.cval)
 
         if self.clip:
-            minval = np.min(mesh)
-            maxval = np.max(mesh)
+            minval = np.min(data)
+            maxval = np.max(data)
             np.clip(result, minval, maxval, out=result)  # clip in place
 
         return result
@@ -148,38 +151,38 @@ class BkgIDWInterpolator:
         params = ('leafsize', 'n_neighbors', 'power', 'reg')
         return make_repr(self, params)
 
-    def __call__(self, mesh, bkg2d_obj):
+    def __call__(self, data, **kwargs):
         """
         Resize the 2D mesh array.
 
         Parameters
         ----------
-        mesh : 2D `~numpy.ndarray`
+        data : 2D `~numpy.ndarray`
             The low-resolution 2D mesh array.
 
-        bkg2d_obj : `Background2D` object
-            The `Background2D` object that prepared the ``mesh`` array.
+        **kwargs : dict
+            Additional keyword arguments passed to the interpolator.
 
         Returns
         -------
         result : 2D `~numpy.ndarray`
             The resized background or background RMS image.
         """
-        mesh = np.asanyarray(mesh)
-        if np.ptp(mesh) == 0:
-            return np.zeros_like(bkg2d_obj.data) + np.min(mesh)
+        data = np.asanyarray(data)
+        if isinstance(data, Quantity):
+            data = data.value
+        if np.ptp(data) == 0:
+            return np.full(kwargs['shape'], np.min(data),
+                           dtype=kwargs['dtype'])
 
-        yxpos = np.column_stack(bkg2d_obj._mesh_yxpos)
-        mesh1d = mesh[bkg2d_obj._mesh_idx]
-        interp_func = ShepardIDWInterpolator(yxpos, mesh1d,
+        yxcen = np.column_stack(kwargs['mesh_yxcen'])
+        interp_func = ShepardIDWInterpolator(yxcen, data.ravel(),
                                              leafsize=self.leafsize)
 
         # the position coordinates used when calling the interpolator
-        ny, nx = bkg2d_obj.data.shape
-        yi, xi = np.mgrid[0:ny, 0:nx]
+        yi, xi = np.mgrid[0:kwargs['shape'][0], 0:kwargs['shape'][1]]
         yx_indices = np.column_stack((yi.ravel(), xi.ravel()))
-        data = interp_func(yx_indices,
-                           n_neighbors=self.n_neighbors, power=self.power,
-                           reg=self.reg)
+        data = interp_func(yx_indices, n_neighbors=self.n_neighbors,
+                           power=self.power, reg=self.reg)
 
-        return data.reshape(bkg2d_obj.data.shape)
+        return data.reshape(kwargs['shape'])
