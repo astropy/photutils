@@ -14,13 +14,15 @@ from photutils.utils._optional_deps import HAS_BOTTLENECK
 if HAS_BOTTLENECK:
     import bottleneck as bn
 
-    def move_tuple_axes_first(array, axis):
+    def _move_tuple_axes_last(array, axis):
         """
-        Move the axes in a tuple to the beginning of the array.
+        Move the specified axes of a NumPy array to the last positions
+        and combine them.
 
-        Bottleneck can only take integer axis, not tuple, so this function
-        takes all the axes to be operated on and combines them into the
-        first dimension of the array so that we can then use axis=0.
+        Bottleneck can only take integer axis, not tuple, so this
+        function takes all the axes to be operated on and combines them
+        into the last dimension of the array so that we can then use
+        axis=-1.
 
         Parameters
         ----------
@@ -28,32 +30,23 @@ if HAS_BOTTLENECK:
             The input array.
 
         axis : tuple of int
-            The axes on which to operate.
+            The axes on which to move and combine.
 
         Returns
         -------
         array_new : `~numpy.ndarray`
-            Array with the axes being operated on moved into the first
+            Array with the axes being operated on moved into the last
             dimension.
         """
-        # Figure out how many axes we are operating over
-        naxis = len(axis)
+        other_axes = tuple(i for i in range(array.ndim) if i not in axis)
 
-        # Add remaining axes to the axis tuple
-        axis += tuple(i for i in range(array.ndim) if i not in axis)
+        # Move the specified axes to the last positions
+        array_new = np.transpose(array, other_axes + axis)
 
-        # The new position of each axis is just in order
-        destination = tuple(range(array.ndim))
+        # Reshape the array by combining the moved axes
+        return array_new.reshape(array_new.shape[:len(other_axes)] + (-1,))
 
-        # Reorder the array so that the axes being operated on are at the
-        # beginning
-        array_new = np.moveaxis(array, axis, destination)
-
-        # Collapse the dimensions being operated on into a single dimension
-        # so that we can then use axis=0 with the bottleneck functions
-        return array_new.reshape((-1,) + array_new.shape[naxis:])
-
-    def apply_bottleneck(function, array, axis=None, **kwargs):
+    def _apply_bottleneck(function, array, axis=None, **kwargs):
         """
         Wrap a bottleneck function to handle tuple axis.
 
@@ -82,12 +75,23 @@ if HAS_BOTTLENECK:
             ``array``, ``axis``, and ``kwargs``.
         """
         if isinstance(axis, tuple):
-            array = move_tuple_axes_first(array, axis=axis)
-            axis = 0
+            array = _move_tuple_axes_last(array, axis=axis)
+            axis = -1
 
-        result = function(array, axis=axis, **kwargs)
+        # The only keyword argument that bottleneck functions that
+        # reduce the input array along the specified axis accept besides
+        # "axis" is "ddof". We filter out any other keyword arguments
+        # that the np.nan* functions accept (e.g., dtype, out, keepdims,
+        # overwrite_input)
+        kwargs_filtered = {key: value for key, value in kwargs.items()
+                           if key == 'ddof'}
+
+        result = function(array, axis=axis, **kwargs_filtered)
         if isinstance(array, Quantity):
-            return array.__array_wrap__(result)
+            if function == bn.nanvar:
+                result <<= array.unit ** 2
+            else:
+                result = array.__array_wrap__(result)
 
         if isinstance(result, float):
             # For compatibility with numpy, always return a numpy scalar
@@ -95,11 +99,19 @@ if HAS_BOTTLENECK:
 
         return result
 
-    nanmean = partial(apply_bottleneck, bn.nanmean)
-    nanmedian = partial(apply_bottleneck, bn.nanmedian)
-    nanstd = partial(apply_bottleneck, bn.nanstd)
+    _nansum = partial(_apply_bottleneck, bn.nansum)
+    _nanmean = partial(_apply_bottleneck, bn.nanmean)
+    _nanmedian = partial(_apply_bottleneck, bn.nanmedian)
+    _nanstd = partial(_apply_bottleneck, bn.nanstd)
+    _nanvar = partial(_apply_bottleneck, bn.nanvar)
+    _nanmin = partial(_apply_bottleneck, bn.nanmin)
+    _nanmax = partial(_apply_bottleneck, bn.nanmax)
 
 else:
-    nanmean = np.nanmean
-    nanmedian = np.nanmedian
-    nanstd = np.nanstd
+    _nansum = np.nansum
+    _nanmean = np.nanmean
+    _nanmedian = np.nanmedian
+    _nanstd = np.nanstd
+    _nanvar = np.nanvar
+    _nanmin = np.nanmin
+    _nanmax = np.nanmax

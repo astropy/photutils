@@ -11,7 +11,7 @@ from astropy.stats import SigmaClip
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._quantity_helpers import process_quantities
-from photutils.utils._stats import nanmean, nanstd
+from photutils.utils._stats import _nanmean, _nanstd
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['detect_threshold', 'detect_sources']
@@ -100,14 +100,14 @@ def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
                                   copy=True)
 
     if background is None:
-        background = nanmean(clipped_data)
+        background = _nanmean(clipped_data)
 
     if not np.isscalar(background) and background.shape != data.shape:
         raise ValueError('If input background is 2D, then it must have the '
                          'same shape as the input data.')
 
     if error is None:
-        error = nanstd(clipped_data)
+        error = _nanstd(clipped_data)
     if not np.isscalar(error) and error.shape != data.shape:
         raise ValueError('If input error is 2D, then it must have the same '
                          'shape as the input data.')
