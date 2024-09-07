@@ -9,12 +9,12 @@ import pytest
 from numpy.testing import assert_equal
 
 from photutils.utils._optional_deps import HAS_BOTTLENECK
-from photutils.utils._stats import (nanmax, nanmean, nanmedian, nanmin, nanstd,
-                                    nansum, nanvar)
+from photutils.utils._stats import (_nanmax, _nanmean, _nanmedian, _nanmin,
+                                    _nanstd, _nansum, _nanvar)
 
-funcs = [(nansum, np.nansum), (nanmean, np.nanmean), (nanmedian, np.nanmedian),
-         (nanstd, np.nanstd), (nanvar, np.nanvar), (nanmin, np.nanmin),
-         (nanmax, np.nanmax)]
+funcs = [(_nansum, np.nansum), (_nanmean, np.nanmean),
+         (_nanmedian, np.nanmedian), (_nanstd, np.nanstd),
+         (_nanvar, np.nanvar), (_nanmin, np.nanmin), (_nanmax, np.nanmax)]
 
 
 @pytest.mark.skipif(not HAS_BOTTLENECK, reason='bottleneck is required')
