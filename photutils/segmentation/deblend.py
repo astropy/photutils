@@ -190,9 +190,11 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
                                                desc=desc)  # pragma: no cover
 
         all_source_deblends = []
-        for source_data, source_segment in zip(all_source_data,
-                                               all_source_segments,
-                                               strict=True):
+        for source_data, source_segment, label in zip(all_source_data,
+                                                      all_source_segments,
+                                                      labels, strict=True):
+            if progress_bar:
+                all_source_data.set_postfix_str(f'ID: {label}')
             deblender = _Deblender(source_data, source_segment, npixels,
                                    footprint, nlevels, contrast, mode)
             source_deblended = deblender.deblend_source()
