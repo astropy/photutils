@@ -6,3 +6,4 @@ flake8:
 
   exclude:
     - version.py
+    - extern

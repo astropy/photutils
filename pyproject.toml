@@ -252,6 +252,7 @@ max-statements = 130
 
 [tool.ruff.lint]
 select = ['ALL']
+exclude = ["photutils/extern/*"]
 ignore = [
     'ANN',
     'ARG002',

@@ -94,6 +94,7 @@ repos:
     rev: v1.8.0
     hooks:
       - id: numpydoc-validation
+        exclude: "extern/"
 
   - repo: https://github.com/PyCQA/docformatter
     rev: v1.7.5
@@ -101,6 +102,7 @@ repos:
       - id: docformatter
         additional_dependencies: [tomli]
         args: [--in-place, --config, ./pyproject.toml]
+        exclude: "extern/"
 
   # - repo: https://github.com/MarcoGorelli/absolufy-imports
   #   rev: v0.3.1
