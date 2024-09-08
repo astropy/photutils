@@ -1,9 +1,0 @@
-scanner:
-    linter: flake8
-
-flake8:
-  max-line-length: 79
-
-  exclude:
-    - version.py
-    - extern
