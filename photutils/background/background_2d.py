@@ -411,7 +411,8 @@ class Background2D:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=AstropyUserWarning)
             if self.sigma_clip is not None:
-                data = self.sigma_clip(data, axis=axis, masked=False)
+                data = self.sigma_clip(data, axis=axis, masked=False,
+                                       copy=False)
 
         return data
 
