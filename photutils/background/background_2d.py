@@ -795,6 +795,10 @@ class Background2D:
     def background(self):
         """
         A 2D `~numpy.ndarray` containing the background image.
+
+        Note that the returned value is re-calculated each time this
+        property is accessed. If you need to access the background image
+        multiple times, you should store the result in a variable.
         """
         return self._calculate_image(self.background_mesh)
 
@@ -802,6 +806,10 @@ class Background2D:
     def background_rms(self):
         """
         A 2D `~numpy.ndarray` containing the background RMS image.
+
+        Note that the returned value is re-calculated each time this
+        property is accessed. If you need to access the background rms
+        image multiple times, you should store the result in a variable.
         """
         return self._calculate_image(self.background_rms_mesh)
 
