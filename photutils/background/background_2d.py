@@ -486,7 +486,7 @@ class Background2D:
         # core boxes
         # combine the last two axes for performance
         core = reshape_as_blocks(self._data[:y1, :x1], self.box_size)
-        core = core.reshape((*nboxes, -1))
+        core = core.reshape((*nboxes, -1))  # needs to make a temporary copy
         bkg, bkgrms, ngood = self._compute_box_statistics(core, axis=-1)
 
         extra_row = y1 < self._data.shape[0]
