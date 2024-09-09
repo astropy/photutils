@@ -45,6 +45,7 @@ class TestBackground2D:
         assert_allclose(bkg.background_rms_mesh, BKG_RMS_MESH)
         assert bkg.background_median == 1.0
         assert bkg.background_rms_median == 0.0
+        assert bkg.npixels_mesh.shape == (4, 4)
 
     @pytest.mark.parametrize('data', [DATA1, DATA3, DATA4])
     def test_background_nddata(self, data):
@@ -270,6 +271,12 @@ class TestBackground2D:
         assert bkg.background_median == 1.0
         assert bkg.background_rms_median == 0.0
 
+        bkg = Background2D(DATA, (22, 25), filter_size=(1, 1))
+        assert_allclose(bkg.background, DATA, rtol=1e-5)
+        assert_allclose(bkg.background_rms, BKG_RMS)
+        assert bkg.background_median == 1.0
+        assert bkg.background_rms_median == 0.0
+
     def test_exclude_percentile(self):
         """
         Only meshes greater than filter_threshold are filtered.
@@ -281,6 +288,10 @@ class TestBackground2D:
             bkg = Background2D(data, (25, 25), filter_size=(1, 1),
                                exclude_percentile=100.0)
         assert np.count_nonzero(bkg._nan_idx) == 4
+
+        data = np.ones((111, 121))
+        bkg = Background2D(data, box_size=10, exclude_percentile=100)
+        assert_equal(bkg.background_mesh, np.ones((12, 13)))
 
     def test_filter_threshold(self):
         """
