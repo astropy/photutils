@@ -46,6 +46,7 @@ class TestBackground2D:
         assert bkg.background_median == 1.0
         assert bkg.background_rms_median == 0.0
         assert bkg.npixels_mesh.shape == (4, 4)
+        assert bkg.npixels_map.shape == DATA.shape
 
     @pytest.mark.parametrize('data', [DATA1, DATA3, DATA4])
     def test_background_nddata(self, data):
