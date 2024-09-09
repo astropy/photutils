@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from photutils.utils._stats import _nanmedian, _nansum
+from photutils.utils._stats import nanmedian, nansum
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -34,8 +34,8 @@ def _stat_functions(
         median_func = np.ma.median
         sum_func = np.ma.sum
     elif ignore_nan:
-        median_func = _nanmedian
-        sum_func = _nansum
+        median_func = nanmedian
+        sum_func = nansum
     else:
         median_func = np.median
         sum_func = np.sum
@@ -549,7 +549,7 @@ def median_absolute_deviation(data, axis=None, func=None, ignore_nan=False):
                 data = np.ma.masked_where(np.isnan(data), data, copy=True)
         elif ignore_nan:
             is_masked = False
-            func = _nanmedian
+            func = nanmedian
         else:
             is_masked = False
             func = np.median  # drops units if result is NaN
