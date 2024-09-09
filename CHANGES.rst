@@ -25,6 +25,16 @@ New Features
     convert supported ``regions.Region`` objects to ``Aperture`` objects.
     [#1813, #1852]
 
+- ``photutils.background``
+
+  - The ``Background2D`` class has been refactored to significantly
+    reduce its memory usage. In some cases, it is also significantly
+    faster. [#1870]
+
+  - A new ``npixels_mesh`` property was added to ``Background2D``
+    that gives a 2D array of the number of pixels used to compute the
+    statistics in the low-resolution grid. [#1870]
+
 - ``photutils.centroids``
 
   - ``Quantity`` arrays can now be input to ``centroid_1dg`` and
@@ -78,6 +88,31 @@ API Changes
 - The ``sklearn`` version information has been removed from the meta
   attribute in output tables. ``sklearn`` was removed as an optional
   dependency in 1.13.0. [#1807]
+
+- ``photutils.background``
+
+  - The ``Background2D`` ``background_mesh`` and ``background_rms_mesh``
+    properties will have units if the input data has units. [#1870]
+
+  - The ``Background2D`` ``edge_method`` keyword is now deprecated.
+    When ``edge_method`` is eventually removed, the ``'pad'`` option
+    will always be used. [#1870]
+
+  - The ``Background2D`` ``background_mesh_masked``,
+    ``background_rms_mesh_masked``, and ``mesh_nmasked`` properties are
+    now deprecated. [#1870]
+
+  - To reduce memory usage, ``Background2D`` no longer keeps a cached
+    copy of the returned ``background`` and ``background_rms`` properties.
+    [#1870]
+
+  - The ``Background2D`` ``data``, ``mask``, ``total_mask``, ``nboxes``,
+    ``box_npixels``, and ``nboxes_tot`` attributes have been removed.
+    [#1870]
+
+  - The ``BkgZoomInterpolator`` ``grid_mode`` keyword is now deprecated.
+    When ``grid_mode`` is eventually removed, the `True` option will
+    always be used. [#1870]
 
 - ``photutils.centroids``
 
