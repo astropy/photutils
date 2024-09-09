@@ -99,19 +99,19 @@ if HAS_BOTTLENECK:
 
         return result
 
-    _nansum = partial(_apply_bottleneck, bn.nansum)
-    _nanmean = partial(_apply_bottleneck, bn.nanmean)
-    _nanmedian = partial(_apply_bottleneck, bn.nanmedian)
-    _nanstd = partial(_apply_bottleneck, bn.nanstd)
-    _nanvar = partial(_apply_bottleneck, bn.nanvar)
-    _nanmin = partial(_apply_bottleneck, bn.nanmin)
-    _nanmax = partial(_apply_bottleneck, bn.nanmax)
+    nansum = partial(_apply_bottleneck, bn.nansum)
+    nanmean = partial(_apply_bottleneck, bn.nanmean)
+    nanmedian = partial(_apply_bottleneck, bn.nanmedian)
+    nanstd = partial(_apply_bottleneck, bn.nanstd)
+    nanvar = partial(_apply_bottleneck, bn.nanvar)
+    nanmin = partial(_apply_bottleneck, bn.nanmin)
+    nanmax = partial(_apply_bottleneck, bn.nanmax)
 
 else:
-    _nansum = np.nansum
-    _nanmean = np.nanmean
-    _nanmedian = np.nanmedian
-    _nanstd = np.nanstd
-    _nanvar = np.nanvar
-    _nanmin = np.nanmin
-    _nanmax = np.nanmax
+    nansum = np.nansum
+    nanmean = np.nanmean
+    nanmedian = np.nanmedian
+    nanstd = np.nanstd
+    nanvar = np.nanvar
+    nanmin = np.nanmin
+    nanmax = np.nanmax

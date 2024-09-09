@@ -11,7 +11,7 @@ import numpy as np
 from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
 
 from photutils.utils._repr import make_repr
-from photutils.utils._stats import _nanmean, _nanmedian, _nanstd
+from photutils.utils._stats import nanmean, nanmedian, nanstd
 
 SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
 
@@ -177,7 +177,7 @@ class MeanBackground(BackgroundBase):
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            result = _nanmean(data, axis=axis)
+            result = nanmean(data, axis=axis)
 
         if masked and isinstance(result, np.ndarray):
             result = np.ma.masked_where(np.isnan(result), result)
@@ -231,7 +231,7 @@ class MedianBackground(BackgroundBase):
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            result = _nanmedian(data, axis=axis)
+            result = nanmedian(data, axis=axis)
 
         if masked and isinstance(result, np.ndarray):
             result = np.ma.masked_where(np.isnan(result), result)
@@ -302,8 +302,8 @@ class ModeEstimatorBackground(BackgroundBase):
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            result = ((self.median_factor * _nanmedian(data, axis=axis))
-                      - (self.mean_factor * _nanmean(data, axis=axis)))
+            result = ((self.median_factor * nanmedian(data, axis=axis))
+                      - (self.mean_factor * nanmean(data, axis=axis)))
 
         if masked and isinstance(result, np.ndarray):
             result = np.ma.masked_where(np.isnan(result), result)
@@ -409,9 +409,9 @@ class SExtractorBackground(BackgroundBase):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
 
-            _median = np.atleast_1d(_nanmedian(data, axis=axis))
-            _mean = np.atleast_1d(_nanmean(data, axis=axis))
-            _std = np.atleast_1d(_nanstd(data, axis=axis))
+            _median = np.atleast_1d(nanmedian(data, axis=axis))
+            _mean = np.atleast_1d(nanmean(data, axis=axis))
+            _std = np.atleast_1d(nanstd(data, axis=axis))
             bkg = np.atleast_1d((2.5 * _median) - (1.5 * _mean))
 
             bkg = np.where(_std == 0, _mean, bkg)
@@ -547,7 +547,7 @@ class StdBackgroundRMS(BackgroundRMSBase):
         # ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            result = _nanstd(data, axis=axis)
+            result = nanstd(data, axis=axis)
 
         if masked and isinstance(result, np.ndarray):
             result = np.ma.masked_where(np.isnan(result), result)

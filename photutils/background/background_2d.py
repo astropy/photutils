@@ -19,7 +19,7 @@ from photutils.background.interpolators import BkgZoomInterpolator
 from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._parameters import as_pair
 from photutils.utils._repr import make_repr
-from photutils.utils._stats import _nanmedian
+from photutils.utils._stats import nanmedian
 
 __all__ = ['Background2D']
 
@@ -543,7 +543,7 @@ class Background2D:
         if self.filter_threshold is None:
             # filter the entire array
             from scipy.ndimage import generic_filter
-            filtdata = generic_filter(data, _nanmedian, size=self.filter_size,
+            filtdata = generic_filter(data, nanmedian, size=self.filter_size,
                                       mode='constant', cval=np.nan)
         else:
             # selectively filter the array
