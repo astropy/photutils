@@ -9,12 +9,12 @@ import pytest
 from numpy.testing import assert_equal
 
 from photutils.utils._optional_deps import HAS_BOTTLENECK
-from photutils.utils._stats import (_nanmax, _nanmean, _nanmedian, _nanmin,
-                                    _nanstd, _nansum, _nanvar)
+from photutils.utils._stats import (nanmax, nanmean, nanmedian, nanmin, nanstd,
+                                    nansum, nanvar)
 
-funcs = [(_nansum, np.nansum), (_nanmean, np.nanmean),
-         (_nanmedian, np.nanmedian), (_nanstd, np.nanstd),
-         (_nanvar, np.nanvar), (_nanmin, np.nanmin), (_nanmax, np.nanmax)]
+funcs = [(nansum, np.nansum), (nanmean, np.nanmean),
+         (nanmedian, np.nanmedian), (nanstd, np.nanstd),
+         (nanvar, np.nanvar), (nanmin, np.nanmin), (nanmax, np.nanmax)]
 
 
 @pytest.mark.skipif(not HAS_BOTTLENECK, reason='bottleneck is required')
@@ -22,7 +22,7 @@ funcs = [(_nansum, np.nansum), (_nanmean, np.nanmean),
 @pytest.mark.parametrize('axis', [None, 0, 1, (0, 1), (1, 2), (2, 1),
                                   (0, 1, 2), (3, 1), (0, 3), (2, 0)])
 @pytest.mark.parametrize('use_units', [False, True])
-def test_nanmean(func, axis, use_units):
+def testnanmean(func, axis, use_units):
     arr = np.ones((5, 3, 8, 9))
     if use_units:
         arr <<= u.m

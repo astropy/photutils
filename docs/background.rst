@@ -381,7 +381,7 @@ this example requires `scipy`_):
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
-    from scipy.ndimage.interpolation import rotate
+    from scipy.ndimage import rotate
 
     data = make_100gaussians_image()
     ny, nx = data.shape
@@ -427,7 +427,7 @@ image (values assigned to ``fill_value``):
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.background import Background2D
     from photutils.datasets import make_100gaussians_image
-    from scipy.ndimage.interpolation import rotate
+    from scipy.ndimage import rotate
 
     data = make_100gaussians_image()
     ny, nx = data.shape
@@ -461,7 +461,7 @@ Finally, let's subtract the background from the image and plot it:
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.background import Background2D
     from photutils.datasets import make_100gaussians_image
-    from scipy.ndimage.interpolation import rotate
+    from scipy.ndimage import rotate
 
     data = make_100gaussians_image()
     ny, nx = data.shape
@@ -508,7 +508,7 @@ Meshes without a center marker were excluded.
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.background import Background2D
     from photutils.datasets import make_100gaussians_image
-    from scipy.ndimage.interpolation import rotate
+    from scipy.ndimage import rotate
 
     data = make_100gaussians_image()
     ny, nx = data.shape
