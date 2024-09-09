@@ -8,7 +8,7 @@ import warnings
 
 import astropy.units as u
 import numpy as np
-from astropy.nddata import NDData, reshape_as_blocks
+from astropy.nddata import NDData, block_replicate, reshape_as_blocks
 from astropy.stats import SigmaClip
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated, deprecated_renamed_argument
@@ -758,6 +758,22 @@ class Background2D:
         in each mesh.
         """
         return self._ngood
+
+    @property
+    def npixels_map(self):
+        """
+        A 2D map of the number of pixels used to compute the statistics
+        in each mesh, resized to the shape of the input image.
+
+        Note that the returned value is re-calculated each time this
+        property is accessed. If you need to access the returned image
+        multiple times, you should store the result in a variable.
+        """
+        npixels_map = block_replicate(self.npixels_mesh,
+                                      self._interp_kwargs['box_size'],
+                                      conserve_sum=False)
+        return npixels_map[:self._interp_kwargs['shape'][0],
+                           :self._interp_kwargs['shape'][1]]
 
     @lazyproperty
     def background_median(self):

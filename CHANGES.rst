@@ -35,6 +35,11 @@ New Features
     that gives a 2D array of the number of pixels used to compute the
     statistics in the low-resolution grid. [#1870]
 
+  - A new ``npixels_map`` property was added to ``Background2D``
+    that gives a 2D array of the number of pixels used to compute the
+    statistics in each mesh, resized to the shape of the input data.
+    [#1871]
+
 - ``photutils.centroids``
 
   - ``Quantity`` arrays can now be input to ``centroid_1dg`` and
