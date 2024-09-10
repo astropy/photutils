@@ -426,6 +426,7 @@ class TestBackground2D:
 
     def test_masks(self):
         arr = np.arange(25.0).reshape(5, 5)
+        arr_orig = arr.copy()
         mask = np.zeros(arr.shape, dtype=bool)
         mask[0, 0] = np.nan
         mask[-1, 0] = np.nan
@@ -441,9 +442,11 @@ class TestBackground2D:
                             filter_size=filter_size,
                             bkg_estimator=bkg_estimator)
         bkgimg1 = bkg1.background
+        assert_equal(arr, arr_orig)
 
         arr2 = arr.copy()
         arr2[mask] = np.nan
+        arr3 = arr2.copy()
         match = 'Input data contains invalid values'
         with pytest.warns(AstropyUserWarning, match=match):
             bkg2 = Background2D(arr2, box_size, mask=None,
@@ -451,5 +454,6 @@ class TestBackground2D:
                                 filter_size=filter_size,
                                 bkg_estimator=bkg_estimator)
         bkgimg2 = bkg2.background
+        assert_equal(arr2, arr3)
 
         assert_equal(bkgimg1, bkgimg2)

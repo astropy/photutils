@@ -465,14 +465,13 @@ class Background2D:
         nboxes = self._data.shape // self.box_size
         y1, x1 = nboxes * self.box_size
 
+        # core boxes
+        # combine the last two axes for performance
         # Below we transform both the data and mask arrays to avoid
         # making multiple copies of the data (one to insert NaN and
         # another for the reshape). Only one copy of the data and mask
         # array is made (except for the extra corner). The boolean mask
         # copy is much smaller than the data array.
-
-        # core boxes
-        # combine the last two axes for performance
         core = reshape_as_blocks(self._data[:y1, :x1], self.box_size)
         core_mask = reshape_as_blocks(mask[:y1, :x1], self.box_size)
         # these rehape operations need to make a temporary copy
@@ -496,6 +495,7 @@ class Background2D:
                 row_mask = np.moveaxis(row_mask, 0, -1)
                 row_data = row_data.reshape((*row_data.shape[:-2], -1))
                 row_mask = row_mask.reshape((*row_mask.shape[:-2], -1))
+                row_data = row_data.copy()  # make a copy to avoid modifying
                 row_data[row_mask] = np.nan
                 row_bkg, row_bkgrms, row_ngood = self._compute_box_statistics(
                     row_data, axis=-1)
@@ -511,6 +511,7 @@ class Background2D:
                 col_mask = np.transpose(col_mask, (0, 3, 1, 2))
                 col_data = col_data.reshape((*col_data.shape[:-2], -1))
                 col_mask = col_mask.reshape((*col_mask.shape[:-2], -1))
+                col_data = col_data.copy()  # make a copy to avoid modifying
                 col_data[col_mask] = np.nan
                 col_bkg, col_bkgrms, col_ngood = self._compute_box_statistics(
                     col_data, axis=-1)
