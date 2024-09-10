@@ -29,7 +29,7 @@ New Features
 
   - The ``Background2D`` class has been refactored to significantly
     reduce its memory usage. In some cases, it is also significantly
-    faster. [#1870]
+    faster. [#1870, #1872]
 
   - A new ``npixels_mesh`` property was added to ``Background2D``
     that gives a 2D array of the number of pixels used to compute the

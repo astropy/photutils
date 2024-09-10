@@ -10,7 +10,7 @@ import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData, block_replicate, reshape_as_blocks
 from astropy.stats import SigmaClip
-from astropy.utils import lazyproperty
+from astropy.utils import lazyproperty, minversion
 from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -25,6 +25,8 @@ from photutils.utils._stats import nanmedian
 __all__ = ['Background2D']
 
 __doctest_requires__ = {'Background2D': ['scipy']}
+
+COPY_IF_NEEDED = False if not minversion(np, '2.0.0') else None
 
 
 class Background2D:
@@ -247,9 +249,7 @@ class Background2D:
                                'edge_method': self.edge_method}
 
         # perform the initial calculations to avoid storing large data
-        # arrays and keep the memory usage minimal
-        self._prepare_data()
-
+        # arrays and to keep the memory usage minimal
         (self._bkg_stats,
          self._bkgrms_stats,
          self._ngood) = self._calculate_stats()
@@ -341,32 +341,6 @@ class Background2D:
 
         return total_mask
 
-    def _prepare_data(self):
-        """
-        Prepare the data.
-
-        This method:
-          * makes a copy of the input data array and converts it to
-            float dtype
-          * automatically masks non-finite values that aren't already
-            masked
-          * replaces all masked values with NaN
-          * converts MaskedArray to ndarray using NaN as masked values
-        """
-        # Make a copy of the input data array so that it is not
-        # modified. We also need to convert the data to a float array
-        # to insert NaNs into the array.
-        self._data = self._data.astype(float)  # also makes a copy
-
-        # replace nall masked values with NaN
-        total_mask = self._combine_all_masks(~np.isfinite(self._data))
-        if np.any(total_mask):
-            self._data[total_mask] = np.nan
-
-        # convert MaskedArray to ndarray using np.nan as masked values
-        if isinstance(self._data, np.ma.MaskedArray):
-            self._data = self._data.filled(np.nan)
-
     @lazyproperty
     def _good_npixels_threshold(self):
         """
@@ -411,7 +385,8 @@ class Background2D:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=AstropyUserWarning)
             if self.sigma_clip is not None:
-                data = self.sigma_clip(data, axis=axis, masked=False)
+                data = self.sigma_clip(data, axis=axis, masked=False,
+                                       copy=False)
 
         return data
 
@@ -479,14 +454,30 @@ class Background2D:
         ngood : 2D `~numpy.ndarray`
             The number of unmasked pixels in each box.
         """
+        # if needed, copy the data to a float array to insert NaNs
+        self._data = self._data.astype(float, copy=COPY_IF_NEEDED)
+
+        # automatically mask non-finite values that aren't already
+        # masked and combine all masks
+        mask = self._combine_all_masks(~np.isfinite(self._data))
+
         self._box_npixels = np.prod(self.box_size)
         nboxes = self._data.shape // self.box_size
         y1, x1 = nboxes * self.box_size
 
         # core boxes
         # combine the last two axes for performance
+        # Below we transform both the data and mask arrays to avoid
+        # making multiple copies of the data (one to insert NaN and
+        # another for the reshape). Only one copy of the data and mask
+        # array is made (except for the extra corner). The boolean mask
+        # copy is much smaller than the data array.
         core = reshape_as_blocks(self._data[:y1, :x1], self.box_size)
-        core = core.reshape((*nboxes, -1))  # needs to make a temporary copy
+        core_mask = reshape_as_blocks(mask[:y1, :x1], self.box_size)
+        # these rehape operations need to make a temporary copy
+        core = core.reshape((*nboxes, -1))
+        core_mask = core_mask.reshape((*nboxes, -1))
+        core[core_mask] = np.nan
         bkg, bkgrms, ngood = self._compute_box_statistics(core, axis=-1)
 
         extra_row = y1 < self._data.shape[0]
@@ -497,8 +488,15 @@ class Background2D:
                 # move the axes and combine the last two for performance
                 row_data = reshape_as_blocks(self._data[y1:, :x1],
                                              (1, self.box_size[1]))
+                row_mask = reshape_as_blocks(mask[y1:, :x1],
+                                             (1, self.box_size[1]))
+
                 row_data = np.moveaxis(row_data, 0, -1)
+                row_mask = np.moveaxis(row_mask, 0, -1)
                 row_data = row_data.reshape((*row_data.shape[:-2], -1))
+                row_mask = row_mask.reshape((*row_mask.shape[:-2], -1))
+                row_data = row_data.copy()  # make a copy to avoid modifying
+                row_data[row_mask] = np.nan
                 row_bkg, row_bkgrms, row_ngood = self._compute_box_statistics(
                     row_data, axis=-1)
 
@@ -507,15 +505,27 @@ class Background2D:
                 # move the axes and combine the last two for performance
                 col_data = reshape_as_blocks(self._data[:y1, x1:],
                                              (self.box_size[0], 1))
+                col_mask = reshape_as_blocks(mask[:y1, x1:],
+                                             (self.box_size[0], 1))
                 col_data = np.transpose(col_data, (0, 3, 1, 2))
+                col_mask = np.transpose(col_mask, (0, 3, 1, 2))
                 col_data = col_data.reshape((*col_data.shape[:-2], -1))
+                col_mask = col_mask.reshape((*col_mask.shape[:-2], -1))
+                col_data = col_data.copy()  # make a copy to avoid modifying
+                col_data[col_mask] = np.nan
                 col_bkg, col_bkgrms, col_ngood = self._compute_box_statistics(
                     col_data, axis=-1)
 
             if extra_row and extra_col:
                 # extra corner box -- append to extra column
+                # Since we don't make a copy via the reshaping, we need to
+                # explicitly make a copy of the corner data to avoid
+                # modifying the original data array.
+                corner_data = self._data[y1:, x1:].copy()
+                corner_mask = mask[y1:, x1:]
+                corner_data[corner_mask] = np.nan
                 crn_bkg, crn_bkgrms, crn_ngood = self._compute_box_statistics(
-                    self._data[y1:, x1:], axis=None)
+                    corner_data, axis=None)
                 col_bkg = np.vstack((col_bkg, crn_bkg))
                 col_bkgrms = np.vstack((col_bkgrms, crn_bkgrms))
                 col_ngood = np.vstack((col_ngood, crn_ngood))
