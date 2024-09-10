@@ -465,7 +465,8 @@ class Background2D:
         nboxes = self._data.shape // self.box_size
         y1, x1 = nboxes * self.box_size
 
-        # core boxes
+        # core boxes - the part of the data array that is an integer
+        # multiple of the box size
         # combine the last two axes for performance
         # Below we transform both the data and mask arrays to avoid
         # making multiple copies of the data (one to insert NaN and
@@ -485,42 +486,36 @@ class Background2D:
         if self.edge_method == 'pad' and (extra_row or extra_col):
             if extra_row:
                 # extra row of boxes
+                # here we need to make a copy of the data array to avoid
+                # modifying the original data array
                 # move the axes and combine the last two for performance
-                row_data = reshape_as_blocks(self._data[y1:, :x1],
-                                             (1, self.box_size[1]))
-                row_mask = reshape_as_blocks(mask[y1:, :x1],
-                                             (1, self.box_size[1]))
-
-                row_data = np.moveaxis(row_data, 0, -1)
-                row_mask = np.moveaxis(row_mask, 0, -1)
-                row_data = row_data.reshape((*row_data.shape[:-2], -1))
-                row_mask = row_mask.reshape((*row_mask.shape[:-2], -1))
-                row_data = row_data.copy()  # make a copy to avoid modifying
+                row_data = self._data[y1:, :x1].copy()
+                row_mask = mask[y1:, :x1]
                 row_data[row_mask] = np.nan
+                row_data = reshape_as_blocks(row_data, (1, self.box_size[1]))
+                row_data = np.moveaxis(row_data, 0, -1)
+                row_data = row_data.reshape((*row_data.shape[:-2], -1))
                 row_bkg, row_bkgrms, row_ngood = self._compute_box_statistics(
                     row_data, axis=-1)
 
             if extra_col:
                 # extra column of boxes
+                # here we need to make a copy of the data array to avoid
+                # modifying the original data array
                 # move the axes and combine the last two for performance
-                col_data = reshape_as_blocks(self._data[:y1, x1:],
-                                             (self.box_size[0], 1))
-                col_mask = reshape_as_blocks(mask[:y1, x1:],
-                                             (self.box_size[0], 1))
-                col_data = np.transpose(col_data, (0, 3, 1, 2))
-                col_mask = np.transpose(col_mask, (0, 3, 1, 2))
-                col_data = col_data.reshape((*col_data.shape[:-2], -1))
-                col_mask = col_mask.reshape((*col_mask.shape[:-2], -1))
-                col_data = col_data.copy()  # make a copy to avoid modifying
+                col_data = self._data[:y1, x1:].copy()
+                col_mask = mask[:y1, x1:]
                 col_data[col_mask] = np.nan
+                col_data = reshape_as_blocks(col_data, (self.box_size[0], 1))
+                col_data = np.transpose(col_data, (0, 3, 1, 2))
+                col_data = col_data.reshape((*col_data.shape[:-2], -1))
                 col_bkg, col_bkgrms, col_ngood = self._compute_box_statistics(
                     col_data, axis=-1)
 
             if extra_row and extra_col:
                 # extra corner box -- append to extra column
-                # Since we don't make a copy via the reshaping, we need to
-                # explicitly make a copy of the corner data to avoid
-                # modifying the original data array.
+                # here we need to make a copy of the data array to avoid
+                # modifying the original data array
                 corner_data = self._data[y1:, x1:].copy()
                 corner_mask = mask[y1:, x1:]
                 corner_data[corner_mask] = np.nan
