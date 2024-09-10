@@ -423,3 +423,33 @@ class TestBackground2D:
         cls_name = bkg.__class__.__name__
         cls_name = f'{bkg.__class__.__module__}.{cls_name}'
         assert cls_str.startswith(f'<{cls_name}>')
+
+    def test_masks(self):
+        arr = np.arange(25.0).reshape(5, 5)
+        mask = np.zeros(arr.shape, dtype=bool)
+        mask[0, 0] = np.nan
+        mask[-1, 0] = np.nan
+        mask[-1, -1] = np.nan
+        mask[0, -1] = np.nan
+
+        box_size = (2, 2)
+        exclude_percentile = 100
+        filter_size = 1
+        bkg_estimator = MeanBackground()
+        bkg1 = Background2D(arr, box_size, mask=mask,
+                            exclude_percentile=exclude_percentile,
+                            filter_size=filter_size,
+                            bkg_estimator=bkg_estimator)
+        bkgimg1 = bkg1.background
+
+        arr2 = arr.copy()
+        arr2[mask] = np.nan
+        match = 'Input data contains invalid values'
+        with pytest.warns(AstropyUserWarning, match=match):
+            bkg2 = Background2D(arr2, box_size, mask=None,
+                                exclude_percentile=exclude_percentile,
+                                filter_size=filter_size,
+                                bkg_estimator=bkg_estimator)
+        bkgimg2 = bkg2.background
+
+        assert_equal(bkgimg1, bkgimg2)
