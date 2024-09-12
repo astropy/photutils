@@ -111,7 +111,7 @@ The size of the annulus and the statistic function can be configured in
 
 The next step is to fit the sources and/or groups. This
 task is performed using an astropy fitter, for example
-`~astropy.modeling.fitting.LevMarLSQFitter`, input via the ``fitter``
+`~astropy.modeling.fitting.TRFLSQFitter`, input via the ``fitter``
 keyword. The shape of the region to be fitted can be configured using
 the ``fit_shape`` parameter. In general, ``fit_shape`` should be set
 to a small size (e.g., (5, 5)) that covers the central star region
