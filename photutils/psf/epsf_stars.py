@@ -731,11 +731,10 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
             warnings.simplefilter('ignore', RuntimeWarning)
             weights = data.uncertainty.represent_as(StdDevUncertainty)
             weights = 1.0 / weights.array
-            if np.any(~np.isfinite(weights)):
-                warnings.warn('One or more weight values is not finite. '
-                              'Please check the input uncertainty values '
-                              'in the input NDData object.',
-                              AstropyUserWarning)
+        if np.any(~np.isfinite(weights)):
+            warnings.warn('One or more weight values is not finite. Please '
+                          'check the input uncertainty values in the input '
+                          'NDData object.', AstropyUserWarning)
 
     if data.mask is not None:
         weights[data.mask] = 0.0
