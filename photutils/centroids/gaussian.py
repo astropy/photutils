@@ -6,7 +6,7 @@ The module contains tools for centroiding sources using Gaussians.
 import warnings
 
 import numpy as np
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import LMLSQFitter
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -105,11 +105,13 @@ def centroid_1dg(data, error=None, mask=None):
 
     xy_data = [np.ma.sum(data, axis=i).data for i in (0, 1)]
 
+    # would need to use a different fitter if parameter bounds are used
+    fitter = LMLSQFitter()
+
     centroid = []
     for (data_i, weights_i) in zip(xy_data, xy_weights, strict=True):
         params_init = _gaussian1d_moments(data_i)
         g_init = Gaussian1D(*params_init)
-        fitter = LevMarLSQFitter()
         x = np.arange(data_i.size)
         g_fit = fitter(g_init, x, data_i, weights=weights_i)
         centroid.append(g_fit.mean.value)
@@ -199,7 +201,7 @@ def centroid_2dg(data, error=None, mask=None):
     >>> data = data[40:80, 70:110]
     >>> x1, y1 = centroid_2dg(data)
     >>> print(np.array((x1, y1)))
-    [19.9851945  20.01490155]
+    [19.98519434 20.01490159]
 
     .. plot::
 
@@ -269,7 +271,10 @@ def centroid_2dg(data, error=None, mask=None):
                         x_stddev=props.semimajor_sigma.value,
                         y_stddev=props.semiminor_sigma.value,
                         theta=props.orientation.value)
-    fitter = LevMarLSQFitter()
+
+    # would need to use a different fitter if parameter bounds are used
+    fitter = LMLSQFitter()
+
     y, x = np.indices(data.shape)
 
     with warnings.catch_warnings(record=True) as fit_warnings:
