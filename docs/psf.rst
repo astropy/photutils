@@ -171,8 +171,7 @@ PSF models based on previous observations. For example, the
 `Hubble Space Telescope <https://www.stsci.edu/hst>`_ provides
 both libraries of empirical PSF models (e.g., `WFC3 PSF Search
 <https://www.stsci.edu/hst/instrumentation/wfc3/data-analysis/psf/psf-se
-arch>`_ and `ACS ePSF Generator
-<https://acspsf.stsci.edu/>`_) and the `TinyTim
+arch>`_) and the `TinyTim
 <https://www.stsci.edu/hst/instrumentation/focus-and-pointing/focus/tiny
 -tim-hst-psf-modeling>`_ software for creating PSF models. Similarly,
 the `James Webb Space Telescope <https://www.stsci.edu/jwst>`_ provides

@@ -70,21 +70,20 @@ class IRAFStarFinder(StarFinderBase):
         The upper bound on roundness for object detection.
 
     sky : float, optional
-        The background sky level of the image. Inputing a ``sky``
-        value will override the background sky estimate. Setting
-        ``sky`` affects only the output values of the object ``peak``,
-        ``flux``, and ``mag`` values. The default is ``None``, which
-        means the sky value will be estimated using the `starfind`_
-        method. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``sky`` must have the same
-        units.
+        The background sky level of the image. Inputing a ``sky`` value
+        will override the background sky estimate. Setting ``sky``
+        affects only the output values of the object ``peak``, ``flux``,
+        and ``mag`` values. The default is ``None``, which means the sky
+        value will be estimated using the starfind method. If the star
+        finder is run on an image that is a `~astropy.units.Quantity`
+        array, then ``sky`` must have the same units.
 
         .. deprecated:: 1.13.0
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders. The default is
-        `False`, which is the mode used by `starfind`_.
+        `False`, which is the mode used by starfind.
 
     brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
@@ -122,10 +121,10 @@ class IRAFStarFinder(StarFinderBase):
     ``peakmax`` must all have the same units as the image.
 
     For the convolution step, this routine sets pixels beyond the image
-    borders to 0.0. The equivalent parameters in IRAF's `starfind`_ are
+    borders to 0.0. The equivalent parameters in IRAF's starfind are
     ``boundary='constant'`` and ``constant=0.0``.
 
-    IRAF's `starfind`_ uses ``hwhmpsf``, ``fradius``, and ``sepmin`` as
+    IRAF's starfind uses ``hwhmpsf``, ``fradius``, and ``sepmin`` as
     input parameters. The equivalent input values for `IRAFStarFinder`
     are:
 
@@ -143,12 +142,6 @@ class IRAFStarFinder(StarFinderBase):
 
     * `~photutils.detection.IRAFStarFinder` calculates the objects'
       centroid, roundness, and sharpness using image moments.
-
-    References
-    ----------
-    .. [1] https://iraf.net/irafhelp.php?val=starfind
-
-    .. _starfind: https://iraf.net/irafhelp.php?val=starfind
     """
 
     @deprecated_renamed_argument('sky', None, '1.13.0')

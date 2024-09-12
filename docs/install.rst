@@ -84,7 +84,7 @@ Photutils can also be installed using the ``conda`` package manager.
 There are several methods for installing ``conda`` and many different
 ways to set up your Python environment, but that is beyond the
 scope of this documentation. We recommend installing `miniforge
-<https://github.com/conda-forge/miniforge/#miniforge>`__.
+<https://github.com/conda-forge/miniforge>`__.
 
 Once you have installed ``conda``, you can install Photutils using the
 ``conda-forge`` channel::
