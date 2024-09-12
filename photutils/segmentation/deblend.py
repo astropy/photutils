@@ -9,6 +9,7 @@ from multiprocessing import cpu_count, get_context
 
 import numpy as np
 from astropy.units import Quantity
+from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import label as ndi_label
 from scipy.ndimage import sum_labels
@@ -195,9 +196,9 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
                                                       labels, strict=True):
             if progress_bar:
                 all_source_data.set_postfix_str(f'ID: {label}')
-            deblender = _Deblender(source_data, source_segment, npixels,
-                                   footprint, nlevels, contrast, mode)
-            source_deblended = deblender.deblend_source()
+            source_deblended = _deblend_source(source_data, source_segment,
+                                               npixels, footprint, nlevels,
+                                               contrast, mode)
             all_source_deblends.append(source_deblended)
 
     else:
@@ -264,15 +265,14 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
 def _deblend_source(source_data, source_segment, npixels, footprint, nlevels,
                     contrast, mode):
     """
-    Convenience function to deblend a single labeled source with
-    multiprocessing.
+    Convenience function to deblend a single labeled source.
     """
-    deblender = _Deblender(source_data, source_segment, npixels, footprint,
-                           nlevels, contrast, mode)
+    deblender = _SingleSourceDeblender(source_data, source_segment, npixels,
+                                       footprint, nlevels, contrast, mode)
     return deblender.deblend_source()
 
 
-class _Deblender:
+class _SingleSourceDeblender:
     """
     Class to deblend a single labeled source.
 
@@ -333,22 +333,33 @@ class _Deblender:
         self.nlevels = nlevels
         self.contrast = contrast
         self.mode = mode
-        self.warnings = {}
 
+        self.warnings = {}
         self.segment_mask = source_segment.data.astype(bool)
-        self.source_values = source_data[self.segment_mask]
-        self.source_min = nanmin(self.source_values)
-        self.source_max = nanmax(self.source_values)
-        self.source_sum = nansum(self.source_values)
+        source_values = source_data[self.segment_mask]
+        self.source_min = nanmin(source_values)
+        self.source_max = nanmax(source_values)
+        self.source_sum = nansum(source_values)
+
         self.label = source_segment.labels[0]  # should only be 1 label
 
-        # NOTE: this includes the source min/max, but we exclude those
-        # later, giving nlevels thresholds between min and max
-        # (noninclusive; i.e., nlevels + 1 parts)
-        self.linear_thresholds = np.linspace(self.source_min, self.source_max,
-                                             self.nlevels + 2)
+    @lazyproperty
+    def linear_thresholds(self):
+        """
+        Linearly spaced thresholds between the source minimum and
+        maximum (inclusive).
 
+        The source min/max are excluded later, giving nlevels thresholds
+        between min and max (noninclusive).
+        """
+        return np.linspace(self.source_min, self.source_max, self.nlevels + 2)
+
+    @lazyproperty
     def normalized_thresholds(self):
+        """
+        Normalized thresholds (from 0 to 1) between the source minimum
+        and maximum (inclusive).
+        """
         return ((self.linear_thresholds - self.source_min)
                 / (self.source_max - self.source_min))
 
@@ -366,28 +377,42 @@ class _Deblender:
             a = 0.25
             minval = self.source_min
             maxval = self.source_max
-            thresholds = self.normalized_thresholds()
+            thresholds = self.normalized_thresholds
             thresholds = np.sinh(thresholds / a) / np.sinh(1.0 / a)
             thresholds *= (maxval - minval)
             thresholds += minval
         elif self.mode == 'exponential':
             minval = self.source_min
             maxval = self.source_max
-            thresholds = self.normalized_thresholds()
+            thresholds = self.normalized_thresholds
             thresholds = minval * (maxval / minval) ** thresholds
 
         return thresholds[1:-1]  # do not include source min and max
 
-    def multithreshold(self):
+    def multithreshold(self, deblend_mode=True):
         """
         Perform multithreshold detection for each source.
+
+        Parameters
+        ----------
+        deblend_mode : bool, optional
+            If `True` then only segmentation images with more than one
+            label will be returned. If `False` then all segmentation
+            images will be returned.
+
+        Returns
+        -------
+        segments : list of `~photutils.segmentation.SegmentationImage`
+            A list of segmentation images, one for each threshold. If
+            ``deblend_mode=True`` then only segmentation images with more
+            than one label will be returned.
         """
         thresholds = self.compute_thresholds()
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             return _detect_sources(self.source_data, thresholds, self.npixels,
                                    self.footprint, self.segment_mask,
-                                   deblend_mode=True)
+                                   deblend_mode=deblend_mode)
 
     def make_markers(self, segments):
         """
@@ -402,28 +427,32 @@ class _Deblender:
         -------
         markers : list of `~photutils.segmentation.SegmentationImage`
             A list of segmentation images that contain possible sources
-            as markers. The last list element contains all of the
-            potential source markers.
+            as markers. The last list element contains the final source
+            markers.
         """
         for i in range(len(segments) - 1):
             segm_lower = segments[i].data
             segm_upper = segments[i + 1].data
             markers = segm_lower.astype(bool)
-            relabel = False
-            # if the are more sources at the upper level, then
-            # remove the parent source(s) from the lower level,
-            # but keep any sources in the lower level that do not have
-            # multiple children in the upper level
+            new_markers = False
+            # For a given label in the lower level, find the labels in
+            # the upper level (higher threshold value) that are its
+            # children (i.e., the labels within the same mask as the
+            # lower level). If there are multiple children, then the
+            # lower-level parent label is replaced by its children.
+            # Parent labels that do not have multiple children in the
+            # upper level are kept as is (maximizing the marker size).
             for label in segments[i].labels:
                 mask = (segm_lower == label)
                 # find label mapping from the lower to upper level
                 upper_labels = segm_upper[mask]
                 upper_labels = np.unique(upper_labels[upper_labels != 0])
-                if upper_labels.size >= 2:
-                    relabel = True
+                if upper_labels.size >= 2:  # new child markers found
+                    new_markers = True
                     markers[mask] = segm_upper[mask].astype(bool)
 
-            if relabel:
+            if new_markers:
+                # convert bool markers to integer labels
                 segm_data, nlabels = ndi_label(markers,
                                                structure=self.footprint)
                 segm_new = object.__new__(SegmentationImage)
@@ -433,7 +462,7 @@ class _Deblender:
             else:
                 segments[i + 1] = segments[i]
 
-        return segments
+        return segments[-1]
 
     def apply_watershed(self, markers):
         """
@@ -455,7 +484,7 @@ class _Deblender:
         from skimage.segmentation import watershed
 
         # all markers are at the top level
-        markers = markers[-1].data
+        markers = markers.data
 
         # Deblend using watershed. If any source does not meet the contrast
         # criterion, then remove the faintest such source and repeat until
@@ -502,10 +531,11 @@ class _Deblender:
         # This mostly affects the "exponential" mode, where there are
         # many levels at low thresholds, so here we try again with
         # "linear" mode.
-        if self.mode != 'linear' and markers[-1].nlabels > 200:
+        if self.mode != 'linear' and markers.nlabels > 200:
             self.warnings['nmarkers'] = 'too many markers'
             self.mode = 'linear'
             segments = self.multithreshold()
+
             if len(segments) == 0:  # no deblending
                 return None
             markers = self.make_markers(segments)
