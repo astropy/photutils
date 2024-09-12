@@ -7,7 +7,7 @@ import itertools
 
 import numpy as np
 import pytest
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import (InverseVariance, NDData, StdDevUncertainty,
                             VarianceUncertainty)
 from astropy.stats import SigmaClip
@@ -169,10 +169,10 @@ class TestEPSFBuild:
             EPSFBuilder(fitter=EPSFFitter, maxiters=3)
 
         with pytest.raises(TypeError, match=match):
-            EPSFBuilder(fitter=LevMarLSQFitter(), maxiters=3)
+            EPSFBuilder(fitter=TRFLSQFitter(), maxiters=3)
 
         with pytest.raises(TypeError, match=match):
-            EPSFBuilder(fitter=LevMarLSQFitter, maxiters=3)
+            EPSFBuilder(fitter=TRFLSQFitter, maxiters=3)
 
 
 def test_epsfbuilder_inputs():

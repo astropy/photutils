@@ -6,7 +6,7 @@ Tests for the model_helpers module.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Const2D, Gaussian2D, Moffat2D
 from astropy.nddata import NDData
 from astropy.table import Table
@@ -78,7 +78,7 @@ def test_moffat_fitting(moffat_source):
     guess_moffat = Moffat2D(x_0=0.1, y_0=-0.05, gamma=1.05,
                             amplitude=model.amplitude * 1.06, alpha=4.75)
 
-    fitter = LevMarLSQFitter()
+    fitter = TRFLSQFitter()
     fit = fitter(guess_moffat, xx, yy, data)
     assert_allclose(fit.parameters, model.parameters, rtol=0.01, atol=0.0005)
 
@@ -113,7 +113,7 @@ def test_make_psf_model(moffat_source, kwargs, tols):
         guess_moffat.y_0 = 0
 
     psf_model = make_psf_model(guess_moffat, **kwargs)
-    fitter = LevMarLSQFitter()
+    fitter = TRFLSQFitter()
     fit_model = fitter(psf_model, xx, yy, data)
     xytol, fluxtol = tols
 
