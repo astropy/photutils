@@ -29,13 +29,11 @@ class DAOStarFinder(StarFinderBase):
     <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_)
     algorithm.
 
-    DAOFIND (`Stetson 1987; PASP 99, 191
-    <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_)
-    searches images for local density maxima that have a peak amplitude
-    greater than ``threshold`` (approximately; ``threshold`` is applied
-    to a convolved image) and have a size and shape similar to the
-    defined 2D Gaussian kernel. The Gaussian kernel is defined by
-    the ``fwhm``, ``ratio``, ``theta``, and ``sigma_radius`` input
+    DAOFIND searches images for local density maxima that have a peak
+    amplitude greater than ``threshold`` (approximately; ``threshold``
+    is applied to a convolved image) and have a size and shape similar
+    to the defined 2D Gaussian kernel. The Gaussian kernel is defined
+    by the ``fwhm``, ``ratio``, ``theta``, and ``sigma_radius`` input
     parameters.
 
     ``DAOStarFinder`` finds the object centroid by fitting the marginal
@@ -45,11 +43,11 @@ class DAOStarFinder(StarFinderBase):
     ``DAOStarFinder`` calculates the object roundness using two methods.
     The ``roundlo`` and ``roundhi`` bounds are applied to both measures
     of roundness. The first method (``roundness1``; called ``SROUND``
-    in `DAOFIND`_) is based on the source symmetry and is the ratio of
-    a measure of the object's bilateral (2-fold) to four-fold symmetry.
+    in DAOFIND) is based on the source symmetry and is the ratio of a
+    measure of the object's bilateral (2-fold) to four-fold symmetry.
     The second roundness statistic (``roundness2``; called ``GROUND``
-    in `DAOFIND`_) measures the ratio of the difference in the height
-    of the best fitting Gaussian function in x minus the best fitting
+    in DAOFIND) measures the ratio of the difference in the height of
+    the best fitting Gaussian function in x minus the best fitting
     Gaussian function in y, divided by the average of the best fitting
     Gaussian functions in x and y. A circular source will have a zero
     roundness. A source extended in x or y will have a negative or
@@ -104,16 +102,16 @@ class DAOStarFinder(StarFinderBase):
         The background sky level of the image. Setting ``sky`` affects
         only the output values of the object ``peak``, ``flux``, and
         ``mag`` values. The default is 0.0, which should be used to
-        replicate the results from `DAOFIND`_. If the star finder is
-        run on an image that is a `~astropy.units.Quantity` array, then
-        ``sky`` must have the same units.
+        replicate the results from DAOFIND. If the star finder is run on
+        an image that is a `~astropy.units.Quantity` array, then ``sky``
+        must have the same units.
 
         .. deprecated:: 1.13.0
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders. The default is
-        `False`, which is the mode used by `DAOFIND`_.
+        `False`, which is the mode used by DAOFIND.
 
     brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
@@ -149,7 +147,7 @@ class DAOStarFinder(StarFinderBase):
     ``peakmax`` must all have the same units as the image.
 
     For the convolution step, this routine sets pixels beyond the
-    image borders to 0.0. The equivalent parameters in `DAOFIND`_ are
+    image borders to 0.0. The equivalent parameters in DAOFIND are
     ``boundary='constant'`` and ``constant=0.0``.
 
     The main differences between `~photutils.detection.DAOStarFinder`
@@ -167,9 +165,6 @@ class DAOStarFinder(StarFinderBase):
     ----------
     .. [1] Stetson, P. 1987; PASP 99, 191
            (https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract)
-    .. [2] https://iraf.net/irafhelp.php?val=daofind
-
-    .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
     """
 
     @deprecated_renamed_argument('sky', None, '1.13.0')
@@ -286,11 +281,11 @@ class DAOStarFinder(StarFinderBase):
             * ``peak``: the peak, sky-subtracted, pixel value of the object.
             * ``flux``: the object DAOFind "flux" calculated as the peak
               density in the convolved image divided by the detection
-              threshold. This derivation matches that of `DAOFIND`_ if
+              threshold. This derivation matches that of DAOFIND if
               ``sky`` is 0.0.
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``. The derivation matches that of
-              `DAOFIND`_ if ``sky`` is 0.0.
+              DAOFIND if ``sky`` is 0.0.
 
             `None` is returned if no stars are found.
         """
@@ -320,7 +315,7 @@ class DAOStarFinder(StarFinderBase):
 class _DAOStarFinderCatalog:
     """
     Class to create a catalog of the properties of each detected star,
-    as defined by `DAOFIND`_.
+    as defined by DAOFIND.
 
     Parameters
     ----------
@@ -376,10 +371,6 @@ class _DAOStarFinderCatalog:
         a `~astropy.units.Quantity` array, then ``peakmax`` must have
         the same units. If ``peakmax`` is set to `None`, then no peak
         pixel value filtering will be performed.
-
-    References
-    ----------
-    .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
     """
 
     def __init__(self, data, convolved_data, xypos, threshold, kernel, *,
@@ -732,7 +723,7 @@ class _DAOStarFinderCatalog:
         detection threshold.
 
         This is DAOStarFinder's definition of "flux" and matches that of
-        `DAOFIND`_ if ``sky`` is 0.0.
+        DAOFIND if ``sky`` is 0.0.
         """
         flux = self.convdata_peak / self.threshold_eff
         if self.unit is not None:
