@@ -20,7 +20,7 @@ from photutils.background.interpolators import BkgZoomInterpolator
 from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._parameters import as_pair
 from photutils.utils._repr import make_repr
-from photutils.utils._stats import nanmedian
+from photutils.utils._stats import nanmedian, nanmin
 
 __all__ = ['Background2D']
 
@@ -255,7 +255,7 @@ class Background2D:
          self._ngood) = self._calculate_stats()
 
         # this is used to selectively filter the low-resolution maps
-        self._min_bkg_stats = np.nanmin(self._bkg_stats)
+        self._min_bkg_stats = nanmin(self._bkg_stats)
 
         # update the interpolator keyword arguments
         self._interp_kwargs['mesh_yxcen'] = self._calculate_mesh_yxcen()
