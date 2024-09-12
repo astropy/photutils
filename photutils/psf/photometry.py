@@ -12,7 +12,7 @@ from itertools import chain
 
 import astropy.units as u
 import numpy as np
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NDData, NoOverlapError, StdDevUncertainty
 from astropy.table import QTable, Table, hstack, join, vstack
 from astropy.utils import lazyproperty
@@ -277,14 +277,12 @@ class PSFPhotometry(ModelImageMixin):
     model parameters. This table can be used as the ``init_params``
     input in a subsequent call to `PSFPhotometry`.
 
-    If the returned model parameter errors are NaN, then either
-    the fit did not converge, the model parameter was fixed, or
-    the input ``fitter`` did not return parameter errors. For the
-    later case, one can try a different fitter that may return
-    parameter errors (e.g., `astropy.modeling.fitting.LMLSQFitter`
-    or `astropy.modeling.fitting.TRFLSQFitter`). Note that
-    these fitters are typically slower than the default
-    `astropy.modeling.fitting.LevMarLSQFitter`.
+    If the returned model parameter errors are NaN, then either the
+    fit did not converge, the model parameter was fixed, or the
+    input ``fitter`` did not return parameter errors. For the later
+    case, one can try a different fitter that may return parameter
+    errors (e.g., `astropy.modeling.fitting.DogBoxLSQFitter` or
+    `astropy.modeling.fitting.LMLSQFitter`).
 
     The local background value around each source is optionally
     estimated using the ``localbkg_estimator`` or obtained from the
@@ -312,7 +310,7 @@ class PSFPhotometry(ModelImageMixin):
                                        alternative='fit_info')
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
-                 fitter=LevMarLSQFitter(), fitter_maxiters=100,
+                 fitter=TRFLSQFitter(), fitter_maxiters=100,
                  xy_bounds=None, localbkg_estimator=None, aperture_radius=None,
                  progress_bar=False):
 
@@ -1581,14 +1579,12 @@ class IterativePSFPhotometry(ModelImageMixin):
     model parameters. This table can be used as the ``init_params``
     input in a subsequent call to `PSFPhotometry`.
 
-    If the returned model parameter errors are NaN, then either
-    the fit did not converge, the model parameter was fixed, or
-    the input ``fitter`` did not return parameter errors. For the
-    later case, one can try a different fitter that may return
-    parameter errors (e.g., `astropy.modeling.fitting.LMLSQFitter`
-    or `astropy.modeling.fitting.TRFLSQFitter`). Note that
-    these fitters are typically slower than the default
-    `astropy.modeling.fitting.LevMarLSQFitter`.
+    If the returned model parameter errors are NaN, then either the
+    fit did not converge, the model parameter was fixed, or the
+    input ``fitter`` did not return parameter errors. For the later
+    case, one can try a different fitter that may return parameter
+    errors (e.g., `astropy.modeling.fitting.DogBoxLSQFitter` or
+    `astropy.modeling.fitting.LMLSQFitter`).
 
     The local background value around each source is optionally
     estimated using the ``localbkg_estimator`` or obtained from the
@@ -1632,7 +1628,7 @@ class IterativePSFPhotometry(ModelImageMixin):
     """
 
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
-                 fitter=LevMarLSQFitter(), fitter_maxiters=100,
+                 fitter=TRFLSQFitter(), fitter_maxiters=100,
                  xy_bounds=None, maxiters=3, mode='new',
                  localbkg_estimator=None, aperture_radius=None,
                  sub_shape=None, progress_bar=False):
