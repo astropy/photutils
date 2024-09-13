@@ -155,8 +155,9 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         segment_img.check_labels(labels)
 
     # include only sources that have at least (2 * npixels);
-    # this is required for it to be deblended into multiple sources,
-    # each with a minimum of npixels
+    # this is required for a source to be deblended into multiple
+    # sources, each with a minimum of npixels
+
     mask = (segment_img.areas[segment_img.get_indices(labels)]
             >= (npixels * 2))
     labels = labels[mask]
@@ -197,13 +198,13 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
             if progress_bar:
                 all_source_data.set_postfix_str(f'ID: {label}')
             source_deblended = _deblend_source(source_data, source_segment,
-                                               npixels, footprint, nlevels,
-                                               contrast, mode)
+                                               label, npixels, footprint,
+                                               nlevels, contrast, mode)
             all_source_deblends.append(source_deblended)
 
     else:
         nlabels = len(labels)
-        args_all = zip(all_source_data, all_source_segments,
+        args_all = zip(all_source_data, all_source_segments, labels,
                        (npixels,) * nlabels, (footprint,) * nlabels,
                        (nlevels,) * nlabels, (contrast,) * nlabels,
                        (mode,) * nlabels, strict=True)
@@ -262,13 +263,14 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     return segm_deblended
 
 
-def _deblend_source(source_data, source_segment, npixels, footprint, nlevels,
-                    contrast, mode):
+def _deblend_source(source_data, source_segment, label, npixels, footprint,
+                    nlevels, contrast, mode):
     """
     Convenience function to deblend a single labeled source.
     """
-    deblender = _SingleSourceDeblender(source_data, source_segment, npixels,
-                                       footprint, nlevels, contrast, mode)
+    deblender = _SingleSourceDeblender(source_data, source_segment, label,
+                                       npixels, footprint, nlevels, contrast,
+                                       mode)
     return deblender.deblend_source()
 
 
@@ -285,8 +287,11 @@ class _SingleSourceDeblender:
 
     source_segment : `~photutils.segmentation.SegmentationImage`
         A cutout `~photutils.segmentation.SegmentationImage` object with
-        the same shape as ``data``. ``segment_img`` should contain only
-        *one* source label.
+        the same shape as ``data``.
+
+    label : int
+        The label of the source to deblend. This is needed because there
+        may be more than one source label within the cutout.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
@@ -294,10 +299,10 @@ class _SingleSourceDeblender:
         positive integer.
 
     nlevels : int
-        The number of multi-thresholding levels to use. Each source will
-        be re-thresholded at ``nlevels`` levels spaced exponentially
-        or linearly (see the ``mode`` keyword) between its minimum and
-        maximum values within the source segment.
+        The number of multi-thresholding levels to use. Each source
+        will be re-thresholded at ``nlevels`` levels spaced between its
+        minimum and maximum values within the source segment. See the
+        ``mode`` keyword for how the levels are spaced.
 
     contrast : float
         The fraction of the total (blended) source flux that a local
@@ -310,8 +315,7 @@ class _SingleSourceDeblender:
 
     mode : {'exponential', 'linear', 'sinh'}
         The mode used in defining the spacing between the
-        multi-thresholding levels (see the ``nlevels`` keyword). The
-        default is 'exponential'.
+        multi-thresholding levels (see the ``nlevels`` keyword).
 
     Returns
     -------
@@ -323,25 +327,24 @@ class _SingleSourceDeblender:
         1.
     """
 
-    def __init__(self, source_data, source_segment, npixels, footprint,
+    def __init__(self, source_data, source_segment, label, npixels, footprint,
                  nlevels, contrast, mode):
 
         self.source_data = source_data
         self.source_segment = source_segment
+        self.label = label
         self.npixels = npixels
         self.footprint = footprint
         self.nlevels = nlevels
         self.contrast = contrast
         self.mode = mode
 
-        self.warnings = {}
-        self.segment_mask = source_segment.data.astype(bool)
+        self.segment_mask = source_segment.data == label
         source_values = source_data[self.segment_mask]
         self.source_min = nanmin(source_values)
         self.source_max = nanmax(source_values)
         self.source_sum = nansum(source_values)
-
-        self.label = source_segment.labels[0]  # should only be 1 label
+        self.warnings = {}
 
     @lazyproperty
     def linear_thresholds(self):
