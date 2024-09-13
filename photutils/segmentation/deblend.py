@@ -182,7 +182,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         source_segment._data = segment_img.data[source_slice]
         source_segment.keep_labels(label)  # include only one label
         all_source_data.append(source_data)
-        all_source_segments.append(source_segment)
+        all_source_segments.append(source_segment.data)
         all_source_slices.append(source_slice)
 
     if nproc == 1:
@@ -197,7 +197,8 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
                                                       labels, strict=True):
             if progress_bar:
                 all_source_data.set_postfix_str(f'ID: {label}')
-            source_deblended = _deblend_source(source_data, source_segment,
+            source_deblended = _deblend_source(source_data,
+                                               source_segment,
                                                label, npixels, footprint,
                                                nlevels, contrast, mode)
             all_source_deblends.append(source_deblended)
@@ -263,14 +264,13 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     return segm_deblended
 
 
-def _deblend_source(source_data, source_segment, label, npixels, footprint,
-                    nlevels, contrast, mode):
+def _deblend_source(data, segment_data, label, npixels, footprint, nlevels,
+                    contrast, mode):
     """
     Convenience function to deblend a single labeled source.
     """
-    deblender = _SingleSourceDeblender(source_data, source_segment, label,
-                                       npixels, footprint, nlevels, contrast,
-                                       mode)
+    deblender = _SingleSourceDeblender(data, segment_data, label, npixels,
+                                       footprint, nlevels, contrast, mode)
     return deblender.deblend_source()
 
 
@@ -280,14 +280,14 @@ class _SingleSourceDeblender:
 
     Parameters
     ----------
-    source_data : 2D `~numpy.ndarray`
+    data : 2D `~numpy.ndarray`
         The cutout data array for a single source. ``data`` should
         also already be smoothed by the same filter used in
         :func:`~photutils.segmentation.detect_sources`, if applicable.
 
-    source_segment : `~photutils.segmentation.SegmentationImage`
-        A cutout `~photutils.segmentation.SegmentationImage` object with
-        the same shape as ``data``.
+    segment_data : 2D int `~numpy.ndarray`
+        The cutout segmentation image for a single source. Must have the
+        same shape as ``data``.
 
     label : int
         The label of the source to deblend. This is needed because there
@@ -327,11 +327,11 @@ class _SingleSourceDeblender:
         1.
     """
 
-    def __init__(self, source_data, source_segment, label, npixels, footprint,
-                 nlevels, contrast, mode):
+    def __init__(self, data, segment_data, label, npixels, footprint, nlevels,
+                 contrast, mode):
 
-        self.source_data = source_data
-        self.source_segment = source_segment
+        self.data = data
+        self.segment_data = segment_data
         self.label = label
         self.npixels = npixels
         self.footprint = footprint
@@ -339,11 +339,11 @@ class _SingleSourceDeblender:
         self.contrast = contrast
         self.mode = mode
 
-        self.segment_mask = source_segment.data == label
-        source_values = source_data[self.segment_mask]
-        self.source_min = nanmin(source_values)
-        self.source_max = nanmax(source_values)
-        self.source_sum = nansum(source_values)
+        self.segment_mask = segment_data == label
+        data_values = data[self.segment_mask]
+        self.source_min = nanmin(data_values)
+        self.source_max = nanmax(data_values)
+        self.source_sum = nansum(data_values)
         self.warnings = {}
 
     @lazyproperty
@@ -413,7 +413,7 @@ class _SingleSourceDeblender:
         thresholds = self.compute_thresholds()
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
-            return _detect_sources(self.source_data, thresholds, self.npixels,
+            return _detect_sources(self.data, thresholds, self.npixels,
                                    self.footprint, self.segment_mask,
                                    deblend_mode=deblend_mode)
 
@@ -494,16 +494,15 @@ class _SingleSourceDeblender:
         # all sources meet the contrast criterion.
         remove_marker = True
         while remove_marker:
-            markers = watershed(-self.source_data, markers,
-                                mask=self.segment_mask,
+            markers = watershed(-self.data, markers, mask=self.segment_mask,
                                 connectivity=self.footprint)
 
             labels = np.unique(markers[markers != 0])
             if labels.size == 1:  # only 1 source left
                 remove_marker = False
             else:
-                flux_frac = sum_labels(self.source_data, markers,
-                                       index=labels) / self.source_sum
+                flux_frac = (sum_labels(self.data, markers, index=labels)
+                             / self.source_sum)
                 remove_marker = any(flux_frac < self.contrast)
 
                 if remove_marker:
