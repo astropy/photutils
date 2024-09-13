@@ -11,6 +11,7 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._stats import nanmax, nansum
 
 __all__ = ['ProfileBase']
 
@@ -223,9 +224,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
                   is 1.
         """
         if method == 'max':
-            normalization = np.nanmax(self.profile)
+            normalization = nanmax(self.profile)
         elif method == 'sum':
-            normalization = np.nansum(self.profile)
+            normalization = nansum(self.profile)
         else:
             raise ValueError('invalid method, must be "max" or "sum"')
 

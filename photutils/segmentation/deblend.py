@@ -15,6 +15,7 @@ from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.detect import _detect_sources
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._progress_bars import add_progress_bar
+from photutils.utils._stats import nanmax, nanmin, nansum
 
 __all__ = ['deblend_sources']
 
@@ -332,9 +333,9 @@ class _Deblender:
 
         self.segment_mask = source_segment.data.astype(bool)
         self.source_values = source_data[self.segment_mask]
-        self.source_min = np.nanmin(self.source_values)
-        self.source_max = np.nanmax(self.source_values)
-        self.source_sum = np.nansum(self.source_values)
+        self.source_min = nanmin(self.source_values)
+        self.source_max = nanmax(self.source_values)
+        self.source_sum = nansum(self.source_values)
         self.label = source_segment.labels[0]  # should only be 1 label
 
         # NOTE: this includes the source min/max, but we exclude those

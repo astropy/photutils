@@ -18,10 +18,10 @@ from photutils.centroids import centroid_com
 from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from photutils.psf.image_models import EPSFModel
 from photutils.psf.utils import _interpolate_missing_data
-from photutils.utils._optional_deps import HAS_BOTTLENECK
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._round import py2intround
+from photutils.utils._stats import nanmedian
 from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['EPSFFitter', 'EPSFBuilder']
@@ -689,11 +689,7 @@ class EPSFBuilder:
             warnings.simplefilter('ignore', category=AstropyUserWarning)
             residuals = self._sigma_clip(residuals, axis=0, masked=False,
                                          return_bounds=False)
-            if HAS_BOTTLENECK:
-                import bottleneck
-                residuals = bottleneck.nanmedian(residuals, axis=0)
-            else:
-                residuals = np.nanmedian(residuals, axis=0)
+            residuals = nanmedian(residuals, axis=0)
 
         # interpolate any missing data (np.nan)
         mask = ~np.isfinite(residuals)

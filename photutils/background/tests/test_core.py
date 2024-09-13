@@ -16,6 +16,7 @@ from photutils.background.core import (BiweightLocationBackground,
                                        ModeEstimatorBackground,
                                        SExtractorBackground, StdBackgroundRMS)
 from photutils.datasets import make_noise_image
+from photutils.utils._stats import nanmean
 
 BKG = 0.0
 STD = 0.5
@@ -161,7 +162,7 @@ def test_background_masked(bkg_class):
     # test masked array with masked=False with axis
     bkgval2 = bkg.calc_background(data, masked=False, axis=1)
     assert not np.ma.isMaskedArray(bkgval2)
-    assert_allclose(np.nanmean(bkgval2), BKG, atol=0.01)
+    assert_allclose(nanmean(bkgval2), BKG, atol=0.01)
 
 
 @pytest.mark.parametrize('rms_class', RMS_CLASS)
@@ -181,7 +182,7 @@ def test_background_rms_masked(rms_class):
     # test masked array with masked=False with axis
     rms3 = bkgrms.calc_background_rms(data, masked=False, axis=1)
     assert not np.ma.isMaskedArray(rms3)
-    assert_allclose(np.nanmean(rms3), STD, atol=0.01)
+    assert_allclose(nanmean(rms3), STD, atol=0.01)
 
 
 @pytest.mark.parametrize('bkg_class', BKG_CLASS)

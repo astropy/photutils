@@ -11,6 +11,7 @@ from astropy.table import QTable
 
 from photutils.utils._misc import _get_meta
 from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._stats import nanmin
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['find_peaks']
@@ -144,7 +145,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     nan_mask = np.isnan(data)
     if np.any(nan_mask):
         data = np.copy(data)  # ndarray
-        data[nan_mask] = np.nanmin(data)
+        data[nan_mask] = nanmin(data)
 
     if footprint is not None:
         data_max = maximum_filter(data, footprint=footprint, mode='constant',
