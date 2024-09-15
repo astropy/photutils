@@ -418,6 +418,9 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
             raise ValueError('The NDData data attribute must be a 3D numpy '
                              'ndarray')
 
+        if not np.all(np.isfinite(data.data)):
+            raise ValueError('All elements of input data must be finite.')
+
         if 'grid_xypos' not in data.meta:
             raise ValueError('"grid_xypos" must be in the nddata meta '
                              'dictionary.')
