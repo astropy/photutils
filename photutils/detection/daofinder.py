@@ -279,7 +279,7 @@ class DAOStarFinder(StarFinderBase):
               array.
             * ``sky``: the input ``sky`` parameter.
             * ``peak``: the peak, sky-subtracted, pixel value of the object.
-            * ``flux``: the object DAOFind "flux" calculated as the peak
+            * ``flux``: the object DAOFIND "flux" calculated as the peak
               density in the convolved image divided by the detection
               threshold. This derivation matches that of DAOFIND if
               ``sky`` is 0.0.
@@ -288,6 +288,18 @@ class DAOStarFinder(StarFinderBase):
               DAOFIND if ``sky`` is 0.0.
 
             `None` is returned if no stars are found.
+
+            .. warning::
+                The ``flux`` parameter returned by the DAOFIND algorithm
+                is a bit of a misnomer. It is not a typical integrated
+                source flux, and its value critically depends on the
+                input ``threshold`` parameter. The ``flux`` parameter is
+                calculated as the peak density in the convolved image
+                divided by the effective detection threshold. ``flux``
+                and the corresponding ``mag`` parameter are reported
+                in the output table for comparison to the IRAF DAOFIND
+                output only. They are not intended to be used as a
+                measure of source flux.
         """
         # here we validate the units, but do not strip them
         # since sky is deprecated, we do not include it in the
@@ -725,9 +737,14 @@ class _DAOStarFinderCatalog:
         This is DAOStarFinder's definition of "flux" and matches that of
         DAOFIND if ``sky`` is 0.0.
         """
-        flux = self.convdata_peak / self.threshold_eff
+        # ignore divide-by-zero RuntimeWarning if threshold = 0
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            flux = self.convdata_peak / self.threshold_eff
+
         if self.unit is not None:
             flux = flux.value * self.unit
+
         return flux - (self.sky * self.npix)
 
     @lazyproperty
@@ -760,6 +777,10 @@ class _DAOStarFinderCatalog:
                  'roundness1', 'roundness2', 'peak', 'flux')
         mask = np.ones(len(self), dtype=bool)
         for attr in attrs:
+            # if threshold_eff == 0, flux will be np.inf, but
+            # coordinates can still be used
+            if self.threshold_eff == 0 and attr == 'flux':
+                continue
             mask &= np.isfinite(getattr(self, attr))
         newcat = self[mask]
 

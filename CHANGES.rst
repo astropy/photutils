@@ -94,6 +94,12 @@ Bug Fixes
   - Fixed a bug checking that the ``subpixels`` keyword is a strictly
     positive integer. [#1816]
 
+- ``photutils.detection``
+
+  - Fixed an issue where ``DAOStarFinder`` would not return any sources
+    if the input ``threshold`` was set to zero due to the ``flux`` being
+    non-finite. [#1882]
+
 - ``photutils.isophote``
 
   - Fixed a bug in ``build_ellipse_model`` where if
