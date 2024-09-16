@@ -228,11 +228,14 @@ def _detect_sources(data, thresholds, npixels, footprint, inverse_mask, *,
             continue
 
         if not deblend_mode:
-            # relabel the segmentation image with consecutive numbers
+            # relabel the segmentation image with consecutive numbers;
+            # ndimage.label returns segment_img with dtype = np.int32
+            # unless the input array has more than 2**31 - 1 pixels
             nlabels = len(segm_labels)
             if len(labels) != nlabels:
-                label_map = np.zeros(np.max(labels) + 1, dtype=int)
-                labels = np.arange(nlabels) + 1
+                label_map = np.zeros(np.max(labels) + 1,
+                                     dtype=segment_img.dtype)
+                labels = np.arange(nlabels, dtype=segment_img.dtype) + 1
                 label_map[segm_labels] = labels
                 segment_img = label_map[segment_img]
         else:

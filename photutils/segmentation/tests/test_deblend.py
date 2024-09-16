@@ -36,12 +36,14 @@ class TestDeblendSources:
     def test_deblend_sources(self, mode):
         result = deblend_sources(self.data, self.segm, self.npixels,
                                  mode=mode, progress_bar=False)
+        assert result.data.dtype == self.segm.data.dtype
 
         if mode == 'linear':
             # test multiprocessing
             result2 = deblend_sources(self.data, self.segm, self.npixels,
                                       mode=mode, progress_bar=False, nproc=2)
             assert_equal(result.data, result2.data)
+            assert result2.data.dtype == self.segm.data.dtype
 
         assert result.nlabels == 2
         assert result.nlabels == len(result.slices)

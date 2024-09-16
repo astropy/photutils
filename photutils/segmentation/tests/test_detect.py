@@ -181,10 +181,19 @@ class TestDetectSources:
         data[3, 3:] = 2
         data[3:, 3] = 2
 
+        segm = detect_sources(data, 0, npixels=4)
+        assert segm.nlabels == 2
+        assert segm.data.dtype == np.int32
+
+        # removal of labels with size less than npixels
+        # dtype should still be np.int32
         segm = detect_sources(data, 0, npixels=8)
         assert segm.nlabels == 1
+        assert segm.data.dtype == np.int32
+
         segm = detect_sources(data, 0, npixels=9)
         assert segm.nlabels == 1
+        assert segm.data.dtype == np.int32
 
         data = np.zeros((8, 8))
         data[0:4, 0] = 1
