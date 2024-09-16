@@ -11,6 +11,7 @@ from astropy.nddata import NDData
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_equal
+from scipy.integrate import dblquad
 
 from photutils import datasets
 from photutils.detection import find_peaks
@@ -316,8 +317,6 @@ class TestPRFAdapter:
         {'xname': None, 'yname': None, 'fluxname': None,
          'renormalize_psf': False}])
     def test_prfadapter_integrates(self, adapterkwargs):
-        from scipy.integrate import dblquad
-
         mof = Moffat2D(gamma=1.5, alpha=4.8)
         if not adapterkwargs['renormalize_psf']:
             mof = self.normalize_moffat(mof)
@@ -342,8 +341,6 @@ class TestPRFAdapter:
         {'xname': None, 'yname': None, 'fluxname': None,
          'renormalize_psf': False}])
     def test_prfadapter_sizematch(self, adapterkwargs):
-        from scipy.integrate import dblquad
-
         mof1 = self.normalize_moffat(Moffat2D(gamma=1, alpha=4.8))
         with pytest.warns(AstropyDeprecationWarning):
             prf1 = PRFAdapter(mof1, **adapterkwargs)

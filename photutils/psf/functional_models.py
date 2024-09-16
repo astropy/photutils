@@ -9,6 +9,7 @@ from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.utils import ellipse_extent
 from astropy.units import UnitsError
 from astropy.utils.decorators import deprecated
+from scipy.special import erf, j1, jn_zeros
 
 __all__ = ['GaussianPSF', 'CircularGaussianPSF', 'GaussianPRF',
            'CircularGaussianPRF', 'CircularGaussianSigmaPRF',
@@ -747,15 +748,9 @@ class GaussianPRF(Fittable2DModel):
                                   'degrees) or a Quantity angle (optional)'),
         fixed=True)
 
-    _erf = None
-
     def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  x_fwhm=x_fwhm.default, y_fwhm=y_fwhm.default,
                  theta=theta.default, **kwargs):
-
-        if self._erf is None:
-            from scipy.special import erf
-            self.__class__._erf = erf
 
         super().__init__(flux=flux, x_0=x_0, y_0=y_0, x_fwhm=x_fwhm,
                          y_fwhm=y_fwhm, theta=theta, **kwargs)
@@ -864,10 +859,10 @@ class GaussianPRF(Fittable2DModel):
             dpix *= x_0.unit
 
         return (flux / 4.0
-                * ((self._erf((x0 + dpix) / (np.sqrt(2) * x_sigma))
-                    - self._erf((x0 - dpix) / (np.sqrt(2) * x_sigma)))
-                   * (self._erf((y0 + dpix) / (np.sqrt(2) * y_sigma))
-                      - self._erf((y0 - dpix) / (np.sqrt(2) * y_sigma)))))
+                * ((erf((x0 + dpix) / (np.sqrt(2) * x_sigma))
+                    - erf((x0 - dpix) / (np.sqrt(2) * x_sigma)))
+                   * (erf((y0 + dpix) / (np.sqrt(2) * y_sigma))
+                      - erf((y0 - dpix) / (np.sqrt(2) * y_sigma)))))
 
     @property
     def input_units(self):
@@ -1002,14 +997,8 @@ class CircularGaussianPRF(Fittable2DModel):
     fwhm = Parameter(
         default=1, description='FWHM of the Gaussian', fixed=True)
 
-    _erf = None
-
     def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  fwhm=fwhm.default, **kwargs):
-
-        if self._erf is None:
-            from scipy.special import erf
-            self.__class__._erf = erf
 
         super().__init__(flux=flux, x_0=x_0, y_0=y_0, fwhm=fwhm, **kwargs)
 
@@ -1211,14 +1200,8 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         default=1, description='Sigma (standard deviation) of the Gaussian',
         fixed=True)
 
-    _erf = None
-
     def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  sigma=sigma.default, **kwargs):
-
-        if self._erf is None:
-            from scipy.special import erf
-            self.__class__._erf = erf
 
         super().__init__(sigma=sigma, x_0=x_0, y_0=y_0, flux=flux, **kwargs)
 
@@ -1312,10 +1295,10 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
             dpix *= x_0.unit
 
         return (flux / 4
-                * ((self._erf((x - x_0 + dpix) / (np.sqrt(2) * sigma))
-                    - self._erf((x - x_0 - dpix) / (np.sqrt(2) * sigma)))
-                   * (self._erf((y - y_0 + dpix) / (np.sqrt(2) * sigma))
-                      - self._erf((y - y_0 - dpix) / (np.sqrt(2) * sigma)))))
+                * ((erf((x - x_0 + dpix) / (np.sqrt(2) * sigma))
+                    - erf((x - x_0 - dpix) / (np.sqrt(2) * sigma)))
+                   * (erf((y - y_0 + dpix) / (np.sqrt(2) * sigma))
+                      - erf((y - y_0 - dpix) / (np.sqrt(2) * sigma)))))
 
     @property
     def input_units(self):
@@ -1429,14 +1412,8 @@ class IntegratedGaussianPRF(CircularGaussianSigmaPRF):
         default=1, description='Sigma (standard deviation) of the Gaussian',
         fixed=True)
 
-    _erf = None
-
     def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  sigma=sigma.default, **kwargs):
-
-        if self._erf is None:
-            from scipy.special import erf
-            self.__class__._erf = erf
 
         super().__init__(sigma=sigma, x_0=x_0, y_0=y_0, flux=flux, **kwargs)
 
@@ -1770,16 +1747,10 @@ class AiryDiskPSF(Fittable2DModel):
         default=1, description='Radius of the Airy disk at the first zero',
         fixed=True)
 
-    _rz = None
-    _j1 = None
+    _rz = jn_zeros(1, 1)[0] / np.pi
 
     def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  radius=radius.default, **kwargs):
-
-        if self._rz is None:
-            from scipy.special import j1, jn_zeros
-            self.__class__._rz = jn_zeros(1, 1)[0] / np.pi
-            self.__class__._j1 = j1
 
         super().__init__(flux=flux, x_0=x_0, y_0=y_0, radius=radius, **kwargs)
 
@@ -1856,7 +1827,7 @@ class AiryDiskPSF(Fittable2DModel):
         # separately so as not to raise a numpy warning
         z = np.ones(r.shape)
         rt = np.pi * r[r > 0]
-        z[r > 0] = (2.0 * self._j1(rt) / rt) ** 2
+        z[r > 0] = (2.0 * j1(rt) / rt) ** 2
 
         if isinstance(flux, u.Quantity):
             # make z a quantity to allow in-place multiplication

@@ -14,6 +14,7 @@ from astropy.stats import SigmaClip
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_almost_equal
+from scipy.spatial import cKDTree
 
 from photutils.datasets import make_model_image
 from photutils.psf.epsf import EPSFBuilder, EPSFFitter
@@ -27,8 +28,6 @@ class TestEPSFBuild:
         """
         Create a simulated image for testing.
         """
-        from scipy.spatial import cKDTree
-
         shape = (750, 750)
 
         # define random star positions

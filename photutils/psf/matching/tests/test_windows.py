@@ -6,6 +6,7 @@ Tests for the windows module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+from scipy.signal.windows import tukey
 
 from photutils.psf.matching.windows import (CosineBellWindow, HanningWindow,
                                             SplitCosineBellWindow,
@@ -43,8 +44,6 @@ def test_tukey_scipy():
     """
     Test Tukey window against 1D scipy version.
     """
-    from scipy.signal.windows import tukey
-
     size = 101
     cen = (size - 1) // 2
     shape = (size, size)

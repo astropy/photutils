@@ -9,6 +9,7 @@ import warnings
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.utils.exceptions import AstropyUserWarning
+from scipy.interpolate import RectBivariateSpline
 
 from photutils.aperture import CircularAperture
 from photutils.utils._parameters import as_pair
@@ -433,8 +434,6 @@ class FittableImageModel(Fittable2DModel):
           decrease code performance due to the need to recompute
           interpolator.
         """
-        from scipy.interpolate import RectBivariateSpline
-
         if 'degree' in kwargs:
             degree = kwargs['degree']
             if hasattr(degree, '__iter__') and len(degree) == 2:
@@ -695,8 +694,6 @@ class EPSFModel(FittableImageModel):
           decrease code performance due to the need to recompute
           interpolator.
         """
-        from scipy.interpolate import RectBivariateSpline
-
         if 'degree' in kwargs:
             degree = kwargs['degree']
             if hasattr(degree, '__iter__') and len(degree) == 2:

@@ -13,6 +13,7 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import NoOverlapError, PartialOverlapError
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
+from scipy.ndimage import convolve
 
 from photutils.centroids import centroid_com
 from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
@@ -504,8 +505,6 @@ class EPSFBuilder:
         result : 2D `~numpy.ndarray`
             The smoothed (convolved) ePSF data.
         """
-        from scipy.ndimage import convolve
-
         if self.smoothing_kernel is None:
             return epsf_data
 

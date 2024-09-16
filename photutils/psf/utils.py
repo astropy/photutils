@@ -2,6 +2,7 @@
 """
 This module provides utilities for PSF-fitting photometry.
 """
+
 import warnings
 
 import numpy as np
@@ -9,6 +10,7 @@ from astropy.modeling import Model
 from astropy.table import QTable
 from astropy.units import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
+from scipy import interpolate
 
 from photutils.centroids import centroid_com
 from photutils.psf.functional_models import CircularGaussianPSF
@@ -309,8 +311,6 @@ def _interpolate_missing_data(data, mask, method='cubic'):
     data_interp : 2D `~numpy.ndarray`
         The interpolated 2D image.
     """
-    from scipy import interpolate
-
     data_interp = np.array(data, copy=True)
 
     if len(data_interp.shape) != 2:
