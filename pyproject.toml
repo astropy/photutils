@@ -4,7 +4,7 @@ description = 'An Astropy package for source detection and photometry'
 readme = 'README.rst'
 license = {file = 'LICENSE.rst'}
 authors = [
-    {name = 'Photutils Developers', email = 'photutils.team@gmail.com'},
+    {name = 'Photutils Developers', email = 'astropy.team@gmail.com'},
 ]
 keywords = [
     'astronomy',
