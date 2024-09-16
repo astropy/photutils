@@ -17,8 +17,6 @@ from photutils.utils._parameters import as_pair
 
 __all__ = ['fit_2dgaussian', 'fit_fwhm']
 
-__doctest_requires__ = {('fit_2dgaussian', 'fit_fwhm'): ['scipy']}
-
 
 def fit_2dgaussian(data, *, xypos=None, fit_shape=None, mask=None, error=None,
                    fix_fwhm=True):

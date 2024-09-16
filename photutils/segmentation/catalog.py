@@ -29,8 +29,6 @@ from photutils.utils.cutouts import CutoutImage
 
 __all__ = ['SourceCatalog']
 
-__doctest_requires__ = {('SourceCatalog', 'SourceCatalog.*'): ['scipy']}
-
 
 # default table columns for `to_table()` output
 DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',

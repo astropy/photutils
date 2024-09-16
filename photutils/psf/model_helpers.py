@@ -14,8 +14,6 @@ from astropy.utils.decorators import deprecated
 
 __all__ = ['make_psf_model', 'grid_from_epsfs', 'PRFAdapter']
 
-__doctest_requires__ = {'make_psf_model': ['scipy']}
-
 
 def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
                    normalize=True, dx=50, dy=50, subsample=100,

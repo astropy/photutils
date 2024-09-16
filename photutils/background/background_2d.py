@@ -24,8 +24,6 @@ from photutils.utils._stats import nanmedian, nanmin
 
 __all__ = ['Background2D']
 
-__doctest_requires__ = {'Background2D': ['scipy']}
-
 COPY_IF_NEEDED = False if not minversion(np, '2.0.0') else None
 
 

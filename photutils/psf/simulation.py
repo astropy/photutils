@@ -12,8 +12,6 @@ from photutils.utils._parameters import as_pair
 
 __all__ = ['make_psf_model_image']
 
-__doctest_requires__ = {'make_psf_model_image': ['scipy']}
-
 
 def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
                          min_separation=1, border_size=None, seed=0,

@@ -14,8 +14,6 @@ __all__ = ['GaussianPSF', 'CircularGaussianPSF', 'GaussianPRF',
            'CircularGaussianPRF', 'CircularGaussianSigmaPRF',
            'IntegratedGaussianPRF', 'MoffatPSF', 'AiryDiskPSF']
 
-__doctest_requires__ = {'*': ['scipy']}
-
 GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
 

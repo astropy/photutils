@@ -17,7 +17,7 @@ from photutils.utils.footprints import circular_footprint
 
 __all__ = ['ImageDepth']
 
-__doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['scipy', 'skimage']}
+__doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['skimage']}
 
 
 class ImageDepth:

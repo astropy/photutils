@@ -19,9 +19,6 @@ from photutils.utils.colormaps import make_random_cmap
 
 __all__ = ['SegmentationImage', 'Segment']
 
-__doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*'):
-                        ['scipy']}
-
 
 class SegmentationImage:
     """
