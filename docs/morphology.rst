@@ -34,9 +34,7 @@ First, we create the source image and subtract its background::
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> data -= median  # subtract background
 
-Then, calculate its properties:
-
-.. doctest-requires:: scipy
+Then, calculate its properties::
 
     >>> from photutils.morphology import data_properties
     >>> cat = data_properties(data)

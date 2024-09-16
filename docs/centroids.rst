@@ -77,13 +77,13 @@ centroiding functions::
     >>> print(np.array((x2, y2)))  # doctest: +FLOAT_CMP
     [19.94009505 20.06884997]
 
-.. doctest-requires:: scipy
+::
 
     >>> x3, y3 = centroid_1dg(data)
     >>> print(np.array((x3, y3)))  # doctest: +FLOAT_CMP
     [19.96553246 20.04952841]
 
-.. doctest-requires:: scipy
+::
 
     >>> x4, y4 = centroid_2dg(data)
     >>> print(np.array((x4, y4)))  # doctest: +FLOAT_CMP
@@ -151,9 +151,7 @@ centroiding function.
 For each source, a cutout image is made that is centered at each initial
 position of size ``box_size``. Optionally, a non-rectangular local
 ``footprint`` mask can be input instead of ``box_size``. The centroids
-for each source are then calculated within their cutout images:
-
-.. doctest-requires:: scipy
+for each source are then calculated within their cutout images::
 
     >>> import matplotlib.pyplot as plt
     >>> import numpy as np

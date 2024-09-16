@@ -79,9 +79,7 @@ not use the centroiding option in
 :func:`~photutils.detection.find_peaks` to simulate the effect of
 having imperfect initial guesses for the positions of the stars.  Here we
 set the detection threshold value to 500.0 to select only the brightest
-stars:
-
-.. doctest-requires:: scipy
+stars::
 
     >>> from photutils.detection import find_peaks
     >>> peaks_tbl = find_peaks(data, threshold=500.0)  # doctest: +REMOTE_DATA
@@ -114,9 +112,7 @@ table columns called simply ``x`` and ``y``.
 
 We plan to extract 25 x 25 pixel cutouts of our selected stars, so
 let's explicitly exclude stars that are too close to the image
-boundaries (because they cannot be extracted):
-
-.. doctest-requires:: scipy
+boundaries (because they cannot be extracted)::
 
     >>> size = 25
     >>> hsize = (size - 1) / 2
@@ -125,9 +121,7 @@ boundaries (because they cannot be extracted):
     >>> mask = ((x > hsize) & (x < (data.shape[1] -1 - hsize)) &
     ...         (y > hsize) & (y < (data.shape[0] -1 - hsize)))  # doctest: +REMOTE_DATA
 
-Now let's create the table of good star positions:
-
-.. doctest-requires:: scipy
+Now let's create the table of good star positions::
 
     >>> from astropy.table import Table
     >>> stars_tbl = Table()
@@ -167,9 +161,7 @@ objects) and the `~astropy.nddata.NDData` objects must contain valid
 will be "linked" across images, meaning it will be constrained to have
 the same sky coordinate in each input image.
 
-Let's extract the 25 x 25 pixel cutouts of our selected stars:
-
-.. doctest-requires:: scipy
+Let's extract the 25 x 25 pixel cutouts of our selected stars::
 
     >>> from photutils.psf import extract_stars
     >>> stars = extract_stars(nddata, stars_tbl, size=25)  # doctest: +REMOTE_DATA
@@ -249,9 +241,7 @@ documentation for further details.
 
 We first initialize an :class:`~photutils.psf.EPSFBuilder` instance
 with our desired parameters and then input the cutouts of our selected
-stars to the instance:
-
-.. doctest-requires:: scipy
+stars to the instance::
 
     >>> from photutils.psf import EPSFBuilder
     >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,

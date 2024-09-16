@@ -66,9 +66,7 @@ Now we will subtract the background and use an instance of
 image that have FWHMs of around 3 pixels and have peaks approximately
 5-sigma above the background. Running this class on the data yields an
 astropy `~astropy.table.Table` containing the results of the star
-finder:
-
-.. doctest-requires:: scipy
+finder::
 
     >>> from photutils.detection import DAOStarFinder
     >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)  # doctest: +REMOTE_DATA
@@ -199,9 +197,7 @@ keyword to :func:`~photutils.detection.find_peaks` to also compute
 centroid coordinates with subpixel precision.
 
 As a simple example, let's find the local peaks in an image that are 5
-sigma above the background and a separated by at least 5 pixels:
-
-.. doctest-requires:: scipy
+sigma above the background and a separated by at least 5 pixels::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.datasets import make_100gaussians_image

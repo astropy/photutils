@@ -301,9 +301,7 @@ PSF Photometry Examples
 
 Let's start with a simple example using simulated stars whose PSF is
 assumed to be Gaussian. We'll create a synthetic image using tools
-provided by the :ref:`photutils.datasets <datasets>` module:
-
-.. doctest-requires:: scipy
+provided by the :ref:`photutils.datasets <datasets>` module::
 
     >>> import numpy as np
     >>> from photutils.datasets import make_noise_image
@@ -358,9 +356,7 @@ source detection. We'll estimate the initial fluxes of each
 source using a circular aperture with a radius 4 pixels. The
 central 5x5 pixel region of each star will be fit using an
 `~photutils.psf.CircularGaussianPRF` PSF model. First, let's create an
-instance of the `~photutils.psf.PSFPhotometry` class:
-
-.. doctest-requires:: scipy
+instance of the `~photutils.psf.PSFPhotometry` class::
 
     >>> from photutils.detection import DAOStarFinder
     >>> from photutils.psf import PSFPhotometry
@@ -375,9 +371,7 @@ on the data array, and optionally an error and mask array. A
 `~astropy.nddata.NDData` object holding the data, error, and mask arrays
 can also be input into the ``data`` parameter. Note that all non-finite
 (e.g., NaN or inf) data values are automatically masked. Here we input
-the data and error arrays:
-
-.. doctest-requires:: scipy
+the data and error arrays::
 
     >>> phot = psfphot(data, error=error)
 
@@ -402,9 +396,7 @@ fit, the group size, quality-of-fit metrics, and flags. See the
 output columns.
 
 The full table cannot be shown here as it has many columns, but let's
-print the source ID along with the fit x, y, and flux values:
-
-.. doctest-requires:: scipy
+print the source ID along with the fit x, y, and flux values::
 
     >>> phot['x_fit'].info.format = '.4f'  # optional format
     >>> phot['y_fit'].info.format = '.4f'
@@ -423,9 +415,7 @@ print the source ID along with the fit x, y, and flux values:
       9  5.5350 89.8870 539.6831
      10 71.8414 90.5842 692.3373
 
-Let's create the residual image:
-
-.. doctest-requires:: scipy
+Let's create the residual image::
 
     >>> resid = psfphot.make_residual_image(data, (9, 9))
 
@@ -480,9 +470,7 @@ Further details about the PSF fitting can be obtained from attributes on
 the `~photutils.psf.PSFPhotometry` instance. For example, the results
 from the ``finder`` instance called during PSF fitting can be accessed
 using the ``finder_results`` attribute (the ``finder`` returns an
-astropy table):
-
-.. doctest-requires:: scipy
+astropy table)::
 
     >>> psfphot.finder_results['xcentroid'].info.format = '.4f'  # optional format
     >>> psfphot.finder_results['ycentroid'].info.format = '.4f'  # optional format
@@ -505,9 +493,7 @@ astropy table):
      10   71.8303   90.5624    0.6038 ... 0.0 73.5747 9.5639 -2.4516
 
 The ``fit_info`` attribute contains a dictionary with detailed
-information returned from the ``fitter`` for each source:
-
-.. doctest-requires:: scipy
+information returned from the ``fitter`` for each source::
 
     >>> psfphot.fit_info.keys()
     dict_keys(['fit_infos', 'fit_error_indices'])
@@ -535,9 +521,7 @@ in an image. We can do that by defining a table of the sources that
 we want to fit. For this example, let's fit the single star at ``(x,
 y) = (63, 49)``. We first define a table with this position and then
 pass that table into the ``init_params`` keyword when calling the PSF
-photometry class on the data:
-
-.. doctest-requires:: scipy
+photometry class on the data::
 
     >>> from astropy.table import QTable
     >>> init_params = QTable()
@@ -549,9 +533,7 @@ The PSF photometry class allows for flexible input column names
 using a heuristic to identify the x, y, and flux columns. See
 `~photutils.psf.PSFPhotometry` for more details.
 
-The output table contains only the fit results for the input source:
-
-.. doctest-requires:: scipy
+The output table contains only the fit results for the input source::
 
     >>> phot['x_fit'].info.format = '.4f'  # optional format
     >>> phot['y_fit'].info.format = '.4f'
@@ -627,9 +609,7 @@ y positions and the flux. However, the astropy modeling and fitting
 framework allows any of these parameters to be fixed during the fitting.
 
 Let's say you want to fix the (x, y) position for each source. You can
-do that by setting the ``fixed`` attribute on the model parameters:
-
-.. doctest-requires:: scipy
+do that by setting the ``fixed`` attribute on the model parameters::
 
     >>> psf_model2 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model2.x_0.fixed = True
@@ -639,9 +619,7 @@ do that by setting the ``fixed`` attribute on the model parameters:
 
 Now when the model is fit, the flux will be varied but, the (x, y)
 position will be fixed at its initial position for every source. Let's
-just fit a single source (defined in ``init_params``):
-
-.. doctest-requires:: scipy
+just fit a single source (defined in ``init_params``)::
 
     >>> psfphot = PSFPhotometry(psf_model2, fit_shape, finder=finder,
     ...                         aperture_radius=4)
@@ -649,9 +627,7 @@ just fit a single source (defined in ``init_params``):
 
 The output table shows that the (x, y) position was unchanged, with the
 fit values being identical to the initial values. However, the flux was
-fit:
-
-.. doctest-requires:: scipy
+fit::
 
     >>> phot['flux_init'].info.format = '.4f'  # optional format
     >>> phot['flux_fit'].info.format = '.4f'
@@ -685,9 +661,8 @@ can be from its initial (x, y) position.
 For example, you may want to constrain the flux of a source to be
 between certain values or ensure that it is a non-negative value. This
 can be done by setting the ``bounds`` attribute on the input PSF model
-parameters. Here we constrain the flux to be greater than or equal to 0:
-
-.. doctest-requires:: scipy
+parameters. Here we constrain the flux to be greater than or equal to
+0::
 
     >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (0, None)
@@ -695,18 +670,14 @@ parameters. Here we constrain the flux to be greater than or equal to 0:
     {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (None, None)}
 
 The model parameter ``bounds`` can also be set using the ``min`` and/or
-``max`` attributes. Here we set the minimum flux to be 0:
-
-.. doctest-requires:: scipy
+``max`` attributes. Here we set the minimum flux to be 0::
 
     >>> psf_model3.flux.min = 0
     >>> psf_model3.bounds
     {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (None, None)}
 
 For this example, let's constrain the flux value to be between between
-400 and 600:
-
-.. doctest-requires:: scipy
+400 and 600::
 
     >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (400, 600)
@@ -720,9 +691,7 @@ Source Grouping
 Source grouping is an optional feature. To turn it on, create a
 `~photutils.psf.SourceGrouper` instance and input it via the ``grouper``
 keyword. Here we'll group stars that are within 20 pixels of each
-other:
-
-.. doctest-requires:: scipy
+other::
 
     >>> from photutils.psf import SourceGrouper
     >>> grouper = SourceGrouper(min_separation=20)
@@ -731,9 +700,7 @@ other:
     >>> phot = psfphot(data, error=error)
 
 The ``group_id`` column shows that seven groups were identified. The
-stars in each group were simultaneously fit.
-
-.. doctest-requires:: scipy
+stars in each group were simultaneously fit::
 
     >>> print(phot[('id', 'group_id', 'group_size')])
      id group_id group_size
@@ -766,9 +733,7 @@ To subtract a local background from each source, define a
 the ``localbkg_estimator`` keyword. Here we'll use an annulus with
 an inner and outer radius of 5 and 10 pixels, respectively, with the
 `~photutils.background.MMMBackground` statistic (with its default sigma
-clipping):
-
-.. doctest-requires:: scipy
+clipping)::
 
     >>> from photutils.background import LocalBackground, MMMBackground
     >>> bkgstat = MMMBackground()
@@ -779,9 +744,7 @@ clipping):
     ...                         localbkg_estimator=localbkg_estimator)
     >>> phot = psfphot(data, error=error)
 
-The local background values are output in the table:
-
-.. doctest-requires:: scipy
+The local background values are output in the table::
 
     >>> phot['local_bkg'].info.format = '.4f'  # optional format
     >>> print(phot[('id', 'local_bkg')])  # doctest: +FLOAT_CMP
@@ -812,9 +775,7 @@ may not be detected until after the bright stars are subtracted.
 
 For this simple example, let's input a table of three stars for the
 first fit iteration. Subsequent iterations will use the ``finder`` to
-find additional stars:
-
-.. doctest-requires:: scipy
+find additional stars::
 
     >>> from photutils.background import LocalBackground, MMMBackground
     >>> from photutils.psf import IterativePSFPhotometry
@@ -832,9 +793,7 @@ find additional stars:
 
 The table output from `~photutils.psf.IterativePSFPhotometry` contains a
 column called ``iter_detected`` that returns the fit iteration in which
-the source was detected:
-
-.. doctest-requires:: scipy
+the source was detected::
 
     >>> phot['x_fit'].info.format = '.4f'  # optional format
     >>> phot['y_fit'].info.format = '.4f'
@@ -867,9 +826,7 @@ circular or non-Gaussian, you can fit your sources using the
 `~photutils.psf.PSFPhotometry` class using a different PSF model.
 
 For example, let's estimate the FWHM of the sources in our example image
-defined above:
-
-.. doctest-requires:: scipy
+defined above::
 
    >>> from photutils.psf import fit_fwhm
    >>> finder = DAOStarFinder(6.0, 2.0)
