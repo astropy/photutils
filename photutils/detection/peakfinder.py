@@ -8,6 +8,7 @@ import warnings
 
 import numpy as np
 from astropy.table import QTable
+from scipy.ndimage import maximum_filter
 
 from photutils.utils._misc import _get_meta
 from photutils.utils._quantity_helpers import process_quantities
@@ -122,8 +123,6 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     to compute centroid coordinates with subpixel precision within the
     input ``box_size`` or ``footprint``.
     """
-    from scipy.ndimage import maximum_filter
-
     arrays, unit = process_quantities((data, threshold, error),
                                       ('data', 'threshold', 'error'))
     data, threshold, error = arrays
