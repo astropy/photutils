@@ -162,6 +162,17 @@ API Changes
     ``FittableImageModel`` derived from the ``discretize_model`` function
     in ``astropy.convolution``. [#1865]
 
+- ``photutils.segmentation``
+
+  - The ``SegmentationImage`` ``relabel_consecutive`` method now keeps
+    the original dtype of segmentation image instead of always changing
+    it to ``int`` (``int64``). [#1878]
+
+  - The ``detect_sources`` and ``deblend_sources`` functions now return
+    a ``SegmentationImage`` instance whose data dtype is ``np.int32``
+    instead of ``int`` (``int64``) unless more than (2**32 - 1) labels
+    are needed. [#1878]
+
 
 1.13.0 (2024-06-28)
 -------------------
