@@ -19,11 +19,9 @@ from photutils.isophote.isophote import IsophoteList
 from photutils.isophote.model import build_ellipse_model
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.tests.helper import PYTEST_LT_80
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
 @pytest.mark.remote_data
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_model():
     path = get_path('isophote/M105-S001-RGB.fits',
                     location='photutils-datasets', cache=True)
@@ -50,7 +48,6 @@ def test_model():
     assert np.mean(residual) >= -5.0
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_model_simulated_data():
     data = make_test_image(nx=200, ny=200, i0=10.0, sma=5.0, eps=0.5,
                            pa=np.pi / 3.0, noise=0.05, seed=0)
@@ -68,7 +65,6 @@ def test_model_simulated_data():
     assert np.mean(residual) >= -5.0
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_model_minimum_radius():
     # This test requires a "defective" image that drives the
     # model building algorithm into a corner, where it fails.
@@ -109,7 +105,6 @@ def test_model_inputs():
         build_ellipse_model((10, 10), IsophoteList([]))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_model_harmonics():
     """
     Test that high harmonics are included in build_ellipse_model.

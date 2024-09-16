@@ -4,7 +4,6 @@ Tests for the harmonics module.
 """
 
 import numpy as np
-import pytest
 from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose
 
@@ -16,10 +15,8 @@ from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_upper_harmonic)
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_harmonics_1():
     from scipy.optimize import leastsq
 
@@ -53,7 +50,6 @@ def test_harmonics_1():
     assert_allclose(np.std(residual), 0.01, atol=0.01)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_harmonics_2():
     # this uses the actual functional form used for fitting ellipses
     npts = 100
@@ -80,7 +76,6 @@ def test_harmonics_2():
     assert_allclose(np.std(residual), 0.015, atol=0.01)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_harmonics_3():
     """
     Tests an upper harmonic fit.
@@ -106,7 +101,6 @@ def test_harmonics_3():
     assert_allclose(np.std(residual), 0.015, atol=0.014)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestFitEllipseSamples:
     def setup_class(self):
         # major axis parallel to X image axis
@@ -194,7 +188,6 @@ class TestFitEllipseSamples:
         assert_allclose(iso.b4_err, 7.473e-6, atol=1.0e-7)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_upper_harmonics_sign():
     """
     Regression test for #1486/#1501.

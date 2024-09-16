@@ -16,7 +16,6 @@ from photutils.isophote.integrator import MEAN
 from photutils.isophote.isophote import Isophote
 from photutils.isophote.sample import CentralEllipseSample, EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
-from photutils.utils._optional_deps import HAS_SCIPY
 
 DATA = make_test_image(seed=0)
 DEFAULT_POS = 256
@@ -35,7 +34,6 @@ def test_gradient():
     assert_allclose(sample.sector_area, 2.00, atol=0.01)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fitting_raw():
     """
     This test performs a raw (no EllipseFitter), 1-step correction in
@@ -63,7 +61,6 @@ def test_fitting_raw():
     assert_allclose(new_eps, 0.21, atol=0.01)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fitting_small_radii():
     sample = EllipseSample(DATA, 2.0)
     fitter = EllipseFitter(sample)
@@ -73,7 +70,6 @@ def test_fitting_small_radii():
     assert isophote.ndata == 13
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fitting_eps():
     # initial guess is off in the eps parameter
     sample = EllipseSample(DATA, 40.0, eps=2 * 0.2)
@@ -86,7 +82,6 @@ def test_fitting_eps():
     assert g.eps <= 0.21
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fitting_pa():
     data = make_test_image(pa=np.pi / 4, noise=0.01, seed=0)
 
@@ -100,7 +95,6 @@ def test_fitting_pa():
     assert g.pa <= (np.pi / 4 + 0.05)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fitting_xy():
     pos = DEFAULT_POS - 5
     data = make_test_image(x0=pos, y0=pos, seed=0)
@@ -117,7 +111,6 @@ def test_fitting_xy():
     assert g.y0 <= (pos + 1)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fitting_all():
     # build test image that is off from the defaults
     # assumed by the EllipseSample constructor.
@@ -155,7 +148,6 @@ def test_fitting_all():
 
 
 @pytest.mark.remote_data
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestM51:
     def setup_class(self):
         path = get_path('isophote/M51.fits', location='photutils-datasets',

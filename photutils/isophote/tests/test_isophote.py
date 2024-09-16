@@ -15,13 +15,11 @@ from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import CentralPixel, Isophote, IsophoteList
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
-from photutils.utils._optional_deps import HAS_SCIPY
 
 DEFAULT_FIX = np.array([False, False, False, False])
 
 
 @pytest.mark.remote_data
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestIsophote:
     def setup_class(self):
         path = get_path('isophote/M51.fits', location='photutils-datasets',
@@ -288,7 +286,6 @@ class TestIsophoteList:
         result.sort()
         assert result[-1].sma > result[0].sma
 
-    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_to_table(self):
         test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
                                    background=100.0, noise=1.0e-6, i0=100.0,
