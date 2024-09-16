@@ -13,6 +13,7 @@ from astropy.stats import SigmaClip
 from astropy.utils import lazyproperty, minversion
 from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
+from scipy.ndimage import generic_filter
 
 from photutils.aperture import RectangularAperture
 from photutils.background.core import SExtractorBackground, StdBackgroundRMS
@@ -667,7 +668,6 @@ class Background2D:
         if (self.filter_threshold is None
                 or self.filter_threshold < self._min_bkg_stats):
             # filter the entire array
-            from scipy.ndimage import generic_filter
             filtdata = generic_filter(data, nanmedian, size=self.filter_size,
                                       mode='constant', cval=np.nan)
         else:
