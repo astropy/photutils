@@ -24,6 +24,13 @@ class TestDAOStarFinder:
         tbl1 = finder1(data << units)
         assert_array_equal(tbl0, tbl1)
 
+        # test that sources are returned with threshold = 0
+        finder = DAOStarFinder(0, fwhm)
+        tbl = finder(data)
+        assert len(tbl) == 25
+        assert np.all(~np.isfinite(tbl['flux']))
+        assert np.all(~np.isfinite(tbl['mag']))
+
     def test_daofind_inputs(self):
         match = 'threshold must be a scalar value'
         with pytest.raises(ValueError, match=match):
