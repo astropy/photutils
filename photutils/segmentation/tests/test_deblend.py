@@ -12,10 +12,9 @@ from numpy.testing import assert_allclose, assert_equal
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.deblend import deblend_sources
 from photutils.segmentation.detect import detect_sources
-from photutils.utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE
+from photutils.utils._optional_deps import HAS_SKIMAGE
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 class TestDeblendSources:
     def setup_class(self):
@@ -334,7 +333,6 @@ class TestDeblendSources:
         assert result.nlabels == 2
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_nmarkers_fallback():
     """

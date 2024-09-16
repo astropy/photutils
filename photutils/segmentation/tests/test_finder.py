@@ -12,11 +12,10 @@ from astropy.modeling.models import Gaussian2D
 from photutils.datasets import make_100gaussians_image
 from photutils.segmentation.finder import SourceFinder
 from photutils.segmentation.utils import make_2dgaussian_kernel
-from photutils.utils._optional_deps import HAS_SCIPY, HAS_SKIMAGE
+from photutils.utils._optional_deps import HAS_SKIMAGE
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestSourceFinder:
     data = make_100gaussians_image() - 5.0  # subtract background
     kernel = make_2dgaussian_kernel(3.0, size=5)
