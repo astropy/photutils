@@ -15,7 +15,7 @@ from photutils.background.background_2d import Background2D
 from photutils.background.core import MeanBackground
 from photutils.background.interpolators import (BkgIDWInterpolator,
                                                 BkgZoomInterpolator)
-from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY
+from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 DATA = np.ones((100, 100))
 BKG_RMS = np.zeros((100, 100))
@@ -32,7 +32,6 @@ DATA3 = NDData(DATA, unit=u.ct)
 DATA4 = CCDData(DATA, unit=u.ct)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestBackground2D:
     @pytest.mark.parametrize('filter_size', FILTER_SIZES)
     @pytest.mark.parametrize('interpolator', INTERPOLATORS)
