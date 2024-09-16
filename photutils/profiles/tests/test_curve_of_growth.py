@@ -12,7 +12,7 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture import CircularAperture
 from photutils.profiles import CurveOfGrowth
-from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY
+from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 
 @pytest.fixture(name='profile_data')
@@ -137,7 +137,6 @@ def test_curve_of_growth_normalize(profile_data):
         cg1.normalize(method='max')
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_curve_of_growth_interp(profile_data):
     xycen, data, error, _ = profile_data
     radii = np.arange(1, 36)
