@@ -737,9 +737,14 @@ class _DAOStarFinderCatalog:
         This is DAOStarFinder's definition of "flux" and matches that of
         DAOFIND if ``sky`` is 0.0.
         """
-        flux = self.convdata_peak / self.threshold_eff
+        # ignore divide-by-zero RuntimeWarning if threshold = 0
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            flux = self.convdata_peak / self.threshold_eff
+
         if self.unit is not None:
             flux = flux.value * self.unit
+
         return flux - (self.sky * self.npix)
 
     @lazyproperty
@@ -772,6 +777,10 @@ class _DAOStarFinderCatalog:
                  'roundness1', 'roundness2', 'peak', 'flux')
         mask = np.ones(len(self), dtype=bool)
         for attr in attrs:
+            # if threshold_eff == 0, flux will be np.inf, but
+            # coordinates can still be used
+            if self.threshold_eff == 0 and attr == 'flux':
+                continue
             mask &= np.isfinite(getattr(self, attr))
         newcat = self[mask]
 
