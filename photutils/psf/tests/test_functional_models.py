@@ -13,7 +13,6 @@ from numpy.testing import assert_allclose
 from photutils.psf import (AiryDiskPSF, CircularGaussianPRF,
                            CircularGaussianPSF, CircularGaussianSigmaPRF,
                            GaussianPRF, GaussianPSF, MoffatPSF)
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
 def make_gaussian_models(name):
@@ -140,14 +139,12 @@ def gaussian_tests(name, use_units):
             fitter(model_init, xx, yy, data)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('name', ['GaussianPSF', 'CircularGaussianPSF'])
 @pytest.mark.parametrize('use_units', [False, True])
 def test_gaussian_psfs(name, use_units):
     gaussian_tests(name, use_units)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('name', ['GaussianPRF', 'CircularGaussianPRF',
                                   'CircularGaussianSigmaPRF'])
 @pytest.mark.parametrize('use_units', [False, True])
@@ -155,7 +152,6 @@ def test_gaussian_prfs(name, use_units):
     gaussian_tests(name, use_units)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_gaussian_prf_sums():
     """
     Test that subpixel accuracy of Gaussian PRFs by checking the sum of
@@ -169,7 +165,6 @@ def test_gaussian_prf_sums():
         assert_allclose(model(xx, yy).sum(), 1.0)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_gaussian_bounding_boxes():
     model1 = GaussianPSF(x_0=0, y_0=0, x_fwhm=2, y_fwhm=3)
     model2 = GaussianPRF(x_0=0, y_0=0, x_fwhm=2, y_fwhm=3)
@@ -187,7 +182,6 @@ def test_gaussian_bounding_boxes():
     assert_allclose(model5.bounding_box, ((-11, 11), (-11, 11)))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('use_units', [False, True])
 def test_moffat_psf_model(use_units):
     model = MoffatPSF(flux=71.4, x_0=24.3, y_0=25.2, alpha=8.1, beta=7.2)
@@ -223,7 +217,6 @@ def test_moffat_psf_model(use_units):
     assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('use_units', [False, True])
 def test_airydisk_psf_model(use_units):
     model = AiryDiskPSF(flux=71.4, x_0=24.3, y_0=25.2, radius=2.1)

@@ -10,7 +10,6 @@ from numpy.testing import assert_allclose
 from photutils.psf.matching.windows import (CosineBellWindow, HanningWindow,
                                             SplitCosineBellWindow,
                                             TopHatWindow, TukeyWindow)
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
 def test_hanning():
@@ -40,7 +39,6 @@ def test_tukey():
     assert_allclose(data[1, :], ref)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_tukey_scipy():
     """
     Test Tukey window against 1D scipy version.

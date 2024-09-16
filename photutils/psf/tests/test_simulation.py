@@ -11,10 +11,8 @@ from numpy.testing import assert_equal
 
 from photutils.psf import (CircularGaussianPRF, make_psf_model,
                            make_psf_model_image)
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model_image():
     shape = (401, 451)
     n_sources = 100
@@ -48,7 +46,6 @@ def test_make_psf_model_image():
     assert np.max(params['fwhm']) <= fwhm[1]
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model_image_custom():
     shape = (401, 451)
     n_sources = 100
@@ -61,7 +58,6 @@ def test_make_psf_model_image_custom():
     assert len(params) == n_sources
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model_image_inputs():
     shape = (50, 50)
     match = 'psf_model must be an Astropy Model subclass'

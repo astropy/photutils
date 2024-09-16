@@ -17,7 +17,6 @@ from photutils.detection import find_peaks
 from photutils.psf import (EPSFBuilder, PRFAdapter, extract_stars,
                            grid_from_epsfs, make_psf_model)
 from photutils.psf.model_helpers import _integrate_model, _InverseShift
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
 def test_inverse_shift():
@@ -27,7 +26,6 @@ def test_inverse_shift():
     assert model.fit_deriv(10, 1)[0] == -1.0
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_integrate_model():
     model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(0.0)
     integral = _integrate_model(model, x_name='x_mean_0', y_name='y_mean_0')
@@ -68,7 +66,6 @@ def fixture_moffat_source():
     return model, (xx, yy, model(xx, yy))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_moffat_fitting(moffat_source):
     """
     Test fitting with a Moffat2D model.
@@ -97,7 +94,6 @@ def test_moffat_fitting(moffat_source):
                           ({'x_name': 'x_0', 'y_name': 'y_0',
                             'flux_name': 'amplitude', 'normalize': False},
                            (1e-3, None))])
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model(moffat_source, kwargs, tols):
     model, (xx, yy, data) = moffat_source
 
@@ -132,7 +128,6 @@ def test_make_psf_model(moffat_source, kwargs, tols):
         assert fit_model[2].amplitude == guess_moffat.amplitude
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model_compound():
     model = (Const2D(0.0) + Const2D(1.0) + Gaussian2D(1, 5, 5, 1, 1)
              * Const2D(1.0) * Const2D(1.0))
@@ -152,7 +147,6 @@ def test_make_psf_model_inputs():
         make_psf_model(model, x_name='x_mean', y_name='y_mean_10')
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model_integral():
     model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(0.0)
     match = 'Cannot normalize the model because the integrated flux is zero'
@@ -177,7 +171,6 @@ def test_make_psf_model_offset():
 
 
 @pytest.mark.remote_data
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestGridFromEPSFs:
     """
     Tests for `photutils.psf.utils.grid_from_epsfs`.
@@ -286,7 +279,6 @@ class TestGridFromEPSFs:
         assert psf_grid.meta['fill_value'] == 0.0
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestPRFAdapter:
     """
     Tests for PRFAdapter.

@@ -13,10 +13,8 @@ from numpy.testing import assert_allclose
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
 from photutils.psf.functional_models import CircularGaussianPRF
 from photutils.psf.image_models import EPSFModel
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestExtractStars:
     def setup_class(self):
         stars_tbl = Table()
@@ -61,7 +59,6 @@ class TestExtractStars:
             extract_stars([self.nddata, self.nddata], self.stars_tbl)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_epsf_star_residual_image():
     """
     Test to ensure ``compute_residual_image`` gives correct residuals.

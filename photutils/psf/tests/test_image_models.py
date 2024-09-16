@@ -9,7 +9,6 @@ from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose
 
 from photutils.psf import FittableImageModel
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
 @pytest.fixture(name='gmodel')
@@ -17,7 +16,6 @@ def fixture_gmodel():
     return Gaussian2D(x_stddev=3, y_stddev=3)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestFittableImageModel:
     """
     Tests for FittableImageModel.
