@@ -14,7 +14,6 @@ from numpy.testing import assert_allclose
 
 from photutils.centroids.gaussian import (_gaussian1d_moments, centroid_1dg,
                                           centroid_2dg)
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
 @pytest.fixture(name='test_data')
@@ -29,7 +28,6 @@ def fixture_test_data():
 
 
 # NOTE: the fitting routines in astropy use scipy.optimize
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('x_std', [3.2, 4.0])
 @pytest.mark.parametrize('y_std', [5.7, 4.1])
 @pytest.mark.parametrize('theta', np.deg2rad([30.0, 45.0]))
@@ -72,7 +70,6 @@ def test_centroids(x_std, y_std, theta, units):
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('use_mask', [True, False])
 def test_centroids_nan_withmask(use_mask):
     xc_ref = 24.7
@@ -105,7 +102,6 @@ def test_centroids_nan_withmask(use_mask):
             assert len(warnlist) == nwarn
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_invalid_mask_shape():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
@@ -119,7 +115,6 @@ def test_invalid_mask_shape():
         _gaussian1d_moments(data, mask=mask)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_invalid_error_shape():
     error = np.zeros((2, 2), dtype=bool)
     match = 'data and error must have the same shape'
@@ -129,7 +124,6 @@ def test_invalid_error_shape():
         centroid_2dg(np.zeros((4, 4)), error=error)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_2dg_dof():
     data = np.ones((2, 2))
     match = 'Input data must have a least 6 unmasked values to fit'
@@ -163,7 +157,6 @@ def test_gaussian1d_moments():
         assert len(warnlist) == 1
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_gaussian2d_warning():
     yy, xx = np.mgrid[:51, :51]
     model = Gaussian2D(x_mean=24.17, y_mean=25.87, x_stddev=1.7, y_stddev=4.7)
