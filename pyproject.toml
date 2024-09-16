@@ -35,6 +35,7 @@ requires-python = '>=3.10'
 dependencies = [
     'numpy>=1.23',
     'astropy>=5.3',
+    'scipy>=1.10',
 ]
 
 [project.urls]
@@ -43,7 +44,6 @@ Documentation = 'https://photutils.readthedocs.io/en/stable/'
 
 [project.optional-dependencies]
 all = [
-    'scipy>=1.8',
     'matplotlib>=3.5',
     'regions>=0.9',
     'scikit-image>=0.20',
