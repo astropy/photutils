@@ -15,6 +15,8 @@ from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
+from scipy.ndimage import binary_erosion, convolve, map_coordinates
+from scipy.optimize import root_scalar
 
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
@@ -2146,8 +2148,6 @@ class SourceCatalog:
         if self._background is None:
             bkg = self._null_values
         else:
-            from scipy.ndimage import map_coordinates
-
             xcen = self._xcentroid
             ycen = self._ycentroid
             bkg = map_coordinates(self._background, (xcen, ycen), order=1,
@@ -2222,8 +2222,6 @@ class SourceCatalog:
                the Irish Machine Vision and Image Processing Conference,
                pp. 51-57 (2000).
         """
-        from scipy.ndimage import binary_erosion, convolve
-
         footprint = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
         kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
         size = 34
@@ -3583,8 +3581,6 @@ class SourceCatalog:
         """
         if fluxfrac <= 0 or fluxfrac > 1:
             raise ValueError('fluxfrac must be > 0 and <= 1')
-
-        from scipy.optimize import root_scalar
 
         args = self._fluxfrac_optimizer_args
         if self.progress_bar:  # pragma: no cover

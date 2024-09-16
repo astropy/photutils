@@ -6,6 +6,7 @@ This module provides utility functions for image segmentation.
 import numpy as np
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
+from scipy.ndimage import generate_binary_structure
 
 from photutils.utils._parameters import as_pair
 
@@ -96,8 +97,6 @@ def _make_binary_structure(ndim, connectivity):
             raise ValueError(f'Invalid connectivity={connectivity}. '
                              'Options are 4 or 8.')
     else:
-        from scipy.ndimage import generate_binary_structure
-
         footprint = generate_binary_structure(ndim, 1)
 
     return footprint

@@ -7,6 +7,8 @@ import warnings
 
 import numpy as np
 from astropy.stats import SigmaClip
+from scipy.ndimage import find_objects
+from scipy.ndimage import label as ndi_label
 
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _make_binary_structure
@@ -181,9 +183,6 @@ def _detect_sources(data, thresholds, npixels, footprint, inverse_mask, *,
         threshold, then the output list will contain `None` for that
         threshold. Also see the ``deblend_mode`` keyword.
     """
-    from scipy.ndimage import find_objects
-    from scipy.ndimage import label as ndi_label
-
     segms = []
     for threshold in thresholds:
         # RuntimeWarning caused by > comparison when data contains NaNs
