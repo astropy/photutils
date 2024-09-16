@@ -8,6 +8,9 @@ General
 
 - The minimum required Astropy is now 5.3. [#1839]
 
+- Importing tools from all subpackages now requires including the
+  subpackage name. [#1879]
+
 New Features
 ^^^^^^^^^^^^
 
