@@ -10,11 +10,9 @@ from astropy.table import Table
 from numpy.testing import assert_equal
 
 from photutils.detection import StarFinder
-from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestStarFinder:
     def test_starfind(self, data, kernel):
         finder1 = StarFinder(1, kernel)

@@ -12,11 +12,10 @@ from numpy.testing import assert_array_equal, assert_equal
 from photutils.centroids import centroid_com
 from photutils.datasets import make_gwcs, make_wcs
 from photutils.detection import find_peaks
-from photutils.utils._optional_deps import HAS_GWCS, HAS_SCIPY
+from photutils.utils._optional_deps import HAS_GWCS
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestFindPeaks:
     def test_box_size(self, data):
         """
