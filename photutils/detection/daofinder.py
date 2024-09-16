@@ -279,7 +279,7 @@ class DAOStarFinder(StarFinderBase):
               array.
             * ``sky``: the input ``sky`` parameter.
             * ``peak``: the peak, sky-subtracted, pixel value of the object.
-            * ``flux``: the object DAOFind "flux" calculated as the peak
+            * ``flux``: the object DAOFIND "flux" calculated as the peak
               density in the convolved image divided by the detection
               threshold. This derivation matches that of DAOFIND if
               ``sky`` is 0.0.
@@ -288,6 +288,18 @@ class DAOStarFinder(StarFinderBase):
               DAOFIND if ``sky`` is 0.0.
 
             `None` is returned if no stars are found.
+
+            .. warning::
+                The ``flux`` parameter returned by the DAOFIND algorithm
+                is a bit of a misnomer. It is not a typical integrated
+                source flux, and its value critically depends on the
+                input ``threshold`` parameter. The ``flux`` parameter is
+                calculated as the peak density in the convolved image
+                divided by the effective detection threshold. ``flux``
+                and the corresponding ``mag`` parameter are reported
+                in the output table for comparison to the IRAF DAOFIND
+                output only. They are not intended to be used as a
+                measure of source flux.
         """
         # here we validate the units, but do not strip them
         # since sky is deprecated, we do not include it in the
