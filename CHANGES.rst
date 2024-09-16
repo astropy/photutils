@@ -8,6 +8,10 @@ General
 
 - The minimum required Astropy is now 5.3. [#1839]
 
+- SciPy is now a required dependency. [#1880]
+
+- The minimum required SciPy is now 1.10. [#1880]
+
 - Importing tools from all subpackages now requires including the
   subpackage name. [#1879]
 
