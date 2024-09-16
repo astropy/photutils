@@ -6,6 +6,7 @@ Tests for the harmonics module.
 import numpy as np
 from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose
+from scipy.optimize import leastsq
 
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.fitter import EllipseFitter
@@ -18,8 +19,6 @@ from photutils.isophote.tests.make_test_data import make_test_image
 
 
 def test_harmonics_1():
-    from scipy.optimize import leastsq
-
     # this is an almost as-is example taken from stackoverflow
     npts = 100  # number of data points
     theta = np.linspace(0, 4 * np.pi, npts)

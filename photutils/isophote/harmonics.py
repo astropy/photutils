@@ -4,6 +4,7 @@ This module provides tools for computing and fitting harmonic functions.
 """
 
 import numpy as np
+from scipy.optimize import leastsq
 
 __all__ = ['first_and_second_harmonic_function',
            'fit_first_and_second_harmonics', 'fit_upper_harmonic']
@@ -12,7 +13,6 @@ __all__ = ['first_and_second_harmonic_function',
 def _least_squares_fit(optimize_func, parameters):
     # call the least squares fitting
     # function and handle the result.
-    from scipy.optimize import leastsq
 
     solution = leastsq(optimize_func, parameters, full_output=True)
 
