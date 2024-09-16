@@ -758,8 +758,9 @@ class SegmentationImage:
             return
 
         old_slices = self.__dict__.get('slices', None)
-        new_labels = np.arange(self.nlabels) + start_label
-        new_label_map = np.zeros(self.max_label + 1, dtype=int)
+        dtype = self.data.dtype  # keep the original dtype
+        new_labels = np.arange(self.nlabels, dtype=dtype) + start_label
+        new_label_map = np.zeros(self.max_label + 1, dtype=dtype)
         new_label_map[self.labels] = new_labels
 
         data_new = new_label_map[self.data]
