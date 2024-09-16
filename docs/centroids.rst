@@ -153,7 +153,6 @@ position of size ``box_size``. Optionally, a non-rectangular local
 ``footprint`` mask can be input instead of ``box_size``. The centroids
 for each source are then calculated within their cutout images::
 
-    >>> import matplotlib.pyplot as plt
     >>> import numpy as np
     >>> from photutils.centroids import centroid_2dg, centroid_sources
     >>> from photutils.datasets import make_4gaussians_image
