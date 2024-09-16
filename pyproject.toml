@@ -33,7 +33,7 @@ classifiers = [
 dynamic = ['version']
 requires-python = '>=3.10'
 dependencies = [
-    'numpy>=1.23',
+    'numpy>=1.24',
     'astropy>=5.3',
     'scipy>=1.10',
 ]
@@ -44,10 +44,10 @@ Documentation = 'https://photutils.readthedocs.io/en/stable/'
 
 [project.optional-dependencies]
 all = [
-    'matplotlib>=3.5',
+    'matplotlib>=3.7',
     'regions>=0.9',
     'scikit-image>=0.20',
-    'gwcs>=0.18',
+    'gwcs>=0.19',
     'bottleneck',
     'tqdm',
     'rasterio',
@@ -67,9 +67,9 @@ docs = [
 requires = [
     'setuptools>=61.2',
     'setuptools_scm>=6.2',
-    'cython>=3.0.0,<3.1.0',
-    'numpy>=2.0.0rc1',
-    'extension-helpers==1.*',
+    'cython>=3.0.0,<4',
+    'numpy>=2.0.0',
+    'extension-helpers>=1',
 ]
 build-backend = 'setuptools.build_meta'
 

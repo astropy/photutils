@@ -12,6 +12,12 @@ General
 
 - The minimum required SciPy is now 1.10. [#1880]
 
+- The minimum required NumPy is now 1.24. [#1881]
+
+- The minimum required Matplotlib is now 3.7. [#1881]
+
+- The minimum required GWCS is now 0.19. [#1881]
+
 - Importing tools from all subpackages now requires including the
   subpackage name. [#1879]
 
