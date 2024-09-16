@@ -11,10 +11,8 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
 
 from photutils.datasets import (make_model_params, make_random_gaussians_table,
                                 make_random_models_table)
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_model_params():
     shape = (100, 100)
     n_sources = 10
@@ -55,7 +53,6 @@ def test_make_model_params():
         make_model_params(shape, n_sources, flux=(1, 2), alpha=(1, 2, 3))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_model_params_nsources():
     """
     Test case when the number of the possible sources is less than
@@ -71,7 +68,6 @@ def test_make_model_params_nsources():
         assert len(params) < 100
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_model_params_border_size():
     shape = (10, 10)
     n_sources = 10

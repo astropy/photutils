@@ -16,7 +16,6 @@ from photutils.datasets import (make_gaussian_prf_sources_image,
                                 make_gaussian_sources_image, make_model_image,
                                 make_model_sources_image, make_test_psf_data)
 from photutils.psf import CircularGaussianSigmaPRF
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
 @pytest.fixture(name='source_params')
@@ -68,7 +67,6 @@ def test_make_model_image():
     assert image.sum() > 1
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_model_image_units():
     unit = u.Jy
     params = QTable()
@@ -219,7 +217,6 @@ def test_make_gaussian_sources_image_desc_oversample(source_params):
         assert_allclose(image.sum(), source_params['flux'].sum())
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_gaussian_prf_sources_image(source_params_prf):
     with pytest.warns(AstropyDeprecationWarning):
         shape = (100, 100)
@@ -229,7 +226,6 @@ def test_make_gaussian_prf_sources_image(source_params_prf):
         assert_allclose(image.sum(), flux.sum(), rtol=1.0e-6)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_test_psf_data():
     with pytest.warns(AstropyDeprecationWarning):
         psf_model = CircularGaussianSigmaPRF(flux=100, sigma=1.5)
