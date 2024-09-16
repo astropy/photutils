@@ -9,6 +9,7 @@ import numpy as np
 from astropy.convolution import Kernel2D
 from astropy.units import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
+from scipy.ndimage import convolve as ndi_convolve
 
 
 def _filter_data(data, kernel, mode='constant', fill_value=0.0,
@@ -50,8 +51,6 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
     if kernel is None:
         return data
 
-    from scipy import ndimage
-
     kernel_array = kernel.array if isinstance(kernel, Kernel2D) else kernel
 
     if check_normalization and not np.allclose(np.sum(kernel_array), 1.0):
@@ -72,7 +71,7 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
 
     # NOTE: astropy.convolution.convolve fails with zero-sum kernels
     # (used in findstars) (cf. astropy #1647)
-    result = ndimage.convolve(data, kernel_array, mode=mode, cval=fill_value)
+    result = ndi_convolve(data, kernel_array, mode=mode, cval=fill_value)
 
     # reapply the input unit
     if unit is not None:

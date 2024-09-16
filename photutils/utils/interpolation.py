@@ -4,6 +4,7 @@ This module provides tools for interpolating data.
 """
 
 import numpy as np
+from scipy.spatial import cKDTree
 
 __all__ = ['ShepardIDWInterpolator']
 
@@ -115,8 +116,6 @@ class ShepardIDWInterpolator:
     """
 
     def __init__(self, coordinates, values, weights=None, leafsize=10):
-        from scipy.spatial import cKDTree
-
         coordinates = np.asarray(coordinates)
         if coordinates.ndim == 0:  # scalar coordinate
             coordinates = np.atleast_2d(coordinates)

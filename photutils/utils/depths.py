@@ -9,6 +9,7 @@ import astropy.units as u
 import numpy as np
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
+from scipy.ndimage import binary_dilation
 
 from photutils.utils._coords import apply_separation
 from photutils.utils._progress_bars import add_progress_bar
@@ -424,8 +425,6 @@ class ImageDepth:
         mask : 2D bool `~numpy.ndarray`
             Dilated boolean mask array.
         """
-        from scipy.ndimage import binary_dilation
-
         if np.any(mask):
             mask = binary_dilation(mask, structure=self.dilate_footprint)
 
