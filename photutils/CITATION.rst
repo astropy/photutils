@@ -19,13 +19,13 @@ appropriate.
 BibTex files for all Photutils versions can be found at
 https://doi.org/10.5281/zenodo.596036.
 
-For example, for Photutils v1.12.0, one should
+For example, for Photutils v1.13.0, one should
 cite Bradley et al. 2024 with the BibTeX entry
-(https://zenodo.org/records/10967176/export/bibtex):
+(https://zenodo.org/records/12585239/export/bibtex):
 
 .. code-block:: text
 
-    @software{larry_bradley_2024_10967176,
+    @software{larry_bradley_2024_12585239,
       author       = {Larry Bradley and
                       Brigitta Sip{\H o}cz and
                       Thomas Robitaille and
@@ -55,11 +55,11 @@ cite Bradley et al. 2024 with the BibTeX entry
                       Marshall Perrin and
                       Brett M. Morris and
                       Gabriel Perren},
-      title        = {astropy/photutils: 1.12.0},
-      month        = apr,
+      title        = {astropy/photutils: 1.13.0},
+      month        = jun,
       year         = 2024,
       publisher    = {Zenodo},
-      version      = {1.12.0},
-      doi          = {10.5281/zenodo.10967176},
-      url          = {https://doi.org/10.5281/zenodo.10967176}
+      version      = {1.13.0},
+      doi          = {10.5281/zenodo.12585239},
+      url          = {https://doi.org/10.5281/zenodo.12585239
     }
