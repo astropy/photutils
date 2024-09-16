@@ -129,9 +129,7 @@ rough estimate of the threshold at the 2-sigma background noise level.
 Then we use the `~photutils.segmentation.detect_sources` function to
 generate a `~photutils.segmentation.SegmentationImage`. Finally, we use
 the :meth:`~photutils.segmentation.SegmentationImage.make_source_mask`
-method with a circular dilation footprint to create the source mask:
-
-.. doctest-requires:: scipy
+method with a circular dilation footprint to create the source mask::
 
     >>> from astropy.stats import sigma_clipped_stats, SigmaClip
     >>> from photutils.segmentation import detect_threshold, detect_sources
@@ -148,8 +146,6 @@ method with a circular dilation footprint to create the source mask:
 The source detection and masking procedure can be iterated further. Even
 with one iteration we are within 0.2% of the true background value and
 1.5% of the true background RMS.
-
-.. _scipy: https://scipy.org/
 
 
 2D Background and Noise Estimation
@@ -260,9 +256,7 @@ background gradient to the image defined above::
 We start by creating a `~photutils.background.Background2D` object
 using a box size of 50x50 and a 3x3 median filter.  We will estimate
 the background level in each mesh as the sigma-clipped median using an
-instance of :class:`~photutils.background.MedianBackground`.
-
-.. doctest-requires:: scipy
+instance of :class:`~photutils.background.MedianBackground`::
 
     >>> from astropy.stats import SigmaClip
     >>> from photutils.background import Background2D, MedianBackground
@@ -278,9 +272,7 @@ returned object. The low-resolution versions of these images are stored
 in the ``background_mesh`` and ``background_rms_mesh`` attributes,
 respectively. The global median value of the low-resolution background
 and background RMS image can be accessed with the ``background_median``
-and ``background_rms_median`` attributes, respectively:
-
-.. doctest-requires:: scipy
+and ``background_rms_median`` attributes, respectively::
 
     >>> print(bkg.background_median)  # doctest: +FLOAT_CMP
     10.852487630351824
@@ -363,10 +355,7 @@ background and background RMS maps. The ``fill_value`` keyword defines
 the value assigned in the output background and background RMS maps
 where the input ``coverage_mask`` is `True`.
 
-Let's create a rotated image that has blank areas and plot it (NOTE:
-this example requires `scipy`_):
-
-.. doctest-requires:: scipy
+Let's create a rotated image that has blank areas and plot it::
 
     >>> from scipy.ndimage import rotate
     >>> data3 = rotate(data2, -45.0)
@@ -401,9 +390,7 @@ real data, one can usually create a coverage mask from a weight or noise
 image. In this example we also use a smaller box size to help capture
 the strong gradient in the background. We also increase the value of the
 ``exclude_percentile`` keyword to include more boxes around the edge of
-the rotated image:
-
-.. doctest-requires:: scipy
+the rotated image::
 
     >>> coverage_mask = (data3 == 0)
     >>> bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
@@ -411,9 +398,7 @@ the rotated image:
     ...                     exclude_percentile=50.0)
 
 Note that the ``coverage_mask`` is applied to the output background
-image (values assigned to ``fill_value``):
-
-.. doctest-requires:: scipy
+image (values assigned to ``fill_value``)::
 
     >>> norm = ImageNormalize(stretch=SqrtStretch())  # doctest: +SKIP
     >>> plt.imshow(bkg3.background, origin='lower', cmap='Greys_r', norm=norm,

@@ -14,23 +14,20 @@ from astropy.stats import SigmaClip
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_almost_equal
+from scipy.spatial import cKDTree
 
 from photutils.datasets import make_model_image
 from photutils.psf.epsf import EPSFBuilder, EPSFFitter
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
 from photutils.psf.functional_models import CircularGaussianPRF
 from photutils.psf.image_models import EPSFModel
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestEPSFBuild:
     def setup_class(self):
         """
         Create a simulated image for testing.
         """
-        from scipy.spatial import cKDTree
-
         shape = (750, 750)
 
         # define random star positions
@@ -256,7 +253,6 @@ def test_epsfmodel_inputs():
         EPSFModel(data, origin=origin)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('oversamp', [3, 4])
 def test_epsf_build_oversampling(oversamp):
     offsets = (np.arange(oversamp) * 1.0 / oversamp - 0.5 + 1.0

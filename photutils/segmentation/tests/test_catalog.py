@@ -25,11 +25,10 @@ from photutils.segmentation.detect import detect_sources
 from photutils.segmentation.finder import SourceFinder
 from photutils.segmentation.utils import make_2dgaussian_kernel
 from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
-                                            HAS_SCIPY, HAS_SKIMAGE)
+                                            HAS_SKIMAGE)
 from photutils.utils.cutouts import CutoutImage
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestSourceCatalog:
     def setup_class(self):
         xcen = 51.0
@@ -883,7 +882,6 @@ class TestSourceCatalog:
         assert_allclose(cat.fwhm, [0.67977799, np.nan] * u.pix)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_kron_params():
     data = make_100gaussians_image()
@@ -938,7 +936,6 @@ def test_kron_params():
     assert isinstance(cat.kron_aperture[0], CircularAperture)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win():
     g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
@@ -966,7 +963,6 @@ def test_centroid_win():
     assert cat.ycentroid[1] == cat.ycentroid_win[1]
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_win_migrate():
     """
     Test that when the windowed centroid moves the aperture completely

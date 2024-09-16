@@ -96,9 +96,7 @@ geometry object::
     >>> ellipse = Ellipse(data, geometry)
 
 To perform the elliptical isophote fit, we run the
-:meth:`~photutils.isophote.Ellipse.fit_image` method:
-
-.. doctest-requires:: scipy
+:meth:`~photutils.isophote.Ellipse.fit_image` method::
 
     >>> isolist = ellipse.fit_image()
 
@@ -106,9 +104,7 @@ The result is a list of isophotes as an
 `~photutils.isophote.IsophoteList` object, whose attributes are the
 fit values for each `~photutils.isophote.Isophote` sorted by the
 semimajor axis length.  Let's print the fit position angles
-(radians):
-
-.. doctest-requires:: scipy
+(radians)::
 
     >>> print(isolist.pa)  # doctest: +SKIP
     [ 0.          0.16838914  0.18453378  0.20310945  0.22534975  0.25007781
@@ -122,9 +118,7 @@ semimajor axis length.  Let's print the fit position angles
       0.68614488  0.7177538   0.7177538   0.7029571   0.7029571   0.7029571 ]
 
 We can also show the isophote values as a table, which is again sorted
-by the semimajor axis length (``sma``):
-
-.. doctest-requires:: scipy
+by the semimajor axis length (``sma``)::
 
     >>> print(isolist.to_table())  # doctest: +SKIP
          sma            intens        intens_err   ... flag niter stop_code
@@ -194,10 +188,7 @@ position as a function of the semimajor axis length:
 
 We can build an elliptical model image from the
 `~photutils.isophote.IsophoteList` object using the
-:func:`~photutils.isophote.build_ellipse_model` function (NOTE: this
-function requires `scipy <https://scipy.org/>`_):
-
-.. doctest-requires:: scipy
+:func:`~photutils.isophote.build_ellipse_model` function::
 
     >>> from photutils.isophote import build_ellipse_model
     >>> model_image = build_ellipse_model(data.shape, isolist)

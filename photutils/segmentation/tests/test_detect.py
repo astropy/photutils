@@ -11,14 +11,12 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils.segmentation.detect import detect_sources, detect_threshold
 from photutils.segmentation.utils import make_2dgaussian_kernel
-from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
 DATA = np.array([[0, 1, 0], [0, 2, 0], [0, 0, 0]]).astype(float)
 REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestDetectThreshold:
     def test_nsigma(self):
         """
@@ -132,7 +130,6 @@ class TestDetectThreshold:
             detect_threshold(DATA, 1.0, sigma_clip=10)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestDetectSources:
     def setup_class(self):
         self.data = np.array([[0, 1, 0], [0, 2, 0],

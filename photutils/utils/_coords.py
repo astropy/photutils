@@ -2,11 +2,13 @@
 """
 This module provides tools for generating random (x, y) coordinates.
 """
+
 import warnings
 from collections import defaultdict
 
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
+from scipy.spatial import KDTree
 
 
 def apply_separation(xycoords, min_separation):
@@ -29,8 +31,6 @@ def apply_separation(xycoords, min_separation):
         The (x, y) coordinates with shape ``(N, 2)`` after excluding
         points closer than the minimum separation.
     """
-    from scipy.spatial import KDTree
-
     tree = KDTree(xycoords)
     pairs = tree.query_pairs(min_separation, output_type='ndarray')
 

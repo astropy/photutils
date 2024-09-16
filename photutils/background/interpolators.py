@@ -6,13 +6,12 @@ This module defines interpolator classes for Background2D.
 import numpy as np
 from astropy.units import Quantity
 from astropy.utils.decorators import deprecated_renamed_argument
+from scipy.ndimage import zoom
 
 from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._repr import make_repr
 
 __all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator']
-
-__doctest_requires__ = {'BkgZoomInterpolator': ['scipy']}
 
 
 class BkgZoomInterpolator:
@@ -94,8 +93,6 @@ class BkgZoomInterpolator:
         if np.ptp(data) == 0:
             return np.full(kwargs['shape'], np.min(data),
                            dtype=kwargs['dtype'])
-
-        from scipy.ndimage import zoom
 
         if kwargs['edge_method'] == 'pad':
             # The mesh is first resized to the larger padded-data size

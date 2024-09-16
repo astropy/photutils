@@ -5,6 +5,7 @@ This module provides tools for matching PSFs using Fourier methods.
 
 import numpy as np
 from numpy.fft import fft2, fftshift, ifft2, ifftshift
+from scipy.ndimage import zoom
 
 __all__ = ['resize_psf', 'create_matching_kernel']
 
@@ -34,8 +35,6 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     result : 2D `~numpy.ndarray`
         The resampled/interpolated 2D data array.
     """
-    from scipy.ndimage import zoom
-
     ratio = input_pixel_scale / output_pixel_scale
     return zoom(psf, ratio, order=order) / ratio**2
 

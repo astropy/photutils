@@ -4,13 +4,11 @@ Tests for the _utils module.
 """
 
 import numpy as np
-import pytest
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.segmentation.utils import (_make_binary_structure,
                                           _mask_to_mirrored_value,
                                           make_2dgaussian_kernel)
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
 def test_make_2dgaussian_kernel():
@@ -22,7 +20,6 @@ def test_make_2dgaussian_kernel():
     assert_allclose(kernel.array.sum(), 1.0)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_2dgaussian_kernel_modes():
     kernel = make_2dgaussian_kernel(3.0, 5)
     assert_allclose(kernel.array.sum(), 1.0)
@@ -37,7 +34,6 @@ def test_make_2dgaussian_kernel_modes():
     assert_allclose(kernel.array.sum(), 1.0)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_binary_structure():
     footprint = _make_binary_structure(1, 4)
     assert_allclose(footprint, np.array([1, 1, 1]))

@@ -32,9 +32,7 @@ agglomerative clustering with a distance criterion, calling the
 `scipy.cluster.hierarchy.fclusterdata` function.
 
 First, let's create a simulated image containing 2D Gaussian sources
-using `~photutils.psf.make_psf_model_image`.
-
-.. doctest-requires:: scipy
+using `~photutils.psf.make_psf_model_image`::
 
     >>> from photutils.psf import CircularGaussianPRF, make_psf_model_image
     >>> shape = (256, 256)
@@ -86,9 +84,7 @@ Now, let's find the stellar groups. We start by creating
 a `~photutils.psf.SourceGrouper` object. Here we set the
 ``min_separation`` parameter ``2.5 * fwhm``, where the ``fwhm`` is taken
 from the 2D Gaussian PSF model used to generate the stars. In general,
-one will need to measure the FWHM of the stellar profiles.
-
-.. doctest-requires:: scipy
+one will need to measure the FWHM of the stellar profiles::
 
     >>> from photutils.psf import SourceGrouper
     >>> fwhm = 4.7
@@ -98,9 +94,7 @@ one will need to measure the FWHM of the stellar profiles.
 We then call the class instance on arrays of the star ``(x, y)``
 positions. Here will use the known positions of the stars when
 we generated the image. In general, one can use a star finder
-(:ref:`source_detection`) to find the sources.
-
-.. doctest-requires:: scipy
+(:ref:`source_detection`) to find the sources::
 
    >>> import numpy as np
    >>> x = np.array(stars['x_0'])
@@ -111,9 +105,7 @@ The ``groups`` output is an array of integers (ordered the same as the
 ``(x, y)`` inputs) containing the group indices. Stars with the same
 group index are in the same group.
 
-For example, to find all the stars in group 3:
-
-.. doctest-requires:: scipy
+For example, to find all the stars in group 3::
 
    >>> mask = groups == 3
    >>> x[mask], y[mask]

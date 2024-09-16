@@ -19,7 +19,6 @@ from photutils.detection import DAOStarFinder
 from photutils.psf import (CircularGaussianPRF, IterativePSFPhotometry,
                            PSFPhotometry, SourceGrouper, make_psf_model,
                            make_psf_model_image)
-from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
@@ -40,7 +39,6 @@ def fixture_test_data():
     return data, error, true_params
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_invalid_inputs():
     model = CircularGaussianPRF(fwhm=1.0)
 
@@ -164,7 +162,6 @@ def test_invalid_inputs():
         _ = psfphot(data, init_params=init_params)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry(test_data):
     data, error, sources = test_data
 
@@ -212,7 +209,6 @@ def test_psf_photometry(test_data):
         assert not isinstance(col, u.Quantity)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('fit_fwhm', [False, True])
 def test_psf_photometry_forced(test_data, fit_fwhm):
     data, error, sources = test_data
@@ -245,7 +241,6 @@ def test_psf_photometry_forced(test_data, fit_fwhm):
             assert colname in phot.colnames
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_nddata(test_data):
     data, error, _ = test_data
 
@@ -284,7 +279,6 @@ def test_psf_photometry_nddata(test_data):
     assert resid_data3.unit == unit
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_model_residual_image(test_data):
     data, error, _ = test_data
 
@@ -322,7 +316,6 @@ def test_model_residual_image(test_data):
     assert resid2[y, x] < -9
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('fit_stddev', [False, True])
 def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
     """
@@ -396,7 +389,6 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
             assert np.all(np.isnan(phot[column]))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('mode', ['new', 'all'])
 def test_iterative_psf_photometry_compound(mode):
     x_stddev = y_stddev = 1.7
@@ -468,7 +460,6 @@ def test_iterative_psf_photometry_compound(mode):
         assert colname in phot.colnames
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_mask(test_data):
     data, error, sources = test_data
 
@@ -558,7 +549,6 @@ def test_psf_photometry_mask(test_data):
     psfphot(data, mask=mask, init_params=init_params)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_init_params(test_data):
     data, error, _ = test_data
     data = data.copy()
@@ -638,7 +628,6 @@ def test_psf_photometry_init_params(test_data):
     assert phot['flux_init'][0] == flux
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_init_params_units(test_data):
     data, error, _ = test_data
     data2 = data.copy()
@@ -694,7 +683,6 @@ def test_psf_photometry_init_params_units(test_data):
             _ = psfphot(data << u.Jy, init_params=init_params2)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_psf_photometry_init_params_columns(test_data):
     data, error, _ = test_data
     data = data.copy()
@@ -731,7 +719,6 @@ def test_psf_photometry_init_params_columns(test_data):
         assert_allclose(phot['flux_fit'], phots[0]['flux_fit'])
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_grouper(test_data):
     data, error, sources = test_data
 
@@ -748,7 +735,6 @@ def test_grouper(test_data):
     assert_equal(phot['group_size'], (1, 1, 1, 1, 3, 3, 3, 2, 2, 1))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_large_group_warning():
     psf_model = CircularGaussianPRF(flux=1, fwhm=2)
     grouper = SourceGrouper(min_separation=50)
@@ -766,7 +752,6 @@ def test_large_group_warning():
         psfphot(data, init_params=true_params)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_local_bkg(test_data):
     data, error, sources = test_data
 
@@ -785,7 +770,6 @@ def test_local_bkg(test_data):
     assert np.count_nonzero(phot['local_bkg']) == len(sources)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fixed_params(test_data):
     data, error, _ = test_data
 
@@ -806,7 +790,6 @@ def test_fixed_params(test_data):
         assert np.all(np.isnan(phot['flux_err']))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fit_warning(test_data):
     data, _, _ = test_data
 
@@ -826,7 +809,6 @@ def test_fit_warning(test_data):
         assert len(psfphot.fit_info['fit_error_indices']) > 0
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fitter_no_maxiters_no_metrics(test_data):
     """
     Test with a fitter that does not have a maxiters parameter and does
@@ -848,7 +830,6 @@ def test_fitter_no_maxiters_no_metrics(test_data):
         assert np.all(np.isnan(phot['cfit']))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_xy_bounds(test_data):
     data, error, _ = test_data
 
@@ -909,7 +890,6 @@ def test_xy_bounds(test_data):
         PSFPhotometry(psf_model, fit_shape, xy_bounds=(-1, 2))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_iterative_psf_photometry_mode_new(test_data):
     data, error, sources = test_data
 
@@ -997,7 +977,6 @@ def test_iterative_psf_photometry_mode_new(test_data):
         assert phot is None
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_iterative_psf_photometry_mode_all():
     sources = QTable()
     sources['x_0'] = [50, 45, 55, 27, 22, 77, 82]
@@ -1069,7 +1048,6 @@ def test_iterative_psf_photometry_mode_all():
     assert resid_nddata.unit == unit
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_iterative_psf_photometry_overlap():
     """
     Regression test for #1769.
@@ -1100,7 +1078,6 @@ def test_iterative_psf_photometry_overlap():
         assert len(phot) == 49
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_iterative_psf_photometry_inputs():
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
@@ -1130,7 +1107,6 @@ def test_iterative_psf_photometry_inputs():
                                    aperture_radius=4, maxiters=3.14)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_negative_xy():
     sources = Table()
     sources['id'] = np.arange(3) + 1
@@ -1148,7 +1124,6 @@ def test_negative_xy():
     assert_equal(phot['y_init'], sources['y_0'])
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_out_of_bounds_centroids():
     sources = Table()
     sources['id'] = np.arange(8) + 1
@@ -1171,7 +1146,6 @@ def test_out_of_bounds_centroids():
     assert np.any(np.isnan(phot['cfit']))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_make_psf_model():
     normalize = False
     sigma = 3.0
@@ -1218,7 +1192,6 @@ def test_make_psf_model():
                      tbl4['flux_fit'][0]), (xval, yval, flux))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_move_column():
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)

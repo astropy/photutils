@@ -16,7 +16,6 @@ from photutils.centroids.core import (centroid_com, centroid_quadratic,
                                       centroid_sources)
 from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
 from photutils.datasets import make_4gaussians_image, make_noise_image
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
 @pytest.fixture(name='test_simple_data')
@@ -46,7 +45,6 @@ def fixture_test_data():
 
 
 # NOTE: the fitting routines in astropy use scipy.optimize
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('x_std', [3.2, 4.0])
 @pytest.mark.parametrize('y_std', [5.7, 4.1])
 @pytest.mark.parametrize('theta', np.deg2rad([30.0, 45.0]))
@@ -78,7 +76,6 @@ def test_centroid_comquad(test_simple_data, x_std, y_std, theta, units):
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('use_mask', [True, False])
 def test_centroid_comquad_nan_withmask(use_mask):
     xc_ref = 24.7
@@ -137,7 +134,6 @@ def test_centroid_com_invalid_inputs():
         centroid_com(data, mask=mask)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_quadratic_xypeak():
     data = np.zeros((11, 11))
     data[5, 5] = 100
@@ -165,7 +161,6 @@ def test_centroid_quadratic_xypeak():
         centroid_quadratic(data, xpeak=15, ypeak=15)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_quadratic_nan():
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
@@ -179,7 +174,6 @@ def test_centroid_quadratic_nan():
     assert_allclose(xycen, [47.58324, 51.827182])
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_quadratic_npts():
     data = np.zeros((3, 3))
     data[1, 1] = 1
@@ -191,7 +185,6 @@ def test_centroid_quadratic_npts():
         centroid_quadratic(data, mask=mask)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_quadratic_invalid_inputs():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
@@ -213,7 +206,6 @@ def test_centroid_quadratic_invalid_inputs():
         centroid_quadratic(data, mask=mask)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_centroid_quadratic_edge():
     data = np.zeros((11, 11))
     data[1, 1] = 100
@@ -233,7 +225,6 @@ def test_centroid_quadratic_edge():
     assert_allclose(xycen, (0, 0))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestCentroidSources:
 
     @staticmethod

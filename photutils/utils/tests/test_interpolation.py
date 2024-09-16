@@ -2,13 +2,11 @@
 """
 Tests for the interpolation module.
 """
-
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
 from photutils.utils import ShepardIDWInterpolator as IDWInterp
-from photutils.utils._optional_deps import HAS_SCIPY
 
 SHAPE = (5, 5)
 DATA = np.ones(SHAPE) * 2.0
@@ -19,7 +17,6 @@ BACKGROUND = np.ones(SHAPE)
 WRONG_SHAPE = np.ones((2, 2))
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestShepardIDWInterpolator:
     def setup_class(self):
         self.rng = np.random.default_rng(0)

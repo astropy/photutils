@@ -9,11 +9,9 @@ import pytest
 from numpy.testing import assert_array_equal
 
 from photutils.detection.daofinder import DAOStarFinder
-from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestDAOStarFinder:
     def test_daostarfind(self, data):
         units = u.Jy

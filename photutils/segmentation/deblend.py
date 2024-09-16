@@ -10,6 +10,8 @@ from multiprocessing import cpu_count, get_context
 import numpy as np
 from astropy.units import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
+from scipy.ndimage import label as ndi_label
+from scipy.ndimage import sum_labels
 
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.detect import _detect_sources
@@ -401,8 +403,6 @@ class _Deblender:
             as markers. The last list element contains all of the
             potential source markers.
         """
-        from scipy.ndimage import label as ndi_label
-
         for i in range(len(segments) - 1):
             segm_lower = segments[i].data
             segm_upper = segments[i + 1].data
@@ -450,7 +450,6 @@ class _Deblender:
             A 2D int array containing the deblended source labels. Note
             that the source labels may not be consecutive.
         """
-        from scipy.ndimage import sum_labels
         from skimage.segmentation import watershed
 
         # all markers are at the top level

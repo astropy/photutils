@@ -16,8 +16,6 @@ from photutils.utils._parameters import as_pair
 __all__ = ['make_model_params', 'make_random_models_table',
            'make_random_gaussians_table']
 
-__doctest_requires__ = {'make_model_params': ['scipy']}
-
 
 def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
                       min_separation=1, border_size=(0, 0), seed=0, **kwargs):

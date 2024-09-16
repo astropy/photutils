@@ -4,6 +4,7 @@ This module provides tools for generating curves of growth.
 """
 import numpy as np
 from astropy.utils import lazyproperty
+from scipy.interpolate import PchipInterpolator
 
 from photutils.profiles.core import ProfileBase
 
@@ -294,8 +295,6 @@ class CurveOfGrowth(ProfileBase):
             The encircled energy at each radius/radii. Returns NaN for
             radii outside the range of the profile data.
         """
-        from scipy.interpolate import PchipInterpolator
-
         return PchipInterpolator(self.radius, self.profile,
                                  extrapolate=False)(radius)
 
@@ -324,8 +323,6 @@ class CurveOfGrowth(ProfileBase):
             The radius at each encircled energy. Returns NaN for
             encircled energies outside the range of the profile data.
         """
-        from scipy.interpolate import PchipInterpolator
-
         # restrict the profile to the monotonically increasing region;
         # this is necessary for the interpolator
         radius = self.radius

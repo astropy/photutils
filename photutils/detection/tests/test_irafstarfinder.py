@@ -10,11 +10,9 @@ from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal
 
 from photutils.detection import IRAFStarFinder
-from photutils.utils._optional_deps import HAS_SCIPY
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestIRAFStarFinder:
     def test_irafstarfind(self, data):
         units = u.Jy

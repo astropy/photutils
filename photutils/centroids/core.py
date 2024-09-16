@@ -15,8 +15,6 @@ from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
-__doctest_requires__ = {('centroid_quadratic', 'centroid_sources'): ['scipy']}
-
 
 def centroid_com(data, mask=None):
     """
@@ -404,7 +402,6 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
     Examples
     --------
-    >>> import matplotlib.pyplot as plt
     >>> import numpy as np
     >>> from photutils.centroids import centroid_2dg, centroid_sources
     >>> from photutils.datasets import make_4gaussians_image

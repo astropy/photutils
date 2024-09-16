@@ -11,10 +11,9 @@ from astropy.modeling import CompoundModel, Fittable2DModel, Parameter
 from astropy.modeling.models import Const2D, Identity, Shift
 from astropy.nddata import NDData
 from astropy.utils.decorators import deprecated
+from scipy.integrate import dblquad, trapezoid
 
 __all__ = ['make_psf_model', 'grid_from_epsfs', 'PRFAdapter']
-
-__doctest_requires__ = {'make_psf_model': ['scipy']}
 
 
 def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
@@ -275,11 +274,7 @@ def _integrate_model(model, x_name=None, y_name=None, dx=50, dy=50,
         The integral of the model over the 2D grid.
     """
     if use_dblquad:
-        from scipy.integrate import dblquad
-
         return dblquad(model, -np.inf, np.inf, -np.inf, np.inf)[0]
-
-    from scipy.integrate import trapezoid
 
     if dx <= 0 or dy <= 0:
         raise ValueError('dx and dy must be > 0')
@@ -539,7 +534,6 @@ class PRFAdapter(Fittable2DModel):
         self.psfmodel = psfmodel.copy()
 
         if renormalize_psf:
-            from scipy.integrate import dblquad
             self._psf_scale_factor = 1.0 / dblquad(self.psfmodel,
                                                    -np.inf, np.inf,
                                                    lambda x: -np.inf,
@@ -604,8 +598,6 @@ class PRFAdapter(Fittable2DModel):
         return self._integrated_psfmodel(dx, dy)
 
     def _integrated_psfmodel(self, dx, dy):
-        from scipy.integrate import dblquad
-
         # infer type/shape from the PSF model. Seems wasteful, but the
         # integration step is a *lot* more expensive so its just peanuts
         out = np.empty_like(self.psfmodel(dx, dy))

@@ -13,10 +13,10 @@ Photutils has the following strict requirements:
 
 * `Astropy`_ 5.3 or later
 
-Photutils also optionally depends on other packages for some features:
-
-* `SciPy <https://scipy.org/>`_ 1.8 or later: Used to power a variety of
+* `SciPy <https://scipy.org/>`_ 1.10 or later: Used to power a variety of
   features in several modules (strongly recommended).
+
+Photutils also optionally depends on other packages for some features:
 
 * `Matplotlib <https://matplotlib.org/>`_ 3.5 or later: Used to power a
   variety of plotting features (e.g., plotting apertures).

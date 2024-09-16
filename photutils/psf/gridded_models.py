@@ -18,6 +18,7 @@ from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData, reshape_as_blocks
 from astropy.utils import minversion
 from astropy.visualization import simple_norm
+from scipy.interpolate import RectBivariateSpline
 
 from photutils.utils._parameters import as_pair
 
@@ -645,8 +646,6 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         Note that the interpolator will be cached by _calc_interpolator.
         It can be cleared by calling the clear_cache method.
         """
-        from scipy.interpolate import RectBivariateSpline
-
         if (x_0 < self._xgrid[0] or x_0 > self._xgrid[-1]
                 or y_0 < self._ygrid[0] or y_0 > self._ygrid[-1]):
             # position is outside of the grid, so simply use the

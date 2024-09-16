@@ -6,6 +6,7 @@ This module provides classes to perform grouping of stars.
 from collections import defaultdict
 
 import numpy as np
+from scipy.cluster.hierarchy import fclusterdata
 
 __all__ = ['SourceGrouper']
 
@@ -66,8 +67,6 @@ class SourceGrouper:
             A 1D array of the groups, in the same order as the input x
             and y coordinates.
         """
-        from scipy.cluster.hierarchy import fclusterdata
-
         x = np.atleast_1d(x)
         y = np.atleast_1d(y)
         if x.shape != y.shape:

@@ -15,7 +15,6 @@ from photutils.psf import CircularGaussianPSF, make_psf_model_image
 from photutils.psf.utils import (_get_psf_model_params,
                                  _interpolate_missing_data,
                                  _validate_psf_model, fit_2dgaussian, fit_fwhm)
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
 @pytest.fixture(name='test_data')
@@ -31,7 +30,6 @@ def fixture_test_data():
     return data, true_params
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('fix_fwhm', [False, True])
 def test_fit_2dgaussian_single(fix_fwhm):
     yy, xx = np.mgrid[:51, :51]
@@ -50,7 +48,6 @@ def test_fit_2dgaussian_single(fix_fwhm):
         assert_allclose(fit_tbl['fwhm_fit'], fwhm)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize(('fix_fwhm', 'with_units'),
                          [(False, True), (True, False)])
 def test_fit_2dgaussian_multiple(test_data, fix_fwhm, with_units):
@@ -78,7 +75,6 @@ def test_fit_2dgaussian_multiple(test_data, fix_fwhm, with_units):
                 assert fit_tbl['flux_fit'].unit == unit
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_fit_fwhm_single():
     yy, xx = np.mgrid[:51, :51]
     fwhm0 = 3.123
@@ -97,7 +93,6 @@ def test_fit_fwhm_single():
     assert len(fwhm) == 1
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 @pytest.mark.parametrize('with_units', [False, True])
 def test_fit_fwhm_multiple(test_data, with_units):
     data, sources = test_data
@@ -113,7 +108,6 @@ def test_fit_fwhm_multiple(test_data, with_units):
     assert_allclose(fwhms, sources['fwhm'])
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_interpolate_missing_data():
     data = np.arange(100).reshape(10, 10)
     mask = np.zeros_like(data, dtype=bool)

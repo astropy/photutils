@@ -5,6 +5,7 @@ from a list of isophotes.
 """
 
 import numpy as np
+from scipy.interpolate import LSQUnivariateSpline
 
 from photutils.isophote.geometry import EllipseGeometry
 
@@ -51,8 +52,6 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False):
     """
     if len(isolist) == 0:
         raise ValueError('isolist must not be empty')
-
-    from scipy.interpolate import LSQUnivariateSpline
 
     # the target grid is spaced in 0.1 pixel intervals so as
     # to ensure no gaps will result on the output array.

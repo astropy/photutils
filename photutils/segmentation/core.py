@@ -11,6 +11,8 @@ from copy import copy, deepcopy
 import numpy as np
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
+from scipy.ndimage import find_objects, grey_dilation
+from scipy.signal import fftconvolve
 
 from photutils.aperture import BoundingBox
 from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
@@ -18,9 +20,6 @@ from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
 
 __all__ = ['SegmentationImage', 'Segment']
-
-__doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*'):
-                        ['scipy']}
 
 
 class SegmentationImage:
@@ -280,7 +279,6 @@ class SegmentationImage:
 
     @lazyproperty
     def _raw_slices(self):
-        from scipy.ndimage import find_objects
         return find_objects(self.data)
 
     @lazyproperty
@@ -1223,11 +1221,10 @@ class SegmentationImage:
         footprint = footprint.astype(bool)
 
         if np.all(footprint):
-            # With a rectangular footprint, scipy grey_dilation is
+            # With a rectangular footprint, scipy's grey_dilation is
             # currently much faster than binary_dilation (separable
             # footprint). grey_dilation and binary_dilation are identical
             # for binary inputs (equivalent to a 2D maximum filter).
-            from scipy.ndimage import grey_dilation
             return grey_dilation(mask, footprint=footprint)
 
         # Binary dilation is very slow, especially for large
@@ -1237,7 +1234,6 @@ class SegmentationImage:
         # "Dilation and Erosion of Gray Images with Spherical
         # Masks", J. Kukal, D. Majerova, A. Prochazka (Jan 2007).
         # https://www.researchgate.net/publication/238778666_DILATION_AND_EROSION_OF_GRAY_IMAGES_WITH_SPHERICAL_MASKS
-        from scipy.signal import fftconvolve
         return fftconvolve(mask, footprint, 'same') > 0.5
 
     @lazyproperty

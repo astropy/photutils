@@ -14,7 +14,7 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils.psf import GriddedPSFModel, STDPSFGrid
 from photutils.segmentation import SourceCatalog, detect_sources
-from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_SCIPY
+from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 # the first file has a single detector, the rest have multiple detectors
 STDPSF_FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits',
@@ -70,7 +70,6 @@ class TestGriddedPSFModel:
         xypos = grid_xypos[idx]
         assert_allclose(xypos, grid_xypos)
 
-    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_basic_eval(self, psfmodel):
         y, x = np.mgrid[0:100, 0:100]
         psf = psfmodel.evaluate(x=x, y=y, flux=100, x_0=40, y_0=60)
@@ -81,7 +80,6 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError, match=match):
             psfmodel.evaluate(x=x2, y=y2, flux=100, x_0=40, y_0=60)
 
-    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_eval_outside_grid(self, psfmodel):
         y, x = np.mgrid[-50:50, -50:50]
         psf1 = psfmodel.evaluate(x=x, y=y, flux=100, x_0=0, y_0=0)
@@ -95,7 +93,6 @@ class TestGriddedPSFModel:
         psf4 = psfmodel.evaluate(x=x, y=y, flux=100, x_0=220, y_0=220)
         assert_allclose(psf3, psf4)
 
-    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_interp(self, psfmodel):
         # test xyref length
         match = 'object is not iterable'
@@ -168,7 +165,6 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
-    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_gridded_psf_model_eval(self, psfmodel):
         """
         Create a simulated image using GriddedPSFModel and test the
@@ -229,7 +225,6 @@ class TestGriddedPSFModel:
         new_model.flux = 100
         assert new_model.flux.value != flux
 
-    @pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
     def test_cache(self, psfmodel):
         for x, y in psfmodel.grid_xypos:
             psfmodel.x_0 = x

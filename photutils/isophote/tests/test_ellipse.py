@@ -18,7 +18,6 @@ from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.tests.helper import PYTEST_LT_80
-from photutils.utils._optional_deps import HAS_SCIPY
 
 # define an off-center position and a tilted sma
 POS = 384
@@ -32,7 +31,6 @@ OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.0e-12,
                                 seed=0)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestEllipse:
     def setup_class(self):
         # centered, tilted galaxy

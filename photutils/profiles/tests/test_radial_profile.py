@@ -12,7 +12,6 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture import CircularAnnulus, CircularAperture
 from photutils.profiles import RadialProfile
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
 @pytest.fixture(name='profile_data')
@@ -90,7 +89,6 @@ def test_radial_profile_inputs(profile_data):
         RadialProfile(data, xycen, edge_radii, error=None, mask=mask)
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 def test_radial_profile_gaussian(profile_data):
     xycen, data, _, _ = profile_data
 

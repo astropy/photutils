@@ -14,8 +14,6 @@ from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['centroid_1dg', 'centroid_2dg']
 
-__doctest_requires__ = {('centroid_1dg', 'centroid_2dg'): ['scipy']}
-
 
 def centroid_1dg(data, error=None, mask=None):
     """

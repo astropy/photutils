@@ -26,9 +26,7 @@ example, we use :class:`~photutils.detection.DAOStarFinder` to detect
 the stars in the image.  We set the detection threshold at the 3-sigma
 noise level, estimated using the median absolute deviation
 (`~astropy.stats.mad_std`) of the image. The parameters of the
-detected sources are returned as an Astropy `~astropy.table.Table`:
-
-.. doctest-requires:: scipy
+detected sources are returned as an Astropy `~astropy.table.Table`::
 
     >>> from photutils.detection import DAOStarFinder
     >>> from astropy.stats import mad_std
@@ -59,9 +57,7 @@ columns), we now define circular apertures centered at these positions
 with a radius of 4 pixels and compute the sum of the pixel values
 within the apertures.  The
 :func:`~photutils.aperture.aperture_photometry` function returns an
-Astropy `~astropy.table.QTable` with the results of the photometry:
-
-.. doctest-requires:: scipy
+Astropy `~astropy.table.QTable` with the results of the photometry::
 
     >>> from photutils.aperture import aperture_photometry, CircularAperture
     >>> positions = np.transpose((sources['xcentroid'], sources['ycentroid']))  # doctest: +REMOTE_DATA

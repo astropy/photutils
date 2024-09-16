@@ -4,16 +4,13 @@ Tests for the convolution module.
 """
 
 import astropy.units as u
-import pytest
 from astropy.convolution import Gaussian2DKernel
 from numpy.testing import assert_allclose
 
 from photutils.datasets import make_100gaussians_image
 from photutils.utils._convolution import _filter_data
-from photutils.utils._optional_deps import HAS_SCIPY
 
 
-@pytest.mark.skipif(not HAS_SCIPY, reason='scipy is required')
 class TestFilterData:
     def setup_class(self):
         self.data = make_100gaussians_image()

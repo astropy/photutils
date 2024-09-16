@@ -203,17 +203,13 @@ Fitting the profile with a 1D Gaussian
 Now let's fit a 1D Gaussian to the radial profile and return the
 `~astropy.modeling.functional_models.Gaussian1D` model using the
 `~photutils.profiles.RadialProfile.gaussian_fit` attribute. The returned
-value is a 1D Gaussian model fit to the radial profile:
-
-.. doctest-requires:: scipy
+value is a 1D Gaussian model fit to the radial profile::
 
     >>> rp.gaussian_fit  # doctest: +FLOAT_CMP
     <Gaussian1D(amplitude=41.54880743, mean=0., stddev=4.71059406)>
 
 The FWHM of the fitted 1D Gaussian model is stored in the
-`~photutils.profiles.RadialProfile.gaussian_fwhm` attribute:
-
-.. doctest-requires:: scipy
+`~photutils.profiles.RadialProfile.gaussian_fwhm` attribute::
 
     >>> print(rp.gaussian_fwhm)  # doctest: +FLOAT_CMP
     11.09260130738712
@@ -415,16 +411,12 @@ respectively. They are implemented as interpolation functions using the
 calculated curve-of-growth profile. The performance of these methods
 is dependent on the quality of the curve-of-growth profile (e.g., it's
 generally better to have a curve-of-growth profile with more radial
-bins):
-
-.. doctest-requires:: scipy
+bins)::
 
     >>> cog.normalize(method='max')
     >>> ee_vals = cog.calc_ee_at_radius([5, 10, 15])  # doctest: +FLOAT_CMP
     >>> ee_vals
     array([0.41923785, 0.87160376, 0.96902919])
-
-.. doctest-requires:: scipy
 
     >>> cog.calc_radius_at_ee(ee_vals)  # doctest: +FLOAT_CMP
     array([ 5., 10., 15.])
