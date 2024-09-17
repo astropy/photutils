@@ -136,6 +136,10 @@ models are evaluated by sampling the analytic function at the input (x,
 y) coordinates. The PRF models are evaluated by integrating the analytic
 function over the pixel areas.
 
+The existing ``IntegratedGaussianPRF`` model is now deprecated and
+will be removed in a future version. It has been replaced by the
+`~photutils.psf.CircularGaussianSigmaPRF` model.
+
 
 New FWHM estimation tool
 ========================
