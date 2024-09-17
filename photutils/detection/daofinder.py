@@ -11,7 +11,6 @@ import numpy as np
 from astropy.nddata import extract_array
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.detection.core import (StarFinderBase, _StarFinderKernel,
                                       _validate_brightest)
@@ -98,16 +97,6 @@ class DAOStarFinder(StarFinderBase):
     roundhi : float, optional
         The upper bound on roundness for object detection.
 
-    sky : float or `~astropy.units.Quantity`, optional
-        The background sky level of the image. Setting ``sky`` affects
-        only the output values of the object ``peak``, ``flux``, and
-        ``mag`` values. The default is 0.0, which should be used to
-        replicate the results from DAOFIND. If the star finder is run on
-        an image that is a `~astropy.units.Quantity` array, then ``sky``
-        must have the same units.
-
-        .. deprecated:: 1.13.0
-
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders. The default is
@@ -143,8 +132,8 @@ class DAOStarFinder(StarFinderBase):
     Notes
     -----
     If the star finder is run on an image that is a
-    `~astropy.units.Quantity` array, then ``threshold``, ``sky``, and
-    ``peakmax`` must all have the same units as the image.
+    `~astropy.units.Quantity` array, then ``threshold`` and ``peakmax``
+    must have the same units as the image.
 
     For the convolution step, this routine sets pixels beyond the
     image borders to 0.0. The equivalent parameters in DAOFIND are
@@ -167,21 +156,14 @@ class DAOStarFinder(StarFinderBase):
            (https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract)
     """
 
-    @deprecated_renamed_argument('sky', None, '1.13.0')
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
                  sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
-                 roundhi=1.0, sky=0.0, exclude_border=False,
-                 brightest=None, peakmax=None, xycoords=None,
-                 min_separation=0.0):
+                 roundhi=1.0, exclude_border=False, brightest=None,
+                 peakmax=None, xycoords=None, min_separation=0.0):
 
         # here we validate the units, but do not strip them
-        # since sky is deprecated, we do not include it in the
-        # validation if it is zero.
-        valid_sky = sky
-        if valid_sky == 0:
-            valid_sky = None
-        inputs = (threshold, valid_sky, peakmax)
-        names = ('threshold', 'sky', 'peakmax')
+        inputs = (threshold, peakmax)
+        names = ('threshold', 'peakmax')
         _ = process_quantities(inputs, names)
 
         if not isscalar(threshold):
@@ -199,7 +181,6 @@ class DAOStarFinder(StarFinderBase):
         self.sharphi = sharphi
         self.roundlo = roundlo
         self.roundhi = roundhi
-        self.sky = sky
         self.exclude_border = exclude_border
         self.brightest = _validate_brightest(brightest)
         self.peakmax = peakmax
@@ -240,7 +221,6 @@ class DAOStarFinder(StarFinderBase):
         return _DAOStarFinderCatalog(data, convolved_data, xypos,
                                      self.threshold,
                                      self.kernel,
-                                     sky=self.sky,
                                      sharplo=self.sharplo,
                                      sharphi=self.sharphi,
                                      roundlo=self.roundlo,
@@ -277,15 +257,13 @@ class DAOStarFinder(StarFinderBase):
               fits.
             * ``npix``: the total number of pixels in the Gaussian kernel
               array.
-            * ``sky``: the input ``sky`` parameter.
-            * ``peak``: the peak, sky-subtracted, pixel value of the object.
+            * ``peak``: the peak pixel value of the object.
             * ``flux``: the object DAOFIND "flux" calculated as the peak
               density in the convolved image divided by the detection
-              threshold. This derivation matches that of DAOFIND if
-              ``sky`` is 0.0.
+              threshold. This derivation matches that of DAOFIND.
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``. The derivation matches that of
-              DAOFIND if ``sky`` is 0.0.
+              DAOFIND.
 
             `None` is returned if no stars are found.
 
@@ -302,13 +280,8 @@ class DAOStarFinder(StarFinderBase):
                 measure of source flux.
         """
         # here we validate the units, but do not strip them
-        # since sky is deprecated, we do not include it in the
-        # validation if it is zero.
-        valid_sky = self.sky
-        if valid_sky == 0:
-            valid_sky = None
-        inputs = (data, self.threshold, valid_sky, self.peakmax)
-        names = ('data', 'threshold', 'sky', 'peakmax')
+        inputs = (data, self.threshold, self.peakmax)
+        names = ('data', 'threshold', 'peakmax')
         _ = process_quantities(inputs, names)
 
         cat = self._get_raw_catalog(data, mask=mask)
@@ -352,12 +325,6 @@ class _DAOStarFinderCatalog:
         The convolution kernel. This kernel must match the kernel used
         to create the ``convolved_data``.
 
-    sky : float, optional
-        The local sky level around the source. ``sky`` is used only
-        to calculate the source peak value, flux, and magnitude. If
-        ``data`` is a `~astropy.units.Quantity` array, then ``sky`` must
-        have the same units.
-
     sharplo : float, optional
         The lower bound on sharpness for object detection.
 
@@ -386,17 +353,12 @@ class _DAOStarFinderCatalog:
     """
 
     def __init__(self, data, convolved_data, xypos, threshold, kernel, *,
-                 sky=0.0, sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
+                 sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
                  brightest=None, peakmax=None):
 
         # here we validate the units, but do not strip them
-        # since sky is deprecated, we do not include it in the
-        # validation if it is zero.
-        valid_sky = sky
-        if valid_sky == 0:
-            valid_sky = None
-        inputs = (data, convolved_data, threshold, valid_sky, peakmax)
-        names = ('data', 'convolved_data', 'threshold', 'sky', 'peakmax')
+        inputs = (data, convolved_data, threshold, peakmax)
+        names = ('data', 'convolved_data', 'threshold', 'peakmax')
         _ = process_quantities(inputs, names)
 
         self.data = data
@@ -407,7 +369,6 @@ class _DAOStarFinderCatalog:
         self.xypos = np.atleast_2d(xypos)
         self.kernel = kernel
         self.threshold = threshold
-        self._sky = sky  # DAOFIND has no sky input -> same as sky=0.0
         self.sharplo = sharplo
         self.sharphi = sharphi
         self.roundlo = roundlo
@@ -420,8 +381,8 @@ class _DAOStarFinderCatalog:
         self.cutout_shape = kernel.shape
         self.cutout_center = tuple((size - 1) // 2 for size in kernel.shape)
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'sharpness',
-                                'roundness1', 'roundness2', 'npix', 'sky',
-                                'peak', 'flux', 'mag')
+                                'roundness1', 'roundness2', 'npix', 'peak',
+                                'flux', 'mag')
 
     def __len__(self):
         return len(self.xypos)
@@ -435,8 +396,8 @@ class _DAOStarFinderCatalog:
 
         # copy these attributes to the new instance
         init_attr = ('data', 'unit', 'convolved_data', 'kernel', 'threshold',
-                     '_sky', 'sharplo', 'sharphi', 'roundlo', 'roundhi',
-                     'brightest', 'peakmax', 'threshold_eff', 'cutout_shape',
+                     'sharplo', 'sharphi', 'roundlo', 'roundhi', 'brightest',
+                     'peakmax', 'threshold_eff', 'cutout_shape',
                      'cutout_center', 'default_columns')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
@@ -641,7 +602,7 @@ class _DAOStarFinderCatalog:
         data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt, axis=1)
         data_dx_sum = np.sum(data_sum_1d * dxx * wt, axis=1)
 
-        # perform linear least-squares fit (where data = sky + hx*kernel)
+        # perform linear least-squares fit (where data = hx*kernel)
         # to find the amplitude (hx)
         hx_numer = data_kern_sum - (data_sum * kern_sum) / wt_sum
         hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
@@ -726,7 +687,7 @@ class _DAOStarFinderCatalog:
 
     @lazyproperty
     def peak(self):
-        return self.data_peak - self.sky
+        return self.data_peak
 
     @lazyproperty
     def flux(self):
@@ -735,7 +696,7 @@ class _DAOStarFinderCatalog:
         detection threshold.
 
         This is DAOStarFinder's definition of "flux" and matches that of
-        DAOFIND if ``sky`` is 0.0.
+        DAOFIND.
         """
         # ignore divide-by-zero RuntimeWarning if threshold = 0
         with warnings.catch_warnings():
@@ -745,7 +706,7 @@ class _DAOStarFinderCatalog:
         if self.unit is not None:
             flux = flux.value * self.unit
 
-        return flux - (self.sky * self.npix)
+        return flux
 
     @lazyproperty
     def mag(self):
@@ -756,13 +717,6 @@ class _DAOStarFinderCatalog:
             if isinstance(flux, u.Quantity):
                 flux = flux.value
             return -2.5 * np.log10(flux)
-
-    @lazyproperty
-    def sky(self):
-        sky_vals = np.full(len(self), fill_value=self._sky)
-        if self.unit is not None:
-            sky_vals <<= self.unit
-        return sky_vals
 
     @lazyproperty
     def npix(self):
