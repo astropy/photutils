@@ -11,7 +11,6 @@ import numpy as np
 from astropy.nddata import extract_array
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.detection.core import (StarFinderBase, _StarFinderKernel,
                                       _validate_brightest)
@@ -69,17 +68,6 @@ class IRAFStarFinder(StarFinderBase):
     roundhi : float, optional
         The upper bound on roundness for object detection.
 
-    sky : float, optional
-        The background sky level of the image. Inputing a ``sky`` value
-        will override the background sky estimate. Setting ``sky``
-        affects only the output values of the object ``peak``, ``flux``,
-        and ``mag`` values. The default is ``None``, which means the sky
-        value will be estimated using the starfind method. If the star
-        finder is run on an image that is a `~astropy.units.Quantity`
-        array, then ``sky`` must have the same units.
-
-        .. deprecated:: 1.13.0
-
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders. The default is
@@ -117,8 +105,8 @@ class IRAFStarFinder(StarFinderBase):
     Notes
     -----
     If the star finder is run on an image that is a
-    `~astropy.units.Quantity` array, then ``threshold``, ``sky``, and
-    ``peakmax`` must all have the same units as the image.
+    `~astropy.units.Quantity` array, then ``threshold`` and ``peakmax``
+    must have the same units as the image.
 
     For the convolution step, this routine sets pixels beyond the image
     borders to 0.0. The equivalent parameters in IRAF's starfind are
@@ -144,15 +132,14 @@ class IRAFStarFinder(StarFinderBase):
       centroid, roundness, and sharpness using image moments.
     """
 
-    @deprecated_renamed_argument('sky', None, '1.13.0')
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
-                 sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
+                 sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2,
                  exclude_border=False, brightest=None, peakmax=None,
                  xycoords=None, min_separation=None):
 
         # here we validate the units, but do not strip them
-        inputs = (threshold, sky, peakmax)
-        names = ('threshold', 'sky', 'peakmax')
+        inputs = (threshold, peakmax)
+        names = ('threshold', 'peakmax')
         _ = process_quantities(inputs, names)
 
         if not isscalar(threshold):
@@ -169,7 +156,6 @@ class IRAFStarFinder(StarFinderBase):
         self.sharphi = sharphi
         self.roundlo = roundlo
         self.roundhi = roundhi
-        self.sky = sky
         self.exclude_border = exclude_border
         self.brightest = _validate_brightest(brightest)
         self.peakmax = peakmax
@@ -210,7 +196,7 @@ class IRAFStarFinder(StarFinderBase):
             return None
 
         return _IRAFStarFinderCatalog(data, convolved_data, xypos, self.kernel,
-                                      sky=self.sky, sharplo=self.sharplo,
+                                      sharplo=self.sharplo,
                                       sharphi=self.sharphi,
                                       roundlo=self.roundlo,
                                       roundhi=self.roundhi,
@@ -246,7 +232,6 @@ class IRAFStarFinder(StarFinderBase):
             * ``pa``: object position angle (degrees counter clockwise from
               the positive x axis).
             * ``npix``: the total number of (positive) unmasked pixels.
-            * ``sky``: the local ``sky`` value.
             * ``peak``: the peak, sky-subtracted, pixel value of the object.
             * ``flux``: the object instrumental flux.
             * ``mag``: the object instrumental magnitude calculated as
@@ -254,8 +239,8 @@ class IRAFStarFinder(StarFinderBase):
 
             `None` is returned if no stars are found.
         """
-        inputs = (data, self.threshold, self.sky, self.peakmax)
-        names = ('data', 'threshold', 'sky', 'peakmax')
+        inputs = (data, self.threshold, self.peakmax)
+        names = ('data', 'threshold', 'peakmax')
         _ = process_quantities(inputs, names)
 
         cat = self._get_raw_catalog(data, mask=mask)
@@ -294,13 +279,6 @@ class _IRAFStarFinderCatalog:
         The convolution kernel. This kernel must match the kernel used
         to create the ``convolved_data``.
 
-    sky : `None` or float, optional
-        The local sky level around the source. If sky is ``None``,
-        then a local sky level will be (crudely) estimated using
-        the IRAF ``starfind`` calculation. If ``data`` is a
-        `~astropy.units.Quantity` array, then ``sky`` must have the same
-        units.
-
     sharplo : float, optional
         The lower bound on sharpness for object detection.
 
@@ -328,13 +306,13 @@ class _IRAFStarFinderCatalog:
         pixel value filtering will be performed.
     """
 
-    def __init__(self, data, convolved_data, xypos, kernel, *, sky=None,
-                 sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
-                 brightest=None, peakmax=None):
+    def __init__(self, data, convolved_data, xypos, kernel, *, sharplo=0.2,
+                 sharphi=1.0, roundlo=-1.0, roundhi=1.0, brightest=None,
+                 peakmax=None):
 
         # here we validate the units, but do not strip them
-        inputs = (data, convolved_data, sky, peakmax)
-        names = ('data', 'convolved_data', 'sky', 'peakmax')
+        inputs = (data, convolved_data, peakmax)
+        names = ('data', 'convolved_data', 'peakmax')
         _ = process_quantities(inputs, names)
 
         self.data = data
@@ -344,7 +322,6 @@ class _IRAFStarFinderCatalog:
         self.convolved_data = convolved_data
         self.xypos = xypos
         self.kernel = kernel
-        self._sky = sky
         self.sharplo = sharplo
         self.sharphi = sharphi
         self.roundlo = roundlo
@@ -356,7 +333,7 @@ class _IRAFStarFinderCatalog:
         self.cutout_shape = kernel.shape
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'sharpness', 'roundness', 'pa', 'npix',
-                                'sky', 'peak', 'flux', 'mag')
+                                'peak', 'flux', 'mag')
 
     def __len__(self):
         return len(self.xypos)
@@ -369,7 +346,7 @@ class _IRAFStarFinderCatalog:
         newcls = object.__new__(self.__class__)
 
         # copy these attributes to the new instance
-        init_attr = ('data', 'unit', 'convolved_data', 'kernel', '_sky',
+        init_attr = ('data', 'unit', 'convolved_data', 'kernel',
                      'sharplo', 'sharphi', 'roundlo', 'roundhi', 'brightest',
                      'peakmax', 'cutout_shape', 'default_columns')
         for attr in init_attr:
@@ -425,18 +402,22 @@ class _IRAFStarFinderCatalog:
 
     @lazyproperty
     def sky(self):
-        if self._sky is None:
-            skymask = ~self.kernel.mask.astype(bool)  # 1=sky, 0=obj
-            nsky = np.count_nonzero(skymask)
-            axis = (1, 2)
-            if nsky == 0.0:
-                sky = (np.max(self.cutout_data_nosub, axis=axis)
-                       - np.max(self.cutout_convdata, axis=axis))
-            else:
-                sky = (np.sum(self.cutout_data_nosub * skymask, axis=axis)
-                       / nsky)
+        """
+        Calculate the sky background level.
+
+        The local sky level is roughly estimated using the IRAF starfind
+        calculation as the average value in the non-masked regions
+        within the kernel footprint.
+        """
+        skymask = ~self.kernel.mask.astype(bool)  # 1=sky, 0=obj
+        nsky = np.count_nonzero(skymask)
+        axis = (1, 2)
+        if nsky == 0.0:
+            sky = (np.max(self.cutout_data_nosub, axis=axis)
+                   - np.max(self.cutout_convdata, axis=axis))
         else:
-            sky = np.full(len(self), fill_value=self._sky)
+            sky = (np.sum(self.cutout_data_nosub * skymask, axis=axis)
+                   / nsky)
 
         if self.unit is not None:
             sky <<= self.unit

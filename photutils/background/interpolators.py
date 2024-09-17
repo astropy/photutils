@@ -52,12 +52,12 @@ class BkgZoomInterpolator:
         `skimage.transform.resize`. The `False` option is provided only
         for backwards-compatibility.
 
-        .. deprecated:: 1.14.0
+        .. deprecated:: 2.0.0
            When this keyword is removed, the behavior will be
            ``grid_mode=True``.
     """
 
-    @deprecated_renamed_argument('grid_mode', None, '1.14.0')
+    @deprecated_renamed_argument('grid_mode', None, '2.0.0')
     def __init__(self, *, order=3, mode='reflect', cval=0.0, clip=True,
                  grid_mode=True):
         self.order = order

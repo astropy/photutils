@@ -6,7 +6,6 @@ Tests for IRAFStarFinder.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal
 
 from photutils.detection import IRAFStarFinder
@@ -91,14 +90,6 @@ class TestIRAFStarFinder:
             finder = IRAFStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
             tbl = finder(data)
             assert tbl is None
-
-    def test_irafstarfind_sky(self, data):
-        with pytest.warns(AstropyDeprecationWarning):
-            finder0 = IRAFStarFinder(threshold=1.0, fwhm=2.0, sky=0.0)
-            finder1 = IRAFStarFinder(threshold=1.0, fwhm=2.0, sky=2.0)
-            tbl0 = finder0(data)
-            tbl1 = finder1(data)
-            assert np.all(tbl0['flux'] > tbl1['flux'])
 
     def test_irafstarfind_peakmax_filtering(self, data):
         """

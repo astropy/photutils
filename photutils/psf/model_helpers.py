@@ -456,7 +456,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     return GriddedPSFModel(data, fill_value=fill_value)
 
 
-@deprecated('1.14.0', alternative='a FittableImageModel derived from the '
+@deprecated('2.0.0', alternative='a FittableImageModel derived from the '
             'discretize_model function in astropy.convolution')
 class PRFAdapter(Fittable2DModel):
     """

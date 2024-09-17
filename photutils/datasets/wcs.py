@@ -6,12 +6,10 @@ This module provides tools for making example WCS objects.
 import astropy.units as u
 import numpy as np
 from astropy import coordinates as coord
-from astropy.io import fits
 from astropy.modeling import models
-from astropy.utils.decorators import deprecated
 from astropy.wcs import WCS
 
-__all__ = ['make_wcs', 'make_gwcs', 'make_imagehdu']
+__all__ = ['make_wcs', 'make_gwcs']
 
 __doctest_requires__ = {'make_gwcs': ['gwcs']}
 
@@ -162,32 +160,3 @@ def make_gwcs(shape, galactic=False):
     pipeline = [(detector_frame, det2sky), (sky_frame, None)]
 
     return gwcs_wcs.WCS(pipeline)
-
-
-@deprecated('1.13.0')
-def make_imagehdu(data, wcs=None):  # pragma: no cover
-    """
-    Create a FITS `~astropy.io.fits.ImageHDU` containing the input 2D
-    image.
-
-    Parameters
-    ----------
-    data : 2D array_like
-        The input 2D data.
-
-    wcs : `None` or `~astropy.wcs.WCS`, optional
-        The world coordinate system (WCS) transformation to include in
-        the output FITS header.
-
-    Returns
-    -------
-    image_hdu : `~astropy.io.fits.ImageHDU`
-        The FITS `~astropy.io.fits.ImageHDU`.
-    """
-    data = np.asanyarray(data)
-    if data.ndim != 2:
-        raise ValueError('data must be a 2D array')
-
-    header = wcs.to_header() if wcs is not None else None
-
-    return fits.ImageHDU(data, header=header)

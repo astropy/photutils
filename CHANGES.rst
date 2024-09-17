@@ -146,6 +146,23 @@ API Changes
     any constant component. The input data are required to be
     background-subtracted. [#1861]
 
+- ``photutils.datasets``
+
+  - The deprecated ``make`` module has been removed. Instead of
+    importing functions from ``photutils.datasets.make``, import
+    functions from ``photutils.datasets``. [#1884]
+
+  - The deprecated ``make_model_sources_image``,
+    ``make_gaussian_prf_sources_image``, ``make_gaussian_sources_table``,
+    ``make_test_psf_data``, ``make_random_gaussians_table``, and
+    ``make_imagehdu`` functions have been removed. [#1884]
+
+- ``photutils.detection``
+
+  - The deprecated ``sky`` keyword in ``DAOStarFinder`` and
+    ``IRAFStarFinder`` has been removed. Also, there will no longer be a
+    ``sky`` column in the output table. [#1884]
+
 - ``photutils.isophote``
 
   - The ``build_ellipse_model`` function now raises a ``ValueError`` if
