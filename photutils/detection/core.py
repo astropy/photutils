@@ -237,6 +237,7 @@ class _StarFinderKernel:
         denom = (self.a * self.c) - self.b**2
 
         # nx and ny are always odd
+        # minimum kernel size is 5x5
         self.nx = 2 * int(max(2, math.sqrt(self.c * self.f / denom))) + 1
         self.ny = 2 * int(max(2, math.sqrt(self.a * self.f / denom))) + 1
 

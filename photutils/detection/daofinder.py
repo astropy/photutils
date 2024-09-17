@@ -247,7 +247,8 @@ class DAOStarFinder(StarFinderBase):
         Returns
         -------
         table : `~astropy.table.QTable` or `None`
-            A table of found stars with the following parameters:
+            A table of found stars. `None` is returned if no stars are
+            found. The table contains the following parameters:
 
             * ``id``: unique object identification number.
             * ``xcentroid, ycentroid``: object centroid.
@@ -258,26 +259,17 @@ class DAOStarFinder(StarFinderBase):
             * ``npix``: the total number of pixels in the Gaussian kernel
               array.
             * ``peak``: the peak pixel value of the object.
-            * ``flux``: the object DAOFIND "flux" calculated as the peak
-              density in the convolved image divided by the detection
-              threshold. This derivation matches that of DAOFIND.
+            * ``flux``: the object instrumental flux calculated as the
+              sum of data values within the kernel footprint.
             * ``mag``: the object instrumental magnitude calculated as
-              ``-2.5 * log10(flux)``. The derivation matches that of
-              DAOFIND.
-
-            `None` is returned if no stars are found.
-
-            .. warning::
-                The ``flux`` parameter returned by the DAOFIND algorithm
-                is a bit of a misnomer. It is not a typical integrated
-                source flux, and its value critically depends on the
-                input ``threshold`` parameter. The ``flux`` parameter is
-                calculated as the peak density in the convolved image
-                divided by the effective detection threshold. ``flux``
-                and the corresponding ``mag`` parameter are reported
-                in the output table for comparison to the IRAF DAOFIND
-                output only. They are not intended to be used as a
-                measure of source flux.
+              ``-2.5 * log10(flux)``.
+            * ``daofind_mag``: the "mag" parameter returned by the DAOFIND
+              algorithm. It is a measure of the intensity ratio of the
+              amplitude of the best fitting Gaussian function at the
+              object position to the detection threshold. This parameter
+              is reported only for comparison to the IRAF DAOFIND
+              output. It should not be interpreted as a magnitude
+              derived from an integrated flux.
         """
         # here we validate the units, but do not strip them
         inputs = (data, self.threshold, self.peakmax)
@@ -691,22 +683,12 @@ class _DAOStarFinderCatalog:
 
     @lazyproperty
     def flux(self):
-        """
-        The peak density in the convolved image divided by the effective
-        detection threshold.
-
-        This is DAOStarFinder's definition of "flux" and matches that of
-        DAOFIND.
-        """
-        # ignore divide-by-zero RuntimeWarning if threshold = 0
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            flux = self.convdata_peak / self.threshold_eff
-
+        fluxes = [np.sum(arr) for arr in self.cutout_data]
         if self.unit is not None:
-            flux = flux.value * self.unit
-
-        return flux
+            fluxes = u.Quantity(fluxes)
+        else:
+            fluxes = np.array(fluxes)
+        return fluxes
 
     @lazyproperty
     def mag(self):
