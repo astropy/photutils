@@ -163,6 +163,14 @@ API Changes
     ``IRAFStarFinder`` has been removed. Also, there will no longer be a
     ``sky`` column in the output table. [#1884]
 
+  - The ``DAOStarFinder`` ``flux`` and ``mag`` columns were changed
+    to give sensible values. Previously, the ``flux`` value was defined
+    by the original DAOFIND algorithm as a measure of the intensity
+    ratio of the amplitude of the best fitting Gaussian function at the
+    object position to the detection threshold. A ``daofind_mag`` column
+    was added for comparison to the original IRAF DAOFIND algorithm.
+    [#1885]
+
 - ``photutils.isophote``
 
   - The ``build_ellipse_model`` function now raises a ``ValueError`` if
