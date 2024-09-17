@@ -238,8 +238,8 @@ class IRAFStarFinder(StarFinderBase):
             * ``npix``: the total number of (positive) unmasked pixels.
             * ``peak``: the peak, sky-subtracted, pixel value of the object.
             * ``flux``: the object instrumental flux calculated as the
-               sum of sky-subtracted data values within the kernel
-               footprint.
+              sum of sky-subtracted data values within the kernel
+              footprint.
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.
         """
