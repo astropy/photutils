@@ -1325,7 +1325,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
                 'flux': outputs_unit[self.outputs[0]]}
 
 
-@deprecated('1.14.0', alternative='`CircularGaussianSigmaPRF` or '
+@deprecated('2.0.0', alternative='`CircularGaussianSigmaPRF` or '
             '`CircularGaussianPRF`')
 class IntegratedGaussianPRF(CircularGaussianSigmaPRF):
     r"""

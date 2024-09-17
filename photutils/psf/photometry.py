@@ -308,7 +308,7 @@ class PSFPhotometry(ModelImageMixin):
     group exceeds 25.
     """
 
-    fit_results = deprecated_attribute('fit_results', '1.13.0',
+    fit_results = deprecated_attribute('fit_results', '2.0.0',
                                        alternative='fit_info')
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,

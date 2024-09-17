@@ -188,7 +188,7 @@ class Background2D:
     .. _bottleneck:  https://github.com/pydata/bottleneck
     """
 
-    @deprecated_renamed_argument('edge_method', None, '1.14.0')
+    @deprecated_renamed_argument('edge_method', None, '2.0.0')
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
                  fill_value=0.0, exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, edge_method='pad',
@@ -717,7 +717,7 @@ class Background2D:
         return self._apply_units(self._filter_grid(data))
 
     @property
-    @deprecated('1.14.0')
+    @deprecated('2.0.0')
     def background_mesh_masked(self):
         """
         The low-resolution background image prior to any interpolation
@@ -730,7 +730,7 @@ class Background2D:
         return data
 
     @property
-    @deprecated('1.14.0')
+    @deprecated('2.0.0')
     def background_rms_mesh_masked(self):
         """
         The low-resolution background RMS image prior to any
@@ -743,7 +743,7 @@ class Background2D:
         return data
 
     @property
-    @deprecated('1.14.0', alternative='npixels_mesh')
+    @deprecated('2.0.0', alternative='npixels_mesh')
     def mesh_nmasked(self):
         """
         A 2D array of the number of masked pixels in each mesh.
