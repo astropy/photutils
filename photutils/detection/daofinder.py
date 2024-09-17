@@ -382,7 +382,7 @@ class _DAOStarFinderCatalog:
         self.cutout_center = tuple((size - 1) // 2 for size in kernel.shape)
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'sharpness',
                                 'roundness1', 'roundness2', 'npix', 'peak',
-                                'flux', 'mag')
+                                'flux', 'mag', 'daofind_mag')
 
     def __len__(self):
         return len(self.xypos)
@@ -717,6 +717,20 @@ class _DAOStarFinderCatalog:
             if isinstance(flux, u.Quantity):
                 flux = flux.value
             return -2.5 * np.log10(flux)
+
+    @lazyproperty
+    def daofind_mag(self):
+        """
+        The "mag" parameter returned by the original DAOFIND algorithm.
+
+        It is a measure of the intensity ratio of the amplitude of the
+        best fitting Gaussian function at the object position to the
+        detection threshold.
+        """
+        # ignore RunTimeWarning if flux is <= 0
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=RuntimeWarning)
+            return -2.5 * np.log10(self.convdata_peak / self.threshold_eff)
 
     @lazyproperty
     def npix(self):
