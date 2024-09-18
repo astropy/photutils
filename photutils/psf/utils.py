@@ -183,7 +183,8 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     return phot
 
 
-def fit_fwhm(data, *, xypos=None, fit_shape=None, mask=None, error=None):
+def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
+             error=None):
     """
     Fit the FWHM of one or more sources in an image.
 
@@ -201,9 +202,14 @@ def fit_fwhm(data, *, xypos=None, fit_shape=None, mask=None, error=None):
         subtracted.
 
     xypos : array-like, optional
-        The (x, y) pixel coordinates of the sources. If `None`, then
-        one source will be fit with an initial position using the
+        The initial (x, y) pixel coordinates of the sources. If `None`,
+        then one source will be fit with an initial position using the
         center-of-mass centroid of the ``data`` array.
+
+    fwhm : float, optional
+        The initial guess for the FWHM of the Gaussian PSF model. If
+        `None`, then the initial guess is half the mean of the x and y
+        sizes of the ``fit_shape`` values.
 
     fit_shape : int or tuple of two ints, optional
         The shape of the fitting region. If a scalar, then it is assumed
@@ -240,9 +246,9 @@ def fit_fwhm(data, *, xypos=None, fit_shape=None, mask=None, error=None):
     The source(s) are fit using the :func:`fit_2dgaussian` function,
     which uses a `~photutils.psf.CircularGaussianPSF` model with the
     `~photutils.psf.PSFPhotometry` class. The initial guess for the
-    flux is the sum of the pixel values within the fitting region. The
-    initial guess for the FWHM is half the mean of the x and y sizes of
-    the ``fit_shape`` values.
+    flux is the sum of the pixel values within the fitting region. If
+    ``fwhm`` is `None`, then the initial guess for the FWHM is half the
+    mean of the x and y sizes of the ``fit_shape`` values.
 
     Examples
     --------
@@ -276,8 +282,8 @@ def fit_fwhm(data, *, xypos=None, fit_shape=None, mask=None, error=None):
     array([5.69467204, 5.21376414, 7.65508658, 3.20255356, 6.66003098])
     """
     with warnings.catch_warnings(record=True) as fit_warnings:
-        phot = fit_2dgaussian(data, xypos=xypos, fit_shape=fit_shape,
-                              mask=mask, error=error, fix_fwhm=False)
+        phot = fit_2dgaussian(data, xypos=xypos, fwhm=fwhm, fix_fwhm=False,
+                              fit_shape=fit_shape, mask=mask, error=error)
 
     if len(fit_warnings) > 0:
         warnings.warn('One or more fit(s) may not have converged. Please '
