@@ -20,8 +20,8 @@ from photutils.utils._parameters import as_pair
 __all__ = ['fit_2dgaussian', 'fit_fwhm']
 
 
-def fit_2dgaussian(data, *, xypos=None, fit_shape=None, mask=None, error=None,
-                   fix_fwhm=True):
+def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
+                   fit_shape=None, mask=None, error=None):
     """
     Fit a 2D Gaussian model to one or more sources in an image.
 
@@ -39,9 +39,18 @@ def fit_2dgaussian(data, *, xypos=None, fit_shape=None, mask=None, error=None,
         subtracted.
 
     xypos : array-like, optional
-        The (x, y) pixel coordinates of the sources. If `None`, then
-        one source will be fit with an initial position using the
+        The initial (x, y) pixel coordinates of the sources. If `None`,
+        then one source will be fit with an initial position using the
         center-of-mass centroid of the ``data`` array.
+
+    fwhm : float, optional
+        The initial guess for the FWHM of the Gaussian PSF model. If
+        `None`, then the initial guess is half the mean of the x and y
+        sizes of the ``fit_shape`` values.
+
+    fix_fwhm : bool, optional
+        Whether to fix the FWHM of the Gaussian PSF model during the
+        fitting process.
 
     fit_shape : int or tuple of two ints, optional
         The shape of the fitting region. If a scalar, then it is assumed
@@ -62,12 +71,6 @@ def fit_2dgaussian(data, *, xypos=None, fit_shape=None, mask=None, error=None,
         array, then ``data`` must also be a `~astropy.units.Quantity`
         array with the same units.
 
-    fix_fwhm : bool, optional
-        Whether to fix the FWHM of the Gaussian PSF model during the
-        fitting process. If `False`, the initial guess for the FWHM is
-        the half the mean of the x and y sizes of the ``fit_shape``
-        values.
-
     Returns
     -------
     result : `~photutils.psf.PSFPhotometry`
@@ -82,8 +85,8 @@ def fit_2dgaussian(data, *, xypos=None, fit_shape=None, mask=None, error=None,
     The source(s) are fit with a `~photutils.psf.CircularGaussianPSF`
     model using the `~photutils.psf.PSFPhotometry` class. The initial
     guess for the flux is the sum of the pixel values within the fitting
-    region. The initial guess for the FWHM is half the mean of the x and
-    y sizes of the ``fit_shape`` values.
+    region. If ``fwhm`` is `None`, then the initial guess for the FWHM
+    is half the mean of the x and y sizes of the ``fit_shape`` values.
 
     Examples
     --------
@@ -166,9 +169,12 @@ def fit_2dgaussian(data, *, xypos=None, fit_shape=None, mask=None, error=None,
     init_params['y'] = xypos[:, 1]
     init_params['flux'] = flux_init
 
+    if fwhm is None:
+        fwhm = np.mean(fit_shape) / 2.0
+    init_params['fwhm'] = fwhm
+
     model = CircularGaussianPSF()
     if not fix_fwhm:
-        init_params['fwhm'] = np.mean(fit_shape) / 2.0
         model.fwhm.fixed = False
 
     phot = PSFPhotometry(model, fit_shape)
