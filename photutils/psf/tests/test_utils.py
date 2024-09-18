@@ -37,7 +37,7 @@ def test_fit_2dgaussian_single(fix_fwhm):
     model = CircularGaussianPSF(x_0=22.17, y_0=28.87, fwhm=fwhm)
     data = model(xx, yy)
 
-    fit = fit_2dgaussian(data, fix_fwhm=fix_fwhm)
+    fit = fit_2dgaussian(data, fwhm=3, fix_fwhm=fix_fwhm)
     fit_tbl = fit.results
     assert isinstance(fit_tbl, QTable)
     assert len(fit_tbl) == 1
@@ -81,7 +81,7 @@ def test_fit_fwhm_single():
     model = CircularGaussianPSF(x_0=22.17, y_0=28.87, fwhm=fwhm0)
     data = model(xx, yy)
 
-    fwhm = fit_fwhm(data)
+    fwhm = fit_fwhm(data, fwhm=3)
     assert isinstance(fwhm, np.ndarray)
     assert len(fwhm) == 1
     assert_allclose(fwhm, fwhm0)
