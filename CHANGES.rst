@@ -81,10 +81,10 @@ New Features
 
   - Added new ``fit_fwhm`` convenience function to estimate the FWHM of
     one or more sources in an image by fitting a circular 2D Gaussian PSF
-    model. [#1859]
+    model. [#1859, #1887]
 
   - Added new ``fit_2dgaussian`` convenience function to fit a circular 2D
-    Gaussian PSF to one or more sources in an image. [#1859]
+    Gaussian PSF to one or more sources in an image. [#1859, #1887]
 
 Bug Fixes
 ^^^^^^^^^
