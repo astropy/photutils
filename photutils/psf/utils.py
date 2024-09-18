@@ -169,11 +169,13 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     init_params['y'] = xypos[:, 1]
     init_params['flux'] = flux_init
 
+    model = CircularGaussianPSF()
+
     if fwhm is None:
         fwhm = np.mean(fit_shape) / 2.0
     init_params['fwhm'] = fwhm
 
-    model = CircularGaussianPSF()
+    model = CircularGaussianPSF(fwhm=fwhm)
     if not fix_fwhm:
         model.fwhm.fixed = False
 
