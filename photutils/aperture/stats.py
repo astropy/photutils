@@ -1266,9 +1266,10 @@ class ApertureStats:
         .. math:: \Delta F = \sqrt{\sum_{i \in A}
                   \sigma_{\mathrm{tot}, i}^2}
 
-        where :math:`\Delta F` is the `sum`, :math:`\sigma_{\mathrm{tot,
-        i}}` are the pixel-wise total errors (``error``), and :math:`A`
-        are the unmasked pixels in the aperture.
+        where :math:`\Delta F` is the `sum_err`,
+        :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total errors
+        (``error``), and :math:`A` are the unmasked pixels in the
+        aperture.
 
         Pixel values that are masked in the input ``data``, including
         any non-finite pixel values (NaN and inf) that are automatically
