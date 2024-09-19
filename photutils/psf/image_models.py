@@ -8,7 +8,7 @@ import warnings
 
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
-from astropy.utils.decorators import lazyproperty
+from astropy.utils.decorators import deprecated, lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.interpolate import RectBivariateSpline
 
@@ -280,6 +280,7 @@ class ImagePSF(Fittable2DModel):
         return evaluated_model
 
 
+@deprecated('2.0.0', alternative='`ImagePSF`')
 class FittableImageModel(Fittable2DModel):
     r"""
     A fittable image model allowing for intensity scaling and
