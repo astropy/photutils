@@ -42,12 +42,12 @@ detectors with significant intra-pixel sensitivity variations. For a
 more detailed description of this formalism, see `Anderson & King 2000
 <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_.
 
-In colloquial usage, "PSF photometry" sometimes refers to the more
-general task of model-fitting photometry with the effects of the PSF
-either implicitly or explicitly included in the models, regardless of
-exactly what kind of model is actually being fit. For brevity (e.g.,
-``photutils.psf``), we use "PSF photometry" in this way, as a shorthand
-for the general approach.
+In colloquial usage, "PSF photometry" sometimes refers to the
+more general task of model-fitting photometry with the effects of
+the PSF either implicitly or explicitly included in the models,
+regardless of exactly what kind of model is actually being fit. In the
+``photutils.psf`` package, we use "PSF photometry" in this way, as a
+shorthand for the general approach.
 
 
 PSF Photometry Overview
