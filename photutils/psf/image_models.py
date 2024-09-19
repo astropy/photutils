@@ -35,16 +35,18 @@ class ImagePSF(Fittable2DModel):
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        Array containing the 2D image. The input image data must be
-        finite. By default, the PSF peak is assumed to be located at
-        the center of the input image (see the ``origin`` keyword). The
-        array must be normalized so that the total flux of a source is
-        1.0. This means that the sum of the values in the input image
-        PSF over an infinite grid is 1.0. In practice, the sum of the
-        data values in the input image may be less than 1.0 if the input
-        image only covers a finite region of the PSF. These correction
-        factors can be estimated from the ensquared or encircled energy
-        of the PSF based on the size of the input image.
+        Array containing the 2D image. The length of the x and y axes
+        must both be at least 4. All elements of the input image data
+        must be finite. By default, the PSF peak is assumed to be
+        located at the center of the input image (see the ``origin``
+        keyword). The array must be normalized so that the total flux
+        of a source is 1.0. This means that the sum of the values in
+        the input image PSF over an infinite grid is 1.0. In practice,
+        the sum of the data values in the input image may be less than
+        1.0 if the input image only covers a finite region of the PSF.
+        These correction factors can be estimated from the ensquared
+        or encircled energy of the PSF based on the size of the input
+        image.
 
     flux : float, optional
         The total flux of the source, assuming the input image
@@ -143,6 +145,10 @@ class ImagePSF(Fittable2DModel):
 
         if not np.all(np.isfinite(data)):
             raise ValueError('All elements of input data must be finite.')
+
+        if np.any(np.array(data.shape) < 4):
+            raise ValueError('The length of the x and y axes must both be at '
+                             'least 4.')
 
     @property
     def origin(self):

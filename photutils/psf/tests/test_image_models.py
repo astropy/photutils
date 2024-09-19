@@ -98,6 +98,10 @@ class TestImagePSF:
         with pytest.raises(ValueError, match=match):
             ImagePSF(np.ones((10, 10, 10)))
 
+        match = 'The length of the x and y axes must both be at least 4'
+        with pytest.raises(ValueError, match=match):
+            ImagePSF(np.ones((3, 4)))
+
         data = np.ones((10, 10))
         data[0, 0] = np.nan
         match = 'All elements of input data must be finite'
