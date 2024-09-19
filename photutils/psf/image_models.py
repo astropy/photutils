@@ -197,6 +197,44 @@ class ImagePSF(Fittable2DModel):
         # RectBivariateSpline expects the data to be in (x, y) axis order
         return RectBivariateSpline(x, y, self.data.T, kx=3, ky=3, s=0)
 
+    def bounding_box(self):
+        """
+        Return a bounding box defining the limits of the model.
+
+        Returns
+        -------
+        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
+            A bounding box defining the limits of the model.
+
+        Examples
+        --------
+        >>> from photutils.psf import ImagePSF
+        >>> psf_data = np.arange(30, dtype=float).reshape(5, 6)
+        >>> psf_data /= np.sum(psf_data)
+        >>> model = ImagePSF(psf_data, flux=1, x_0=0, y_0=0)
+        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-3.0, upper=3.0)
+                y: Interval(lower=-2.5, upper=2.5)
+            }
+            model=ImagePSF(inputs=('x', 'y'))
+            order='C'
+        )
+        """
+        dy, dx = np.array(self.data.shape) / 2 / self.oversampling
+
+        # apply the origin shift
+        # if origin is None, the origin is set to the center of the
+        # image and the shift is 0
+        xshift = np.array(self.data.shape[1] - 1) / 2 - self.origin[0]
+        yshift = np.array(self.data.shape[0] - 1) / 2 - self.origin[1]
+        xshift /= self.oversampling[1]
+        yshift /= self.oversampling[0]
+
+        return ((self.y_0 - dy + yshift, self.y_0 + dy + yshift),
+                (self.x_0 - dx + xshift, self.x_0 + dx + xshift))
+
     def evaluate(self, x, y, flux, x_0, y_0):
         """
         Calculate the value of the image model at the input coordinates.
