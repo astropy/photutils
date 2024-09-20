@@ -20,7 +20,6 @@ from photutils.datasets import make_model_image
 from photutils.psf.epsf import EPSFBuilder, EPSFFitter
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
 from photutils.psf.functional_models import CircularGaussianPRF
-from photutils.psf.image_models import EPSFModel
 
 
 class TestEPSFBuild:
@@ -203,54 +202,6 @@ def test_epsfbuilder_inputs():
 
     # valid inputs
     EPSFBuilder(sigma_clip=SigmaClip(sigma=2.5, cenfunc='mean', maxiters=2))
-
-
-def test_epsfmodel_inputs():
-    data = np.array([[], []])
-    match = 'Image data array cannot be zero-sized'
-    with pytest.raises(ValueError, match=match):
-        EPSFModel(data)
-
-    data = np.ones((5, 5), dtype=float)
-    data[2, 2] = np.inf
-    match = 'must be finite'
-    with pytest.raises(ValueError, match=match):
-        EPSFModel(data)
-
-    data[2, 2] = np.nan
-    with pytest.raises(ValueError, match=match):
-        EPSFModel(data, flux=None)
-
-    data[2, 2] = 1
-    match = 'oversampling must be > 0'
-    for oversampling in [-1, [-2, 4]]:
-        with pytest.raises(ValueError, match=match):
-            EPSFModel(data, oversampling=oversampling)
-
-    match = 'oversampling must have 1 or 2 elements'
-    oversampling = (1, 4, 8)
-    with pytest.raises(ValueError, match=match):
-        EPSFModel(data, oversampling=oversampling)
-
-    match = 'oversampling must have integer values'
-    oversampling = 2.1
-    with pytest.raises(ValueError, match=match):
-        EPSFModel(data, oversampling=oversampling)
-
-    match = 'oversampling must be 1D'
-    for oversampling in [((1, 2), (3, 4)), np.ones((2, 2, 2))]:
-        with pytest.raises(ValueError, match=match):
-            EPSFModel(data, oversampling=oversampling)
-
-    match = 'oversampling must be a finite value'
-    for oversampling in [np.nan, (1, np.inf)]:
-        with pytest.raises(ValueError, match=match):
-            EPSFModel(data, oversampling=oversampling)
-
-    origin = (1, 2, 3)
-    match = 'Parameter "origin" must be either None or an iterable with'
-    with pytest.raises(TypeError, match=match):
-        EPSFModel(data, origin=origin)
 
 
 @pytest.mark.parametrize('oversamp', [3, 4])

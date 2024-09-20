@@ -775,8 +775,12 @@ class FittableImageModel(Fittable2DModel):
         return evaluated_model
 
 
-class EPSFModel(FittableImageModel):
+class _LegacyEPSFModel(Fittable2DModel):
     """
+    This class will be removed when the deprecated EPSFModel is removed,
+    which will require the EPSFBuilder class to be
+    rewritten/refactored/replaced.
+
     A class that models an effective PSF (ePSF).
 
     The EPSFModel is normalized such that the sum of the PSF over the
@@ -833,17 +837,54 @@ class EPSFModel(FittableImageModel):
         for more details.
     """
 
-    def __init__(self, data, *, flux=1.0, x_0=0.0, y_0=0.0, normalize=True,
+    flux = Parameter(description='Intensity scaling factor for image data.',
+                     default=1.0)
+    x_0 = Parameter(description='X-position of a feature in the image in '
+                    'the output coordinate grid on which the model is '
+                    'evaluated.', default=0.0)
+    y_0 = Parameter(description='Y-position of a feature in the image in '
+                    'the output coordinate grid on which the model is '
+                    'evaluated.', default=0.0)
+
+    def __init__(self, data, *, flux=flux.default, x_0=x_0.default,
+                 y_0=y_0.default, normalize=False,
                  normalization_correction=1.0, origin=None, oversampling=1,
                  fill_value=0.0, norm_radius=5.5, **kwargs):
 
         self._norm_radius = norm_radius
+        self._fill_value = fill_value
+        self._img_norm = None
+        self._normalization_status = 0 if normalize else 2
+        self._store_interpolator_kwargs(**kwargs)
+        self._oversampling = as_pair('oversampling', oversampling,
+                                     lower_bound=(0, 1))
 
-        super().__init__(data=data, flux=flux, x_0=x_0, y_0=y_0,
-                         normalize=normalize,
-                         normalization_correction=normalization_correction,
-                         origin=origin, oversampling=oversampling,
-                         fill_value=fill_value, **kwargs)
+        if normalization_correction <= 0:
+            raise ValueError("'normalization_correction' must be strictly "
+                             'positive.')
+        self._normalization_correction = normalization_correction
+        self._normalization_constant = 1.0 / self._normalization_correction
+
+        self._data = np.array(data, copy=True, dtype=float)
+
+        if not np.all(np.isfinite(self._data)):
+            raise ValueError("All elements of input 'data' must be finite.")
+
+        # set input image related parameters:
+        self._ny, self._nx = self._data.shape
+        self._shape = self._data.shape
+        if self._data.size < 1:
+            raise ValueError('Image data array cannot be zero-sized.')
+
+        # set the origin of the coordinate system in image's pixel grid:
+        self.origin = origin
+
+        flux = self._initial_norm(flux, normalize)
+
+        super().__init__(flux, x_0, y_0)
+
+        # initialize interpolator:
+        self.compute_interpolator(**kwargs)
 
     def _initial_norm(self, flux, normalize):
         if flux is None:
@@ -909,7 +950,107 @@ class EPSFModel(FittableImageModel):
         """
         return self._data
 
-    @FittableImageModel.origin.setter
+    @property
+    def oversampling(self):
+        """
+        The factor by which the stored image is oversampled.
+
+        An input to this model is multiplied by this factor to yield the
+        index into the stored image.
+        """
+        return self._oversampling
+
+    @property
+    def data(self):
+        """
+        Get original image data.
+        """
+        return self._data
+
+    @property
+    def normalization_constant(self):
+        """
+        Get normalization constant.
+        """
+        return self._normalization_constant
+
+    @property
+    def normalization_status(self):
+        """
+        Get normalization status.
+
+        Possible status values are:
+
+        - 0: **Performed**. Model has been successfully normalized at
+             user's request.
+        - 1: **Failed**. Attempt to normalize has failed.
+        - 2: **NotRequested**. User did not request model to be normalized.
+        """
+        return self._normalization_status
+
+    @property
+    def normalization_correction(self):
+        """
+        Set/Get flux correction factor.
+
+        .. note::
+            When setting correction factor, model's flux will be
+            adjusted accordingly such that if this model was a good fit
+            to some target image before, then it will remain a good fit
+            after correction factor change.
+        """
+        return self._normalization_correction
+
+    @normalization_correction.setter
+    def normalization_correction(self, normalization_correction):
+        old_cf = self._normalization_correction
+        self._normalization_correction = normalization_correction
+        self._compute_normalization(normalize=self._normalization_status != 2)
+
+        # adjust model's flux so that if this model was a good fit to
+        # some target image, then it will remain a good fit after
+        # correction factor change:
+        self.flux *= normalization_correction / old_cf
+
+    @property
+    def shape(self):
+        """
+        A tuple of dimensions of the data array in numpy style (ny, nx).
+        """
+        return self._shape
+
+    @property
+    def nx(self):
+        """
+        Number of columns in the data array.
+        """
+        return self._nx
+
+    @property
+    def ny(self):
+        """
+        Number of rows in the data array.
+        """
+        return self._ny
+
+    @property
+    def origin(self):
+        """
+        A tuple of ``x`` and ``y`` coordinates of the origin of the
+        coordinate system in terms of pixels of model's image.
+
+        When setting the coordinate system origin, a tuple of two
+        integers or floats may be used. If origin is set to `None`, the
+        origin of the coordinate system will be set to the middle of the
+        data array (``(npix-1)/2.0``).
+
+        .. warning::
+            Modifying ``origin`` will not adjust (modify) model's
+            parameters ``x_0`` and ``y_0``.
+        """
+        return (self._x_origin, self._y_origin)
+
+    @origin.setter
     def origin(self, origin):
         if origin is None:
             self._x_origin = (self._nx - 1) / 2.0 / self.oversampling[1]
@@ -919,6 +1060,52 @@ class EPSFModel(FittableImageModel):
         else:
             raise TypeError('Parameter "origin" must be either None or an '
                             'iterable with two elements.')
+
+    @property
+    def x_origin(self):
+        """
+        X-coordinate of the origin of the coordinate system.
+        """
+        return self._x_origin
+
+    @property
+    def y_origin(self):
+        """
+        Y-coordinate of the origin of the coordinate system.
+        """
+        return self._y_origin
+
+    @property
+    def fill_value(self):
+        """
+        Fill value to be returned for coordinates outside of the domain
+        of definition of the interpolator.
+
+        If ``fill_value`` is `None`, then values outside of the domain
+        of definition are the ones returned by the interpolator.
+        """
+        return self._fill_value
+
+    @fill_value.setter
+    def fill_value(self, fill_value):
+        self._fill_value = fill_value
+
+    def _store_interpolator_kwargs(self, **kwargs):
+        """
+        Store interpolator keyword arguments.
+
+        This function should be called in a subclass whenever model's
+        interpolator is (re-)computed.
+        """
+        self._interpolator_kwargs = copy.deepcopy(kwargs)
+
+    @property
+    def interpolator_kwargs(self):
+        """
+        Get current interpolator's arguments used when interpolator was
+        created.
+        """
+        return self._interpolator_kwargs
 
     def compute_interpolator(self, **kwargs):
         """
@@ -980,7 +1167,8 @@ class EPSFModel(FittableImageModel):
         x = np.arange(self._nx, dtype=float) / self.oversampling[1]
         y = np.arange(self._ny, dtype=float) / self.oversampling[0]
         self.interpolator = RectBivariateSpline(
-            x, y, self._data.T, kx=degx, ky=degy, s=smoothness)
+            x, y, self._data.T, kx=degx, ky=degy, s=smoothness
+        )
 
         self._store_interpolator_kwargs(**kwargs)
 
@@ -1021,3 +1209,84 @@ class EPSFModel(FittableImageModel):
             evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
+
+
+@deprecated('2.0.0', alternative='`ImagePSF`')
+class EPSFModel(_LegacyEPSFModel):
+    """
+    A class that models an effective PSF (ePSF).
+
+    The EPSFModel is normalized such that the sum of the PSF over the
+    (undersampled) pixels within the input ``norm_radius`` is 1.0.
+    This means that when the EPSF is fit to stars, the resulting flux
+    corresponds to aperture photometry within a circular aperture of
+    radius ``norm_radius``.
+
+    While this class is a subclass of `FittableImageModel`, it is very
+    similar. The primary differences/motivation are a few additional
+    parameters necessary specifically for ePSFs.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        Array containing the 2D image.
+
+    flux : float, optional
+        Intensity scaling factor for image data.
+
+    x_0, y_0 : float, optional
+        Position of a feature in the image in the output coordinate grid
+        on which the model is evaluated.
+
+    normalize : bool, optional
+        Indicates whether or not the model should be build on normalized
+        input image data.
+
+    normalization_correction : float, optional
+        A strictly positive number that represents correction that needs
+        to be applied to model's data normalization.
+
+    origin : tuple, None, optional
+        A reference point in the input image ``data`` array. When origin
+        is `None`, origin will be set at the middle of the image array.
+
+    oversampling : int or array_like (int)
+        The integer oversampling factor(s) of the ePSF relative to the
+        input ``stars`` along each axis. If ``oversampling`` is a scalar
+        then it will be used for both axes. If ``oversampling`` has two
+        elements, they must be in ``(y, x)`` order.
+
+    fill_value : float, optional
+        The value to be returned when evaluation is performed outside
+        the domain of the model.
+
+    norm_radius : float, optional
+        The radius inside which the ePSF is normalized by the sum over
+        undersampled integer pixel values inside a circular aperture.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed directly to
+        the "compute_interpolator" method. See "compute_interpolator"
+        for more details.
+    """
+
+    flux = Parameter(description='Intensity scaling factor for image data.',
+                     default=1.0)
+    x_0 = Parameter(description='X-position of a feature in the image in '
+                    'the output coordinate grid on which the model is '
+                    'evaluated.', default=0.0)
+    y_0 = Parameter(description='Y-position of a feature in the image in '
+                    'the output coordinate grid on which the model is '
+                    'evaluated.', default=0.0)
+
+    def __init__(self, data, *, flux=flux.default, x_0=x_0.default,
+                 y_0=y_0.default, normalize=True, normalization_correction=1.0,
+                 origin=None, oversampling=1, fill_value=0.0,
+                 norm_radius=5.5, **kwargs):
+
+        super().__init__(data=data, flux=flux, x_0=x_0, y_0=y_0,
+                         normalize=normalize,
+                         normalization_correction=normalization_correction,
+                         origin=origin, oversampling=oversampling,
+                         fill_value=fill_value, norm_radius=norm_radius,
+                         **kwargs)
