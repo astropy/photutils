@@ -325,7 +325,7 @@ def _interpolate_missing_data(data, mask, method='cubic'):
     data_interp : 2D `~numpy.ndarray`
         The interpolated 2D image.
     """
-    data_interp = np.array(data, copy=True)
+    data_interp = np.copy(data)
 
     if len(data_interp.shape) != 2:
         raise ValueError("'data' must be a 2D array.")
@@ -333,10 +333,12 @@ def _interpolate_missing_data(data, mask, method='cubic'):
     if mask.shape != data.shape:
         raise ValueError("'mask' and 'data' must have the same shape.")
 
+    # initialize the interpolator
     y, x = np.indices(data_interp.shape)
     xy = np.dstack((x[~mask].ravel(), y[~mask].ravel()))[0]
     z = data_interp[~mask].ravel()
 
+    # interpolate the missing data
     if method == 'nearest':
         interpol = interpolate.NearestNDInterpolator(xy, z)
     elif method == 'cubic':
