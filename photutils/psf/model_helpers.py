@@ -317,28 +317,29 @@ def _shift_model_param(model, param_name, shift=2):
 
 def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     """
-    Create a GriddedPSFModel from a list of EPSFModels.
+    Create a GriddedPSFModel from a list of ImagePSF models.
 
-    Given a list of EPSFModels, this function will return a
-    GriddedPSFModel. The fiducial points for each input EPSFModel can
-    either be set on each individual model by setting the 'x_0' and
-    'y_0' attributes, or provided as a list of tuples (``grid_xypos``).
-    If a ``grid_xypos`` list is provided, it must match the length of
-    input EPSFs. In either case, the fiducial points must be on a grid.
+    Given a list of `~photutils.psf.ImagePSF` models, this function will
+    return a `~photutils.psf.GriddedPSFModel`. The fiducial points for
+    each input ImagePSF can either be set on each individual model by
+    setting the 'x_0' and 'y_0' attributes, or provided as a list of
+    tuples (``grid_xypos``). If a ``grid_xypos`` list is provided, it
+    must match the length of input EPSFs. In either case, the fiducial
+    points must be on a grid.
 
     Optionally, a ``meta`` dictionary may be provided for the output
     GriddedPSFModel. If this dictionary contains the keys 'grid_xypos',
     'oversampling', or 'fill_value', they will be overridden.
 
-    Note: If set on the input EPSFModel (x_0, y_0), then ``origin``
+    Note: If set on the input ImagePSF (x_0, y_0), then ``origin``
     must be the same for each input EPSF. Additionally data units and
     dimensions must be for each input EPSF, and values for ``flux`` and
     ``oversampling``, and ``fill_value`` must match as well.
 
     Parameters
     ----------
-    epsfs : list of `photutils.psf.EPSFModel`
-        A list of EPSFModels representing the individual PSFs.
+    epsfs : list of `photutils.psf.ImagePSF`
+        A list of ImagePSF models representing the individual PSFs.
     grid_xypos : list, optional
         A list of fiducial points (x_0, y_0) for each PSF. If not
         provided, the x_0 and y_0 of each input EPSF will be considered
@@ -355,7 +356,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
         The gridded PSF model created from the input EPSFs.
     """
     # prevent circular imports
-    from photutils.psf import EPSFModel, GriddedPSFModel
+    from photutils.psf import GriddedPSFModel, ImagePSF
 
     # optional, to store fiducial from input if `grid_xypos` is None
     x_0s = []
@@ -377,9 +378,8 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     for i, epsf in enumerate(epsfs):
 
         # check input type
-        if not isinstance(epsf, EPSFModel):
-            raise TypeError('All input `epsfs` must be of type '
-                            '`photutils.psf.models.EPSFModel`.')
+        if not isinstance(epsf, ImagePSF):
+            raise TypeError('All input `epsfs` must be of type ImagePSF')
 
         # get data array from EPSF
         data_arrs.append(epsf.data)
@@ -402,16 +402,16 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
                 dat_unit = epsf.data.unit
         else:
             if np.any(epsf.oversampling != oversampling):
-                raise ValueError('All input EPSFModels must have the same '
-                                 'value for ``oversampling``.')
+                raise ValueError('All input ImagePSF models must have the '
+                                 'same value for ``oversampling``.')
 
             if epsf.fill_value != fill_value:
-                raise ValueError('All input EPSFModels must have the same '
-                                 'value for ``fill_value``.')
+                raise ValueError('All input ImagePSF models must have the '
+                                 'same value for ``fill_value``.')
 
             if epsf.data.ndim != data_arrs[0].ndim:
-                raise ValueError('All input EPSFModels must have data with '
-                                 'the same dimensions.')
+                raise ValueError('All input ImagePSF models must have data '
+                                 'with the same dimensions.')
 
             try:
                 unitt = epsf.data_unit
@@ -423,8 +423,8 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
                                      'unit.') from exc
 
             if epsf.flux != flux:
-                raise ValueError('All input EPSFModels must have the same '
-                                 'value for ``flux``.')
+                raise ValueError('All input ImagePSF models must have the '
+                                 'same value for ``flux``.')
 
         if grid_xypos is None:  # get gridxy_pos from x_0, y_0 if not provided
             x_0s.append(epsf.x_0.value)
@@ -432,7 +432,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
 
             # also check that origin is the same, if using x_0s and y_0s
             # from input
-            if epsf.origin != origin:
+            if np.all(epsf.origin != origin):
                 raise ValueError('If using ``x_0``, ``y_0`` as fiducial point,'
                                  '``origin`` must match for each input EPSF.')
 
