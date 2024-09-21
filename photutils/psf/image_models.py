@@ -150,6 +150,48 @@ class ImagePSF(Fittable2DModel):
             raise ValueError('The length of the x and y axes must both be at '
                              'least 4.')
 
+    def copy(self):
+        """
+        Return a copy of this model where only the model parameters are
+        copied.
+
+        All other copied model attributes are references to the original
+        model. This prevents copying the image data, which may be a
+        large array.
+
+        This method is useful if one is interested in only changing
+        the model parameters in a model copy. It is used in the PSF
+        photometry classes during model fitting.
+
+        Use the `deepcopy` method if you want to copy all of the model
+        attributes, including the PSF image data.
+
+        Returns
+        -------
+        result : `ImagePSF`
+            A copy of this model with only the model parameters copied.
+        """
+        newcls = object.__new__(self.__class__)
+
+        for key, val in self.__dict__.items():
+            if key in self.param_names:  # copy only the parameter values
+                newcls.__dict__[key] = copy.copy(val)
+            else:
+                newcls.__dict__[key] = val
+
+        return newcls
+
+    def deepcopy(self):
+        """
+        Return a deep copy of this model.
+
+        Returns
+        -------
+        result : `ImagePSF`
+            A deep copy of this model.
+        """
+        return copy.deepcopy(self)
+
     @property
     def origin(self):
         """
