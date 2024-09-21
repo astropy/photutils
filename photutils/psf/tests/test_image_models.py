@@ -155,6 +155,34 @@ class TestImagePSF:
         with pytest.raises(ValueError, match=match):
             ImagePSF(np.ones((10, 10)), origin=(np.nan, 1))
 
+    @pytest.mark.parametrize('deepcopy', [False, True])
+    def test_copy(self, deepcopy):
+        data = np.arange(30).reshape(5, 6)
+        model = ImagePSF(data, flux=1, x_0=0, y_0=0)
+        model_copy = model.deepcopy() if deepcopy else model.copy()
+
+        assert_equal(model.data, model_copy.data)
+        assert_equal(model.flux, model_copy.flux)
+        assert_equal(model.x_0, model_copy.x_0)
+        assert_equal(model.y_0, model_copy.y_0)
+        assert_equal(model.oversampling, model_copy.oversampling)
+        assert_equal(model.origin, model_copy.origin)
+
+        model_copy.data[0, 0] = 42
+        if deepcopy:
+            assert model.data[0, 0] != model_copy.data[0, 0]
+        else:
+            assert model.data[0, 0] == model_copy.data[0, 0]
+
+        model_copy.flux = 2
+        assert model.flux != model_copy.flux
+
+        model_copy.x_0.fixed = True
+        model_copy.y_0.fixed = True
+        model_copy2 = model_copy.copy()
+        assert model_copy2.x_0.fixed
+        assert model_copy2.fixed == model_copy.fixed
+
 
 class TestFittableImageModel:
     """
