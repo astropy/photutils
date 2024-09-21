@@ -530,6 +530,49 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         """
         return self._calc_interpolator.cache_info()
 
+    def bounding_box(self):
+        """
+        Return a bounding box defining the limits of the model.
+
+        Returns
+        -------
+        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
+            A bounding box defining the limits of the model.
+
+        Examples
+        --------
+        >>> from itertools import product
+        >>> import numpy as np
+        >>> from astropy.nddata import NDData
+        >>> from photutils.psf import GaussianPSF, GriddedPSFModel
+        >>> psfs = []
+        >>> yy, xx = np.mgrid[0:101, 0:101]
+        >>> for i in range(16):
+        ...     theta = np.deg2rad(i * 10.0)
+        ...     gmodel = GaussianPSF(flux=1, x_0=50, y_0=50, x_fwhm=10,
+        ...                          y_fwhm=5, theta=theta)
+        ...     psfs.append(gmodel(xx, yy))
+        >>> xgrid = [0, 40, 160, 200]
+        >>> ygrid = [0, 60, 140, 200]
+        >>> meta = {}
+        >>> meta['grid_xypos'] = list(product(xgrid, ygrid))
+        >>> meta['oversampling'] = 4
+        >>> nddata = NDData(psfs, meta=meta)
+        >>> model = GriddedPSFModel(nddata, flux=1, x_0=0, y_0=0)
+        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-12.625, upper=12.625)
+                y: Interval(lower=-12.625, upper=12.625)
+            }
+            model=GriddedPSFModel(inputs=('x', 'y'))
+            order='C'
+        )
+        """
+        dy, dx = np.array(self.data.shape[1:]) / 2 / self.oversampling
+        return ((self.y_0 - dy, self.y_0 + dy),
+                (self.x_0 - dx, self.x_0 + dx))
+
     @staticmethod
     def _find_start_idx(data, x):
         """

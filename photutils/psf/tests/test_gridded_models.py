@@ -32,19 +32,16 @@ WEBBPSF_FILENAMES = ('nircam_nrca1_f200w_fovp101_samp4_npsf16_mock.fits',
 @pytest.fixture(name='psfmodel')
 def fixture_griddedpsf_data():
     psfs = []
-    y, x = np.mgrid[0:101, 0:101]
+    yy, xx = np.mgrid[0:101, 0:101]
     for i in range(16):
-        theta = i * 10.0 * np.pi / 180.0
-        g = Gaussian2D(1, 50, 50, 10, 5, theta=theta)
-        m = g(x, y)
-        psfs.append(m)
+        theta = np.deg2rad(i * 10.0)
+        gmodel = Gaussian2D(1, 50, 50, 10, 5, theta=theta)
+        psfs.append(gmodel(xx, yy))
 
     xgrid = [0, 40, 160, 200]
     ygrid = [0, 60, 140, 200]
-    grid_xypos = list(product(xgrid, ygrid))
-
     meta = {}
-    meta['grid_xypos'] = grid_xypos
+    meta['grid_xypos'] = list(product(xgrid, ygrid))
     meta['oversampling'] = 4
 
     nddata = NDData(psfs, meta=meta)
@@ -260,6 +257,16 @@ class TestGriddedPSFModel:
         nddata.meta['oversampling'] = [4, 4]
         psfmodel2 = GriddedPSFModel(nddata)
         assert_equal(psfmodel2.oversampling, psfmodel.oversampling)
+
+    def test_bounding_box(self, psfmodel):
+        # oversampling is 4
+        bbox = psfmodel.bounding_box.bounding_box()
+        assert_equal(bbox, ((-12.625, 12.625), (-12.625, 12.625)))
+
+        model = psfmodel.copy()
+        model.oversampling = 1
+        bbox = model.bounding_box.bounding_box()
+        assert_equal(bbox, ((-50.5, 50.5), (-50.5, 50.5)))
 
     def test_read_stdpsf(self):
         """
