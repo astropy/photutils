@@ -200,27 +200,34 @@ class TestGriddedPSFModel:
         assert 88.3 < orients[0] < 88.4
         assert 64.0 < orients[3] < 64.2
 
-    def test_copy(self, psfmodel):
+    @pytest.mark.parametrize('deepcopy', [False, True])
+    def test_copy(self, psfmodel, deepcopy):
         flux = psfmodel.flux.value
-        new_model = psfmodel.copy()
+        model_copy = psfmodel.deepcopy() if deepcopy else psfmodel.copy()
 
-        assert_equal(new_model.data, psfmodel.data)
-        assert_equal(new_model.grid_xypos, psfmodel.grid_xypos)
+        assert_equal(model_copy.data, psfmodel.data)
+        assert_equal(model_copy.grid_xypos, psfmodel.grid_xypos)
+        assert_equal(model_copy.oversampling, psfmodel.oversampling)
+        assert_equal(model_copy.meta, psfmodel.meta)
+        assert model_copy.flux.value == psfmodel.flux.value
+        assert model_copy.x_0.value == psfmodel.x_0.value
+        assert model_copy.y_0.value == psfmodel.y_0.value
+        assert model_copy.fixed == psfmodel.fixed
 
-        new_model.flux = 100
-        assert new_model.flux.value != flux
+        model_copy.data[0, 0, 0] = 42
+        if deepcopy:
+            assert model_copy.data[0, 0, 0] != psfmodel.data[0, 0, 0]
+        else:
+            assert model_copy.data[0, 0, 0] == psfmodel.data[0, 0, 0]
 
-        new_model.x_0.fixed = True
-        new_model.y_0.fixed = True
-        new_model2 = new_model.copy()
-        assert new_model2.x_0.fixed
-        assert new_model.fixed == new_model2.fixed
+        model_copy.flux = 100
+        assert model_copy.flux.value != flux
 
-    def test_deepcopy(self, psfmodel):
-        flux = psfmodel.flux.value
-        new_model = psfmodel.deepcopy()
-        new_model.flux = 100
-        assert new_model.flux.value != flux
+        model_copy.x_0.fixed = True
+        model_copy.y_0.fixed = True
+        new_model = model_copy.copy()
+        assert new_model.x_0.fixed
+        assert new_model.fixed == model_copy.fixed
 
     def test_cache(self, psfmodel):
         for x, y in psfmodel.grid_xypos:
