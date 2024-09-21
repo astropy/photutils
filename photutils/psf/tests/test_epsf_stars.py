@@ -12,7 +12,7 @@ from numpy.testing import assert_allclose
 
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
 from photutils.psf.functional_models import CircularGaussianPRF
-from photutils.psf.image_models import EPSFModel
+from photutils.psf.image_models import ImagePSF
 
 
 class TestExtractStars:
@@ -66,7 +66,7 @@ def test_epsf_star_residual_image():
     size = 100
     yy, xx, = np.mgrid[0:size + 1, 0:size + 1] / 4
     gmodel = CircularGaussianPRF().evaluate(xx, yy, 1, 12.5, 12.5, 2.5)
-    epsf = EPSFModel(gmodel, oversampling=4, norm_radius=100)
+    epsf = ImagePSF(gmodel, oversampling=4)
     _size = 25
     data = np.zeros((_size, _size))
     _yy, _xx, = np.mgrid[0:_size, 0:_size]

@@ -284,11 +284,8 @@ framework. The user must provide the image-based PSF model as an input
 to these classes. The input image(s) can be oversampled to increase the
 accuracy of the PSF model.
 
-- `~photutils.psf.FittableImageModel`: a general class for image-based
-  PSF models that allows for intensity scaling and translations.
-
-- `~photutils.psf.EPSFModel`: similar to
-  `~photutils.psf.FittableImageModel`, but with a different normalization.
+- `~photutils.psf.ImagePSF`: a general class for image-based PSF models
+  that allows for intensity scaling and translations.
 
 - `~photutils.psf.GriddedPSFModel`: a PSF model that contains a grid of
   image-based ePSF models at fiducial detector positions.

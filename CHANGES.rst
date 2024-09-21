@@ -86,6 +86,9 @@ New Features
   - Added new ``fit_2dgaussian`` convenience function to fit a circular 2D
     Gaussian PSF to one or more sources in an image. [#1859, #1887]
 
+  - Added new ``ImagePSF`` model class to represent a PSF model as an
+    image. [#1890]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -205,6 +208,9 @@ API Changes
   - The ``PRFAdapter`` class has been deprecated. Instead, use a
     ``FittableImageModel`` derived from the ``discretize_model`` function
     in ``astropy.convolution``. [#1865]
+
+  - The ``FittableImageModel`` and ``EPSFModel`` classes have been
+    deprecated. Instead, use the new ``ImagePSF`` model class. [#1890]
 
 - ``photutils.segmentation``
 
