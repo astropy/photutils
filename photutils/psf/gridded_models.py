@@ -467,8 +467,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
                 name = key.capitalize() if key != 'STDPSF' else key
                 cls_info.append((name, self.meta[key]))
 
-        cls_info.extend([('Number of ePSFs', len(self.grid_xypos)),
-                         ('ePSF shape (oversampled pixels)',
+        cls_info.extend([('Number of PSFs', len(self.grid_xypos)),
+                         ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
                          ('Oversampling', tuple(self.oversampling))])
         return cls_info
@@ -1281,8 +1281,8 @@ class STDPSFGrid(ModelGridPlotMixin):
                 name = key.capitalize() if key != 'STDPSF' else key
                 cls_info.append((name, self.meta[key]))
 
-        cls_info.extend([('Number of ePSFs', len(self.grid_xypos)),
-                         ('ePSF shape (oversampled pixels)',
+        cls_info.extend([('Number of PSFs', len(self.grid_xypos)),
+                         ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
                          ('Oversampling', self.oversampling)])
 

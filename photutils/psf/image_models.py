@@ -150,6 +150,13 @@ class ImagePSF(Fittable2DModel):
             raise ValueError('The length of the x and y axes must both be at '
                              'least 4.')
 
+    def _cls_info(self):
+        return [('PSF shape (oversampled pixels)', self.data.shape),
+                ('Oversampling', tuple(self.oversampling))]
+
+    def __str__(self):
+        return self._format_str(keywords=self._cls_info())
+
     def copy(self):
         """
         Return a copy of this model where only the model parameters are

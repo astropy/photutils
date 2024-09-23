@@ -253,7 +253,7 @@ class TestGriddedPSFModel:
 
     def test_str(self, psfmodel):
         model_str = str(psfmodel)
-        keys = ('Grid_shape', 'Number of ePSFs', 'ePSF shape', 'Oversampling')
+        keys = ('Grid_shape', 'Number of PSFs', 'PSF shape', 'Oversampling')
         for key in keys:
             assert key in model_str
         for param in psfmodel.param_names:
@@ -358,7 +358,7 @@ def test_stdpsfgrid_repr_str():
     filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
     psfgrid = STDPSFGrid(filename)
     assert repr(psfgrid) == str(psfgrid)
-    keys = ('STDPSF', 'Grid_shape', 'Number of ePSFs', 'ePSF shape',
+    keys = ('STDPSF', 'Grid_shape', 'Number of PSFs', 'PSF shape',
             'Oversampling')
     for key in keys:
         assert key in repr(psfgrid)

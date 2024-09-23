@@ -24,6 +24,14 @@ def fixture_gaussian_psf():
     return CircularGaussianPSF(fwhm=2.1)
 
 
+@pytest.fixture(name='image_psf')
+def fixture_image_psf(gaussian_psf):
+    yy, xx = np.mgrid[-10:11, -10:11]
+    psf_data = gaussian_psf(xx, yy)
+    psf_data /= np.sum(psf_data)
+    return ImagePSF(psf_data)
+
+
 class TestImagePSF:
 
     def test_imagepsf(self, gaussian_psf):
@@ -182,6 +190,21 @@ class TestImagePSF:
         model_copy2 = model_copy.copy()
         assert model_copy2.x_0.fixed
         assert model_copy2.fixed == model_copy.fixed
+
+    def test_repr(self, image_psf):
+        model_repr = repr(image_psf)
+        expected = '<ImagePSF(flux=1., x_0=0., y_0=0.)>'
+        assert model_repr == expected
+        for param in image_psf.param_names:
+            assert param in model_repr
+
+    def test_str(self, image_psf):
+        model_str = str(image_psf)
+        keys = ('PSF shape', 'Oversampling')
+        for key in keys:
+            assert key in model_str
+        for param in image_psf.param_names:
+            assert param in model_str
 
 
 class TestFittableImageModel:
