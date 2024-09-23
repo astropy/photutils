@@ -89,6 +89,9 @@ New Features
   - Added new ``ImagePSF`` model class to represent a PSF model as an
     image. [#1890]
 
+  - The ``GriddedPSFModel`` model now has a ``bounding_box`` method to
+    return the bounding box of the model. [#1891]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -206,8 +209,8 @@ API Changes
     ``fit_info``. ``fit_results`` is now deprecated. [#1858]
 
   - The ``PRFAdapter`` class has been deprecated. Instead, use a
-    ``FittableImageModel`` derived from the ``discretize_model`` function
-    in ``astropy.convolution``. [#1865]
+    ``ImagePSF`` model derived from the ``discretize_model`` function in
+    ``astropy.convolution``. [#1865]
 
   - The ``FittableImageModel`` and ``EPSFModel`` classes have been
     deprecated. Instead, use the new ``ImagePSF`` model class. [#1890]
@@ -215,8 +218,8 @@ API Changes
 - ``photutils.segmentation``
 
   - The ``SegmentationImage`` ``relabel_consecutive`` method now keeps
-    the original dtype of segmentation image instead of always changing
-    it to ``int`` (``int64``). [#1878]
+    the original dtype of the segmentation image instead of always
+    changing it to ``int`` (``int64``). [#1878]
 
   - The ``detect_sources`` and ``deblend_sources`` functions now return
     a ``SegmentationImage`` instance whose data dtype is ``np.int32``
