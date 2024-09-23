@@ -421,6 +421,11 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         if not np.all(np.isfinite(data.data)):
             raise ValueError('All elements of input data must be finite.')
 
+        # this is required by RectBivariateSpline for kx=3, ky=3
+        if np.any(np.array(data.data.shape[1:]) < 4):
+            raise ValueError('The length of the PSF x and y axes must both '
+                             'be at least 4.')
+
         if 'grid_xypos' not in data.meta:
             raise ValueError('"grid_xypos" must be in the nddata meta '
                              'dictionary.')

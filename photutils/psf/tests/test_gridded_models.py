@@ -121,7 +121,7 @@ class TestGriddedPSFModel:
         assert_allclose(val1, val2)
 
     def test_gridded_psf_model_invalid_inputs(self):
-        data = np.ones((4, 3, 3))
+        data = np.ones((4, 5, 5))
 
         # check if NDData
         match = 'data must be an NDData instance'

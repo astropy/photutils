@@ -146,6 +146,7 @@ class ImagePSF(Fittable2DModel):
         if not np.all(np.isfinite(data)):
             raise ValueError('All elements of input data must be finite.')
 
+        # this is required by RectBivariateSpline for kx=3, ky=3
         if np.any(np.array(data.shape) < 4):
             raise ValueError('The length of the x and y axes must both be at '
                              'least 4.')
