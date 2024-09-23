@@ -104,6 +104,9 @@ New PSF Model classes
 
 New models were added to the ``photutils.psf`` module. These include:
 
+- `~photutils.psf.ImagePSF`: a general class for image-based PSF models
+  that allows for intensity scaling and translations.
+
 - `~photutils.psf.GaussianPSF`: a general 2D Gaussian PSF model
   parameterized in terms of the position, total flux, and full width
   at half maximum (FWHM) along the x and y axes. Rotation can also be
@@ -139,6 +142,10 @@ function over the pixel areas.
 The existing ``IntegratedGaussianPRF`` model is now deprecated and
 will be removed in a future version. It has been replaced by the
 `~photutils.psf.CircularGaussianSigmaPRF` model.
+
+The existing ``FittableImageModel`` and ``EPSFModel`` classes are now
+deprecated and will be removed in a future version. They have been
+replaced by the new `~photutils.psf.ImagePSF` class.
 
 
 New FWHM estimation tool
