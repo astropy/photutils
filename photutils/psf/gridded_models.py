@@ -17,6 +17,7 @@ from astropy.io.fits.verify import VerifyWarning
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData, reshape_as_blocks
 from astropy.utils import minversion
+from astropy.utils.decorators import lazyproperty
 from astropy.visualization import simple_norm
 from scipy.interpolate import RectBivariateSpline
 
@@ -715,6 +716,15 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         return RectBivariateSpline(self._xidx, self._yidx, psf_image.T,
                                    kx=3, ky=3, s=0)
 
+    @lazyproperty
+    def origin(self):
+        """
+        A 1D `~numpy.ndarray` (x, y) pixel coordinates within the
+        model's 2D image of the origin of the coordinate system.
+        """
+        xyorigin = (np.array(self.data.shape) - 1) / 2
+        return xyorigin[::-1]
+
     def evaluate(self, x, y, flux, x_0, y_0):
         """
         Evaluate the `GriddedPSFModel` for the input parameters.
@@ -756,19 +766,17 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         # the input (x, y) values
         xi = self.oversampling[1] * (np.asarray(x, dtype=float) - x_0)
         yi = self.oversampling[0] * (np.asarray(y, dtype=float) - y_0)
+        xi += self.origin[0]
+        yi += self.origin[1]
 
-        # define origin at the ePSF image center
-        ny, nx = self.data.shape[1:]
-        xi += (nx - 1) / 2
-        yi += (ny - 1) / 2
-
-        evaluated_model = flux * interpolator.ev(xi, yi)
+        evaluated_model = flux * interpolator(xi, yi, grid=False)
 
         if self.fill_value is not None:
-            # find indices of pixels that are outside the input pixel
-            # grid and set these pixels to the fill_value
-            invalid = (((xi < 0) | (xi > nx - 1))
-                       | ((yi < 0) | (yi > ny - 1)))
+            # set pixels that are outside the input pixel grid to the
+            # fill_value to avoid extrapolation; these bounds match the
+            # RegularGridInterpolator bounds
+            ny, nx = self.data.shape[1:]
+            invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
             evaluated_model[invalid] = self.fill_value
 
         return evaluated_model
