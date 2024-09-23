@@ -27,6 +27,8 @@ __all__ = ['Background2D']
 
 COPY_IF_NEEDED = False if not minversion(np, '2.0.0') else None
 
+__doctest_skip__ = ['Background2D']
+
 
 class Background2D:
     """
@@ -41,6 +43,27 @@ class Background2D:
     low-resolution background map.
 
     Invalid data values (i.e., NaN or inf) are automatically masked.
+
+    .. note::
+
+        Better performance will generally be obtained if you have
+        the `bottleneck`_ package installed. This acceleration also
+        requires that the byte order of the input data array matches
+        the byte order of the operating system. For example, the
+        `astropy.io.fits` module loads data arrays as big-endian, even
+        though most modern processors are little-endian. A big-endian
+        array can be converted to native byte order ('=') in place
+        using::
+
+            >>> data.byteswap(inplace=True)
+            >>> data = data.view(data.dtype.newbyteorder('='))
+
+        One can also use, e.g.,::
+
+            >>> data = data.astype(float)
+
+        but this will temporarily create a new copy of the array in
+        memory.
 
     Parameters
     ----------
