@@ -17,6 +17,7 @@ from astropy.io.fits.verify import VerifyWarning
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData, reshape_as_blocks
 from astropy.utils import minversion
+from astropy.utils.decorators import lazyproperty
 from astropy.visualization import simple_norm
 from scipy.interpolate import RectBivariateSpline
 
@@ -421,6 +422,11 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         if not np.all(np.isfinite(data.data)):
             raise ValueError('All elements of input data must be finite.')
 
+        # this is required by RectBivariateSpline for kx=3, ky=3
+        if np.any(np.array(data.data.shape[1:]) < 4):
+            raise ValueError('The length of the PSF x and y axes must both '
+                             'be at least 4.')
+
         if 'grid_xypos' not in data.meta:
             raise ValueError('"grid_xypos" must be in the nddata meta '
                              'dictionary.')
@@ -467,8 +473,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
                 name = key.capitalize() if key != 'STDPSF' else key
                 cls_info.append((name, self.meta[key]))
 
-        cls_info.extend([('Number of ePSFs', len(self.grid_xypos)),
-                         ('ePSF shape (oversampled pixels)',
+        cls_info.extend([('Number of PSFs', len(self.grid_xypos)),
+                         ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
                          ('Oversampling', tuple(self.oversampling))])
         return cls_info
@@ -529,6 +535,49 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         Return information about the internal cache.
         """
         return self._calc_interpolator.cache_info()
+
+    def bounding_box(self):
+        """
+        Return a bounding box defining the limits of the model.
+
+        Returns
+        -------
+        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
+            A bounding box defining the limits of the model.
+
+        Examples
+        --------
+        >>> from itertools import product
+        >>> import numpy as np
+        >>> from astropy.nddata import NDData
+        >>> from photutils.psf import GaussianPSF, GriddedPSFModel
+        >>> psfs = []
+        >>> yy, xx = np.mgrid[0:101, 0:101]
+        >>> for i in range(16):
+        ...     theta = np.deg2rad(i * 10.0)
+        ...     gmodel = GaussianPSF(flux=1, x_0=50, y_0=50, x_fwhm=10,
+        ...                          y_fwhm=5, theta=theta)
+        ...     psfs.append(gmodel(xx, yy))
+        >>> xgrid = [0, 40, 160, 200]
+        >>> ygrid = [0, 60, 140, 200]
+        >>> meta = {}
+        >>> meta['grid_xypos'] = list(product(xgrid, ygrid))
+        >>> meta['oversampling'] = 4
+        >>> nddata = NDData(psfs, meta=meta)
+        >>> model = GriddedPSFModel(nddata, flux=1, x_0=0, y_0=0)
+        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-12.625, upper=12.625)
+                y: Interval(lower=-12.625, upper=12.625)
+            }
+            model=GriddedPSFModel(inputs=('x', 'y'))
+            order='C'
+        )
+        """
+        dy, dx = np.array(self.data.shape[1:]) / 2 / self.oversampling
+        return ((self.y_0 - dy, self.y_0 + dy),
+                (self.x_0 - dx, self.x_0 + dx))
 
     @staticmethod
     def _find_start_idx(data, x):
@@ -667,6 +716,15 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         return RectBivariateSpline(self._xidx, self._yidx, psf_image.T,
                                    kx=3, ky=3, s=0)
 
+    @lazyproperty
+    def origin(self):
+        """
+        A 1D `~numpy.ndarray` (x, y) pixel coordinates within the
+        model's 2D image of the origin of the coordinate system.
+        """
+        xyorigin = (np.array(self.data.shape) - 1) / 2
+        return xyorigin[::-1]
+
     def evaluate(self, x, y, flux, x_0, y_0):
         """
         Evaluate the `GriddedPSFModel` for the input parameters.
@@ -708,19 +766,17 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         # the input (x, y) values
         xi = self.oversampling[1] * (np.asarray(x, dtype=float) - x_0)
         yi = self.oversampling[0] * (np.asarray(y, dtype=float) - y_0)
+        xi += self.origin[0]
+        yi += self.origin[1]
 
-        # define origin at the ePSF image center
-        ny, nx = self.data.shape[1:]
-        xi += (nx - 1) / 2
-        yi += (ny - 1) / 2
-
-        evaluated_model = flux * interpolator.ev(xi, yi)
+        evaluated_model = flux * interpolator(xi, yi, grid=False)
 
         if self.fill_value is not None:
-            # find indices of pixels that are outside the input pixel
-            # grid and set these pixels to the fill_value
-            invalid = (((xi < 0) | (xi > nx - 1))
-                       | ((yi < 0) | (yi > ny - 1)))
+            # set pixels that are outside the input pixel grid to the
+            # fill_value to avoid extrapolation; these bounds match the
+            # RegularGridInterpolator bounds
+            ny, nx = self.data.shape[1:]
+            invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
             evaluated_model[invalid] = self.fill_value
 
         return evaluated_model
@@ -1238,8 +1294,8 @@ class STDPSFGrid(ModelGridPlotMixin):
                 name = key.capitalize() if key != 'STDPSF' else key
                 cls_info.append((name, self.meta[key]))
 
-        cls_info.extend([('Number of ePSFs', len(self.grid_xypos)),
-                         ('ePSF shape (oversampled pixels)',
+        cls_info.extend([('Number of PSFs', len(self.grid_xypos)),
+                         ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
                          ('Oversampling', self.oversampling)])
 

@@ -146,9 +146,17 @@ class ImagePSF(Fittable2DModel):
         if not np.all(np.isfinite(data)):
             raise ValueError('All elements of input data must be finite.')
 
+        # this is required by RectBivariateSpline for kx=3, ky=3
         if np.any(np.array(data.shape) < 4):
             raise ValueError('The length of the x and y axes must both be at '
                              'least 4.')
+
+    def _cls_info(self):
+        return [('PSF shape (oversampled pixels)', self.data.shape),
+                ('Oversampling', tuple(self.oversampling))]
+
+    def __str__(self):
+        return self._format_str(keywords=self._cls_info())
 
     def copy(self):
         """
@@ -195,8 +203,8 @@ class ImagePSF(Fittable2DModel):
     @property
     def origin(self):
         """
-        The ``(x, y)`` coordinate with respect to the input image data
-        array that represents the reference pixel of the input data.
+        A 1D `~numpy.ndarray` (x, y) pixel coordinates within the
+        model's 2D image of the origin of the coordinate system.
 
         The reference ``origin`` pixel will be placed at the model
         ``x_0`` and ``y_0`` coordinates in the output coordinate system
@@ -313,9 +321,10 @@ class ImagePSF(Fittable2DModel):
         evaluated_model = flux * self.interpolator(xi, yi, grid=False)
 
         if self.fill_value is not None:
-            ny, nx = self.data.shape
             # set pixels that are outside the input pixel grid to the
-            # fill_value
+            # fill_value to avoid extrapolation; these bounds match the
+            # RegularGridInterpolator bounds
+            ny, nx = self.data.shape
             invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
             evaluated_model[invalid] = self.fill_value
 

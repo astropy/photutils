@@ -32,19 +32,16 @@ WEBBPSF_FILENAMES = ('nircam_nrca1_f200w_fovp101_samp4_npsf16_mock.fits',
 @pytest.fixture(name='psfmodel')
 def fixture_griddedpsf_data():
     psfs = []
-    y, x = np.mgrid[0:101, 0:101]
+    yy, xx = np.mgrid[0:101, 0:101]
     for i in range(16):
-        theta = i * 10.0 * np.pi / 180.0
-        g = Gaussian2D(1, 50, 50, 10, 5, theta=theta)
-        m = g(x, y)
-        psfs.append(m)
+        theta = np.deg2rad(i * 10.0)
+        gmodel = Gaussian2D(1, 50, 50, 10, 5, theta=theta)
+        psfs.append(gmodel(xx, yy))
 
     xgrid = [0, 40, 160, 200]
     ygrid = [0, 60, 140, 200]
-    grid_xypos = list(product(xgrid, ygrid))
-
     meta = {}
-    meta['grid_xypos'] = grid_xypos
+    meta['grid_xypos'] = list(product(xgrid, ygrid))
     meta['oversampling'] = 4
 
     nddata = NDData(psfs, meta=meta)
@@ -124,7 +121,7 @@ class TestGriddedPSFModel:
         assert_allclose(val1, val2)
 
     def test_gridded_psf_model_invalid_inputs(self):
-        data = np.ones((4, 3, 3))
+        data = np.ones((4, 5, 5))
 
         # check if NDData
         match = 'data must be an NDData instance'
@@ -203,27 +200,34 @@ class TestGriddedPSFModel:
         assert 88.3 < orients[0] < 88.4
         assert 64.0 < orients[3] < 64.2
 
-    def test_copy(self, psfmodel):
+    @pytest.mark.parametrize('deepcopy', [False, True])
+    def test_copy(self, psfmodel, deepcopy):
         flux = psfmodel.flux.value
-        new_model = psfmodel.copy()
+        model_copy = psfmodel.deepcopy() if deepcopy else psfmodel.copy()
 
-        assert_equal(new_model.data, psfmodel.data)
-        assert_equal(new_model.grid_xypos, psfmodel.grid_xypos)
+        assert_equal(model_copy.data, psfmodel.data)
+        assert_equal(model_copy.grid_xypos, psfmodel.grid_xypos)
+        assert_equal(model_copy.oversampling, psfmodel.oversampling)
+        assert_equal(model_copy.meta, psfmodel.meta)
+        assert model_copy.flux.value == psfmodel.flux.value
+        assert model_copy.x_0.value == psfmodel.x_0.value
+        assert model_copy.y_0.value == psfmodel.y_0.value
+        assert model_copy.fixed == psfmodel.fixed
 
-        new_model.flux = 100
-        assert new_model.flux.value != flux
+        model_copy.data[0, 0, 0] = 42
+        if deepcopy:
+            assert model_copy.data[0, 0, 0] != psfmodel.data[0, 0, 0]
+        else:
+            assert model_copy.data[0, 0, 0] == psfmodel.data[0, 0, 0]
 
-        new_model.x_0.fixed = True
-        new_model.y_0.fixed = True
-        new_model2 = new_model.copy()
-        assert new_model2.x_0.fixed
-        assert new_model.fixed == new_model2.fixed
+        model_copy.flux = 100
+        assert model_copy.flux.value != flux
 
-    def test_deepcopy(self, psfmodel):
-        flux = psfmodel.flux.value
-        new_model = psfmodel.deepcopy()
-        new_model.flux = 100
-        assert new_model.flux.value != flux
+        model_copy.x_0.fixed = True
+        model_copy.y_0.fixed = True
+        new_model = model_copy.copy()
+        assert new_model.x_0.fixed
+        assert new_model.fixed == model_copy.fixed
 
     def test_cache(self, psfmodel):
         for x, y in psfmodel.grid_xypos:
@@ -249,7 +253,7 @@ class TestGriddedPSFModel:
 
     def test_str(self, psfmodel):
         model_str = str(psfmodel)
-        keys = ('Grid_shape', 'Number of ePSFs', 'ePSF shape', 'Oversampling')
+        keys = ('Grid_shape', 'Number of PSFs', 'PSF shape', 'Oversampling')
         for key in keys:
             assert key in model_str
         for param in psfmodel.param_names:
@@ -260,6 +264,16 @@ class TestGriddedPSFModel:
         nddata.meta['oversampling'] = [4, 4]
         psfmodel2 = GriddedPSFModel(nddata)
         assert_equal(psfmodel2.oversampling, psfmodel.oversampling)
+
+    def test_bounding_box(self, psfmodel):
+        # oversampling is 4
+        bbox = psfmodel.bounding_box.bounding_box()
+        assert_equal(bbox, ((-12.625, 12.625), (-12.625, 12.625)))
+
+        model = psfmodel.copy()
+        model.oversampling = 1
+        bbox = model.bounding_box.bounding_box()
+        assert_equal(bbox, ((-50.5, 50.5), (-50.5, 50.5)))
 
     def test_read_stdpsf(self):
         """
@@ -344,7 +358,7 @@ def test_stdpsfgrid_repr_str():
     filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
     psfgrid = STDPSFGrid(filename)
     assert repr(psfgrid) == str(psfgrid)
-    keys = ('STDPSF', 'Grid_shape', 'Number of ePSFs', 'ePSF shape',
+    keys = ('STDPSF', 'Grid_shape', 'Number of PSFs', 'PSF shape',
             'Oversampling')
     for key in keys:
         assert key in repr(psfgrid)
