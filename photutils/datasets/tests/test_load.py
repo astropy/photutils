@@ -9,6 +9,10 @@ from photutils.datasets import get_path, load
 
 
 def test_get_path():
+    fn = '4gaussians_params.ecsv'
+    path = get_path(fn, location='local')
+    assert fn in path
+
     match = 'Invalid location:'
     with pytest.raises(ValueError, match=match):
         get_path('filename', location='invalid')
