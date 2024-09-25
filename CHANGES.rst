@@ -58,6 +58,11 @@ New Features
   - ``Quantity`` arrays can now be input to ``centroid_1dg`` and
     ``centroid_2dg``. [#1861]
 
+- ``photutils.datasets``
+
+  - Added a new ``params_table_to_models`` function to create a list of
+    models from a table of model parameters. [#1896]
+
 - ``photutils.psf``
 
   - Added new ``xy_bounds`` keyword to ``PSFPhotometry`` and

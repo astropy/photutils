@@ -15,7 +15,7 @@ from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
-__all__ = ['make_model_image']
+__all__ = ['make_model_image', 'params_table_to_models']
 
 
 def make_model_image(shape, model, params_table, *, model_shape=None,
@@ -305,3 +305,62 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
             continue
 
     return image
+
+
+def params_table_to_models(params_table, model):
+    """
+    Create a list of models from a table of model parameters.
+
+    Parameters
+    ----------
+    params_table : `~astropy.table.Table`
+        A table containing the model parameters for each source.
+        Each row of the table corresponds to a different model whose
+        parameters are defined by the column names. Model parameters not
+        defined in the table will be set to the ``model`` default value.
+        To attach units to model parameters, ``params_table`` must be
+        input as a `~astropy.table.QTable`. A column named 'name' can
+        also be included in the table to assign a name to each model.
+
+    model : `astropy.modeling.Model`
+        The model whose parameters will be updated.
+
+    Returns
+    -------
+    models : list of `astropy.modeling.Model`
+        A list of models created from the input table of model
+        parameters.
+
+    Examples
+    --------
+    >>> from astropy.table import QTable
+    >>> from photutils.datasets import params_table_to_models
+    >>> from photutils.psf import CircularGaussianPSF
+    >>> tbl = QTable()
+    >>> tbl['x_0'] = [1, 2, 3]
+    >>> tbl['y_0'] = [4, 5, 6]
+    >>> tbl['flux'] = [100, 200, 300]
+    >>> model = CircularGaussianPSF()
+    >>> models = params_table_to_models(tbl, model)
+    >>> models
+    [<CircularGaussianPSF(flux=100., x_0=1., y_0=4., fwhm=1.)>,
+     <CircularGaussianPSF(flux=200., x_0=2., y_0=5., fwhm=1.)>,
+     <CircularGaussianPSF(flux=300., x_0=3., y_0=6., fwhm=1.)>]
+    """
+    param_names = set(model.param_names)
+    colnames = set(params_table.colnames)
+    if param_names.isdisjoint(colnames):
+        raise ValueError('No matching model parameter names found in '
+                         'params_table')
+
+    param_names = [*list(param_names), 'name']
+    models = []
+    for row in params_table:
+        new_model = model.copy()
+        for param_name in param_names:
+            if param_name not in colnames:
+                continue
+            setattr(new_model, param_name, row[param_name])
+        models.append(new_model)
+
+    return models
