@@ -10,6 +10,7 @@ import numpy as np
 from astropy.modeling import CompoundModel, Fittable2DModel, Parameter
 from astropy.modeling.models import Const2D, Identity, Shift
 from astropy.nddata import NDData
+from astropy.units import Quantity
 from astropy.utils.decorators import deprecated
 from scipy.integrate import dblquad, trapezoid
 
@@ -296,6 +297,8 @@ def _integrate_model(model, x_name=None, y_name=None, dx=50, dy=50,
 
     # evaluate the model on the subsampled grid
     data = model(xvals.reshape(-1, 1), yvals.reshape(1, -1))
+    if isinstance(data, Quantity):
+        data = data.value
 
     # now integrate over the subsampled grid (first over x, then over y)
     int_func = trapezoid

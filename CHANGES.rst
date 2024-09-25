@@ -112,6 +112,11 @@ Bug Fixes
     ``high_harmonics=True``, the harmonics were not correctly added to
     the model. [#1810]
 
+- ``photutils.psf``
+
+  - Fixed a bug in ``make_psf_model`` where if the input model had
+    amplitude units, an error would be raised. [#1894]
+
 API Changes
 ^^^^^^^^^^^
 

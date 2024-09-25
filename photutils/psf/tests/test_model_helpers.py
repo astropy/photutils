@@ -3,6 +3,7 @@
 Tests for the model_helpers module.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.fitting import LevMarLSQFitter
@@ -127,6 +128,20 @@ def test_make_psf_model(moffat_source, kwargs, tols):
     assert fit_model[2].alpha == guess_moffat.alpha
     if kwargs['flux_name'] is None:
         assert fit_model[2].amplitude == guess_moffat.amplitude
+
+
+def test_make_psf_model_units():
+    model = Moffat2D(amplitude=1.0 * u.Jy, x_0=25, y_0=25, alpha=4.8,
+                     gamma=3.1)
+    model.amplitude = (model.amplitude.unit * (model.alpha - 1.0)
+                       / (np.pi * model.gamma**2))  # normalize to flux=1
+
+    psf_model = make_psf_model(model, x_name='x_0', y_name='y_0',
+                               normalize=True)
+    yy, xx = np.mgrid[:51, :51]
+    data1 = model(xx, yy)
+    data2 = psf_model(xx, yy)
+    assert_allclose(data1, data2)
 
 
 def test_make_psf_model_compound():
