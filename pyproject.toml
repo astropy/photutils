@@ -55,6 +55,7 @@ all = [
 ]
 test = [
     'pytest-astropy>=0.11',
+    'pytest-xdist>=2.5.0',
 ]
 docs = [
     'photutils[all]',
