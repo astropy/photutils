@@ -155,10 +155,9 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
         fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 0),
                             check_odd=True)
 
-    yxpos = xypos[:, ::-1]
     flux_init = []
-    for yxpos_ in yxpos:
-        cutout = CutoutImage(data, yxpos_, tuple(fit_shape))
+    for yxpos in xypos[:, ::-1]:
+        cutout = CutoutImage(data, yxpos, tuple(fit_shape))
         flux_init.append(np.sum(cutout.data))
 
     if isinstance(data, Quantity):
@@ -169,13 +168,12 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     init_params['y'] = xypos[:, 1]
     init_params['flux'] = flux_init
 
-    model = CircularGaussianPSF()
-
     if fwhm is None:
         fwhm = np.mean(fit_shape) / 2.0
     init_params['fwhm'] = fwhm
 
     model = CircularGaussianPSF(fwhm=fwhm)
+    model.fwhm.min = 0.0
     if not fix_fwhm:
         model.fwhm.fixed = False
 

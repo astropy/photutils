@@ -89,7 +89,7 @@ def test_fit_fwhm_single():
     # test warning message
     match = 'may not have converged. Please carefully check your results'
     with pytest.warns(AstropyUserWarning, match=match):
-        fwhm = fit_fwhm(data + 100)
+        fwhm = fit_fwhm(np.zeros(data.shape) + 1)
     assert len(fwhm) == 1
 
 
