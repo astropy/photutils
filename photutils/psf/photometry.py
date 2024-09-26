@@ -1062,19 +1062,10 @@ class PSFPhotometry(ModelImageMixin):
 
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', AstropyUserWarning)
-                try:
-                    fit_model = self.fitter(psf_model, xi, yi, cutout,
-                                            weights=weights, **kwargs)
-                    with contextlib.suppress(AttributeError):
-                        fit_model.clear_cache()
-                except TypeError as exc:
-                    msg = ('For one or more sources, the number of data '
-                           'points available to fit is less than the '
-                           'number of fit parameters. This could be due to '
-                           'a source(s) near the edge of the detector or '
-                           'if it has few unmasked pixels. Please check the '
-                           'input mask or source positions.')
-                    raise ValueError(msg) from exc
+                fit_model = self.fitter(psf_model, xi, yi, cutout,
+                                        weights=weights, **kwargs)
+                with contextlib.suppress(AttributeError):
+                    fit_model.clear_cache()
 
                 fit_info = {}
                 for key in fit_info_keys:
