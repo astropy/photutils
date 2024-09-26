@@ -561,7 +561,16 @@ class CircularGaussianPSF(Fittable2DModel):
         result : `~numpy.ndarray`
             The value of the model evaluated at the input coordinates.
         """
-        return GaussianPSF().evaluate(x, y, flux, x_0, y_0, fwhm, fwhm, 0.0)
+        sigma2 = (fwhm * GAUSSIAN_FWHM_TO_SIGMA) ** 2
+
+        # output units should match the input flux units
+        sigma2_norm = sigma2
+        if isinstance(sigma2, u.Quantity):
+            sigma2_norm = sigma2.value
+
+        amplitude = flux / (2 * np.pi * sigma2_norm)
+        return amplitude * np.exp(-0.5 * ((x - x_0) ** 2 + (y - y_0) ** 2)
+                                  / sigma2)
 
     @staticmethod
     def fit_deriv(x, y, flux, x_0, y_0, fwhm):
@@ -855,8 +864,8 @@ class GaussianPRF(Fittable2DModel):
         y0 = -dx * sint + dy * cost
 
         dpix = 0.5
-        if isinstance(x_0, u.Quantity):
-            dpix *= x_0.unit
+        if isinstance(x0, u.Quantity):
+            dpix <<= x0.unit
 
         return (flux / 4.0
                 * ((erf((x0 + dpix) / (np.sqrt(2) * x_sigma))
@@ -1073,7 +1082,19 @@ class CircularGaussianPRF(Fittable2DModel):
         result : `~numpy.ndarray`
             The value of the model evaluated at the input coordinates.
         """
-        return GaussianPRF().evaluate(x, y, flux, x_0, y_0, fwhm, fwhm, 0.0)
+        x0 = x - x_0
+        y0 = y - y_0
+        sigma = fwhm * GAUSSIAN_FWHM_TO_SIGMA
+
+        dpix = 0.5
+        if isinstance(x0, u.Quantity):
+            dpix <<= x0.unit
+
+        return (flux / 4.0
+                * ((erf((x0 + dpix) / (np.sqrt(2) * sigma))
+                    - erf((x0 - dpix) / (np.sqrt(2) * sigma)))
+                   * (erf((y0 + dpix) / (np.sqrt(2) * sigma))
+                      - erf((y0 - dpix) / (np.sqrt(2) * sigma)))))
 
     @property
     def input_units(self):

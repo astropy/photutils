@@ -73,7 +73,8 @@ New Features
     uncertainty types other than ``weights``. [#1821]
 
   - Added new ``GaussianPSF``, ``CircularGaussianPSF``, ``GaussianPRF``,
-    ``CircularGaussianPRF``, and ``MoffatPSF`` PSF model classes. [#1838]
+    ``CircularGaussianPRF``, and ``MoffatPSF`` PSF model classes.
+    [#1838, #1898]
 
   - Added new ``AiryDiskPSF`` PSF model class. [#1843]
 
