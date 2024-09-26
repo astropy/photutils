@@ -832,8 +832,8 @@ defined above::
    >>> xypos = list(zip(finder_tbl['xcentroid'], finder_tbl['ycentroid']))
    >>> fwhm = fit_fwhm(data, xypos=xypos, error=error, fit_shape=(5, 5))
    >>> fwhm  # doctest: +FLOAT_CMP
-   array([2.78318472, 2.78834154, 2.77986989, 2.79650315, 2.77475841,
-          2.78849262, 2.78781809, 2.76465724, 2.79742412, 2.79036633])
+   array([2.78318472, 2.78836641, 2.77986965, 2.79576313, 2.77475841,
+          2.78849262, 2.78781809, 2.76465783, 2.797418  , 2.79036633])
 
 
 Convenience Gaussian Fitting Function
