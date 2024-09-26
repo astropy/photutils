@@ -220,7 +220,7 @@ def test_moffat_psf_model(use_units):
 @pytest.mark.parametrize('use_units', [False, True])
 def test_airydisk_psf_model(use_units):
     model = AiryDiskPSF(flux=71.4, x_0=24.3, y_0=25.2, radius=2.1)
-    model_init = AiryDiskPSF(flux=50, x_0=20, y_0=30, radius=2.5)
+    model_init = AiryDiskPSF(flux=50, x_0=23, y_0=27, radius=2.5)
     model_init.radius.fixed = False
 
     yy, xx = np.mgrid[0:51, 0:51]
