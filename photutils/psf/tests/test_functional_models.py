@@ -6,7 +6,7 @@ Tests for the functional_models module.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import TRFLSQFitter
 from astropy.stats import gaussian_fwhm_to_sigma
 from numpy.testing import assert_allclose
 
@@ -106,7 +106,7 @@ def gaussian_tests(name, use_units):
             sigma = sigma.value
         assert_allclose(model.amplitude * (2 * np.pi * sigma**2), model.flux)
 
-    fitter = LevMarLSQFitter()
+    fitter = TRFLSQFitter()
     fit_model = fitter(model_init, xx, yy, data)
     assert_allclose(fit_model.x_0.value, model.x_0.value, rtol=1e-5)
     assert_allclose(fit_model.y_0.value, model.y_0.value, rtol=1e-5)
@@ -204,7 +204,7 @@ def test_moffat_psf_model(use_units):
     fwhm = 2 * model.alpha * np.sqrt(2**(1 / model.beta) - 1)
     assert_allclose(model.fwhm, fwhm)
 
-    fitter = LevMarLSQFitter()
+    fitter = TRFLSQFitter()
     fit_model = fitter(model_init, xx, yy, data)
     assert_allclose(fit_model.x_0.value, model.x_0.value)
     assert_allclose(fit_model.y_0.value, model.y_0.value)
@@ -220,7 +220,7 @@ def test_moffat_psf_model(use_units):
 @pytest.mark.parametrize('use_units', [False, True])
 def test_airydisk_psf_model(use_units):
     model = AiryDiskPSF(flux=71.4, x_0=24.3, y_0=25.2, radius=2.1)
-    model_init = AiryDiskPSF(flux=50, x_0=20, y_0=30, radius=2.5)
+    model_init = AiryDiskPSF(flux=50, x_0=23, y_0=27, radius=2.5)
     model_init.radius.fixed = False
 
     yy, xx = np.mgrid[0:51, 0:51]
@@ -238,7 +238,7 @@ def test_airydisk_psf_model(use_units):
     fwhm = 0.8436659602162364 * model.radius
     assert_allclose(model.fwhm, fwhm)
 
-    fitter = LevMarLSQFitter()
+    fitter = TRFLSQFitter()
     fit_model = fitter(model_init, xx, yy, data)
     assert_allclose(fit_model.x_0.value, model.x_0.value)
     assert_allclose(fit_model.y_0.value, model.y_0.value)

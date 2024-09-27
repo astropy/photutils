@@ -5,7 +5,7 @@ Tests for the fourier module.
 
 import numpy as np
 import pytest
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose
 
@@ -38,7 +38,7 @@ def test_create_matching_kernel():
     window = SplitCosineBellWindow(0.0, 0.2)
     k = create_matching_kernel(g1, g2, window=window)
 
-    fitter = LevMarLSQFitter()
+    fitter = TRFLSQFitter()
     gfit = fitter(gm1, x, y, k)
     assert_allclose(gfit.x_stddev, gfit.y_stddev)
     assert_allclose(gfit.x_stddev, np.sqrt(std2**2 - std1**2), 0.06)

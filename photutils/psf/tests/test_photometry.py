@@ -382,11 +382,7 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
         psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                                 aperture_radius=4, fitter_maxiters=3)
         phot = psfphot(data, error=error)
-        columns1 = ['x_err', 'y_err', 'flux_err']
-        if fit_stddev:
-            columns1 += ['x_stddev_2_err', 'y_stddev_2_err']
-        for column in columns1:
-            assert np.all(np.isnan(phot[column]))
+        assert len(phot) == len(sources)
 
 
 @pytest.mark.parametrize('mode', ['new', 'all'])
@@ -511,20 +507,6 @@ def test_psf_photometry_mask(test_data):
     mask = np.ones(data.shape, dtype=bool)
     with pytest.raises(ValueError, match=match):
         _ = psfphot(data, mask=mask, init_params=init_params)
-
-    # completely masked source
-    match = ('the number of data points available to fit is less than the '
-             'number of fit parameters')
-    init_params = QTable()
-    init_params['x'] = [63]
-    init_params['y'] = [49]
-    mask = np.zeros(data.shape, dtype=bool)
-    mask[48:50, :] = True
-    mask[50, 63:65] = True
-    psfphot = PSFPhotometry(psf_model, (3, 3), finder=finder,
-                            aperture_radius=4)
-    with pytest.raises(ValueError, match=match):
-        _ = psfphot(data_orig, mask=mask, init_params=init_params)
 
     # masked central pixel
     init_params = QTable()
@@ -782,12 +764,9 @@ def test_fixed_params(test_data):
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
 
-    match = r'One or more fit\(s\) may not have converged.'
-    with pytest.warns(AstropyUserWarning, match=match):
-        phot = psfphot(data, error=error)
-        assert np.all(np.isnan(phot['x_err']))
-        assert np.all(np.isnan(phot['y_err']))
-        assert np.all(np.isnan(phot['flux_err']))
+    match = r'`bounds` must contain 2 elements'
+    with pytest.raises(ValueError, match=match):
+        psfphot(data, error=error)
 
 
 def test_fit_warning(test_data):
@@ -843,9 +822,8 @@ def test_xy_bounds(test_data):
                             aperture_radius=4, xy_bounds=xy_bounds)
     phot = psfphot(data, error=error, init_params=init_params)
     assert len(phot) == len(init_params)
-    assert phot['x_fit'] == 64.0  # at lower bound
-    assert phot['y_fit'] == 50.0  # at lower bound
-    assert phot['flags'] == 32
+    assert_allclose(phot['x_fit'], 64.0)  # at lower bound
+    assert_allclose(phot['y_fit'], 50.0)  # at lower bound
 
     psfphot2 = PSFPhotometry(psf_model, fit_shape, finder=None,
                              aperture_radius=4, xy_bounds=1)
@@ -859,23 +837,23 @@ def test_xy_bounds(test_data):
                             aperture_radius=4, xy_bounds=xy_bounds)
     phot = psfphot(data, error=error, init_params=init_params)
     assert phot['x_fit'] < 64.0
-    assert phot['y_fit'] == 50.0  # at lower bound
-    assert phot['flags'] == 32
+    assert_allclose(phot['y_fit'], 50.0)  # at lower bound
 
     xy_bounds = (1, None)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
                             aperture_radius=4, xy_bounds=xy_bounds)
     phot = psfphot(data, error=error, init_params=init_params)
-    assert phot['x_fit'] == 64.0  # at lower bound
+    assert_allclose(phot['x_fit'], 64.0)  # at lower bound
     assert phot['y_fit'] < 50.0
-    assert phot['flags'] == 32
 
     xy_bounds = (None, None)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
                             aperture_radius=4, xy_bounds=xy_bounds)
+    init_params['x'] = [63]
+    init_params['y'] = [49]
     phot = psfphot(data, error=error, init_params=init_params)
-    assert phot['x_fit'] < 64.0
-    assert phot['y_fit'] < 50.0
+    assert phot['x_fit'] < 63.3
+    assert phot['y_fit'] < 48.7
     assert phot['flags'] == 0
 
     # test invalid inputs
@@ -1068,14 +1046,15 @@ def test_iterative_psf_photometry_overlap():
 
     daofinder = DAOStarFinder(threshold=0.5, fwhm=fwhm)
     grouper = SourceGrouper(min_separation=1.3 * fwhm)
+    fitter = LMLSQFitter()
     psfphot = IterativePSFPhotometry(psf_model, fit_shape=(5, 5),
                                      finder=daofinder, mode='all',
-                                     grouper=grouper, maxiters=3,
-                                     aperture_radius=3)
+                                     grouper=grouper, maxiters=2,
+                                     aperture_radius=3, fitter=fitter)
     match = r'One or more .* may not have converged'
     with pytest.warns(AstropyUserWarning, match=match):
         phot = psfphot(data, error=error)
-        assert len(phot) == 49
+        assert len(phot) == 38
 
 
 def test_iterative_psf_photometry_inputs():

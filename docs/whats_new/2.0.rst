@@ -89,16 +89,6 @@ should be set to `True`, which makes zoom's behavior consistent with
 `False` option was provided only for backwards-compatibility.
 
 
-Bounding model fits in PSF Photometry
-=====================================
-
-A new ``xy_bounds`` keyword was added to `~photutils.psf.PSFPhotometry`
-and `~photutils.psf.IterativePSFPhotometry` to allow one to bound
-the x and y model parameters during the fitting. This can be used to
-prevent the fit values from wandering too far from the initial parameter
-guesses.
-
-
 New PSF Model classes
 ======================
 
@@ -148,15 +138,53 @@ deprecated and will be removed in a future version. They have been
 replaced by the new `~photutils.psf.ImagePSF` class.
 
 
+Legacy ``LevMarLSQFitter`` no longer used
+=========================================
+
+The default Astropy fitter for ``PSFPhotometry``,
+``IterativePSFPhotometry``, and ``EPSFFitter`` was changed from
+``LevMarLSQFitter`` to ``TRFLSQFitter``.
+
+``LevMarLSQFitter`` uses the Levenberg-Marquardt algorithm via
+the SciPy legacy function ``scipy.optimize.leastsq``, which is no
+longer recommended. This fitter supports parameter bounds using an
+unsophisticated min/max condition where parameters that are out of
+bounds are simply reset to the min or max of the bounds during each
+step. This can cause parameters to stick to one of the bounds during the
+fitting process if the parameter gets close to the bound. If needed,
+this fitter can still be used by explicitly setting the fitter in the
+``PSFPhotometry``, ``IterativePSFPhotometry``, and ``EPSFFitter``
+classes.
+
+The fitter used in ``RadialProfile`` to fit the profile with a Gaussian
+was also changed from ``LevMarLSQFitter`` to ``TRFLSQFitter``.
+
+The fitter used in ``centroid_1dg`` and ``centroid_2dg`` was changed
+from ``LevMarLSQFitter`` to ``LMLSQFitter``.
+
+For more information about Astropy's non-linear fitters, see
+:ref:`astropy:modeling-getting-started-nonlinear-notes`.
+
+
+Bounding model fits in PSF Photometry
+=====================================
+
+A new ``xy_bounds`` keyword was added to `~photutils.psf.PSFPhotometry`
+and `~photutils.psf.IterativePSFPhotometry` to allow one to bound
+the x and y model parameters during the fitting. This can be used to
+prevent the fit values from wandering too far from the initial parameter
+guesses.
+
+
 New FWHM estimation tool
 ========================
 
 A new `~photutils.psf.fit_fwhm` convenience function was added to
 estimate the FWHM of one or more sources in an image by fitting a
-circular 2D Gaussian PSF model using the PSF photometry tools.
+circular 2D Gaussian PRF model using the PSF photometry tools.
 
 Similarly, a new `~photutils.psf.fit_2dgaussian` convenience function
-was added to fit a circular 2D Gaussian PSF to one or more sources in an
+was added to fit a circular 2D Gaussian PRF to one or more sources in an
 image.
 
 

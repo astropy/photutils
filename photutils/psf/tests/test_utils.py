@@ -11,7 +11,7 @@ from astropy.table import QTable
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
-from photutils.psf import CircularGaussianPSF, make_psf_model_image
+from photutils.psf import CircularGaussianPRF, make_psf_model_image
 from photutils.psf.utils import (_get_psf_model_params,
                                  _interpolate_missing_data,
                                  _validate_psf_model, fit_2dgaussian, fit_fwhm)
@@ -19,7 +19,7 @@ from photutils.psf.utils import (_get_psf_model_params,
 
 @pytest.fixture(name='test_data')
 def fixture_test_data():
-    psf_model = CircularGaussianPSF()
+    psf_model = CircularGaussianPRF()
     model_shape = (9, 9)
     n_sources = 10
     shape = (101, 101)
@@ -34,7 +34,7 @@ def fixture_test_data():
 def test_fit_2dgaussian_single(fix_fwhm):
     yy, xx = np.mgrid[:51, :51]
     fwhm = 3.123
-    model = CircularGaussianPSF(x_0=22.17, y_0=28.87, fwhm=fwhm)
+    model = CircularGaussianPRF(x_0=22.17, y_0=28.87, fwhm=fwhm)
     data = model(xx, yy)
 
     fit = fit_2dgaussian(data, fwhm=3, fix_fwhm=fix_fwhm)
@@ -78,7 +78,7 @@ def test_fit_2dgaussian_multiple(test_data, fix_fwhm, with_units):
 def test_fit_fwhm_single():
     yy, xx = np.mgrid[:51, :51]
     fwhm0 = 3.123
-    model = CircularGaussianPSF(x_0=22.17, y_0=28.87, fwhm=fwhm0)
+    model = CircularGaussianPRF(x_0=22.17, y_0=28.87, fwhm=fwhm0)
     data = model(xx, yy)
 
     fwhm = fit_fwhm(data, fwhm=3)
@@ -89,7 +89,7 @@ def test_fit_fwhm_single():
     # test warning message
     match = 'may not have converged. Please carefully check your results'
     with pytest.warns(AstropyUserWarning, match=match):
-        fwhm = fit_fwhm(data + 100)
+        fwhm = fit_fwhm(np.zeros(data.shape) + 1)
     assert len(fwhm) == 1
 
 
@@ -151,7 +151,7 @@ def test_validate_psf_model():
 
 
 def test_get_psf_model_params():
-    model = CircularGaussianPSF(fwhm=1.0)
+    model = CircularGaussianPRF(fwhm=1.0)
     params = _get_psf_model_params(model)
     assert len(params) == 3
     assert params == ('x_0', 'y_0', 'flux')

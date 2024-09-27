@@ -13,7 +13,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from scipy import interpolate
 
 from photutils.centroids import centroid_com
-from photutils.psf.functional_models import CircularGaussianPSF
+from photutils.psf.functional_models import CircularGaussianPRF
 from photutils.utils import CutoutImage
 from photutils.utils._parameters import as_pair
 
@@ -26,7 +26,7 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     Fit a 2D Gaussian model to one or more sources in an image.
 
     This convenience function uses a
-    `~photutils.psf.CircularGaussianPSF` model to fit the sources using
+    `~photutils.psf.CircularGaussianPRF` model to fit the sources using
     the `~photutils.psf.PSFPhotometry` class.
 
     Non-finite values (e.g., NaN or inf) in the ``data`` array are
@@ -82,7 +82,7 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
 
     Notes
     -----
-    The source(s) are fit with a `~photutils.psf.CircularGaussianPSF`
+    The source(s) are fit with a `~photutils.psf.CircularGaussianPRF`
     model using the `~photutils.psf.PSFPhotometry` class. The initial
     guess for the flux is the sum of the pixel values within the fitting
     region. If ``fwhm`` is `None`, then the initial guess for the FWHM
@@ -94,9 +94,9 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     a cutout image):
 
     >>> import numpy as np
-    >>> from photutils.psf import CircularGaussianPSF, fit_2dgaussian
+    >>> from photutils.psf import CircularGaussianPRF, fit_2dgaussian
     >>> yy, xx = np.mgrid[:51, :51]
-    >>> model = CircularGaussianPSF(x_0=22.17, y_0=28.87, fwhm=3.123, flux=9.7)
+    >>> model = CircularGaussianPRF(x_0=22.17, y_0=28.87, fwhm=3.123, flux=9.7)
     >>> data = model(xx, yy)
     >>> fit = fit_2dgaussian(data, fix_fwhm=False)
     >>> phot_tbl = fit.results  # doctest: +FLOAT_CMP
@@ -112,9 +112,9 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
 
     >>> import numpy as np
     >>> from photutils.detection import DAOStarFinder
-    >>> from photutils.psf import (CircularGaussianPSF, fit_2dgaussian,
+    >>> from photutils.psf import (CircularGaussianPRF, fit_2dgaussian,
     ...                            make_psf_model_image)
-    >>> model = CircularGaussianPSF()
+    >>> model = CircularGaussianPRF()
     >>> data, sources = make_psf_model_image((100, 100), model, 5,
     ...                                      min_separation=25,
     ...                                      model_shape=(15, 15),
@@ -155,10 +155,9 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
         fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 0),
                             check_odd=True)
 
-    yxpos = xypos[:, ::-1]
     flux_init = []
-    for yxpos_ in yxpos:
-        cutout = CutoutImage(data, yxpos_, tuple(fit_shape))
+    for yxpos in xypos[:, ::-1]:
+        cutout = CutoutImage(data, yxpos, tuple(fit_shape))
         flux_init.append(np.sum(cutout.data))
 
     if isinstance(data, Quantity):
@@ -169,13 +168,12 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     init_params['y'] = xypos[:, 1]
     init_params['flux'] = flux_init
 
-    model = CircularGaussianPSF()
-
     if fwhm is None:
         fwhm = np.mean(fit_shape) / 2.0
     init_params['fwhm'] = fwhm
 
-    model = CircularGaussianPSF(fwhm=fwhm)
+    model = CircularGaussianPRF(fwhm=fwhm)
+    model.fwhm.min = 0.0
     if not fix_fwhm:
         model.fwhm.fixed = False
 
@@ -191,7 +189,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     Fit the FWHM of one or more sources in an image.
 
     This convenience function uses a
-    `~photutils.psf.CircularGaussianPSF` model to fit the sources using
+    `~photutils.psf.CircularGaussianPRF` model to fit the sources using
     the `~photutils.psf.PSFPhotometry` class.
 
     Non-finite values (e.g., NaN or inf) in the ``data`` array are
@@ -246,7 +244,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     Notes
     -----
     The source(s) are fit using the :func:`fit_2dgaussian` function,
-    which uses a `~photutils.psf.CircularGaussianPSF` model with the
+    which uses a `~photutils.psf.CircularGaussianPRF` model with the
     `~photutils.psf.PSFPhotometry` class. The initial guess for the
     flux is the sum of the pixel values within the fitting region. If
     ``fwhm`` is `None`, then the initial guess for the FWHM is half the
@@ -257,9 +255,9 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     Fit the FWHM of a single source (e.g., a cutout image):
 
     >>> import numpy as np
-    >>> from photutils.psf import CircularGaussianPSF, fit_fwhm
+    >>> from photutils.psf import CircularGaussianPRF, fit_fwhm
     >>> yy, xx = np.mgrid[:51, :51]
-    >>> model = CircularGaussianPSF(x_0=22.17, y_0=28.87, fwhm=3.123, flux=9.7)
+    >>> model = CircularGaussianPRF(x_0=22.17, y_0=28.87, fwhm=3.123, flux=9.7)
     >>> data = model(xx, yy)
     >>> fwhm = fit_fwhm(data)
     >>> fwhm  # doctest: +FLOAT_CMP
@@ -269,9 +267,9 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
 
     >>> import numpy as np
     >>> from photutils.detection import DAOStarFinder
-    >>> from photutils.psf import (CircularGaussianPSF, fit_fwhm,
+    >>> from photutils.psf import (CircularGaussianPRF, fit_fwhm,
     ...                            make_psf_model_image)
-    >>> model = CircularGaussianPSF()
+    >>> model = CircularGaussianPRF()
     >>> data, sources = make_psf_model_image((100, 100), model, 5,
     ...                                      min_separation=25,
     ...                                      model_shape=(15, 15),

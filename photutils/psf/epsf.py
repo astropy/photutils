@@ -9,7 +9,7 @@ import copy
 import warnings
 
 import numpy as np
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata.utils import NoOverlapError, PartialOverlapError
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
@@ -53,7 +53,7 @@ class EPSFFitter:
         of the input ``fitter``.
     """
 
-    def __init__(self, *, fitter=LevMarLSQFitter(), fit_boxsize=5,
+    def __init__(self, *, fitter=TRFLSQFitter(), fit_boxsize=5,
                  **fitter_kwargs):
 
         self.fitter = fitter

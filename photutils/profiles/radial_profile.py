@@ -6,7 +6,7 @@ This module provides tools for generating radial profiles.
 import warnings
 
 import numpy as np
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian1D
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.utils import lazyproperty
@@ -387,7 +387,7 @@ class RadialProfile(ProfileBase):
         std = np.sqrt(abs(np.sum(profile * radius**2) / np.sum(profile)))
         g_init = Gaussian1D(amplitude=amplitude, mean=0.0, stddev=std)
         g_init.mean.fixed = True
-        fitter = LevMarLSQFitter()
+        fitter = TRFLSQFitter()
         return fitter(g_init, radius, profile)
 
     @lazyproperty

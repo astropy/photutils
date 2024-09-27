@@ -111,7 +111,7 @@ The size of the annulus and the statistic function can be configured in
 
 The next step is to fit the sources and/or groups. This
 task is performed using an astropy fitter, for example
-`~astropy.modeling.fitting.LevMarLSQFitter`, input via the ``fitter``
+`~astropy.modeling.fitting.TRFLSQFitter`, input via the ``fitter``
 keyword. The shape of the region to be fitted can be configured using
 the ``fit_shape`` parameter. In general, ``fit_shape`` should be set
 to a small size (e.g., (5, 5)) that covers the central star region
@@ -818,7 +818,7 @@ The `photutils.psf` package also provides a convenience function
 called `~photutils.psf.fit_fwhm` to estimate the full width
 at half maximum (FWHM) of one or more sources in an image.
 This function fits the source(s) with a circular 2D Gaussian
-PSF model (`~photutils.psf.CircularGaussianPSF`) using the
+PRF model (`~photutils.psf.CircularGaussianPRF`) using the
 `~photutils.psf.PSFPhotometry` class. If your sources are not
 circular or non-Gaussian, you can fit your sources using the
 `~photutils.psf.PSFPhotometry` class using a different PSF model.
@@ -830,10 +830,10 @@ defined above::
    >>> finder = DAOStarFinder(6.0, 2.0)
    >>> finder_tbl = finder(data)
    >>> xypos = list(zip(finder_tbl['xcentroid'], finder_tbl['ycentroid']))
-   >>> fwhm = fit_fwhm(data, xypos=xypos, error=error, fit_shape=(5, 5))
+   >>> fwhm = fit_fwhm(data, xypos=xypos, error=error, fit_shape=(5, 5), fwhm=2)
    >>> fwhm  # doctest: +FLOAT_CMP
-   array([2.78318472, 2.78834154, 2.77986989, 2.79650315, 2.77475841,
-          2.78849262, 2.78781809, 2.76465724, 2.79742412, 2.79036633])
+   array([2.69735154, 2.70371211, 2.68917219, 2.69310558, 2.68931721,
+          2.69804194, 2.69651045, 2.70423936, 2.71458867, 2.70285813])
 
 
 Convenience Gaussian Fitting Function
@@ -841,7 +841,7 @@ Convenience Gaussian Fitting Function
 
 The `photutils.psf` package also provides a convenience function called
 :func:`~photutils.psf.fit_2dgaussian` for fitting one or more sources
-with a 2D Gaussian PSF model (`~photutils.psf.CircularGaussianPSF`)
+with a 2D Gaussian PRF model (`~photutils.psf.CircularGaussianPRF`)
 using the `~photutils.psf.PSFPhotometry` class. See the function
 documentation for more details and examples.
 
