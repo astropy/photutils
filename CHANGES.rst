@@ -227,7 +227,7 @@ API Changes
     The ``make_psf_model_image`` function has been moved to the new
     ``simulations`` module. It is recommended that all of these tools be
     imported from ``photutils.psf`` without using the submodule name.
-    [#1854]
+    [#1854, #1901]
 
   - The ``PSFPhotometry`` ``fit_results`` attribute has been renamed to
     ``fit_info``. ``fit_results`` is now deprecated. [#1858]

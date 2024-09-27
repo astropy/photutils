@@ -22,14 +22,14 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
     Read and parse a FITS file into a `GriddedPSFModel` instance.
 
     This class enables the astropy unified I/O layer for
-    `GriddedPSFModel`. This allows easily reading a file in different
-    supported data formats using syntax such as::
+    `~photutils.psf.GriddedPSFModel`. This allows easily reading a file
+    in different supported data formats using syntax such as::
 
       >>> from photutils.psf import GriddedPSFModel
       >>> psf_model = GriddedPSFModel.read('filename.fits', format=format)
 
-    Get help on the available readers for `GriddedPSFModel` using the
-    ``help()`` method::
+    Get help on the available readers for
+    `~photutils.psf.GriddedPSFModel` using the ``help()`` method::
 
       >>> # Get help reading Table and list supported formats
       >>> GriddedPSFModel.read.help()
@@ -311,9 +311,10 @@ def stdpsf_reader(filename, detector_id=None):
     format ePSF (STDPSF) FITS file.
 
     .. note::
-        Instead of being used directly, this function is intended to be
-        used via the `GriddedPSFModel` ``read`` method, e.g.,
-        ``model = GriddedPSFModel.read(filename, format='stdpsf')``.
+        Instead of being used directly, this function is intended to
+        be used via the `~photutils.psf.GriddedPSFModel` ``read``
+        method, e.g., ``model = GriddedPSFModel.read(filename,
+        format='stdpsf')``.
 
     STDPSF files are FITS files that contain a 3D array of ePSFs with
     the header detailing where the fiducial ePSFs are located in the
@@ -403,9 +404,10 @@ def webbpsf_reader(filename):
     containing a PSF grid.
 
     .. note::
-        Instead of being used directly, this function is intended to be
-        used via the `GriddedPSFModel` ``read`` method, e.g., ``model =
-        GriddedPSFModel.read(filename, format='webbpsf')``.
+        Instead of being used directly, this function is intended to
+        be used via the `~photutils.psf.GriddedPSFModel` ``read``
+        method, e.g., ``model = GriddedPSFModel.read(filename,
+        format='webbpsf')``.
 
     The WebbPSF FITS file contain a 3D array of ePSFs with the header
     detailing where the fiducial ePSFs are located in the detector
