@@ -87,10 +87,11 @@ New Features
 
   - Added new ``fit_fwhm`` convenience function to estimate the FWHM of
     one or more sources in an image by fitting a circular 2D Gaussian PSF
-    model. [#1859, #1887]
+    model. [#1859, #1887, #1899]
 
-  - Added new ``fit_2dgaussian`` convenience function to fit a circular 2D
-    Gaussian PSF to one or more sources in an image. [#1859, #1887]
+  - Added new ``fit_2dgaussian`` convenience function to fit a circular
+    2D Gaussian PSF to one or more sources in an image. [#1859, #1887,
+    #1899]
 
   - Added new ``ImagePSF`` model class to represent a PSF model as an
     image. [#1890]
@@ -163,6 +164,11 @@ API Changes
     any constant component. The input data are required to be
     background-subtracted. [#1861]
 
+  - The fitter used in ``centroid_1dg`` and ``centroid_2dg`` was changed
+    from ``LevMarLSQFitter`` to ``LMLSQFitter``. ``LevMarLSQFitter`` uses
+    the legacy SciPy function ``scipy.optimize.leastsq``, which is no
+    longer recommended. [#1899]
+
 - ``photutils.datasets``
 
   - The deprecated ``make`` module has been removed. Instead of
@@ -192,6 +198,13 @@ API Changes
 
   - The ``build_ellipse_model`` function now raises a ``ValueError`` if
     the input ``isolist`` is empty. [#1809]
+
+- ``photutils.profiles``
+
+  - The fitter used in ``RadialProfile`` to fit the profile
+    with a Gaussian was changed from ``LevMarLSQFitter`` to
+    ``TRFLSQFitter``. ``LevMarLSQFitter`` uses the legacy SciPy function
+    ``scipy.optimize.leastsq``, which is no longer recommended. [#1899]
 
 - ``photutils.psf``
 
@@ -225,6 +238,12 @@ API Changes
 
   - The ``FittableImageModel`` and ``EPSFModel`` classes have been
     deprecated. Instead, use the new ``ImagePSF`` model class. [#1890]
+
+  - The default fitter for ``PSFPhotometry``,
+    ``IterativePSFPhotometry``, and ``EPSFFitter`` was changed from
+    ``LevMarLSQFitter`` to ``TRFLSQFitter``. ``LevMarLSQFitter`` uses
+    the legacy SciPy function ``scipy.optimize.leastsq``, which is no
+    longer recommended. [#1899]
 
 - ``photutils.segmentation``
 
