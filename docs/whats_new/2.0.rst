@@ -153,10 +153,10 @@ New FWHM estimation tool
 
 A new `~photutils.psf.fit_fwhm` convenience function was added to
 estimate the FWHM of one or more sources in an image by fitting a
-circular 2D Gaussian PSF model using the PSF photometry tools.
+circular 2D Gaussian PRF model using the PSF photometry tools.
 
 Similarly, a new `~photutils.psf.fit_2dgaussian` convenience function
-was added to fit a circular 2D Gaussian PSF to one or more sources in an
+was added to fit a circular 2D Gaussian PRF to one or more sources in an
 image.
 
 
