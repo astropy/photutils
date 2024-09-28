@@ -80,6 +80,19 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
 
 
 def _read_stdpsf(filename):
+    """
+    Read a STScI standard-format ePSF (STDPSF) FITS file.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the STDPDF FITS file.
+
+    Returns
+    -------
+    data : dict
+        A dictionary containing the ePSF data and metadata.
+    """
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', VerifyWarning)
         with fits.open(filename, ignore_missing_end=True) as hdulist:
@@ -136,6 +149,30 @@ def _split_detectors(grid_data, detector_data, detector_id):
     """
     Split an ePSF array into individual detectors.
 
+    Parameters
+    ----------
+    grid_data : dict
+        A dictionary containing the ePSF data and metadata.
+
+    detector_data : dict
+        A dictionary containing the detector data.
+
+    detector_id : int
+        The detector ID.
+
+    Returns
+    -------
+    data : `~numpy.ndarray`
+        The ePSF data for the specified detector.
+
+    xgrid : `~numpy.ndarray`
+        The x-grid for the specified detector.
+
+    ygrid : `~numpy.ndarray`
+        The y-grid for the specified detector.
+
+    Notes
+    -----
     In particular::
 
         * HST WFPC2 STDPSF file contains 4 detectors
@@ -177,6 +214,28 @@ def _split_detectors(grid_data, detector_data, detector_id):
 
 
 def _split_wfc_uvis(grid_data, detector_id):
+    """
+    Split an ePSF array into individual WFC/UVIS detectors.
+
+    Parameters
+    ----------
+    grid_data : dict
+        A dictionary containing the ePSF data and metadata.
+
+    detector_id : int
+        The detector ID.
+
+    Returns
+    -------
+    data : `~numpy.ndarray`
+        The ePSF data for the specified detector.
+
+    xgrid : `~numpy.ndarray`
+        The x-grid for the specified detector.
+
+    ygrid : `~numpy.ndarray`
+        The y-grid for the specified detector.
+    """
     if detector_id is None:
         raise ValueError('detector_id must be specified for ACS/WFC and '
                          'WFC3/UVIS ePSFs.')
@@ -200,6 +259,28 @@ def _split_wfc_uvis(grid_data, detector_id):
 
 
 def _split_wfpc2(grid_data, detector_id):
+    """
+    Split an ePSF array into individual WFPC2 detectors.
+
+    Parameters
+    ----------
+    grid_data : dict
+        A dictionary containing the ePSF data and metadata.
+
+    detector_id : int
+        The detector ID.
+
+    Returns
+    -------
+    data : `~numpy.ndarray`
+        The ePSF data for the specified detector.
+
+    xgrid : `~numpy.ndarray`
+        The x-grid for the specified detector.
+
+    ygrid : `~numpy.ndarray`
+        The y-grid for the specified detector.
+    """
     if detector_id is None:
         raise ValueError('detector_id must be specified for WFPC2 ePSFs')
     if detector_id not in range(1, 5):
@@ -223,6 +304,28 @@ def _split_wfpc2(grid_data, detector_id):
 
 
 def _split_nrcsw(grid_data, detector_id):
+    """
+    Split an ePSF array into individual NIRCam SW detectors.
+
+    Parameters
+    ----------
+    grid_data : dict
+        A dictionary containing the ePSF data and metadata.
+
+    detector_id : int
+        The detector ID.
+
+    Returns
+    -------
+    data : `~numpy.ndarray`
+        The ePSF data for the specified detector.
+
+    xgrid : `~numpy.ndarray`
+        The x-grid for the specified detector.
+
+    ygrid : `~numpy.ndarray`
+        The y-grid for the specified detector.
+    """
     if detector_id is None:
         raise ValueError('detector_id must be specified for NRCSW ePSFs')
     if detector_id not in range(1, 9):
@@ -248,6 +351,19 @@ def _split_nrcsw(grid_data, detector_id):
 def _get_metadata(filename, detector_id):
     """
     Get metadata from the filename and ``detector_id``.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the STDPDF FITS file.
+
+    detector_id : int
+        The detector ID.
+
+    Returns
+    -------
+    meta : dict or `None`
+        A dictionary containing the metadata.
     """
     if isinstance(filename, io.FileIO):
         filename = filename.name
