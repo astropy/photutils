@@ -514,8 +514,10 @@ class STDPSFGrid(ModelGridPlotMixin):
 
     Examples
     --------
-    >>> psfgrid = STDPSFGrid.read('STDPSF_ACSWFC_F814W.fits')
-    >>> psfgrid.plot_grid()
+    >>> from photutils.psf import STDPSFGrid
+    >>> psfgrid = STDPSFGrid('STDPSF_ACSWFC_F814W.fits')
+    >>> fig = psfgrid.plot_grid()
+    >>> fig.show()
     """
 
     def __init__(self, filename):
