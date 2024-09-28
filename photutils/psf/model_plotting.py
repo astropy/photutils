@@ -20,6 +20,16 @@ class ModelGridPlotMixin:
         """
         Reshape the 3D ePSF grid as a 2D array of horizontally and
         vertically stacked ePSFs.
+
+        Parameters
+        ----------
+        data : `numpy.ndarray`
+            The 3D array of ePSF data.
+
+        Returns
+        -------
+        reshaped_data : `numpy.ndarray`
+            The 2D array of ePSF data.
         """
         nypsfs = self._ygrid.shape[0]
         nxpsfs = self._xgrid.shape[0]
