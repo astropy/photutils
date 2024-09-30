@@ -29,8 +29,13 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
     The ePSF models are defined at fiducial detector locations and are
     bilinearly interpolated to calculate an ePSF model at an arbitrary
-    (x, y) detector position.  The fiducial detector locations are
-    must form a rectangular grid.
+    (x, y) detector position. The fiducial detector locations are must
+    form a rectangular grid.
+
+    The model has three model parameters: an image intensity scaling
+    factor (``flux``) which is applied to the input image, and two
+    positional parameters (``x_0`` and ``y_0``) indicating the location
+    of a feature in the coordinate grid on which the model is evaluated.
 
     When evaluating this model, it cannot be called with x and y arrays
     that have greater than 2 dimensions.
@@ -41,31 +46,44 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         A `~astropy.nddata.NDData` object containing the grid of
         reference ePSF arrays. The data attribute must contain a 3D
         `~numpy.ndarray` containing a stack of the 2D ePSFs with a shape
-        of ``(N_psf, ePSF_ny, ePSF_nx)``.
+        of ``(N_psf, ePSF_ny, ePSF_nx)``. The length of the x and y axes
+        must both be at least 4. All elements of the input image data
+        must be finite. The PSF peak is assumed to be located at the
+        center of the input image. The array must be normalized so that
+        the total flux of a source is 1.0. This means that the sum of
+        the values in the input image PSF over an infinite grid is 1.0.
+        In practice, the sum of the data values in the input image may
+        be less than 1.0 if the input image only covers a finite region
+        of the PSF. These correction factors can be estimated from the
+        ensquared or encircled energy of the PSF based on the size of
+        the input image.
 
         The meta attribute must be dictionary containing the following:
 
             * ``'grid_xypos'``: A list of the (x, y) grid positions of
-              each reference ePSF. The order of positions should match the
-              first axis of the 3D `~numpy.ndarray` of ePSFs. In other
-              words, ``grid_xypos[i]`` should be the (x, y) position of
-              the reference ePSF defined in ``data[i]``. The grid
-              positions must form a rectangular grid.
+              each reference ePSF. The order of positions should
+              match the first axis of the 3D `~numpy.ndarray` of
+              ePSFs. In other words, ``grid_xypos[i]`` should be
+              the (x, y) position of the reference ePSF defined in
+              ``nddata.data[i]``. The grid positions must form a
+              rectangular grid.
 
             * ``'oversampling'``: The integer oversampling factor(s) of
-              the ePSF. If ``oversampling`` is a scalar then it will be
-              used for both axes. If ``oversampling`` has two elements,
-              they must be in ``(y, x)`` order.
+              the input ePSF images. If ``oversampling`` is a scalar then
+              it will be used for both axes. If ``oversampling`` has two
+              elements, they must be in ``(y, x)`` order.
 
         The meta attribute may contain other properties such as the
         telescope, instrument, detector, and filter of the ePSF.
 
     flux : float, optional
-        The flux scaling factor for the model. The default is 1.0.
+        The flux scaling factor for the model. This is the total flux
+        of the source, assuming the input ePSF images are properly
+        normalized.
 
     x_0, y_0 : float, optional
-        The (x, y) position in the output coordinate grid where the model
-        is evaluated. The default is (0, 0).
+        The (x, y) position of the PSF peak in the image in the output
+        coordinate grid on which the model is evaluated.
 
     fill_value : float, optional
         The value to use for points outside of the input pixel grid.
@@ -82,7 +100,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     Notes
     -----
     Internally, the grid of ePSFs will be arranged and stored such that
-    it is sorted first by y and then by x.
+    it is sorted first by the y reference pixel coordinate and then by
+    the x reference pixel coordinate.
     """
 
     flux = Parameter(description='Intensity scaling factor for the ePSF '
@@ -336,11 +355,18 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
     @lazyproperty
     def _xyinterpidx(self):
+        """
+        The x and y indices for the interpolator.
+        """
         xidx = np.arange(self.data.shape[2])
         yidx = np.arange(self.data.shape[1])
         return xidx, yidx
 
     def _calc_init_interpolator(self, data):
+        """
+        Calculate the initial `~scipy.interpolate.RectBivariateSpline`
+        interpolator for an input ePSF image.
+        """
         # RectBivariateSpline expects the data to be in (x, y) axis order
         return RectBivariateSpline(*self._xyinterpidx, data.T, kx=3, ky=3, s=0)
 
@@ -361,6 +387,21 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         If the point is outside the grid, the nearest grid points are
         selected. The input grid points do not need to be sorted.
+
+        Parameters
+        ----------
+        x, y : float
+            The (x_0, y_0) position of the model.
+
+        Returns
+        -------
+        grid_idx : `~numpy.ndarray`
+            The indices of the four bounding points in the sorted
+            grid. The order is lower-left, lower-right, upper-left,
+            upper-right.
+        grid_xy : `~numpy.ndarray`
+            The x and y coordinates of the four bounding points. The
+            order is left, right, bottom, top.
         """
         # Find the insertion indices for x and y in the sorted grids
         xidx = np.searchsorted(self._xgrid, x) - 1
@@ -371,6 +412,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         yidx = np.clip(yidx, 0, len(self._ygrid) - 2)
 
         # Find the four bounding points in the sorted grid
+        # (x0, y0) is the lower-left corner of the grid
+        # (x1, y1) is the upper-right corner of the grid
         x0, x1 = self._xgrid[xidx], self._xgrid[xidx + 1]
         y0, y1 = self._ygrid[yidx], self._ygrid[yidx + 1]
 
@@ -390,9 +433,23 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         """
         Calculate the bilinear interpolation weights for a given (xi,
         yi) coordinate and the four bounding grid points.
+
+        Parameters
+        ----------
+        xi, yi : float
+            The (x_0, y_0) position of the model.
+
+        grid_xy : `~numpy.ndarray`
+            The x and y coordinates of the four bounding points. The
+            order is left, right, bottom, top.
+
+        Returns
+        -------
+        weights : `~numpy.ndarray`
+            The bilinear interpolation weights for the four bounding
+            points. The order is lower-left, lower-right, upper-left,
+            upper-right.
         """
-        # (x0, y0) is the lower-left corner of the grid
-        # (x1, y1) is the upper-right corner of the grid
         x0, x1, y0, y1 = grid_xy
 
         xi = np.clip(xi, x0, x1)
@@ -404,6 +461,25 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
                          (x1 - xi) * (yi - y0), (xi - x0) * (yi - y0)]) / norm
 
     def _calc_interpolator(self, x_0, y_0, xi, yi):
+        """
+        Calculate the ePSF model at a given (x_0, y_0) model coordinate
+        and the input (xi, yi) coordinate.
+
+        Parameters
+        ----------
+        x_0, y_0 : float
+            The (x, y) position of the model.
+
+        xi, yi : float
+            The input (x, y) coordinates at which the model is
+            evaluated.
+
+        Returns
+        -------
+        result : float or `~numpy.ndarray`
+            The interpolated ePSF model at the input (x_0, y_0)
+            coordinate.
+        """
         grid_idx, grid_xy = self._find_bounding_points(x_0, y_0)
         interpolators = self._interpolators[grid_idx]
         weights = self._calc_bilinear_weights(x_0, y_0, grid_xy)
@@ -420,7 +496,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
-        Evaluate the `GriddedPSFModel` for the input parameters.
+        Calculate the ePSF model at the input coordinates for the given
+        model parameters.
 
         Parameters
         ----------
@@ -441,8 +518,9 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         if x.ndim > 2:
             raise ValueError('x and y must be 1D or 2D.')
 
-        # NOTE: the astropy base Model.__call__() method converts scalar
-        # inputs to size-1 arrays before calling evaluate().
+        # the base Model.__call__() method converts scalar inputs to
+        # size-1 arrays before calling evaluate(), but we need scalar
+        # values for the interpolator
         if not np.isscalar(x_0):
             x_0 = x_0[0]
         if not np.isscalar(y_0):
