@@ -10,8 +10,10 @@ import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
+from astropy.table import QTable
 from numpy.testing import assert_allclose, assert_equal
 
+from photutils.datasets import make_model_image
 from photutils.psf import GriddedPSFModel, STDPSFGrid
 from photutils.segmentation import SourceCatalog, detect_sources
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
@@ -142,29 +144,11 @@ class TestGriddedPSFModel:
         properties of the generated sources.
         """
         shape = (200, 200)
-        data = np.zeros(shape)
-        eval_xshape = (np.ceil(psfmodel.data.shape[2]
-                               / psfmodel.oversampling[1])).astype(int)
-        eval_yshape = (np.ceil(psfmodel.data.shape[1]
-                               / psfmodel.oversampling[0])).astype(int)
-
-        xx = [40, 50, 160, 160]
-        yy = [60, 150, 50, 140]
-        zz = [100, 100, 100, 100]
-        for xxi, yyi, zzi in zip(xx, yy, zz, strict=True):
-            x0 = np.floor(xxi - (eval_xshape - 1) / 2.0).astype(int)
-            y0 = np.floor(yyi - (eval_yshape - 1) / 2.0).astype(int)
-            x1 = x0 + eval_xshape
-            y1 = y0 + eval_yshape
-
-            x0 = max(x0, 0)
-            y0 = max(y0, 0)
-            x1 = min(x1, shape[1])
-            y1 = min(y1, shape[0])
-
-            y, x = np.mgrid[y0:y1, x0:x1]
-            data[y, x] += psfmodel.evaluate(x=x, y=y, flux=zzi, x_0=xxi,
-                                            y_0=yyi)
+        params = QTable()
+        params['x_0'] = [40, 50, 160, 160]
+        params['y_0'] = [60, 150, 50, 140]
+        params['flux'] = [100, 100, 100, 100]
+        data = make_model_image(shape, psfmodel, params)
 
         segm = detect_sources(data, 0.0, 5)
         cat = SourceCatalog(data, segm)
