@@ -273,7 +273,8 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
                 bbox = model.bounding_box(factor=bbox_factor)
             else:
                 bbox = model.bounding_box.bounding_box()
-            mod_shape = (bbox[0][1] - bbox[0][0], bbox[1][1] - bbox[1][0])
+            mod_shape = (int(np.ceil(bbox[0][1] - bbox[0][0])),
+                         int(np.ceil(bbox[1][1] - bbox[1][0])))
         else:
             mod_shape = model_shape
 
