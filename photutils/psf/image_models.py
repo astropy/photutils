@@ -75,10 +75,10 @@ class ImagePSF(Fittable2DModel):
         the center of the ``data`` array (``(npix - 1) / 2.0``).
 
     oversampling : int or array_like (int), optional
-        The integer oversampling factor(s) of the PSF relative to the
-        input ``stars`` along each axis. If ``oversampling`` is a scalar
-        then it will be used for both axes. If ``oversampling`` has two
-        elements, they must be in ``(y, x)`` order.
+        The integer oversampling factor(s) of the input PSF image. If
+        ``oversampling`` is a scalar then it will be used for both axes.
+        If ``oversampling`` has two elements, they must be in ``(y, x)``
+        order.
 
     fill_value : float, optional
         The value to use for points outside of the input pixel grid.
@@ -293,7 +293,8 @@ class ImagePSF(Fittable2DModel):
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
-        Calculate the value of the image model at the input coordinates.
+        Calculate the value of the image model at the input coordinates
+        for the given model parameters.
 
         Parameters
         ----------
@@ -776,8 +777,8 @@ class FittableImageModel(Fittable2DModel):
 
     def evaluate(self, x, y, flux, x_0, y_0, *, use_oversampling=True):
         """
-        Evaluate the model on some input variables and provided model
-        parameters.
+        Calculate the value of the image model at the input coordinates
+        for the given model parameters.
 
         Parameters
         ----------
@@ -1225,8 +1226,8 @@ class _LegacyEPSFModel(Fittable2DModel):
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
-        Evaluate the model on some input variables and provided model
-        parameters.
+        Calculate the value of the image model at the input coordinates
+        for the given model parameters.
 
         Parameters
         ----------

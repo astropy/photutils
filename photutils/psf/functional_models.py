@@ -222,7 +222,7 @@ class GaussianPSF(Fittable2DModel):
     def evaluate(self, x, y, flux, x_0, y_0, x_fwhm, y_fwhm, theta):
         """
         Calculate the value of the 2D Gaussian model at the input
-        coordinates.
+        coordinates for the given model parameters.
 
         Parameters
         ----------
@@ -540,7 +540,7 @@ class CircularGaussianPSF(Fittable2DModel):
     def evaluate(self, x, y, flux, x_0, y_0, fwhm):
         """
         Calculate the value of the 2D Gaussian model at the input
-        coordinates.
+        coordinates for the given model parameters.
 
         Parameters
         ----------
@@ -826,7 +826,7 @@ class GaussianPRF(Fittable2DModel):
     def evaluate(self, x, y, flux, x_0, y_0, x_fwhm, y_fwhm, theta):
         """
         Calculate the value of the 2D Gaussian model at the input
-        coordinates.
+        coordinates for the given model parameters.
 
         Parameters
         ----------
@@ -1061,7 +1061,7 @@ class CircularGaussianPRF(Fittable2DModel):
     def evaluate(self, x, y, flux, x_0, y_0, fwhm):
         """
         Calculate the value of the 2D Gaussian model at the input
-        coordinates.
+        coordinates for the given model parameters.
 
         Parameters
         ----------
@@ -1290,7 +1290,8 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
 
     def evaluate(self, x, y, flux, x_0, y_0, sigma):
         """
-        Model function Gaussian PSF model.
+        Calculate the value of the 2D Gaussian model at the input
+        coordinates for the given model parameters.
 
         Parameters
         ----------
@@ -1597,7 +1598,7 @@ class MoffatPSF(Fittable2DModel):
     def evaluate(self, x, y, flux, x_0, y_0, alpha, beta):
         """
         Calculate the value of the 2D Moffat model at the input
-        coordinates.
+        coordinates for the given model parameters.
 
         Parameters
         ----------
@@ -1817,7 +1818,7 @@ class AiryDiskPSF(Fittable2DModel):
     def evaluate(self, x, y, flux, x_0, y_0, radius):
         """
         Calculate the value of the 2D Airy disk model at the input
-        coordinates.
+        coordinates for the given model parameters.
 
         Parameters
         ----------
