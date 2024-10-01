@@ -253,7 +253,7 @@ advanced usage are available online:
 * `Advanced Ellipse example: multi-band photometry and masked arrays <https://github.com/astropy/photutils-datasets/blob/main/notebooks/isophote/isophote_example4.ipynb>`_
 
 
-Reference/API
+API Reference
 -------------
 
 .. automodapi:: photutils.isophote

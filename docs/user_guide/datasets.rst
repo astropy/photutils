@@ -54,11 +54,12 @@ Let's plot the image:
     plt.show()
 
 
-Reference/API
+API Reference
 -------------
 
 .. automodapi:: photutils.datasets
     :no-heading:
+
 
 .. _astropy-data: https://github.com/astropy/astropy-data/
 .. _skymaker: https://github.com/astromatic/skymaker

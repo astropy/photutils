@@ -264,7 +264,7 @@ And let's plot the location of the detected peaks in the image:
     plt.ylim(0, data.shape[0] - 1)
 
 
-Reference/API
+API Reference
 -------------
 
 .. automodapi:: photutils.detection

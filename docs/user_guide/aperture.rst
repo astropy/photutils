@@ -911,7 +911,7 @@ They may also optionally define an ``area`` property.  All
       `matplotlib.axes.Axes` instance.
 
 
-Reference/API
+API Reference
 -------------
 
 .. automodapi:: photutils.aperture

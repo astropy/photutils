@@ -176,7 +176,7 @@ the same group have the same aperture color:
     plt.show()
 
 
-Reference/API
+API Reference
 -------------
 
 .. automodapi:: photutils.psf.groupers

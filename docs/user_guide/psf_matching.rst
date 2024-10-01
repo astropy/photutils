@@ -286,7 +286,7 @@ matching kernel to produce an image with the same resolution as the
 channel-4 image.
 
 
-Reference/API
+API Reference
 -------------
 
 .. automodapi:: photutils.psf.matching
