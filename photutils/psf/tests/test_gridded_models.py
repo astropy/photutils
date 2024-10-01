@@ -109,6 +109,16 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(NDData(np.ones((3, 3))))
 
+        match = 'The length of the PSF x and y axes must both be at least 4'
+        with pytest.raises(ValueError, match=match):
+            GriddedPSFModel(NDData(np.ones((3, 3, 3))))
+
+        match = 'All elements of input data must be finite'
+        data2 = np.ones((4, 5, 5))
+        data2[0, 2, 2] = np.nan
+        with pytest.raises(ValueError, match=match):
+            GriddedPSFModel(NDData(data2))
+
         # check that grid_xypos is in meta
         meta = {'oversampling': 4}
         nddata = NDData(data, meta=meta)
