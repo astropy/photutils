@@ -127,6 +127,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         self._ygrid = np.unique(self.grid_xypos[:, 1])  # sorted
         self.meta['grid_shape'] = (len(self._ygrid), len(self._xgrid))
 
+        self._interpolator = {}
+
         super().__init__(flux, x_0, y_0)
 
     @staticmethod
@@ -354,7 +356,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         return xyorigin[::-1]
 
     @lazyproperty
-    def _xyinterpidx(self):
+    def _interp_xyidx(self):
         """
         The x and y indices for the interpolator.
         """
@@ -362,23 +364,25 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         yidx = np.arange(self.data.shape[1])
         return xidx, yidx
 
-    def _calc_init_interpolator(self, data):
+    def _calc_interpolator(self, grid_idx):
         """
-        Calculate the initial `~scipy.interpolate.RectBivariateSpline`
-        interpolator for an input ePSF image.
-        """
-        # RectBivariateSpline expects the data to be in (x, y) axis order
-        return RectBivariateSpline(*self._xyinterpidx, data.T, kx=3, ky=3, s=0)
+        Calculate the `~scipy.interpolate.RectBivariateSpline`
+        interpolator for an input ePSF image at the given reference (x,
+        y) position.
 
-    @lazyproperty
-    def _interpolators(self):
+        The resulting interpolator is cached in the `_interpolator`
+        dictionary for reuse.
         """
-        A list of `~scipy.interpolate.RectBivariateSpline` interpolators
-        for each ePSF in the grid.
-        """
-        # TODO: only calculate/cache a interpolator when first requested
-        interps = [self._calc_init_interpolator(data) for data in self.data]
-        return np.array(interps)   # dtype=object for slicing
+        xypos = tuple(self.grid_xypos[grid_idx])
+        if xypos in self._interpolator:
+            return self._interpolator[xypos]
+
+        # RectBivariateSpline expects the data to be in (x, y) axis order
+        data = self.data[grid_idx]
+        interp = RectBivariateSpline(*self._interp_xyidx, data.T, kx=3, ky=3,
+                                     s=0)
+        self._interpolator[xypos] = interp
+        return interp
 
     def _find_bounding_points(self, x, y):
         """
@@ -460,7 +464,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         return np.array([(x1 - xi) * (y1 - yi), (xi - x0) * (y1 - yi),
                          (x1 - xi) * (yi - y0), (xi - x0) * (yi - y0)]) / norm
 
-    def _calc_interpolator(self, x_0, y_0, xi, yi):
+    def _calc_model_values(self, x_0, y_0, xi, yi):
         """
         Calculate the ePSF model at a given (x_0, y_0) model coordinate
         and the input (xi, yi) coordinate.
@@ -481,7 +485,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
             coordinate.
         """
         grid_idx, grid_xy = self._find_bounding_points(x_0, y_0)
-        interpolators = self._interpolators[grid_idx]
+        interpolators = np.array([self._calc_interpolator(gidx)
+                                  for gidx in grid_idx])
         weights = self._calc_bilinear_weights(x_0, y_0, grid_xy)
 
         idx = np.where(weights != 0)
@@ -533,7 +538,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         xi += self.origin[0]
         yi += self.origin[1]
 
-        evaluated_model = flux * self._calc_interpolator(x_0, y_0, xi, yi)
+        evaluated_model = flux * self._calc_model_values(x_0, y_0, xi, yi)
 
         if self.fill_value is not None:
             # set pixels that are outside the input pixel grid to the
