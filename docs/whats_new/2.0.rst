@@ -1,5 +1,7 @@
 .. doctest-skip-all
 
+.. _whatsnew-2.0:
+
 ****************************
 What's New in Photutils 2.0?
 ****************************
