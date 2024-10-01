@@ -13,8 +13,7 @@ Photutils has the following strict requirements:
 
 * `Astropy`_ 5.3 or later
 
-* `SciPy <https://scipy.org/>`_ 1.10 or later: Used to power a variety of
-  features in several modules (strongly recommended).
+* `SciPy <https://scipy.org/>`_ 1.10 or later
 
 Photutils also optionally depends on other packages for some features:
 
@@ -74,8 +73,6 @@ option to install the package into your home directory.  You can read
 more about how to do this in the `pip documentation
 <https://pip.pypa.io/en/stable/user_guide/#user-installs>`_.
 
-Do **not** install Photutils or other third-party packages using
-``sudo`` unless you are fully aware of the risks.
 
 Using conda
 -----------
