@@ -89,6 +89,14 @@ should be set to `True`, which makes zoom's behavior consistent with
 `False` option was provided only for backwards-compatibility.
 
 
+GriddedPSFModel improved performance
+====================================
+
+The `~photutils.psf.GriddedPSFModel` class has been refactored to
+significantly improve its performance. In typical PSF photometry use
+cases, it is now about 4 times faster than previous versions.
+
+
 New PSF Model classes
 ======================
 

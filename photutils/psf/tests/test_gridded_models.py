@@ -10,8 +10,10 @@ import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
+from astropy.table import QTable
 from numpy.testing import assert_allclose, assert_equal
 
+from photutils.datasets import make_model_image
 from photutils.psf import GriddedPSFModel, STDPSFGrid
 from photutils.segmentation import SourceCatalog, detect_sources
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
@@ -68,6 +70,10 @@ class TestGriddedPSFModel:
         assert_allclose(xypos, grid_xypos)
 
     def test_gridded_psf_model_basic_eval(self, psfmodel):
+        assert psfmodel(0, 0) == 1
+        assert psfmodel(100, 100) == 0
+        assert_allclose(psfmodel([0, 100], [0, 100]), [1, 0])
+
         y, x = np.mgrid[0:100, 0:100]
         psf = psfmodel.evaluate(x=x, y=y, flux=100, x_0=40, y_0=60)
         assert psf.shape == (100, 100)
@@ -90,36 +96,6 @@ class TestGriddedPSFModel:
         psf4 = psfmodel.evaluate(x=x, y=y, flux=100, x_0=220, y_0=220)
         assert_allclose(psf3, psf4)
 
-    def test_gridded_psf_model_interp(self, psfmodel):
-        # test xyref length
-        match = 'object is not iterable'
-        with pytest.raises(TypeError, match=match):
-            psfmodel._bilinear_interp(([1, 1]), 1, 1, 1)
-
-        # test if refxy points form a rectangle
-        xyref = [[0, 0], [0, 1], [1, 0], [2, 2]]
-        zref = np.ones((4, 4, 4))
-        match = 'The refxy points do not form a rectangle'
-        with pytest.raises(ValueError, match=match):
-            psfmodel._bilinear_interp(xyref, zref, 1, 1)
-
-        # test if xi and yi are outside of xyref
-        xyref = [[0, 0], [0, 1], [1, 0], [1, 1]]
-        zref = np.ones((4, 4, 4))
-        match = 'input is not within the rectangle defined by xyref'
-        with pytest.raises(ValueError, match=match):
-            psfmodel._bilinear_interp(xyref, zref, 100, 1)
-        with pytest.raises(ValueError, match=match):
-            psfmodel._bilinear_interp(xyref, zref, 1, 100)
-
-        # test non-scalar xi and yi
-        idx = [0, 1, 4, 5]
-        xyref = np.array(psfmodel.grid_xypos)[idx]
-        psfs = psfmodel.data[idx, :, :]
-        val1 = psfmodel._bilinear_interp(xyref, psfs, 10, 20)
-        val2 = psfmodel._bilinear_interp(xyref, psfs, [10], [20])
-        assert_allclose(val1, val2)
-
     def test_gridded_psf_model_invalid_inputs(self):
         data = np.ones((4, 5, 5))
 
@@ -132,6 +108,16 @@ class TestGriddedPSFModel:
         match = 'The NDData data attribute must be a 3D numpy ndarray'
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(NDData(np.ones((3, 3))))
+
+        match = 'The length of the PSF x and y axes must both be at least 4'
+        with pytest.raises(ValueError, match=match):
+            GriddedPSFModel(NDData(np.ones((3, 3, 3))))
+
+        match = 'All elements of input data must be finite'
+        data2 = np.ones((4, 5, 5))
+        data2[0, 2, 2] = np.nan
+        with pytest.raises(ValueError, match=match):
+            GriddedPSFModel(NDData(data2))
 
         # check that grid_xypos is in meta
         meta = {'oversampling': 4}
@@ -151,7 +137,7 @@ class TestGriddedPSFModel:
         meta = {'grid_xypos': [[0, 0], [1, 0], [1, 0], [3, 4]],
                 'oversampling': 4}
         nddata = NDData(data, meta=meta)
-        match = '"grid_xypos" must form a regular grid'
+        match = 'grid_xypos must form a rectangular grid'
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
@@ -168,29 +154,11 @@ class TestGriddedPSFModel:
         properties of the generated sources.
         """
         shape = (200, 200)
-        data = np.zeros(shape)
-        eval_xshape = (np.ceil(psfmodel.data.shape[2]
-                               / psfmodel.oversampling[1])).astype(int)
-        eval_yshape = (np.ceil(psfmodel.data.shape[1]
-                               / psfmodel.oversampling[0])).astype(int)
-
-        xx = [40, 50, 160, 160]
-        yy = [60, 150, 50, 140]
-        zz = [100, 100, 100, 100]
-        for xxi, yyi, zzi in zip(xx, yy, zz, strict=True):
-            x0 = np.floor(xxi - (eval_xshape - 1) / 2.0).astype(int)
-            y0 = np.floor(yyi - (eval_yshape - 1) / 2.0).astype(int)
-            x1 = x0 + eval_xshape
-            y1 = y0 + eval_yshape
-
-            x0 = max(x0, 0)
-            y0 = max(y0, 0)
-            x1 = min(x1, shape[1])
-            y1 = min(y1, shape[0])
-
-            y, x = np.mgrid[y0:y1, x0:x1]
-            data[y, x] += psfmodel.evaluate(x=x, y=y, flux=zzi, x_0=xxi,
-                                            y_0=yyi)
+        params = QTable()
+        params['x_0'] = [40, 50, 160, 160]
+        params['y_0'] = [60, 150, 50, 140]
+        params['flux'] = [100, 100, 100, 100]
+        data = make_model_image(shape, psfmodel, params)
 
         segm = detect_sources(data, 0.0, 5)
         cat = SourceCatalog(data, segm)
@@ -228,22 +196,6 @@ class TestGriddedPSFModel:
         new_model = model_copy.copy()
         assert new_model.x_0.fixed
         assert new_model.fixed == model_copy.fixed
-
-    def test_cache(self, psfmodel):
-        for x, y in psfmodel.grid_xypos:
-            psfmodel.x_0 = x
-            psfmodel.y_0 = y
-            psfmodel(0, 0)
-            psfmodel(1, 1)
-
-        assert psfmodel._cache_info().hits == 16
-        assert psfmodel._cache_info().misses == 16
-        assert psfmodel._cache_info().currsize == 16
-
-        psfmodel.clear_cache()
-        assert psfmodel._cache_info().hits == 0
-        assert psfmodel._cache_info().misses == 0
-        assert psfmodel._cache_info().currsize == 0
 
     def test_repr(self, psfmodel):
         model_repr = repr(psfmodel)

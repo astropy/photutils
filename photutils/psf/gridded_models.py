@@ -5,7 +5,6 @@ This module defines gridded PSF models.
 
 import copy
 import itertools
-from functools import lru_cache
 
 import numpy as np
 from astropy.io import registry
@@ -26,11 +25,17 @@ __doctest_skip__ = ['STDPSFGrid']
 
 class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     """
-    A fittable 2D model containing a grid ePSF models.
+    A model for a grid of 2D ePSF models.
 
     The ePSF models are defined at fiducial detector locations and are
     bilinearly interpolated to calculate an ePSF model at an arbitrary
-    (x, y) detector position.
+    (x, y) detector position. The fiducial detector locations are must
+    form a rectangular grid.
+
+    The model has three model parameters: an image intensity scaling
+    factor (``flux``) which is applied to the input image, and two
+    positional parameters (``x_0`` and ``y_0``) indicating the location
+    of a feature in the coordinate grid on which the model is evaluated.
 
     When evaluating this model, it cannot be called with x and y arrays
     that have greater than 2 dimensions.
@@ -41,30 +46,44 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         A `~astropy.nddata.NDData` object containing the grid of
         reference ePSF arrays. The data attribute must contain a 3D
         `~numpy.ndarray` containing a stack of the 2D ePSFs with a shape
-        of ``(N_psf, ePSF_ny, ePSF_nx)``.
+        of ``(N_psf, ePSF_ny, ePSF_nx)``. The length of the x and y axes
+        must both be at least 4. All elements of the input image data
+        must be finite. The PSF peak is assumed to be located at the
+        center of the input image. The array must be normalized so that
+        the total flux of a source is 1.0. This means that the sum of
+        the values in the input image PSF over an infinite grid is 1.0.
+        In practice, the sum of the data values in the input image may
+        be less than 1.0 if the input image only covers a finite region
+        of the PSF. These correction factors can be estimated from the
+        ensquared or encircled energy of the PSF based on the size of
+        the input image.
 
         The meta attribute must be dictionary containing the following:
 
             * ``'grid_xypos'``: A list of the (x, y) grid positions of
-              each reference ePSF. The order of positions should match the
-              first axis of the 3D `~numpy.ndarray` of ePSFs. In other
-              words, ``grid_xypos[i]`` should be the (x, y) position of
-              the reference ePSF defined in ``data[i]``.
+              each reference ePSF. The order of positions should
+              match the first axis of the 3D `~numpy.ndarray` of
+              ePSFs. In other words, ``grid_xypos[i]`` should be
+              the (x, y) position of the reference ePSF defined in
+              ``nddata.data[i]``. The grid positions must form a
+              rectangular grid.
 
             * ``'oversampling'``: The integer oversampling factor(s) of
-              the ePSF. If ``oversampling`` is a scalar then it will be
-              used for both axes. If ``oversampling`` has two elements,
-              they must be in ``(y, x)`` order.
+              the input ePSF images. If ``oversampling`` is a scalar then
+              it will be used for both axes. If ``oversampling`` has two
+              elements, they must be in ``(y, x)`` order.
 
         The meta attribute may contain other properties such as the
         telescope, instrument, detector, and filter of the ePSF.
 
     flux : float, optional
-        The flux scaling factor for the model. The default is 1.0.
+        The flux scaling factor for the model. This is the total flux
+        of the source, assuming the input ePSF images are properly
+        normalized.
 
     x_0, y_0 : float, optional
-        The (x, y) position in the output coordinate grid where the model
-        is evaluated. The default is (0, 0).
+        The (x, y) position of the PSF peak in the image in the output
+        coordinate grid on which the model is evaluated.
 
     fill_value : float, optional
         The value to use for points outside of the input pixel grid.
@@ -81,7 +100,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     Notes
     -----
     Internally, the grid of ePSFs will be arranged and stored such that
-    it is sorted first by y and then by x.
+    it is sorted first by the y reference pixel coordinate and then by
+    the x reference pixel coordinate.
     """
 
     flux = Parameter(description='Intensity scaling factor for the ePSF '
@@ -96,37 +116,39 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     def __init__(self, nddata, *, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, fill_value=0.0):
 
-        self._validate_data(nddata)
         self.data, self.grid_xypos = self._define_grid(nddata)
-        # use _meta to avoid the meta descriptor
-        self._meta = nddata.meta.copy()
+        self._meta = nddata.meta.copy()  # _meta to avoid the meta descriptor
         self.oversampling = as_pair('oversampling',
                                     nddata.meta['oversampling'],
                                     lower_bound=(0, 1))
-
         self.fill_value = fill_value
 
-        self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
-        self._xgrid = np.unique(self._grid_xpos)  # also sorts values
-        self._ygrid = np.unique(self._grid_ypos)  # also sorts values
+        self._xgrid = np.unique(self.grid_xypos[:, 0])  # sorted
+        self._ygrid = np.unique(self.grid_xypos[:, 1])  # sorted
         self.meta['grid_shape'] = (len(self._ygrid), len(self._xgrid))
-        if (len(list(itertools.product(self._xgrid, self._ygrid)))
-                != len(self.grid_xypos)):
-            raise ValueError('"grid_xypos" must form a regular grid.')
 
-        self._xidx = np.arange(self.data.shape[2], dtype=float)
-        self._yidx = np.arange(self.data.shape[1], dtype=float)
-
-        # Here we avoid decorating the instance method with @lru_cache
-        # to prevent memory leaks; we set maxsize=128 to prevent the
-        # cache from growing too large.
-        self._calc_interpolator = lru_cache(maxsize=128)(
-            self._calc_interpolator_uncached)
+        self._interpolator = {}
 
         super().__init__(flux, x_0, y_0)
 
     @staticmethod
     def _validate_data(data):
+        """
+        Validate the input ePSF data.
+
+        Parameters
+        ----------
+        data : `~astropy.nddata.NDData`
+            The input NDData object containing the ePSF data.
+
+        Raises
+        ------
+        TypeError
+            If the input data is not an NDData instance.
+        ValueError
+            If the input data is not a 3D numpy ndarray or if the input
+            data contains NaNs or infs.
+        """
         if not isinstance(data, NDData):
             raise TypeError('data must be an NDData instance.')
 
@@ -142,21 +164,63 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
             raise ValueError('The length of the PSF x and y axes must both '
                              'be at least 4.')
 
-        if 'grid_xypos' not in data.meta:
-            raise ValueError('"grid_xypos" must be in the nddata meta '
-                             'dictionary.')
-        if len(data.meta['grid_xypos']) != data.data.shape[0]:
-            raise ValueError('The length of grid_xypos must match the number '
-                             'of input ePSFs.')
-
         if 'oversampling' not in data.meta:
             raise ValueError('"oversampling" must be in the nddata meta '
                              'dictionary.')
 
+    @staticmethod
+    def _is_rectangular_grid(grid_xypos):
+        """
+        Check if the input ``grid_xypos`` forms a rectangular grid.
+
+        Parameters
+        ----------
+        grid_xypos : array of (x, y) pairs
+            The fiducial (x, y) positions of the ePSFs.
+
+        Returns
+        -------
+        result : bool
+            Returns `True` if the input ``grid_xypos`` forms a
+            rectangular grid.
+        """
+        xgrid = np.unique(grid_xypos[:, 0])  # sorted
+        ygrid = np.unique(grid_xypos[:, 1])  # sorted
+        expected_points = {(x, y) for x in xgrid for y in ygrid}
+        grid = set(map(tuple, grid_xypos))
+        return grid == expected_points
+
+    def _validate_grid(self, data):
+        """
+        Validate the input ePSF grid.
+
+        Parameters
+        ----------
+        data : `~astropy.nddata.NDData`
+            The input NDData object containing the ePSF data.
+
+        Raises
+        ------
+        ValueError
+            If the input grid_xypos does not form a rectangular grid.
+        """
+        try:
+            grid_xypos = np.array(data.meta['grid_xypos'])
+        except KeyError as exc:
+            raise ValueError('"grid_xypos" must be in the nddata meta '
+                             'dictionary.') from exc
+
+        if len(grid_xypos) != data.data.shape[0]:
+            raise ValueError('The length of grid_xypos must match the number '
+                             'of input ePSFs.')
+
+        if not self._is_rectangular_grid(grid_xypos):
+            raise ValueError('grid_xypos must form a rectangular grid.')
+
     def _define_grid(self, nddata):
         """
-        Sort the input ePSF data into a regular grid where the ePSFs are
-        sorted first by y and then by x.
+        Sort the input ePSF data into a rectangular grid where the ePSFs
+        are sorted first by y and then by x.
 
         Parameters
         ----------
@@ -171,13 +235,13 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
             The (x, y) positions of the ePSFs, sorted first by y and
             then by x.
         """
-        grid_xypos = np.array(nddata.meta['grid_xypos'])
-        # sort by y and then by x
-        idx = np.lexsort((grid_xypos[:, 0], grid_xypos[:, 1]))
-        grid_xypos = grid_xypos[idx]
-        data = nddata.data[idx]
+        self._validate_data(nddata)
+        self._validate_grid(nddata)
 
-        return data, grid_xypos
+        grid_xypos = np.array(nddata.meta['grid_xypos'])
+        # sort by y and then by x (last key is primary)
+        idx = np.lexsort((grid_xypos[:, 0], grid_xypos[:, 1]))
+        return nddata.data[idx], grid_xypos[idx]
 
     def _cls_info(self):
         cls_info = []
@@ -239,18 +303,6 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         """
         return copy.deepcopy(self)
 
-    def clear_cache(self):
-        """
-        Clear the internal cache.
-        """
-        self._calc_interpolator.cache_clear()
-
-    def _cache_info(self):
-        """
-        Return information about the internal cache.
-        """
-        return self._calc_interpolator.cache_info()
-
     def bounding_box(self):
         """
         Return a bounding box defining the limits of the model.
@@ -294,143 +346,6 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         return ((self.y_0 - dy, self.y_0 + dy),
                 (self.x_0 - dx, self.x_0 + dx))
 
-    @staticmethod
-    def _find_start_idx(data, x):
-        """
-        Find the index of the lower bound where ``x`` should be inserted
-        into ``a`` to maintain order.
-
-        The index of the upper bound is the index of the lower bound
-        plus 2. Both bound indices must be within the array.
-
-        Parameters
-        ----------
-        data : 1D `~numpy.ndarray`
-            The 1D array to search.
-
-        x : float
-            The value to insert.
-
-        Returns
-        -------
-        index : int
-            The index of the lower bound.
-        """
-        idx = np.searchsorted(data, x)
-        if idx == 0:
-            idx0 = 0
-        elif idx == len(data):  # pragma: no cover
-            idx0 = idx - 2
-        else:
-            idx0 = idx - 1
-        return idx0
-
-    def _find_bounding_points(self, x, y):
-        """
-        Find the indices of the grid points that bound the input ``(x,
-        y)`` position.
-
-        Parameters
-        ----------
-        x, y : float
-            The ``(x, y)`` position where the ePSF is to be evaluated.
-            The position must be inside the region defined by the grid
-            of ePSF positions.
-
-        Returns
-        -------
-        indices : list of int
-            A list of indices of the bounding grid points.
-        """
-        x0 = self._find_start_idx(self._xgrid, x)
-        y0 = self._find_start_idx(self._ygrid, y)
-        xypoints = list(itertools.product(self._xgrid[x0:x0 + 2],
-                                          self._ygrid[y0:y0 + 2]))
-
-        # find the grid_xypos indices of the reference xypoints
-        indices = []
-        for xx, yy in xypoints:
-            indices.append(np.argsort(np.hypot(self._grid_xpos - xx,
-                                               self._grid_ypos - yy))[0])
-
-        return indices
-
-    @staticmethod
-    def _bilinear_interp(xyref, zref, xi, yi):
-        """
-        Perform bilinear interpolation of four 2D arrays located at
-        points on a regular grid.
-
-        Parameters
-        ----------
-        xyref : list of 4 (x, y) pairs
-            A list of 4 ``(x, y)`` pairs that form a rectangle.
-
-        zref : 3D `~numpy.ndarray`
-            A 3D `~numpy.ndarray` of shape ``(4, nx, ny)``. The first
-            axis corresponds to ``xyref``, i.e., ``refdata[0, :, :]`` is
-            the 2D array located at ``xyref[0]``.
-
-        xi, yi : float
-            The ``(xi, yi)`` point at which to perform the
-            interpolation. The ``(xi, yi)`` point must lie within the
-            rectangle defined by ``xyref``.
-
-        Returns
-        -------
-        result : 2D `~numpy.ndarray`
-            The 2D interpolated array.
-        """
-        xyref = [tuple(i) for i in xyref]
-        idx = sorted(range(len(xyref)), key=xyref.__getitem__)
-        xyref = sorted(xyref)  # sort by x, then y
-        (x0, y0), (_x0, y1), (x1, _y0), (_x1, _y1) = xyref
-
-        if x0 != _x0 or x1 != _x1 or y0 != _y0 or y1 != _y1:
-            raise ValueError('The refxy points do not form a rectangle.')
-
-        if not np.isscalar(xi):
-            xi = xi[0]
-        if not np.isscalar(yi):
-            yi = yi[0]
-
-        if not x0 <= xi <= x1 or not y0 <= yi <= y1:
-            raise ValueError('The (x, y) input is not within the rectangle '
-                             'defined by xyref.')
-
-        data = np.asarray(zref)[idx]
-        weights = np.array([(x1 - xi) * (y1 - yi), (x1 - xi) * (yi - y0),
-                            (xi - x0) * (y1 - yi), (xi - x0) * (yi - y0)])
-        norm = (x1 - x0) * (y1 - y0)
-
-        return np.sum(data * weights[:, None, None], axis=0) / norm
-
-    def _calc_interpolator_uncached(self, x_0, y_0):
-        """
-        Return the local interpolation function for the ePSF model at
-        (x_0, y_0).
-
-        Note that the interpolator will be cached by _calc_interpolator.
-        It can be cleared by calling the clear_cache method.
-        """
-        if (x_0 < self._xgrid[0] or x_0 > self._xgrid[-1]
-                or y_0 < self._ygrid[0] or y_0 > self._ygrid[-1]):
-            # position is outside of the grid, so simply use the
-            # closest reference ePSF
-            ref_index = np.argsort(np.hypot(self._grid_xpos - x_0,
-                                            self._grid_ypos - y_0))[0]
-            psf_image = self.data[ref_index, :, :]
-        else:
-            # find the four bounding reference ePSFs and interpolate
-            ref_indices = self._find_bounding_points(x_0, y_0)
-            xyref = self.grid_xypos[ref_indices]
-            psfs = self.data[ref_indices, :, :]
-
-            psf_image = self._bilinear_interp(xyref, psfs, x_0, y_0)
-
-        return RectBivariateSpline(self._xidx, self._yidx, psf_image.T,
-                                   kx=3, ky=3, s=0)
-
     @lazyproperty
     def origin(self):
         """
@@ -440,9 +355,154 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         xyorigin = (np.array(self.data.shape) - 1) / 2
         return xyorigin[::-1]
 
+    @lazyproperty
+    def _interp_xyidx(self):
+        """
+        The x and y indices for the interpolator.
+        """
+        xidx = np.arange(self.data.shape[2])
+        yidx = np.arange(self.data.shape[1])
+        return xidx, yidx
+
+    def _calc_interpolator(self, grid_idx):
+        """
+        Calculate the `~scipy.interpolate.RectBivariateSpline`
+        interpolator for an input ePSF image at the given reference (x,
+        y) position.
+
+        The resulting interpolator is cached in the `_interpolator`
+        dictionary for reuse.
+        """
+        xypos = tuple(self.grid_xypos[grid_idx])
+        if xypos in self._interpolator:
+            return self._interpolator[xypos]
+
+        # RectBivariateSpline expects the data to be in (x, y) axis order
+        data = self.data[grid_idx]
+        interp = RectBivariateSpline(*self._interp_xyidx, data.T, kx=3, ky=3,
+                                     s=0)
+        self._interpolator[xypos] = interp
+        return interp
+
+    def _find_bounding_points(self, x, y):
+        """
+        Find the grid indices and reference (x, y) points of the four
+        bounding grid points for a given (x, y) coordinate.
+
+        If the point is outside the grid, the nearest grid points are
+        selected. The input grid points do not need to be sorted.
+
+        Parameters
+        ----------
+        x, y : float
+            The (x_0, y_0) position of the model.
+
+        Returns
+        -------
+        grid_idx : `~numpy.ndarray`
+            The indices of the four bounding points in the sorted
+            grid. The order is lower-left, lower-right, upper-left,
+            upper-right.
+        grid_xy : `~numpy.ndarray`
+            The x and y coordinates of the four bounding points. The
+            order is left, right, bottom, top.
+        """
+        # Find the insertion indices for x and y in the sorted grids
+        xidx = np.searchsorted(self._xgrid, x) - 1
+        yidx = np.searchsorted(self._ygrid, y) - 1
+
+        # Clip the indices to valid ranges
+        xidx = np.clip(xidx, 0, len(self._xgrid) - 2)
+        yidx = np.clip(yidx, 0, len(self._ygrid) - 2)
+
+        # Find the four bounding points in the sorted grid
+        # (x0, y0) is the lower-left corner of the grid
+        # (x1, y1) is the upper-right corner of the grid
+        x0, x1 = self._xgrid[xidx], self._xgrid[xidx + 1]
+        y0, y1 = self._ygrid[yidx], self._ygrid[yidx + 1]
+
+        # Find the indices of these points in grid_xypos
+        xcoords, ycoords = self.grid_xypos.T
+        lower_left = np.where((xcoords == x0) & (ycoords == y0))[0][0]
+        lower_right = np.where((xcoords == x1) & (ycoords == y0))[0][0]
+        upper_left = np.where((xcoords == x0) & (ycoords == y1))[0][0]
+        upper_right = np.where((xcoords == x1) & (ycoords == y1))[0][0]
+
+        grid_idx = np.array((lower_left, lower_right, upper_left, upper_right))
+        grid_xy = np.array((x0, x1, y0, y1))
+
+        return grid_idx, grid_xy
+
+    def _calc_bilinear_weights(self, xi, yi, grid_xy):
+        """
+        Calculate the bilinear interpolation weights for a given (xi,
+        yi) coordinate and the four bounding grid points.
+
+        Parameters
+        ----------
+        xi, yi : float
+            The (x_0, y_0) position of the model.
+
+        grid_xy : `~numpy.ndarray`
+            The x and y coordinates of the four bounding points. The
+            order is left, right, bottom, top.
+
+        Returns
+        -------
+        weights : `~numpy.ndarray`
+            The bilinear interpolation weights for the four bounding
+            points. The order is lower-left, lower-right, upper-left,
+            upper-right.
+        """
+        x0, x1, y0, y1 = grid_xy
+
+        xi = np.clip(xi, x0, x1)
+        yi = np.clip(yi, y0, y1)
+
+        norm = (x1 - x0) * (y1 - y0)
+        # lower-left, lower-right, upper-left, upper-right
+        return np.array([(x1 - xi) * (y1 - yi), (xi - x0) * (y1 - yi),
+                         (x1 - xi) * (yi - y0), (xi - x0) * (yi - y0)]) / norm
+
+    def _calc_model_values(self, x_0, y_0, xi, yi):
+        """
+        Calculate the ePSF model at a given (x_0, y_0) model coordinate
+        and the input (xi, yi) coordinate.
+
+        Parameters
+        ----------
+        x_0, y_0 : float
+            The (x, y) position of the model.
+
+        xi, yi : float
+            The input (x, y) coordinates at which the model is
+            evaluated.
+
+        Returns
+        -------
+        result : float or `~numpy.ndarray`
+            The interpolated ePSF model at the input (x_0, y_0)
+            coordinate.
+        """
+        grid_idx, grid_xy = self._find_bounding_points(x_0, y_0)
+        interpolators = np.array([self._calc_interpolator(gidx)
+                                  for gidx in grid_idx])
+        weights = self._calc_bilinear_weights(x_0, y_0, grid_xy)
+
+        idx = np.where(weights != 0)
+        interpolators = interpolators[idx]
+        weights = weights[idx]
+
+        result = 0
+        for interp, weight in zip(interpolators, weights, strict=True):
+            result += interp(xi, yi, grid=False) * weight
+
+        return result
+
     def evaluate(self, x, y, flux, x_0, y_0):
         """
-        Evaluate the `GriddedPSFModel` for the input parameters.
+        Calculate the ePSF model at the input coordinates for the given
+        model parameters.
 
         Parameters
         ----------
@@ -463,19 +523,13 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         if x.ndim > 2:
             raise ValueError('x and y must be 1D or 2D.')
 
-        # NOTE: the astropy base Model.__call__() method converts scalar
-        # inputs to size-1 arrays before calling evaluate().
-        if not np.isscalar(flux):
-            flux = flux[0]
+        # the base Model.__call__() method converts scalar inputs to
+        # size-1 arrays before calling evaluate(), but we need scalar
+        # values for the interpolator
         if not np.isscalar(x_0):
             x_0 = x_0[0]
         if not np.isscalar(y_0):
             y_0 = y_0[0]
-
-        # Calculate the local interpolation function for the ePSF at
-        # (x_0, y_0). Only the integer part of the position is input in
-        # order to have effective caching.
-        interpolator = self._calc_interpolator(int(x_0), int(y_0))
 
         # now evaluate the ePSF at the (x_0, y_0) subpixel position on
         # the input (x, y) values
@@ -484,7 +538,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         xi += self.origin[0]
         yi += self.origin[1]
 
-        evaluated_model = flux * interpolator(xi, yi, grid=False)
+        evaluated_model = flux * self._calc_model_values(x_0, y_0, xi, yi)
 
         if self.fill_value is not None:
             # set pixels that are outside the input pixel grid to the
