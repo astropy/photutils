@@ -99,6 +99,10 @@ New Features
   - The ``GriddedPSFModel`` model now has a ``bounding_box`` method to
     return the bounding box of the model. [#1891]
 
+  - The ``GriddedPSFModel`` class has been refactored to significantly
+    improve its performance. In typical PSF photometry use cases, it is
+    now about 4 times faster than previous versions. [#1903]
+
 Bug Fixes
 ^^^^^^^^^
 
