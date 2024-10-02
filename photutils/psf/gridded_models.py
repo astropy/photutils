@@ -118,9 +118,9 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         self.data, self.grid_xypos = self._define_grid(nddata)
         self._meta = nddata.meta.copy()  # _meta to avoid the meta descriptor
-        self.oversampling = as_pair('oversampling',
-                                    nddata.meta['oversampling'],
-                                    lower_bound=(0, 1))
+        self._oversampling = as_pair('oversampling',
+                                     nddata.meta['oversampling'],
+                                     lower_bound=(0, 1))
         self.fill_value = fill_value
 
         self._xgrid = np.unique(self.grid_xypos[:, 0])  # sorted
@@ -130,6 +130,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         self._interpolator = {}
 
         super().__init__(flux, x_0, y_0)
+        self.set_bounding_box()
 
     @staticmethod
     def _validate_data(data):
@@ -303,9 +304,36 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         """
         return copy.deepcopy(self)
 
-    def bounding_box(self):
+    @property
+    def oversampling(self):
         """
-        Return a bounding box defining the limits of the model.
+        The integer oversampling factor(s) of the input ePSF images.
+
+        If ``oversampling`` is a scalar then it will be used for both
+        axes. If ``oversampling`` has two elements, they must be in
+        ``(y, x)`` order.
+        """
+        return self._oversampling
+
+    @oversampling.setter
+    def oversampling(self, value):
+        """
+        Set the oversampling factor(s) of the input ePSF images.
+
+        Parameters
+        ----------
+        value : int or tuple of int
+            The integer oversampling factor(s) of the input ePSF images.
+            If ``oversampling`` is a scalar then it will be used for both
+            axes. If ``oversampling`` has two elements, they must be in
+            ``(y, x)`` order.
+        """
+        self._oversampling = as_pair('oversampling', value, lower_bound=(0, 1))
+        self.set_bounding_box()
+
+    def set_bounding_box(self):
+        """
+        Set a bounding box defining the limits of the model.
 
         Returns
         -------
@@ -343,8 +371,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         )
         """
         dy, dx = np.array(self.data.shape[1:]) / 2 / self.oversampling
-        return ((self.y_0 - dy, self.y_0 + dy),
-                (self.x_0 - dx, self.x_0 + dx))
+        bbox = ((self.y_0 - dy, self.y_0 + dy), (self.x_0 - dx, self.x_0 + dx))
+        self.bounding_box = bbox
 
     @lazyproperty
     def origin(self):
