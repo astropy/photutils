@@ -19,7 +19,8 @@ General
 - The minimum required GWCS is now 0.19. [#1881]
 
 - Importing tools from all subpackages now requires including the
-  subpackage name. [#1879]
+  subpackage name. Also, PSF matching tools must now be imported from
+  ``photutils.psf.matching`` instead of ``photutils.psf``. [#1879, #1904]
 
 New Features
 ^^^^^^^^^^^^
@@ -248,6 +249,11 @@ API Changes
     ``LevMarLSQFitter`` to ``TRFLSQFitter``. ``LevMarLSQFitter`` uses
     the legacy SciPy function ``scipy.optimize.leastsq``, which is no
     longer recommended. [#1899]
+
+- ``photutils.psf.matching``
+
+  - PSF matching tools must now be imported from
+    ``photutils.psf.matching`` instead of ``photutils.psf``. [#1904]
 
 - ``photutils.segmentation``
 

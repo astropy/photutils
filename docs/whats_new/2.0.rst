@@ -15,7 +15,8 @@ Imports
 
 Importing tools from all subpackages now requires including the
 subpackage name. These deprecations were introduced in version 1.6.0
-(2022-12-09).
+(2022-12-09). Also, PSF matching tools must now be imported from
+``photutils.psf.matching`` instead of ``photutils.psf``
 
 For example, this is no longer allowed: ``from photutils import
 CircularAperture``. Instead use this: ``from photutils.aperture import

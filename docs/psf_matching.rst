@@ -38,7 +38,7 @@ with :math:`\sigma=4` (``sqrt(5**2 - 3**2)``).  Let's create the
 matching kernel using a Fourier ratio method.  Note that the input
 source and target PSFs must have the same shape and pixel scale::
 
-    >>> from photutils.psf import create_matching_kernel
+    >>> from photutils.psf.matching import create_matching_kernel
     >>> kernel = create_matching_kernel(g1, g2)
 
 Let's plot the result:
@@ -48,7 +48,7 @@ Let's plot the result:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.psf import create_matching_kernel
+    from photutils.psf.matching import create_matching_kernel
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -86,9 +86,9 @@ functions:
 .. plot::
 
     import matplotlib.pyplot as plt
-    from photutils.psf import (CosineBellWindow, HanningWindow,
-                               SplitCosineBellWindow, TopHatWindow,
-                               TukeyWindow)
+    from photutils.psf.matching import (CosineBellWindow, HanningWindow,
+                                        SplitCosineBellWindow, TopHatWindow,
+                                        TukeyWindow)
 
     w1 = HanningWindow()
     w2 = TukeyWindow(alpha=0.5)
@@ -138,7 +138,7 @@ generate a custom window function.
 In this example, because these are noiseless PSFs, we will use a
 `~photutils.psf.matching.TopHatWindow` object as the low-pass filter::
 
-    >>> from photutils.psf import TopHatWindow
+    >>> from photutils.psf.matching import TopHatWindow
     >>> window = TopHatWindow(0.35)
     >>> kernel = create_matching_kernel(g1, g2, window=window)
 
@@ -156,7 +156,7 @@ Let's display the new matching kernel:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.psf import TopHatWindow, create_matching_kernel
+    from photutils.psf.matching import TopHatWindow, create_matching_kernel
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -180,7 +180,7 @@ kernel images:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.psf import TopHatWindow, create_matching_kernel
+    from photutils.psf.matching import TopHatWindow, create_matching_kernel
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -253,7 +253,8 @@ lower-resolution PSF to the same size as the higher-resolution PSF.
 
 .. doctest-skip::
 
-    >>> from photutils.psf import CosineBellWindow, create_matching_kernel
+    >>> from photutils.psf.matching import (CosineBellWindow,
+    ...                                     create_matching_kernel)
     >>> window = CosineBellWindow(alpha=0.35)
     >>> kernel = create_matching_kernel(ch1, ch4, window=window)
 
@@ -265,7 +266,7 @@ Let's display the matching kernel result:
     from astropy.visualization import LogStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import load_irac_psf
-    from photutils.psf import CosineBellWindow, create_matching_kernel
+    from photutils.psf.matching import CosineBellWindow, create_matching_kernel
 
     ch1_hdu = load_irac_psf(channel=1)
     ch4_hdu = load_irac_psf(channel=4)
