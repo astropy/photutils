@@ -1,4 +1,4 @@
-# astropy.modeling.Model
+# these are needed if photutils.psf automodapi uses ":inherited-members:"
 py:class CompoundModel
 py:class Model
 py:obj CompoundModel
