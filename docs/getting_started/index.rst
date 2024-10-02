@@ -9,6 +9,7 @@ Getting Started
 
     install
     overview
+    importing
     pixel_conventions
     citation
     contributing

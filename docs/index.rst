@@ -5,12 +5,13 @@
 
     <div style="min-height:0.1em;"></div>
 
+
 *********
 Photutils
 *********
 
 | **Version**: |release| -- **Date**: |today|
-| :ref:`whatsnew-2.0`
+| Useful links: :doc:`getting_started/install` | :ref:`whatsnew-2.0`
 
 **Photutils** is a Python library that provides commonly-used tools
 and key functionality for detecting and performing photometry of
