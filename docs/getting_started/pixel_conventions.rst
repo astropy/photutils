@@ -1,5 +1,5 @@
 Pixel Coordinate Conventions
-----------------------------
+============================
 
 In Photutils, integer pixel coordinates fall at the center of pixels,
 and they are 0-indexed, matching the Python 0-based indexing. That means

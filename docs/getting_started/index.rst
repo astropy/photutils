@@ -8,7 +8,8 @@ Getting Started
     :maxdepth: 1
 
     install
+    ../whats_new/2.0
     overview
     pixel_conventions
-    getting_started
     citation
+    contributors

@@ -4,7 +4,7 @@ Overview
 Introduction
 ------------
 
-Photutils contains functions for:
+Photutils contains tools for:
 
 * performing aperture photometry
 
@@ -30,6 +30,10 @@ Photutils contains functions for:
 
 * estimating the limiting depths of images
 
+* fitting elliptical isophotes to galaxies
+
+* creating simulated astronomical images
+
 The code and issue tracker are available at the following links:
 
 * Code: https://github.com/astropy/photutils
@@ -40,10 +44,3 @@ developers try to maintain backwards compatibility, but at times the
 API may change if there is a benefit to doing so. If there are specific
 areas you think API stability is important, please let us know as part
 of the development process.
-
-Contributors
-------------
-
-For the complete list of contributors please see the `Photutils
-contributors page on GitHub
-<https://github.com/astropy/photutils/graphs/contributors>`_.
