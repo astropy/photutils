@@ -27,7 +27,7 @@ for astronomical image analysis.
 
     If you use Photutils for a project that leads to a publication,
     whether directly or as a dependency of another package, please
-    include an :doc:`acknowledgment and/or citation <citation>`.
+    include an :ref:`acknowledgment and/or citation <citation>`.
 
 |br|
 

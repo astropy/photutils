@@ -6,10 +6,11 @@
 What's New in Photutils 2.0?
 ****************************
 
-Here we highlight some of the new functionality of the 2.0 release.
-In addition to these changes, Photutils 2.0 includes a large number
-of smaller improvements and bug fixes, which are described in the full
-:ref:`changelog`.
+Photutils 2.0 is a major release that adds significant new functionality
+and improvements to the package. Here we highlight some of the new
+functionality of the 2.0 release. In addition to these changes,
+Photutils 2.0 includes a large number of smaller improvements and bug
+fixes, which are described in the full :ref:`changelog`.
 
 
 Imports

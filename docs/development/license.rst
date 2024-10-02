@@ -5,4 +5,4 @@ License
 
 Photutils is licensed under a 3-clause BSD license:
 
-.. include:: ../LICENSE.rst
+.. include:: ../../LICENSE.rst
