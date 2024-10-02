@@ -95,6 +95,4 @@ approximate isophotal ellipse for the source:
 API Reference
 -------------
 
-.. automodapi:: photutils.morphology
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/morphology_api`

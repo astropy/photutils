@@ -267,9 +267,7 @@ And let's plot the location of the detected peaks in the image:
 API Reference
 -------------
 
-.. automodapi:: photutils.detection
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/detection_api`
 
 
 .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind

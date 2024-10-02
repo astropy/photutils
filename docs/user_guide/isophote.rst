@@ -256,9 +256,7 @@ advanced usage are available online:
 API Reference
 -------------
 
-.. automodapi:: photutils.isophote
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/isophote_api`
 
 
 .. toctree::

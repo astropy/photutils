@@ -914,6 +914,4 @@ They may also optionally define an ``area`` property.  All
 API Reference
 -------------
 
-.. automodapi:: photutils.aperture
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/aperture_api`

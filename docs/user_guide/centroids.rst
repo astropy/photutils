@@ -196,6 +196,4 @@ Let's plot the results:
 API Reference
 -------------
 
-.. automodapi:: photutils.centroids
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/centroids_api`

@@ -11,6 +11,4 @@ used mainly by `~photutils.aperture.aperture_photometry`.
 API Reference
 -------------
 
-.. automodapi:: photutils.geometry
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/geometry_api`

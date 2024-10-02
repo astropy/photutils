@@ -57,9 +57,7 @@ Let's plot the image:
 API Reference
 -------------
 
-.. automodapi:: photutils.datasets
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/datasets_api`
 
 
 .. _astropy-data: https://github.com/astropy/astropy-data/

@@ -849,6 +849,4 @@ documentation for more details and examples.
 API Reference
 -------------
 
-.. automodapi:: photutils.psf
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/psf_api`

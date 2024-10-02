@@ -425,6 +425,4 @@ bins)::
 API Reference
 -------------
 
-.. automodapi:: photutils.profiles
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/profiles_api`

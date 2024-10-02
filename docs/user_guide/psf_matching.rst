@@ -289,9 +289,7 @@ channel-4 image.
 API Reference
 -------------
 
-.. automodapi:: photutils.psf.matching
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/psf_matching_api`
 
 
 .. _Gordon et al. 2008:  https://ui.adsabs.harvard.edu/abs/2008ApJ...682..336G/abstract

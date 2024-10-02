@@ -516,6 +516,4 @@ Meshes without a center marker were excluded.
 API Reference
 -------------
 
-.. automodapi:: photutils.background
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/background_api`

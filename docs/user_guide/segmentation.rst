@@ -588,9 +588,8 @@ photometry is *always* performed on the unfiltered ``data``.
 
 API Reference
 -------------
-.. automodapi:: photutils.segmentation
-    :no-heading:
-    :inherited-members:
+
+:doc:`../reference/segmentation_api`
 
 
 .. _SourceExtractor:  https://sextractor.readthedocs.io/en/latest/

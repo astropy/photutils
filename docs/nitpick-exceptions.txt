@@ -1,2 +1,9 @@
 # astropy.modeling.Model
-py:class astropy.modeling.Model
+py:class CompoundModel
+py:class Model
+py:obj CompoundModel
+py:obj Model.evaluate
+py:obj Model.inputs
+py:obj Model.outputs
+py:obj Model.bounding_box
+py:obj custom_model
