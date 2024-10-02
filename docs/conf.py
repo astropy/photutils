@@ -199,7 +199,6 @@ github_issues_url = f'https://github.com/{github_project}/issues/'
 
 # -- Turn on nitpicky mode for sphinx (to warn about references not found) ----
 nitpicky = True
-nitpick_ignore = [('py:obj', 'Model.*')]
 
 # Some warnings are impossible to suppress, and you can list specific
 # references that should be ignored in a nitpick-exceptions file which
@@ -214,6 +213,7 @@ nitpick_ignore = [('py:obj', 'Model.*')]
 # py:class astropy.io.votable.tree.SimpleElementWithContent
 #
 # Uncomment the following lines to enable the exceptions:
+nitpick_ignore = []
 nitpick_filename = 'nitpick-exceptions.txt'
 if os.path.isfile(nitpick_filename):
     with open(nitpick_filename) as fh:

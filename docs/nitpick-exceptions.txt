@@ -1,0 +1,2 @@
+# astropy.modeling.Model
+py:class astropy.modeling.Model
