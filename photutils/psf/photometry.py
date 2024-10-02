@@ -1276,29 +1276,28 @@ class PSFPhotometry(ModelImageMixin):
             ``localbkg_estimator`` or input in a ``local_bkg`` column)
             The allowed column names are:
 
-              * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
-                ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
-                ``x_cen``, ``xpos``, ``x_pos``, ``x_fit``, and ``xfit``.
+            * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
+              ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
+              ``x_cen``, ``xpos``, ``x_pos``, ``x_fit``, and ``xfit``.
 
-              * ``y_init``, ``yinit``, ``y``, ``y_0``, ``y0``,
-                ``ycentroid``, ``y_centroid``, ``y_peak``, ``ycen``,
-                ``y_cen``, ``ypos``, ``y_pos``, ``y_fit``, and ``yfit``.
+            * ``y_init``, ``yinit``, ``y``, ``y_0``, ``y0``,
+              ``ycentroid``, ``y_centroid``, ``y_peak``, ``ycen``,
+              ``y_cen``, ``ypos``, ``y_pos``, ``y_fit``, and ``yfit``.
 
-              * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
-                ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
-                ``segment_flux``, and ``kron_flux``.
+            * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
+              ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
+              ``segment_flux``, and ``kron_flux``.
 
-              * If the PSF model has additional free parameters that are
-                fit, they can be included in the table. The column
-                names must match the parameter names in the PSF model.
-                They can also be suffixed with either the "_init" or
-                "_fit" suffix. The suffix search order is "_init", ""
-                (no suffix), and "_fit". For example, if the PSF model
-                has an additional parameter named "sigma", then the
-                allowed column names are: "sigma_init", "sigma", and
-                "sigma_fit". If the column name is not found in the
-                table, then the default value from the PSF model will be
-                used.
+            * If the PSF model has additional free parameters that are
+              fit, they can be included in the table. The column names
+              must match the parameter names in the PSF model. They can
+              also be suffixed with either the "_init" or "_fit" suffix.
+              The suffix search order is "_init", "" (no suffix), and
+              "_fit". For example, if the PSF model has an additional
+              parameter named "sigma", then the allowed column names are:
+              "sigma_init", "sigma", and "sigma_fit". If the column name
+              is not found in the table, then the default value from the
+              PSF model will be used.
 
             The parameter names are searched in the input table in the
             above order, stopping at the first match.
@@ -1321,39 +1320,39 @@ class PSFPhotometry(ModelImageMixin):
             An astropy table with the PSF-fitting results. The table
             will contain the following columns:
 
-              * ``id`` : unique identification number for the source
-              * ``group_id`` : unique identification number for the
-                source group
-              * ``group_size`` : the total number of sources that were
-                simultaneously fit along with the given source
-              * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
-                error of the source x center
-              * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit, and
-                error of the source y center
-              * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
-                fit, and error of the source flux
-              * ``npixfit`` : the number of unmasked pixels used to fit
-                the source
-              * ``qfit`` : a quality-of-fit metric defined as the
-                absolute value of the sum of the fit residuals divided by
-                the fit flux
-              * ``cfit`` : a quality-of-fit metric defined as the
-                fit residual in the initial central pixel value divided by
-                the fit flux. NaN values indicate that the central pixel
-                was masked.
-              * ``flags`` : bitwise flag values
+            * ``id`` : unique identification number for the source
+            * ``group_id`` : unique identification number for the
+              source group
+            * ``group_size`` : the total number of sources that were
+              simultaneously fit along with the given source
+            * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
+              error of the source x center
+            * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit, and
+              error of the source y center
+            * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
+              fit, and error of the source flux
+            * ``npixfit`` : the number of unmasked pixels used to fit
+              the source
+            * ``qfit`` : a quality-of-fit metric defined as the
+              absolute value of the sum of the fit residuals divided by
+              the fit flux
+            * ``cfit`` : a quality-of-fit metric defined as the
+              fit residual in the initial central pixel value divided by
+              the fit flux. NaN values indicate that the central pixel
+              was masked.
+            * ``flags`` : bitwise flag values
 
-                  * 1 : one or more pixels in the ``fit_shape`` region
-                    were masked
-                  * 2 : the fit x and/or y position lies outside of the
-                    input data
-                  * 4 : the fit flux is less than or equal to zero
-                  * 8 : the fitter may not have converged. In this case,
-                    you can try increasing the maximum number of fit
-                    iterations using the ``fitter_maxiters`` keyword.
-                  * 16 : the fitter parameter covariance matrix was not
-                    returned
-                  * 32 : the fit x or y position is at the bounded value
+              - 1 : one or more pixels in the ``fit_shape`` region
+                were masked
+              - 2 : the fit x and/or y position lies outside of the
+                input data
+              - 4 : the fit flux is less than or equal to zero
+              - 8 : the fitter may not have converged. In this case,
+                you can try increasing the maximum number of fit
+                iterations using the ``fitter_maxiters`` keyword.
+              - 16 : the fitter parameter covariance matrix was not
+                returned
+              - 32 : the fit x or y position is at the bounded value
         """
         if isinstance(data, NDData):
             data_ = data.data
@@ -1802,30 +1801,30 @@ class IterativePSFPhotometry(ModelImageMixin):
             using ``localbkg_estimator`` or input in a ``local_bkg``
             column) The allowed column names are:
 
-              * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
-                ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
-                ``x_cen``, ``xpos``, ``x_pos``, ``x_fit``, and ``xfit``.
+            * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
+              ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
+              ``x_cen``, ``xpos``, ``x_pos``, ``x_fit``, and ``xfit``.
 
-              * ``y_init``, ``yinit``, ``y``, ``y_0``, ``y0``,
-                ``ycentroid``, ``y_centroid``, ``y_peak``, ``ycen``,
-                ``y_cen``, ``ypos``, ``y_pos``, ``y_fit``, and ``yfit``.
+            * ``y_init``, ``yinit``, ``y``, ``y_0``, ``y0``,
+              ``ycentroid``, ``y_centroid``, ``y_peak``, ``ycen``,
+              ``y_cen``, ``ypos``, ``y_pos``, ``y_fit``, and ``yfit``.
 
-              * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
-                ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
-                ``segment_flux``, and ``kron_flux``.
+            * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
+              ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
+              ``segment_flux``, and ``kron_flux``.
 
-              * If the PSF model has additional free parameters that are
-                fit, they can be included in the table. The column
-                names must match the parameter names in the PSF model.
-                They can also be suffixed with either the "_init" or
-                "_fit" suffix. The suffix search order is "_init", ""
-                (no suffix), and "_fit". For example, if the PSF model
-                has an additional parameter named "sigma", then the
-                allowed column names are: "sigma_init", "sigma", and
-                "sigma_fit". If the column name is not found in the
-                table, then the default value from the PSF model will be
-                used. The default values from the PSF model will also be
-                used for all iterations after the first.
+            * If the PSF model has additional free parameters that are
+              fit, they can be included in the table. The column
+              names must match the parameter names in the PSF model.
+              They can also be suffixed with either the "_init" or
+              "_fit" suffix. The suffix search order is "_init", ""
+              (no suffix), and "_fit". For example, if the PSF model
+              has an additional parameter named "sigma", then the
+              allowed column names are: "sigma_init", "sigma", and
+              "sigma_fit". If the column name is not found in the
+              table, then the default value from the PSF model will be
+              used. The default values from the PSF model will also be
+              used for all iterations after the first.
 
             The parameter names are searched in the input table in the
             above order, stopping at the first match.
@@ -1840,41 +1839,41 @@ class IterativePSFPhotometry(ModelImageMixin):
             An astropy table with the PSF-fitting results. The table
             will contain the following columns:
 
-              * ``id`` : unique identification number for the source
-              * ``group_id`` : unique identification number for the
-                source group
-              * ``group_size`` : the total number of sources that were
-                simultaneously fit along with the given source
-              * ``iter_detected`` : the iteration number in which the
-                source was detected
-              * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
-                error of the source x center
-              * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit, and
-                error of the source y center
-              * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
-                fit, and error of the source flux
-              * ``npixfit`` : the number of unmasked pixels used to fit
-                the source
-              * ``qfit`` : a quality-of-fit metric defined as the
-                absolute value of the sum of the fit residuals divided by
-                the fit flux
-              * ``cfit`` : a quality-of-fit metric defined as the
-                fit residual in the initial central pixel value divided by
-                the fit flux. NaN values indicate that the central pixel
-                was masked.
-              * ``flags`` : bitwise flag values
+            * ``id`` : unique identification number for the source
+            * ``group_id`` : unique identification number for the
+              source group
+            * ``group_size`` : the total number of sources that were
+              simultaneously fit along with the given source
+            * ``iter_detected`` : the iteration number in which the
+              source was detected
+            * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
+              error of the source x center
+            * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit, and
+              error of the source y center
+            * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
+              fit, and error of the source flux
+            * ``npixfit`` : the number of unmasked pixels used to fit
+              the source
+            * ``qfit`` : a quality-of-fit metric defined as the
+              absolute value of the sum of the fit residuals divided by
+              the fit flux
+            * ``cfit`` : a quality-of-fit metric defined as the
+              fit residual in the initial central pixel value divided by
+              the fit flux. NaN values indicate that the central pixel
+              was masked.
+            * ``flags`` : bitwise flag values
 
-                  * 1 : one or more pixels in the ``fit_shape`` region
-                    were masked
-                  * 2 : the fit x and/or y position lies outside of the
-                    input data
-                  * 4 : the fit flux is less than or equal to zero
-                  * 8 : the fitter may not have converged. In this case,
-                    you can try increasing the maximum number of fit
-                    iterations using the ``fitter_maxiters`` keyword.
-                  * 16 : the fitter parameter covariance matrix was not
-                    returned
-                  * 32 : the fit x or y position is at the bounded value
+              - 1 : one or more pixels in the ``fit_shape`` region
+                were masked
+              - 2 : the fit x and/or y position lies outside of the
+                input data
+              - 4 : the fit flux is less than or equal to zero
+              - 8 : the fitter may not have converged. In this case,
+                you can try increasing the maximum number of fit
+                iterations using the ``fitter_maxiters`` keyword.
+              - 16 : the fitter parameter covariance matrix was not
+                returned
+              - 32 : the fit x or y position is at the bounded value
         """
         if isinstance(data, NDData):
             data_ = data.data
