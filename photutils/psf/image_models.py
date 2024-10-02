@@ -134,6 +134,7 @@ class ImagePSF(Fittable2DModel):
         self.fill_value = fill_value
 
         super().__init__(flux, x_0, y_0, **kwargs)
+        self.set_bounding_box()
 
     @staticmethod
     def _validate_data(data):
@@ -253,9 +254,9 @@ class ImagePSF(Fittable2DModel):
         # RectBivariateSpline expects the data to be in (x, y) axis order
         return RectBivariateSpline(x, y, self.data.T, kx=3, ky=3, s=0)
 
-    def bounding_box(self):
+    def set_bounding_box(self):
         """
-        Return a bounding box defining the limits of the model.
+        Set a bounding box defining the limits of the model.
 
         Returns
         -------
@@ -288,8 +289,9 @@ class ImagePSF(Fittable2DModel):
         xshift /= self.oversampling[1]
         yshift /= self.oversampling[0]
 
-        return ((self.y_0 - dy + yshift, self.y_0 + dy + yshift),
+        bbox = ((self.y_0 - dy + yshift, self.y_0 + dy + yshift),
                 (self.x_0 - dx + xshift, self.x_0 + dx + xshift))
+        self.bounding_box = bbox
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
