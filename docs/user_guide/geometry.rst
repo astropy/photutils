@@ -13,3 +13,4 @@ API Reference
 
 .. automodapi:: photutils.geometry
     :no-heading:
+    :inherited-members:

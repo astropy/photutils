@@ -590,6 +590,7 @@ API Reference
 -------------
 .. automodapi:: photutils.segmentation
     :no-heading:
+    :inherited-members:
 
 
 .. _SourceExtractor:  https://sextractor.readthedocs.io/en/latest/

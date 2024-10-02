@@ -97,3 +97,4 @@ API Reference
 
 .. automodapi:: photutils.morphology
     :no-heading:
+    :inherited-members:

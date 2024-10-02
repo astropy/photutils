@@ -181,3 +181,4 @@ API Reference
 
 .. automodapi:: photutils.psf.groupers
     :no-heading:
+    :inherited-members:

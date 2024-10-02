@@ -10,5 +10,7 @@ functions.
 
 API Reference
 -------------
+
 .. automodapi:: photutils.utils
     :no-heading:
+    :inherited-members:

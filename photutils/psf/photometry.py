@@ -1341,7 +1341,8 @@ class PSFPhotometry(ModelImageMixin):
                 fit residual in the initial central pixel value divided by
                 the fit flux. NaN values indicate that the central pixel
                 was masked.
-              * ``flags`` : bitwise flag values:
+              * ``flags`` : bitwise flag values
+
                   * 1 : one or more pixels in the ``fit_shape`` region
                     were masked
                   * 2 : the fit x and/or y position lies outside of the
@@ -1861,13 +1862,16 @@ class IterativePSFPhotometry(ModelImageMixin):
                 fit residual in the initial central pixel value divided by
                 the fit flux. NaN values indicate that the central pixel
                 was masked.
-              * ``flags`` : bitwise flag values:
+              * ``flags`` : bitwise flag values
+
                   * 1 : one or more pixels in the ``fit_shape`` region
                     were masked
                   * 2 : the fit x and/or y position lies outside of the
                     input data
                   * 4 : the fit flux is less than or equal to zero
-                  * 8 : the fitter may not have converged
+                  * 8 : the fitter may not have converged. In this case,
+                    you can try increasing the maximum number of fit
+                    iterations using the ``fitter_maxiters`` keyword.
                   * 16 : the fitter parameter covariance matrix was not
                     returned
                   * 32 : the fit x or y position is at the bounded value

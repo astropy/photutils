@@ -4,6 +4,12 @@
 User Guide
 **********
 
+Photutils is a Python library that provides commonly-used tools and key
+functionality for detecting and performing photometry of astronomical
+sources. Photutils is organized into subpackages covering different
+topics, which are listed below.
+
+
 Backgrounds
 -----------
 

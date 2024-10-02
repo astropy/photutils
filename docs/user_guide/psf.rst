@@ -851,3 +851,4 @@ API Reference
 
 .. automodapi:: photutils.psf
     :no-heading:
+    :inherited-members:

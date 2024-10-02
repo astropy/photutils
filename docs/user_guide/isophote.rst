@@ -258,6 +258,7 @@ API Reference
 
 .. automodapi:: photutils.isophote
     :no-heading:
+    :inherited-members:
 
 
 .. toctree::

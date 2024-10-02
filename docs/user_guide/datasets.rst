@@ -59,6 +59,7 @@ API Reference
 
 .. automodapi:: photutils.datasets
     :no-heading:
+    :inherited-members:
 
 
 .. _astropy-data: https://github.com/astropy/astropy-data/

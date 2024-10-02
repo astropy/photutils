@@ -198,3 +198,4 @@ API Reference
 
 .. automodapi:: photutils.centroids
     :no-heading:
+    :inherited-members:
