@@ -24,6 +24,13 @@ or::
     >>> from photutils.aperture import CircularAperture
     >>> aper = CircularAperture((10, 20), r=4)
 
+In general, one should not import from specific submodules of packages.
+This is unnecessary and the internal organization of the package may
+change without notice. For example, the following is not recommended::
+
+    >>> from photutils.aperture.circle import CircularAperture
+    >>> aper = CircularAperture((10, 20), r=4)
+
 
 .. warning::
 
