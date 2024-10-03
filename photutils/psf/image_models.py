@@ -134,7 +134,6 @@ class ImagePSF(Fittable2DModel):
         self.fill_value = fill_value
 
         super().__init__(flux, x_0, y_0, **kwargs)
-        self.set_bounding_box()
 
     @staticmethod
     def _validate_data(data):
@@ -254,14 +253,33 @@ class ImagePSF(Fittable2DModel):
         # RectBivariateSpline expects the data to be in (x, y) axis order
         return RectBivariateSpline(x, y, self.data.T, kx=3, ky=3, s=0)
 
-    def set_bounding_box(self):
+    def _calc_bounding_box(self):
         """
         Set a bounding box defining the limits of the model.
 
         Returns
         -------
-        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
-            A bounding box defining the limits of the model.
+        bbox : tuple
+            A bounding box defining the ((y_min, y_max), (x_min, x_max))
+            limits of the model.
+        """
+        dy, dx = np.array(self.data.shape) / 2 / self.oversampling
+
+        # apply the origin shift
+        # if origin is None, the origin is set to the center of the
+        # image and the shift is 0
+        xshift = np.array(self.data.shape[1] - 1) / 2 - self.origin[0]
+        yshift = np.array(self.data.shape[0] - 1) / 2 - self.origin[1]
+        xshift /= self.oversampling[1]
+        yshift /= self.oversampling[0]
+
+        return ((self.y_0 - dy + yshift, self.y_0 + dy + yshift),
+                (self.x_0 - dx + xshift, self.x_0 + dx + xshift))
+
+    @property
+    def bounding_box(self):
+        """
+        The bounding box of the model.
 
         Examples
         --------
@@ -279,19 +297,7 @@ class ImagePSF(Fittable2DModel):
             order='C'
         )
         """
-        dy, dx = np.array(self.data.shape) / 2 / self.oversampling
-
-        # apply the origin shift
-        # if origin is None, the origin is set to the center of the
-        # image and the shift is 0
-        xshift = np.array(self.data.shape[1] - 1) / 2 - self.origin[0]
-        yshift = np.array(self.data.shape[0] - 1) / 2 - self.origin[1]
-        xshift /= self.oversampling[1]
-        yshift /= self.oversampling[0]
-
-        bbox = ((self.y_0 - dy + yshift, self.y_0 + dy + yshift),
-                (self.x_0 - dx + xshift, self.x_0 + dx + xshift))
-        self.bounding_box = bbox
+        return self._calc_bounding_box()
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
