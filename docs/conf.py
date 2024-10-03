@@ -114,7 +114,6 @@ html_theme_options.update(  # noqa: F405
             'image_dark': 'photutils_banner.svg',
         },
         'navigation_with_keys': False,
-        'content_footer_items': ['last-updated'],
     }
 )
 
