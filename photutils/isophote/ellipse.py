@@ -58,7 +58,7 @@ class Ellipse:
     The image is measured using an iterative method
     described by `Jedrzejewski (1987; MNRAS 226, 747)
     <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_.
-    Each isophote is fitted at a pre-defined, fixed semimajor axis
+    Each isophote is fitted at a predefined, fixed semimajor axis
     length. The algorithm starts from a first-guess elliptical isophote
     defined by approximate values for the (x, y) center coordinates,
     ellipticity, and position angle. Using these values, the image
@@ -128,7 +128,7 @@ class Ellipse:
 
     After fitting the ellipse that corresponds to a given value of the
     semimajor axis (by the process described above), the axis length
-    is incremented/decremented following a pre-defined rule. At each
+    is incremented/decremented following a predefined rule. At each
     step, the starting, first-guess, ellipse parameters are taken
     from the previously fitted ellipse that has the closest semimajor
     axis length to the current one. On low surface brightness regions
@@ -208,7 +208,7 @@ class Ellipse:
                   integrmode=BILINEAR, linear=None, maxrit=None,
                   fix_center=False, fix_pa=False, fix_eps=False):
         # This parameter list is quite large and should in principle be
-        # simplified by re-distributing these controls to somewhere else.
+        # simplified by redistributing these controls to somewhere else.
         # We keep this design though because it better mimics the flat
         # architecture used in the original STSDAS task `ellipse`.
         """

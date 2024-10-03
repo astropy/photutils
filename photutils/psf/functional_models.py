@@ -1028,7 +1028,7 @@ class CircularGaussianPRF(Fittable2DModel):
     deviation of the Gaussian, and :math:`{\rm erf}` denotes the error
     function.
 
-    The FWHMs of the Gaussian is given by:
+    The FWHM of the Gaussian is given by:
 
     .. math::
 

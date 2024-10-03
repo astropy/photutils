@@ -174,10 +174,3 @@ the same group have the same aperture color:
         ap.plot(color=cmap.colors[i], lw=2)
 
     plt.show()
-
-
-Reference/API
--------------
-
-.. automodapi:: photutils.psf.groupers
-    :no-heading:

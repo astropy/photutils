@@ -92,8 +92,7 @@ approximate isophotal ellipse for the source:
     apertures.plot(color='#d62728')
 
 
-Reference/API
+API Reference
 -------------
 
-.. automodapi:: photutils.morphology
-    :no-heading:
+:doc:`../reference/morphology_api`

@@ -513,9 +513,7 @@ Meshes without a center marker were excluded.
     plt.ylim(0, 250)
 
 
-Reference/API
+API Reference
 -------------
 
-.. automodapi:: photutils.background
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/background_api`

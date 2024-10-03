@@ -193,8 +193,7 @@ Let's plot the results:
     plt.tight_layout()
 
 
-Reference/API
+API Reference
 -------------
 
-.. automodapi:: photutils.centroids
-    :no-heading:
+:doc:`../reference/centroids_api`

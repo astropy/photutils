@@ -846,8 +846,7 @@ using the `~photutils.psf.PSFPhotometry` class. See the function
 documentation for more details and examples.
 
 
-Reference/API
+API Reference
 -------------
 
-.. automodapi:: photutils.psf
-    :no-heading:
+:doc:`../reference/psf_api`

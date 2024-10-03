@@ -791,7 +791,7 @@ class Background2D:
         A 2D map of the number of pixels used to compute the statistics
         in each mesh, resized to the shape of the input image.
 
-        Note that the returned value is re-calculated each time this
+        Note that the returned value is (re)calculated each time this
         property is accessed. If you need to access the returned image
         multiple times, you should store the result in a variable.
         """
@@ -838,7 +838,7 @@ class Background2D:
         """
         A 2D `~numpy.ndarray` containing the background image.
 
-        Note that the returned value is re-calculated each time this
+        Note that the returned value is (re)calculated each time this
         property is accessed. If you need to access the background image
         multiple times, you should store the result in a variable.
         """
@@ -849,7 +849,7 @@ class Background2D:
         """
         A 2D `~numpy.ndarray` containing the background RMS image.
 
-        Note that the returned value is re-calculated each time this
+        Note that the returned value is (re)calculated each time this
         property is accessed. If you need to access the background rms
         image multiple times, you should store the result in a variable.
         """

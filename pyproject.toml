@@ -60,7 +60,8 @@ test = [
 docs = [
     'photutils[all]',
     'sphinx',
-    'sphinx-astropy>=1.9',
+    'sphinx_design',
+    'sphinx-astropy[confv2]>=1.9.1',
     'tomli; python_version < "3.11"',
 ]
 

@@ -8,7 +8,7 @@ The `photutils.utils` package contains general-purpose utility
 functions.
 
 
-Reference/API
+API Reference
 -------------
-.. automodapi:: photutils.utils
-    :no-heading:
+
+:doc:`../reference/utils_api`

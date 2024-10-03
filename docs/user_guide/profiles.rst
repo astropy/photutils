@@ -422,9 +422,7 @@ bins)::
     array([ 5., 10., 15.])
 
 
-Reference/API
+API Reference
 -------------
 
-.. automodapi:: photutils.profiles
-    :no-heading:
-    :inherited-members:
+:doc:`../reference/profiles_api`

@@ -586,10 +586,10 @@ used for the source centroid and morphological parameters. Note that
 photometry is *always* performed on the unfiltered ``data``.
 
 
-Reference/API
+API Reference
 -------------
-.. automodapi:: photutils.segmentation
-    :no-heading:
+
+:doc:`../reference/segmentation_api`
 
 
 .. _SourceExtractor:  https://sextractor.readthedocs.io/en/latest/
