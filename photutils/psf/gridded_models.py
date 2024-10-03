@@ -130,7 +130,6 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         self._interpolator = {}
 
         super().__init__(flux, x_0, y_0)
-        self.set_bounding_box()
 
     @staticmethod
     def _validate_data(data):
@@ -329,16 +328,24 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
             ``(y, x)`` order.
         """
         self._oversampling = as_pair('oversampling', value, lower_bound=(0, 1))
-        self.set_bounding_box()
 
-    def set_bounding_box(self):
+    def _calc_bounding_box(self):
         """
         Set a bounding box defining the limits of the model.
 
         Returns
         -------
-        bounding_box : `astropy.modeling.bounding_box.ModelBoundingBox`
-            A bounding box defining the limits of the model.
+        bbox : tuple
+            A bounding box defining the ((y_min, y_max), (x_min, x_max))
+            limits of the model.
+        """
+        dy, dx = np.array(self.data.shape[1:]) / 2 / self.oversampling
+        return ((self.y_0 - dy, self.y_0 + dy), (self.x_0 - dx, self.x_0 + dx))
+
+    @property
+    def bounding_box(self):
+        """
+        The bounding box of the model.
 
         Examples
         --------
@@ -370,9 +377,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
             order='C'
         )
         """
-        dy, dx = np.array(self.data.shape[1:]) / 2 / self.oversampling
-        bbox = ((self.y_0 - dy, self.y_0 + dy), (self.x_0 - dx, self.x_0 + dx))
-        self.bounding_box = bbox
+        return self._calc_bounding_box()
 
     @lazyproperty
     def origin(self):
