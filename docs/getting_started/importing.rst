@@ -23,3 +23,15 @@ or::
 
     >>> from photutils.aperture import CircularAperture
     >>> aper = CircularAperture((10, 20), r=4)
+
+
+.. warning::
+
+    Modules, functions, classes, and methods whose names begin with a
+    leading underscore are considered private objects and should not be
+    imported or accessed. If a module name in a package begins with a
+    leading underscore, then none of its members are public, regardless
+    of whether they begin with a leading underscore.
+
+    Private objects are not intended for public use and may change
+    without notice.
