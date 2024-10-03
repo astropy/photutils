@@ -157,8 +157,8 @@ class EllipseSample:
         # during the life of an EllipseSample instance, because it's an
         # expensive calculation. This method should not be called from
         # external code.
-        # To force it to re-run, set "sample.values = None"
-        # before calling sample.extract().
+        # To force it to rerun, set "sample.values = None" before
+        # calling sample.extract().
 
         # individual extracted sample points will be stored in here
         angles = []

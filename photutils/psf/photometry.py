@@ -270,7 +270,7 @@ class PSFPhotometry(ModelImageMixin):
     ``finder`` to identify sources in the data.
 
     If the fitted positions are significantly different from the initial
-    positions, one can re-run the `PSFPhotometry` class using the fit
+    positions, one can rerun the `PSFPhotometry` class using the fit
     results as the input ``init_params``, which will change the fitted
     cutout region for each source. After calling `PSFPhotometry` on the
     data, it will have a ``fit_params`` attribute containing the fitted
@@ -1563,7 +1563,7 @@ class IterativePSFPhotometry(ModelImageMixin):
     ``finder`` to identify sources in the data.
 
     If the fitted positions are significantly different from the initial
-    positions, one can re-run the `PSFPhotometry` class using the fit
+    positions, one can rerun the `PSFPhotometry` class using the fit
     results as the input ``init_params``, which will change the fitted
     cutout region for each source. After calling `PSFPhotometry` on the
     data, it will have a ``fit_params`` attribute containing the fitted
@@ -1899,7 +1899,7 @@ class IterativePSFPhotometry(ModelImageMixin):
             self.fit_results.append(deepcopy(self._psfphot))
 
         # this needs to be run outside of the context manager to be able
-        # to re-emit any warnings
+        # to reemit any warnings
         if phot_tbl is None:
             self._emit_warnings(rwarn0)
             return None

@@ -708,7 +708,7 @@ class FittableImageModel(Fittable2DModel):
         Store interpolator keyword arguments.
 
         This function should be called in a subclass whenever model's
-        interpolator is (re-)computed.
+        interpolator is (re)computed.
         """
         self._interpolator_kwargs = copy.deepcopy(kwargs)
 
@@ -978,8 +978,8 @@ class _LegacyEPSFModel(Fittable2DModel):
         of the original image data.
 
         For the ePSF this is defined as the sum over the inner N
-        (default=5.5) pixels of the non-oversampled image. Will re-
-        normalize the data to the value calculated.
+        (default=5.5) pixels of the non-oversampled image. Will
+        renormalize the data to the value calculated.
         """
         if normalize:
             if self._img_norm is None:
@@ -1155,7 +1155,7 @@ class _LegacyEPSFModel(Fittable2DModel):
         Store interpolator keyword arguments.
 
         This function should be called in a subclass whenever model's
-        interpolator is (re-)computed.
+        interpolator is (re)computed.
         """
         self._interpolator_kwargs = copy.deepcopy(kwargs)
 

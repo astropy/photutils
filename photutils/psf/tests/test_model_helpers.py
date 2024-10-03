@@ -103,7 +103,7 @@ def test_make_psf_model(moffat_source, kwargs, tols):
     guess_moffat = Moffat2D(x_0=0.1, y_0=-0.05, gamma=1.01,
                             amplitude=model.amplitude * 1.01, alpha=4.79)
     if kwargs['normalize']:
-        # definitely very wrong, so this ensures the re-normalization
+        # definitely very wrong, so this ensures the renormalization
         # works
         guess_moffat.amplitude = 5.0
 

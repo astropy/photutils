@@ -476,7 +476,7 @@ class PRFAdapter(Fittable2DModel):
 
     renormalize_psf : bool, optional
         If True, the model will be integrated from -inf to inf and
-        re-scaled so that the total integrates to 1. Note that this
+        rescaled so that the total integrates to 1. Note that this
         renormalization only occurs *once*, so if the total flux of
         ``psfmodel`` depends on position, this will *not* be correct.
 
