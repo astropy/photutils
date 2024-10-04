@@ -117,51 +117,13 @@ html_theme_options.update(  # noqa: F405
     }
 )
 
-html_show_sourcelink = False
-
-# The global astropy configuration uses a custom theme,
-# 'bootstrap-astropy', which is installed along with astropy. A
-# different theme can be used or the options for this theme can be
-# modified by overriding some of the variables set in the global
-# configuration. The variables set in the global configuration are
-# listed below, commented out.
-
-# Add any paths that contain custom themes here, relative to this
-# directory.
-# html_theme_path = []
-
-# The theme to use for HTML and HTML Help pages. See the documentation
-# for a list of builtin themes. To override the custom theme, set this
-# to the name of a builtin theme or the name of a custom theme in
-# html_theme_path.
-# html_theme = None
-
-# Custom sidebar templates, maps document names to template names.
-# html_sidebars = {}
-
-# The name of an image file (relative to this directory) to place at the
-# top of the sidebar.
-# html_logo = ''
-
-# The name of an image file (within the static path) to use as favicon
-# of the docs. This file should be a Windows icon file (.ico) being
-# 16x16 or 32x32 pixels large.
-html_favicon = os.path.join('_static', 'favicon.ico')
-
-# A "Last built" timestamp is inserted at every page bottom, using the
-# given strftime format. Set to '' to omit this timestamp.
-# html_last_updated_fmt = '%d %b %Y'
-
-# The name for this set of Sphinx documents. If None, it defaults to
-# "<project> v<release>".
 html_title = f'{project} {release}'
+html_show_sourcelink = False
+html_favicon = os.path.join('_static', 'photutils_logo.ico')
+html_static_path = ['_static']
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = project + 'doc'
-
-# Static files to copy after template files
-html_static_path = ['_static']
-# html_style = 'photutils.css'
 
 # Set canonical URL from the Read the Docs Domain
 html_baseurl = os.environ.get('READTHEDOCS_CANONICAL_URL', '')
