@@ -5,6 +5,18 @@
 
     <div style="min-height:0.1em;"></div>
 
+.. image:: _static/photutils_logo_light.svg
+    :class: only-light
+    :width: 55%
+    :align: center
+    :alt: Photutils logo
+
+.. image:: _static/photutils_logo_dark.svg
+    :class: only-dark
+    :width: 55%
+    :align: center
+    :alt: Photutils logo
+
 
 *********
 Photutils

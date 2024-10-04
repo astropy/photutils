@@ -106,14 +106,14 @@ dev = 'dev' in release
 
 html_theme_options.update(  # noqa: F405
     {
-        'header_links_before_dropdown': 6,
         'github_url': 'https://github.com/astropy/photutils',
+        'header_links_before_dropdown': 6,
+        'navigation_with_keys': False,
         'use_edit_page_button': False,
         'logo': {
-            'image_light': 'photutils_banner.svg',
-            'image_dark': 'photutils_banner.svg',
+            'image_light': 'photutils_logo_light.svg',
+            'image_dark': 'photutils_logo_dark.svg',
         },
-        'navigation_with_keys': False,
     }
 )
 
@@ -161,7 +161,7 @@ htmlhelp_basename = project + 'doc'
 
 # Static files to copy after template files
 html_static_path = ['_static']
-html_style = 'photutils.css'
+# html_style = 'photutils.css'
 
 # Set canonical URL from the Read the Docs Domain
 html_baseurl = os.environ.get('READTHEDOCS_CANONICAL_URL', '')
@@ -185,7 +185,7 @@ html_context = {
 # start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [('index', project + '.tex', project + ' Documentation',
                     author, 'manual')]
-latex_logo = '_static/photutils_banner.pdf'
+# latex_logo = '_static/photutils_banner.pdf'
 
 # -- Options for manual page output -------------------------------------------
 # One entry per manual page. List of tuples (source start file, name,
