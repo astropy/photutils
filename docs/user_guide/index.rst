@@ -46,8 +46,8 @@ PSF Photometry and Tools
     grouping.rst
     psf_matching.rst
 
-Source Measurements
--------------------
+Segmentation and Source Measurements
+------------------------------------
 
 .. toctree::
     :maxdepth: 1
