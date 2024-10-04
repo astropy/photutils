@@ -142,6 +142,9 @@ html_context = {
     'READTHEDOCS': os.environ.get('READTHEDOCS', '') == 'True',
 }
 
+# fix size of inheritance diagrams (e.g., PSF diagram was cut off)
+inheritance_graph_attrs = {'size': '""'}
+
 # -- Options for LaTeX output -------------------------------------------------
 # Grouping the document tree into LaTeX files. List of tuples (source
 # start file, target name, title, author, documentclass [howto/manual]).
