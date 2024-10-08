@@ -55,7 +55,7 @@ To install Photutils with `pip`_, run::
     pip install photutils
 
 If you want to install Photutils along with all of its optional
-dependencies, you can instead do::
+dependencies, you can instead run::
 
     pip install "photutils[all]"
 
