@@ -664,23 +664,23 @@ parameters. Here we constrain the flux to be greater than or equal to
 
     >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (0, None)
-    >>> psf_model3.bounds
-    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (None, None)}
+    >>> psf_model3.bounds  # doctest: +FLOAT_CMP
+    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (0.0, None)}
 
 The model parameter ``bounds`` can also be set using the ``min`` and/or
 ``max`` attributes. Here we set the minimum flux to be 0::
 
     >>> psf_model3.flux.min = 0
-    >>> psf_model3.bounds
-    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (None, None)}
+    >>> psf_model3.bounds  # doctest: +FLOAT_CMP
+    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (0.0, None)}
 
 For this example, let's constrain the flux value to be between between
 400 and 600::
 
     >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (400, 600)
-    >>> psf_model3.bounds
-    {'flux': (400.0, 600.0), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (None, None)}
+    >>> psf_model3.bounds  # doctest: +FLOAT_CMP
+    {'flux': (400.0, 600.0), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (0.0, None)}
 
 
 Source Grouping
