@@ -291,7 +291,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
                       'the input "xypos" and "fit_shape" parameters.',
                       AstropyUserWarning)
 
-    return np.abs(np.array(phot.results['fwhm_fit']))
+    return np.array(phot.results['fwhm_fit'])
 
 
 def _interpolate_missing_data(data, mask, method='cubic'):

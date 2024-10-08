@@ -75,11 +75,12 @@ New Features
 
   - Added new ``GaussianPSF``, ``CircularGaussianPSF``, ``GaussianPRF``,
     ``CircularGaussianPRF``, and ``MoffatPSF`` PSF model classes.
-    [#1838, #1898]
+    [#1838, #1898, #1918]
 
-  - Added new ``AiryDiskPSF`` PSF model class. [#1843]
+  - Added new ``AiryDiskPSF`` PSF model class. [#1843, #1918]
 
-  - Added new ``CircularGaussianSigmaPRF`` PSF model class. [#1845]
+  - Added new ``CircularGaussianSigmaPRF`` PSF model class. [#1845,
+    #1918]
 
   - The ``IntegratedGaussianPRF`` model now supports units. [#1838]
 
@@ -88,7 +89,7 @@ New Features
 
   - Added new ``fit_fwhm`` convenience function to estimate the FWHM of
     one or more sources in an image by fitting a circular 2D Gaussian PSF
-    model. [#1859, #1887, #1899]
+    model. [#1859, #1887, #1899, #1918]
 
   - Added new ``fit_2dgaussian`` convenience function to fit a circular
     2D Gaussian PSF to one or more sources in an image. [#1859, #1887,
