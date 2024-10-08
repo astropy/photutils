@@ -6,7 +6,7 @@ The module contains tools for centroiding sources using Gaussians.
 import warnings
 
 import numpy as np
-from astropy.modeling.fitting import LMLSQFitter
+from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -105,8 +105,8 @@ def centroid_1dg(data, error=None, mask=None):
 
     xy_data = [np.ma.sum(data, axis=i).data for i in (0, 1)]
 
-    # would need to use a different fitter if parameter bounds are used
-    fitter = LMLSQFitter()
+    # Gaussian1D stddev is bounded to be strictly positive
+    fitter = TRFLSQFitter()
 
     centroid = []
     for (data_i, weights_i) in zip(xy_data, xy_weights, strict=True):
@@ -201,7 +201,7 @@ def centroid_2dg(data, error=None, mask=None):
     >>> data = data[40:80, 70:110]
     >>> x1, y1 = centroid_2dg(data)
     >>> print(np.array((x1, y1)))
-    [19.98519434 20.01490159]
+    [19.98519436 20.0149016 ]
 
     .. plot::
 
@@ -272,8 +272,8 @@ def centroid_2dg(data, error=None, mask=None):
                         y_stddev=props.semiminor_sigma.value,
                         theta=props.orientation.value)
 
-    # would need to use a different fitter if parameter bounds are used
-    fitter = LMLSQFitter()
+    # Gaussian2D [x/y]_stddev are bounded to be strictly positive
+    fitter = TRFLSQFitter()
 
     y, x = np.indices(data.shape)
 

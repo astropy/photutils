@@ -6,7 +6,8 @@ Tests for the photometry module.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.modeling.fitting import LMLSQFitter, SimplexLSQFitter
+from astropy.modeling.fitting import (LMLSQFitter, SimplexLSQFitter,
+                                      TRFLSQFitter)
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, Table
@@ -1046,7 +1047,7 @@ def test_iterative_psf_photometry_overlap():
 
     daofinder = DAOStarFinder(threshold=0.5, fwhm=fwhm)
     grouper = SourceGrouper(min_separation=1.3 * fwhm)
-    fitter = LMLSQFitter()
+    fitter = TRFLSQFitter()
     psfphot = IterativePSFPhotometry(psf_model, fit_shape=(5, 5),
                                      finder=daofinder, mode='all',
                                      grouper=grouper, maxiters=2,

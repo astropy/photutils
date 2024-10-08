@@ -171,8 +171,8 @@ classes.
 The fitter used in ``RadialProfile`` to fit the profile with a Gaussian
 was also changed from ``LevMarLSQFitter`` to ``TRFLSQFitter``.
 
-The fitter used in ``centroid_1dg`` and ``centroid_2dg`` was changed
-from ``LevMarLSQFitter`` to ``LMLSQFitter``.
+The fitter used in ``centroid_1dg`` and ``centroid_2dg`` was also
+changed from ``LevMarLSQFitter`` to ``TRFLSQFitter``.
 
 For more information about Astropy's non-linear fitters, see
 :ref:`astropy:modeling-getting-started-nonlinear-notes`.

@@ -87,7 +87,7 @@ centroiding functions::
 
     >>> x4, y4 = centroid_2dg(data)
     >>> print(np.array((x4, y4)))  # doctest: +FLOAT_CMP
-    [19.9850329  20.01484321]
+    [19.98519436 20.0149016 ]
 
 The measured centroids are all very close to the true centroid of the object
 in the cutout image of ``(20, 20)``.

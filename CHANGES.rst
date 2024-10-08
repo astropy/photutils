@@ -170,9 +170,9 @@ API Changes
     background-subtracted. [#1861]
 
   - The fitter used in ``centroid_1dg`` and ``centroid_2dg`` was changed
-    from ``LevMarLSQFitter`` to ``LMLSQFitter``. ``LevMarLSQFitter`` uses
+    from ``LevMarLSQFitter`` to ``TRFLSQFitter``. ``LevMarLSQFitter`` uses
     the legacy SciPy function ``scipy.optimize.leastsq``, which is no
-    longer recommended. [#1899]
+    longer recommended. [#1917]
 
 - ``photutils.datasets``
 

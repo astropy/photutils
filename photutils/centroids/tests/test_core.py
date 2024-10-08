@@ -288,13 +288,15 @@ class TestCentroidSources:
 
         xres = np.copy(xpos).astype(float)
         yres = np.copy(ypos).astype(float)
-        xres[-1] = np.nan
-        yres[-1] = np.nan
+        xres[-1] = 46.689208
+        yres[-1] = 49.689208
         assert_allclose(xcen, xres)
         assert_allclose(ycen, yres)
 
         xcen, ycen = centroid_sources(data, xpos, ypos, box_size=3,
                                       centroid_func=centroid_2dg)
+        xres[-1] = np.nan
+        yres[-1] = np.nan
         assert_allclose(xcen, xres)
         assert_allclose(ycen, yres)
 
