@@ -201,7 +201,7 @@ def centroid_2dg(data, error=None, mask=None):
     >>> data = data[40:80, 70:110]
     >>> x1, y1 = centroid_2dg(data)
     >>> print(np.array((x1, y1)))
-    [19.98519434 20.01490159]
+    [19.98519436 20.0149016 ]
 
     .. plot::
 
