@@ -113,6 +113,12 @@ Bug Fixes
   - Fixed a bug checking that the ``subpixels`` keyword is a strictly
     positive integer. [#1816]
 
+- ``photutils.datasets``
+
+  - Fixed an issue in ``make_model_image`` where if the ``bbox_factor``
+    was input and the model bounding box did not have a ``factor`` keyword
+    then an error would be raised. [#1921]
+
 - ``photutils.detection``
 
   - Fixed an issue where ``DAOStarFinder`` would not return any sources
@@ -250,6 +256,12 @@ API Changes
     ``LevMarLSQFitter`` to ``TRFLSQFitter``. ``LevMarLSQFitter`` uses
     the legacy SciPy function ``scipy.optimize.leastsq``, which is no
     longer recommended. [#1899]
+
+  - ``psf_shape`` is now an optional keyword in the ``make_model_image``
+    and ``make_residual_image`` methods of ``PSFPhotometry`` and
+    ``IterativePSFPhotometry``. The value defaults to using the model
+    bounding box to define the shape and is required only if the PSF
+    model does not have a bounding box attribute. [#1921]
 
 - ``photutils.psf.matching``
 
