@@ -414,7 +414,7 @@ print the source ID along with the fit x, y, and flux values::
 
 Let's create the residual image::
 
-    >>> resid = psfphot.make_residual_image(data, (9, 9))
+    >>> resid = psfphot.make_residual_image(data)
 
 and plot it:
 
@@ -448,7 +448,7 @@ and plot it:
                             aperture_radius=4)
     phot = psfphot(data, error=error)
 
-    resid = psfphot.make_residual_image(data, (9, 9))
+    resid = psfphot.make_residual_image(data)
 
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
     norm = simple_norm(data, 'sqrt', percent=99)
@@ -580,7 +580,7 @@ the location of the star that was fit and subtracted.
     init_params['y'] = [49]
     phot = psfphot(data, error=error, init_params=init_params)
 
-    resid = psfphot.make_residual_image(data, (9, 9))
+    resid = psfphot.make_residual_image(data)
     aper = CircularAperture(zip(phot['x_fit'], phot['y_fit']), r=4)
 
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
