@@ -172,7 +172,7 @@ def test_psf_photometry(test_data):
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
     phot = psfphot(data, error=error)
-    resid_data = psfphot.make_residual_image(data, fit_shape)
+    resid_data = psfphot.make_residual_image(data, psf_shape=fit_shape)
 
     assert isinstance(psfphot.finder_results, QTable)
     assert isinstance(phot, QTable)
@@ -203,7 +203,8 @@ def test_psf_photometry(test_data):
     colnames = ('flux_init', 'flux_fit', 'flux_err', 'local_bkg')
     for col in colnames:
         assert photu[col].unit == unit
-    resid_datau = psfphotu.make_residual_image(data << unit, fit_shape)
+    resid_datau = psfphotu.make_residual_image(data << unit,
+                                               psf_shape=fit_shape)
     assert resid_datau.unit == unit
     colnames = ('qfit', 'cfit')
     for col in colnames:
@@ -224,7 +225,7 @@ def test_psf_photometry_forced(test_data, fit_fwhm):
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
     phot = psfphot(data, error=error)
-    resid_data = psfphot.make_residual_image(data, fit_shape)
+    resid_data = psfphot.make_residual_image(data, psf_shape=fit_shape)
 
     assert isinstance(psfphot.finder_results, QTable)
     assert isinstance(phot, QTable)
@@ -256,8 +257,8 @@ def test_psf_photometry_nddata(test_data):
                             aperture_radius=4)
     phot1 = psfphot(data, error=error)
     phot2 = psfphot(nddata)
-    resid_data1 = psfphot.make_residual_image(data, fit_shape)
-    resid_data2 = psfphot.make_residual_image(nddata, fit_shape)
+    resid_data1 = psfphot.make_residual_image(data, psf_shape=fit_shape)
+    resid_data2 = psfphot.make_residual_image(nddata, psf_shape=fit_shape)
 
     assert np.all(phot1 == phot2)
     assert isinstance(resid_data2, NDData)
@@ -276,7 +277,7 @@ def test_psf_photometry_nddata(test_data):
     assert photu['flux_init'].unit == unit
     assert photu['flux_fit'].unit == unit
     assert photu['flux_err'].unit == unit
-    resid_data3 = psfphotu.make_residual_image(nddata, fit_shape)
+    resid_data3 = psfphotu.make_residual_image(nddata, psf_shape=fit_shape)
     assert resid_data3.unit == unit
 
 
@@ -295,13 +296,13 @@ def test_model_residual_image(test_data):
     psfphot(data, error=error)
 
     psf_shape = (25, 25)
-    model1 = psfphot.make_model_image(data.shape, psf_shape,
+    model1 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
                                       include_localbkg=False)
-    model2 = psfphot.make_model_image(data.shape, psf_shape,
+    model2 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
                                       include_localbkg=True)
-    resid1 = psfphot.make_residual_image(data, psf_shape,
+    resid1 = psfphot.make_residual_image(data, psf_shape=psf_shape,
                                          include_localbkg=False)
-    resid2 = psfphot.make_residual_image(data, psf_shape,
+    resid2 = psfphot.make_residual_image(data, psf_shape=psf_shape,
                                          include_localbkg=True)
 
     x, y = 0, 100
@@ -349,13 +350,13 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
 
     # test model and residual images
     psf_shape = (9, 9)
-    model1 = psfphot.make_model_image(data.shape, psf_shape,
+    model1 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
                                       include_localbkg=False)
-    resid1 = psfphot.make_residual_image(data, psf_shape,
+    resid1 = psfphot.make_residual_image(data, psf_shape=psf_shape,
                                          include_localbkg=False)
-    model2 = psfphot.make_model_image(data.shape, psf_shape,
+    model2 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
                                       include_localbkg=True)
-    resid2 = psfphot.make_residual_image(data, psf_shape,
+    resid2 = psfphot.make_residual_image(data, psf_shape=psf_shape,
                                          include_localbkg=True)
     assert model1.shape == data.shape
     assert model2.shape == data.shape
@@ -414,8 +415,10 @@ def test_iterative_psf_photometry_compound(mode):
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 3.0)
     grouper = SourceGrouper(min_separation=2)
+
     psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                      grouper=grouper, aperture_radius=4,
+                                     sub_shape=fit_shape,
                                      mode=mode, maxiters=2)
     phot = psfphot(data, error=error, init_params=init_params)
     assert isinstance(phot, QTable)
@@ -429,13 +432,13 @@ def test_iterative_psf_photometry_compound(mode):
 
     # test model and residual images
     psf_shape = (9, 9)
-    model1 = psfphot.make_model_image(data.shape, psf_shape,
+    model1 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
                                       include_localbkg=False)
-    resid1 = psfphot.make_residual_image(data, psf_shape,
+    resid1 = psfphot.make_residual_image(data, psf_shape=psf_shape,
                                          include_localbkg=False)
-    model2 = psfphot.make_model_image(data.shape, psf_shape,
+    model2 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
                                       include_localbkg=True)
-    resid2 = psfphot.make_residual_image(data, psf_shape,
+    resid2 = psfphot.make_residual_image(data, psf_shape=psf_shape,
                                          include_localbkg=True)
     assert model1.shape == data.shape
     assert model2.shape == data.shape
@@ -635,11 +638,11 @@ def test_psf_photometry_init_params_units(test_data):
     assert len(phot) == 1
 
     for val in (True, False):
-        im = psfphot.make_model_image(data2.shape, fit_shape,
+        im = psfphot.make_model_image(data2.shape, psf_shape=fit_shape,
                                       include_localbkg=val)
         assert isinstance(im, u.Quantity)
         assert im.unit == unit
-        resid = psfphot.make_residual_image(data2, fit_shape,
+        resid = psfphot.make_residual_image(data2, psf_shape=fit_shape,
                                             include_localbkg=val)
         assert isinstance(resid, u.Quantity)
         assert resid.unit == unit
@@ -893,12 +896,12 @@ def test_iterative_psf_photometry_mode_new(test_data):
     assert 'iter_detected' in phot.colnames
     assert len(phot) == len(sources)
 
-    resid_data = psfphot.make_residual_image(data, fit_shape)
+    resid_data = psfphot.make_residual_image(data, psf_shape=fit_shape)
     assert isinstance(resid_data, np.ndarray)
     assert resid_data.shape == data.shape
 
     nddata = NDData(data)
-    resid_nddata = psfphot.make_residual_image(nddata, fit_shape)
+    resid_nddata = psfphot.make_residual_image(nddata, psf_shape=fit_shape)
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.data.shape == data.shape
 
@@ -913,7 +916,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     colnames = ('flux_init', 'flux_fit', 'flux_err', 'local_bkg')
     for col in colnames:
         assert_allclose(phot0[col], phot[col])
-    resid_nddata = psfphot.make_residual_image(nddata, fit_shape)
+    resid_nddata = psfphot.make_residual_image(nddata, psf_shape=fit_shape)
     assert isinstance(resid_nddata, NDData)
     assert_equal(resid_nddata.data, resid_data)
 
@@ -940,7 +943,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     for col in colnames:
         assert phot3[col].unit == unit
         assert_allclose(phot3[col].value, phot2[col].value)
-    resid_nddata = psfphot.make_residual_image(nddata, fit_shape)
+    resid_nddata = psfphot.make_residual_image(nddata, psf_shape=fit_shape)
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.unit == unit
 
@@ -984,7 +987,7 @@ def test_iterative_psf_photometry_mode_all():
     assert_equal(phot['iter_detected'], [1, 1, 1, 2, 2, 2, 2])
     assert_allclose(phot['flux_fit'], [1000, 1000, 1000, 100, 50, 100, 100])
 
-    resid = psfphot.make_residual_image(data, sub_shape)
+    resid = psfphot.make_residual_image(data, psf_shape=sub_shape)
     assert_allclose(resid, 0, atol=1e-6)
 
     match = 'mode must be "new" or "all".'
@@ -1022,7 +1025,7 @@ def test_iterative_psf_photometry_mode_all():
     for col in colnames:
         assert phot3[col].unit == unit
         assert_allclose(phot3[col].value, phot[col])
-    resid_nddata = psfphotu.make_residual_image(nddata, fit_shape)
+    resid_nddata = psfphotu.make_residual_image(nddata, psf_shape=fit_shape)
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.unit == unit
 
@@ -1048,14 +1051,44 @@ def test_iterative_psf_photometry_overlap():
     daofinder = DAOStarFinder(threshold=0.5, fwhm=fwhm)
     grouper = SourceGrouper(min_separation=1.3 * fwhm)
     fitter = TRFLSQFitter()
-    psfphot = IterativePSFPhotometry(psf_model, fit_shape=(5, 5),
+    fit_shape = (5, 5)
+    sub_shape = fit_shape
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape=fit_shape,
                                      finder=daofinder, mode='all',
                                      grouper=grouper, maxiters=2,
+                                     sub_shape=sub_shape,
                                      aperture_radius=3, fitter=fitter)
     match = r'One or more .* may not have converged'
     with pytest.warns(AstropyUserWarning, match=match):
         phot = psfphot(data, error=error)
         assert len(phot) == 38
+
+
+def test_iterative_psf_photometry_subshape():
+    """
+    A ValueError should not be raised if sub_shape=None and
+    the model does not have a bounding box.
+    """
+    fwhm = 3.5
+    psf_model = CircularGaussianPRF(flux=1, fwhm=fwhm)
+    data, _ = make_psf_model_image((150, 150), psf_model, n_sources=30,
+                                   model_shape=(11, 11), flux=(50, 100),
+                                   min_separation=1, seed=0)
+
+    daofinder = DAOStarFinder(threshold=0.5, fwhm=fwhm)
+    grouper = SourceGrouper(min_separation=1.3 * fwhm)
+    fitter = TRFLSQFitter()
+    fit_shape = (5, 5)
+    sub_shape = None
+    psf_model.bounding_box = None
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape=fit_shape,
+                                     finder=daofinder, mode='all',
+                                     grouper=grouper, maxiters=2,
+                                     sub_shape=sub_shape,
+                                     aperture_radius=3, fitter=fitter)
+    match = r'model_shape must be specified .* does not have a bounding_box'
+    with pytest.raises(ValueError, match=match):
+        psfphot(data)
 
 
 def test_iterative_psf_photometry_inputs():
