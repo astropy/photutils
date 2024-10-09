@@ -9,8 +9,8 @@ import pytest
 from astropy.modeling.models import Moffat2D
 from astropy.table import QTable
 
-from photutils.datasets import make_model_image, params_table_to_models
-from photutils.psf import CircularGaussianPSF, CircularGaussianSigmaPRF
+from photutils.datasets import make_model_image
+from photutils.psf import CircularGaussianSigmaPRF
 
 
 def test_make_model_image():
@@ -148,28 +148,3 @@ def test_make_model_image_inputs():
     shape = (100, 100)
     with pytest.raises(ValueError, match=match):
         make_model_image(shape, model, params)
-
-
-def test_params_table_to_models():
-    tbl = QTable()
-    tbl['x_0'] = [1, 2, 3]
-    tbl['y_0'] = [4, 5, 6]
-    tbl['flux'] = [100, 200, 300]
-    tbl['name'] = ['a', 'b', 'c']
-    model = CircularGaussianPSF()
-    models = params_table_to_models(tbl, model)
-
-    assert len(models) == 3
-    for i in range(len(models)):
-        assert models[i].x_0 == tbl['x_0'][i]
-        assert models[i].y_0 == tbl['y_0'][i]
-        assert models[i].flux == tbl['flux'][i]
-        assert models[i].fwhm == model.fwhm
-        assert models[i].name == tbl['name'][i]
-
-    tbl = QTable()
-    tbl['invalid1'] = [1, 2, 3]
-    tbl['invalid2'] = [4, 5, 6]
-    match = 'No matching model parameter names found in params_table'
-    with pytest.raises(ValueError, match=match):
-        params_table_to_models(tbl, model)
