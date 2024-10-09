@@ -40,7 +40,8 @@ class ModelImageMixin:
     residuals.
     """
 
-    def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
+    def make_model_image(self, shape, *, psf_shape=None,
+                         include_localbkg=False):
         """
         Create a 2D image from the fit PSF models and optional local
         background.
@@ -50,9 +51,13 @@ class ModelImageMixin:
         shape : 2 tuple of int
             The shape of the output array.
 
-        psf_shape : 2 tuple of int
-            The shape of region around the center of the fit model to
-            render in the output image.
+        psf_shape : 2 tuple of int, optional
+            The shape of the region around the center of the fit model
+            to render in the output image. If ``psf_shape`` is a scalar
+            integer, then a square shape of size ``psf_shape`` will be
+            used. If `None`, then the bounding box of the model will be
+            used. This keyword must be specified if the model does not
+            have a ``bounding_box`` attribute.
 
         include_localbkg : bool, optional
             Whether to include the local background in the rendered
@@ -115,7 +120,8 @@ class ModelImageMixin:
                                  x_name=x_name, y_name=y_name,
                                  progress_bar=progress_bar)
 
-    def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
+    def make_residual_image(self, data, *, psf_shape=None,
+                            include_localbkg=False):
         """
         Create a 2D residual image from the fit PSF models and local
         background.
@@ -127,9 +133,13 @@ class ModelImageMixin:
             be the same array input when calling the PSF-photometry
             class.
 
-        psf_shape : 2 tuple of int
-            The shape of region around the center of the fit model to
-            subtract.
+        psf_shape : 2 tuple of int, optional
+            The shape of the region around the center of the fit model
+            to subtract. If ``psf_shape`` is a scalar integer, then
+            a square shape of size ``psf_shape`` will be used. If
+            `None`, then the bounding box of the model will be used.
+            This keyword must be specified if the model does not have a
+            ``bounding_box`` attribute.
 
         include_localbkg : bool, optional
             Whether to include the local background in the subtracted
@@ -150,9 +160,10 @@ class ModelImageMixin:
             if data.unit is not None:
                 data_arr <<= data.unit
             residual.data[:] = self.make_residual_image(
-                data_arr, psf_shape, include_localbkg=include_localbkg)
+                data_arr, psf_shape=psf_shape,
+                include_localbkg=include_localbkg)
         else:
-            residual = self.make_model_image(data.shape, psf_shape,
+            residual = self.make_model_image(data.shape, psf_shape=psf_shape,
                                              include_localbkg=include_localbkg)
             np.subtract(data, residual, out=residual)
 
@@ -1420,13 +1431,16 @@ class PSFPhotometry(ModelImageMixin):
 
         return results_tbl
 
-    def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
+    def make_model_image(self, shape, *, psf_shape=None,
+                         include_localbkg=False):
         return ModelImageMixin.make_model_image(
-            self, shape, psf_shape, include_localbkg=include_localbkg)
+            self, shape, psf_shape=psf_shape,
+            include_localbkg=include_localbkg)
 
-    def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
+    def make_residual_image(self, data, *, psf_shape=None,
+                            include_localbkg=False):
         return ModelImageMixin.make_residual_image(
-            self, data, psf_shape, include_localbkg=include_localbkg)
+            self, data, psf_shape=psf_shape, include_localbkg=include_localbkg)
 
 
 class IterativePSFPhotometry(ModelImageMixin):
@@ -1542,7 +1556,9 @@ class IterativePSFPhotometry(ModelImageMixin):
         a scalar then a square shape of size ``sub_shape`` will be used.
         If ``sub_shape`` has two elements, they must be in ``(ny, nx)``
         order. Each element of ``sub_shape`` must be an odd number. If
-        `None`, then ``sub_shape`` is set to ``fit_shape``.
+        `None`, then ``sub_shape`` will be defined by the model bounding
+        box. This keyword must be specified if the model does not have a
+        ``bounding_box`` attribute.
 
     progress_bar : bool, optional
         Whether to display a progress bar when fitting the sources
@@ -1648,10 +1664,7 @@ class IterativePSFPhotometry(ModelImageMixin):
             raise ValueError('grouper must be input for the "all" mode.')
         self.mode = mode
 
-        if sub_shape is None:
-            sub_shape = fit_shape
-        self.sub_shape = as_pair('sub_shape', sub_shape, lower_bound=(0, 1),
-                                 check_odd=True)
+        self.sub_shape = sub_shape
 
         self.fit_results = []
 
@@ -1913,7 +1926,7 @@ class IterativePSFPhotometry(ModelImageMixin):
             iter_num = 2
             while iter_num <= self.maxiters and phot_tbl is not None:
                 residual_data = self._psfphot.make_residual_image(
-                    residual_data, self.sub_shape)
+                    residual_data, psf_shape=self.sub_shape)
 
                 # do not warn if no sources are found beyond the first
                 # iteration
@@ -1979,13 +1992,16 @@ class IterativePSFPhotometry(ModelImageMixin):
 
         return phot_tbl
 
-    def make_model_image(self, shape, psf_shape, *, include_localbkg=False):
+    def make_model_image(self, shape, *, psf_shape=None,
+                         include_localbkg=False):
         return ModelImageMixin.make_model_image(
-            self, shape, psf_shape, include_localbkg=include_localbkg)
+            self, shape, psf_shape=psf_shape,
+            include_localbkg=include_localbkg)
 
-    def make_residual_image(self, data, psf_shape, *, include_localbkg=False):
+    def make_residual_image(self, data, *, psf_shape=None,
+                            include_localbkg=False):
         return ModelImageMixin.make_residual_image(
-            self, data, psf_shape, include_localbkg=include_localbkg)
+            self, data, psf_shape=psf_shape, include_localbkg=include_localbkg)
 
 
 def _flatten(iterable):

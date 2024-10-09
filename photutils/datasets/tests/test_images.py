@@ -8,9 +8,11 @@ import numpy as np
 import pytest
 from astropy.modeling.models import Moffat2D
 from astropy.table import QTable
+from numpy.testing import assert_allclose
 
 from photutils.datasets import make_model_image
-from photutils.psf import CircularGaussianSigmaPRF
+from photutils.psf import (CircularGaussianPSF, CircularGaussianSigmaPRF,
+                           ImagePSF)
 
 
 def test_make_model_image():
@@ -148,3 +150,26 @@ def test_make_model_image_inputs():
     shape = (100, 100)
     with pytest.raises(ValueError, match=match):
         make_model_image(shape, model, params)
+
+
+def test_make_model_image_bbox():
+    model1 = CircularGaussianPSF(x_0=50, y_0=50, fwhm=10)
+    yy, xx = np.mgrid[:101, :101]
+    model2 = ImagePSF(model1(xx, yy), x_0=50, y_0=50)
+
+    params = QTable()
+    params['x_0'] = [50, 70, 90]
+    params['y_0'] = [50, 50, 50]
+    shape = (100, 151)
+    image1 = make_model_image(shape, model2, params, bbox_factor=10)
+    image2 = make_model_image(shape, model2, params, bbox_factor=None)
+    assert_allclose(image1, image2)
+
+    image3 = make_model_image(shape, model1, params, bbox_factor=10)
+    image4 = make_model_image(shape, model1, params, bbox_factor=None)
+    assert_allclose(image3, image4)
+
+    model1.bbox_factor = 10
+    image5 = make_model_image(shape, model1, params)
+    assert np.sum(image5) > np.sum(image4)
+    assert_allclose(image3, image4)

@@ -79,19 +79,23 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         integer, then a square shape of size ``model_shape`` will be
         used. If `None`, then the bounding box of the model will be
         used (which can optionally be scaled using the ``bbox_factor``
-        keyword). This keyword must be specified if the model does
-        not have a ``bounding_box`` attribute. If specified, this
-        keyword overrides the model ``bounding_box`` attribute. To
-        use a different shape for each source, include a column named
-        ``'model_shape'`` in the ``params_table``. For that case, this
-        keyword is ignored.
+        keyword if the model supports it). This keyword must be
+        specified if the model does not have a ``bounding_box``
+        attribute. If specified, this keyword overrides the model
+        ``bounding_box`` attribute. To use a different shape for
+        each source, include a column named ``'model_shape'`` in the
+        ``params_table``. For that case, this keyword is ignored.
 
     bbox_factor : `None` or float, optional
         The multiplicative factor to pass to the model ``bounding_box``
-        method to determine the model shape. If `None`, the default
-        model bounding box will be used. This keyword is ignored if
+        method to determine the model shape. If the model
+        ``bounding_box`` method does not accept a ``factor`` keyword,
+        then this keyword is ignored. If `None`, the default model
+        bounding box will be used. This keyword is ignored if
         ``model_shape`` is specified or if the ``params_table`` contains
-        a ``'model_shape'`` column.
+        a ``'model_shape'`` column. Note that some Photutils PSF models
+        have a ``bbox_factor`` keyword that is be used to define the
+        model bounding box. In that case, this keyword is ignored.
 
     x_name : str, optional
         The name of the ``model`` parameter that corresponds to the x
@@ -269,12 +273,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         elif model_shape is None:
             # the bounding box size generally depends on model parameters,
             # so needs to be calculated for each source
-            if bbox_factor is not None:
-                bbox = model.bounding_box(factor=bbox_factor)
-            else:
-                bbox = model.bounding_box.bounding_box()
-            mod_shape = (int(np.ceil(bbox[0][1] - bbox[0][0])),
-                         int(np.ceil(bbox[1][1] - bbox[1][0])))
+            mod_shape = _model_shape_from_bbox(model, bbox_factor=bbox_factor)
         else:
             mod_shape = model_shape
 
@@ -306,3 +305,48 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
             continue
 
     return image
+
+
+def _model_shape_from_bbox(model, bbox_factor=None):
+    """
+    Calculate the model shape from the model bounding box.
+
+    Parameters
+    ----------
+    model : 2D `astropy.modeling.Model`
+        The 2D model to be used to render the sources.
+
+    bbox_factor : `None` or float, optional
+        The multiplicative factor to pass to the model ``bounding_box``
+        method to determine the model shape. If the model
+        ``bounding_box`` method does not accept a ``factor`` keyword,
+        then this keyword is ignored. If `None`, the default model
+        bounding box will be used.
+
+    Returns
+    -------
+    model_shape : 2-tuple of int
+        The shape around the (x, y) center of the model that will used
+        to evaluate the model.
+
+    Raises
+    ------
+    ValueError
+        If the model does not have a bounding_box attribute.
+    """
+    try:
+        hasattr(model, 'bounding_box')
+    except NotImplementedError as exc:
+        msg = 'model does not have a bounding_box attribute'
+        raise ValueError(msg) from exc
+
+    if bbox_factor is not None:
+        try:
+            bbox = model.bounding_box(factor=bbox_factor)
+        except NotImplementedError:
+            bbox = model.bounding_box.bounding_box()
+    else:
+        bbox = model.bounding_box.bounding_box()
+
+    return (int(np.ceil(bbox[0][1] - bbox[0][0])),
+            int(np.ceil(bbox[1][1] - bbox[1][0])))

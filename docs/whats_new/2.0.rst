@@ -178,6 +178,30 @@ For more information about Astropy's non-linear fitters, see
 :ref:`astropy:modeling-getting-started-nonlinear-notes`.
 
 
+Breaking API Change for PSF Photometry residual/model images
+============================================================
+
+The ``sub_shape`` keyword in `~photutils.psf.IterativePSFPhotometry`
+now defaults to using the model bounding box to define the shape. This
+is a change from the previous behavior where the default shape was set
+to ``fit_shape``. In general, one should want the subtraction shape to
+cover a large portion of the model image, which the bounding box does.
+If one wants to use a different shape, then the ``sub_shape`` keyword
+can be explicitly set. If the PSF model does not have a bounding box
+attribute, then the ``sub_shape`` keyword must be set to define the
+subtraction shape.
+
+Similarly, ``psf_shape`` is now an optional keyword in
+the ``make_model_image`` and ``make_residual_image``
+methods of `~photutils.psf.PSFPhotometry` and
+`~photutils.psf.IterativePSFPhotometry`. The value defaults to using the
+model bounding box to define the shape and is required only if the PSF
+model does not have a bounding box attribute. In general, one should
+want the model and residual images to be constructed using the a large
+portion of model image, which the bounding box does. If one wants to use
+a different shape, then the ``psf_shape`` keyword can be explicitly set.
+
+
 Bounding model fits in PSF Photometry
 =====================================
 
