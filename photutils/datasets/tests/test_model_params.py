@@ -1,14 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for the sources module.
+Tests for the model_params module.
 """
 
 import numpy as np
 import pytest
-from astropy.table import Table
+from astropy.table import QTable, Table
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.datasets import make_model_params, make_random_models_table
+from photutils.datasets import (make_model_params, make_random_models_table,
+                                params_table_to_models)
+from photutils.psf import CircularGaussianPSF
 
 
 def test_make_model_params():
@@ -86,3 +88,27 @@ def test_make_random_models_table():
         assert col in source_table.colnames
         assert np.min(source_table[col]) >= param_ranges[col][0]
         assert np.max(source_table[col]) <= param_ranges[col][1]
+
+
+def test_params_table_to_models():
+    tbl = QTable()
+    tbl['x_0'] = [1, 2, 3]
+    tbl['y_0'] = [4, 5, 6]
+    tbl['flux'] = [100, 200, 300]
+    tbl['name'] = ['a', 'b', 'c']
+    model = CircularGaussianPSF()
+    models = params_table_to_models(tbl, model)
+
+    assert len(models) == 3
+    for i, model in enumerate(models):
+        assert model.x_0 == tbl['x_0'][i]
+        assert model.y_0 == tbl['y_0'][i]
+        assert model.flux == tbl['flux'][i]
+        assert model.name == tbl['name'][i]
+
+    tbl = QTable()
+    tbl['invalid1'] = [1, 2, 3]
+    tbl['invalid2'] = [4, 5, 6]
+    match = 'No matching model parameter names found in params_table'
+    with pytest.raises(ValueError, match=match):
+        params_table_to_models(tbl, model)
