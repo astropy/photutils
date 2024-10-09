@@ -7,6 +7,7 @@ models.
 import numpy as np
 
 from photutils.datasets import make_model_image, make_model_params
+from photutils.datasets.images import _model_shape_from_bbox
 from photutils.psf.utils import _get_psf_model_params
 from photutils.utils._parameters import as_pair
 
@@ -106,16 +107,16 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
     >>> print(params)  # doctest: +FLOAT_CMP
      id   x_0      y_0      flux
     --- -------- -------- --------
-      1 125.4749  72.2784 147.9522
-      2  57.1803  38.6027 128.1262
-      3  14.6211 116.0558 200.8790
-      4  10.0741 132.6001 129.2661
-      5 158.2683  43.1937 186.6532
-      6 176.7725  80.2951 190.3359
-      7 142.6864 133.6184 244.3635
-      8 108.1142  12.5095 110.8398
-      9 180.9235 106.5528 174.9959
-     10 158.7488  90.5548 211.6146
+      1 125.2010  72.3184 147.9522
+      2  57.6408  39.1380 128.1262
+      3  15.5391 115.4520 200.8790
+      4  11.0411 131.7530 129.2661
+      5 157.6417  43.6615 186.6532
+      6 175.9470  80.2172 190.3359
+      7 142.2274 132.7563 244.3635
+      8 108.0270  13.4284 110.8398
+      9 180.0533 106.0888 174.9959
+     10 158.1171  90.3260 211.6146
 
     .. plot::
         :include-source:
@@ -151,11 +152,8 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
         model_shape = as_pair('model_shape', model_shape, lower_bound=(0, 1))
     else:
         try:
-            bbox = psf_model.bounding_box.bounding_box()
-            model_shape = (int(np.round(bbox[0][1] - bbox[0][0])),
-                           int(np.round(bbox[1][1] - bbox[1][0])))
-
-        except NotImplementedError as exc:
+            model_shape = _model_shape_from_bbox(psf_model)
+        except ValueError as exc:
             raise ValueError('model_shape must be specified if the model '
                              'does not have a bounding_box attribute') from exc
 
