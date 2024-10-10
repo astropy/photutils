@@ -309,6 +309,12 @@ class TestSegmentationImage:
         segm.remove_labels(labels=[5, 3])
         assert_allclose(segm.data, ref_data)
 
+        dtype = np.int32
+        data2 = ref_data.copy().astype(dtype)
+        segm2 = SegmentationImage(data2)
+        segm2.remove_label(1)
+        assert segm2.data.dtype == dtype
+
     def test_remove_labels_relabel(self):
         ref_data = np.array([[1, 1, 0, 0, 2, 2],
                              [0, 0, 0, 0, 0, 2],
