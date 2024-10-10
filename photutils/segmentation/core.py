@@ -698,14 +698,14 @@ class SegmentationImage:
         if labels.size == 0:
             return
 
-        idx = np.zeros(self.max_label + 1, dtype=int)
+        idx = np.zeros(self.max_label + 1, dtype=self.data.dtype)
         idx[self.labels] = self.labels
         idx[labels] = new_label  # reassign labels
 
         if relabel:
             labels = np.unique(idx[idx != 0])
             if len(labels) != 0:
-                idx2 = np.zeros(max(labels) + 1, dtype=int)
+                idx2 = np.zeros(max(labels) + 1, dtype=self.data.dtype)
                 idx2[labels] = np.arange(len(labels)) + 1
                 idx = idx2[idx]
 
