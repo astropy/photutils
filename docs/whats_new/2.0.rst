@@ -66,6 +66,10 @@ of the returned ``background`` and ``background_rms`` properties. Assign
 these properties to variables if you need to use them multiple times,
 otherwise they will need to be recomputed.
 
+The ``background``, ``background_rms``, ``background_mesh``, and
+``background_rms_mesh`` properties now have the same ``dtype`` as the
+input data.
+
 Two new properties were also added to the ``Background2D`` class,
 ``npixels_mesh`` and ``npixels_map``, that give a 2D array of the number
 of pixels used to compute the statistics in the low-resolution grid and
