@@ -236,6 +236,11 @@ The `~photutils.segmentation.detect_sources` and
 ``SegmentationImage`` instance whose data dtype is ``np.int32`` instead
 of ``int`` (``int64``) unless more than (2**32 - 1) labels are needed.
 
+Also, the ``relabel_consecutive``, ``resassign_label(s)``,
+``keep_label(s)``, ``remove_label(s)``, ``remove_border_labels``, and
+``remove_masked_labels`` methods now keep the original dtype of the
+segmentation image instead of always changing it to ``int`` (``int64``).
+
 
 DAOStarFinder flux and mag changes
 ==================================
