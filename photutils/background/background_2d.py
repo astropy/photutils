@@ -10,7 +10,7 @@ import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData, block_replicate, reshape_as_blocks
 from astropy.stats import SigmaClip
-from astropy.utils import lazyproperty, minversion
+from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import generic_filter
@@ -24,8 +24,6 @@ from photutils.utils._repr import make_repr
 from photutils.utils._stats import nanmedian, nanmin
 
 __all__ = ['Background2D']
-
-COPY_IF_NEEDED = False if not minversion(np, '2.0.0') else None
 
 __doctest_skip__ = ['Background2D']
 
@@ -226,7 +224,10 @@ class Background2D:
         else:
             self._unit = None
 
+        # this is a temporary instance variable to store the input data
         self._data = self._validate_array(data, 'data', shape=False)
+
+        self._data_dtype = self._data.dtype
 
         self._mask = self._validate_array(mask, 'mask')
         self.coverage_mask = self._validate_array(coverage_mask,
@@ -445,8 +446,11 @@ class Background2D:
 
         if np.ndim(bkg) == 0:
             if box_mask:  # single corner box
-                bkg = np.nan
-                bkgrms = np.nan
+                # np.nan is float64; use np.float32 to prevent numpy from
+                # promoting the output data dtype to float64 if the
+                # input data is float32
+                bkg = np.float32(np.nan)
+                bkgrms = np.float32(np.nan)
         else:
             bkg[box_mask] = np.nan
             bkgrms[box_mask] = np.nan
@@ -476,8 +480,9 @@ class Background2D:
         ngood : 2D `~numpy.ndarray`
             The number of unmasked pixels in each box.
         """
-        # if needed, copy the data to a float array to insert NaNs
-        self._data = self._data.astype(float, copy=COPY_IF_NEEDED)
+        # if needed, copy the data to a float32 array to insert NaNs
+        if self._data.dtype.kind != 'f':
+            self._data = self._data.astype(np.float32)
 
         # automatically mask non-finite values that aren't already
         # masked and combine all masks
@@ -617,6 +622,9 @@ class Background2D:
             filled by IDW interpolation.
         """
         if not np.any(np.isnan(data)):
+            # output integer dtype if input data was integer dtyle
+            if data.dtype != self._data_dtype:
+                data = data.astype(self._data_dtype)
             return data
 
         mask = ~np.isnan(data)
@@ -632,6 +640,10 @@ class Background2D:
 
         interp_data = np.copy(data)  # copy to avoid modifying the input data
         interp_data[idx] = interp_values
+
+        # output integer dtype if input data was integer dtyle
+        if interp_data.dtype != self._data_dtype:
+            interp_data = interp_data.astype(self._data_dtype)
 
         return interp_data
 
