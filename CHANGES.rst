@@ -274,9 +274,11 @@ API Changes
 
 - ``photutils.segmentation``
 
-  - The ``SegmentationImage`` ``relabel_consecutive`` method now keeps
-    the original dtype of the segmentation image instead of always
-    changing it to ``int`` (``int64``). [#1878]
+  - The ``SegmentationImage`` ``relabel_consecutive``,
+    ``resassign_label(s)``, ``keep_label(s)``, ``remove_label(s)``,
+    ``remove_border_labels``, and ``remove_masked_labels`` methods now
+    keep the original dtype of the segmentation image instead of always
+    changing it to ``int`` (``int64``). [#1878, #1923]
 
   - The ``detect_sources`` and ``deblend_sources`` functions now return
     a ``SegmentationImage`` instance whose data dtype is ``np.int32``
