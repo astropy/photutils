@@ -47,6 +47,26 @@ class TestBackground2D:
         assert bkg.npixels_mesh.shape == (4, 4)
         assert bkg.npixels_map.shape == DATA.shape
 
+    @pytest.mark.parametrize('box_size', [(25, 25), (23, 22)])
+    @pytest.mark.parametrize('dtype', ['int', 'int32', 'float32'])
+    def test_background_dtype(self, box_size, dtype):
+        filter_size = 3
+        interpolator = BkgZoomInterpolator()
+        data2 = DATA.copy().astype(dtype)
+        bkg = Background2D(data2, box_size, filter_size=filter_size,
+                           interpolator=interpolator)
+        assert bkg.background.dtype == data2.dtype
+        assert bkg.background_rms.dtype == data2.dtype
+        assert bkg.background_mesh.dtype == data2.dtype
+        assert bkg.background_rms_mesh.dtype == data2.dtype
+        assert bkg.npixels_map.dtype == int
+        assert bkg.npixels_mesh.dtype == int
+        assert_allclose(bkg.background, data2)
+        assert_allclose(bkg.background_rms, BKG_RMS)
+        assert bkg.background_median == 1.0
+        assert bkg.background_rms_median == 0.0
+        assert bkg.npixels_map.shape == DATA.shape
+
     @pytest.mark.parametrize('data', [DATA1, DATA3, DATA4])
     def test_background_nddata(self, data):
         """
