@@ -168,6 +168,10 @@ API Changes
     When ``grid_mode`` is eventually removed, the `True` option will
     always be used. [#1870]
 
+  - The ``Background2D`` ``background``, ``background_rms``,
+    ``background_mesh``, and ``background_rms_mesh`` properties now have
+    the same ``dtype`` as the input data. [#1922]
+
 - ``photutils.centroids``
 
   - For consistency with other fitting functions (including PSF
