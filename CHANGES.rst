@@ -105,6 +105,11 @@ New Features
     improve its performance. In typical PSF photometry use cases, it is
     now about 4 times faster than previous versions. [#1903]
 
+- ``photutils.segmentation``
+
+  - Reduced the memory usage of ``deblend_sources`` when using serial
+    processing. [#1924]
+
 Bug Fixes
 ^^^^^^^^^
 
