@@ -85,9 +85,9 @@ class SourceFinder:
         unless ``deblend=True``.
 
     nproc : int, optional
-        The number of processes to use for multiprocessing (if larger
-        than 1). If set to 1, then a serial implementation is used
-        instead of a parallel one. If `None`, then the number of
+        The number of processes to use for source deblending (if
+        larger than 1). If set to 1, then a serial implementation is
+        used instead of a parallel one. If `None`, then the number of
         processes will be set to the number of CPUs detected on the
         machine. Please note that due to overheads, multiprocessing may
         be slower than serial processing. This is especially true if one
