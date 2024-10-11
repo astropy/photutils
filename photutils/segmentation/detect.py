@@ -123,33 +123,33 @@ def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
     return threshold
 
 
-def _detect_sources(data, thresholds, npixels, footprint, inverse_mask, *,
-                    deblend_mode=False):
+def _detect_sources(data, threshold, npixels, footprint, inverse_mask, *,
+                    relabel=True, return_segmimg=True):
     """
     Detect sources above a specified threshold value in an image.
 
     Detected sources must have ``npixels`` connected pixels that are
-    each greater than the ``threshold`` value. If the filtering option
-    is used, then the ``threshold`` is applied to the filtered image.
-    The input ``mask`` can be used to mask pixels in the input data.
-    Masked pixels will not be included in any source.
+    each greater than the ``threshold`` value in the input ``data``.
 
-    This function does not deblend overlapping sources.
-    First use this function to detect sources followed by
-    :func:`~photutils.segmentation.deblend_sources` to deblend sources.
+    This function is the core algorithm for detecting sources in
+    an image used by `detect_sources`. This function differs from
+    `detect_sources` in that it does not perform any boilerplate checks,
+    it accepts a ``footprint`` argument instead of a ``connectivity``
+    argument, and it accepts an ``inverse_mask`` argument instead of a
+    ``mask`` argument. It is also used by the source deblending function
+    for multithresholding.
 
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
         The 2D array of the image. If filtering is desired, please input
-        a convolved image here.
+        a convolved image.
 
-    thresholds : list of 2D `~numpy.ndarray` or 1D array of floats
-        The data values (as a 1D array of floats) or pixel-wise data
-        values (as a sequence of 2D arrays) to be used for the detection
-        thresholds. If ``data`` is a `~astropy.units.Quantity` array,
-        then ``thresholds`` must have the same units as ``data``. 2D
-        threshold arrays must have the same shape as ``data``.
+    threshold : float or 2D `~numpy.ndarray`
+        The data value or pixel-wise data values to be used for the
+        detection threshold. If ``data`` is a `~astropy.units.Quantity`
+        array, then ``threshold`` must have the same units as ``data``.
+        A 2D ``threshold`` array must have the same shape as ``data``.
 
     npixels : int
         The minimum number of connected pixels, each greater than
@@ -166,91 +166,89 @@ def _detect_sources(data, thresholds, npixels, footprint, inverse_mask, *,
         `False` values indicate masked pixels (the inverse of usual
         pixel masks). Masked pixels will not be included in any source.
 
-    deblend_mode : bool, optional
-        If `True` do not include the segmentation image in the output
-        list for any threshold level where the number of detected
-        sources is less than 2. The deblend mode also does not relabel
-        the output segmentation image to have consecutive label. This
-        keyword improves performance of source deblending.
+    relabel : bool, optional
+        If `True`, relabel the segmentation image with consecutive
+        numbers.
+
+    return_segmimg : bool, optional
+        If `True`, return a `~photutils.segmentation.SegmentationImage`
+        object. If `False`, return a 2D `~numpy.ndarray` segmentation
+        image. The latter is used by the source deblending function.
+        In that case, if only one source is found, then `None` is
+        returned.
 
     Returns
     -------
-    segment_image : list of `~photutils.segmentation.SegmentationImage`
-        A list of 2D segmentation images, one for each input threshold,
-        with the same shape as ``data``, where sources are marked
-        by different positive integer values. A value of zero is
-        reserved for the background. If no sources are found for a given
-        threshold, then the output list will contain `None` for that
-        threshold. Also see the ``deblend_mode`` keyword.
+    segment_image : `~photutils.segmentation.SegmentationImage`, \
+            2D `~numpy.ndarray`, or `None`
+        A 2D segmentation image, with the same shape as ``data``, where
+        sources are marked by different positive integer values. A value
+        of zero is reserved for the background. If ``return_segmimg``
+        is `False`, then a 2D `~numpy.ndarray` segmentation image is
+        returned. If no sources are found then `None` is returned.
     """
-    segms = []
-    for threshold in thresholds:
-        # RuntimeWarning caused by > comparison when data contains NaNs
-        # is ignored when calling _detect_sources
+    # ignore RuntimeWarning caused by > comparison when data contains NaNs
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=RuntimeWarning)
         segment_img = data > threshold
 
-        if inverse_mask is not None:
-            segment_img &= inverse_mask
+    if inverse_mask is not None:
+        segment_img &= inverse_mask
 
-        # return if threshold was too high to detect any sources
-        if np.count_nonzero(segment_img) == 0:
-            if not deblend_mode:
-                warnings.warn('No sources were found.', NoDetectionsWarning)
-                segms.append(None)
+    # return None if threshold was too high to detect any sources
+    if np.count_nonzero(segment_img) == 0:
+        return None
+
+    # NOTE: recasting segment_img to int and using output=segment_img
+    # gives similar performance
+    segment_img, nlabels = ndi_label(segment_img, structure=footprint)
+    labels = np.arange(nlabels) + 1
+
+    # remove objects with less than npixels
+    # NOTE: making cutout images and setting their pixels to 0 is
+    # ~10x faster than using segment_img directly and ~50% faster
+    # than using ndimage.sum_labels.
+    slices = find_objects(segment_img)
+    segm_labels = []
+    segm_slices = []
+    for label, slc in zip(labels, slices, strict=True):
+        cutout = segment_img[slc]
+        segment_mask = (cutout == label)
+        if np.count_nonzero(segment_mask) < npixels:
+            cutout[segment_mask] = 0
             continue
+        segm_labels.append(label)
+        segm_slices.append(slc)
 
-        # recasting segment_img to int and using output=segment_img
-        # gives similar performance
-        segment_img, nlabels = ndi_label(segment_img, structure=footprint)
-        labels = np.arange(nlabels) + 1
+    if np.count_nonzero(segment_img) == 0:
+        return None
 
-        # remove objects with less than npixels
-        # NOTE: making cutout images and setting their pixels to 0 is
-        # ~10x faster than using segment_img directly and ~50% faster
-        # than using ndimage.sum_labels.
-        slices = find_objects(segment_img)
-        segm_labels = []
-        segm_slices = []
-        for label, slc in zip(labels, slices, strict=True):
-            cutout = segment_img[slc]
-            segment_mask = (cutout == label)
-            if np.count_nonzero(segment_mask) < npixels:
-                cutout[segment_mask] = 0
-                continue
-            segm_labels.append(label)
-            segm_slices.append(slc)
+    if relabel:
+        # relabel the segmentation image with consecutive numbers;
+        # ndimage.label returns segment_img with dtype = np.int32
+        # unless the input array has more than 2**31 - 1 pixels
+        nlabels = len(segm_labels)
+        if len(labels) != nlabels:
+            label_map = np.zeros(np.max(labels) + 1,
+                                 dtype=segment_img.dtype)
+            labels = np.arange(nlabels, dtype=segment_img.dtype) + 1
+            label_map[segm_labels] = labels
+            segment_img = label_map[segment_img]
+    else:
+        labels = segm_labels
 
-        if np.count_nonzero(segment_img) == 0:
-            if not deblend_mode:
-                warnings.warn('No sources were found.', NoDetectionsWarning)
-                segms.append(None)
-            continue
-
-        if not deblend_mode:
-            # relabel the segmentation image with consecutive numbers;
-            # ndimage.label returns segment_img with dtype = np.int32
-            # unless the input array has more than 2**31 - 1 pixels
-            nlabels = len(segm_labels)
-            if len(labels) != nlabels:
-                label_map = np.zeros(np.max(labels) + 1,
-                                     dtype=segment_img.dtype)
-                labels = np.arange(nlabels, dtype=segment_img.dtype) + 1
-                label_map[segm_labels] = labels
-                segment_img = label_map[segment_img]
-        else:
-            labels = segm_labels
-
+    if return_segmimg:
         segm = object.__new__(SegmentationImage)
         segm._data = segment_img
         segm.__dict__['labels'] = labels
         segm.__dict__['slices'] = segm_slices
+        return segm
 
-        if deblend_mode and segm.nlabels == 1:
-            continue
+    # this is used by deblend_sources
+    if len(labels) == 1:
+        return None
 
-        segms.append(segm)
-
-    return segms
+    return segment_img
 
 
 def detect_sources(data, threshold, npixels, *, connectivity=8, mask=None):
@@ -258,20 +256,21 @@ def detect_sources(data, threshold, npixels, *, connectivity=8, mask=None):
     Detect sources above a specified threshold value in an image.
 
     Detected sources must have ``npixels`` connected pixels that are
-    each greater than the ``threshold`` value. If the filtering option
-    is used, then the ``threshold`` is applied to the filtered image.
-    The input ``mask`` can be used to mask pixels in the input data.
-    Masked pixels will not be included in any source.
+    each greater than the ``threshold`` value in the input ``data``. The
+    input ``mask`` can be used to mask pixels in the input data. Masked
+    pixels will not be included in any source.
 
     This function does not deblend overlapping sources.
     First use this function to detect sources followed by
     :func:`~photutils.segmentation.deblend_sources` to deblend sources.
+    Alternatively, use the :class:`~photutils.segmentation.SourceFinder`
+    class to detect and deblend sources in a single step.
 
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
         The 2D array of the image. If filtering is desired, please input
-        a convolved image here.
+        a convolved image.
 
     threshold : float or 2D `~numpy.ndarray`
         The data value or pixel-wise data values to be used for the
@@ -302,6 +301,11 @@ def detect_sources(data, threshold, npixels, *, connectivity=8, mask=None):
         sources are marked by different positive integer values. A value
         of zero is reserved for the background. If no sources are found
         then `None` is returned.
+
+    Raises
+    ------
+    NoDetectionsWarning
+        If no sources are found.
 
     See Also
     --------
@@ -366,7 +370,10 @@ def detect_sources(data, threshold, npixels, *, connectivity=8, mask=None):
 
     footprint = _make_binary_structure(data.ndim, connectivity)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', category=RuntimeWarning)
-        return _detect_sources(data, (threshold,), npixels, footprint,
-                               inverse_mask, deblend_mode=False)[0]
+    segm = _detect_sources(data, threshold, npixels, footprint,
+                           inverse_mask, relabel=True, return_segmimg=True)
+
+    if segm is None:
+        warnings.warn('No sources were found.', NoDetectionsWarning)
+
+    return segm
