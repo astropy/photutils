@@ -6,9 +6,9 @@ Importing from Photutils
 ========================
 
 Photutils is organized into subpackages covering different topics.
-Importing the entire ``photutils`` package will not import the tools
-in the subpackages. There are no tools available in the top-level
-``photutils`` namespace. For example, the following will not work::
+Importing only ``photutils`` will not import the tools in the
+subpackages. There are no tools available in the top-level ``photutils``
+namespace. For example, the following will not work::
 
     >>> import photutils
     >>> aper = photutils.CircularAperture((10, 20), r=4)
