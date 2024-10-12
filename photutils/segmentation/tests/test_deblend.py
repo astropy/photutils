@@ -9,9 +9,10 @@ from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
-from photutils.segmentation.core import SegmentationImage
-from photutils.segmentation.deblend import deblend_sources
-from photutils.segmentation.detect import detect_sources
+from photutils.segmentation import (SegmentationImage, deblend_sources,
+                                    detect_sources)
+from photutils.segmentation.deblend import (_DeblendParams,
+                                            _SingleSourceDeblender)
 from photutils.utils._optional_deps import HAS_SKIMAGE
 
 
@@ -331,6 +332,28 @@ class TestDeblendSources:
         result = deblend_sources(self.data, segm, self.npixels,
                                  progress_bar=False)
         assert result.nlabels == 2
+
+    def test_single_source_methods(self):
+        """
+        Test the multithreshold and make_markers methods of the
+        _SingleSourceDeblender class.
+
+        These methods are useful for debugging but are not currently
+        used by the deblend_sources function.
+        """
+        data = self.data3
+        segm = self.segm3
+        npixels = 5
+        footprint = np.ones((3, 3))
+        deblend_params = _DeblendParams(npixels, footprint, 32, 0.001,
+                                        'linear')
+        single_debl = _SingleSourceDeblender(data, segm.data, 1,
+                                             deblend_params)
+        segms = single_debl.multithreshold()
+        assert len(segms) == 32
+
+        markers = single_debl.make_markers(return_all=True)
+        assert len(markers) == 19
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')

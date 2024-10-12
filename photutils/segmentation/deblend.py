@@ -431,9 +431,11 @@ class _SingleSourceDeblender:
 
         return thresholds[1:-1]  # do not include source min and max
 
-    def multithreshold(self, deblend_mode=True):
+    def multithreshold(self):
         """
         Perform multithreshold detection for each source.
+
+        This method is useful for debugging and testing.
 
         Parameters
         ----------
@@ -445,70 +447,110 @@ class _SingleSourceDeblender:
         Returns
         -------
         segments : list of 2D `~numpy.ndarray`
-            A list of segmentation images, one for each threshold. If
-            ``deblend_mode=True`` then only segmentation images with more
-            than one label will be returned.
+            A list of segmentation images, one for each threshold.
+            Only segmentation images with more than one label will be
+            returned.
         """
         thresholds = self.compute_thresholds()
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', category=RuntimeWarning)
-            segms = _detect_sources(self.data, thresholds, self.npixels,
-                                    self.footprint, self.segment_mask,
-                                    deblend_mode=deblend_mode)
-            return [segm.data for segm in segms]
+        segms = []
+        for threshold in thresholds:
+            segm = _detect_sources(self.data, threshold, self.npixels,
+                                   self.footprint, self.segment_mask,
+                                   relabel=False, return_segmimg=False)
+            segms.append(segm)
+        return segms
 
-    def make_markers(self, segments, return_all=False):
+    def make_markers(self, return_all=False):
         """
         Make markers (possible sources) for the watershed algorithm.
 
         Parameters
         ----------
-        segments : list of 2D `~numpy.ndarray`
-            A list of segmentation images, one for each threshold.
-
         return_all : bool, optional
-            If `True` then return all segmentation images. If `False`
-            then return only the last segmentation image.
+            If `False` then return only the final segmentation marker
+            image. If `True` then return all segmentation marker images.
+            This keyword is useful for debugging and testing.
 
         Returns
         -------
         markers : 2D `~numpy.ndarray` or list of 2D `~numpy.ndarray`
             A segmentation image that contain markers for possible
             sources. If ``return_all=True`` then a list of all
-            segmentation images is returned.
+            segmentation marker images is returned. `None` is returned
+            if there is only one source at every threshold.
         """
-        for i in range(len(segments) - 1):
-            segm_lower = segments[i]
-            segm_upper = segments[i + 1]
-            markers = segm_lower.astype(bool)
-            new_markers = False
-            # For a given label in the lower level, find the labels in
-            # the upper level (higher threshold value) that are its
-            # children (i.e., the labels within the same mask as the
-            # lower level). If there are multiple children, then the
-            # lower-level parent label is replaced by its children.
-            # Parent labels that do not have multiple children in the
-            # upper level are kept as is (maximizing the marker size).
-            labels = _get_labels(segments[i])
-            for label in labels:
-                mask = (segm_lower == label)
-                # find label mapping from the lower to upper level
-                upper_labels = _get_labels(segm_upper[mask])
-                if upper_labels.size >= 2:  # new child markers found
-                    new_markers = True
-                    markers[mask] = segm_upper[mask].astype(bool)
+        thresholds = self.compute_thresholds()
+        segm_lower = _detect_sources(self.data, thresholds[0], self.npixels,
+                                     self.footprint, self.segment_mask,
+                                     relabel=False, return_segmimg=False)
 
-            if new_markers:
-                # convert bool markers to integer labels
-                segm_data, _ = ndi_label(markers, structure=self.footprint)
-                segments[i + 1] = segm_data
-            else:
-                segments[i + 1] = segments[i]
+        if return_all:
+            all_segms = [segm_lower]
 
-        if not return_all:
-            segments = segments[-1]
+        for threshold in thresholds[1:]:
+            segm_upper = _detect_sources(self.data, threshold, self.npixels,
+                                         self.footprint, self.segment_mask,
+                                         relabel=False, return_segmimg=False)
+            if segm_upper is None:  # 0 or 1 labels
+                continue
 
-        return segments
+            segm_lower = self.make_marker_segment(segm_lower, segm_upper)
+
+            if return_all:
+                all_segms.append(segm_lower)
+
+        if return_all:
+            return all_segms
+
+        return segm_lower
+
+    def make_marker_segment(self, segment_lower, segment_upper):
+        """
+        Make markers (possible sources) for the watershed algorithm.
+
+        Parameters
+        ----------
+        segment_lower : 2D `~numpy.ndarray`
+            The "lower" threshold level segmentation image.
+
+        segment_upper : 2D `~numpy.ndarray`
+            The next-highest threshold level segmentation image.
+
+        Returns
+        -------
+        markers : 2D `~numpy.ndarray`
+            A segmentation image that contain markers for possible
+            sources.
+
+        Notes
+        -----
+        For a given label in the lower level, find the labels in the
+        upper level (higher threshold value) that are its children
+        (i.e., the labels within the same mask as the lower level). If
+        there are multiple children, then the lower-level parent label
+        is replaced by its children. Parent labels that do not have
+        multiple children in the upper level are kept as is (maximizing
+        the marker size).
+        """
+        if segment_lower is None:
+            return segment_upper
+
+        labels = _get_labels(segment_lower)
+        new_markers = False
+        markers = segment_lower.astype(bool)
+        for label in labels:
+            mask = (segment_lower == label)
+            # find label mapping from the lower to upper level
+            upper_labels = _get_labels(segment_upper[mask])
+            if upper_labels.size >= 2:  # new child markers found
+                new_markers = True
+                markers[mask] = segment_upper[mask].astype(bool)
+
+        if new_markers:
+            # convert bool markers to integer labels
+            return ndi_label(markers, structure=self.footprint)[0]
+
+        return segment_lower
 
     def apply_watershed(self, markers):
         """
@@ -567,13 +609,10 @@ class _SingleSourceDeblender:
         if self.source_min == self.source_max:  # no deblending
             return None
 
-        segments = self.multithreshold()
-        if len(segments) == 0:  # no deblending
-            return None
-
         # define the markers (possible sources) for the watershed algorithm
-        markers = self.make_markers(segments)
-        del segments  # free memory
+        markers = self.make_markers()
+        if markers is None:
+            return None
 
         # If there are too many markers (e.g., due to low threshold
         # and/or small npixels), the watershed step can be very slow
@@ -586,12 +625,9 @@ class _SingleSourceDeblender:
             del markers  # free memory
             self.warnings['nmarkers'] = 'too many markers'
             self.mode = 'linear'
-            segments = self.multithreshold()
-
-            if len(segments) == 0:  # no deblending
+            markers = self.make_markers()
+            if markers is None:
                 return None
-            markers = self.make_markers(segments)
-            del segments  # free memory
 
         # deblend using the watershed algorithm using the markers as seeds
         markers = self.apply_watershed(markers)

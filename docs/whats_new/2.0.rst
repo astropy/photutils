@@ -242,6 +242,15 @@ Also, the ``relabel_consecutive``, ``resassign_label(s)``,
 segmentation image instead of always changing it to ``int`` (``int64``).
 
 
+Improved performance for source deblending
+==========================================
+
+Performance improvements and significant reductions in memory usage were
+made during source deblending when using serial processing. This affects
+the :func:`~photutils.segmentation.deblend_sources` function and the
+:class:`~photutils.segmentation.SourceFinder` class.
+
+
 DAOStarFinder flux and mag changes
 ==================================
 
