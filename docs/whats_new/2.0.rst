@@ -232,7 +232,8 @@ Segmentation Image data type
 ============================
 
 The `~photutils.segmentation.detect_sources` and
-`~photutils.segmentation.deblend_sources` functions now return a
+`~photutils.segmentation.deblend_sources` functions and
+`~photutils.segmentation.SourceFinder` class now return a
 ``SegmentationImage`` instance whose data dtype is ``np.int32`` instead
 of ``int`` (``int64``) unless more than (2**32 - 1) labels are needed.
 
@@ -245,10 +246,13 @@ segmentation image instead of always changing it to ``int`` (``int64``).
 Improved performance for source deblending
 ==========================================
 
-Performance improvements and significant reductions in memory usage were
-made during source deblending when using serial processing. This affects
-the :func:`~photutils.segmentation.deblend_sources` function and the
-:class:`~photutils.segmentation.SourceFinder` class.
+Performance improvements and significant reductions in memory usage
+were made for source deblending when using serial processing,
+especially for large sources and/or large ``nlevels`` values. The
+memory usage will independent of the number of ``nlevels``, and the
+memory usage will be significantly reduced for large sources. This
+affects the `~photutils.segmentation.deblend_sources` function and the
+`~photutils.segmentation.SourceFinder` class.
 
 
 DAOStarFinder flux and mag changes
