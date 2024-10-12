@@ -107,8 +107,9 @@ New Features
 
 - ``photutils.segmentation``
 
-  - Reduced the memory usage of ``deblend_sources`` when using serial
-    processing. [#1924]
+  - Reduced the memory usage and improved the performance of source
+    deblending with ``deblend_sources`` and ``SourceFinder`` when using
+    serial processing. [#1924, #1925]
 
 Bug Fixes
 ^^^^^^^^^
