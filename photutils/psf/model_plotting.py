@@ -139,7 +139,7 @@ class ModelGridPlotMixin:
                 vmax_scale = 0.03
             vmax = data.max() * vmax_scale
             vmin = -vmax
-            if minversion(astropy, '6.1.dev'):
+            if minversion(astropy, '6.1'):
                 norm = simple_norm(data, 'linear', vmin=vmin, vmax=vmax)
             else:
                 norm = simple_norm(data, 'linear', min_cut=vmin, max_cut=vmax)
@@ -151,7 +151,7 @@ class ModelGridPlotMixin:
                 vmax_scale = 1.0
             vmax = data.max() * vmax_scale
             vmin = vmax / 1.0e4
-            if minversion(astropy, '6.1.dev'):
+            if minversion(astropy, '6.1'):
                 norm = simple_norm(data, 'log', vmin=vmin, vmax=vmax,
                                    log_a=1.0e4)
             else:
