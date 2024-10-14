@@ -31,8 +31,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'py310-test-alldeps'
+            python: '3.11'
+            tox_env: 'py311-test-oldestdeps'
             allow_failure: false
             prefix: ''
 
@@ -93,8 +93,8 @@ jobs:
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'py310-test-oldestdeps'
+            python: '3.13'
+            tox_env: 'py313-test-alldeps'
             allow_failure: false
             prefix: ''
 
