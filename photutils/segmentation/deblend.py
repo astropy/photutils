@@ -8,7 +8,7 @@ import warnings
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from functools import partial
-from multiprocessing import cpu_count, set_start_method
+from multiprocessing import cpu_count, get_context
 
 import numpy as np
 from astropy.units import Quantity
@@ -220,7 +220,6 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
 
     else:
         # Use multiprocessing to deblend sources
-        set_start_method('spawn')
 
         # Prepare the arguments for the worker function
         all_source_data = []
@@ -247,7 +246,9 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         results = [None] * len(labels)
 
         disable_pbar = not progress_bar
-        with ProcessPoolExecutor(max_workers=nproc) as executor:
+        mp_context = get_context('spawn')
+        with ProcessPoolExecutor(mp_context=mp_context,
+                                 max_workers=nproc) as executor:
             # Submit all jobs at once
             for index, args in enumerate(args_all):
                 futures_dict[executor.submit(worker, *args)] = index
