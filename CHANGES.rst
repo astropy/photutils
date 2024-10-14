@@ -108,8 +108,12 @@ New Features
 - ``photutils.segmentation``
 
   - Reduced the memory usage and improved the performance of source
-    deblending with ``deblend_sources`` and ``SourceFinder`` when using
-    serial processing. [#1924, #1925]
+    deblending with ``deblend_sources`` and ``SourceFinder``. [#1924,
+    #1925, #1926]
+
+  - Improved the accuracy of the progress bar in ``deblend_sources`` and
+    ``SourceFinder`` when using multiprocessing. Also added the source
+    ID label number to the progress bar. [#1925, 1926]
 
 Bug Fixes
 ^^^^^^^^^

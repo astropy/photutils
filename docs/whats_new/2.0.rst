@@ -246,13 +246,18 @@ segmentation image instead of always changing it to ``int`` (``int64``).
 Improved performance for source deblending
 ==========================================
 
-Performance improvements and significant reductions in memory usage
-were made for source deblending when using serial processing,
-especially for large sources and/or large ``nlevels`` values. The
-memory usage will independent of the number of ``nlevels``, and the
-memory usage will be significantly reduced for large sources. This
-affects the `~photutils.segmentation.deblend_sources` function and the
+Performance improvements and significant reductions in memory
+usage were made for source deblending, especially for large
+sources and/or large ``nlevels`` values. The memory usage is now
+independent of the number of ``nlevels``, and the memory usage
+will be significantly reduced for large sources. This affects
+the `~photutils.segmentation.deblend_sources` function and the
 `~photutils.segmentation.SourceFinder` class.
+
+Additionally, the accuracy of the deblending progress bar is now
+improved when using multiprocessing. The progress bar now also displays
+the ID label number of either the current source being deblended
+(serial) or the last source that was deblended (multiprocessing).
 
 
 DAOStarFinder flux and mag changes
