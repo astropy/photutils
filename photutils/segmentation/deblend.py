@@ -20,6 +20,7 @@ from scipy.ndimage import sum_labels
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.detect import _detect_sources
 from photutils.segmentation.utils import _make_binary_structure
+from photutils.utils._optional_deps import tqdm
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._stats import nanmax, nanmin, nansum
 
@@ -243,22 +244,20 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         futures_dict = {}
         results = [None] * len(labels)
 
+        disable_pbar = not progress_bar
         with ProcessPoolExecutor(max_workers=nproc) as executor:
             # Submit all jobs at once
             for index, args in enumerate(args_all):
                 futures_dict[executor.submit(worker, *args)] = index
 
-            if progress_bar:  # pragma: no cover
-                # Wrap the futures in a progress bar
-                desc = 'Deblending'
-                futures_dict = add_progress_bar(futures_dict, desc=desc)
-
-            # Process the results as they are completed
-            for future in as_completed(futures_dict):
-                idx = futures_dict[future]
-                if not isinstance(futures_dict, dict):
-                    futures_dict.set_postfix_str(f'ID: {labels[idx]}')
-                results[idx] = future.result()
+            with tqdm(total=len(labels), desc='Deblending',
+                      disable=disable_pbar) as pbar:
+                # Process the results as they are completed
+                for future in as_completed(futures_dict):
+                    pbar.update(1)
+                    idx = futures_dict[future]
+                    pbar.set_postfix_str(f'ID: {labels[idx]}')
+                    results[idx] = future.result()
 
         # Process the results
         max_label = segment_img.max_label + 1
