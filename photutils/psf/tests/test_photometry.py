@@ -778,6 +778,7 @@ def test_fit_warning(test_data):
 
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     psf_model.flux.fixed = False
+    psf_model.fwhm.bounds = (None, None)
     fit_shape = (5, 5)
     fitter = LMLSQFitter()  # uses "status" instead of "ierr"
     finder = DAOStarFinder(6.0, 2.0)
