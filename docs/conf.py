@@ -107,8 +107,8 @@ html_theme_options.update(  # noqa: F405
         'navigation_with_keys': False,
         'use_edit_page_button': False,
         'logo': {
-            'image_light': 'photutils_logo_light.svg',
-            'image_dark': 'photutils_logo_dark.svg',
+            'image_light': 'photutils_logo_light_plain_path.svg',
+            'image_dark': 'photutils_logo_dark_plain_path.svg',
         },
     }
 )
