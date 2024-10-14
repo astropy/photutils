@@ -109,24 +109,26 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         from 1.
 
     nproc : int, optional
+
         The number of processes to use for multiprocessing (if larger
         than 1). If set to 1, then a serial implementation is used
         instead of a parallel one. If `None`, then the number of
         processes will be set to the number of CPUs detected on the
         machine. Please note that due to overheads, multiprocessing may
-        be slower than serial processing. This is especially true if one
-        only has a small number of sources to deblend. The benefits of
-        multiprocessing require ~1000 or more sources to deblend, with
-        larger gains as the number of sources increase.
+        be slower than serial processing if only a small number of
+        sources are to be deblended. The benefits of multiprocessing
+        require ~1000 or more sources to deblend, with larger gains as
+        the number of sources increase.
 
     progress_bar : bool, optional
-        Whether to display a progress bar. Note that if multiprocessing
-        is used (``nproc > 1``), the estimation times (e.g., time per
-        iteration and time remaining, etc) may be unreliable. The
-        progress bar requires that the `tqdm <https://tqdm.github.io/>`_
-        optional dependency be installed. Note that the progress
-        bar does not currently work in the Jupyter console due to
-        limitations in ``tqdm``.
+        Whether to display a progress bar. If ``nproc = 1``, then the
+        ID shown after the progress bar is the source label being
+        deblended. If multiprocessing is used (``nproc > 1``), the ID
+        shown is the last source label that was deblended. The progress
+        bar requires that the `tqdm <https://tqdm.github.io/>`_ optional
+        dependency be installed. Note that the progress bar does not
+        currently work in the Jupyter console due to limitations in
+        ``tqdm``.
 
     Returns
     -------
