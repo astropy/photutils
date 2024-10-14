@@ -5,7 +5,9 @@ a segmentation image.
 """
 
 import warnings
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
+from functools import partial
 from multiprocessing import cpu_count, get_context
 
 import numpy as np
@@ -18,6 +20,7 @@ from scipy.ndimage import sum_labels
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.detect import _detect_sources
 from photutils.segmentation.utils import _make_binary_structure
+from photutils.utils._optional_deps import tqdm
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._stats import nanmax, nanmin, nansum
 
@@ -106,24 +109,26 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         from 1.
 
     nproc : int, optional
+
         The number of processes to use for multiprocessing (if larger
         than 1). If set to 1, then a serial implementation is used
         instead of a parallel one. If `None`, then the number of
         processes will be set to the number of CPUs detected on the
         machine. Please note that due to overheads, multiprocessing may
-        be slower than serial processing. This is especially true if one
-        only has a small number of sources to deblend. The benefits of
-        multiprocessing require ~1000 or more sources to deblend, with
-        larger gains as the number of sources increase.
+        be slower than serial processing if only a small number of
+        sources are to be deblended. The benefits of multiprocessing
+        require ~1000 or more sources to deblend, with larger gains as
+        the number of sources increase.
 
     progress_bar : bool, optional
-        Whether to display a progress bar. Note that if multiprocessing
-        is used (``nproc > 1``), the estimation times (e.g., time per
-        iteration and time remaining, etc) may be unreliable. The
-        progress bar requires that the `tqdm <https://tqdm.github.io/>`_
-        optional dependency be installed. Note that the progress
-        bar does not currently work in the Jupyter console due to
-        limitations in ``tqdm``.
+        Whether to display a progress bar. If ``nproc = 1``, then the
+        ID shown after the progress bar is the source label being
+        deblended. If multiprocessing is used (``nproc > 1``), the ID
+        shown is the last source label that was deblended. The progress
+        bar requires that the `tqdm <https://tqdm.github.io/>`_ optional
+        dependency be installed. Note that the progress bar does not
+        currently work in the Jupyter console due to limitations in
+        ``tqdm``.
 
     Returns
     -------
@@ -176,7 +181,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
                                     mode)
 
     segm_deblended = segment_img.data.copy()
-    indices = segment_img.get_indices(labels)
+    label_indices = segment_img.get_indices(labels)
 
     if nproc is None:
         nproc = cpu_count()  # pragma: no cover
@@ -184,15 +189,15 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     if nproc == 1:
         if progress_bar:  # pragma: no cover
             desc = 'Deblending'
-            indices = add_progress_bar(indices, desc=desc)  # pragma: no cover
+            label_indices = add_progress_bar(label_indices, desc=desc)
 
         max_label = segment_img.max_label + 1
         nonposmin_labels = []
         nmarkers_labels = []
-        for label, idx in zip(labels, indices, strict=True):
-            if not isinstance(indices, np.ndarray):
-                indices.set_postfix_str(f'ID: {label}')
-            source_slice = segment_img.slices[idx]
+        for label, label_idx in zip(labels, label_indices, strict=True):
+            if not isinstance(label_indices, np.ndarray):
+                label_indices.set_postfix_str(f'ID: {label}')
+            source_slice = segment_img.slices[label_idx]
             source_data = data[source_slice]
             source_segment = segment_img.data[source_slice]
             source_deblended, warns = _deblend_source(source_data,
@@ -214,56 +219,70 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
                 max_label += nlabels
 
     else:
-        # use multiprocessing to deblend sources
+        # Use multiprocessing to deblend sources
+
+        # Prepare the arguments for the worker function
         all_source_data = []
         all_source_segments = []
         all_source_slices = []
-        all_labels = []
-        for label, idx in zip(labels, indices, strict=True):
-            all_labels.append(label)
-            source_slice = segment_img.slices[idx]
+        for label_idx in label_indices:
+            source_slice = segment_img.slices[label_idx]
             source_data = data[source_slice]
-            source_segment = object.__new__(SegmentationImage)
-            source_segment._data = segment_img.data[source_slice]
-            source_segment.keep_labels(label)  # include only one label
+            source_segment = segment_img.data[source_slice]
             all_source_data.append(source_data)
             all_source_segments.append(source_segment)
             all_source_slices.append(source_slice)
 
-        nlabels = len(labels)
-        args_all = zip(all_source_data, all_source_segments,
-                       all_labels, (deblend_params,) * nlabels, strict=True)
+        args_all = zip(all_source_data, all_source_segments, labels,
+                       strict=True)
 
-        if progress_bar:  # pragma: no cover
-            desc = 'Deblending'
-            args_all = add_progress_bar(args_all, total=nlabels,
-                                        desc=desc)
+        # Create a partial function to pass the deblend_params to the
+        # worker function
+        worker = partial(_deblend_source, deblend_params=deblend_params)
 
-        with get_context('spawn').Pool(processes=nproc) as executor:
-            all_source_deblends = executor.starmap(_deblend_source, args_all)
+        # Prepare to store futures and results to preserve the input
+        # order of the labels when using as_completed()
+        futures_dict = {}
+        results = [None] * len(labels)
 
+        disable_pbar = not progress_bar
+        mp_context = get_context('spawn')
+        with ProcessPoolExecutor(mp_context=mp_context,
+                                 max_workers=nproc) as executor:
+            # Submit all jobs at once
+            for index, args in enumerate(args_all):
+                futures_dict[executor.submit(worker, *args)] = index
+
+            with tqdm(total=len(labels), desc='Deblending',
+                      disable=disable_pbar) as pbar:
+                # Process the results as they are completed
+                for future in as_completed(futures_dict):
+                    pbar.update(1)
+                    idx = futures_dict[future]
+                    pbar.set_postfix_str(f'ID: {labels[idx]}')
+                    results[idx] = future.result()
+
+        # Process the results
+        max_label = segment_img.max_label + 1
         nonposmin_labels = []
         nmarkers_labels = []
-        last_label = segment_img.max_label
-        for (label, source_deblended, source_slice) in zip(
-                labels, all_source_deblends, all_source_slices, strict=True):
-
+        for label, source_slice, source_deblended in zip(labels,
+                                                         all_source_slices,
+                                                         results, strict=True):
             source_deblended, warns = source_deblended
 
-            if source_deblended is not None:
-                # replace the original source with the deblended source
-                segment_mask = (source_deblended > 0)
-                segm_deblended[source_slice][segment_mask] = (
-                    source_deblended[segment_mask] + last_label)
-                last_label += len(_get_labels(source_deblended))
+            if warns:
+                if 'nonposmin' in warns:
+                    nonposmin_labels.append(label)
+                if 'nmarkers' in warns:
+                    nmarkers_labels.append(label)
 
-                if hasattr(source_deblended, 'warnings'):
-                    if source_deblended.warnings.get('nonposmin',
-                                                     None) is not None:
-                        nonposmin_labels.append(label)
-                    if source_deblended.warnings.get('nmarkers',
-                                                     None) is not None:
-                        nmarkers_labels.append(label)
+            if source_deblended is not None:
+                source_mask = source_deblended > 0
+                segm_deblended[source_slice][source_mask] = (
+                    source_deblended[source_mask] + max_label)
+                nlabels = len(_get_labels(source_deblended))
+                max_label += nlabels
 
     # process any warnings during deblending
     warning_info = {}
