@@ -14,7 +14,7 @@ from photutils.aperture.circle import CircularAnnulus, CircularAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.rectangle import RectangularAnnulus
 
-NUMPY_LT_2_0 = not minversion(np, '2.0')
+NUMPY_LT_2_0 = not minversion(np, '2.0.dev')
 COPY_IF_NEEDED = False if NUMPY_LT_2_0 else None
 POSITIONS = [(-20, -20), (-20, 20), (20, -20), (60, 60)]
 

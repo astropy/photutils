@@ -43,20 +43,24 @@ jobs:
       test_command: pytest -p no:warnings --pyargs photutils
       targets: |
         # Linux wheels
+        - cp310-manylinux_x86_64
         - cp311-manylinux_x86_64
         - cp312-manylinux_x86_64
         - cp313-manylinux_x86_64
 
         # MacOS X wheels
+        - cp310*macosx_x86_64
         - cp311*macosx_x86_64
         - cp312*macosx_x86_64
         - cp313*macosx_x86_64
 
+        - cp310*macosx_arm64
         - cp311*macosx_arm64
         - cp312*macosx_arm64
         - cp313*macosx_arm64
 
         # Windows wheels
+        - cp310*win_amd64
         - cp311*win_amd64
         - cp312*win_amd64
         - cp313*win_amd64
