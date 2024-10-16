@@ -500,9 +500,11 @@ class Background2D:
         # another for the reshape). Only one copy of the data and mask
         # array is made (except for the extra corner). The boolean mask
         # copy is much smaller than the data array.
-        core = reshape_as_blocks(self._data[:y1, :x1], self.box_size)
+        # An explicit copy of the data array is needed to avoid
+        # modifying the original data array if the shape of the data
+        # array is (y1, x1) (i.e., box_size = data.shape).
+        core = reshape_as_blocks(self._data[:y1, :x1].copy(), self.box_size)
         core_mask = reshape_as_blocks(mask[:y1, :x1], self.box_size)
-        # these rehape operations need to make a temporary copy
         core = core.reshape((*nboxes, -1))
         core_mask = core_mask.reshape((*nboxes, -1))
         core[core_mask] = np.nan

@@ -12,7 +12,7 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background.background_2d import Background2D
-from photutils.background.core import MeanBackground
+from photutils.background.core import MeanBackground, SExtractorBackground
 from photutils.background.interpolators import (BkgIDWInterpolator,
                                                 BkgZoomInterpolator)
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
@@ -476,3 +476,23 @@ class TestBackground2D:
         assert_equal(arr2, arr3)
 
         assert_equal(bkgimg1, bkgimg2)
+
+    @pytest.mark.parametrize('bkg_est', [MeanBackground(),
+                                         SExtractorBackground()])
+    def test_large_boxsize(self, bkg_est):
+        """
+        Regression test to ensure that when boxsize is the same as the
+        image size that the input data left unchanged.
+        """
+        shape = (103, 107)
+        data = np.ones(shape)
+        data[50:55, 50:55] = 1000.0
+        data[20:25, 20:25] = 1000.0
+        box_size = data.shape
+        filter_size = (3, 3)
+        data_orig = data.copy()
+        bkg = Background2D(data, box_size, filter_size=filter_size,
+                           bkg_estimator=bkg_est)
+        bkgim = bkg.background
+        assert bkgim.shape == shape
+        assert_equal(data, data_orig)

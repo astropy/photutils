@@ -16,6 +16,9 @@ Bug Fixes
     the returned value would not be preserved if the output was a single
     value. [#1934]
 
+  - Fixed an issue in ``Background2D`` where if the ``box_size`` equals
+    the input array shape the input data array could be modified. [#1935]
+
 API Changes
 ^^^^^^^^^^^
 
