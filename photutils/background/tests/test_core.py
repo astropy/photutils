@@ -133,6 +133,34 @@ def test_background_ndim(bkg_class):
     assert val.shape == (10000,)
 
 
+@pytest.mark.parametrize('bkgrms_class', RMS_CLASS)
+def test_background_rms_ndim(bkgrms_class):
+    data1 = np.ones((1, 100, 100))
+    data2 = np.ones((1, 100 * 100))
+    data3 = np.ones((1, 1, 100 * 100))
+    data4 = np.ones((1, 1, 1, 100 * 100))
+
+    bkgrms = bkgrms_class(sigma_clip=None)
+    val = bkgrms(data1, axis=None)
+    assert np.ndim(val) == 0
+    val = bkgrms(data1, axis=(1, 2))
+    assert val.shape == (1,)
+    val = bkgrms(data1, axis=-1)
+    assert val.shape == (1, 100)
+    val = bkgrms(data2, axis=-1)
+    assert val.shape == (1,)
+    val = bkgrms(data3, axis=-1)
+    assert val.shape == (1, 1)
+    val = bkgrms(data4, axis=-1)
+    assert val.shape == (1, 1, 1)
+    val = bkgrms(data4, axis=(2, 3))
+    assert val.shape == (1, 1)
+    val = bkgrms(data4, axis=(1, 2, 3))
+    assert val.shape == (1,)
+    val = bkgrms(data4, axis=(0, 1, 2))
+    assert val.shape == (10000,)
+
+
 @pytest.mark.parametrize('rms_class', RMS_CLASS)
 def test_background_rms(rms_class):
     bkgrms = rms_class(sigma_clip=SIGMA_CLIP)
