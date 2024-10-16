@@ -1,11 +1,5 @@
-2.0.1 (unreleased)
+2.0.1 (2024-10-16)
 ------------------
-
-General
-^^^^^^^
-
-New Features
-^^^^^^^^^^^^
 
 Bug Fixes
 ^^^^^^^^^
@@ -18,9 +12,6 @@ Bug Fixes
 
   - Fixed an issue in ``Background2D`` where if the ``box_size`` equals
     the input array shape the input data array could be modified. [#1935]
-
-API Changes
-^^^^^^^^^^^
 
 
 2.0.0 (2024-10-14)
