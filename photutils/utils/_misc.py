@@ -5,7 +5,7 @@ versions.
 """
 
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 
 def _get_version_info():
@@ -49,7 +49,11 @@ def _get_date(utc=False):
     result : str
         The current date/time.
     """
-    now = datetime.now().astimezone() if not utc else datetime.now(UTC)
+    if not utc:
+        now = datetime.now().astimezone()
+    else:
+        now = datetime.now(timezone.utc)
+
     return now.strftime('%Y-%m-%d %H:%M:%S %Z')
 
 

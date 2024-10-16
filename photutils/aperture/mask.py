@@ -11,7 +11,7 @@ from astropy.utils import minversion
 
 __all__ = ['ApertureMask']
 
-COPY_IF_NEEDED = False if not minversion(np, '2.0') else None
+COPY_IF_NEEDED = False if not minversion(np, '2.0.0.dev') else None
 
 
 class ApertureMask:
