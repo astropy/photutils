@@ -1,4 +1,4 @@
-2.1.0 (unreleased)
+2.0.1 (unreleased)
 ------------------
 
 General
@@ -9,6 +9,12 @@ New Features
 
 Bug Fixes
 ^^^^^^^^^
+
+- ``photutils.background``
+
+  - Fixed a bug in ``SExtractorBackground`` where the dimensionality of
+    the returned value would not be preserved if the output was a single
+    value. [#1934]
 
 API Changes
 ^^^^^^^^^^^

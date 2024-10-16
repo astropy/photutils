@@ -413,21 +413,28 @@ class SExtractorBackground(BackgroundBase):
             _median = np.atleast_1d(nanmedian(data, axis=axis))
             _mean = np.atleast_1d(nanmean(data, axis=axis))
             _std = np.atleast_1d(nanstd(data, axis=axis))
-            bkg = np.atleast_1d((2.5 * _median) - (1.5 * _mean))
+            bkg = (2.5 * _median) - (1.5 * _mean)
 
-            bkg = np.where(_std == 0, _mean, bkg)
+            # set the background to the mean where the std is zero
+            mean_mask = _std == 0
+            bkg[mean_mask] = _mean[mean_mask]
 
-            idx = np.where(_std != 0)
-            condition = (np.abs(_mean[idx] - _median[idx]) / _std[idx]) < 0.3
-            bkg[idx] = np.where(condition, bkg[idx], _median[idx])
-            if bkg.size == 1:
+            # set the background to the median when the absolute
+            # difference between the mean and median divided by the
+            # standard deviation is greater than or equal to 0.3
+
+            med_mask = (np.abs(_mean - _median) / _std) >= 0.3
+            mask = np.logical_and(med_mask, np.logical_not(mean_mask))
+            bkg[mask] = _median[mask]
+
+            # if bkg is a scalar, return it as a float
+            if bkg.shape == (1,) and axis is None:
                 bkg = bkg[0]
-            result = bkg
 
-        if masked and isinstance(result, np.ndarray):
-            result = np.ma.masked_where(np.isnan(result), result)
+        if masked and isinstance(bkg, np.ndarray):
+            bkg = np.ma.masked_where(np.isnan(bkg), bkg)
 
-        return result
+        return bkg
 
 
 class BiweightLocationBackground(BackgroundBase):
