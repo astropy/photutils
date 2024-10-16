@@ -105,6 +105,34 @@ def test_sourceextrator_background_skew():
     assert_allclose(bkg.calc_background(data), np.median(data))
 
 
+@pytest.mark.parametrize('bkg_class', BKG_CLASS)
+def test_background_ndim(bkg_class):
+    data1 = np.ones((1, 100, 100))
+    data2 = np.ones((1, 100 * 100))
+    data3 = np.ones((1, 1, 100 * 100))
+    data4 = np.ones((1, 1, 1, 100 * 100))
+
+    bkg = bkg_class(sigma_clip=None)
+    val = bkg(data1, axis=None)
+    assert np.ndim(val) == 0
+    val = bkg(data1, axis=(1, 2))
+    assert val.shape == (1,)
+    val = bkg(data1, axis=-1)
+    assert val.shape == (1, 100)
+    val = bkg(data2, axis=-1)
+    assert val.shape == (1,)
+    val = bkg(data3, axis=-1)
+    assert val.shape == (1, 1)
+    val = bkg(data4, axis=-1)
+    assert val.shape == (1, 1, 1)
+    val = bkg(data4, axis=(2, 3))
+    assert val.shape == (1, 1)
+    val = bkg(data4, axis=(1, 2, 3))
+    assert val.shape == (1,)
+    val = bkg(data4, axis=(0, 1, 2))
+    assert val.shape == (10000,)
+
+
 @pytest.mark.parametrize('rms_class', RMS_CLASS)
 def test_background_rms(rms_class):
     bkgrms = rms_class(sigma_clip=SIGMA_CLIP)
