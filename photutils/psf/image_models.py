@@ -15,6 +15,12 @@ from scipy.interpolate import RectBivariateSpline
 from photutils.aperture import CircularAperture
 from photutils.utils._parameters import as_pair
 
+try:
+    from numba import njit
+except ImportError as e:
+    def njit(func):
+        return func
+
 __all__ = ['ImagePSF', 'FittableImageModel', 'EPSFModel']
 
 
@@ -334,6 +340,383 @@ class ImagePSF(Fittable2DModel):
             # fill_value to avoid extrapolation; these bounds match the
             # RegularGridInterpolator bounds
             ny, nx = self.data.shape
+            invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
+            evaluated_model[invalid] = self.fill_value
+
+        return evaluated_model
+
+
+class PSFExVariablePSF(Fittable2DModel):
+    """
+    A fittable model for PSF output from PSFEx.
+
+    The PSFEx PSF is a grid of 2D models where each 2D element represents
+    the contribution of a polynomial. The polymial can be constructed from
+    any FITS header parameter, but the most straightforward example would
+    be the x and y positions of the CCD image. Currently, only variation in x
+    and y is supported. e.g. for a variation degree of 2, the output PSF will
+    be a grid of 6 images corresponding to 1, x, x^2, y, xy, and y^2.
+
+    The model has three model parameters: an image intensity scaling
+    factor (``flux``) which is applied to the input image, and two
+    positional parameters (``x_0`` and ``y_0``) indicating the location
+    of a feature in the coordinate grid on which the model is evaluated.
+
+    Parameters
+    ----------
+    nddata : 3D `~numpy.ndarray`
+        Array containing the grid of reference PSF arrays. The length of
+        the x and y axes must both be at least 4. All elements of the
+        input image data must be finite. By default, the PSF peak is
+        assumed to be located at the center of the input image (see the
+        ``origin`` keyword).
+
+    meta : `~astropy.io.fits.header.Header`
+        Header associated with extension PSFEx PSF.
+
+    flux : float, optional
+        The total flux of the source, assuming the input image
+        was properly normalized.
+
+    x_0, y_0 : float
+        The x and y positions of a feature in the image in the output
+        coordinate grid on which the model is evaluated. Typically, this
+        refers to the position of the PSF peak, which is assumed to be
+        located at the center of the input image (see the ``origin``
+        keyword).
+
+    origin : tuple of 2 float or None, optional
+        The ``(x, y)`` coordinate with respect to the input image data
+        array that represents the reference pixel of the input data.
+
+        The reference ``origin`` pixel will be placed at the model
+        ``x_0`` and ``y_0`` coordinates in the output coordinate system
+        on which the model is evaluated.
+
+        Most typically, the input PSF should be centered in the input
+        image, and thus the origin should be set to the central pixel of
+        the ``data`` array.
+
+        If the origin is set to `None`, then the origin will be set to
+        the center of the ``data`` array (``(npix - 1) / 2.0``).
+
+    oversampling : int or array_like (int), optional
+        The integer oversampling factor(s) of the input PSF image. If
+        ``oversampling`` is a scalar then it will be used for both axes.
+        If ``oversampling`` has two elements, they must be in ``(y, x)``
+        order.
+        PSFEx supports oversampling as a float, but photutils supports
+        it as an interger as of now.
+
+    fill_value : float, optional
+        The value to use for points outside of the input pixel grid.
+        The default is 0.0.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` base class.
+
+    See Also
+    --------
+    ImagePSF : A model for a 2D image PSF.
+    GriddedPSFModel : A model for a grid of ePSF models.
+    """
+    flux = Parameter(default=1,
+                     description='Intensity scaling factor of the image.')
+    x_0 = Parameter(default=0,
+                    description=('Position of a feature in the image along '
+                                 'the x axis'))
+    y_0 = Parameter(default=0,
+                    description=('Position of a feature in the image along '
+                                 'the y axis'))
+
+    def __init__(self, nddata, meta, *, flux=flux.default, x_0=x_0.default,
+                 y_0=y_0.default, origin=None, oversampling=1,
+                 fill_value=0.0, **kwargs):
+
+        self._validate_data(data, meta)
+        self.data = nddata
+        self.psf_shape = self.data.shape[1:]
+        self._meta = meta
+        self.vardeg = meta['POLDEG1']
+        self.xzero = meta['POLZERO1']
+        self.yzero = meta['POLZERO2']
+        self.xscale = meta['POLSCAL1']
+        self.yscale = meta['POLSCAL2']
+        self.oversampling = as_pair('oversampling', int(meta['PSF_SAMP']),
+                                    lower_bound=(0, 1))
+        self.origin = origin
+        self.fill_value = fill_value
+
+        super().__init__(flux, x_0, y_0, **kwargs)
+
+    @staticmethod
+    def _validate_data(data, meta):
+        if not isinstance(data, np.ndarray):
+            raise TypeError('Input data must be a 3D numpy array.')
+
+        if data.ndim != 3:
+            raise ValueError('Input data must be a 3D numpy array.')
+
+        if not np.all(np.isfinite(data)):
+            raise ValueError('All elements of input data must be finite.')
+
+        # this is required by RectBivariateSpline for kx=3, ky=3
+        if np.any(np.array(data.shape[1:]) < 4):
+            raise ValueError('The length of the x and y axes must both be at '
+                             'least 4.')
+        
+        if not meta['PSF_SAMP'].is_integer():
+            raise TypeError('Oversampling is not supported as a flaot.')
+
+        if (('POLNAXIS' in meta.keys() and meta['POLNAXIS'] > 2) or
+           ('POLNGRP' in meta.keys() and meta['POLNGRP'] > 1) or
+           ('POLNAME1' in meta.keys() and meta['POLNAME1'] != 'X_IMAGE') or
+           ('POLNAME2' in meta.keys() and meta['POLNAME2'] != 'Y_IMAGE')
+        ):
+            raise NotImplementedError('Only one variability group is'
+                                      'supported with upto two variables'
+                                      'that should be "X_IMAGE" and "Y_IMAGE",'
+                                      'in that order.')
+
+    def _cls_info(self):
+        return [('Oversampling', tuple(self.oversampling)),
+                ('PSF Shape (oversampled pixels)', self.psf_shape),
+                ('Variation degree', self.vardeg)]
+
+    def __str__(self):
+        return self._format_str(keywords=self._cls_info())
+
+    def copy(self):
+        """
+        Return a copy of this model where only the model parameters are
+        copied.
+
+        All other copied model attributes are references to the
+        original model. This prevents copying the ePSF grid data, which
+        may contain a large array.
+
+        This method is useful if one is interested in only changing
+        the model parameters in a model copy. It is used in the PSF
+        photometry classes during model fitting.
+
+        Use the `deepcopy` method if you want to copy all of the model
+        attributes, including the ePSF grid data.
+
+        Returns
+        -------
+        result : `PSFExVariablePSF`
+            A copy of this model with only the model parameters copied.
+        """
+        newcls = object.__new__(self.__class__)
+
+        for key, val in self.__dict__.items():
+            if key in self.param_names:  # copy only the parameter values
+                newcls.__dict__[key] = copy.copy(val)
+            else:
+                newcls.__dict__[key] = val
+
+        return newcls
+
+    def deepcopy(self):
+        """
+        Return a deep copy of this model.
+
+        Returns
+        -------
+        result : `PSFExVariablePSF`
+            A deep copy of this model.
+        """
+        return copy.deepcopy(self)
+
+    @property
+    def origin(self):
+        """
+        A 1D `~numpy.ndarray` (x, y) pixel coordinates within the
+        model's 2D image of the origin of the coordinate system.
+
+        The reference ``origin`` pixel will be placed at the model
+        ``x_0`` and ``y_0`` coordinates in the output coordinate system
+        on which the model is evaluated.
+
+        Most typically, the input PSF should be centered in the input
+        image, and thus the origin should be set to the central pixel of
+        the ``data`` array.
+
+        If the origin is set to `None`, then the origin will be set to
+        the center of the ``data`` array (``(npix - 1) / 2.0``).
+        """
+        return self._origin
+
+    @origin.setter
+    def origin(self, origin):
+        if origin is None:
+            origin = (np.array(self.psf_shape) - 1.0) / 2.0
+        else:
+            origin = np.asarray(origin)
+            if origin.ndim != 1 or len(origin) != 2:
+                raise ValueError('origin must be 1D and have 2-elements')
+            if not np.all(np.isfinite(origin)):
+                raise ValueError('All elements of origin must be finite')
+        self._origin = origin
+
+    @property
+    def oversampling(self):
+        """
+        The integer oversampling factor(s) of the input ePSF images.
+
+        If ``oversampling`` is a scalar then it will be used for both
+        axes. If ``oversampling`` has two elements, they must be in
+        ``(y, x)`` order.
+        """
+        return self._oversampling
+
+    @oversampling.setter
+    def oversampling(self, value):
+        """
+        Set the oversampling factor(s) of the input ePSF images.
+
+        Parameters
+        ----------
+        value : int or tuple of int
+            The integer oversampling factor(s) of the input ePSF images.
+            If ``oversampling`` is a scalar then it will be used for both
+            axes. If ``oversampling`` has two elements, they must be in
+            ``(y, x)`` order.
+        """
+        self._oversampling = as_pair('oversampling', value, lower_bound=(0, 1))
+
+    def _calc_bounding_box(self):
+        """
+        Set a bounding box defining the limits of the model.
+
+        Returns
+        -------
+        bbox : tuple
+            A bounding box defining the ((y_min, y_max), (x_min, x_max))
+            limits of the model.
+        """
+        dy, dx = np.array(self.psf_shape) / 2 / self.oversampling
+        return ((self.y_0 - dy, self.y_0 + dy), (self.x_0 - dx, self.x_0 + dx))
+
+    @property
+    def bounding_box(self):
+        """
+        The bounding box of the model.
+
+        Examples
+        --------
+        >>> from itertools import product
+        >>> import numpy as np
+        >>> from astropy.nddata import NDData
+        >>> from photutils.psf import GaussianPSF, GriddedPSFModel
+        >>> psfs = []
+        >>> yy, xx = np.mgrid[0:101, 0:101]
+        >>> for i in range(16):
+        ...     theta = np.deg2rad(i * 10.0)
+        ...     gmodel = GaussianPSF(flux=1, x_0=50, y_0=50, x_fwhm=10,
+        ...                          y_fwhm=5, theta=theta)
+        ...     psfs.append(gmodel(xx, yy))
+        >>> xgrid = [0, 40, 160, 200]
+        >>> ygrid = [0, 60, 140, 200]
+        >>> meta = {}
+        >>> meta['grid_xypos'] = list(product(xgrid, ygrid))
+        >>> meta['oversampling'] = 4
+        >>> nddata = NDData(psfs, meta=meta)
+        >>> model = GriddedPSFModel(nddata, flux=1, x_0=0, y_0=0)
+        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        ModelBoundingBox(
+            intervals={
+                x: Interval(lower=-12.625, upper=12.625)
+                y: Interval(lower=-12.625, upper=12.625)
+            }
+            model=GriddedPSFModel(inputs=('x', 'y'))
+            order='C'
+        )
+        """
+        return self._calc_bounding_box()
+
+    @staticmethod
+    @njit
+    def _calc_poly_coeffs(x, y, vardeg):
+        return [x**j * y**i
+                for i in range(vardeg + 1)
+                for j in range(vardeg - i + 1)]
+
+    def _calc_image_weights(self, x, y):
+        """
+        Calculates the weights for each 2D array of PSF grid based on the
+        location of the source in output grid (x, y).
+        """
+        xi = (x - self.xzero) / self.xscale
+        yi = (y - self.yzero) / self.yscale
+        return self._calc_poly_coeffs(xi, yi, self.vardeg)
+
+    def _calc_model_values(self, x_0, y_0, xi, yi):
+        """
+        Calculate the ePSF model at a given (x_0, y_0) model coordinate
+        and the input (xi, yi) coordinate.
+
+        Parameters
+        ----------
+        x_0, y_0 : float
+            The (x, y) position of the model.
+
+        xi, yi : float
+            The input (x, y) coordinates at which the model is
+            evaluated.
+
+        Returns
+        -------
+        result : float or `~numpy.ndarray`
+            The interpolated ePSF model at the input (x_0, y_0)
+            coordinate.
+        """
+
+        weights = self._calc_image_weights(x_0, y_0)
+        psf = sum(a * b for a, b in zip(weights, self.data))
+
+        x = np.arange(self.psf_shape[1])
+        y = np.arange(self.psf_shape[0])
+        # RectBivariateSpline expects the data to be in (x, y) axis order
+        interpolator = RectBivariateSpline(x, y, psf.T, kx=3, ky=3, s=0)
+
+        return interpolator(xi, yi, grid=False)
+
+    def evaluate(self, x, y, flux, x_0, y_0):
+        """
+        Calculate the ePSF model at the input coordinates for the given
+        model parameters.
+
+        Parameters
+        ----------
+        x, y : float or `~numpy.ndarray`
+            The x and y positions at which to evaluate the model.
+
+        flux : float
+            The flux scaling factor for the model.
+
+        x_0, y_0 : float
+            The (x, y) position of the model.
+
+        Returns
+        -------
+        evaluated_model : `~numpy.ndarray`
+            The evaluated model.
+        """
+
+        xi = self.oversampling[1] * (np.asarray(x, dtype=float) - x_0)
+        yi = self.oversampling[0] * (np.asarray(y, dtype=float) - y_0)
+        xi += self.origin[0]
+        yi += self.origin[1]
+
+        evaluated_model = flux * self._calc_model_values(x_0, y_0, xi, yi)
+
+        if self.fill_value is not None:
+            # set pixels that are outside the input pixel grid to the
+            # fill_value to avoid extrapolation; these bounds match the
+            # RegularGridInterpolator bounds
+            ny, nx = self.psf_shape
             invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
             evaluated_model[invalid] = self.fill_value
 
