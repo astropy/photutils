@@ -1067,8 +1067,8 @@ def test_iterative_psf_photometry_overlap():
 
 def test_iterative_psf_photometry_subshape():
     """
-    A ValueError should not be raised if sub_shape=None and
-    the model does not have a bounding box.
+    A ValueError should not be raised if sub_shape=None and the model
+    does not have a bounding box.
     """
     fwhm = 3.5
     psf_model = CircularGaussianPRF(flux=1, fwhm=fwhm)
