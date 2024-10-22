@@ -66,8 +66,8 @@ for astronomical image analysis.
         ^^^^^^^^^^^^^^^^^^^
 
         New to Photutils? Check out the getting started guides. They
-        contain an introduction to Photutils's main concepts and links
-        to additional tutorials.
+        contain an overview of Photutils and an introduction to its main
+        concepts.
 
         +++
 
