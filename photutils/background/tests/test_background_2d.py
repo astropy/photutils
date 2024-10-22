@@ -307,7 +307,8 @@ class TestBackground2D:
         with pytest.warns(AstropyUserWarning, match=match):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1),
                                exclude_percentile=100.0)
-        assert np.count_nonzero(bkg._nan_idx) == 4
+        assert_equal(bkg.npixels_mesh[0:2, 0:2], np.zeros((2, 2)))
+        assert bkg.npixels_mesh[-1, -1] == 625
 
         data = np.ones((111, 121))
         bkg = Background2D(data, box_size=10, exclude_percentile=100)

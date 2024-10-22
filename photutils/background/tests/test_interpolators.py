@@ -63,19 +63,18 @@ def test_zoom_interp_clip():
 
 def test_idw_interp():
     data = np.ones((300, 300))
-    bkg = Background2D(data, 100)
+    interp = BkgIDWInterpolator()
+    bkg = Background2D(data, 100, interpolator=interp)
     mesh = np.array([[0.01, 0.01, 0.02],
                      [0.01, 0.02, 0.03],
                      [0.03, 0.03, 12.9]])
 
-    interp = BkgIDWInterpolator()
     zoom = interp(mesh, **bkg._interp_kwargs)
     assert zoom.shape == (300, 300)
 
     # test with units
     unit = u.nJy
-    bkg = Background2D(data << unit, 100)
-    interp = BkgIDWInterpolator()
+    bkg = Background2D(data << unit, 100, interpolator=interp)
     zoom = interp(mesh << unit, **bkg._interp_kwargs)
     assert zoom.shape == (300, 300)
 
