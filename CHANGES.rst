@@ -1,17 +1,14 @@
-2.1.0 (unreleased)
+2.0.2 (unreleased)
 ------------------
-
-General
-^^^^^^^
-
-New Features
-^^^^^^^^^^^^
 
 Bug Fixes
 ^^^^^^^^^
 
-API Changes
-^^^^^^^^^^^
+- ``photutils.background``
+
+  - Fixed a bug in ``Background2D`` where an error would be raised when
+    using the ``BkgIDWInterpolator`` and when any mesh was excluded,
+    e.g., due to an input mask. [#1940]
 
 
 2.0.1 (2024-10-16)
