@@ -117,6 +117,19 @@ class TestBackground2D:
         assert_allclose(bkg2.background_mesh, bkg_low_res)
         assert bkg2.background.shape == data.shape
 
+        rng = np.random.default_rng(0)
+        data = rng.normal(1.0, 0.1, (121, 289))
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[50:100, 50:100] = True
+        bkg = Background2D(data, (25, 25), mask=mask,
+                           interpolator=interpolator)
+        assert np.mean(bkg.background) < 1.0
+        assert np.mean(bkg.background_rms) < 1.0
+        assert bkg.background_median < 1.0
+        assert bkg.background_rms_median < 0.1
+        assert bkg.npixels_mesh.shape == (5, 12)
+        assert bkg.npixels_map.shape == data.shape
+
     def test_no_sigma_clipping(self):
         data = np.copy(DATA)
         data[10, 10] = 100.0
@@ -307,7 +320,8 @@ class TestBackground2D:
         with pytest.warns(AstropyUserWarning, match=match):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1),
                                exclude_percentile=100.0)
-        assert np.count_nonzero(bkg._nan_idx) == 4
+        assert_equal(bkg.npixels_mesh[0:2, 0:2], np.zeros((2, 2)))
+        assert bkg.npixels_mesh[-1, -1] == 625
 
         data = np.ones((111, 121))
         bkg = Background2D(data, box_size=10, exclude_percentile=100)

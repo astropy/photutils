@@ -17,7 +17,8 @@ from scipy.ndimage import generic_filter
 
 from photutils.aperture import RectangularAperture
 from photutils.background.core import SExtractorBackground, StdBackgroundRMS
-from photutils.background.interpolators import BkgZoomInterpolator
+from photutils.background.interpolators import (BkgIDWInterpolator,
+                                                BkgZoomInterpolator)
 from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._parameters import as_pair
 from photutils.utils._repr import make_repr
@@ -280,8 +281,16 @@ class Background2D:
         # this is used to selectively filter the low-resolution maps
         self._min_bkg_stats = nanmin(self._bkg_stats)
 
-        # update the interpolator keyword arguments
-        self._interp_kwargs['mesh_yxcen'] = self._calculate_mesh_yxcen()
+        # store a mask of the excluded mesh values (NaNs) in the
+        # low-resolution maps
+        self._mesh_nan_mask = np.isnan(self._bkg_stats)
+
+        # add keyword arguments needed for BkgZoomInterpolator
+        # BkgIDWInterpolator upscales the mesh based only on the good
+        # pixels in the low-resolution mesh
+        if isinstance(self.interpolator, BkgIDWInterpolator):
+            self._interp_kwargs['mesh_yxcen'] = self._calculate_mesh_yxcen()
+            self._interp_kwargs['mesh_nan_mask'] = self._mesh_nan_mask
 
     def __repr__(self):
         ellipsis = ('coverage_mask',)
@@ -576,10 +585,6 @@ class Background2D:
         # we no longer need the copy of the input array
         del self._data
 
-        # TEMP: can probably remove this when background_mesh_masked,
-        # background_rms_mesh_masked, and mesh_nmasked are removed
-        self._nan_idx = np.where(np.isnan(bkg))
-
         return bkg, bkgrms, ngood
 
     def _interpolate_grid(self, data, n_neighbors=10, eps=0.0, power=1.0,
@@ -719,11 +724,11 @@ class Background2D:
         resolution background and background RMS meshes with respect to
         the input data array.
 
-        This is used by the interpolator to expand the low-resolution
-        mesh to the full-size image. It is also used to plot the mesh
-        boxes on the input image.
+        This is used by the IDW interpolator to expand the low-
+        resolution mesh to the full-size image. It is also used to plot
+        the mesh boxes on the input image.
         """
-        mesh_idx = np.where(~np.isnan(self._bkg_stats))
+        mesh_idx = np.where(~self._mesh_nan_mask)  # good mesh indices
         box_cen = (self.box_size - 1) / 2.0
         return (mesh_idx * self.box_size[:, None]) + box_cen[:, None]
 
@@ -763,7 +768,7 @@ class Background2D:
         The array has NaN values where meshes were excluded.
         """
         data = self.background_mesh.copy()
-        data[self._nan_idx] = np.nan
+        data[self._mesh_nan_mask] = np.nan
         return data
 
     @property
@@ -776,7 +781,7 @@ class Background2D:
         The array has NaN values where meshes were excluded.
         """
         data = self.background_rms_mesh.copy()
-        data[self._nan_idx] = np.nan
+        data[self._mesh_nan_mask] = np.nan
         return data
 
     @property
@@ -788,7 +793,7 @@ class Background2D:
         NaN values indicate where meshes were excluded.
         """
         data = (np.prod(self.box_size) - self._ngood).astype(float)
-        data[self._nan_idx] = np.nan
+        data[self._mesh_nan_mask] = np.nan
         return data
 
     @property
@@ -913,7 +918,7 @@ class Background2D:
         if ax is None:
             ax = plt.gca()
 
-        mesh_xycen = np.flipud(self._interp_kwargs['mesh_yxcen'])
+        mesh_xycen = np.flipud(self._calculate_mesh_yxcen())
         ax.scatter(*mesh_xycen, s=markersize, marker=marker, color=color,
                    alpha=alpha)
 
