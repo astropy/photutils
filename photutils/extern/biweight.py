@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from photutils.utils._optional_deps import HAS_BOTTLENECK
 from photutils.utils._stats import nanmedian, nansum
 
 if TYPE_CHECKING:
@@ -45,7 +46,7 @@ def _stat_functions(
 
 def biweight_location(
     data: ArrayLike,
-    c: float | None = 6.0,
+    c: float = 6.0,
     M: float | ArrayLike | None = None,
     axis: int | tuple[int, ...] | None = None,
     *,
@@ -183,7 +184,7 @@ def biweight_location(
 
 def biweight_scale(
     data: ArrayLike,
-    c: float | None = 9.0,
+    c: float = 9.0,
     M: float | ArrayLike | None = None,
     axis: int | tuple[int, ...] | None = None,
     modify_sample_size: bool | None = False,
@@ -309,7 +310,7 @@ def biweight_scale(
 
 def biweight_midvariance(
     data: ArrayLike,
-    c: float | None = 9.0,
+    c: float = 9.0,
     M: float | ArrayLike | None = None,
     axis: int | tuple[int, ...] | None = None,
     modify_sample_size: bool | None = False,
@@ -565,7 +566,11 @@ def median_absolute_deviation(data, axis=None, func=None, ignore_nan=False):
     if axis is not None:
         data_median = np.expand_dims(data_median, axis=axis)
 
-    result = func(np.abs(data - data_median), axis=axis, overwrite_input=True)
+    if HAS_BOTTLENECK:
+        result = func(np.abs(data - data_median), axis=axis)
+    else:
+        result = func(np.abs(data - data_median), axis=axis,
+                      overwrite_input=True)
 
     if axis is None and np.ma.isMaskedArray(result):
         # return scalar version
