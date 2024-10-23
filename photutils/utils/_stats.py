@@ -78,40 +78,68 @@ if HAS_BOTTLENECK:
             array = _move_tuple_axes_last(array, axis=axis)
             axis = -1
 
-        # The only keyword argument that bottleneck functions that
-        # reduce the input array along the specified axis accept besides
-        # "axis" is "ddof". We filter out any other keyword arguments
-        # that the np.nan* functions accept (e.g., dtype, out, keepdims,
-        # overwrite_input)
-        kwargs_filtered = {key: value for key, value in kwargs.items()
-                           if key == 'ddof'}
-
-        result = function(array, axis=axis, **kwargs_filtered)
+        result = function(array, axis=axis, **kwargs)
         if isinstance(array, Quantity):
             if function == bn.nanvar:
                 result <<= array.unit ** 2
             else:
                 result = array.__array_wrap__(result)
+            return result
 
         if isinstance(result, float):
-            # For compatibility with numpy, always return a numpy scalar
+            # For compatibility with numpy, always return a numpy scalar.
             return np.float64(result)
 
         return result
 
-    nansum = partial(_apply_bottleneck, bn.nansum)
-    nanmean = partial(_apply_bottleneck, bn.nanmean)
-    nanmedian = partial(_apply_bottleneck, bn.nanmedian)
-    nanstd = partial(_apply_bottleneck, bn.nanstd)
-    nanvar = partial(_apply_bottleneck, bn.nanvar)
-    nanmin = partial(_apply_bottleneck, bn.nanmin)
-    nanmax = partial(_apply_bottleneck, bn.nanmax)
+    bn_funcs = {
+        'nansum': partial(_apply_bottleneck, bn.nansum),
+        'nanmin': partial(_apply_bottleneck, bn.nanmin),
+        'nanmax': partial(_apply_bottleneck, bn.nanmax),
+        'nanmean': partial(_apply_bottleneck, bn.nanmean),
+        'nanmedian': partial(_apply_bottleneck, bn.nanmedian),
+        'nanstd': partial(_apply_bottleneck, bn.nanstd),
+        'nanvar': partial(_apply_bottleneck, bn.nanvar),
+    }
+
+    np_funcs = {
+        'nansum': np.nansum,
+        'nanmin': np.nanmin,
+        'nanmax': np.nanmax,
+        'nanmean': np.nanmean,
+        'nanmedian': np.nanmedian,
+        'nanstd': np.nanstd,
+        'nanvar': np.nanvar,
+    }
+
+    def _dtype_dispatch(func_name):
+        # dispatch to bottleneck or numpy depending on the input array dtype
+        # this is done to workaround known accuracy bugs in bottleneck
+        # affecting float32 calculations
+        # see https://github.com/pydata/bottleneck/issues/379
+        # see https://github.com/pydata/bottleneck/issues/462
+        # see https://github.com/astropy/astropy/issues/17185
+        # see https://github.com/astropy/astropy/issues/11492
+        def wrapped(*args, **kwargs):
+            if args[0].dtype.str[1:] == 'f8':
+                return bn_funcs[func_name](*args, **kwargs)
+            return np_funcs[func_name](*args, **kwargs)
+
+        return wrapped
+
+    nansum = _dtype_dispatch('nansum')
+    nanmin = _dtype_dispatch('nanmin')
+    nanmax = _dtype_dispatch('nanmax')
+    nanmean = _dtype_dispatch('nanmean')
+    nanmedian = _dtype_dispatch('nanmedian')
+    nanstd = _dtype_dispatch('nanstd')
+    nanvar = _dtype_dispatch('nanvar')
 
 else:
     nansum = np.nansum
+    nanmin = np.nanmin
+    nanmax = np.nanmax
     nanmean = np.nanmean
     nanmedian = np.nanmedian
     nanstd = np.nanstd
     nanvar = np.nanvar
-    nanmin = np.nanmin
-    nanmax = np.nanmax

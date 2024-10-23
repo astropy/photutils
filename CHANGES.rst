@@ -4,6 +4,14 @@
 Bug Fixes
 ^^^^^^^^^
 
+- Due to an upstream bug in ``bottleneck`` with ``float32`` arrays,
+  ``bottleneck`` nan-functions are now used internally only for
+  ``float64`` arrays. Performance may be impacted for computations
+  involving arrays with dtype other than ``float64``. Affected functions
+  are used in the ``aperture``, ``background``, ``detection``,
+  ``profiles``, ``psf``, and ``segmentation`` subpackages. This change
+  has no impact if ``bottleneck`` is not installed.
+
 - ``photutils.background``
 
   - Fixed a bug in ``Background2D`` where an error would be raised when

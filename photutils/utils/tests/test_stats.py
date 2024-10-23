@@ -22,7 +22,7 @@ funcs = [(nansum, np.nansum), (nanmean, np.nanmean),
 @pytest.mark.parametrize('axis', [None, 0, 1, (0, 1), (1, 2), (2, 1),
                                   (0, 1, 2), (3, 1), (0, 3), (2, 0)])
 @pytest.mark.parametrize('use_units', [False, True])
-def testnanmean(func, axis, use_units):
+def test_nan_funcs(func, axis, use_units):
     arr = np.ones((5, 3, 8, 9))
     if use_units:
         arr <<= u.m
