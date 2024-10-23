@@ -40,8 +40,7 @@ class ModelImageMixin:
     residuals.
     """
 
-    def make_model_image(self, shape, *, psf_shape=None,
-                         include_localbkg=False):
+    def make_model_image(self, shape, psf_shape=None, include_localbkg=False):
         """
         Create a 2D image from the fit PSF models and optional local
         background.
@@ -120,7 +119,7 @@ class ModelImageMixin:
                                  x_name=x_name, y_name=y_name,
                                  progress_bar=progress_bar)
 
-    def make_residual_image(self, data, *, psf_shape=None,
+    def make_residual_image(self, data, psf_shape=None,
                             include_localbkg=False):
         """
         Create a 2D residual image from the fit PSF models and local
