@@ -19,7 +19,7 @@ __all__ = ['find_peaks']
 
 
 def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
-               border_width=None, npeaks=np.inf, centroid_func=None,
+               border_width=0, npeaks=np.inf, centroid_func=None,
                error=None, wcs=None):
     """
     Find local peaks in an image that are above a specified threshold
@@ -74,9 +74,9 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         A boolean mask with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
-    border_width : bool, optional
+    border_width : int, optional
         The width in pixels to exclude around the border of the
-        ``data``.
+        ``data``. Must be an non-negative integer.
 
     npeaks : int, optional
         The maximum number of peaks to return. When the number of
@@ -126,7 +126,6 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     arrays, unit = process_quantities((data, threshold, error),
                                       ('data', 'threshold', 'error'))
     data, threshold, error = arrays
-
     data = np.asanyarray(data)
 
     if np.all(data == data.flat[0]):
@@ -139,6 +138,11 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         if data.shape != threshold.shape:
             raise ValueError('A threshold array must have the same shape as '
                              'the input data.')
+
+    if border_width < 0:
+        raise ValueError('border_width must be a non-negative integer.')
+    if int(border_width) != border_width:
+        raise ValueError('border_width must be an integer.')
 
     # remove NaN values to avoid runtime warnings
     nan_mask = np.isnan(data)
@@ -161,7 +165,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
             raise ValueError('data and mask must have the same shape')
         peak_goodmask = np.logical_and(peak_goodmask, ~mask)
 
-    if border_width is not None:
+    if border_width > 0:
         for i in range(peak_goodmask.ndim):
             peak_goodmask = peak_goodmask.swapaxes(0, i)
             peak_goodmask[:border_width] = False

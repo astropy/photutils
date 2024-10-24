@@ -91,6 +91,13 @@ class TestFindPeaks:
         tbl1 = find_peaks(data, 0.1, box_size=3, border_width=25)
         assert len(tbl1) < len(tbl0)
 
+        match = 'border_width must be a non-negative integer'
+        with pytest.raises(ValueError, match=match):
+            find_peaks(data, 0.1, box_size=3, border_width=-1)
+        match = 'border_width must be an integer'
+        with pytest.raises(ValueError, match=match):
+            find_peaks(data, 0.1, box_size=3, border_width=3.1)
+
     def test_box_size_int(self, data):
         """
         Test non-integer box_size.
