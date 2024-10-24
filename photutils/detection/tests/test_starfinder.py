@@ -46,6 +46,18 @@ class TestStarFinder:
         with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, brightest=3.1)
 
+    def test_exclude_border(self, data, kernel):
+        data = np.zeros((12, 12))
+        data[0:2, 0:2] = 1
+        data[9:12, 9:12] = 1
+        kernel = np.ones((3, 3))
+
+        finder0 = StarFinder(1, kernel, exclude_border=False)
+        finder1 = StarFinder(1, kernel, exclude_border=True)
+        tbl0 = finder0(data)
+        tbl1 = finder1(data)
+        assert len(tbl0) > len(tbl1)
+
     def test_nosources(self, data, kernel):
         match = 'No sources were found'
         with pytest.warns(NoDetectionsWarning, match=match):
