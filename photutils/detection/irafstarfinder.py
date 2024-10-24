@@ -416,7 +416,7 @@ class _IRAFStarFinderCatalog:
         skymask = ~self.kernel.mask.astype(bool)  # 1=sky, 0=obj
         nsky = np.count_nonzero(skymask)
         axis = (1, 2)
-        if nsky == 0.0:
+        if nsky == 0.0:  # pragma: no cover
             sky = (np.max(self.cutout_data_nosub, axis=axis)
                    - np.max(self.cutout_convdata, axis=axis))
         else:
@@ -452,7 +452,7 @@ class _IRAFStarFinderCatalog:
         return data
 
     @lazyproperty
-    def cutout_convdata(self):
+    def cutout_convdata(self):  # pragma: no cover
         return self.make_cutouts(self.convolved_data)
 
     @lazyproperty
