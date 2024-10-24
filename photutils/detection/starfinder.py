@@ -96,7 +96,8 @@ class StarFinder(StarFinderBase):
         kernel = self.kernel
         kernel /= np.max(kernel)  # normalize max value to 1.0
         denom = np.sum(kernel**2) - (np.sum(kernel)**2 / kernel.size)
-        kernel = (kernel - np.sum(kernel) / kernel.size) / denom
+        if denom > 0:
+            kernel = (kernel - np.sum(kernel) / kernel.size) / denom
 
         convolved_data = _filter_data(data, kernel, mode='constant',
                                       fill_value=0.0,

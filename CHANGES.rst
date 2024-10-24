@@ -18,6 +18,14 @@ Bug Fixes
     using the ``BkgIDWInterpolator`` and when any mesh was excluded,
     e.g., due to an input mask. [#1940]
 
+- ``photutils.detection``
+
+  - Fixed a bug in the star finders (``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder``) when
+    ``exclude_border=True``. Also, fixed an issue with
+    ``exclude_border=True`` where if all sources were in the border
+    region then an error would be raised. [#1943]
+
 
 2.0.1 (2024-10-16)
 ------------------
