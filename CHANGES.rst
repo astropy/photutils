@@ -14,9 +14,9 @@ Bug Fixes
 
 - ``photutils.background``
 
-  - Fixed a bug in ``Background2D`` where an error would be raised when
-    using the ``BkgIDWInterpolator`` and when any mesh was excluded,
-    e.g., due to an input mask. [#1940]
+  - Fixed a bug in ``Background2D`` where an error would be raised
+    when using the ``BkgIDWInterpolator`` interpolator when any mesh was
+    excluded, e.g., due to an input mask. [#1940]
 
 - ``photutils.detection``
 
