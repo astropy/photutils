@@ -13,13 +13,14 @@ These instructions assume the name of the git remote for the main
 repository is called ``upstream``.
 
 #. Check out the branch that you are going to release. This will usually
-   be the ``main`` branch, unless you are making a bugfix release.
+   be the ``main`` branch, unless you are making a release
+   from a bugfix branch.
 
-   For a bugfix release, check out the ``A.B.x`` branch. Use ``git
-   cherry-pick <hash>`` (or ``git cherry-pick -m1 <hash>`` for merge
-   commits) to backport fixes to the bugfix branch. Also, be sure to
-   push all changes to the repository so that CI can run on the bugfix
-   branch.
+   To release from a bugfix branch, check out the ``A.B.x`` branch.
+   Use ``git cherry-pick <hash>`` (or ``git cherry-pick -m1 <hash>``
+   for merge commits) to backport fixes to the bugfix branch. Also, be
+   sure to push all changes to the repository so that CI can run on the
+   bugfix branch.
 
 #. Ensure that `CI tests <https://github.com/astropy/photutils/actions>`_
    are passing for the branch you are going to
@@ -29,7 +30,7 @@ repository is called ``upstream``.
 #. As an extra check, run the tests locally using ``tox`` to thoroughly
    test the code in isolated environments::
 
-        tox -e test-alldeps -- --remote-data=any
+        tox -e test-alldeps -- --remote-data
         tox -e build_docs
         tox -e linkcheck
 
@@ -48,6 +49,8 @@ repository is called ``upstream``.
         git tag  # show all tags
 
 #. Optionally, :ref:`even more manual tests <manual_tests>` can be run.
+
+   .. _resume_release:
 
 #. Push this new tag to the upstream repo::
 
@@ -85,9 +88,8 @@ repository is called ``upstream``.
    that the "stable" docs correspond to the new released version. Hide
    any older released versions (i.e., check "Hidden").
 
-#. Update ``CHANGES.rst``. After releasing a minor (bugfix) version,
-   update its release date. After releasing a major version, add a new
-   section to ``CHANGES.rst`` for the next ``x.y.z`` version, e.g.,::
+#. Update ``CHANGES.rst``, adding new sections for the next ``x.y.z``
+   version, e.g.,::
 
        x.y.z (unreleased)
        ------------------
@@ -129,9 +131,9 @@ Additional Manual Tests
 These additional manual checks can be run before pushing the release tag
 to the upstream repository.
 
-#. Remove any untracked files (WARNING: this will permanently remove any
-   files that have not been previously committed, so make sure that you
-   don't need to keep any of these files)::
+#. Remove any untracked files (**WARNING: this will permanently remove
+   any files that have not been previously committed**, so make sure that
+   you don't need to keep any of these files)::
 
         git clean -dfx
 
@@ -160,7 +162,7 @@ to the upstream repository.
         cd dist
         tar xvfz <file>.tar.gz
         cd <file>
-        tox -e test-alldeps -- --remote-data=any
+        tox -e test-alldeps -- --remote-data
         tox -e build_docs
 
    Optionally, install and test the source distribution in a virtual
@@ -168,16 +170,21 @@ to the upstream repository.
 
         <install and activate virtual environment>
         pip install -e '.[all,test]'
-        pytest --remote-data=any
+        pytest --remote-data
 
    or::
 
         <install and activate virtual environment>
         pip install '../<file>.tar.gz[all,test]'
         cd <any-directory-outside-of-photutils-source>
-        pytest --pyargs photutils --remote-data=any
+        pytest --pyargs photutils --remote-data
 
-#. Go back to the package root directory and remove the generated files
-   with::
+#. Check out the ``main`` branch, go back to the package root directory,
+   and remove the generated files with::
 
+        git checkout main
+        cd ../..
         git clean -dfx
+
+#. Go back to the :ref:`release steps <resume_release>` where you left
+   off.
