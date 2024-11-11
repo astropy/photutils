@@ -336,9 +336,11 @@ Let's plot the image:
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
-    plt.imshow(data, origin='lower')
-    plt.title('Simulated Data')
-    plt.colorbar()
+
+    fig, ax = plt.subplots()
+    axim = ax.imshow(data, origin='lower')
+    ax.set_title('Simulated Data')
+    fig.colorbar(axim)
 
 
 Fitting multiple sources
@@ -461,7 +463,7 @@ and plot it:
     ax[0].set_title('Data')
     ax[1].set_title('Model')
     ax[2].set_title('Residual Image')
-    plt.tight_layout()
+    fig.tight_layout()
 
 The residual image looks like noise, indicating good fits to the
 sources.
@@ -577,7 +579,7 @@ the location of the source that was fit and subtracted.
     aper.plot(ax=ax[1], color='red')
     ax[2].set_title('Residual Image')
     aper.plot(ax=ax[2], color='red')
-    plt.tight_layout()
+    fig.tight_layout()
 
 
 .. _psf-forced-photometry:

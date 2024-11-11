@@ -120,7 +120,8 @@ class ImagePSF(Fittable2DModel):
         psf_data = gaussian_psf(xx, yy)
         psf_model = ImagePSF(psf_data, x_0=12, y_0=12, flux=10)
         data = psf_model(xx, yy)
-        plt.imshow(data, origin='lower')
+        fig, ax = plt.subplots()
+        ax.imshow(data, origin='lower')
     """
 
     flux = Parameter(default=1,

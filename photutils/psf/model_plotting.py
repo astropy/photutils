@@ -129,7 +129,7 @@ class _ModelGridPlotter:
                 figsize = (20, 8)
             fig, ax = plt.subplots(figsize=figsize)
         else:
-            fig = plt.gcf()
+            fig = ax.get_figure()
 
         if peak_norm and data.max() != 0:
             # normalize relative to peak
@@ -224,7 +224,7 @@ class _ModelGridPlotter:
             # The plot gets extra divider lines and SCA name labels.
             nxpsfs = len(self.model._xgrid)
             nypsfs = len(self.model._ygrid)
-            plt.axhline(nypsfs / 2 - 0.5, color='orange')
+            ax.axhline(nypsfs / 2 - 0.5, color='orange')
             for i in range(1, 4):
                 ax.axvline(nxpsfs / 4 * i - 0.5, color='orange')
 

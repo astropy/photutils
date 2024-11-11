@@ -147,7 +147,8 @@ class GaussianPSF(Fittable2DModel):
                             y_fwhm=5.82, theta=21.7)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
-        plt.imshow(data, origin='lower', interpolation='nearest')
+        fig, ax = plt.subplots()
+        ax.imshow(data, origin='lower', interpolation='nearest')
     """
 
     flux = Parameter(
@@ -516,7 +517,8 @@ class CircularGaussianPSF(Fittable2DModel):
         model = CircularGaussianPSF(flux=71.4, x_0=24.3, y_0=25.2, fwhm=10.1)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
-        plt.imshow(data, origin='lower', interpolation='nearest')
+        fig, ax = plt.subplots()
+        ax.imshow(data, origin='lower', interpolation='nearest')
     """
 
     flux = Parameter(
@@ -808,7 +810,8 @@ class GaussianPRF(Fittable2DModel):
                             y_fwhm=5.82, theta=21.7)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
-        plt.imshow(data, origin='lower', interpolation='nearest')
+        fig, ax = plt.subplots()
+        ax.imshow(data, origin='lower', interpolation='nearest')
     """
 
     flux = Parameter(
@@ -1093,7 +1096,8 @@ class CircularGaussianPRF(Fittable2DModel):
         model = CircularGaussianPRF(flux=71.4, x_0=24.3, y_0=25.2, fwhm=10.1)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
-        plt.imshow(data, origin='lower', interpolation='nearest')
+        fig, ax = plt.subplots()
+        ax.imshow(data, origin='lower', interpolation='nearest')
     """
 
     flux = Parameter(
@@ -1335,7 +1339,8 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
                                          sigma=5.1)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
-        plt.imshow(data, origin='lower', interpolation='nearest')
+        fig, ax = plt.subplots()
+        ax.imshow(data, origin='lower', interpolation='nearest')
     """
 
     flux = Parameter(
@@ -1581,7 +1586,8 @@ class MoffatPSF(Fittable2DModel):
         model = MoffatPSF(flux=71.4, x_0=24.3, y_0=25.2, alpha=5.1, beta=3.2)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
-        plt.imshow(data, origin='lower', interpolation='nearest')
+        fig, ax = plt.subplots()
+        ax.imshow(data, origin='lower', interpolation='nearest')
     """
 
     flux = Parameter(
@@ -1833,7 +1839,8 @@ class AiryDiskPSF(Fittable2DModel):
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
         norm = simple_norm(data, 'sqrt')
-        plt.imshow(data, norm=norm, origin='lower', interpolation='nearest')
+        fig, ax = plt.subplots()
+        ax.imshow(data, norm=norm, origin='lower', interpolation='nearest')
     """
 
     flux = Parameter(

@@ -245,8 +245,7 @@ def load_irac_psf(channel, show_progress=False):
         ax4.imshow(hdu4.data, origin='lower', interpolation='nearest',
                    norm=norm)
         ax4.set_title('IRAC Ch4 PSF')
-        plt.tight_layout()
-        plt.show()
+        fig.tight_layout()
     """
     channel = int(channel)
     if channel < 1 or channel > 4:
@@ -312,7 +311,8 @@ def load_simulated_hst_star_image(show_progress=False):
         from photutils.datasets import load_simulated_hst_star_image
 
         hdu = load_simulated_hst_star_image()
-        plt.imshow(hdu.data, origin='lower', interpolation='nearest')
+        fig, ax = plt.subplots()
+        ax.imshow(hdu.data, origin='lower', interpolation='nearest')
     """
     path = _get_path('hst_wfc3ir_f160w_simulated_starfield.fits',
                      location='photutils-datasets',

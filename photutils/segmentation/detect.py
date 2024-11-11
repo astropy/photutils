@@ -364,7 +364,7 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
                    norm=norm)
         ax2.imshow(segm.data, origin='lower', interpolation='nearest',
                    cmap=segm.make_cmap(seed=1234))
-        plt.tight_layout()
+        fig.tight_layout()
     """
     check_units((data, threshold), ('data', 'threshold'))
 

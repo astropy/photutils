@@ -219,7 +219,7 @@ class ImageDepth:
         depth.apertures[0].plot(ax=ax[1], color=color)
         ax[1].set_title('Mask with blank apertures')
 
-        plt.subplots_adjust(left=0.05, right=0.98, bottom=0.05, top=0.95,
+        fig.subplots_adjust(left=0.05, right=0.98, bottom=0.05, top=0.95,
                             wspace=0.15)
     """
 

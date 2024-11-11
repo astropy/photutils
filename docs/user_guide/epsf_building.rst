@@ -323,7 +323,7 @@ Finally, let's show the constructed ePSF:
     >>> fig, ax = plt.subplots(figsize=(8, 8))
     >>> norm = simple_norm(epsf.data, 'log', percent=99.0)
     >>> axim = ax.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
-    >>> plt.colorbar(axim)
+    >>> fig.colorbar(axim)
 
 .. plot::
 
@@ -369,7 +369,7 @@ Finally, let's show the constructed ePSF:
     fig, ax = plt.subplots(figsize=(8, 8))
     norm = simple_norm(epsf.data, 'log', percent=99.0)
     axim = ax.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
-    plt.colorbar(axim)
+    fig.colorbar(axim)
 
 The `~photutils.psf.ImagePSF` object can be
 used as a PSF model for :ref:`PSF Photometry

@@ -128,7 +128,7 @@ image showing the detected sources:
     ax1.set_title('Background-subtracted Data')
     segment_map.imshow(ax=ax2)
     ax2.set_title('Segmentation Image')
-    plt.tight_layout()
+    fig.tight_layout()
 
 
 Source Deblending
@@ -201,7 +201,7 @@ deblended segmentation image:
     fig, ax = plt.subplots(1, 1, figsize=(10, 6.5))
     deblended_segment_map.imshow(ax=ax)
     ax.set_title('Deblended Segmentation Image')
-    plt.tight_layout()
+    fig.tight_layout()
 
 Let's plot one of the deblended sources:
 
@@ -247,7 +247,7 @@ Let's plot one of the deblended sources:
     ax3.imshow(deblended_segment_map.data[slc], origin='lower', cmap=cmap2,
                interpolation='nearest')
     ax3.set_title('Deblended Segments')
-    plt.tight_layout()
+    fig.tight_layout()
 
 
 SourceFinder
@@ -427,7 +427,7 @@ segmentation image and the science image:
     ax2.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     ax2.set_title('Background-subtracted Data')
     segment_map.plot_patches(ax=ax2, edgecolor='white', lw=1)
-    plt.tight_layout()
+    fig.tight_layout()
 
 To convert the source segments to `regions`_
 `~regions.PolygonPixelRegion` objects, use the
@@ -610,7 +610,7 @@ of each source) on the data:
     ax2.set_title('Segmentation Image with Kron apertures')
     cat.plot_kron_apertures(ax=ax1, color='white', lw=1.5)
     cat.plot_kron_apertures(ax=ax2, color='white', lw=1.5)
-    plt.tight_layout()
+    fig.tight_layout()
 
 
 We can also create a `~photutils.segmentation.SourceCatalog` object

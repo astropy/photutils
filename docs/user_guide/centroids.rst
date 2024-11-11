@@ -51,9 +51,9 @@ centroid with each of these methods. First, let's create the data::
     from photutils.datasets import make_4gaussians_image
 
     data = make_4gaussians_image()
-    plt.figure(figsize=(8, 4))
-    plt.imshow(data, origin='lower', interpolation='nearest')
-    plt.tight_layout()
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.imshow(data, origin='lower', interpolation='nearest')
+    fig.tight_layout()
 
 Next, we need to subtract the background from the data. For this
 example, we'll estimate the background by taking the median of a blank
@@ -188,11 +188,11 @@ Let's plot the results:
     y_init = (40, 61, 24, 71)
     x, y = centroid_sources(data, x_init, y_init, box_size=25,
                             centroid_func=centroid_2dg)
-    plt.figure(figsize=(8, 4))
-    plt.imshow(data, origin='lower', interpolation='nearest')
-    plt.scatter(x, y, marker='+', s=80, color='red', label='Centroids')
-    plt.legend()
-    plt.tight_layout()
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.imshow(data, origin='lower', interpolation='nearest')
+    ax.scatter(x, y, marker='+', s=80, color='red', label='Centroids')
+    ax.legend()
+    fig.tight_layout()
 
 
 API Reference

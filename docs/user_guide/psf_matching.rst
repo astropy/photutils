@@ -209,11 +209,11 @@ Let's plot both results side by side:
 
     fig, ax = plt.subplots(1, 2, figsize=(10, 4))
     axim1 = ax[0].imshow(kernel1, origin='lower')
-    plt.colorbar(axim1, ax=ax[0])
+    fig.colorbar(axim1, ax=ax[0])
     ax[0].set_title('make_kernel')
 
     axim2 = ax[1].imshow(kernel2, origin='lower')
-    plt.colorbar(axim2, ax=ax[1])
+    fig.colorbar(axim2, ax=ax[1])
     ax[1].set_title('make_wiener_kernel')
 
     fig.tight_layout()
@@ -245,7 +245,7 @@ we show 1D cuts across the center of the kernel images to confirm:
     ax.plot(psf3[25, :], label='$\\sigma=4$ Gaussian', ls=':')
     ax.set_xlabel('x')
     ax.set_ylabel('Flux along y=25')
-    plt.legend()
+    ax.legend()
     ax.set_ylim((0.0, 0.011))
 
 For these noiseless Gaussians, both methods produce nearly identical
@@ -531,7 +531,7 @@ Let's display the matching kernel results from all methods:
     fig, axes = plt.subplots(2, 2, figsize=(8, 7))
     for ax, kernel, title in zip(axes.ravel(), kernels, titles):
         axim = snorm.imshow(kernel, ax=ax, origin='lower')
-        plt.colorbar(axim, ax=ax)
+        fig.colorbar(axim, ax=ax)
         ax.set_title(title)
 
     fig.tight_layout()
@@ -599,15 +599,13 @@ channel 4 PSF:
 
     for ax, img, title in zip(axes, images, titles):
         axim = snorm.imshow(img, ax=ax, origin='lower')
-        plt.colorbar(axim, ax=ax, fraction=0.046, pad=0.04)
+        fig.colorbar(axim, ax=ax, fraction=0.046, pad=0.04)
         ax.set_title(title)
 
     fig.suptitle('Channel 1 PSF-matched to Channel 4',
                  x=0.666, y=0.98, ha='center', fontsize=16)
 
     fig.tight_layout(rect=[0, 0, 1, 0.98])
-
-    plt.show()
 
 Now let's examine the residuals between the PSF-matched results and the
 channel 4 PSF target:
@@ -662,7 +660,7 @@ channel 4 PSF target:
     for ax, resid, title in zip(axes.ravel(), residuals, titles):
         axim = ax.imshow(resid, origin='lower', cmap='RdBu_r',
                          vmin=-vmax, vmax=vmax)
-        plt.colorbar(axim, ax=ax)
+        fig.colorbar(axim, ax=ax)
         ax.set_title(title)
 
     fig.suptitle('Residuals: PSF-matched minus channel 4 PSF')

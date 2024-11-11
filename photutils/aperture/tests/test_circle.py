@@ -75,7 +75,8 @@ class TestCircularAnnulus(BaseTestAperture):
 
         # Test creating a legend with these patches
         labels = list(range(len(my_patches)))
-        plt.legend(my_patches, labels)
+        _, ax = plt.subplots()
+        ax.legend(my_patches, labels)
 
     @staticmethod
     @pytest.mark.parametrize('radius', RADII)

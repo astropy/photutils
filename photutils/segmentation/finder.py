@@ -157,7 +157,7 @@ class SourceFinder:
                    norm=norm)
         ax2.imshow(segm.data, origin='lower', interpolation='nearest',
                    cmap=segm.cmap)
-        plt.tight_layout()
+        fig.tight_layout()
     """
 
     @deprecated_renamed_argument('npixels', 'n_pixels', '3.0', until='4.0')
