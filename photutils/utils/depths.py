@@ -177,11 +177,11 @@ class ImageDepth:
 
         fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(9, 3))
         norm = simple_norm(data, 'sqrt', percent=99.)
-        ax[0].imshow(data, norm=norm)
+        ax[0].imshow(data, norm=norm, origin='lower')
         color = 'orange'
         depth.apertures[0].plot(ax[0], color=color)
         ax[0].set_title('Data with blank apertures')
-        ax[1].imshow(mask, interpolation='none')
+        ax[1].imshow(mask, origin='lower', interpolation='none')
         depth.apertures[0].plot(ax[1], color=color)
         ax[1].set_title('Mask with blank apertures')
 
