@@ -13,12 +13,12 @@ Terminology
 -----------
 
 Different astronomy subfields use the terms "PSF", "PRF", or related
-terms somewhat differently, especially when colloquial usage is taken
-into account. The `photutils.psf` package aims to be internally
+terms in slightly varied ways, especially when colloquial usage is
+taken into account. The `photutils.psf` package aims to be internally
 consistent, following the definitions described here.
 
 We take the Point Spread Function (PSF), or instrumental Point
-Spread Function (iPSF) to be the infinite-resolution and
+Spread Function (iPSF), to be the infinite-resolution and
 infinite-signal-to-noise flux distribution from a point source on
 the detector, after passing through optics, dust, atmosphere, etc.
 By contrast, the function describing the responsivity variations
@@ -36,7 +36,7 @@ PSF (e.g., see the `Spitzer Space Telescope MOPEX documentation
 /mopex/mopexusersguide/89/>`_).
 
 In many cases the PSF/PRF/ePSF distinction is unimportant, and the
-PSF/PRF/ePSF are simply called the "PSF" model, but the distinction
+PSF/PRF/ePSF is simply called the "PSF" model. However, the distinction
 can be critical when dealing carefully with undersampled data or
 detectors with significant intra-pixel sensitivity variations. For a
 more detailed description of this formalism, see `Anderson & King 2000
@@ -113,14 +113,14 @@ The next step is to fit the sources and/or groups. This
 task is performed using an astropy fitter, for example
 `~astropy.modeling.fitting.TRFLSQFitter`, input via the ``fitter``
 keyword. The shape of the region to be fitted can be configured using
-the ``fit_shape`` parameter. In general, ``fit_shape`` should be set
-to a small size (e.g., (5, 5)) that covers the central star region
-with the highest flux signal-to-noise. The initial positions are
-derived from the ``finder`` algorithm. The initial flux values for the
-fit are derived from measuring the flux in a circular aperture with
-radius ``aperture_radius``. The initial positions and fluxes can be
-alternatively input in a table via the ``init_params`` keyword when
-calling the class.
+the ``fit_shape`` parameter. In general, ``fit_shape`` should be set to
+a small size (e.g., (5, 5)) that covers the central star region with
+the highest flux signal-to-noise. The initial positions are derived
+from the ``finder`` algorithm. The initial flux values for the fit are
+derived from measuring the flux in a circular aperture with radius
+``aperture_radius``. Alternatively, the initial positions and fluxes can
+be input in a table via the ``init_params`` keyword when calling the
+class.
 
 After sources are fitted, a model image of the fit
 sources or a residual image can be generated using the
@@ -160,24 +160,23 @@ encapsulate changes in the PSF across the detector, e.g., due to optical
 aberrations.
 
 For image-based PSF models, the PSF model is typically derived from
-observed data or from detailed optical modeling. The PSF model can
-be a single PSF model for the entire image or a grid of PSF models
-at fiducial detector positions. The PSF model image is also often
-oversampled to increase the accuracy of the PSF model.
+observed data or from detailed optical modeling. The PSF model can be
+a single PSF model for the entire image or a grid of PSF models at
+fiducial detector positions. Image-based PSF models are also often
+oversampled with respect to the pixel grid to increase the accuracy of
+fitting the PSF model.
 
-The observatory that obtained the data may provide tools for
-creating PSF models for their data or an empirical library of
-PSF models based on previous observations. For example, the
-`Hubble Space Telescope <https://www.stsci.edu/hst>`_ provides
-both libraries of empirical PSF models (e.g., `WFC3 PSF Search
-<https://www.stsci.edu/hst/instrumentation/wfc3/data-analysis/psf/psf-se
-arch>`_) and the `TinyTim
-<https://www.stsci.edu/hst/instrumentation/focus-and-pointing/focus/tiny
--tim-hst-psf-modeling>`_ software for creating PSF models. Similarly,
-the `James Webb Space Telescope <https://www.stsci.edu/jwst>`_ provides
-the `WebbPSF <https://webbpsf.readthedocs.io/>`_ Python software for
-creating PSF models. In particular, WebbPSF outputs gridded PSF models
-directly as Photutils `~photutils.psf.GriddedPSFModel` instances.
+The observatory that obtained the data may provide tools for creating
+PSF models for their data or an empirical library of PSF models
+based on previous observations. For example, the `Hubble Space
+Telescope <https://www.stsci.edu/hst>`_ provides libraries of
+empirical PSF models for ACS and WFC3 (e.g., `WFC3 PSF Search
+<https://www.stsci.edu/hst/instrumentation/wfc3/data-analysis/psf/psf-search>`_).
+Similarly, the `James Webb Space Telescope <https://www.stsci.edu/jwst>`_
+and the `Nancy Grace Roman Space Telescope <https://www.stsci.edu/roman>`_
+provide the `WebbPSF <https://webbpsf.readthedocs.io/>`_ Python software
+for creating PSF models. In particular, WebbPSF outputs gridded PSF
+models directly as Photutils `~photutils.psf.GriddedPSFModel` instances.
 
 If you cannot obtain a PSF model from an empirical library or
 observatory-provided tool, Photutils provides tools for creating an
@@ -214,6 +213,9 @@ total integrated flux, and it should be normalized to unit flux.
 Analytic PSF Models
 ^^^^^^^^^^^^^^^^^^^
 
+The `photutils.psf` subpackage provides the following analytic PSF
+models:
+
 - `~photutils.psf.GaussianPSF`: a general 2D Gaussian PSF model
   parameterized in terms of the position, total flux, and full width
   at half maximum (FWHM) along the x and y axes. Rotation can also be
@@ -249,8 +251,8 @@ function over the pixel areas.
 If one needs a custom PRF model based on an analytical PSF model, an
 efficient option is to first discretize the model on a grid using
 :func:`~astropy.convolution.discretize_model` with the ``'oversample'``
-or ``'integrate'`` ``mode``. The resulting 2D image can then be used as
-the input to ``FittableImageModel`` (see :ref:`psf-image_models` below)
+or ``'integrate'`` mode. The resulting 2D image can then be used as the
+input to `~photutils.psf.ImagePSF` (see :ref:`psf-image_models` below)
 to create an ePSF model.
 
 Note that the non-circular Gaussian and Moffat models above have
@@ -261,12 +263,13 @@ process). The user can choose to also vary these parameters by setting
 the ``fixed`` attribute on the model parameter to `False`.
 
 Photutils also provides a convenience function called
-:func:`~photutils.psf.make_psf_model` that creates a PSF model from
-an Astropy fittable 2D model. However, it is recommended that one use
-the PSF models provided by `photutils.psf` (if possible) as they are
-optimized for PSF photometry. If a custom PSF model is needed, one can
-be created using the Astropy modeling framework that will provide better
-performance than using :func:`~photutils.psf.make_psf_model`.
+:func:`~photutils.psf.make_psf_model` that creates a PSF model from an
+Astropy fittable 2D model. However, it is recommended that one use the
+PSF models provided by `photutils.psf` as they are optimized for PSF
+photometry. If a custom PSF model is needed, one can be created using
+the Astropy modeling framework that will provide better performance than
+using :func:`~photutils.psf.make_psf_model`.
+
 
 .. _psf-image_models:
 

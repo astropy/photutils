@@ -201,7 +201,7 @@ methods of `~photutils.psf.PSFPhotometry` and
 `~photutils.psf.IterativePSFPhotometry`. The value defaults to using the
 model bounding box to define the shape and is required only if the PSF
 model does not have a bounding box attribute. In general, one should
-want the model and residual images to be constructed using the a large
+want the model and residual images to be constructed using a large
 portion of model image, which the bounding box does. If one wants to use
 a different shape, then the ``psf_shape`` keyword can be explicitly set.
 
@@ -246,9 +246,9 @@ segmentation image instead of always changing it to ``int`` (``int64``).
 Improved performance for source deblending
 ==========================================
 
-Performance improvements and significant reductions in memory
-usage were made for source deblending, especially for large
-sources and/or large ``nlevels`` values. The memory usage is now
+Performance improvements and significant reductions in memory usage
+were made for source deblending, especially for large sources
+and/or large ``nlevels`` values. The memory usage is now mostly
 independent of the number of ``nlevels``, and the memory usage
 will be significantly reduced for large sources. This affects
 the `~photutils.segmentation.deblend_sources` function and the
