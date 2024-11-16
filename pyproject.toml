@@ -130,10 +130,7 @@ xfail_strict = true
 remote_data_strict = true
 filterwarnings = [
     'error',  # turn warnings into exceptions
-    'ignore:numpy.ufunc size changed:RuntimeWarning',
     'ignore:numpy.ndarray size changed:RuntimeWarning',
-    # photutils.datasets.make deprecation
-    'ignore:photutils.datasets.make is deprecated:DeprecationWarning',
 ]
 
 [tool.coverage.run]
