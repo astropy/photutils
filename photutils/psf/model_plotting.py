@@ -102,6 +102,7 @@ class ModelGridPlotMixin:
         the function call to suppress the display of the return value.
         """
         import matplotlib.pyplot as plt
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
 
         data = self.data.copy()
         if deltas:
@@ -212,14 +213,9 @@ class ModelGridPlotMixin:
             else:
                 label = 'ePSF flux per pixel'
 
-        # Create a new axis for the colorbar
-        pad = 0.03
-        width = 0.03
-        cbar_ax = ax.figure.add_axes([ax.get_position().x1 + pad,
-                                      ax.get_position().y0,
-                                      width,
-                                      ax.get_position().height])
-        cbar = fig.colorbar(axim, cax=cbar_ax, label=label)
+        divider = make_axes_locatable(ax)
+        cax_cbar = divider.append_axes('right', size='3%', pad='3%')
+        cbar = fig.colorbar(axim, cax=cax_cbar, label=label)
 
         if not deltas:
             cbar.ax.set_yscale('log')
@@ -240,5 +236,7 @@ class ModelGridPlotMixin:
                             (i + 1) * nypsfs / 2 - 0.55,
                             det_labels[i][j], color='orange',
                             verticalalignment='top', fontsize=12)
+
+        fig.tight_layout()
 
         return fig
