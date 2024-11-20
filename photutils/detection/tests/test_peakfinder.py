@@ -88,13 +88,25 @@ class TestFindPeaks:
         Test border exclusion.
         """
         tbl0 = find_peaks(data, 0.1, box_size=3)
-        tbl1 = find_peaks(data, 0.1, box_size=3, border_width=25)
-        assert len(tbl1) < len(tbl0)
+        tbl1 = find_peaks(data, 0.1, box_size=3, border_width=0)
+        tbl2 = find_peaks(data, 0.1, box_size=3, border_width=(0, 0))
+        assert len(tbl0) == len(tbl1)
+        assert len(tbl1) == len(tbl2)
 
-        match = 'border_width must be a non-negative integer'
+        tbl3 = find_peaks(data, 0.1, box_size=3, border_width=25)
+        tbl4 = find_peaks(data, 0.1, box_size=3, border_width=(25, 25))
+        assert len(tbl3) == len(tbl4)
+        assert len(tbl3) < len(tbl0)
+
+        tbl0 = find_peaks(data, 0.1, box_size=3, border_width=(34, 0))
+        tbl1 = find_peaks(data, 0.1, box_size=3, border_width=(0, 36))
+        assert np.min(tbl0['y_peak']) >= 34
+        assert np.min(tbl1['x_peak']) >= 36
+
+        match = 'border_width must be >= 0'
         with pytest.raises(ValueError, match=match):
             find_peaks(data, 0.1, box_size=3, border_width=-1)
-        match = 'border_width must be an integer'
+        match = 'border_width must have integer values'
         with pytest.raises(ValueError, match=match):
             find_peaks(data, 0.1, box_size=3, border_width=3.1)
 
