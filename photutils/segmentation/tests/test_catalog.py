@@ -275,6 +275,16 @@ class TestSourceCatalog:
         assert len(tbl) == 7
         assert tbl.colnames == columns
 
+        tbl = self.cat.to_table(self.cat.default_columns)
+        for col in tbl.columns:
+            assert isinstance(col, str)
+            assert not isinstance(col, np.str_)
+
+        tbl = self.cat.to_table('label')
+        for col in tbl.columns:
+            assert isinstance(col, str)
+            assert not isinstance(col, np.str_)
+
     def test_invalid_inputs(self):
         segm = SegmentationImage(np.zeros(self.data.shape, dtype=int))
         match = 'segment_img must have at least one non-zero label'
