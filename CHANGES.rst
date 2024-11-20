@@ -13,6 +13,12 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - The ``'viridis'`` color map is now the default in the
+    ``GriddedPSFModel`` ``plot_grid`` method when ``deltas=True``.
+    [#1954]
+
 
 2.0.2 (2024-10-24)
 ------------------

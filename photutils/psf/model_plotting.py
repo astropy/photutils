@@ -39,7 +39,7 @@ class ModelGridPlotMixin:
         return data.transpose([0, 2, 1, 3]).reshape(nypsfs * ny, nxpsfs * nx)
 
     def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
-                  deltas=False, cmap=None, dividers=True,
+                  deltas=False, cmap='viridis', dividers=True,
                   divider_color='darkgray', divider_ls='-', figsize=None):
         """
         Plot the grid of ePSF models.
@@ -68,10 +68,7 @@ class ModelGridPlotMixin:
             and the average ePSF.
 
         cmap : str or `matplotlib.colors.Colormap`, optional
-            The colormap to use. The default is `None`, which uses
-            the 'viridis' colormap for plotting ePSF data and the
-            'gray_r' colormap for plotting the ePSF difference data
-            (``deltas=True``).
+            The colormap to use. The default is 'viridis'.
 
         dividers : bool, optional
             Whether to show divider lines between the ePSFs.
@@ -105,7 +102,6 @@ class ModelGridPlotMixin:
         the function call to suppress the display of the return value.
         """
         import matplotlib.pyplot as plt
-        from matplotlib import cm
 
         data = self.data.copy()
         if deltas:
@@ -132,9 +128,6 @@ class ModelGridPlotMixin:
             data /= data.max()
 
         if deltas:
-            if cmap is None:
-                cmap = cm.gray_r.copy()
-
             if vmax_scale is None:
                 vmax_scale = 0.03
             vmax = data.max() * vmax_scale
@@ -144,9 +137,6 @@ class ModelGridPlotMixin:
             else:
                 norm = simple_norm(data, 'linear', min_cut=vmin, max_cut=vmax)
         else:
-            if cmap is None:
-                cmap = cm.viridis.copy()
-
             if vmax_scale is None:
                 vmax_scale = 1.0
             vmax = data.max() * vmax_scale
