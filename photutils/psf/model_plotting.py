@@ -156,7 +156,8 @@ class ModelGridPlotMixin:
         nxpsfs = self._xgrid.shape[0]
         extent = [-0.5, nxpsfs - 0.5, -0.5, nypsfs - 0.5]
 
-        ax.imshow(data, extent=extent, norm=norm, cmap=cmap, origin='lower')
+        axim = ax.imshow(data, extent=extent, norm=norm, cmap=cmap,
+                         origin='lower')
 
         # Use the axes set up above to set appropriate tick labels
         xticklabels = self._xgrid.astype(int)
@@ -211,7 +212,15 @@ class ModelGridPlotMixin:
             else:
                 label = 'ePSF flux per pixel'
 
-        cbar = plt.colorbar(label=label, mappable=ax.images[0])
+        # Create a new axis for the colorbar
+        pad = 0.03
+        width = 0.03
+        cbar_ax = ax.figure.add_axes([ax.get_position().x1 + pad,
+                                      ax.get_position().y0,
+                                      width,
+                                      ax.get_position().height])
+        cbar = fig.colorbar(axim, cax=cbar_ax, label=label)
+
         if not deltas:
             cbar.ax.set_yscale('log')
 
@@ -231,7 +240,5 @@ class ModelGridPlotMixin:
                             (i + 1) * nypsfs / 2 - 0.55,
                             det_labels[i][j], color='orange',
                             verticalalignment='top', fontsize=12)
-
-        fig.tight_layout()
 
         return fig
