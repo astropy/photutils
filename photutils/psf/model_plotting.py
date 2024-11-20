@@ -172,9 +172,9 @@ class ModelGridPlotMixin:
         ax.set_ylabel('ePSF location in detector Y pixels')
 
         if dividers:
-            for ix in range(nxpsfs):
+            for ix in range(nxpsfs - 1):
                 ax.axvline(ix + 0.5, color=divider_color, ls=divider_ls)
-            for iy in range(nypsfs):
+            for iy in range(nypsfs - 1):
                 ax.axhline(iy + 0.5, color=divider_color, ls=divider_ls)
 
         instrument = self.meta.get('instrument', '')
