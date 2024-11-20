@@ -10,6 +10,13 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.segmentation``
+
+  - Fixed a bug where the table output from the ``SourceCatalog``
+    ``to_table`` method could have column names with a ``np.str_``
+    representation instead of ``str`` representation when using NumPy
+    2.0+. [#1956]
+
 API Changes
 ^^^^^^^^^^^
 

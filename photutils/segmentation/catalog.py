@@ -967,8 +967,10 @@ class SourceCatalog:
         """
         if columns is None:
             table_columns = self.default_columns
+        elif isinstance(columns, str):
+            table_columns = [columns]
         else:
-            table_columns = np.atleast_1d(columns)
+            table_columns = columns
 
         tbl = QTable()
         tbl.meta.update(self.meta)  # keep tbl.meta type
