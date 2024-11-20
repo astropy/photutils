@@ -19,6 +19,9 @@ API Changes
     ``GriddedPSFModel`` ``plot_grid`` method when ``deltas=True``.
     [#1954]
 
+  - The ``GriddedPSFModel`` ``plot_grid`` color bar now matches the
+    height of the displayed image. [#1955]
+
 
 2.0.2 (2024-10-24)
 ------------------

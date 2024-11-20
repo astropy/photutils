@@ -102,6 +102,7 @@ class ModelGridPlotMixin:
         the function call to suppress the display of the return value.
         """
         import matplotlib.pyplot as plt
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
 
         data = self.data.copy()
         if deltas:
@@ -156,7 +157,8 @@ class ModelGridPlotMixin:
         nxpsfs = self._xgrid.shape[0]
         extent = [-0.5, nxpsfs - 0.5, -0.5, nypsfs - 0.5]
 
-        ax.imshow(data, extent=extent, norm=norm, cmap=cmap, origin='lower')
+        axim = ax.imshow(data, extent=extent, norm=norm, cmap=cmap,
+                         origin='lower')
 
         # Use the axes set up above to set appropriate tick labels
         xticklabels = self._xgrid.astype(int)
@@ -172,9 +174,9 @@ class ModelGridPlotMixin:
         ax.set_ylabel('ePSF location in detector Y pixels')
 
         if dividers:
-            for ix in range(nxpsfs):
+            for ix in range(nxpsfs - 1):
                 ax.axvline(ix + 0.5, color=divider_color, ls=divider_ls)
-            for iy in range(nypsfs):
+            for iy in range(nypsfs - 1):
                 ax.axhline(iy + 0.5, color=divider_color, ls=divider_ls)
 
         instrument = self.meta.get('instrument', '')
@@ -211,7 +213,10 @@ class ModelGridPlotMixin:
             else:
                 label = 'ePSF flux per pixel'
 
-        cbar = plt.colorbar(label=label, mappable=ax.images[0])
+        divider = make_axes_locatable(ax)
+        cax_cbar = divider.append_axes('right', size='3%', pad='3%')
+        cbar = fig.colorbar(axim, cax=cax_cbar, label=label)
+
         if not deltas:
             cbar.ax.set_yscale('log')
 
