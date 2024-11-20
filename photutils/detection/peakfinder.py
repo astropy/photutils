@@ -11,6 +11,7 @@ from astropy.table import QTable
 from scipy.ndimage import maximum_filter
 
 from photutils.utils._misc import _get_meta
+from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._stats import nanmin
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -19,7 +20,7 @@ __all__ = ['find_peaks']
 
 
 def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
-               border_width=0, npeaks=np.inf, centroid_func=None,
+               border_width=None, npeaks=np.inf, centroid_func=None,
                error=None, wcs=None):
     """
     Find local peaks in an image that are above a specified threshold
@@ -74,9 +75,13 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         A boolean mask with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
-    border_width : int, optional
+    border_width : int, array_like of int, or None, optional
         The width in pixels to exclude around the border of the
-        ``data``. Must be an non-negative integer.
+        ``data``. If ``border_width`` is a scalar then ``border_width``
+        will be applied to all sides. If ``border_width`` has two
+        elements, they must be in ``(ny, nx)`` order. If `None`, then no
+        border is excluded. The border width values must be non-negative
+        integers.
 
     npeaks : int, optional
         The maximum number of peaks to return. When the number of
@@ -139,10 +144,9 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
             raise ValueError('A threshold array must have the same shape as '
                              'the input data.')
 
-    if border_width < 0:
-        raise ValueError('border_width must be a non-negative integer.')
-    if int(border_width) != border_width:
-        raise ValueError('border_width must be an integer.')
+    if border_width is not None:
+        border_width = as_pair('border_width', border_width,
+                               lower_bound=(0, 0), upper_bound=data.shape)
 
     # remove NaN values to avoid runtime warnings
     nan_mask = np.isnan(data)
@@ -159,20 +163,26 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     peak_goodmask = (data == data_max)  # good pixels are True
 
+    # Exclude peaks that are masked
     if mask is not None:
         mask = np.asanyarray(mask)
         if data.shape != mask.shape:
             raise ValueError('data and mask must have the same shape')
         peak_goodmask = np.logical_and(peak_goodmask, ~mask)
 
-    if border_width > 0:
-        for i in range(peak_goodmask.ndim):
-            peak_goodmask = peak_goodmask.swapaxes(0, i)
-            peak_goodmask[:border_width] = False
-            peak_goodmask[-border_width:] = False
-            peak_goodmask = peak_goodmask.swapaxes(0, i)
+    # Exclude peaks that are too close to the border
+    if border_width is not None:
+        ny, nx = border_width
+        if ny > 0:
+            peak_goodmask[:ny, :] = False
+            peak_goodmask[-ny:, :] = False
+        if nx > 0:
+            peak_goodmask[:, :nx] = False
+            peak_goodmask[:, -nx:] = False
 
+    # Exclude peaks below the threshold
     peak_goodmask = np.logical_and(peak_goodmask, (data > threshold))
+
     y_peaks, x_peaks = peak_goodmask.nonzero()
     peak_values = data[y_peaks, x_peaks]
 
