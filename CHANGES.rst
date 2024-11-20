@@ -7,6 +7,12 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.detection``
+
+  - The ``find_peaks`` ``border_width`` keyword can now accept two
+    values, indicating the border width along the the y and x edges,
+    respectively. [#1957]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -19,6 +25,13 @@ Bug Fixes
 
 API Changes
 ^^^^^^^^^^^
+
+- ``photutils.detection``
+
+  - When ``exclude_border`` is set to ``True`` in the ``DAOStarFinder``
+    and ``StarFinder`` classes, the excluded border region can be
+    different along the x and y edges if the kernel shape is rectangular.
+    [#1957]
 
 - ``photutils.psf``
 
