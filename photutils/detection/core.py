@@ -92,9 +92,9 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             else:
                 yborder = kernel.yradius
                 xborder = kernel.xradius
-            border_width = max(xborder, yborder)
+            border_width = (yborder, xborder)
         else:
-            border_width = 0
+            border_width = None
 
         # find local peaks in the convolved data
         # suppress any NoDetectionsWarning from find_peaks
