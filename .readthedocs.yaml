@@ -5,7 +5,7 @@ build:
   apt_packages:
     - graphviz
   tools:
-    python: "3.11"
+    python: "3.12"
   jobs:
     post_checkout:
       - git fetch --shallow-since=2023-05-01 || true

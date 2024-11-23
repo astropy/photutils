@@ -31,7 +31,7 @@ classifiers = [
     'Topic :: Scientific/Engineering :: Astronomy',
 ]
 dynamic = ['version']
-requires-python = '>=3.10'
+requires-python = '>=3.11'
 dependencies = [
     'numpy>=1.24',
     'astropy>=5.3',
@@ -62,7 +62,6 @@ docs = [
     'sphinx',
     'sphinx_design',
     'sphinx-astropy[confv2]>=1.9.1',
-    'tomli; python_version < "3.11"',
 ]
 
 [build-system]

@@ -15,16 +15,12 @@ See astropy.sphinx.conf for which values are set there.
 
 import os
 import sys
-from datetime import datetime, timezone
+import tomllib
+from datetime import UTC, datetime
 from importlib import metadata
 from pathlib import Path
 
 from sphinx.util import logging
-
-if sys.version_info < (3, 11):
-    import tomli as tomllib
-else:
-    import tomllib
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +85,7 @@ rst_epilog = """
 # -- Project information ------------------------------------------------------
 project = project_meta['name']
 author = project_meta['authors'][0]['name']
-project_copyright = f'2011-{datetime.now(tz=timezone.utc).year}, {author}'
+project_copyright = f'2011-{datetime.now(tz=UTC).year}, {author}'
 github_project = 'astropy/photutils'
 
 # The version info for the project you're documenting, acts as
