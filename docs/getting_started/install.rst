@@ -26,7 +26,7 @@ Photutils also optionally depends on other packages for some features:
 * `scikit-image <https://scikit-image.org/>`_ 0.20 or later: Required
   to deblend segmented sources.
 
-* `GWCS <https://gwcs.readthedocs.io/en/stable/>`_ 0.19 or later:
+* `GWCS <https://gwcs.readthedocs.io/en/stable/>`_ 0.20 or later:
   Required in `~photutils.datasets.make_gwcs` to create a simple celestial
   gwcs object.
 
