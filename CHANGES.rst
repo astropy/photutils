@@ -6,6 +6,8 @@ General
 
 - The minimum required Python is now 3.11. [#1958]
 
+- The minimum required gwcs is now 0.20. [#1961]
+
 New Features
 ^^^^^^^^^^^^
 

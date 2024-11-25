@@ -47,7 +47,7 @@ all = [
     'matplotlib>=3.7',
     'regions>=0.9',
     'scikit-image>=0.20',
-    'gwcs>=0.19',
+    'gwcs>=0.20',
     'bottleneck',
     'tqdm',
     'rasterio',
