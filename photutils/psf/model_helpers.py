@@ -14,7 +14,7 @@ from astropy.units import Quantity
 from astropy.utils.decorators import deprecated
 from scipy.integrate import dblquad, trapezoid
 
-__all__ = ['make_psf_model', 'grid_from_epsfs', 'PRFAdapter']
+__all__ = ['PRFAdapter', 'grid_from_epsfs', 'make_psf_model']
 
 
 def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,

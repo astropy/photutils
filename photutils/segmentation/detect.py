@@ -16,7 +16,7 @@ from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._stats import nanmean, nanstd
 from photutils.utils.exceptions import NoDetectionsWarning
 
-__all__ = ['detect_threshold', 'detect_sources']
+__all__ = ['detect_sources', 'detect_threshold']
 
 
 def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,

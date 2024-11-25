@@ -10,8 +10,14 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.data import download_file, get_pkg_data_filename
 
-__all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
-           'load_irac_psf', 'load_star_image', 'load_simulated_hst_star_image']
+__all__ = [
+    'get_path',
+    'load_irac_psf',
+    'load_simulated_hst_star_image',
+    'load_spitzer_catalog',
+    'load_spitzer_image',
+    'load_star_image',
+]
 
 
 def get_path(filename, location='local', cache=True, show_progress=False):

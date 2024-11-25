@@ -17,8 +17,13 @@ from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import elliptical_overlap_grid
 
-__all__ = ['EllipticalMaskMixin', 'EllipticalAperture', 'EllipticalAnnulus',
-           'SkyEllipticalAperture', 'SkyEllipticalAnnulus']
+__all__ = [
+    'EllipticalAnnulus',
+    'EllipticalAperture',
+    'EllipticalMaskMixin',
+    'SkyEllipticalAnnulus',
+    'SkyEllipticalAperture',
+]
 
 
 class EllipticalMaskMixin:

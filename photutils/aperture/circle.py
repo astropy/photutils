@@ -15,8 +15,13 @@ from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import circular_overlap_grid
 
-__all__ = ['CircularMaskMixin', 'CircularAperture', 'CircularAnnulus',
-           'SkyCircularAperture', 'SkyCircularAnnulus']
+__all__ = [
+    'CircularAnnulus',
+    'CircularAperture',
+    'CircularMaskMixin',
+    'SkyCircularAnnulus',
+    'SkyCircularAperture',
+]
 
 
 class CircularMaskMixin:

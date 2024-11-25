@@ -16,11 +16,19 @@ from photutils.utils._stats import nanmean, nanmedian, nanstd
 
 SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
 
-__all__ = ['BackgroundBase', 'BackgroundRMSBase', 'MeanBackground',
-           'MedianBackground', 'ModeEstimatorBackground',
-           'MMMBackground', 'SExtractorBackground',
-           'BiweightLocationBackground', 'StdBackgroundRMS',
-           'MADStdBackgroundRMS', 'BiweightScaleBackgroundRMS']
+__all__ = [
+    'BackgroundBase',
+    'BackgroundRMSBase',
+    'BiweightLocationBackground',
+    'BiweightScaleBackgroundRMS',
+    'MADStdBackgroundRMS',
+    'MMMBackground',
+    'MeanBackground',
+    'MedianBackground',
+    'ModeEstimatorBackground',
+    'SExtractorBackground',
+    'StdBackgroundRMS',
+]
 
 
 class BackgroundBase(metaclass=abc.ABCMeta):

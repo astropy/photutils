@@ -15,7 +15,7 @@ from scipy.interpolate import RectBivariateSpline
 from photutils.aperture import CircularAperture
 from photutils.utils._parameters import as_pair
 
-__all__ = ['ImagePSF', 'FittableImageModel', 'EPSFModel']
+__all__ = ['EPSFModel', 'FittableImageModel', 'ImagePSF']
 
 
 class ImagePSF(Fittable2DModel):

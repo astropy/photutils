@@ -5,7 +5,7 @@ This module provide tools for calculating image moments.
 
 import numpy as np
 
-__all__ = ['_moments_central', '_moments']
+__all__ = ['_moments', '_moments_central']
 
 
 def _moments_central(data, center=None, order=1):

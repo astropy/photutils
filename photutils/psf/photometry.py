@@ -31,7 +31,7 @@ from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import _overlap_slices as overlap_slices
 from photutils.utils.exceptions import NoDetectionsWarning
 
-__all__ = ['ModelImageMixin', 'PSFPhotometry', 'IterativePSFPhotometry']
+__all__ = ['IterativePSFPhotometry', 'ModelImageMixin', 'PSFPhotometry']
 
 
 class ModelImageMixin:

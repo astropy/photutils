@@ -11,9 +11,16 @@ from astropy.units import UnitsError
 from astropy.utils.decorators import deprecated
 from scipy.special import erf, j1, jn_zeros
 
-__all__ = ['GaussianPSF', 'CircularGaussianPSF', 'GaussianPRF',
-           'CircularGaussianPRF', 'CircularGaussianSigmaPRF',
-           'IntegratedGaussianPRF', 'MoffatPSF', 'AiryDiskPSF']
+__all__ = [
+    'AiryDiskPSF',
+    'CircularGaussianPRF',
+    'CircularGaussianPSF',
+    'CircularGaussianSigmaPRF',
+    'GaussianPRF',
+    'GaussianPSF',
+    'IntegratedGaussianPRF',
+    'MoffatPSF',
+]
 
 FLOAT_EPSILON = float(np.finfo(np.float32).tiny)
 GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
