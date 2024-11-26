@@ -618,8 +618,8 @@ pixel value and saved it in the array ``error``::
 
 ``'aperture_sum_err'`` values are given by:
 
-    .. math:: \Delta F = \sqrt{\sum_{i \in A}
-              \sigma_{\mathrm{tot}, i}^2}
+.. math:: \Delta F = \sqrt{\sum_{i \in A}
+          \sigma_{\mathrm{tot}, i}^2}
 
 where :math:`A` are the non-masked pixels in the aperture, and
 :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
