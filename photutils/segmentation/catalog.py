@@ -682,16 +682,24 @@ class SourceCatalog:
 
         Parameters
         ----------
-        names : list of str
+        names : list of str or str
             The names of the properties to remove.
         """
-        names = np.atleast_1d(names)
+        if isinstance(names, str):
+            names = [names]
+
+        # we copy the list here to prevent changing the list in-place
+        # during the for loop below, e.g., in case a user inputs
+        # names=self.extra_properties
+        extra_properties = self._extra_properties.copy()
+
         for name in names:
-            if name in self._extra_properties:
+            if name in extra_properties:
                 delattr(self, name)
-                self._extra_properties.remove(name)
+                extra_properties.remove(name)
             else:
                 raise ValueError(f'{name} is not a defined extra property.')
+        self._extra_properties = extra_properties
 
     def rename_extra_property(self, name, new_name):
         """
