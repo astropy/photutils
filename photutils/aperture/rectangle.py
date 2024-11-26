@@ -17,9 +17,13 @@ from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import rectangular_overlap_grid
 
-__all__ = ['RectangularMaskMixin', 'RectangularAperture',
-           'RectangularAnnulus', 'SkyRectangularAperture',
-           'SkyRectangularAnnulus']
+__all__ = [
+    'RectangularAnnulus',
+    'RectangularAperture',
+    'RectangularMaskMixin',
+    'SkyRectangularAnnulus',
+    'SkyRectangularAperture',
+]
 
 
 class RectangularMaskMixin:

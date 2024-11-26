@@ -16,7 +16,7 @@ from astropy.utils import lazyproperty
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
-__all__ = ['Aperture', 'SkyAperture', 'PixelAperture']
+__all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
 
 
 class Aperture(metaclass=abc.ABCMeta):

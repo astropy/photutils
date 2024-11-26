@@ -7,7 +7,7 @@ import numpy as np
 from numpy.fft import fft2, fftshift, ifft2, ifftshift
 from scipy.ndimage import zoom
 
-__all__ = ['resize_psf', 'create_matching_kernel']
+__all__ = ['create_matching_kernel', 'resize_psf']
 
 
 def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):

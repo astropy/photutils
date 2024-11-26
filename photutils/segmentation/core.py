@@ -19,7 +19,7 @@ from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
 from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
 
-__all__ = ['SegmentationImage', 'Segment']
+__all__ = ['Segment', 'SegmentationImage']
 
 
 class SegmentationImage:

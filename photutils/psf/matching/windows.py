@@ -6,8 +6,13 @@ using Fourier methods.
 
 import numpy as np
 
-__all__ = ['SplitCosineBellWindow', 'HanningWindow', 'TukeyWindow',
-           'CosineBellWindow', 'TopHatWindow']
+__all__ = [
+    'CosineBellWindow',
+    'HanningWindow',
+    'SplitCosineBellWindow',
+    'TopHatWindow',
+    'TukeyWindow',
+]
 
 
 def _radial_distance(shape):

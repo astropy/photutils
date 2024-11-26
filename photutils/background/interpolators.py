@@ -11,7 +11,7 @@ from scipy.ndimage import zoom
 from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._repr import make_repr
 
-__all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator']
+__all__ = ['BkgIDWInterpolator', 'BkgZoomInterpolator']
 
 
 class BkgZoomInterpolator:

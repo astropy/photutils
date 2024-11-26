@@ -25,7 +25,7 @@ from photutils.utils._round import py2intround
 from photutils.utils._stats import nanmedian
 from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
-__all__ = ['EPSFFitter', 'EPSFBuilder']
+__all__ = ['EPSFBuilder', 'EPSFFitter']
 
 
 class EPSFFitter:

@@ -7,7 +7,7 @@ import math
 
 import numpy as np
 
-__all__ = ['INTEGRATORS', 'NEAREST_NEIGHBOR', 'BILINEAR', 'MEAN', 'MEDIAN']
+__all__ = ['BILINEAR', 'INTEGRATORS', 'MEAN', 'MEDIAN', 'NEAREST_NEIGHBOR']
 
 
 # integration modes
