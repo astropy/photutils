@@ -594,10 +594,10 @@ class FittableImageModel(Fittable2DModel):
 
         Possible status values are:
 
-        - 0: **Performed**. Model has been successfully normalized at
+        * 0: **Performed**. Model has been successfully normalized at
              user's request.
-        - 1: **Failed**. Attempt to normalize has failed.
-        - 2: **NotRequested**. User did not request model to be normalized.
+        * 1: **Failed**. Attempt to normalize has failed.
+        * 2: **NotRequested**. User did not request model to be normalized.
         """
         return self._normalization_status
 
@@ -732,12 +732,12 @@ class FittableImageModel(Fittable2DModel):
         **kwargs : dict, optional
             Additional optional keyword arguments:
 
-            - **degree** : int, tuple, optional
+            * **degree** : int, tuple, optional
                 Degree of the interpolating spline. A tuple can be used
                 to provide different degrees for the X- and Y-axes.
                 Default value is degree=3.
 
-            - **s** : float, optional
+            * **s** : float, optional
                 Non-negative smoothing factor. Default
                 value s=0 corresponds to interpolation. See
                 :py:class:`~scipy.interpolate.RectBivariateSpline` for
@@ -1041,10 +1041,10 @@ class _LegacyEPSFModel(Fittable2DModel):
 
         Possible status values are:
 
-        - 0: **Performed**. Model has been successfully normalized at
+        * 0: **Performed**. Model has been successfully normalized at
              user's request.
-        - 1: **Failed**. Attempt to normalize has failed.
-        - 2: **NotRequested**. User did not request model to be normalized.
+        * 1: **Failed**. Attempt to normalize has failed.
+        * 2: **NotRequested**. User did not request model to be normalized.
         """
         return self._normalization_status
 
@@ -1179,12 +1179,12 @@ class _LegacyEPSFModel(Fittable2DModel):
         **kwargs : dict, optional
             Additional optional keyword arguments:
 
-            - **degree** : int, tuple, optional
+            * **degree** : int, tuple, optional
                 Degree of the interpolating spline. A tuple can be used
                 to provide different degrees for the X- and Y-axes.
                 Default value is degree=3.
 
-            - **s** : float, optional
+            * **s** : float, optional
                 Non-negative smoothing factor. Default
                 value s=0 corresponds to interpolation. See
                 :py:class:`~scipy.interpolate.RectBivariateSpline` for

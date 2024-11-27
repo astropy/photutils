@@ -313,10 +313,10 @@ def _interpolate_missing_data(data, mask, method='cubic'):
         The method of used to interpolate the missing data:
 
         * ``'cubic'``:  Masked data are interpolated using 2D cubic
-            splines. This is the default.
+          splines. This is the default.
 
         * ``'nearest'``:  Masked data are interpolated using
-            nearest-neighbor interpolation.
+          nearest-neighbor interpolation.
 
     Returns
     -------

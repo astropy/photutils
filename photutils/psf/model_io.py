@@ -175,10 +175,10 @@ def _split_detectors(grid_data, detector_data, detector_id):
     -----
     In particular::
 
-        * HST WFPC2 STDPSF file contains 4 detectors
-        * HST ACS/WFC STDPSF file contains 2 detectors
-        * HST WFC3/UVIS STDPSF file contains 2 detectors
-        * JWST NIRCam "NRCSW" STDPSF file contains 8 detectors
+    * HST WFPC2 STDPSF file contains 4 detectors
+    * HST ACS/WFC STDPSF file contains 2 detectors
+    * HST WFC3/UVIS STDPSF file contains 2 detectors
+    * JWST NIRCam "NRCSW" STDPSF file contains 8 detectors
     """
     data = grid_data['data']
     npsfs = grid_data['npsfs']
@@ -451,12 +451,12 @@ def stdpsf_reader(filename, detector_id=None):
 
         For WFPC2, the detector value (int) should be:
 
-            - 1: PC, 2: WF2, 3: WF3, 4: WF4
+        * 1: PC, 2: WF2, 3: WF3, 4: WF4
 
         For ACS/WFC and WFC3/UVIS, the detector value should be:
 
-            - 1: WFC2, UVIS2 (sci, 1)
-            - 2: WFC1, UVIS1 (sci, 2)
+        * 1: WFC2, UVIS2 (sci, 1)
+        * 2: WFC1, UVIS1 (sci, 2)
 
         Note that for these two instruments, detector 1 is above
         detector 2 in the y direction. However, in the FLT FITS files,
@@ -467,8 +467,8 @@ def stdpsf_reader(filename, detector_id=None):
         For NIRCam NRCSW files that contain ePSF grids for all 8 SW
         detectors, the detector value should be:
 
-            * 1: A1, 2: A2, 3: A3, 4: A4
-            * 5: B1, 6: B2, 7: B3, 8: B4
+        * 1: A1, 2: A2, 3: A3, 4: A4
+        * 5: B1, 6: B2, 7: B3, 8: B4
 
     Returns
     -------

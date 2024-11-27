@@ -194,13 +194,15 @@ class SourceCatalog:
         apertures). This parameter also affects the Kron radius. The
         options are:
 
-          * 'correct': replace pixels assigned to neighboring sources by
-            replacing them with pixels on the opposite side of the source
-            center (equivalent to MASK_TYPE=CORRECT in SourceExtractor).
-          * 'mask': mask pixels assigned to neighboring sources
-            (equivalent to MASK_TYPE=BLANK in SourceExtractor).
-          * 'none': do not mask any pixels (equivalent to MASK_TYPE=NONE
-            in SourceExtractor).
+        * 'correct': replace pixels assigned to neighboring sources by
+          replacing them with pixels on the opposite side of the source
+          center (equivalent to MASK_TYPE=CORRECT in SourceExtractor).
+
+        * 'mask': mask pixels assigned to neighboring sources
+          (equivalent to MASK_TYPE=BLANK in SourceExtractor).
+
+        * 'none': do not mask any pixels (equivalent to MASK_TYPE=NONE
+          in SourceExtractor).
 
         This keyword will be ignored if ``detection_cat`` is input.
 
@@ -861,12 +863,12 @@ class SourceCatalog:
 
         The following pixels are set to zero in these arrays:
 
-            * pixels outside of the source segment
-            * any masked pixels from the input ``mask``
-            * invalid convolved data values (NaN and inf)
-            * negative convolved data values; negative pixels
-              (especially at large radii) can give image moments that have
-              negative variances.
+        * pixels outside of the source segment
+        * any masked pixels from the input ``mask``
+        * invalid convolved data values (NaN and inf)
+        * negative convolved data values; negative pixels (especially
+          at large radii) can give image moments that have negative
+          variances.
 
         These arrays are used to derive moment-based properties.
         """
@@ -1522,10 +1524,10 @@ class SourceCatalog:
         Because this centroid is based on fitting data, it can fail for
         many reasons including:
 
-            * quadratic fit failed
-            * quadratic fit does not have a maximum
-            * quadratic fit maximum falls outside image
-            * not enough unmasked data points (6 are required)
+        * quadratic fit failed
+        * quadratic fit does not have a maximum
+        * quadratic fit maximum falls outside image
+        * not enough unmasked data points (6 are required)
 
         In these cases, then the isophotal `centroid` will be used
         instead.
@@ -1585,10 +1587,10 @@ class SourceCatalog:
         Because this centroid is based on fitting data, it can fail for
         many reasons, returning (np.nan, np.nan):
 
-            * quadratic fit failed
-            * quadratic fit does not have a maximum
-            * quadratic fit maximum falls outside image
-            * not enough unmasked data points (6 are required)
+        * quadratic fit failed
+        * quadratic fit does not have a maximum
+        * quadratic fit maximum falls outside image
+        * not enough unmasked data points (6 are required)
 
         Also note that a fit is not performed if the maximum data value
         is at the edge of the source segment. In this case, the position

@@ -60,18 +60,17 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         The meta attribute must be dictionary containing the following:
 
-            * ``'grid_xypos'``: A list of the (x, y) grid positions of
-              each reference ePSF. The order of positions should
-              match the first axis of the 3D `~numpy.ndarray` of
-              ePSFs. In other words, ``grid_xypos[i]`` should be
-              the (x, y) position of the reference ePSF defined in
-              ``nddata.data[i]``. The grid positions must form a
-              rectangular grid.
+        * ``'grid_xypos'``: A list of the (x, y) grid positions of
+          each reference ePSF. The order of positions should match the
+          first axis of the 3D `~numpy.ndarray` of ePSFs. In other words,
+          ``grid_xypos[i]`` should be the (x, y) position of the reference
+          ePSF defined in ``nddata.data[i]``. The grid positions must form
+          a rectangular grid.
 
-            * ``'oversampling'``: The integer oversampling factor(s) of
-              the input ePSF images. If ``oversampling`` is a scalar then
-              it will be used for both axes. If ``oversampling`` has two
-              elements, they must be in ``(y, x)`` order.
+        * ``'oversampling'``: The integer oversampling factor(s) of the
+          input ePSF images. If ``oversampling`` is a scalar then it will
+          be used for both axes. If ``oversampling`` has two elements,
+          they must be in ``(y, x)`` order.
 
         The meta attribute may contain other properties such as the
         telescope, instrument, detector, and filter of the ePSF.
