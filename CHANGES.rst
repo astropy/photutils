@@ -11,6 +11,12 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - The ``aperture_photometry`` output table will now include a
+    ``sky_center`` column if ``wcs`` is input, even if the input aperture
+    is not a sky aperture. [#1965]
+
 - ``photutils.detection``
 
   - The ``find_peaks`` ``border_width`` keyword can now accept two
