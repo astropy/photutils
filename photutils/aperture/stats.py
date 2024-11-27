@@ -133,24 +133,24 @@ class ApertureStats:
         "center" aperture mask method. Not all options are available for
         all aperture types. The following methods are available:
 
-          * ``'exact'`` (default):
-            The exact fractional overlap of the aperture and each pixel
-            is calculated. The aperture weights will contain values
-            between 0 and 1.
+        * ``'exact'`` (default):
+          The exact fractional overlap of the aperture and each pixel is
+          calculated. The aperture weights will contain values between 0
+          and 1.
 
-          * ``'center'``:
-            A pixel is considered to be entirely in or out of the
-            aperture depending on whether its center is in or out of the
-            aperture. The aperture weights will contain values only of 0
-            (out) and 1 (in).
+        * ``'center'``:
+          A pixel is considered to be entirely in or out of the aperture
+          depending on whether its center is in or out of the aperture.
+          The aperture weights will contain values only of 0 (out) and 1
+          (in).
 
-          * ``'subpixel'``:
-            A pixel is divided into subpixels (see the ``subpixels``
-            keyword), each of which are considered to be entirely in
-            or out of the aperture depending on whether its center is
-            in or out of the aperture. If ``subpixels=1``, this method
-            is equivalent to ``'center'``. The aperture weights will
-            contain values between 0 and 1.
+        * ``'subpixel'``:
+          A pixel is divided into subpixels (see the ``subpixels``
+          keyword), each of which are considered to be entirely in or
+          out of the aperture depending on whether its center is in
+          or out of the aperture. If ``subpixels=1``, this method is
+          equivalent to ``'center'``. The aperture weights will contain
+          values between 0 and 1.
 
     subpixels : int, optional
         For the ``'subpixel'`` method, resample pixels by this factor
