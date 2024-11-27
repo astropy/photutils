@@ -10,6 +10,7 @@ from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import Table
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_array_less, assert_equal
 
@@ -825,18 +826,24 @@ def test_scalar_skycoord():
     assert isinstance(tbl['sky_center'], SkyCoord)
 
 
-def test_nddata_input():
+@pytest.mark.parametrize('units', [False, True])
+def test_nddata_input(units):
     data = np.arange(400).reshape((20, 20))
     error = np.sqrt(data)
     mask = np.zeros((20, 20), dtype=bool)
     mask[8:13, 8:13] = True
-    unit = 'adu'
+    if units:
+        unit = u.Jy
+        data = data * unit
+        error = error * unit
+    else:
+        unit = None
+
     wcs = make_wcs(data.shape)
     skycoord = wcs.pixel_to_world(10, 10)
     aper = SkyCircularAperture(skycoord, r=0.7 * u.arcsec)
 
-    tbl1 = aperture_photometry(data * u.adu, aper, error=error * u.adu,
-                               mask=mask, wcs=wcs)
+    tbl1 = aperture_photometry(data, aper, error=error, mask=mask, wcs=wcs)
 
     uncertainty = StdDevUncertainty(error)
     nddata = NDData(data, uncertainty=uncertainty, mask=mask, wcs=wcs,
@@ -847,6 +854,10 @@ def test_nddata_input():
         if column == 'sky_center':  # cannot test SkyCoord equality
             continue
         assert_allclose(tbl1[column], tbl2[column])
+
+    match = 'keyword is be ignored. Its value is obtained from the input'
+    with pytest.warns(AstropyUserWarning, match=match):
+        aperture_photometry(nddata, aper, error=error)
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
