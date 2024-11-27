@@ -123,10 +123,8 @@ class CurveOfGrowth(ProfileBase):
 
     .. plot::
 
-        import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
-        from astropy.visualization import simple_norm
 
         from photutils.centroids import centroid_quadratic
         from photutils.datasets import make_noise_image
@@ -154,10 +152,8 @@ class CurveOfGrowth(ProfileBase):
 
     .. plot::
 
-        import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
-        from astropy.visualization import simple_norm
 
         from photutils.centroids import centroid_quadratic
         from photutils.datasets import make_noise_image
