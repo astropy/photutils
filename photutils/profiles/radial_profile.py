@@ -103,7 +103,6 @@ class RadialProfile(ProfileBase):
     --------
     >>> import numpy as np
     >>> from astropy.modeling.models import Gaussian2D
-    >>> from astropy.visualization import simple_norm
     >>> from photutils.centroids import centroid_quadratic
     >>> from photutils.datasets import make_noise_image
     >>> from photutils.profiles import RadialProfile
@@ -147,10 +146,8 @@ class RadialProfile(ProfileBase):
 
     .. plot::
 
-        import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
-        from astropy.visualization import simple_norm
 
         from photutils.centroids import centroid_quadratic
         from photutils.datasets import make_noise_image
@@ -178,10 +175,8 @@ class RadialProfile(ProfileBase):
 
     .. plot::
 
-        import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
-        from astropy.visualization import simple_norm
 
         from photutils.centroids import centroid_quadratic
         from photutils.datasets import make_noise_image
@@ -256,7 +251,6 @@ class RadialProfile(ProfileBase):
         import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
-        from astropy.visualization import simple_norm
 
         from photutils.centroids import centroid_quadratic
         from photutils.datasets import make_noise_image
