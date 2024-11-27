@@ -316,8 +316,9 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         The inner full height of the rectangular annulus in pixels. If
         `None`, then the inner full height is calculated as:
 
-            .. math:: h_{in} = h_{out}
-                \left(\frac{w_{in}}{w_{out}}\right)
+        .. math::
+
+            h_{in} = h_{out} \left(\frac{w_{in}}{w_{out}}\right)
 
         For ``theta=0`` the height side is along the ``y`` axis.
 
@@ -568,8 +569,9 @@ class SkyRectangularAnnulus(SkyAperture):
         The outer full height of the rectangular annulus in angular
         units. If `None`, then the inner full height is calculated as:
 
-            .. math:: h_{in} = h_{out}
-                \left(\frac{w_{in}}{w_{out}}\right)
+        .. math::
+
+            h_{in} = h_{out} \left(\frac{w_{in}}{w_{out}}\right)
 
         For ``theta=0`` the height side is along the East-West axis.
 

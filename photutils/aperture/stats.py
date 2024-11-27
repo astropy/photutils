@@ -1235,7 +1235,9 @@ class ApertureStats:
         r"""
         The sum of the unmasked ``data`` values within the aperture.
 
-        .. math:: F = \sum_{i \in A} I_i
+        .. math::
+
+            F = \sum_{i \in A} I_i
 
         where :math:`F` is ``sum``, :math:`I_i` is the
         background-subtracted ``data``, and :math:`A` are the unmasked
@@ -1263,8 +1265,9 @@ class ApertureStats:
         ``sum_err`` is the quadrature sum of the total errors over the
         unmasked pixels within the aperture:
 
-        .. math:: \Delta F = \sqrt{\sum_{i \in A}
-                  \sigma_{\mathrm{tot}, i}^2}
+        .. math::
+
+            \Delta F = \sqrt{\sum_{i \in A} \sigma_{\mathrm{tot}, i}^2}
 
         where :math:`\Delta F` is the `sum_err`,
         :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total errors
@@ -1528,7 +1531,7 @@ class ApertureStats:
 
            \mathrm{FWHM} & = 2 \sqrt{2 \ln(2)} \sqrt{0.5 (a^2 + b^2)}
            \\
-                          & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
+                         & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
 
         where :math:`a` and :math:`b` are the 1-sigma lengths of the
         semimajor (`semimajor_sigma`) and semiminor (`semiminor_sigma`)
@@ -1562,7 +1565,9 @@ class ApertureStats:
         The eccentricity is the fraction of the distance along the
         semimajor axis at which the focus lies.
 
-        .. math:: e = \sqrt{1 - \frac{b^2}{a^2}}
+        .. math::
+
+            e = \sqrt{1 - \frac{b^2}{a^2}}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -1576,7 +1581,9 @@ class ApertureStats:
         r"""
         The ratio of the lengths of the semimajor and semiminor axes.
 
-        .. math:: \mathrm{elongation} = \frac{a}{b}
+        .. math::
+
+            \mathrm{elongation} = \frac{a}{b}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -1590,7 +1597,9 @@ class ApertureStats:
         1.0 minus the ratio of the lengths of the semimajor and
         semiminor axes (or 1.0 minus the `elongation`).
 
-        .. math:: \mathrm{ellipticity} = 1 - \frac{b}{a}
+        .. math::
+
+            \mathrm{ellipticity} = 1 - \frac{b}{a}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -1634,9 +1643,10 @@ class ApertureStats:
 
         The ellipse is defined as
 
-            .. math::
-                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
-                cyy (y - \bar{y})^2 = R^2
+        .. math::
+
+            cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+            cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
@@ -1656,9 +1666,10 @@ class ApertureStats:
 
         The ellipse is defined as
 
-            .. math::
-                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
-                cyy (y - \bar{y})^2 = R^2
+        .. math::
+
+            cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+            cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
@@ -1678,9 +1689,10 @@ class ApertureStats:
 
         The ellipse is defined as
 
-            .. math::
-                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
-                cyy (y - \bar{y})^2 = R^2
+        .. math::
+
+            cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+            cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
@@ -1706,8 +1718,9 @@ class ApertureStats:
         as:
 
         .. math::
+
             G = \frac{1}{\left | \bar{x} \right | n (n - 1)}
-            \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
+                \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
         where :math:`\bar{x}` is the mean over pixel values :math:`x_i`
         within the aperture.

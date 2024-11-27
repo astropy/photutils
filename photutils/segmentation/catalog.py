@@ -282,8 +282,10 @@ class SourceCatalog:
     the quadrature sum of the pixel-wise total errors over the
     unmasked pixels within the source segment:
 
-    .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
-              \\sigma_{\\mathrm{tot}, i}^2}
+    .. math::
+
+        \\Delta F = \\sqrt{\\sum_{i \\in S}
+            \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\\Delta F` is
     `~photutils.segmentation.SourceCatalog.segment_fluxerr`,
@@ -2047,7 +2049,9 @@ class SourceCatalog:
         The sum of the unmasked ``data`` values within the source
         segment.
 
-        .. math:: F = \sum_{i \in S} I_i
+        .. math::
+
+            F = \sum_{i \in S} I_i
 
         where :math:`F` is ``segment_flux``, :math:`I_i` is the
         background-subtracted ``data``, and :math:`S` are the unmasked
@@ -2075,8 +2079,9 @@ class SourceCatalog:
         ``segment_fluxerr`` is the quadrature sum of the total errors
         over the unmasked pixels within the source segment:
 
-        .. math:: \Delta F = \sqrt{\sum_{i \in S}
-                  \sigma_{\mathrm{tot}, i}^2}
+        .. math::
+
+            \Delta F = \sqrt{\sum_{i \in S} \sigma_{\mathrm{tot}, i}^2}
 
         where :math:`\Delta F` is the `segment_flux`,
         :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total
@@ -2386,7 +2391,7 @@ class SourceCatalog:
 
            \mathrm{FWHM} & = 2 \sqrt{2 \ln(2)} \sqrt{0.5 (a^2 + b^2)}
            \\
-                          & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
+                         & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
 
         where :math:`a` and :math:`b` are the 1-sigma lengths of the
         semimajor (`semimajor_sigma`) and semiminor (`semiminor_sigma`)
@@ -2422,7 +2427,9 @@ class SourceCatalog:
         The eccentricity is the fraction of the distance along the
         semimajor axis at which the focus lies.
 
-        .. math:: e = \sqrt{1 - \frac{b^2}{a^2}}
+        .. math::
+
+            e = \sqrt{1 - \frac{b^2}{a^2}}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -2437,7 +2444,9 @@ class SourceCatalog:
         r"""
         The ratio of the lengths of the semimajor and semiminor axes.
 
-        .. math:: \mathrm{elongation} = \frac{a}{b}
+        .. math::
+
+            \mathrm{elongation} = \frac{a}{b}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -2452,7 +2461,9 @@ class SourceCatalog:
         1.0 minus the ratio of the lengths of the semimajor and
         semiminor axes.
 
-        .. math:: \mathrm{ellipticity} = \frac{a - b}{a} = 1 - \frac{b}{a}
+        .. math::
+
+            \mathrm{ellipticity} = \frac{a - b}{a} = 1 - \frac{b}{a}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -2500,9 +2511,10 @@ class SourceCatalog:
 
         The ellipse is defined as
 
-            .. math::
-                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
-                cyy (y - \bar{y})^2 = R^2
+        .. math::
+
+            cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+            cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
@@ -2523,9 +2535,10 @@ class SourceCatalog:
 
         The ellipse is defined as
 
-            .. math::
-                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
-                cyy (y - \bar{y})^2 = R^2
+        .. math::
+
+            cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+            cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
@@ -2546,9 +2559,10 @@ class SourceCatalog:
 
         The ellipse is defined as
 
-            .. math::
-                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
-                cyy (y - \bar{y})^2 = R^2
+        .. math::
+
+            cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+            cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
@@ -2575,8 +2589,9 @@ class SourceCatalog:
         as:
 
         .. math::
+
             G = \frac{1}{\left | \bar{x} \right | n (n - 1)}
-            \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
+                \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
         where :math:`\bar{x}` is the mean over pixel values :math:`x_i`
         within the source segment.
@@ -3072,6 +3087,7 @@ class SourceCatalog:
         The *unscaled* first-moment Kron radius is given by:
 
         .. math::
+
             r_k = \frac{\sum_{i \in A} \ r_i I_i}{\sum_{i \in A} I_i}
 
         where :math:`I_i` are the data values and the sum is over
@@ -3083,6 +3099,7 @@ class SourceCatalog:
         given by:
 
         .. math::
+
             r_i^2 = cxx (x_i - \bar{x})^2 +
                 cxy (x_i - \bar{x})(y_i - \bar{y}) +
                 cyy (y_i - \bar{y})^2

@@ -377,6 +377,7 @@ class FittableImageModel(Fittable2DModel):
         is computed so that
 
         .. math::
+
             N \cdot C \cdot \sum\limits_{i,j} D_{i,j} = 1,
 
         where *N* is the normalization constant, *C* is correction
@@ -518,6 +519,7 @@ class FittableImageModel(Fittable2DModel):
         ``normalization_correction``:
 
         .. math::
+
             N = 1/(\Phi * C),
 
         where :math:`\Phi` is the "total flux" of model's image as

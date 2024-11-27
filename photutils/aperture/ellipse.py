@@ -289,8 +289,9 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         The inner semiminor axis of the elliptical annulus in pixels.
         If `None`, then the inner semiminor axis is calculated as:
 
-            .. math:: b_{in} = b_{out}
-                \left(\frac{a_{in}}{a_{out}}\right)
+        .. math::
+
+            b_{in} = b_{out} \left(\frac{a_{in}}{a_{out}}\right)
 
     theta : float or `~astropy.units.Quantity`, optional
         The rotation angle as an angular quantity
@@ -524,8 +525,9 @@ class SkyEllipticalAnnulus(SkyAperture):
         The inner semiminor axis in angular units. If `None`, then the
         inner semiminor axis is calculated as:
 
-            .. math:: b_{in} = b_{out}
-                \left(\frac{a_{in}}{a_{out}}\right)
+        .. math::
+
+            b_{in} = b_{out} \left(\frac{a_{in}}{a_{out}}\right)
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the ellipse semimajor
