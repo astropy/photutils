@@ -99,9 +99,11 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         A world coordinate system (WCS) transformation that
         supports the `astropy shared interface for WCS
         <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). Used only if the input
-        ``apertures`` contains a `SkyAperture` or `~regions.SkyRegion`
-        object.
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). If provided, the output
+        table will include a ``'sky_center'`` column with the sky
+        coordinates of the input aperture center(s). This keyword is
+        required if the input ``apertures`` contains a `SkyAperture` or
+        `~regions.SkyRegion`.
 
     Returns
     -------
@@ -117,7 +119,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
         * ``'sky_center'``:
           The sky coordinates of the input aperture center(s). Returned
-          only if the input ``apertures`` is a `SkyAperture` object.
+          if a ``wcs`` is input.
 
         * ``'aperture_sum'``:
           The sum of the values within the aperture.
@@ -237,6 +239,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
             tbl['sky_center'] = skycoord_pos.reshape((-1,))
         else:
             tbl['sky_center'] = skycoord_pos
+
+    if wcs is not None and not skyaper:
+        tbl['sky_center'] = wcs.pixel_to_world(*np.transpose(positions))
 
     sum_key_main = 'aperture_sum'
     sum_err_key_main = 'aperture_sum_err'
