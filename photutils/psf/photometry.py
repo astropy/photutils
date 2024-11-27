@@ -1205,14 +1205,16 @@ class PSFPhotometry(ModelImageMixin):
         Prepare inputs for PSF fitting.
 
         Tasks:
-            * Checks array input shapes and units.
-            * Calculates a total mask
-            * Validates inputs for init_params and aperture_radius
-            * Prepares initial parameters table
-              - Runs source finder if needed
-              - Runs aperture photometry if needed
-              - Runs local background estimation if needed
-              - Groups sources if needed
+
+        * Checks array input shapes and units.
+        * Calculates a total mask
+        * Validates inputs for init_params and aperture_radius
+        * Prepares initial parameters table
+
+          - Runs source finder if needed
+          - Runs aperture photometry if needed
+          - Runs local background estimation if needed
+          - Groups sources if needed
         """
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))

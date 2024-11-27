@@ -116,23 +116,22 @@ class IRAFStarFinder(StarFinderBase):
     input parameters. The equivalent input values for `IRAFStarFinder`
     are:
 
-      * ``fwhm = hwhmpsf * 2``
-      * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
-      * ``minsep_fwhm = 0.5 * sepmin``
+    * ``fwhm = hwhmpsf * 2``
+    * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
+    * ``minsep_fwhm = 0.5 * sepmin``
 
     The main differences between `~photutils.detection.DAOStarFinder`
     and `~photutils.detection.IRAFStarFinder` are:
 
-      * `~photutils.detection.IRAFStarFinder` always uses a 2D
-        circular Gaussian kernel, while
-        `~photutils.detection.DAOStarFinder` can use an elliptical
-        Gaussian kernel.
+    * `~photutils.detection.IRAFStarFinder` always uses a 2D circular
+      Gaussian kernel, while `~photutils.detection.DAOStarFinder` can use
+      an elliptical Gaussian kernel.
 
-      * `IRAFStarFinder` internally calculates a "sky" background level
-        based on unmasked pixels within the kernel footprint.
+    * `IRAFStarFinder` internally calculates a "sky" background level
+      based on unmasked pixels within the kernel footprint.
 
-      * `~photutils.detection.IRAFStarFinder` calculates the objects'
-        centroid, roundness, and sharpness using image moments.
+    * `~photutils.detection.IRAFStarFinder` calculates the objects'
+      centroid, roundness, and sharpness using image moments.
     """
 
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,

@@ -104,6 +104,7 @@ def fit_upper_harmonic(phi, intensities, order):
     The harmonic function that is fit is:
 
     .. math::
+
         y(phi, order) = y0 + An*\sin(order*phi) + Bn*\cos(order*phi)
 
     Parameters

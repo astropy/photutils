@@ -82,9 +82,9 @@ class BoundingBox:
         from (index - 0.5) to (index + 0.5). For example, the pixel edge
         spans of the following pixels are:
 
-        - pixel 0: from -0.5 to 0.5
-        - pixel 1: from 0.5 to 1.5
-        - pixel 2: from 1.5 to 2.5
+        * pixel 0: from -0.5 to 0.5
+        * pixel 1: from 0.5 to 1.5
+        * pixel 2: from 1.5 to 2.5
 
         In addition, because `BoundingBox` upper limits are exclusive
         (by definition), 1 is added to the upper pixel edges. See

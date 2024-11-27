@@ -20,8 +20,9 @@ def gini(data):
     as:
 
     .. math::
+
         G = \frac{1}{\left | \bar{x} \right | n (n - 1)}
-        \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
+            \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
     where :math:`\bar{x}` is the mean over all pixel values
     :math:`x_i`.

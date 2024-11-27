@@ -87,6 +87,7 @@ class EllipseGeometry:
         The semimajor axis of the ellipse in pixels.
     eps : float
         The ellipticity of the ellipse. The ellipticity is defined as
+
         .. math::
 
             \epsilon =  1  -  \frac{b}{a}
@@ -410,6 +411,7 @@ class EllipseGeometry:
         position angle (PA) and polar angle (phi):
 
         .. math::
+
             -\pi < PA < \pi
 
             0 < phi < 2 \pi

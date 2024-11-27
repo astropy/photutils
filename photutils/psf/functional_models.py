@@ -1645,7 +1645,8 @@ class MoffatPSF(Fittable2DModel):
 
     .. math::
 
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y)
+            \,dx \,dy = F
 
     The ``alpha`` and ``beta`` parameters are fixed by default. If
     you wish to fit these parameters, set the ``fixed`` attribute to
@@ -1900,7 +1901,8 @@ class AiryDiskPSF(Fittable2DModel):
     .. math::
 
         \int_{0}^{2 \pi} \int_{0}^{\infty} f(r) \,r \,dr \,d\theta =
-        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
+        \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y)
+            \,dx \,dy = F
 
     The ``radius`` parameter is fixed by default. If you wish to fit
     this parameter, set the ``fixed`` attribute to `False`, e.g.,::

@@ -276,24 +276,24 @@ several methods that can be used to modify itself (e.g.,
 combining labels, removing labels, removing border segments) prior to
 measuring source photometry and other source properties, including:
 
-  * :meth:`~photutils.segmentation.SegmentationImage.reassign_label`:
-    Reassign one or more label numbers.
+* :meth:`~photutils.segmentation.SegmentationImage.reassign_label`:
+  Reassign one or more label numbers.
 
-  * :meth:`~photutils.segmentation.SegmentationImage.relabel_consecutive`:
-    Reassign the label numbers consecutively, such that there are no
-    missing label numbers.
+* :meth:`~photutils.segmentation.SegmentationImage.relabel_consecutive`:
+  Reassign the label numbers consecutively, such that there are no
+  missing label numbers.
 
-  * :meth:`~photutils.segmentation.SegmentationImage.keep_labels`:
-    Keep only the specified labels.
+* :meth:`~photutils.segmentation.SegmentationImage.keep_labels`:
+  Keep only the specified labels.
 
-  * :meth:`~photutils.segmentation.SegmentationImage.remove_labels`:
-    Remove one or more labels.
+* :meth:`~photutils.segmentation.SegmentationImage.remove_labels`:
+  Remove one or more labels.
 
-  * :meth:`~photutils.segmentation.SegmentationImage.remove_border_labels`:
-    Remove labeled segments near the image border.
+* :meth:`~photutils.segmentation.SegmentationImage.remove_border_labels`:
+  Remove labeled segments near the image border.
 
-  * :meth:`~photutils.segmentation.SegmentationImage.remove_masked_labels`:
-    Remove labeled segments located within a masked region.
+* :meth:`~photutils.segmentation.SegmentationImage.remove_masked_labels`:
+  Remove labeled segments located within a masked region.
 
 
 Photometry, Centroids, and Shape Properties

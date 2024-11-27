@@ -67,8 +67,10 @@ class ImageDepth:
         The zeropoint used to calculate the magnitude limit from the
         flux limit:
 
-        .. math:: m_{\mathrm{lim}} = -2.5 \log_{10} f_{\mathrm{lim}}
-                  + \mathrm{zeropoint}
+        .. math::
+
+            m_{\mathrm{lim}} = -2.5 \log_{10} f_{\mathrm{lim}}
+                + \mathrm{zeropoint}
 
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
@@ -122,8 +124,10 @@ class ImageDepth:
     The magnitude limit is calculated from flux limit using the input
     ``zeropoint`` keyword as:
 
-    .. math:: m_{\mathrm{lim}} = -2.5 \log_{10} f_{\mathrm{lim}}
-              + \mathrm{zeropoint}
+    .. math::
+
+        m_{\mathrm{lim}} = -2.5 \log_{10} f_{\mathrm{lim}}
+            + \mathrm{zeropoint}
 
     Examples
     --------

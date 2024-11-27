@@ -82,8 +82,8 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
     distribution : {'gaussian', 'poisson'}
         The distribution used to generate the random noise:
 
-            * ``'gaussian'``: Gaussian distributed noise.
-            * ``'poisson'``: Poisson distributed noise.
+        * ``'gaussian'``: Gaussian distributed noise.
+        * ``'poisson'``: Poisson distributed noise.
 
     mean : float
         The mean of the random distribution. Required for both Gaussian

@@ -112,26 +112,25 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         One of the following methods for discretizing the model on the
         pixel grid:
 
-            * ``'center'`` (default)
-                Discretize model by taking the value at the center of
-                the pixel bins. This method should be used for ePSF/PRF
-                single or gridded models.
+        * ``'center'`` (default)
+          Discretize model by taking the value at the center of the
+          pixel bins. This method should be used for ePSF/PRF single or
+          gridded models.
 
-            * ``'interp'``
-                Discretize model by bilinearly interpolating between the
-                values at the corners of the pixel bins.
+        * ``'interp'``
+          Discretize model by bilinearly interpolating between the
+          values at the corners of the pixel bins.
 
-            * ``'oversample'``
-                Discretize model by taking the average of model values
-                in the pixel bins on an oversampled grid. Use the
-                ``discretize_oversample`` keyword to set the integer
-                oversampling factor.
+        * ``'oversample'``
+          Discretize model by taking the average of model values
+          in the pixel bins on an oversampled grid. Use the
+          ``discretize_oversample`` keyword to set the integer
+          oversampling factor.
 
-            * ``'integrate'``
-                Discretize model by integrating the model over the pixel
-                bins using `scipy.integrate.quad`. This mode conserves
-                the model integral on a subpixel scale, but it is
-                *extremely* slow.
+        * ``'integrate'``
+          Discretize model by integrating the model over the pixel bins
+          using `scipy.integrate.quad`. This mode conserves the model
+          integral on a subpixel scale, but it is *extremely* slow.
 
     discretize_oversample : int, optional
         The integer oversampling factor used when

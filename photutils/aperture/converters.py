@@ -48,29 +48,29 @@ def region_to_aperture(region):
     The following `regions.Region` objects are supported, shown with
     their equivalent `~photutils.aperture.Aperture` object:
 
-    - `~regions.CirclePixelRegion` |rarr|
+    * `~regions.CirclePixelRegion` |rarr|
       `~photutils.aperture.CircularAperture`
-    - `~regions.CircleSkyRegion` |rarr|
+    * `~regions.CircleSkyRegion` |rarr|
       `~photutils.aperture.SkyCircularAperture`
-    - `~regions.EllipsePixelRegion` |rarr|
+    * `~regions.EllipsePixelRegion` |rarr|
       `~photutils.aperture.EllipticalAperture`
-    - `~regions.EllipseSkyRegion` |rarr|
+    * `~regions.EllipseSkyRegion` |rarr|
       `~photutils.aperture.SkyEllipticalAperture`
-    - `~regions.RectanglePixelRegion` |rarr|
+    * `~regions.RectanglePixelRegion` |rarr|
       `~photutils.aperture.RectangularAperture`
-    - `~regions.RectangleSkyRegion` |rarr|
+    * `~regions.RectangleSkyRegion` |rarr|
       `~photutils.aperture.SkyRectangularAperture`
-    - `~regions.CircleAnnulusPixelRegion` |rarr|
+    * `~regions.CircleAnnulusPixelRegion` |rarr|
       `~photutils.aperture.CircularAnnulus`
-    - `~regions.CircleAnnulusSkyRegion` |rarr|
+    * `~regions.CircleAnnulusSkyRegion` |rarr|
       `~photutils.aperture.SkyCircularAnnulus`
-    - `~regions.EllipseAnnulusPixelRegion` |rarr|
+    * `~regions.EllipseAnnulusPixelRegion` |rarr|
       `~photutils.aperture.EllipticalAnnulus`
-    - `~regions.EllipseAnnulusSkyRegion` |rarr|
+    * `~regions.EllipseAnnulusSkyRegion` |rarr|
       `~photutils.aperture.SkyEllipticalAnnulus`
-    - `~regions.RectangleAnnulusPixelRegion` |rarr|
+    * `~regions.RectangleAnnulusPixelRegion` |rarr|
       `~photutils.aperture.RectangularAnnulus`
-    - `~regions.RectangleAnnulusSkyRegion` |rarr|
+    * `~regions.RectangleAnnulusSkyRegion` |rarr|
       `~photutils.aperture.SkyRectangularAnnulus`
 
     Examples

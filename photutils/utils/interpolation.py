@@ -66,6 +66,7 @@ class ShepardIDWInterpolator:
     weights:
 
     .. math::
+
         w_i = 1 / (d(x, x_i)^{power} + r)
 
     By supplying a positive regularization parameter one can avoid

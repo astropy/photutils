@@ -194,13 +194,15 @@ class SourceCatalog:
         apertures). This parameter also affects the Kron radius. The
         options are:
 
-          * 'correct': replace pixels assigned to neighboring sources by
-            replacing them with pixels on the opposite side of the source
-            center (equivalent to MASK_TYPE=CORRECT in SourceExtractor).
-          * 'mask': mask pixels assigned to neighboring sources
-            (equivalent to MASK_TYPE=BLANK in SourceExtractor).
-          * 'none': do not mask any pixels (equivalent to MASK_TYPE=NONE
-            in SourceExtractor).
+        * 'correct': replace pixels assigned to neighboring sources by
+          replacing them with pixels on the opposite side of the source
+          center (equivalent to MASK_TYPE=CORRECT in SourceExtractor).
+
+        * 'mask': mask pixels assigned to neighboring sources
+          (equivalent to MASK_TYPE=BLANK in SourceExtractor).
+
+        * 'none': do not mask any pixels (equivalent to MASK_TYPE=NONE
+          in SourceExtractor).
 
         This keyword will be ignored if ``detection_cat`` is input.
 
@@ -280,8 +282,10 @@ class SourceCatalog:
     the quadrature sum of the pixel-wise total errors over the
     unmasked pixels within the source segment:
 
-    .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
-              \\sigma_{\\mathrm{tot}, i}^2}
+    .. math::
+
+        \\Delta F = \\sqrt{\\sum_{i \\in S}
+            \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\\Delta F` is
     `~photutils.segmentation.SourceCatalog.segment_fluxerr`,
@@ -869,12 +873,12 @@ class SourceCatalog:
 
         The following pixels are set to zero in these arrays:
 
-            * pixels outside of the source segment
-            * any masked pixels from the input ``mask``
-            * invalid convolved data values (NaN and inf)
-            * negative convolved data values; negative pixels
-              (especially at large radii) can give image moments that have
-              negative variances.
+        * pixels outside of the source segment
+        * any masked pixels from the input ``mask``
+        * invalid convolved data values (NaN and inf)
+        * negative convolved data values; negative pixels (especially
+          at large radii) can give image moments that have negative
+          variances.
 
         These arrays are used to derive moment-based properties.
         """
@@ -1530,10 +1534,10 @@ class SourceCatalog:
         Because this centroid is based on fitting data, it can fail for
         many reasons including:
 
-            * quadratic fit failed
-            * quadratic fit does not have a maximum
-            * quadratic fit maximum falls outside image
-            * not enough unmasked data points (6 are required)
+        * quadratic fit failed
+        * quadratic fit does not have a maximum
+        * quadratic fit maximum falls outside image
+        * not enough unmasked data points (6 are required)
 
         In these cases, then the isophotal `centroid` will be used
         instead.
@@ -1593,10 +1597,10 @@ class SourceCatalog:
         Because this centroid is based on fitting data, it can fail for
         many reasons, returning (np.nan, np.nan):
 
-            * quadratic fit failed
-            * quadratic fit does not have a maximum
-            * quadratic fit maximum falls outside image
-            * not enough unmasked data points (6 are required)
+        * quadratic fit failed
+        * quadratic fit does not have a maximum
+        * quadratic fit maximum falls outside image
+        * not enough unmasked data points (6 are required)
 
         Also note that a fit is not performed if the maximum data value
         is at the edge of the source segment. In this case, the position
@@ -2053,7 +2057,9 @@ class SourceCatalog:
         The sum of the unmasked ``data`` values within the source
         segment.
 
-        .. math:: F = \sum_{i \in S} I_i
+        .. math::
+
+            F = \sum_{i \in S} I_i
 
         where :math:`F` is ``segment_flux``, :math:`I_i` is the
         background-subtracted ``data``, and :math:`S` are the unmasked
@@ -2081,8 +2087,9 @@ class SourceCatalog:
         ``segment_fluxerr`` is the quadrature sum of the total errors
         over the unmasked pixels within the source segment:
 
-        .. math:: \Delta F = \sqrt{\sum_{i \in S}
-                  \sigma_{\mathrm{tot}, i}^2}
+        .. math::
+
+            \Delta F = \sqrt{\sum_{i \in S} \sigma_{\mathrm{tot}, i}^2}
 
         where :math:`\Delta F` is the `segment_flux`,
         :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total
@@ -2392,7 +2399,7 @@ class SourceCatalog:
 
            \mathrm{FWHM} & = 2 \sqrt{2 \ln(2)} \sqrt{0.5 (a^2 + b^2)}
            \\
-                          & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
+                         & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
 
         where :math:`a` and :math:`b` are the 1-sigma lengths of the
         semimajor (`semimajor_sigma`) and semiminor (`semiminor_sigma`)
@@ -2428,7 +2435,9 @@ class SourceCatalog:
         The eccentricity is the fraction of the distance along the
         semimajor axis at which the focus lies.
 
-        .. math:: e = \sqrt{1 - \frac{b^2}{a^2}}
+        .. math::
+
+            e = \sqrt{1 - \frac{b^2}{a^2}}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -2443,7 +2452,9 @@ class SourceCatalog:
         r"""
         The ratio of the lengths of the semimajor and semiminor axes.
 
-        .. math:: \mathrm{elongation} = \frac{a}{b}
+        .. math::
+
+            \mathrm{elongation} = \frac{a}{b}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -2458,7 +2469,9 @@ class SourceCatalog:
         1.0 minus the ratio of the lengths of the semimajor and
         semiminor axes.
 
-        .. math:: \mathrm{ellipticity} = \frac{a - b}{a} = 1 - \frac{b}{a}
+        .. math::
+
+            \mathrm{ellipticity} = \frac{a - b}{a} = 1 - \frac{b}{a}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -2506,9 +2519,10 @@ class SourceCatalog:
 
         The ellipse is defined as
 
-            .. math::
-                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
-                cyy (y - \bar{y})^2 = R^2
+        .. math::
+
+            cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+            cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
@@ -2529,9 +2543,10 @@ class SourceCatalog:
 
         The ellipse is defined as
 
-            .. math::
-                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
-                cyy (y - \bar{y})^2 = R^2
+        .. math::
+
+            cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+            cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
@@ -2552,9 +2567,10 @@ class SourceCatalog:
 
         The ellipse is defined as
 
-            .. math::
-                cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
-                cyy (y - \bar{y})^2 = R^2
+        .. math::
+
+            cxx (x - \bar{x})^2 + cxy (x - \bar{x}) (y - \bar{y}) +
+            cyy (y - \bar{y})^2 = R^2
 
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
@@ -2581,8 +2597,9 @@ class SourceCatalog:
         as:
 
         .. math::
+
             G = \frac{1}{\left | \bar{x} \right | n (n - 1)}
-            \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
+                \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
         where :math:`\bar{x}` is the mean over pixel values :math:`x_i`
         within the source segment.
@@ -3078,6 +3095,7 @@ class SourceCatalog:
         The *unscaled* first-moment Kron radius is given by:
 
         .. math::
+
             r_k = \frac{\sum_{i \in A} \ r_i I_i}{\sum_{i \in A} I_i}
 
         where :math:`I_i` are the data values and the sum is over
@@ -3089,6 +3107,7 @@ class SourceCatalog:
         given by:
 
         .. math::
+
             r_i^2 = cxx (x_i - \bar{x})^2 +
                 cxy (x_i - \bar{x})(y_i - \bar{y}) +
                 cyy (y_i - \bar{y})^2

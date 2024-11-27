@@ -44,25 +44,24 @@ class RectangularMaskMixin:
             aperture types. Note that the more precise methods are
             generally slower. The following methods are available:
 
-                * ``'exact'`` (default):
-                  The exact fractional overlap of the aperture and each
-                  pixel is calculated. The aperture weights will contain
-                  values between 0 and 1.
+            * ``'exact'`` (default):
+              The exact fractional overlap of the aperture and each
+              pixel is calculated. The aperture weights will contain
+              values between 0 and 1.
 
-                * ``'center'``:
-                  A pixel is considered to be entirely in or out of the
-                  aperture depending on whether its center is in or out
-                  of the aperture. The aperture weights will contain
-                  values only of 0 (out) and 1 (in).
+            * ``'center'``:
+              A pixel is considered to be entirely in or out of the
+              aperture depending on whether its center is in or out of
+              the aperture. The aperture weights will contain values
+              only of 0 (out) and 1 (in).
 
-                * ``'subpixel'``:
-                  A pixel is divided into subpixels (see the
-                  ``subpixels`` keyword), each of which are considered
-                  to be entirely in or out of the aperture depending
-                  on whether its center is in or out of the aperture.
-                  If ``subpixels=1``, this method is equivalent to
-                  ``'center'``. The aperture weights will contain values
-                  between 0 and 1.
+            * ``'subpixel'``:
+              A pixel is divided into subpixels (see the ``subpixels``
+              keyword), each of which are considered to be entirely in
+              or out of the aperture depending on whether its center is
+              in or out of the aperture. If ``subpixels=1``, this method
+              is equivalent to ``'center'``. The aperture weights will
+              contain values between 0 and 1.
 
         subpixels : int, optional
             For the ``'subpixel'`` method, resample pixels by this
@@ -162,8 +161,8 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-            * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
-            * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+        * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
+        * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
 
     w : float
         The full width of the rectangle in pixels. For ``theta=0`` the
@@ -303,8 +302,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-            * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
-            * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+        * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
+        * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
 
     w_in : float
         The inner full width of the rectangular annulus in pixels. For
@@ -321,8 +320,9 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         The inner full height of the rectangular annulus in pixels. If
         `None`, then the inner full height is calculated as:
 
-            .. math:: h_{in} = h_{out}
-                \left(\frac{w_{in}}{w_{out}}\right)
+        .. math::
+
+            h_{in} = h_{out} \left(\frac{w_{in}}{w_{out}}\right)
 
         For ``theta=0`` the height side is along the ``y`` axis.
 
@@ -573,8 +573,9 @@ class SkyRectangularAnnulus(SkyAperture):
         The outer full height of the rectangular annulus in angular
         units. If `None`, then the inner full height is calculated as:
 
-            .. math:: h_{in} = h_{out}
-                \left(\frac{w_{in}}{w_{out}}\right)
+        .. math::
+
+            h_{in} = h_{out} \left(\frac{w_{in}}{w_{out}}\right)
 
         For ``theta=0`` the height side is along the East-West axis.
 

@@ -59,6 +59,7 @@ def calc_total_error(data, bkg_error, effective_gain):
     photons) is:
 
     .. math::
+
         \sigma_{\mathrm{src}}  = \sqrt{g_{\mathrm{eff}} I}
 
     where :math:`g_{\mathrm{eff}}` is the effective gain
@@ -71,6 +72,7 @@ def calc_total_error(data, bkg_error, effective_gain):
     photons) is therefore:
 
     .. math::
+
         \sigma_{\mathrm{tot}}  = \sqrt{g_{\mathrm{eff}}^2
         \sigma_{\mathrm{bkg}}^2 + g_{\mathrm{eff}} I}
 
@@ -80,11 +82,13 @@ def calc_total_error(data, bkg_error, effective_gain):
     Converting back to the input ``data`` units gives:
 
     .. math::
+
         \sigma_{\mathrm{tot}}  = \frac{1}{g_{\mathrm{eff}}}
         \sqrt{g_{\mathrm{eff}}^2
         \sigma_{\mathrm{bkg}}^2 + g_{\mathrm{eff}} I}
 
     .. math::
+
         \sigma_{\mathrm{tot}} = \sqrt{\sigma_{\mathrm{bkg}}^2 +
                   \frac{I}{g_{\mathrm{eff}}}}
 
@@ -108,8 +112,11 @@ def calc_total_error(data, bkg_error, effective_gain):
     consider weight maps as gain maps (i.e., 'WEIGHT_GAIN=Y'; which is
     the default), one should input an ``effective_gain`` calculated as:
 
-    .. math:: g_{\mathrm{eff}}^{\prime} = g_{\mathrm{eff}} \left(
-       \frac{\mathrm{RMS_{\mathrm{median}}^2}}{\sigma_{\mathrm{bkg}}^2} \right)
+    .. math::
+
+        g_{\mathrm{eff}}^{\prime} = g_{\mathrm{eff}} \left(
+        \frac{\mathrm{RMS_{\mathrm{median}}^2}}{\sigma_{\mathrm{bkg}}^2}
+        \right)
 
     where :math:`g_{\mathrm{eff}}` is the effective gain,
     :math:`\sigma_{\mathrm{bkg}}` are the background-only errors,
@@ -124,7 +131,9 @@ def calc_total_error(data, bkg_error, effective_gain):
 
     In that case the total error is:
 
-    .. math:: \sigma_{\mathrm{tot}} = \sqrt{\sigma_{\mathrm{bkg}}^2 +
+    .. math::
+
+        \sigma_{\mathrm{tot}} = \sqrt{\sigma_{\mathrm{bkg}}^2 +
         \left(\frac{I}{g_{\mathrm{eff}}}\right)
         \left(\frac{\sigma_{\mathrm{bkg}}^2}
         {\mathrm{RMS_{\mathrm{median}}^2}}\right)}

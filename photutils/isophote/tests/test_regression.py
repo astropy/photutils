@@ -15,11 +15,11 @@ That way, we are mainly checking numerical differences that originate
 in the algorithms themselves, and not caused by noise. The quantities
 compared this way are:
 
-  - mean intensity: less than 1% diff. for sma > 3 pixels, 5% otherwise
-  - ellipticity: less than 1% diff. for sma > 3 pixels, 20% otherwise
-  - position angle: less than 1 deg. diff. for sma > 3 pixels, 20 deg.
-    otherwise
-  - X and Y position: less than 0.2 pixel diff.
+* mean intensity: less than 1% diff. for sma > 3 pixels, 5% otherwise
+* ellipticity: less than 1% diff. for sma > 3 pixels, 20% otherwise
+* position angle: less than 1 deg. diff. for sma > 3 pixels, 20 deg.
+  otherwise
+* X and Y position: less than 0.2 pixel diff.
 
 For the M51 image we have mostly good agreement with the SPP code
 in most of the parameters (mean isophotal intensity agrees within a

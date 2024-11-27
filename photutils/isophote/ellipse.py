@@ -69,8 +69,9 @@ class Ellipse:
     fitting to the function:
 
     .. math::
+
         y  =  y0 + (A1 * \\sin(E)) + (B1 * \\cos(E)) + (A2 * \\sin(2 * E))
-        + (B2 * \\cos(2 * E))
+              + (B2 * \\cos(2 * E))
 
     Each one of the harmonic amplitudes (A1, B1, A2, and B2) is related
     to a specific ellipse geometric parameter in the sense that it
@@ -100,6 +101,7 @@ class Ellipse:
     from the best fit ellipse is fitted by the following function:
 
     .. math::
+
         y  =  y0 + (An * sin(n * E)) + (Bn * cos(n * E))
 
     with :math:`n = 3` and :math:`n = 4`. The corresponding amplitudes

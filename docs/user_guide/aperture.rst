@@ -21,22 +21,22 @@ Photutils provides several apertures defined in pixel or sky
 coordinates.  The aperture classes that are defined in pixel
 coordinates are:
 
-    * `~photutils.aperture.CircularAperture`
-    * `~photutils.aperture.CircularAnnulus`
-    * `~photutils.aperture.EllipticalAperture`
-    * `~photutils.aperture.EllipticalAnnulus`
-    * `~photutils.aperture.RectangularAperture`
-    * `~photutils.aperture.RectangularAnnulus`
+* `~photutils.aperture.CircularAperture`
+* `~photutils.aperture.CircularAnnulus`
+* `~photutils.aperture.EllipticalAperture`
+* `~photutils.aperture.EllipticalAnnulus`
+* `~photutils.aperture.RectangularAperture`
+* `~photutils.aperture.RectangularAnnulus`
 
 Each of these classes has a corresponding variant defined in sky
 coordinates:
 
-    * `~photutils.aperture.SkyCircularAperture`
-    * `~photutils.aperture.SkyCircularAnnulus`
-    * `~photutils.aperture.SkyEllipticalAperture`
-    * `~photutils.aperture.SkyEllipticalAnnulus`
-    * `~photutils.aperture.SkyRectangularAperture`
-    * `~photutils.aperture.SkyRectangularAnnulus`
+* `~photutils.aperture.SkyCircularAperture`
+* `~photutils.aperture.SkyCircularAnnulus`
+* `~photutils.aperture.SkyEllipticalAperture`
+* `~photutils.aperture.SkyEllipticalAnnulus`
+* `~photutils.aperture.SkyRectangularAperture`
+* `~photutils.aperture.SkyRectangularAnnulus`
 
 To perform aperture photometry with sky-based apertures, one will need
 to specify a WCS transformation.
@@ -618,8 +618,8 @@ pixel value and saved it in the array ``error``::
 
 ``'aperture_sum_err'`` values are given by:
 
-    .. math:: \Delta F = \sqrt{\sum_{i \in A}
-              \sigma_{\mathrm{tot}, i}^2}
+.. math:: \Delta F = \sqrt{\sum_{i \in A}
+          \sigma_{\mathrm{tot}, i}^2}
 
 where :math:`A` are the non-masked pixels in the aperture, and
 :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
@@ -888,27 +888,26 @@ extend functionality: a new type of aperture photometry simply
 requires the definition of a new `~photutils.aperture.Aperture`
 subclass.
 
-All `~photutils.aperture.PixelAperture` subclasses must define a
-``bounding_boxes`` property and ``to_mask()`` and ``plot()`` methods.
-They may also optionally define an ``area`` property.  All
+All `~photutils.aperture.PixelAperture` subclasses must define
+a ``bounding_boxes`` property and ``to_mask()`` and ``plot()``
+methods. They may also optionally define an ``area`` property. All
 `~photutils.aperture.SkyAperture` subclasses must only implement a
 ``to_pixel()`` method.
 
-    * ``bounding_boxes``:  The minimal bounding box for the aperture.
-      If the aperture is scalar, then a single
-      `~photutils.aperture.BoundingBox` is returned.  Otherwise, a list
-      of `~photutils.aperture.BoundingBox` is returned.
+* ``bounding_boxes``:  The minimal bounding box for the aperture.
+  If the aperture is scalar, then a single
+  `~photutils.aperture.BoundingBox` is returned. Otherwise, a list of
+  `~photutils.aperture.BoundingBox` is returned.
 
-    * ``area``: An optional property defining the exact analytical
-      area (in pixels**2) of the aperture.
+* ``area``: An optional property defining the exact analytical
+  area (in pixels**2) of the aperture.
 
-    * ``to_mask()``: Return a mask for the aperture.  If the aperture
-      is scalar, then a single `~photutils.aperture.ApertureMask` is
-      returned.  Otherwise, a list of
-      `~photutils.aperture.ApertureMask` is returned.
+* ``to_mask()``: Return a mask for the aperture. If the aperture is
+  scalar, then a single `~photutils.aperture.ApertureMask` is returned.
+  Otherwise, a list of `~photutils.aperture.ApertureMask` is returned.
 
-    * ``plot()``: A method to plot the aperture on a
-      `matplotlib.axes.Axes` instance.
+* ``plot()``: A method to plot the aperture on a `matplotlib.axes.Axes`
+  instance.
 
 
 API Reference
