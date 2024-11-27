@@ -10,6 +10,7 @@ from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import Table
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_array_less, assert_equal
 
@@ -261,6 +262,25 @@ class TestInputNDData(BaseTestDifferentData):
         self.position = [(20, 20), (30, 30)]
         self.true_flux = np.pi * self.radius * self.radius
         self.fluxunit = u.adu
+
+
+def test_input_wcs():
+    data = make_4gaussians_image()
+    wcs = make_wcs(data.shape)
+
+    # hard wired positions in make_4gaussian_image
+    xypos = np.transpose(([160.0, 25.0, 150.0, 90.0],
+                          [70.0, 40.0, 25.0, 60.0]))
+    aper = CircularAperture(xypos, 3.0)
+    aper3 = [CircularAperture((160.0, 70.0), r) for r in (3, 4, 5)]
+
+    phot1 = aperture_photometry(data, aper[0], wcs=wcs)
+    phot2 = aperture_photometry(data, aper, wcs=wcs)
+    phot3 = aperture_photometry(data, aper3, wcs=wcs)
+
+    assert 'sky_center' in phot1.colnames
+    assert 'sky_center' in phot2.colnames
+    assert 'sky_center' in phot3.colnames
 
 
 @pytest.mark.remote_data
@@ -806,18 +826,24 @@ def test_scalar_skycoord():
     assert isinstance(tbl['sky_center'], SkyCoord)
 
 
-def test_nddata_input():
+@pytest.mark.parametrize('units', [False, True])
+def test_nddata_input(units):
     data = np.arange(400).reshape((20, 20))
     error = np.sqrt(data)
     mask = np.zeros((20, 20), dtype=bool)
     mask[8:13, 8:13] = True
-    unit = 'adu'
+    if units:
+        unit = u.Jy
+        data = data * unit
+        error = error * unit
+    else:
+        unit = None
+
     wcs = make_wcs(data.shape)
     skycoord = wcs.pixel_to_world(10, 10)
     aper = SkyCircularAperture(skycoord, r=0.7 * u.arcsec)
 
-    tbl1 = aperture_photometry(data * u.adu, aper, error=error * u.adu,
-                               mask=mask, wcs=wcs)
+    tbl1 = aperture_photometry(data, aper, error=error, mask=mask, wcs=wcs)
 
     uncertainty = StdDevUncertainty(error)
     nddata = NDData(data, uncertainty=uncertainty, mask=mask, wcs=wcs,
@@ -829,15 +855,9 @@ def test_nddata_input():
             continue
         assert_allclose(tbl1[column], tbl2[column])
 
-
-def test_invalid_subpixels():
-    data = np.ones((11, 11))
-    aper = CircularAperture((5, 5), r=3)
-    match = 'subpixels must be a strictly positive integer'
-    with pytest.raises(ValueError, match=match):
-        aperture_photometry(data, aper, method='subpixel', subpixels=0)
-    with pytest.raises(ValueError, match=match):
-        aperture_photometry(data, aper, method='subpixel', subpixels=-1)
+    match = 'keyword is be ignored. Its value is obtained from the input'
+    with pytest.warns(AstropyUserWarning, match=match):
+        aperture_photometry(nddata, aper, error=error)
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
@@ -875,6 +895,36 @@ class BaseTestRegionPhotometry:
                                            strict=True):
                 assert_allclose(reg_table['aperture_sum_err'],
                                 ap_table['aperture_sum_err'])
+
+
+def test_invalid_inputs():
+    data = np.ones((11, 11))
+    aper = CircularAperture((5, 5), r=3)
+    wcs = make_wcs(data.shape)
+    sky_aper = aper.to_sky(wcs=wcs)
+
+    match = 'A WCS transform must be defined'
+    with pytest.raises(ValueError, match=match):
+        aperture_photometry(data, sky_aper)
+
+    aper2 = CircularAperture((7, 7), r=3)
+    sky_aper2 = aper2.to_sky(wcs=wcs)
+    apers = [aper, aper2]
+    sky_apers = [sky_aper, sky_aper2]
+
+    match = 'Input apertures must all have identical positions'
+    with pytest.raises(ValueError, match=match):
+        aperture_photometry(data, apers)
+    with pytest.raises(ValueError, match=match):
+        aperture_photometry(data, sky_apers, wcs=wcs)
+
+    data = np.ones((11, 11))
+    aper = CircularAperture((5, 5), r=3)
+    match = 'subpixels must be a strictly positive integer'
+    with pytest.raises(ValueError, match=match):
+        aperture_photometry(data, aper, method='subpixel', subpixels=0)
+    with pytest.raises(ValueError, match=match):
+        aperture_photometry(data, aper, method='subpixel', subpixels=-1)
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
