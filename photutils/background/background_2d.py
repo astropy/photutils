@@ -150,6 +150,7 @@ class Background2D:
           ``box_size`` should be chosen such that an integer number
           of boxes is only slightly larger than the ``data`` size to
           minimize the amount of padding.
+
         * ``'crop'``: crop the image along the top and/or right edges.
           This method should be used sparingly, and it may be deprecated
           in the future. Best results will occur when ``box_size`` is

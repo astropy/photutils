@@ -159,10 +159,10 @@ def load_irac_psf(channel, show_progress=False):  # pragma: no cover
     channel : int (1-4)
         The IRAC channel number:
 
-          * Channel 1:  3.6 microns
-          * Channel 2:  4.5 microns
-          * Channel 3:  5.8 microns
-          * Channel 4:  8.0 microns
+        * Channel 1:  3.6 microns
+        * Channel 2:  4.5 microns
+        * Channel 3:  5.8 microns
+        * Channel 4:  8.0 microns
 
     show_progress : bool, optional
         Whether to display a progress bar during the download (default
