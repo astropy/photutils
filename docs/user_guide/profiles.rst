@@ -162,9 +162,9 @@ to set the plot label.
     plt.legend()
 
 The `~photutils.profiles.RadialProfile.apertures` attribute contains a
-list of the apertures. Let's plot a few of the annulus apertures (the 6th
-11th, and 16th) for the `~photutils.profiles.RadialProfile` instance on
-the data:
+list of the apertures. Let's plot a few of the annulus apertures (the
+6th, 11th, and 16th) for the `~photutils.profiles.RadialProfile`
+instance on the data:
 
 .. plot::
 
