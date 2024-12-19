@@ -1,6 +1,6 @@
 
 ==============================================
-Image Segmentation (:mod:`photutils.aperture`)
+Image Segmentation (:mod:`photutils.segmentation`)
 ==============================================
 
 .. automodapi:: photutils.segmentation
