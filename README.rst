@@ -11,7 +11,7 @@ astronomical sources.
 
 Please see the `online documentation
 <https://photutils.readthedocs.io>`_ for `installation instructions
-<https://photutils.readthedocs.io/en/stable/install.html>`_ and usage
+<https://photutils.readthedocs.io/en/stable/getting_started/install.html>`_ and usage
 information.
 
 
