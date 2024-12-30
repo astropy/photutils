@@ -201,7 +201,7 @@ class RadialProfile(ProfileBase):
         rp.plot()
         rp.plot_error()
 
-    Plot two of the annulus apertures on the data.
+    Plot three of the annulus apertures on the data.
 
     .. plot::
 
