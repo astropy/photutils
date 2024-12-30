@@ -206,15 +206,16 @@ class TestIRAFStarFinder:
 
         x = 33
         y = 21
-        data[y-1:y+2, x-1:x+2] = [
+        data[y - 1: y + 2, x - 1: x + 2] = [
             [0.1, 0.6, 0.1],
             [0.6, 0.8, 0.6],
             [0.1, 0.6, 0.1],
         ]
 
-        finder = IRAFStarFinder(0, 2.5, roundlo=0)
+        finder = IRAFStarFinder(0, 2.5, roundlo=0, peakmax=0.8)
         tbl = finder.find_stars(data)
 
         assert len(tbl) == 1
-        assert abs(tbl[0]["roundness"]) == 0.0
-        assert abs(tbl[0]["pa"]) == 0.0
+        assert abs(tbl[0]['roundness']) == 0.0
+        assert abs(tbl[0]['pa']) == 0.0
+        assert abs(tbl[0]['peak']) == 0.8
