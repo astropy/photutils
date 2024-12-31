@@ -22,6 +22,7 @@ from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
 from photutils.background import SExtractorBackground
 from photutils.centroids import centroid_quadratic
+from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _moments, _moments_central
@@ -2602,7 +2603,8 @@ class SourceCatalog:
                 \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
         where :math:`\bar{x}` is the mean over pixel values :math:`x_i`
-        within the source segment.
+        within the source segment. If the sum of all pixel values is
+        zero, the Gini coefficient is zero.
 
         The Gini coefficient is a way of measuring the inequality in a
         given set of values. In the context of galaxy morphology, it
@@ -2612,17 +2614,7 @@ class SourceCatalog:
         while a Gini coefficient value of 1 represents a galaxy image
         with all its light concentrated in just one pixel.
         """
-        gini = []
-        for arr in self._data_values:
-            if np.all(np.isnan(arr)):
-                gini.append(np.nan)
-                continue
-            npix = np.size(arr)
-            normalization = np.abs(np.mean(arr)) * npix * (npix - 1)
-            kernel = ((2.0 * np.arange(1, npix + 1) - npix - 1)
-                      * np.abs(np.sort(arr)))
-            gini.append(np.sum(kernel) / normalization)
-        return np.array(gini)
+        return np.array([gini_func(arr) for arr in self._data_values])
 
     @lazyproperty
     def _local_background_apertures(self):
