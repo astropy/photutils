@@ -24,8 +24,9 @@ def gini(data, mask=None):
         G = \frac{1}{\left | \bar{x} \right | n (n - 1)}
             \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
-    where :math:`\bar{x}` is the mean over all pixel values
-    :math:`x_i`.
+    where :math:`\bar{x}` is the mean over all pixel values :math:`x_i`.
+    If the sum of all pixel values is zero, the Gini coefficient is
+    zero.
 
     The Gini coefficient is a way of measuring the inequality in a given
     set of values. In the context of galaxy morphology, it measures how
@@ -56,10 +57,15 @@ def gini(data, mask=None):
         The Gini coefficient of the input 2D array.
     """
     values = data[~mask] if mask is not None else np.ravel(data)
-    values = np.sort(values)
+    if np.all(np.isnan(values)):
+        return np.nan
 
     npix = np.size(values)
     normalization = np.abs(np.mean(values)) * npix * (npix - 1)
-    kernel = (2.0 * np.arange(1, npix + 1) - npix - 1) * np.abs(values)
+    if normalization == 0:
+        return 0.0
+
+    kernel = ((2.0 * np.arange(1, npix + 1) - npix - 1)
+              * np.abs(np.sort(values)))
 
     return np.sum(kernel) / normalization

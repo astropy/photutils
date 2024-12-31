@@ -35,3 +35,8 @@ def test_gini_mask():
 
     assert gini(data1, mask=mask1) == 0.0
     assert gini(data2, mask=mask2) == 1.0
+
+
+def test_gini_normalization():
+    data = np.zeros((100, 100))
+    assert gini(data) == 0.0
