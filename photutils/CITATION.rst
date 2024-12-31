@@ -19,13 +19,13 @@ appropriate.
 BibTex files for all Photutils versions can be found at
 https://doi.org/10.5281/zenodo.596036.
 
-For example, for Photutils v1.13.0, one should
+For example, for Photutils v2.0.2, one should
 cite Bradley et al. 2024 with the BibTeX entry
-(https://zenodo.org/records/12585239/export/bibtex):
+(https://zenodo.org/records/13989456/export/bibtex):
 
 .. code-block:: text
 
-    @software{larry_bradley_2024_12585239,
+    @software{larry_bradley_2024_13989456,
       author       = {Larry Bradley and
                       Brigitta Sip{\H o}cz and
                       Thomas Robitaille and
@@ -40,26 +40,26 @@ cite Bradley et al. 2024 with the BibTeX entry
                       Mihai Cara and
                       P. L. Lim and
                       Sebastian Me{\ss}linger and
-                      Zach Burnett and
                       Simon Conseil and
-                      Michael Droettboom and
+                      Zach Burnett and
                       Azalee Bostroem and
+                      Michael Droettboom and
                       E. M. Bray and
                       Lars Andersen Bratholm and
-                      William Jamieson and
                       Adam Ginsburg and
+                      William Jamieson and
                       Geert Barentsen and
                       Matt Craig and
-                      Sergio Pascual and
-                      Shivangee Rathi and
-                      Marshall Perrin and
                       Brett M. Morris and
-                      Gabriel Perren},
-      title        = {astropy/photutils: 1.13.0},
-      month        = jun,
+                      Marshall Perrin and
+                      Shivangee Rathi and
+                      Sergio Pascual and
+                      Iskren Y. Georgiev},
+      title        = {astropy/photutils: 2.0.2},
+      month        = oct,
       year         = 2024,
       publisher    = {Zenodo},
-      version      = {1.13.0},
-      doi          = {10.5281/zenodo.12585239},
-      url          = {https://doi.org/10.5281/zenodo.12585239
+      version      = {2.0.2},
+      doi          = {10.5281/zenodo.13989456},
+      url          = {https://doi.org/10.5281/zenodo.13989456},
     }
