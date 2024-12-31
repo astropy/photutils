@@ -9,7 +9,7 @@ import numpy as np
 __all__ = ['gini']
 
 
-def gini(data):
+def gini(data, mask=None):
     r"""
     Calculate the `Gini coefficient
     <https://en.wikipedia.org/wiki/Gini_coefficient>`_ of a 2D array.
@@ -45,14 +45,21 @@ def gini(data):
     data : array_like
         The 2D data array or object that can be converted to an array.
 
+    mask : array_like, optional
+        A boolean mask with the same shape as ``data`` where `True`
+        values indicate masked pixels. Masked pixels are excluded from
+        the calculation.
+
     Returns
     -------
     result : float
         The Gini coefficient of the input 2D array.
     """
-    flattened = np.sort(np.ravel(data))
-    npix = np.size(flattened)
-    normalization = np.abs(np.mean(flattened)) * npix * (npix - 1)
-    kernel = (2.0 * np.arange(1, npix + 1) - npix - 1) * np.abs(flattened)
+    values = data[~mask] if mask is not None else np.ravel(data)
+    values = np.sort(values)
+
+    npix = np.size(values)
+    normalization = np.abs(np.mean(values)) * npix * (npix - 1)
+    kernel = (2.0 * np.arange(1, npix + 1) - npix - 1) * np.abs(values)
 
     return np.sum(kernel) / normalization
