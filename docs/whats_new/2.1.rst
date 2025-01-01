@@ -1,0 +1,48 @@
+.. doctest-skip-all
+
+.. _whatsnew-2.1:
+
+****************************
+What's New in Photutils 2.1?
+****************************
+
+Here we highlight some of the new functionality of the 2.1 release.
+In addition to these changes, Photutils 2.1 includes several
+smaller improvements and bug fixes, which are described in the full
+:ref:`changelog`.
+
+
+Aperture Photometry Output Table
+--------------------------------
+
+The ``aperture_photometry`` output table will now include a
+``sky_center`` column if ``wcs`` is input, even if the input aperture is
+not a sky aperture.
+
+
+Find Peaks Border Width
+-----------------------
+
+The ``find_peaks`` ``border_width`` keyword can now accept two values,
+indicating the border width along the the y and x edges, respectively.
+
+
+Gini Coefficient
+----------------
+
+An optional ``mask`` keyword was added to the ``gini`` function to allow
+for the exclusion of certain pixels from the calculation of the Gini
+coefficient.
+
+Also, the ``gini`` function now returns zero instead of NaN if the
+(unmasked) data values sum to zero.
+
+
+Improved GriddedPSFModel Plots
+------------------------------
+
+The ``'viridis'`` color map is now the default in the
+``GriddedPSFModel`` ``plot_grid`` method when ``deltas=True``.
+
+Also, the ``GriddedPSFModel`` ``plot_grid`` color bar now matches the
+height of the displayed image.
