@@ -1,7 +1,7 @@
 
-======================================
-Detection (:mod:`photutils.detection`)
-======================================
+========================================================
+Point-like Source Detection (:mod:`photutils.detection`)
+========================================================
 
 .. automodapi:: photutils.detection
     :no-heading:
