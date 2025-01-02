@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This subpackage provides general-purpose utility functions.
+This subpackage provides general-purpose utility functions that do not
+fit into any of the other subpackages.
 """
 
 from .colormaps import *  # noqa: F401, F403
