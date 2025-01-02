@@ -18,6 +18,13 @@ Backgrounds
 
     background.rst
 
+Centroids
+---------
+.. toctree::
+    :maxdepth: 1
+
+    centroids.rst
+
 Source Detection
 ----------------
 
@@ -25,7 +32,16 @@ Source Detection
     :maxdepth: 1
 
     detection.rst
+    General Source Detection and Extraction (photutils.segmentation) <segmentation.rst>
+
+Segmentation and Source Measurements
+------------------------------------
+
+.. toctree::
+    :maxdepth: 1
+
     segmentation.rst
+    morphology.rst
 
 Aperture Photometry
 -------------------
@@ -46,16 +62,6 @@ PSF Photometry and Tools
     grouping.rst
     psf_matching.rst
 
-Segmentation and Source Measurements
-------------------------------------
-
-.. toctree::
-    :maxdepth: 1
-
-    segmentation.rst
-    centroids.rst
-    morphology.rst
-
 Radial Profiles
 ---------------
 .. toctree::
@@ -63,12 +69,21 @@ Radial Profiles
 
     profiles.rst
 
-Isophotes
----------
+Elliptical Isophotes
+--------------------
 .. toctree::
     :maxdepth: 1
 
     isophote.rst
+
+
+Datasets and Simulation
+-----------------------
+.. toctree::
+    :maxdepth: 1
+
+    datasets.rst
+
 
 Utilities
 ---------
@@ -77,5 +92,4 @@ Utilities
     :maxdepth: 1
 
     utils.rst
-    datasets.rst
     geometry.rst

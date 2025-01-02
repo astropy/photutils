@@ -6,12 +6,16 @@ Source Grouping Algorithms
 Introduction
 ------------
 
-In Point Spread Function (PSF) photometry, a grouping algorithm can be
-used to combine stars into groups that can be fit simultaneously. The
-goal is to separate the stars into groups such that the profile of each
-star does not extend into the fitting region of any other star. This
-reduces the number of stars that need to be fit simultaneously, which
-can be computationally expensive.
+In Point Spread Function (PSF) photometry, the PSF model fit for a given
+star can be affected by the presence of the profile of neighboring
+stars. In this case, a grouping algorithm can be used to combine
+neighboring stars into groups that can be fit simultaneously. The goal
+is to separate the stars into groups such that the profile of each
+star in the group does not extend into the fitting region of a star
+in another group. Creating groups reduces the number of stars that
+need to be fit simultaneously, which can be computationally expensive.
+Simultaneous fitting of all stars in an image is generally not feasible,
+especially for crowded fields.
 
 Stetson (`1987, PASP 99, 191
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_),
@@ -30,6 +34,12 @@ Photutils provides the :class:`~photutils.psf.SourceGrouper`
 class to group stars. The groups are formed using hierarchical
 agglomerative clustering with a distance criterion, calling the
 `scipy.cluster.hierarchy.fclusterdata` function.
+
+To group stars during PSF fitting, typically one would simply pass an
+instance of the :class:`~photutils.psf.SourceGrouper` class with a
+defined minimum separation to the PSF photometry classes. Here, we will
+demonstrate how to use the :class:`~photutils.psf.SourceGrouper` class
+separately to group stars in a simulated image.
 
 First, let's create a simulated image containing 2D Gaussian sources
 using `~photutils.psf.make_psf_model_image`::
@@ -105,18 +115,23 @@ The ``groups`` output is an array of integers (ordered the same as the
 ``(x, y)`` inputs) containing the group indices. Stars with the same
 group index are in the same group.
 
-For example, to find all the stars in group 3::
-
-   >>> mask = groups == 3
-   >>> x[mask], y[mask]
-   (array([60.32708921, 58.73063714]), array([147.24184586, 158.0612346 ]))
-
 The grouping algorithm separated the 100 stars into 65 distinct groups:
 
 .. doctest-skip::
 
     >>> print(max(groups))
     65
+
+For example, to find the positions of the stars in group 3::
+
+   >>> mask = groups == 3
+   >>> x[mask], y[mask]
+   (array([60.32708921, 58.73063714]), array([147.24184586, 158.0612346 ]))
+
+When performing PSF photometry, the group indices can be included in the
+``init_params`` table when calling the PSF photometry classes. These
+group indices would override the input `~photutils.psf.SourceGrouper`
+instance.
 
 Finally, let's plot a circular aperture around each star, where stars in
 the same group have the same aperture color:

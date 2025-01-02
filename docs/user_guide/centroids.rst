@@ -5,7 +5,9 @@ Introduction
 ------------
 
 `photutils.centroids` provides several functions to calculate the
-centroid of a single source:
+centroid of one or more sources.
+
+The following functions calculate the centroid of a single source:
 
 * :func:`~photutils.centroids.centroid_com`: Calculates the object
   "center of mass" from 2D image moments.
