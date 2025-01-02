@@ -1,7 +1,7 @@
 
-==================================
-Utilities (:mod:`photutils.utils`)
-==================================
+==========================================
+Utility Functions (:mod:`photutils.utils`)
+==========================================
 
 .. automodapi:: photutils.utils
     :no-heading:

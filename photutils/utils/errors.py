@@ -12,7 +12,7 @@ __all__ = ['calc_total_error']
 
 def calc_total_error(data, bkg_error, effective_gain):
     r"""
-    Calculate a total error array, combining a background-only error
+    Calculate a total error array by combining a background-only error
     array with the Poisson noise of sources.
 
     Parameters

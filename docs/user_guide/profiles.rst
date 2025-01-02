@@ -1,7 +1,7 @@
 .. _profiles:
 
-Profiles (`photutils.profiles`)
-===============================
+Radial Profiles (`photutils.profiles`)
+======================================
 
 Introduction
 ------------
