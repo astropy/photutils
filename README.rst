@@ -6,8 +6,15 @@ Photutils
 
 |CI Status| |Codecov Status| |Latest RTD Status|
 
-Photutils is an `Astropy`_ package for detection and photometry of
-astronomical sources.
+Photutils is a Python library that provides commonly-used tools
+and key functionality for detecting and performing photometry of
+astronomical sources. Tools are provided for background estimation,
+star finding, source detection and extraction, aperture photometry,
+PSF photometry, image segmentation, centroids, radial profiles,
+and elliptical isophote fitting. It is an a `coordinated package
+<https://www.astropy.org/affiliated/index.html>`_ of `Astropy`_ and
+integrates well with other Astropy packages, making it a powerful tool
+for astronomical image analysis.
 
 Please see the `online documentation
 <https://photutils.readthedocs.io>`_ for `installation instructions
