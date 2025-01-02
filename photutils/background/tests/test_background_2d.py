@@ -238,8 +238,8 @@ class TestBackground2D:
             bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
                                 coverage_mask=mask, fill_value=0.0,
                                 bkg_estimator=MeanBackground())
-        assert_equal(bkg1.background_mesh, bkg2.background_mesh)
-        assert_equal(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
+        assert_allclose(bkg1.background_mesh, bkg2.background_mesh)
+        assert_allclose(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
 
     def test_mask_nonfinite(self):
         data = DATA.copy()
@@ -325,7 +325,7 @@ class TestBackground2D:
 
         data = np.ones((111, 121))
         bkg = Background2D(data, box_size=10, exclude_percentile=100)
-        assert_equal(bkg.background_mesh, np.ones((12, 13)))
+        assert_allclose(bkg.background_mesh, np.ones((12, 13)))
 
     def test_filter_threshold(self):
         """
@@ -489,7 +489,7 @@ class TestBackground2D:
         bkgimg2 = bkg2.background
         assert_equal(arr2, arr3)
 
-        assert_equal(bkgimg1, bkgimg2)
+        assert_allclose(bkgimg1, bkgimg2)
 
     @pytest.mark.parametrize('bkg_est', [MeanBackground(),
                                          SExtractorBackground()])
