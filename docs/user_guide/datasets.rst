@@ -136,7 +136,9 @@ image using :func:`~photutils.datasets.make_wcs`::
     <SkyCoord (ICRS): (ra, dec) in deg
     (197.8899676, -1.3750039)>
 
-or a generalized WCS using :func:`~photutils.datasets.make_gwcs`::
+or a generalized WCS using :func:`~photutils.datasets.make_gwcs`:
+
+.. doctest-requires:: gwcs
 
     >>> from photutils.datasets import make_gwcs
     >>> gwcs = make_gwcs(shape)
