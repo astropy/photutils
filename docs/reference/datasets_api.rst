@@ -1,7 +1,7 @@
 
-====================================
-Datasets (:mod:`photutils.datasets`)
-====================================
+===================================================
+Datasets and Simulation (:mod:`photutils.datasets`)
+===================================================
 
 .. automodapi:: photutils.datasets
     :no-heading:
