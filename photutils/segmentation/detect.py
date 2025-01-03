@@ -202,7 +202,7 @@ def _detect_sources(data, threshold, npixels, footprint, inverse_mask, *,
     # NOTE: recasting segment_img to int and using output=segment_img
     # gives similar performance
     segment_img, nlabels = ndi_label(segment_img, structure=footprint)
-    labels = np.arange(nlabels) + 1
+    labels = np.arange(nlabels, dtype=segment_img.dtype) + 1
 
     # remove objects with less than npixels
     # NOTE: making cutout images and setting their pixels to 0 is
