@@ -65,6 +65,10 @@ API Changes
     and ``peakmax``) are now included in the returned table of detected
     sources by ``DAOStarFinder`` and ``IRAFStarFinder``. [#1978]
 
+  - Detected sources that match the maximum peak value (``peakmax``)
+    are now included in the returned table of detected sources by
+    ``StarFinder``. [#1990]
+
 - ``photutils.morphology``
 
   - The ``gini`` function now returns zero instead of NaN if the
