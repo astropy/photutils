@@ -477,6 +477,61 @@ class TestSegmentationImage:
         assert isinstance(patches, list)
         assert isinstance(patches[0], Polygon)
 
+    def test_deblended_labels(self):
+        data = np.array([[1, 1, 0, 0, 4, 4],
+                         [0, 0, 0, 0, 0, 4],
+                         [0, 0, 7, 8, 0, 0],
+                         [6, 0, 0, 0, 0, 5],
+                         [6, 6, 0, 5, 5, 5],
+                         [6, 6, 0, 0, 5, 5]])
+        segm = SegmentationImage(data)
+
+        segm0 = segm.copy()
+        assert segm0._deblend_label_map == {}
+        assert segm0.deblended_labels.size == 0
+        assert segm0.deblended_labels_map == {}
+        assert segm0.deblended_labels_inverse_map == {}
+
+        deblend_map = {2: np.array([5, 6]), 3: np.array([7, 8])}
+        segm._deblend_label_map = deblend_map
+        assert_equal(segm._deblend_label_map, deblend_map)
+        assert_equal(segm.deblended_labels, [5, 6, 7, 8])
+        assert segm.deblended_labels_map == {5: 2, 6: 2, 7: 3, 8: 3}
+        assert segm.deblended_labels_inverse_map == deblend_map
+
+        segm2 = segm.copy()
+        segm2.relabel_consecutive()
+        deblend_map = {2: [3, 4], 3: [5, 6]}
+        assert_equal(segm2._deblend_label_map, deblend_map)
+        assert_equal(segm2.deblended_labels, [3, 4, 5, 6])
+        assert segm2.deblended_labels_map == {3: 2, 4: 2, 5: 3, 6: 3}
+        assert_equal(segm2.deblended_labels_inverse_map, deblend_map)
+
+        segm3 = segm.copy()
+        segm3.relabel_consecutive(start_label=10)
+        deblend_map = {2: [12, 13], 3: [14, 15]}
+        assert_equal(segm3._deblend_label_map, deblend_map)
+        assert_equal(segm3.deblended_labels, [12, 13, 14, 15])
+        assert segm3.deblended_labels_map == {12: 2, 13: 2, 14: 3, 15: 3}
+        assert_equal(segm3.deblended_labels_inverse_map, deblend_map)
+
+        segm4 = segm.copy()
+        segm4.reassign_label(5, 50)
+        segm4.reassign_label(7, 70)
+        deblend_map = {2: [50, 6], 3: [70, 8]}
+        assert_equal(segm4._deblend_label_map, deblend_map)
+        assert_equal(segm4.deblended_labels, [6, 8, 50, 70])
+        assert segm4.deblended_labels_map == {50: 2, 6: 2, 70: 3, 8: 3}
+        assert_equal(segm4.deblended_labels_inverse_map, deblend_map)
+
+        segm5 = segm.copy()
+        segm5.reassign_label(5, 50, relabel=True)
+        deblend_map = {2: [6, 3], 3: [4, 5]}
+        assert_equal(segm5._deblend_label_map, deblend_map)
+        assert_equal(segm5.deblended_labels, [3, 4, 5, 6])
+        assert segm5.deblended_labels_map == {6: 2, 3: 2, 4: 3, 5: 3}
+        assert_equal(segm5.deblended_labels_inverse_map, deblend_map)
+
 
 class CustomSegm(SegmentationImage):
     @lazyproperty
