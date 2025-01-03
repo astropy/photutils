@@ -146,6 +146,9 @@ class TestDetectSources:
         segm = detect_sources(self.data, threshold=0.9, npixels=2)
         assert_equal(segm.data, self.refdata)
 
+        assert segm.data.dtype == np.int32
+        assert segm.labels.dtype == np.int32
+
         segm = detect_sources(self.data << u.uJy, threshold=0.9 * u.uJy,
                               npixels=2)
         assert_equal(segm.data, self.refdata)
