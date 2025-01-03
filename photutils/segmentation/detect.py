@@ -242,6 +242,7 @@ def _detect_sources(data, threshold, npixels, footprint, inverse_mask, *,
         segm._data = segment_img
         segm.__dict__['labels'] = labels
         segm.__dict__['slices'] = segm_slices
+        segm.__dict__['_deblend_label_map'] = {}
         return segm
 
     # this is used by deblend_sources
