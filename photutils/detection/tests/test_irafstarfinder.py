@@ -221,6 +221,6 @@ class TestIRAFStarFinder:
         tbl = finder.find_stars(data)
 
         assert len(tbl) == 1
-        assert abs(tbl[0]['roundness']) == 0.0
-        assert abs(tbl[0]['pa']) == 0.0
-        assert abs(tbl[0]['peak']) == 0.8
+        assert tbl[0]['roundness'] == 0.0
+        assert tbl[0]['pa'] == 0.0
+        assert tbl[0]['peak'] == 0.8
