@@ -51,6 +51,11 @@ API Changes
     different along the x and y edges if the kernel shape is rectangular.
     [#1957]
 
+  - Detected sources that match interval ends for sharpness, roundness, and
+    maximum peak values (``sharplo``, ``sharphi``, ``roundlo``, ``roundhi``,
+    and ``peakmax``) are now included in the returned table of detected
+    sources by ``DAOStarFinder`` and ``IRAFStarFinder``. [#1978]
+
 - ``photutils.morphology``
 
   - The ``gini`` function now returns zero instead of NaN if the

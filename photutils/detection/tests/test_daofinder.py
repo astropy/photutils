@@ -205,3 +205,30 @@ class TestDAOStarFinder:
         assert cat.isscalar
         flux = cat.flux[0]  # evaluate the flux so it can be sliced
         assert cat[0].flux == flux
+
+    def test_interval_ends_included(self):
+        # https://github.com/astropy/photutils/issues/1977
+        data = np.zeros((46, 64))
+
+        x = 33
+        y = 21
+
+        data[y - 1: y + 2, x - 1: x + 2] = [
+            [1.0, 2.0, 1.0],
+            [2.0, 1.0e20, 2.0],
+            [1.0, 2.0, 1.0],
+        ]
+
+        finder = DAOStarFinder(
+            threshold=0,
+            fwhm=2.5,
+            roundlo=0,
+            sharphi=1.407913491884342,
+            peakmax=1.0e20
+        )
+        tbl = finder.find_stars(data)
+
+        assert len(tbl) == 1
+        assert abs(tbl[0]['roundness1']) < 1.e-15
+        assert abs(tbl[0]['roundness2']) == 0.0
+        assert abs(tbl[0]['peak']) == 1.0e20

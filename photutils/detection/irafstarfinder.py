@@ -577,12 +577,12 @@ class _IRAFStarFinderCatalog:
             return None
 
         # filter based on sharpness, roundness, and peakmax
-        mask = ((newcat.sharpness > newcat.sharplo)
-                & (newcat.sharpness < newcat.sharphi)
-                & (newcat.roundness > newcat.roundlo)
-                & (newcat.roundness < newcat.roundhi))
+        mask = ((newcat.sharpness >= newcat.sharplo)
+                & (newcat.sharpness <= newcat.sharphi)
+                & (newcat.roundness >= newcat.roundlo)
+                & (newcat.roundness <= newcat.roundhi))
         if newcat.peakmax is not None:
-            mask &= (newcat.peak < newcat.peakmax)
+            mask &= (newcat.peak <= newcat.peakmax)
         newcat = newcat[mask]
 
         if len(newcat) == 0:

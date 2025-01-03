@@ -739,14 +739,14 @@ class _DAOStarFinderCatalog:
             return None
 
         # filter based on sharpness, roundness, and peakmax
-        mask = ((newcat.sharpness > newcat.sharplo)
-                & (newcat.sharpness < newcat.sharphi)
-                & (newcat.roundness1 > newcat.roundlo)
-                & (newcat.roundness1 < newcat.roundhi)
-                & (newcat.roundness2 > newcat.roundlo)
-                & (newcat.roundness2 < newcat.roundhi))
+        mask = ((newcat.sharpness >= newcat.sharplo)
+                & (newcat.sharpness <= newcat.sharphi)
+                & (newcat.roundness1 >= newcat.roundlo)
+                & (newcat.roundness1 <= newcat.roundhi)
+                & (newcat.roundness2 >= newcat.roundlo)
+                & (newcat.roundness2 <= newcat.roundhi))
         if newcat.peakmax is not None:
-            mask &= (newcat.peak < newcat.peakmax)
+            mask &= (newcat.peak <= newcat.peakmax)
         newcat = newcat[mask]
 
         if len(newcat) == 0:
