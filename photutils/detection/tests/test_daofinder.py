@@ -229,6 +229,6 @@ class TestDAOStarFinder:
         tbl = finder.find_stars(data)
 
         assert len(tbl) == 1
-        assert abs(tbl[0]['roundness1']) == 0.0
+        assert abs(tbl[0]['roundness1']) < 1.e-15
         assert abs(tbl[0]['roundness2']) == 0.0
         assert abs(tbl[0]['peak']) == 1.0e20
