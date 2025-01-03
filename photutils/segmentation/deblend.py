@@ -743,7 +743,7 @@ def _update_deblend_label_map(deblend_label_map, relabel_map):
         A dictionary mapping the original labels to the new deblended
         labels.
 
-    relabel_map : 2D `~numpy.ndarray`
+    relabel_map : 1D `~numpy.ndarray`
         The array mapping the original labels to the new labels.
 
     Returns

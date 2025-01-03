@@ -140,12 +140,14 @@ class SegmentationImage:
     @lazyproperty
     def deblended_labels(self):
         """
-        A 1D array of deblended label numbers.
+        A sorted 1D array of deblended label numbers.
 
         The list will be empty if deblending has not been performed or
         if no sources were deblended.
         """
-        return np.concatenate(list(self._deblend_label_map.values()))
+        if len(self._deblend_label_map) == 0:
+            return np.array([], dtype=self._data.dtype)
+        return np.sort(np.concatenate(list(self._deblend_label_map.values())))
 
     @lazyproperty
     def deblended_labels_map(self):
@@ -589,6 +591,20 @@ class SegmentationImage:
         """
         return self.make_cmap(background_color='#000000ff', seed=0)
 
+    def _update_deblend_label_map(self, relabel_map):
+        """
+        Update the deblended label map based on a relabel map.
+
+        Parameters
+        ----------
+        relabel_map : `~numpy.ndarray`
+            An array mapping the original label numbers to the new label
+            numbers.
+        """
+        # child_labels are the deblended labels
+        for parent_label, child_labels in self._deblend_label_map.items():
+            self._deblend_label_map[parent_label] = relabel_map[child_labels]
+
     def reassign_label(self, label, new_label, relabel=False):
         """
         Reassign a label number to a new number.
@@ -744,20 +760,22 @@ class SegmentationImage:
         if labels.size == 0:
             return
 
-        idx = np.zeros(self.max_label + 1, dtype=self.data.dtype)
-        idx[self.labels] = self.labels
-        idx[labels] = new_label  # reassign labels
+        dtype = self.data.dtype  # keep the original dtype
+        relabel_map = np.zeros(self.max_label + 1, dtype=dtype)
+        relabel_map[self.labels] = self.labels
+        relabel_map[labels] = new_label  # reassign labels
 
         if relabel:
-            labels = np.unique(idx[idx != 0])
+            labels = np.unique(relabel_map[relabel_map != 0])
             if len(labels) != 0:
-                idx2 = np.zeros(max(labels) + 1, dtype=self.data.dtype)
-                idx2[labels] = np.arange(len(labels)) + 1
-                idx = idx2[idx]
+                map2 = np.zeros(max(labels) + 1, dtype=dtype)
+                map2[labels] = np.arange(len(labels), dtype=dtype) + 1
+                relabel_map = map2[relabel_map]
 
-        data_new = idx[self.data]
+        data_new = relabel_map[self.data]
         self._reset_lazyproperties()  # reset all cached properties
         self._data = data_new  # use _data to avoid validation
+        self._update_deblend_label_map(relabel_map)
 
     def relabel_consecutive(self, start_label=1):
         """
@@ -813,6 +831,7 @@ class SegmentationImage:
         self.__dict__['labels'] = new_labels
         if old_slices is not None:
             self.__dict__['slices'] = old_slices  # slice order is unchanged
+        self._update_deblend_label_map(new_label_map)
 
     def keep_label(self, label, relabel=False):
         """
