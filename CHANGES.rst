@@ -28,6 +28,12 @@ New Features
   - An optional ``mask`` keyword was added to the ``gini`` function.
     [#1979]
 
+- ``photutils.segmentation``
+
+  - Added ``deblended_labels``, ``deblended_labels_map``, and
+    ``deblended_labels_inverse_map`` properties to ``SegmentationImage``
+    to identify and map any deblended labels. [#1988]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -40,6 +46,9 @@ Bug Fixes
 
   - Fixed a bug to ensure that the dtype of the ``SegmentationImage``
     ``labels`` always matches the image dtype. [#1986]
+
+  - Fixed a issue with the source labels after source deblending when
+    using ``relabel=False``. [#1988]
 
 API Changes
 ^^^^^^^^^^^
