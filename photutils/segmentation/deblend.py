@@ -186,12 +186,12 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     if nproc is None:
         nproc = cpu_count()  # pragma: no cover
 
+    max_label = segment_img.max_label
     if nproc == 1:
         if progress_bar:  # pragma: no cover
             desc = 'Deblending'
             label_indices = add_progress_bar(label_indices, desc=desc)
 
-        max_label = segment_img.max_label + 1
         nonposmin_labels = []
         nmarkers_labels = []
         for label, label_idx in zip(labels, label_indices, strict=True):
@@ -263,7 +263,6 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
                     results[idx] = future.result()
 
         # Process the results
-        max_label = segment_img.max_label + 1
         nonposmin_labels = []
         nmarkers_labels = []
         for label, source_slice, source_deblended in zip(labels,

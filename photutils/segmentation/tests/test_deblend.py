@@ -193,6 +193,7 @@ class TestDeblendSources:
         result = deblend_sources(self.data, self.segm, self.npixels,
                                  mode=mode, relabel=False, progress_bar=False)
         assert result.nlabels == 2
+        assert_equal(result.labels, [2, 3])
         assert len(result.slices) <= result.max_label
         assert len(result.slices) == result.nlabels
         assert_allclose(np.nonzero(self.segm), np.nonzero(result))
