@@ -38,6 +38,9 @@ Bug Fixes
     representation instead of ``str`` representation when using NumPy
     2.0+. [#1956]
 
+  - Fixed a bug to ensure that the dtype of the ``SegmentationImage``
+    ``labels`` always matches the image dtype. [#1986]
+
 API Changes
 ^^^^^^^^^^^
 

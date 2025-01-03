@@ -105,7 +105,7 @@ class SegmentationImage:
         :meth:`remove_masked_labels` on a masked version of the
         segmentation array.
         """
-        # np.unique also sorts elements
+        # np.unique preserves dtype and also sorts elements
         return np.unique(data[data != 0])
 
     @lazyproperty
@@ -209,7 +209,7 @@ class SegmentationImage:
             for label, slc in zip(labels_all, self._raw_slices, strict=True):
                 if slc is not None:
                     labels.append(label)
-            return np.array(labels)
+            return np.array(labels, dtype=self._data.dtype)
 
         return self._get_labels(self.data)
 
