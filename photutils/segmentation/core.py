@@ -47,7 +47,7 @@ class SegmentationImage:
         if not isinstance(data, np.ndarray):
             raise TypeError('Input data must be a numpy array')
         self.data = data
-        self._deblend_label_map = {}
+        self._deblend_label_map = {}  # set by source deblender
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
@@ -219,6 +219,7 @@ class SegmentationImage:
 
         self._data = value  # pylint: disable=attribute-defined-outside-init
         self.__dict__['labels'] = labels
+        self.__dict__['_deblend_label_map'] = {}  # reset deblended labels
 
     @lazyproperty
     def data_ma(self):
