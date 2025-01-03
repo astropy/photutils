@@ -212,7 +212,12 @@ class TestIRAFStarFinder:
             [0.1, 0.6, 0.1],
         ]
 
-        finder = IRAFStarFinder(0, 2.5, roundlo=0, peakmax=0.8)
+        finder = IRAFStarFinder(
+            threshold=0,
+            fwhm=2.5,
+            roundlo=0,
+            peakmax=0.8
+        )
         tbl = finder.find_stars(data)
 
         assert len(tbl) == 1
