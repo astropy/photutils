@@ -47,6 +47,7 @@ class SegmentationImage:
         if not isinstance(data, np.ndarray):
             raise TypeError('Input data must be a numpy array')
         self.data = data
+        self._deblend_label_map = {}
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
@@ -135,6 +136,50 @@ class SegmentationImage:
                 segments.append(Segment(self.data, label, slc, bbox, area))
 
         return segments
+
+    @lazyproperty
+    def deblended_labels(self):
+        """
+        A 1D array of deblended label numbers.
+
+        The list will be empty if deblending has not been performed or
+        if no sources were deblended.
+        """
+        return np.concatenate(list(self._deblend_label_map.values()))
+
+    @lazyproperty
+    def deblended_labels_map(self):
+        """
+        A dictionary mapping deblended label numbers to the original
+        parent label numbers.
+
+        The keys are the deblended label numbers and the values are the
+        original parent label numbers. Only deblended sources are
+        included in the dictionary.
+
+        The dictionary will be empty if deblending has not been
+        performed or if no sources were deblended.
+        """
+        inverse_map = {}
+        for key, values in self._deblend_label_map.items():
+            for value in values:
+                inverse_map[value] = key
+        return inverse_map
+
+    @lazyproperty
+    def deblended_labels_inverse_map(self):
+        """
+        A dictionary mapping the original parent label numbers to the
+        deblended label numbers.
+
+        The keys are the original parent label numbers and the values
+        are the deblended label numbers. Only deblended sources are
+        included in the dictionary.
+
+        The dictionary will be empty if deblending has not been
+        performed or if no sources were deblended.
+        """
+        return self._deblend_label_map
 
     @property
     def data(self):
