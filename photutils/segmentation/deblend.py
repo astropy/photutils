@@ -186,6 +186,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     if nproc is None:
         nproc = cpu_count()  # pragma: no cover
 
+    deblend_label_map = {}
     max_label = segment_img.max_label
     if nproc == 1:
         if progress_bar:  # pragma: no cover
@@ -213,10 +214,12 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
 
             if source_deblended is not None:
                 source_mask = source_deblended > 0
+                new_segm = source_deblended[source_mask]  # min label = 1
                 segm_deblended[source_slice][source_mask] = (
-                    source_deblended[source_mask] + max_label)
-                nlabels = len(_get_labels(source_deblended))
-                max_label += nlabels
+                    new_segm + max_label)
+                new_labels = _get_labels(new_segm) + max_label
+                deblend_label_map[label] = new_labels
+                max_label += len(new_labels)
 
     else:
         # Use multiprocessing to deblend sources
@@ -278,10 +281,12 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
 
             if source_deblended is not None:
                 source_mask = source_deblended > 0
+                new_segm = source_deblended[source_mask]  # min label = 1
                 segm_deblended[source_slice][source_mask] = (
-                    source_deblended[source_mask] + max_label)
-                nlabels = len(_get_labels(source_deblended))
-                max_label += nlabels
+                    new_segm + max_label)
+                new_labels = _get_labels(new_segm) + max_label
+                deblend_label_map[label] = new_labels
+                max_label += len(new_labels)
 
     # process any warnings during deblending
     warning_info = {}
@@ -307,10 +312,15 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
             warning_info['nmarkers'] = warn
 
     if relabel:
-        segm_deblended = _relabel_array(segm_deblended, start_label=1)
+        relabel_map = _create_relabel_map(segm_deblended, start_label=1)
+        if relabel_map is not None:
+            segm_deblended = relabel_map[segm_deblended]
+            deblend_label_map = _update_deblend_label_map(deblend_label_map,
+                                                          relabel_map)
 
     segm_img = object.__new__(SegmentationImage)
     segm_img._data = segm_deblended
+    segm_img._deblend_label_map = deblend_label_map
 
     # store the warnings in the output SegmentationImage info attribute
     if warning_info:
@@ -661,7 +671,10 @@ class _SingleSourceDeblender:
 
         # markers may not be consecutive if a label was removed due to
         # the contrast criterion
-        return _relabel_array(markers, start_label=1)
+        relabel_map = _create_relabel_map(markers, start_label=1)
+        if relabel_map is not None:
+            markers = relabel_map[markers]
+        return markers
 
 
 def _get_labels(array):
@@ -682,10 +695,12 @@ def _get_labels(array):
     return labels[labels != 0]
 
 
-def _relabel_array(array, start_label=1):
+def _create_relabel_map(array, start_label=1):
     """
-    Relabel an array such that the labels are consecutive integers
-    starting from 1.
+    Create a mapping of original labels to new labels that are
+    consecutive integers.
+
+    By default, the new labels start from 1.
 
     Parameters
     ----------
@@ -697,8 +712,10 @@ def _relabel_array(array, start_label=1):
 
     Returns
     -------
-    relabeled_array : 2D `~numpy.ndarray`
-        The relabeled array.
+    relabel_map : 1D `~numpy.ndarray` or None
+        The array mapping the original labels to the new labels. If the
+        labels are already consecutive starting from ``start_label``,
+        then `None` is returned.
     """
     labels = _get_labels(array)
 
@@ -706,10 +723,34 @@ def _relabel_array(array, start_label=1):
     # start_label
     if (labels[0] == start_label
             and (labels[-1] - start_label + 1) == len(labels)):
-        return array
+        return None
 
     # Create an array to map old labels to new labels
     relabel_map = np.zeros(labels.max() + 1, dtype=array.dtype)
     relabel_map[labels] = np.arange(len(labels)) + start_label
 
-    return relabel_map[array]
+    return relabel_map
+
+
+def _update_deblend_label_map(deblend_label_map, relabel_map):
+    """
+    Update the deblend_label_map to reflect the new labels that are
+    consecutive integers.
+
+    Parameters
+    ----------
+    deblend_label_map : dict
+        A dictionary mapping the original labels to the new deblended
+        labels.
+
+    relabel_map : 2D `~numpy.ndarray`
+        The array mapping the original labels to the new labels.
+
+    Returns
+    -------
+    deblend_label_map : dict
+        The updated deblend_label_map.
+    """
+    for old_label, new_labels in deblend_label_map.items():
+        deblend_label_map[old_label] = relabel_map[new_labels]
+    return deblend_label_map

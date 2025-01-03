@@ -52,6 +52,7 @@ class TestDeblendSources:
         assert_allclose(len(result.data[mask1]), len(result.data[mask2]))
         assert_allclose(np.sum(self.data[mask1]), np.sum(self.data[mask2]))
         assert_allclose(np.nonzero(self.segm), np.nonzero(result))
+        assert_equal(result._deblend_label_map, {1: [1, 2]})
 
     def test_deblend_multiple_sources(self):
         g4 = Gaussian2D(100, 50, 15, 5, 5)
@@ -194,6 +195,7 @@ class TestDeblendSources:
                                  mode=mode, relabel=False, progress_bar=False)
         assert result.nlabels == 2
         assert_equal(result.labels, [2, 3])
+        assert_equal(result._deblend_label_map, {1: [2, 3]})
         assert len(result.slices) <= result.max_label
         assert len(result.slices) == result.nlabels
         assert_allclose(np.nonzero(self.segm), np.nonzero(result))
