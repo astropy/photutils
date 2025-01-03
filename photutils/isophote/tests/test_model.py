@@ -54,7 +54,13 @@ def test_model_simulated_data():
 
     g = EllipseGeometry(100.0, 100.0, 5.0, 0.5, np.pi / 3.0)
     ellipse = Ellipse(data, geometry=g, threshold=1.0e5)
-    isophote_list = ellipse.fit_image()
+
+    # Catch warnings that may arise from empty slices. This started
+    # to happen on windows with scipy 1.15.0.
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        isophote_list = ellipse.fit_image()
+
     model = build_ellipse_model(data.shape, isophote_list,
                                 fill=np.mean(data[0:50, 0:50]))
 
