@@ -23,7 +23,7 @@ Photutils
 *********
 
 | **Version**: |release| -- **Date**: |today|
-| Useful links: :doc:`getting_started/install` | :ref:`whatsnew-2.0`
+| Useful links: :doc:`getting_started/install` | :ref:`whatsnew-2.1`
 
 **Photutils** is a Python library that provides commonly-used tools
 and key functionality for detecting and performing photometry of
