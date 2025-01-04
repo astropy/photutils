@@ -94,6 +94,24 @@ class TestStarFinder:
             tbl = starfinder(data)
             assert tbl is None
 
+    def test_peakmax_limit(self):
+        """
+        Test that the peakmax limit is inclusive.
+        """
+        data = np.zeros((11, 11))
+        x = 5
+        y = 6
+        kernel = np.array([[0.1, 0.6, 0.1],
+                           [0.6, 0.8, 0.6],
+                           [0.1, 0.6, 0.1]])
+        data[y - 1: y + 2, x - 1: x + 2] = kernel
+
+        finder = StarFinder(threshold=0, kernel=kernel, peakmax=0.8)
+        tbl = finder.find_stars(data)
+
+        assert len(tbl) == 1
+        assert tbl[0]['max_value'] == 0.8
+
     def test_brightest(self, data, kernel):
         finder = StarFinder(1, kernel, brightest=10)
         tbl = finder(data)

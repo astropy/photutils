@@ -51,13 +51,13 @@ class StarFinder(StarFinderBase):
         will be selected.
 
     peakmax : float, None, optional
-        The maximum allowed peak pixel value in an object. Only objects
-        whose peak pixel values are strictly smaller than ``peakmax``
-        will be selected. This may be used, for example, to exclude
-        saturated sources. If the star finder is run on an image that is
-        a `~astropy.units.Quantity` array, then ``peakmax`` must have
-        the same units. If ``peakmax`` is set to `None`, then no peak
-        pixel value filtering will be performed.
+        The maximum allowed peak pixel value in an object. Objects with
+        peak pixel values greater than ``peakmax`` will be rejected.
+        This keyword may be used, for example, to exclude saturated
+        sources. If the star finder is run on an image that is a
+        `~astropy.units.Quantity` array, then ``peakmax`` must have the
+        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        value filtering will be performed.
 
     See Also
     --------
@@ -186,13 +186,13 @@ class _StarFinderCatalog:
         will be selected.
 
     peakmax : float, None, optional
-        The maximum allowed peak pixel value in an object. Only objects
-        whose peak pixel values are strictly smaller than ``peakmax``
-        will be selected. This may be used, for example, to exclude
-        saturated sources. If the star finder is run on an image that is
-        a `~astropy.units.Quantity` array, then ``peakmax`` must have
-        the same units. If ``peakmax`` is set to `None`, then no peak
-        pixel value filtering will be performed.
+        The maximum allowed peak pixel value in an object. Objects with
+        peak pixel values greater than ``peakmax`` will be rejected.
+        This keyword may be used, for example, to exclude saturated
+        sources. If the star finder is run on an image that is a
+        `~astropy.units.Quantity` array, then ``peakmax`` must have the
+        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        value filtering will be performed.
     """
 
     def __init__(self, data, xypos, shape, *, brightest=None, peakmax=None):
@@ -416,9 +416,9 @@ class _StarFinderCatalog:
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        # filter based on peakmax
+        # keep sources with peak pixel values less than or equal to peakmax
         if newcat.peakmax is not None:
-            mask = (newcat.max_value < newcat.peakmax)
+            mask = (newcat.max_value <= newcat.peakmax)
             newcat = newcat[mask]
 
         if len(newcat) == 0:
