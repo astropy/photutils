@@ -20,6 +20,28 @@ The ``aperture_photometry`` output table will now include a
 not a sky aperture.
 
 
+Deblended Labels Mapping in Segmentation Image
+----------------------------------------------
+
+The ``SegmentationImage`` class now includes properties to identify and
+map any deblended labels. The ``deblended_labels`` property returns a
+list of deblended labels, the ``deblended_labels_map`` property returns
+a dictionary mapping the deblended labels to the parent labels, and the
+``deblended_labels_inverse_map`` property returns a dictionary mapping
+the parent labels to the deblended labels.
+
+
+Star Finder Limits API Change
+-----------------------------
+
+Detected sources that match interval ends for sharpness, roundness, and
+maximum peak values (``sharplo``, ``sharphi``, ``roundlo``, ``roundhi``,
+and ``peakmax``) are now included in the returned table of detected
+sources by ``DAOStarFinder`` and ``IRAFStarFinder``. Similarly, detected
+sources that match the maximum peak value (``peakmax``) are now included
+in the returned table of detected sources by ``StarFinder``.
+
+
 Find Peaks Border Width
 -----------------------
 
@@ -27,8 +49,16 @@ The ``find_peaks`` ``border_width`` keyword can now accept two values,
 indicating the border width along the the y and x edges, respectively.
 
 
-Gini Coefficient
-----------------
+Border Exclusion in DAOStarFinder and StarFinder
+------------------------------------------------
+
+When ``exclude_border`` is set to ``True`` in the ``DAOStarFinder`` and
+``StarFinder`` classes, the excluded border region can now be different
+along the x and y edges if the kernel shape is rectangular.
+
+
+Gini Coefficient Mask
+---------------------
 
 An optional ``mask`` keyword was added to the ``gini`` function to allow
 for the exclusion of certain pixels from the calculation of the Gini
