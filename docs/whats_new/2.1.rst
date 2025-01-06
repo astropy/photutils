@@ -19,6 +19,10 @@ The ``aperture_photometry`` output table will now include a
 ``sky_center`` column if ``wcs`` is input, even if the input aperture is
 not a sky aperture.
 
+Also, the ``xcenter`` and ``ycenter`` columns in the table returned by
+``aperture_photometry`` no longer have (pixel) units for consistency
+with other tools in Photutils.
+
 
 Deblended Labels Mapping in Segmentation Image
 ----------------------------------------------
