@@ -123,17 +123,16 @@ def test_make_model_image_inputs():
     with pytest.raises(ValueError, match=match):
         make_model_image((100, 100), model, QTable(), x_name='invalid')
 
+    match = 'not in params_table column names'
     model = Moffat2D()
     with pytest.raises(ValueError, match=match):
         make_model_image((100, 100), model, QTable(), y_name='invalid')
 
-    match = '"x_0" not in psf_params column names'
     model = Moffat2D()
     params = QTable()
     with pytest.raises(ValueError, match=match):
         make_model_image((100, 100), model, params)
 
-    match = '"y_0" not in psf_params column names'
     model = Moffat2D()
     params = QTable()
     params['x_0'] = [50, 70, 90]
@@ -173,3 +172,28 @@ def test_make_model_image_bbox():
     image5 = make_model_image(shape, model1, params)
     assert np.sum(image5) > np.sum(image4)
     assert_allclose(image3, image4)
+
+
+def test_make_model_image_params_map():
+    params = QTable()
+    params['x_0'] = [50, 70, 90]
+    params['y_0'] = [50, 50, 50]
+    params['gamma'] = [1.7, 2.32, 5.8]
+    params['alpha'] = [2.9, 5.7, 4.6]
+    model = Moffat2D(amplitude=1)
+    shape = (300, 500)
+    model_shape = (11, 11)
+    image = make_model_image(shape, model, params, model_shape=model_shape)
+
+    params = QTable()
+    params['x_0'] = [50, 70, 90]
+    params['y_0'] = [50, 50, 50]
+    params['gamma2'] = [1.7, 2.32, 5.8]
+    params['alpha4'] = [2.9, 5.7, 4.6]
+    params_map = {'gamma': 'gamma2', 'alpha': 'alpha4'}
+    model = Moffat2D(amplitude=1)
+    shape = (300, 500)
+    model_shape = (11, 11)
+    image2 = make_model_image(shape, model, params, model_shape=model_shape,
+                              params_map=params_map)
+    assert_allclose(image, image2)
