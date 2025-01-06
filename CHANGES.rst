@@ -53,6 +53,12 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - The ``xcenter`` and ``ycenter`` columns in the table returned by
+    ``aperture_photometry`` no longer have (pixel) units for consistency
+    with other tools. [#1993]
+
 - ``photutils.detection``
 
   - When ``exclude_border`` is set to ``True`` in the ``DAOStarFinder``

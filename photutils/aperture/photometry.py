@@ -229,7 +229,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     positions = np.atleast_2d(apertures[0].positions)
     tbl['id'] = np.arange(positions.shape[0], dtype=int) + 1
 
-    xypos_pixel = np.transpose(positions) * u.pixel
+    xypos_pixel = np.transpose(positions)
     tbl['xcenter'] = xypos_pixel[0]
     tbl['ycenter'] = xypos_pixel[1]
 
