@@ -68,6 +68,14 @@ Also, the ``gini`` function now returns zero instead of NaN if the
 (unmasked) data values sum to zero.
 
 
+New params_map keyword in make_model_image
+------------------------------------------
+
+An optional ``params_map`` keyword was added to ``make_model_image`` to
+allow a custom mapping between model parameter names and columns names
+in the parameter table.
+
+
 Improved GriddedPSFModel Plots
 ------------------------------
 
