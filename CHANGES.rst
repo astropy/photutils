@@ -17,6 +17,12 @@ New Features
     ``sky_center`` column if ``wcs`` is input, even if the input aperture
     is not a sky aperture. [#1965]
 
+- ``photutils.datasets``
+
+  - A ``params_map`` keyword was added to ``make_model_image`` to allow
+    a custom mapping between model parameter names and columns names in
+    the parameter table. [#1994]
+
 - ``photutils.detection``
 
   - The ``find_peaks`` ``border_width`` keyword can now accept two
