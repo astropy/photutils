@@ -20,14 +20,18 @@ __all__ = ['make_model_image']
 
 def make_model_image(shape, model, params_table, *, model_shape=None,
                      bbox_factor=None, x_name='x_0', y_name='y_0',
-                     discretize_method='center', discretize_oversample=10,
-                     progress_bar=False):
+                     params_map=None, discretize_method='center',
+                     discretize_oversample=10, progress_bar=False):
     """
     Make a 2D image containing sources generated from a user-specified
     astropy 2D model.
 
     The model parameters for each source are taken from the input
-    ``params_table`` table.
+    ``params_table`` table. By default, the table is searched for column
+    names that match model parameter names and the values specified by
+    ``x_name`` and ``y_name``. However, the user can specify a different
+    mapping between model parameter names and column names using the
+    ``params_map`` keyword.
 
     Parameters
     ----------
@@ -43,16 +47,16 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         the ``x_name`` and ``y_name`` keywords.
 
     params_table : `~astropy.table.Table`
-        A table containing the model parameters for each source.
-        Each row of the table corresponds to a source whose model
-        parameters are defined by the column names, which must match
-        the model parameter names. The table must contain columns for
-        the x and y positions of the sources. The column names for
-        the x and y positions can be specified using the ``x_name``
-        and ``y_name`` keywords. Model parameters not defined in the
-        table will be set to the ``model`` default value. To attach
-        units to model parameters, ``params_table`` must be input as a
-        `~astropy.table.QTable`.
+        A table containing the model parameters for each source. Each
+        row of the table corresponds to a source whose model parameters
+        are defined by the column names, which must match the model
+        parameter names. The table must contain columns for the x
+        and y positions of the sources. The column names for the x
+        and y positions can be specified using the ``x_name`` and
+        ``y_name`` keywords. Model parameters not defined in the table
+        or ``params_maps`` will be set to the ``model`` default value.
+        To attach units to model parameters, ``params_table`` must be
+        input as a `~astropy.table.QTable`.
 
         If the table contains a column named 'model_shape', then
         the values in that column will be used to override the
@@ -71,7 +75,8 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         below).
 
         Except for ``model_shape`` and ``local_bkg`` column names,
-        column names that do not match model parameters will be ignored.
+        column names that do not match model parameters will be ignored
+        unless ``params_map`` is input.
 
     model_shape : 2-tuple of int, int, or `None`, optional
         The shape around the (x, y) center of each source that will
@@ -99,13 +104,26 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
     x_name : str, optional
         The name of the ``model`` parameter that corresponds to the x
-        position of the sources. This parameter must also be a column
-        name in ``params_table``.
+        position of the sources. If ``param_map`` is not input, then
+        this value must also be a column name in ``params_table``.
 
     y_name : str, optional
         The name of the ``model`` parameter that corresponds to the y
-        position of the sources. This parameter must also be a column
-        name in ``params_table``.
+        position of the sources. If ``param_map`` is not input, then
+        this value must also be a column name in ``params_table``.
+
+    params_map : dict or None, optional
+        A dictionary mapping the model parameter names to the column
+        names in the input ``params_table``. The dictionary keys are
+        the model parameter names and the values are the column names
+        in the input ``params_table``. This can be used to map column
+        names to model parameter names that are different. For example,
+        if the input column name is 'flux_f200w' and the model parameter
+        name is 'flux', then use ``column_map={'flux': 'flux_f200w'}``.
+        This table may also be used if you want to map the model x and y
+        parameters to different columns than ``x_name`` and ``y_name``,
+        but the ``x_name`` and ``y_name`` keys must be included in the
+        dictionary.
 
     discretize_method : {'center', 'interp', 'oversample', 'integrate'}, \
             optional
@@ -214,17 +232,28 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         raise TypeError('model must be a Model instance')
     if model.n_inputs != 2 or model.n_outputs != 1:
         raise ValueError('model must be a 2D model')
-    if x_name not in model.param_names:
-        raise ValueError(f'x_name "{x_name}" not in model parameter names')
-    if y_name not in model.param_names:
-        raise ValueError(f'y_name "{y_name}" not in model parameter names')
-
     if not isinstance(params_table, Table):
         raise TypeError('params_table must be an astropy Table')
-    if x_name not in params_table.colnames:
-        raise ValueError(f'x_name "{x_name}" not in psf_params column names')
-    if y_name not in params_table.colnames:
-        raise ValueError(f'y_name "{y_name}" not in psf_params column names')
+
+    xypos_map = {x_name: x_name, y_name: y_name}
+
+    # by default, use the model parameter names as the column names
+    # if they are in the table
+    params_to_set = set(params_table.colnames) & set(model.param_names)
+    xypos_map.update({param: param for param in params_to_set})
+
+    if params_map is not None:
+        # params_map takes precedence over x_name and y_name and
+        # any matching column names in params_table
+        xypos_map.update(params_map)
+    params_map = xypos_map
+
+    for key, value in params_map.items():
+        if key not in model.param_names:
+            raise ValueError(f'key "{key}" not in model parameter names')
+        if value not in params_table.colnames:
+            raise ValueError(f'value "{value}" not in params_table column '
+                             'names')
 
     if model_shape is not None:
         model_shape = as_pair('model_shape', model_shape, lower_bound=(0, 1))
@@ -249,9 +278,6 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     else:
         local_bkg = np.zeros(len(params_table))
 
-    # include only column names that are model parameters
-    params_to_set = set(params_table.colnames) & set(model.param_names)
-
     # copy the input model to leave it unchanged
     model = model.copy()
 
@@ -261,9 +287,13 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
     image = np.zeros(shape, dtype=float)
     for i, source in enumerate(params_table):
-        for param in params_to_set:
-            setattr(model, param, source[param])
+        for key, param in params_map.items():
+            setattr(model, key, source[param])
 
+        # This assumes that if the user also uses params_table to
+        # override the (x/y)_name mapping that the x_name and y_name
+        # values are correct (i.e., the mapping keys include x_name and
+        # y_name). There is no good way to check/enforce this.
         x0 = getattr(model, x_name).value
         y0 = getattr(model, y_name).value
 
