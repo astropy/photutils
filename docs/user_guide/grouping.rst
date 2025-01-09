@@ -144,7 +144,7 @@ the same group have the same aperture color:
     >>> plt.imshow(data, origin='lower', interpolation='nearest',
     ...            cmap='Greys_r')
     >>> cmap = make_random_cmap(seed=123)
-    >>> for i in np.arange(1, max(groups)):
+    >>> for i in np.arange(1, max(groups) + 1):
     >>>     mask = groups == i
     >>>     xypos = zip(x[mask], y[mask])
     >>>     ap = CircularAperture(xypos, r=fwhm)
@@ -182,7 +182,7 @@ the same group have the same aperture color:
     plt.figure(figsize=(8, 8))
     plt.imshow(data, origin='lower', interpolation='nearest', cmap='Greys_r')
     cmap = make_random_cmap(seed=123)
-    for i in np.arange(1, max(groups)):
+    for i in np.arange(1, max(groups) + 1):
         mask = groups == i
         xypos = zip(x[mask], y[mask])
         ap = CircularAperture(xypos, r=fwhm)
