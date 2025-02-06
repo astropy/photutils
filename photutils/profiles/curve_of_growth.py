@@ -125,6 +125,7 @@ class CurveOfGrowth(ProfileBase):
 
     .. plot::
 
+        import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
 
@@ -149,13 +150,15 @@ class CurveOfGrowth(ProfileBase):
         cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
 
         # plot the curve of growth
-        cog.plot()
-        cog.plot_error()
+        fig, ax = plt.subplots(figsize=(8, 6))
+        cog.plot(ax=ax)
+        cog.plot_error(ax=ax)
 
     Normalize the profile and plot the normalized curve of growth.
 
     .. plot::
 
+        import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
 
@@ -181,8 +184,9 @@ class CurveOfGrowth(ProfileBase):
 
         # plot the curve of growth
         cog.normalize()
-        cog.plot()
-        cog.plot_error()
+        fig, ax = plt.subplots(figsize=(8, 6))
+        cog.plot(ax=ax)
+        cog.plot_error(ax=ax)
 
     Plot a couple of the apertures on the data.
 
@@ -214,11 +218,11 @@ class CurveOfGrowth(ProfileBase):
         cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
 
         norm = simple_norm(data, 'sqrt')
-        plt.figure(figsize=(5, 5))
-        plt.imshow(data, norm=norm, origin='lower')
-        cog.apertures[5].plot(color='C0', lw=2)
-        cog.apertures[10].plot(color='C1', lw=2)
-        cog.apertures[15].plot(color='C3', lw=2)
+        fig, ax = plt.subplots(figsize=(5, 5))
+        ax.imshow(data, norm=norm, origin='lower')
+        cog.apertures[5].plot(ax=ax, color='C0', lw=2)
+        cog.apertures[10].plot(ax=ax, color='C1', lw=2)
+        cog.apertures[15].plot(ax=ax, color='C3', lw=2)
     """
 
     def __init__(self, data, xycen, radii, *, error=None, mask=None,

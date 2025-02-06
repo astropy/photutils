@@ -148,6 +148,7 @@ class RadialProfile(ProfileBase):
 
     .. plot::
 
+        import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
 
@@ -172,13 +173,15 @@ class RadialProfile(ProfileBase):
         rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
         # plot the radial profile
-        rp.plot()
-        rp.plot_error()
+        fig, ax = plt.subplots(figsize=(8, 6))
+        rp.plot(ax=ax)
+        rp.plot_error(ax=ax)
 
     Normalize the profile and plot the normalized radial profile.
 
     .. plot::
 
+        import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
 
@@ -204,8 +207,9 @@ class RadialProfile(ProfileBase):
 
         # plot the radial profile
         rp.normalize()
-        rp.plot()
-        rp.plot_error()
+        fig, ax = plt.subplots(figsize=(8, 6))
+        rp.plot(ax=ax)
+        rp.plot_error(ax=ax)
 
     Plot three of the annulus apertures on the data.
 
@@ -237,11 +241,11 @@ class RadialProfile(ProfileBase):
         rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
         norm = simple_norm(data, 'sqrt')
-        plt.figure(figsize=(5, 5))
-        plt.imshow(data, norm=norm, origin='lower')
-        rp.apertures[5].plot(color='C0', lw=2)
-        rp.apertures[10].plot(color='C1', lw=2)
-        rp.apertures[15].plot(color='C3', lw=2)
+        fig, ax = plt.subplots(figsize=(5, 5))
+        ax.imshow(data, norm=norm, origin='lower')
+        rp.apertures[5].plot(ax=ax, color='C0', lw=2)
+        rp.apertures[10].plot(ax=ax, color='C1', lw=2)
+        rp.apertures[15].plot(ax=ax, color='C3', lw=2)
 
     Fit a 1D Gaussian to the radial profile and return the Gaussian
     model.
@@ -282,10 +286,11 @@ class RadialProfile(ProfileBase):
 
         # plot the radial profile
         rp.normalize()
-        rp.plot(label='Radial Profile')
-        rp.plot_error()
-        plt.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
-        plt.legend()
+        fig, ax = plt.subplots(figsize=(8, 6))
+        rp.plot(ax=ax, label='Radial Profile')
+        rp.plot_error(ax=ax)
+        ax.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
+        ax.legend()
     """
 
     @lazyproperty
