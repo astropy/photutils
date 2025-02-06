@@ -23,8 +23,10 @@ data before creating a radial profile or curve of growth.
     >>> gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     >>> yy, xx = np.mgrid[0:100, 0:100]
     >>> data = gmodel(xx, yy)
-    >>> error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    >>> data += error
+    >>> bkg_sig = 2.4
+    >>> noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    >>> data += noise
+    >>> error = np.zeros_like(data) + bkg_sig
 
 .. plot::
 
@@ -38,8 +40,10 @@ data before creating a radial profile or curve of growth.
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
     norm = simple_norm(data, 'sqrt')
     plt.figure(figsize=(5, 5))
@@ -98,10 +102,10 @@ propagated errors::
       4.03348112e-01  1.43482678e-01 -2.62777461e-01  7.30653622e-02]
 
     >>> print(rp.profile_error)  # doctest: +FLOAT_CMP
-    [1.69588246 0.81797694 0.61132694 0.44670831 0.49499835 0.38025361
-     0.40844702 0.32906672 0.36466713 0.33059274 0.29661894 0.27314739
-     0.25551933 0.27675376 0.25553986 0.23421017 0.22966813 0.21747036
-     0.23654884 0.22760386 0.23941711 0.20661313 0.18999134 0.17469024]
+    [1.354055   0.78176402 0.60555181 0.51178468 0.45135167 0.40826294
+     0.37554729 0.3496155  0.32840658 0.31064152 0.29547903 0.28233999
+     0.270811   0.26058801 0.2514417  0.24319546 0.23571072 0.22887707
+     0.22260527 0.21682233 0.21146786 0.20649145 0.2018506  0.19750922]
 
 Normalization
 ^^^^^^^^^^^^^
@@ -146,8 +150,10 @@ to set the plot label.
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
     xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
@@ -180,8 +186,10 @@ instance on the data:
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
     xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
@@ -230,8 +238,10 @@ class:`~photutils.profiles.RadialProfile` radial profile:
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
     xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
@@ -284,11 +294,11 @@ profile and propagated errors::
      5948.92254787 5968.30540534 5931.15611704 5941.94457249 5942.06535486]
 
     >>> print(cog.profile_error)  # doctest: +FLOAT_CMP
-    [  5.32777186   9.37111012  13.41750992  16.62928904  21.7350922
-      25.39862532  30.3867526   34.11478867  39.28263973  43.96047829
-      48.11931395  52.00967328  55.7471834   60.48824739  64.81392778
-      68.71042311  72.71899201  76.54959872  81.33806741  85.98568713
-      91.34841248  95.5173253   99.22190499 102.51980185 106.83601366]
+    [  4.25388924   8.50777848  12.76166773  17.01555697  21.26944621
+      25.52333545  29.7772247   34.03111394  38.28500318  42.53889242
+      46.79278166  51.04667091  55.30056015  59.55444939  63.80833863
+      68.06222787  72.31611712  76.57000636  80.8238956   85.07778484
+      89.33167409  93.58556333  97.83945257 102.09334181 106.34723105]
 
 Normalization
 ^^^^^^^^^^^^^
@@ -333,8 +343,10 @@ to set the plot label.
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
     xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
@@ -366,8 +378,10 @@ list of the apertures. Let's plot a few of the circular apertures (the
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
     xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
@@ -408,7 +422,7 @@ to the given encircled energy (or energies). These methods are
 :meth:`~photutils.profiles.CurveOfGrowth.calc_ee_at_radius` and
 :meth:`~photutils.profiles.CurveOfGrowth.calc_radius_at_ee`,
 respectively. They are implemented as interpolation functions using the
-calculated curve-of-growth profile. The performance of these methods
+calculated curve-of-growth profile. The accuracy of these methods
 is dependent on the quality of the curve-of-growth profile (e.g., it's
 generally better to have a curve-of-growth profile with more radial
 bins)::
