@@ -436,19 +436,70 @@ energy at a given radius (or radii) and the radius corresponding
 to the given encircled energy (or energies). These methods are
 :meth:`~photutils.profiles.CurveOfGrowth.calc_ee_at_radius` and
 :meth:`~photutils.profiles.CurveOfGrowth.calc_radius_at_ee`,
-respectively. They are implemented as interpolation functions using the
-calculated curve-of-growth profile. The accuracy of these methods
+respectively. They are implemented as interpolation functions using
+the calculated curve-of-growth profile. The accuracy of these methods
 is dependent on the quality of the curve-of-growth profile (e.g., it's
-generally better to have a curve-of-growth profile with more radial
-bins)::
+better to have a curve-of-growth profile with high signal to noise
+and more radial bins). Also, if the curve-of-growth profile is not
+monotonically increasing, the interpolation may fail.
+
+Let's compute the encircled energy values at a few radii for the curve
+of growth we created above::
 
     >>> cog.normalize(method='max')
-    >>> ee_vals = cog.calc_ee_at_radius([5, 10, 15])  # doctest: +FLOAT_CMP
+    >>> ee_rads = np.array([5, 10, 15])
+    >>> ee_vals = cog.calc_ee_at_radius(ee_rads)  # doctest: +FLOAT_CMP
     >>> ee_vals
     array([0.41923785, 0.87160376, 0.96902919])
 
     >>> cog.calc_radius_at_ee(ee_vals)  # doctest: +FLOAT_CMP
     array([ 5., 10., 15.])
+
+Here we plot the encircled energy values.
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import Gaussian2D
+    from photutils.centroids import centroid_quadratic
+    from photutils.datasets import make_noise_image
+    from photutils.profiles import CurveOfGrowth
+
+    # create an artificial single source
+    gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+    yy, xx = np.mgrid[0:100, 0:100]
+    data = gmodel(xx, yy)
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
+
+    # find the source centroid
+    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+
+    # create the radial profile
+    radii = np.arange(1, 26)
+    cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
+    cog.normalize(method='max')
+    ee_rads = np.array([5, 10, 15])
+    ee_vals = cog.calc_ee_at_radius(ee_rads)
+
+    # plot the radial profile
+    fig, ax = plt.subplots(figsize=(8, 6))
+    cog.plot(ax=ax, label='Curve of Growth')
+    cog.plot_error(ax=ax)
+    ax.legend()
+
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+    ax.vlines(ee_rads, ymin, ee_vals, colors='C1', linestyles='dashed')
+    ax.hlines(ee_vals, xmin, ee_rads, colors='C1', linestyles='dashed')
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
+
+    for ee_rad, ee_val in zip(ee_rads, ee_vals):
+        ax.text(ee_rad/2, ee_val, f'{ee_val:.2f}', ha='center', va='bottom')
 
 
 API Reference
