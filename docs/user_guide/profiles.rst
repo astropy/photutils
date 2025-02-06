@@ -45,9 +45,9 @@ data before creating a radial profile or curve of growth.
     data += noise
     error = np.zeros_like(data) + bkg_sig
 
+    fig, ax = plt.subplots(figsize=(5, 5))
     norm = simple_norm(data, 'sqrt')
-    plt.figure(figsize=(5, 5))
-    plt.imshow(data, norm=norm)
+    ax.imshow(data, norm=norm)
 
 
 Creating a Radial Profile
@@ -163,9 +163,10 @@ to set the plot label.
     rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
     # plot the radial profile
-    rp.plot(label='Radial Profile')
-    rp.plot_error()
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(8, 6))
+    rp.plot(ax=ax, label='Radial Profile')
+    rp.plot_error(ax=ax)
+    ax.legend()
 
 The `~photutils.profiles.RadialProfile.apertures` attribute contains a
 list of the apertures. Let's plot a few of the annulus apertures (the
@@ -199,11 +200,11 @@ instance on the data:
     rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
     norm = simple_norm(data, 'sqrt')
-    plt.figure(figsize=(5, 5))
-    plt.imshow(data, norm=norm)
-    rp.apertures[5].plot(color='C0', lw=2)
-    rp.apertures[10].plot(color='C1', lw=2)
-    rp.apertures[15].plot(color='C3', lw=2)
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.imshow(data, norm=norm)
+    rp.apertures[5].plot(ax=ax, color='C0', lw=2)
+    rp.apertures[10].plot(ax=ax, color='C1', lw=2)
+    rp.apertures[15].plot(ax=ax, color='C3', lw=2)
 
 Fitting the profile with a 1D Gaussian
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -251,10 +252,11 @@ class:`~photutils.profiles.RadialProfile` radial profile:
     rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
     # plot the radial profile
-    rp.plot(label='Radial Profile')
-    rp.plot_error()
-    plt.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(8, 6))
+    rp.plot(ax=ax, label='Radial Profile')
+    rp.plot_error(ax=ax)
+    ax.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
+    ax.legend()
 
 
 Creating a Curve of Growth
@@ -356,9 +358,10 @@ to set the plot label.
     cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
 
     # plot the radial profile
-    cog.plot(label='Curve of Growth')
-    cog.plot_error()
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(8, 6))
+    cog.plot(ax=ax, label='Curve of Growth')
+    cog.plot_error(ax=ax)
+    ax.legend()
 
 The `~photutils.profiles.CurveOfGrowth.apertures` attribute contains a
 list of the apertures. Let's plot a few of the circular apertures (the
@@ -391,11 +394,11 @@ list of the apertures. Let's plot a few of the circular apertures (the
     cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
 
     norm = simple_norm(data, 'sqrt')
-    plt.figure(figsize=(5, 5))
-    plt.imshow(data, norm=norm)
-    cog.apertures[5].plot(color='C0', lw=2)
-    cog.apertures[10].plot(color='C1', lw=2)
-    cog.apertures[15].plot(color='C3', lw=2)
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.imshow(data, norm=norm)
+    cog.apertures[5].plot(ax=ax, color='C0', lw=2)
+    cog.apertures[10].plot(ax=ax, color='C1', lw=2)
+    cog.apertures[15].plot(ax=ax, color='C3', lw=2)
 
 
 Encircled Energy
