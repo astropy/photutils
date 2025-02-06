@@ -223,10 +223,22 @@ The FWHM of the fitted 1D Gaussian model is stored in the
     >>> print(rp.gaussian_fwhm)  # doctest: +FLOAT_CMP
     11.09260130738712
 
+The 1D Gaussian model evaluated at the profile radius values is stored
+in the `~photutils.profiles.RadialProfile.gaussian_profile` attribute::
+
+    >>> print(rp.gaussian_profile)  # doctest: +FLOAT_CMP
+    [4.13154108e+01 3.94948235e+01 3.60907893e+01 3.15268576e+01
+     2.63264980e+01 2.10152035e+01 1.60362275e+01 1.16976580e+01
+     8.15687363e+00 5.43721678e+00 3.46463641e+00 2.11040974e+00
+     1.22886451e+00 6.84020824e-01 3.63967618e-01 1.85133184e-01
+     9.00189404e-02 4.18419219e-02 1.85916294e-02 7.89680446e-03
+     3.20636838e-03 1.24452479e-03 4.61765823e-04 1.63782737e-04]
+
 Finally, let's plot the fitted 1D Gaussian model for the
 class:`~photutils.profiles.RadialProfile` radial profile:
 
 .. plot::
+   :include-source:
 
     import matplotlib.pyplot as plt
     import numpy as np
