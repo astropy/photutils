@@ -414,3 +414,43 @@ class RadialProfile(ProfileBase):
         Gaussian fitted to the radial profile.
         """
         return self.gaussian_fit.stddev.value * gaussian_sigma_to_fwhm
+
+    @lazyproperty
+    def _data_profile(self):
+        """
+        The raw data profile returned as a 1D arrays (`~numpy.ndarray`)
+        of radii and data values.
+
+        This method returns the radii and values of the data points
+        within the maximum radius defined by the input radii. These
+        values are not normalized.
+        """
+        shape = self.data.shape
+        max_radius = np.max(self.radii)
+        x_min = int(max(np.floor(self.xycen[0] - max_radius), 0))
+        x_max = int(min(np.ceil(self.xycen[0] + max_radius), shape[1]))
+        y_min = int(max(np.floor(self.xycen[1] - max_radius), 0))
+        y_max = int(min(np.ceil(self.xycen[1] + max_radius), shape[0]))
+        yidx, xidx = np.indices((y_max - y_min, x_max - x_min))
+        xidx += x_min
+        yidx += y_min
+        radii = np.hypot(xidx - self.xycen[0], yidx - self.xycen[1])
+        mask = radii <= max_radius
+        radii = radii[mask]
+        data_values = self.data[yidx[mask], xidx[mask]]
+
+        return radii, data_values
+
+    @lazyproperty
+    def data_radius(self):
+        """
+        The radii of the raw data profile as a 1D `~numpy.ndarray`.
+        """
+        return self._data_profile[0]
+
+    @lazyproperty
+    def data_profile(self):
+        """
+        The raw data profile as a 1D `~numpy.ndarray`.
+        """
+        return self._data_profile[1]
