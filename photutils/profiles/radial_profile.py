@@ -388,6 +388,9 @@ class RadialProfile(ProfileBase):
         """
         The fitted 1D Gaussian to the radial profile as a
         `~astropy.modeling.functional_models.Gaussian1D` model.
+
+        The Gaussian fit will not change if the profile normalization is
+        changed after performing the fit.
         """
         profile = self.profile[self._profile_nanmask]
         radius = self.radius[self._profile_nanmask]
@@ -404,6 +407,9 @@ class RadialProfile(ProfileBase):
         """
         The fitted 1D Gaussian profile to the radial profile as a 1D
         `~numpy.ndarray`.
+
+        The Gaussian profile will not change if the profile
+        normalization is changed after performing the fit.
         """
         return self.gaussian_fit(self.radius)
 
@@ -422,8 +428,7 @@ class RadialProfile(ProfileBase):
         of radii and data values.
 
         This method returns the radii and values of the data points
-        within the maximum radius defined by the input radii. These
-        values are not normalized.
+        within the maximum radius defined by the input radii.
         """
         shape = self.data.shape
         max_radius = np.max(self.radii)
