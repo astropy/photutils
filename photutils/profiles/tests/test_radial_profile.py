@@ -55,6 +55,20 @@ def test_radial_profile(profile_data):
     assert isinstance(rp2.apertures[0], CircularAnnulus)
 
 
+def test_radial_profile_data(profile_data):
+    xycen, data, _, _ = profile_data
+
+    edge_radii = np.arange(36)
+    rp1 = RadialProfile(data, xycen, edge_radii, error=None, mask=None)
+
+    data_radius = rp1.data_radius
+    data_profile = rp1.data_profile
+    assert np.max(data_radius) <= np.max(edge_radii)
+    assert data_radius.shape == data_profile.shape
+    assert np.min(data_profile) >= np.min(data)
+    assert np.max(data_profile) <= np.max(data)
+
+
 def test_radial_profile_inputs(profile_data):
     xycen, data, _, _ = profile_data
 
