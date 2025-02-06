@@ -92,8 +92,10 @@ class CurveOfGrowth(ProfileBase):
     >>> gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     >>> yy, xx = np.mgrid[0:100, 0:100]
     >>> data = gmodel(xx, yy)
-    >>> error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    >>> data += error
+    >>> bkg_sig = 2.4
+    >>> noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    >>> data += noise
+    >>> error = np.zeros_like(data) + bkg_sig
 
     Create the curve of growth.
 
@@ -113,11 +115,11 @@ class CurveOfGrowth(ProfileBase):
      5948.92254787 5968.30540534 5931.15611704 5941.94457249 5942.06535486]
 
     >>> print(cog.profile_error)  # doctest: +FLOAT_CMP
-    [  5.32777186   9.37111012  13.41750992  16.62928904  21.7350922
-      25.39862532  30.3867526   34.11478867  39.28263973  43.96047829
-      48.11931395  52.00967328  55.7471834   60.48824739  64.81392778
-      68.71042311  72.71899201  76.54959872  81.33806741  85.98568713
-      91.34841248  95.5173253   99.22190499 102.51980185 106.83601366]
+    [  4.25388924   8.50777848  12.76166773  17.01555697  21.26944621
+      25.52333545  29.7772247   34.03111394  38.28500318  42.53889242
+      46.79278166  51.04667091  55.30056015  59.55444939  63.80833863
+      68.06222787  72.31611712  76.57000636  80.8238956   85.07778484
+      89.33167409  93.58556333  97.83945257 102.09334181 106.34723105]
 
     Plot the curve of growth.
 
@@ -134,8 +136,10 @@ class CurveOfGrowth(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-        data += error
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
         xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
@@ -163,8 +167,10 @@ class CurveOfGrowth(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-        data += error
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
         xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
@@ -195,8 +201,10 @@ class CurveOfGrowth(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-        data += error
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
         xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
