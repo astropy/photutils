@@ -113,8 +113,10 @@ class RadialProfile(ProfileBase):
     >>> gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     >>> yy, xx = np.mgrid[0:100, 0:100]
     >>> data = gmodel(xx, yy)
-    >>> error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    >>> data += error
+    >>> bkg_sig = 2.4
+    >>> noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    >>> data += noise
+    >>> error = np.zeros_like(data) + bkg_sig
 
     Create the radial profile.
 
@@ -136,11 +138,11 @@ class RadialProfile(ProfileBase):
       7.84616804e-04]
 
     >>> print(rp.profile_error)  # doctest: +FLOAT_CMP
-    [1.69588246 0.81797694 0.61132694 0.44670831 0.49499835 0.38025361
-     0.40844702 0.32906672 0.36466713 0.33059274 0.29661894 0.27314739
-     0.25551933 0.27675376 0.25553986 0.23421017 0.22966813 0.21747036
-     0.23654884 0.22760386 0.23941711 0.20661313 0.18999134 0.17469024
-     0.19527558]
+    [1.354055   0.78176402 0.60555181 0.51178468 0.45135167 0.40826294
+     0.37554729 0.3496155  0.32840658 0.31064152 0.29547903 0.28233999
+     0.270811   0.26058801 0.2514417  0.24319546 0.23571072 0.22887707
+     0.22260527 0.21682233 0.21146786 0.20649145 0.2018506  0.19750922
+     0.19343643]
 
     Plot the radial profile.
 
@@ -157,8 +159,10 @@ class RadialProfile(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-        data += error
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
         xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
@@ -186,8 +190,10 @@ class RadialProfile(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-        data += error
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
         xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
@@ -218,8 +224,10 @@ class RadialProfile(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-        data += error
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
         xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
@@ -260,8 +268,10 @@ class RadialProfile(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-        data += error
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
         xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
