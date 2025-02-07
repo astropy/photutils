@@ -107,6 +107,52 @@ propagated errors::
      0.270811   0.26058801 0.2514417  0.24319546 0.23571072 0.22887707
      0.22260527 0.21682233 0.21146786 0.20649145 0.2018506  0.19750922]
 
+
+Raw Data Profile
+^^^^^^^^^^^^^^^^
+
+The `~photutils.profiles.RadialProfile` class also includes
+:attr:`~photutils.profiles.RadialProfile.data_radius` and
+:attr:`~photutils.profiles.RadialProfile.data_profile` attributes that
+that can be used to plot the raw data profile. These methods return the
+radii and values of the data points within the maximum radius defined by
+the input radii.
+
+Let's plot the raw data profile along with the radial profile and its
+error bars:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import Gaussian2D
+
+    from photutils.centroids import centroid_quadratic
+    from photutils.datasets import make_noise_image
+    from photutils.profiles import RadialProfile
+
+    # create an artificial single source
+    gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+    yy, xx = np.mgrid[0:100, 0:100]
+    data = gmodel(xx, yy)
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
+
+    # find the source centroid
+    xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+    # create the radial profile
+    edge_radii = np.arange(26)
+    rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+    # plot the radial profile
+    fig, ax = plt.subplots(figsize=(8, 6))
+    rp.plot(ax=ax, color='C0')
+    rp.plot_error(ax=ax)
+    ax.scatter(rp.data_radius, rp.data_profile, s=1, color='C1')
+
 Normalization
 ^^^^^^^^^^^^^
 
