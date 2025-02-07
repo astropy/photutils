@@ -7,6 +7,12 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.profiles``
+
+  - Added ``data_radius`` and ``data_profile`` attributes to the
+    ``RadialProfile`` class for calculating the raw radial profile.
+    [#2001]
+
 Bug Fixes
 ^^^^^^^^^
 

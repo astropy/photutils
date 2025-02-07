@@ -23,8 +23,10 @@ data before creating a radial profile or curve of growth.
     >>> gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     >>> yy, xx = np.mgrid[0:100, 0:100]
     >>> data = gmodel(xx, yy)
-    >>> error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    >>> data += error
+    >>> bkg_sig = 2.4
+    >>> noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    >>> data += noise
+    >>> error = np.zeros_like(data) + bkg_sig
 
 .. plot::
 
@@ -38,12 +40,14 @@ data before creating a radial profile or curve of growth.
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
+    fig, ax = plt.subplots(figsize=(5, 5))
     norm = simple_norm(data, 'sqrt')
-    plt.figure(figsize=(5, 5))
-    plt.imshow(data, norm=norm)
+    ax.imshow(data, norm=norm)
 
 
 Creating a Radial Profile
@@ -98,10 +102,56 @@ propagated errors::
       4.03348112e-01  1.43482678e-01 -2.62777461e-01  7.30653622e-02]
 
     >>> print(rp.profile_error)  # doctest: +FLOAT_CMP
-    [1.69588246 0.81797694 0.61132694 0.44670831 0.49499835 0.38025361
-     0.40844702 0.32906672 0.36466713 0.33059274 0.29661894 0.27314739
-     0.25551933 0.27675376 0.25553986 0.23421017 0.22966813 0.21747036
-     0.23654884 0.22760386 0.23941711 0.20661313 0.18999134 0.17469024]
+    [1.354055   0.78176402 0.60555181 0.51178468 0.45135167 0.40826294
+     0.37554729 0.3496155  0.32840658 0.31064152 0.29547903 0.28233999
+     0.270811   0.26058801 0.2514417  0.24319546 0.23571072 0.22887707
+     0.22260527 0.21682233 0.21146786 0.20649145 0.2018506  0.19750922]
+
+
+Raw Data Profile
+^^^^^^^^^^^^^^^^
+
+The `~photutils.profiles.RadialProfile` class also includes
+:attr:`~photutils.profiles.RadialProfile.data_radius` and
+:attr:`~photutils.profiles.RadialProfile.data_profile` attributes that
+that can be used to plot the raw data profile. These methods return the
+radii and values of the data points within the maximum radius defined by
+the input radii.
+
+Let's plot the raw data profile along with the radial profile and its
+error bars:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import Gaussian2D
+
+    from photutils.centroids import centroid_quadratic
+    from photutils.datasets import make_noise_image
+    from photutils.profiles import RadialProfile
+
+    # create an artificial single source
+    gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+    yy, xx = np.mgrid[0:100, 0:100]
+    data = gmodel(xx, yy)
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
+
+    # find the source centroid
+    xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+    # create the radial profile
+    edge_radii = np.arange(26)
+    rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+    # plot the radial profile
+    fig, ax = plt.subplots(figsize=(8, 6))
+    rp.plot(ax=ax, color='C0')
+    rp.plot_error(ax=ax)
+    ax.scatter(rp.data_radius, rp.data_profile, s=1, color='C1')
 
 Normalization
 ^^^^^^^^^^^^^
@@ -146,8 +196,10 @@ to set the plot label.
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
     xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
@@ -157,9 +209,10 @@ to set the plot label.
     rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
     # plot the radial profile
-    rp.plot(label='Radial Profile')
-    rp.plot_error()
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(8, 6))
+    rp.plot(ax=ax, label='Radial Profile')
+    rp.plot_error(ax=ax)
+    ax.legend()
 
 The `~photutils.profiles.RadialProfile.apertures` attribute contains a
 list of the apertures. Let's plot a few of the annulus apertures (the
@@ -180,8 +233,10 @@ instance on the data:
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
     xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
@@ -191,11 +246,11 @@ instance on the data:
     rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
     norm = simple_norm(data, 'sqrt')
-    plt.figure(figsize=(5, 5))
-    plt.imshow(data, norm=norm)
-    rp.apertures[5].plot(color='C0', lw=2)
-    rp.apertures[10].plot(color='C1', lw=2)
-    rp.apertures[15].plot(color='C3', lw=2)
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.imshow(data, norm=norm)
+    rp.apertures[5].plot(ax=ax, color='C0', lw=2)
+    rp.apertures[10].plot(ax=ax, color='C1', lw=2)
+    rp.apertures[15].plot(ax=ax, color='C3', lw=2)
 
 Fitting the profile with a 1D Gaussian
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -214,10 +269,22 @@ The FWHM of the fitted 1D Gaussian model is stored in the
     >>> print(rp.gaussian_fwhm)  # doctest: +FLOAT_CMP
     11.09260130738712
 
+The 1D Gaussian model evaluated at the profile radius values is stored
+in the `~photutils.profiles.RadialProfile.gaussian_profile` attribute::
+
+    >>> print(rp.gaussian_profile)  # doctest: +FLOAT_CMP
+    [4.13154108e+01 3.94948235e+01 3.60907893e+01 3.15268576e+01
+     2.63264980e+01 2.10152035e+01 1.60362275e+01 1.16976580e+01
+     8.15687363e+00 5.43721678e+00 3.46463641e+00 2.11040974e+00
+     1.22886451e+00 6.84020824e-01 3.63967618e-01 1.85133184e-01
+     9.00189404e-02 4.18419219e-02 1.85916294e-02 7.89680446e-03
+     3.20636838e-03 1.24452479e-03 4.61765823e-04 1.63782737e-04]
+
 Finally, let's plot the fitted 1D Gaussian model for the
 class:`~photutils.profiles.RadialProfile` radial profile:
 
 .. plot::
+   :include-source:
 
     import matplotlib.pyplot as plt
     import numpy as np
@@ -230,8 +297,10 @@ class:`~photutils.profiles.RadialProfile` radial profile:
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
     xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
@@ -241,10 +310,11 @@ class:`~photutils.profiles.RadialProfile` radial profile:
     rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
     # plot the radial profile
-    rp.plot(label='Radial Profile')
-    rp.plot_error()
-    plt.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(8, 6))
+    rp.plot(ax=ax, label='Radial Profile')
+    rp.plot_error(ax=ax)
+    ax.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
+    ax.legend()
 
 
 Creating a Curve of Growth
@@ -284,11 +354,11 @@ profile and propagated errors::
      5948.92254787 5968.30540534 5931.15611704 5941.94457249 5942.06535486]
 
     >>> print(cog.profile_error)  # doctest: +FLOAT_CMP
-    [  5.32777186   9.37111012  13.41750992  16.62928904  21.7350922
-      25.39862532  30.3867526   34.11478867  39.28263973  43.96047829
-      48.11931395  52.00967328  55.7471834   60.48824739  64.81392778
-      68.71042311  72.71899201  76.54959872  81.33806741  85.98568713
-      91.34841248  95.5173253   99.22190499 102.51980185 106.83601366]
+    [  4.25388924   8.50777848  12.76166773  17.01555697  21.26944621
+      25.52333545  29.7772247   34.03111394  38.28500318  42.53889242
+      46.79278166  51.04667091  55.30056015  59.55444939  63.80833863
+      68.06222787  72.31611712  76.57000636  80.8238956   85.07778484
+      89.33167409  93.58556333  97.83945257 102.09334181 106.34723105]
 
 Normalization
 ^^^^^^^^^^^^^
@@ -333,8 +403,10 @@ to set the plot label.
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
     xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
@@ -344,9 +416,10 @@ to set the plot label.
     cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
 
     # plot the radial profile
-    cog.plot(label='Curve of Growth')
-    cog.plot_error()
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(8, 6))
+    cog.plot(ax=ax, label='Curve of Growth')
+    cog.plot_error(ax=ax)
+    ax.legend()
 
 The `~photutils.profiles.CurveOfGrowth.apertures` attribute contains a
 list of the apertures. Let's plot a few of the circular apertures (the
@@ -366,8 +439,10 @@ list of the apertures. Let's plot a few of the circular apertures (the
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    data += error
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
     xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
@@ -377,11 +452,11 @@ list of the apertures. Let's plot a few of the circular apertures (the
     cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
 
     norm = simple_norm(data, 'sqrt')
-    plt.figure(figsize=(5, 5))
-    plt.imshow(data, norm=norm)
-    cog.apertures[5].plot(color='C0', lw=2)
-    cog.apertures[10].plot(color='C1', lw=2)
-    cog.apertures[15].plot(color='C3', lw=2)
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.imshow(data, norm=norm)
+    cog.apertures[5].plot(ax=ax, color='C0', lw=2)
+    cog.apertures[10].plot(ax=ax, color='C1', lw=2)
+    cog.apertures[15].plot(ax=ax, color='C3', lw=2)
 
 
 Encircled Energy
@@ -407,19 +482,70 @@ energy at a given radius (or radii) and the radius corresponding
 to the given encircled energy (or energies). These methods are
 :meth:`~photutils.profiles.CurveOfGrowth.calc_ee_at_radius` and
 :meth:`~photutils.profiles.CurveOfGrowth.calc_radius_at_ee`,
-respectively. They are implemented as interpolation functions using the
-calculated curve-of-growth profile. The performance of these methods
+respectively. They are implemented as interpolation functions using
+the calculated curve-of-growth profile. The accuracy of these methods
 is dependent on the quality of the curve-of-growth profile (e.g., it's
-generally better to have a curve-of-growth profile with more radial
-bins)::
+better to have a curve-of-growth profile with high signal to noise
+and more radial bins). Also, if the curve-of-growth profile is not
+monotonically increasing, the interpolation may fail.
+
+Let's compute the encircled energy values at a few radii for the curve
+of growth we created above::
 
     >>> cog.normalize(method='max')
-    >>> ee_vals = cog.calc_ee_at_radius([5, 10, 15])  # doctest: +FLOAT_CMP
+    >>> ee_rads = np.array([5, 10, 15])
+    >>> ee_vals = cog.calc_ee_at_radius(ee_rads)  # doctest: +FLOAT_CMP
     >>> ee_vals
     array([0.41923785, 0.87160376, 0.96902919])
 
     >>> cog.calc_radius_at_ee(ee_vals)  # doctest: +FLOAT_CMP
     array([ 5., 10., 15.])
+
+Here we plot the encircled energy values.
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import Gaussian2D
+    from photutils.centroids import centroid_quadratic
+    from photutils.datasets import make_noise_image
+    from photutils.profiles import CurveOfGrowth
+
+    # create an artificial single source
+    gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+    yy, xx = np.mgrid[0:100, 0:100]
+    data = gmodel(xx, yy)
+    bkg_sig = 2.4
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    data += noise
+    error = np.zeros_like(data) + bkg_sig
+
+    # find the source centroid
+    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+
+    # create the radial profile
+    radii = np.arange(1, 26)
+    cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
+    cog.normalize(method='max')
+    ee_rads = np.array([5, 10, 15])
+    ee_vals = cog.calc_ee_at_radius(ee_rads)
+
+    # plot the radial profile
+    fig, ax = plt.subplots(figsize=(8, 6))
+    cog.plot(ax=ax, label='Curve of Growth')
+    cog.plot_error(ax=ax)
+    ax.legend()
+
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+    ax.vlines(ee_rads, ymin, ee_vals, colors='C1', linestyles='dashed')
+    ax.hlines(ee_vals, xmin, ee_rads, colors='C1', linestyles='dashed')
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
+
+    for ee_rad, ee_val in zip(ee_rads, ee_vals):
+        ax.text(ee_rad/2, ee_val, f'{ee_val:.2f}', ha='center', va='bottom')
 
 
 API Reference

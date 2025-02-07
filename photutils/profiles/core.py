@@ -231,6 +231,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         else:
             raise ValueError('invalid method, must be "max" or "sum"')
 
+        # NOTE: max and sum will never be NaN (automatically masked)
         if normalization == 0:
             warnings.warn('The profile cannot be normalized because the '
                           'max or sum is zero.', AstropyUserWarning)
@@ -242,6 +243,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
             # need to use __dict__ as these are lazy properties
             self.__dict__['profile'] = self.profile / normalization
             self.__dict__['profile_error'] = self.profile_error / normalization
+            if 'data_profile' in self.__dict__:
+                self.__dict__['data_profile'] = (self.data_profile
+                                                 / normalization)
 
     def unnormalize(self):
         """
@@ -251,6 +255,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
         self.__dict__['profile'] = self.profile * self.normalization_value
         self.__dict__['profile_error'] = (self.profile_error
                                           * self.normalization_value)
+        if 'data_profile' in self.__dict__:
+            self.__dict__['data_profile'] = (self.data_profile
+                                             * self.normalization_value)
         self.normalization_value = 1.0
 
     def plot(self, ax=None, **kwargs):

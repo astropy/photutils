@@ -113,8 +113,10 @@ class RadialProfile(ProfileBase):
     >>> gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     >>> yy, xx = np.mgrid[0:100, 0:100]
     >>> data = gmodel(xx, yy)
-    >>> error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-    >>> data += error
+    >>> bkg_sig = 2.4
+    >>> noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    >>> data += noise
+    >>> error = np.zeros_like(data) + bkg_sig
 
     Create the radial profile.
 
@@ -136,16 +138,17 @@ class RadialProfile(ProfileBase):
       7.84616804e-04]
 
     >>> print(rp.profile_error)  # doctest: +FLOAT_CMP
-    [1.69588246 0.81797694 0.61132694 0.44670831 0.49499835 0.38025361
-     0.40844702 0.32906672 0.36466713 0.33059274 0.29661894 0.27314739
-     0.25551933 0.27675376 0.25553986 0.23421017 0.22966813 0.21747036
-     0.23654884 0.22760386 0.23941711 0.20661313 0.18999134 0.17469024
-     0.19527558]
+    [1.354055   0.78176402 0.60555181 0.51178468 0.45135167 0.40826294
+     0.37554729 0.3496155  0.32840658 0.31064152 0.29547903 0.28233999
+     0.270811   0.26058801 0.2514417  0.24319546 0.23571072 0.22887707
+     0.22260527 0.21682233 0.21146786 0.20649145 0.2018506  0.19750922
+     0.19343643]
 
     Plot the radial profile.
 
     .. plot::
 
+        import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
 
@@ -157,8 +160,10 @@ class RadialProfile(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-        data += error
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
         xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
@@ -168,13 +173,15 @@ class RadialProfile(ProfileBase):
         rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
         # plot the radial profile
-        rp.plot()
-        rp.plot_error()
+        fig, ax = plt.subplots(figsize=(8, 6))
+        rp.plot(ax=ax)
+        rp.plot_error(ax=ax)
 
-    Normalize the profile and plot the normalized radial profile.
+    Plot the radial profile, including the raw data profile.
 
     .. plot::
 
+        import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
 
@@ -186,8 +193,44 @@ class RadialProfile(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-        data += error
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
+
+        # find the source centroid
+        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+
+        # create the radial profile
+        edge_radii = np.arange(26)
+        rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+
+        # plot the radial profile
+        fig, ax = plt.subplots(figsize=(8, 6))
+        rp.plot(ax=ax, color='C0')
+        rp.plot_error(ax=ax)
+        ax.scatter(rp.data_radius, rp.data_profile, s=1, color='C1')
+
+    Normalize the profile and plot the normalized radial profile.
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.modeling.models import Gaussian2D
+
+        from photutils.centroids import centroid_quadratic
+        from photutils.datasets import make_noise_image
+        from photutils.profiles import RadialProfile
+
+        # create an artificial single source
+        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+        yy, xx = np.mgrid[0:100, 0:100]
+        data = gmodel(xx, yy)
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
         xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
@@ -198,8 +241,9 @@ class RadialProfile(ProfileBase):
 
         # plot the radial profile
         rp.normalize()
-        rp.plot()
-        rp.plot_error()
+        fig, ax = plt.subplots(figsize=(8, 6))
+        rp.plot(ax=ax)
+        rp.plot_error(ax=ax)
 
     Plot three of the annulus apertures on the data.
 
@@ -218,8 +262,10 @@ class RadialProfile(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-        data += error
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
         xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
@@ -229,11 +275,11 @@ class RadialProfile(ProfileBase):
         rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
         norm = simple_norm(data, 'sqrt')
-        plt.figure(figsize=(5, 5))
-        plt.imshow(data, norm=norm, origin='lower')
-        rp.apertures[5].plot(color='C0', lw=2)
-        rp.apertures[10].plot(color='C1', lw=2)
-        rp.apertures[15].plot(color='C3', lw=2)
+        fig, ax = plt.subplots(figsize=(5, 5))
+        ax.imshow(data, norm=norm, origin='lower')
+        rp.apertures[5].plot(ax=ax, color='C0', lw=2)
+        rp.apertures[10].plot(ax=ax, color='C1', lw=2)
+        rp.apertures[15].plot(ax=ax, color='C3', lw=2)
 
     Fit a 1D Gaussian to the radial profile and return the Gaussian
     model.
@@ -260,8 +306,10 @@ class RadialProfile(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
-        data += error
+        bkg_sig = 2.4
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        data += noise
+        error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
         xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
@@ -272,10 +320,11 @@ class RadialProfile(ProfileBase):
 
         # plot the radial profile
         rp.normalize()
-        rp.plot(label='Radial Profile')
-        rp.plot_error()
-        plt.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
-        plt.legend()
+        fig, ax = plt.subplots(figsize=(8, 6))
+        rp.plot(ax=ax, label='Radial Profile')
+        rp.plot_error(ax=ax)
+        ax.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
+        ax.legend()
     """
 
     @lazyproperty
@@ -373,6 +422,9 @@ class RadialProfile(ProfileBase):
         """
         The fitted 1D Gaussian to the radial profile as a
         `~astropy.modeling.functional_models.Gaussian1D` model.
+
+        The Gaussian fit will not change if the profile normalization is
+        changed after performing the fit.
         """
         profile = self.profile[self._profile_nanmask]
         radius = self.radius[self._profile_nanmask]
@@ -389,6 +441,9 @@ class RadialProfile(ProfileBase):
         """
         The fitted 1D Gaussian profile to the radial profile as a 1D
         `~numpy.ndarray`.
+
+        The Gaussian profile will not change if the profile
+        normalization is changed after performing the fit.
         """
         return self.gaussian_fit(self.radius)
 
@@ -399,3 +454,42 @@ class RadialProfile(ProfileBase):
         Gaussian fitted to the radial profile.
         """
         return self.gaussian_fit.stddev.value * gaussian_sigma_to_fwhm
+
+    @lazyproperty
+    def _data_profile(self):
+        """
+        The raw data profile returned as a 1D arrays (`~numpy.ndarray`)
+        of radii and data values.
+
+        This method returns the radii and values of the data points
+        within the maximum radius defined by the input radii.
+        """
+        shape = self.data.shape
+        max_radius = np.max(self.radii)
+        x_min = int(max(np.floor(self.xycen[0] - max_radius), 0))
+        x_max = int(min(np.ceil(self.xycen[0] + max_radius), shape[1]))
+        y_min = int(max(np.floor(self.xycen[1] - max_radius), 0))
+        y_max = int(min(np.ceil(self.xycen[1] + max_radius), shape[0]))
+        yidx, xidx = np.indices((y_max - y_min, x_max - x_min))
+        xidx += x_min
+        yidx += y_min
+        radii = np.hypot(xidx - self.xycen[0], yidx - self.xycen[1])
+        mask = radii <= max_radius
+        radii = radii[mask]
+        data_values = self.data[yidx[mask], xidx[mask]]
+
+        return radii, data_values
+
+    @lazyproperty
+    def data_radius(self):
+        """
+        The radii of the raw data profile as a 1D `~numpy.ndarray`.
+        """
+        return self._data_profile[0]
+
+    @lazyproperty
+    def data_profile(self):
+        """
+        The raw data profile as a 1D `~numpy.ndarray`.
+        """
+        return self._data_profile[1]
