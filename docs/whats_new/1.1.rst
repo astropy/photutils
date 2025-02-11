@@ -32,25 +32,25 @@ Renamed properties
 Note that many of the source properties have been slightly renamed
 in the new `~photutils.segmentation.SourceCatalog` class, e.g.,
 
-    * 'id' -> 'label'
-    * 'background_at_centroid' -> 'background_centroid'
-    * 'background_cutout' -> 'background'
-    * 'background_cutout_ma' -> 'background_ma'
-    * 'data_cutout' -> 'data'
-    * 'data_cutout_ma' -> 'data_ma'
-    * 'error_cutout' -> 'error'
-    * 'error_cutout_ma' -> 'error_ma'
-    * 'filtered_data_cutout_ma' -> 'convdata_ma'
-    * 'minval_pos' -> 'minval_index'
-    * 'minval_xpos' -> 'minval_xindex'
-    * 'minval_ypos' -> 'minval_yindex'
-    * 'maxval_pos' -> 'maxval_index'
-    * 'maxval_xpos' -> 'maxval_xindex'
-    * 'maxval_ypos' -> 'maxval_yindex'
-    * 'semimajor_axis_sigma' -> 'semimajor_sigma'
-    * 'semiminor_axis_sigma' -> 'semiminor_sigma'
-    * 'source_sum' -> 'segment_flux'
-    * 'source_sum_err' -> 'segment_fluxerr'
+* 'id' -> 'label'
+* 'background_at_centroid' -> 'background_centroid'
+* 'background_cutout' -> 'background'
+* 'background_cutout_ma' -> 'background_ma'
+* 'data_cutout' -> 'data'
+* 'data_cutout_ma' -> 'data_ma'
+* 'error_cutout' -> 'error'
+* 'error_cutout_ma' -> 'error_ma'
+* 'filtered_data_cutout_ma' -> 'convdata_ma'
+* 'minval_pos' -> 'minval_index'
+* 'minval_xpos' -> 'minval_xindex'
+* 'minval_ypos' -> 'minval_yindex'
+* 'maxval_pos' -> 'maxval_index'
+* 'maxval_xpos' -> 'maxval_xindex'
+* 'maxval_ypos' -> 'maxval_yindex'
+* 'semimajor_axis_sigma' -> 'semimajor_sigma'
+* 'semiminor_axis_sigma' -> 'semiminor_sigma'
+* 'source_sum' -> 'segment_flux'
+* 'source_sum_err' -> 'segment_fluxerr'
 
 Also, the 'centroid' and 'cutout_centroid' properties now return
 centroids in (x, y) order to be consistent with the tools in
@@ -61,13 +61,13 @@ New methods and attributes
 The new `~photutils.segmentation.SourceCatalog` class has the following
 new methods:
 
-    * :meth:`~photutils.segmentation.SourceCatalog.circular_photometry`
-    * :meth:`~photutils.segmentation.SourceCatalog.fluxfrac_radius`
-    * :meth:`~photutils.segmentation.SourceCatalog.get_label`
-    * :meth:`~photutils.segmentation.SourceCatalog.get_labels`
+* :meth:`~photutils.segmentation.SourceCatalog.circular_photometry`
+* :meth:`~photutils.segmentation.SourceCatalog.fluxfrac_radius`
+* :meth:`~photutils.segmentation.SourceCatalog.get_label`
+* :meth:`~photutils.segmentation.SourceCatalog.get_labels`
 
 and new attributes:
 
-    * :attr:`~photutils.segmentation.SourceCatalog.fwhm`
-    * :attr:`~photutils.segmentation.SourceCatalog.segment`
-    * :attr:`~photutils.segmentation.SourceCatalog.segment_ma`
+* :attr:`~photutils.segmentation.SourceCatalog.fwhm`
+* :attr:`~photutils.segmentation.SourceCatalog.segment`
+* :attr:`~photutils.segmentation.SourceCatalog.segment_ma`
