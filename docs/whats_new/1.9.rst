@@ -26,18 +26,18 @@ to the model fit parameters.
 
 Some other features of the new classes include:
 
-  * The source grouper is optional
-  * The output table is always in source ID order (not group ID order)
-  * Added two quality-of-fit metrics to the output table
-  * Added more information (columns and metadata) in the output table, including a flags column
-  * Fit warnings are not emitted for each source. A single warning is emitted at the end of fitting.
-  * Fixes issues with source masking
-  * The initial parameters table is more flexible for the x, y, and flux column names
-  * Supports `~astropy.nddata.NDData` objects
-  * Supports units
-  * Allows access to the fitter details (e.g., fit info, parameter covariances)
-  * Allows access to the finder results
-  * Adds a local background subtraction option
+* The source grouper is optional
+* The output table is always in source ID order (not group ID order)
+* Added two quality-of-fit metrics to the output table
+* Added more information (columns and metadata) in the output table, including a flags column
+* Fit warnings are not emitted for each source. A single warning is emitted at the end of fitting.
+* Fixes issues with source masking
+* The initial parameters table is more flexible for the x, y, and flux column names
+* Supports `~astropy.nddata.NDData` objects
+* Supports units
+* Allows access to the fitter details (e.g., fit info, parameter covariances)
+* Allows access to the finder results
+* Adds a local background subtraction option
 
 The old PSF photometry classes (``~photutils.psf.BasicPSFPhotometry``,
 ``~photutils.psf.IterativelySubtractedPSFPhotometry``, and

@@ -23,21 +23,21 @@ The "windowed" centroids are equivalent the SourceExtractors
 ``XWIN_IMAGE`` and ``YWIN_IMAGE`` parameters. The new "windowed"
 centroid properties are:
 
-  * :attr:`~photutils.segmentation.SourceCatalog.centroid_win`
-  * :attr:`~photutils.segmentation.SourceCatalog.cutout_centroid_win`
-  * :attr:`~photutils.segmentation.SourceCatalog.xcentroid_win`
-  * :attr:`~photutils.segmentation.SourceCatalog.ycentroid_win`
-  * :attr:`~photutils.segmentation.SourceCatalog.sky_centroid_win`
+* :attr:`~photutils.segmentation.SourceCatalog.centroid_win`
+* :attr:`~photutils.segmentation.SourceCatalog.cutout_centroid_win`
+* :attr:`~photutils.segmentation.SourceCatalog.xcentroid_win`
+* :attr:`~photutils.segmentation.SourceCatalog.ycentroid_win`
+* :attr:`~photutils.segmentation.SourceCatalog.sky_centroid_win`
 
 The "quadratic" centroids are calculated using
 `~photutils.centroids.centroid_quadratic`. The new quadratic centroid
 properties are:
 
-  * :attr:`~photutils.segmentation.SourceCatalog.centroid_quad`
-  * :attr:`~photutils.segmentation.SourceCatalog.cutout_centroid_quad`
-  * :attr:`~photutils.segmentation.SourceCatalog.xcentroid_quad`
-  * :attr:`~photutils.segmentation.SourceCatalog.ycentroid_quad`
-  * :attr:`~photutils.segmentation.SourceCatalog.sky_centroid_quad`
+* :attr:`~photutils.segmentation.SourceCatalog.centroid_quad`
+* :attr:`~photutils.segmentation.SourceCatalog.cutout_centroid_quad`
+* :attr:`~photutils.segmentation.SourceCatalog.xcentroid_quad`
+* :attr:`~photutils.segmentation.SourceCatalog.ycentroid_quad`
+* :attr:`~photutils.segmentation.SourceCatalog.sky_centroid_quad`
 
 
 Slicing a SegmentationImage

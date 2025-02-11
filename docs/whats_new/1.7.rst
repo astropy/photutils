@@ -16,8 +16,8 @@ New Profiles Subpackage
 A new :ref:`profile subpackage <profiles>` was added containing tools
 for computing radial profiles and curves of growth:
 
-  *  `~photutils.profiles.RadialProfile`
-  *  `~photutils.profiles.CurveOfGrowth`
+*  `~photutils.profiles.RadialProfile`
+*  `~photutils.profiles.CurveOfGrowth`
 
 
 Converting ``SegmentationImage`` segments to polygons
@@ -45,11 +45,11 @@ Performance Improvements
 
 A number of significant performance improvements have been made:
 
-  * :func:`~photutils.aperture.aperture_photometry` and
-    :meth:`~photutils.aperture.PixelAperture.do_photometry`
-  * :meth:`~photutils.aperture.PixelAperture.area_overlap`
-  * :class:`~photutils.psf.GriddedPSFModel`
-  * :meth:`~photutils.segmentation.SegmentationImage.make_source_mask`
+* :func:`~photutils.aperture.aperture_photometry` and
+  :meth:`~photutils.aperture.PixelAperture.do_photometry`
+* :meth:`~photutils.aperture.PixelAperture.area_overlap`
+* :class:`~photutils.psf.GriddedPSFModel`
+* :meth:`~photutils.segmentation.SegmentationImage.make_source_mask`
 
 
 Other changes
