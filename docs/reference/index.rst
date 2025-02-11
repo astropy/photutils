@@ -4,9 +4,11 @@
 API Reference
 *************
 
-The following is a list of all subpackages and their corresponding
-modules: Please see :ref:`importing` for information on how to import
-these tools.
+The API reference guide contains detailed descriptions of the functions,
+modules, and objects included in each of the Photutils subpackages. It
+assumes that you have an understanding of the key concepts presented in
+the :ref:`user_guide`. Please see :ref:`importing` for information on
+how to import these tools.
 
 * :doc:`photutils.aperture <aperture_api>`
 
