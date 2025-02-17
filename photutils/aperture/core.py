@@ -751,7 +751,7 @@ class PixelAperture(Aperture):
                 # the semimajor axis (i.e., relative to the WCS latitude
                 # axis). region sky angles are defined relative to the WCS
                 # longitude axis.
-                value = (value * u.rad) - angle.to(u.rad)
+                value = value - angle.to(u.rad)
             else:
                 value = (value * u.pix * pixscale).to(u.arcsec)
 
@@ -832,7 +832,7 @@ class SkyAperture(Aperture):
                 # the semimajor axis (i.e., relative to the WCS latitude
                 # axis). region sky angles are defined relative to the WCS
                 # longitude axis.
-                value = (value + angle).to(u.radian).value
+                value = (value + angle).to(u.radian)
             elif value.unit.physical_type == 'angle':
                 value = (value / pixscale).to(u.pixel).value
             else:

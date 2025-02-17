@@ -25,6 +25,13 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - The ``theta`` attribute of ``EllipticalAperture``,
+    ``EllipticalAnnulus``, ``RectangularAperture``, and
+    ``RectangularAnnulus`` is now always returned as an angular
+    ``Quantity``. [#2008]
+
 
 2.1.0 (2025-01-06)
 ------------------
