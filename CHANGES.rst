@@ -7,6 +7,11 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Add an ``aperture_to_region`` function to convert an Aperture object
+    to an astropy ``Region`` or ``Regions`` object. [#2009]
+
 - ``photutils.profiles``
 
   - Added ``data_radius`` and ``data_profile`` attributes to the
