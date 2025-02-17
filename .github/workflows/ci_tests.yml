@@ -74,10 +74,10 @@ jobs:
             allow_failure: false
             prefix: ''
 
+          # cannot use alldeps: rasterio does not have a arm64 wheel
           - os: ubuntu-24.04-arm
             python: '3.12'
-            tox_env: 'py312-test-alldeps'
-            toxposargs: --remote-data=any
+            tox_env: 'py312-test'
             allow_failure: false
             prefix: ''
 
