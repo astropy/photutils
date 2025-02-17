@@ -42,6 +42,10 @@ class TestRectangularAperture(BaseTestAperture):
         aper.w = 20.0
         assert aper != self.aperture
 
+    def test_theta(self):
+        assert isinstance(self.aperture.theta, u.Quantity)
+        assert self.aperture.theta.unit == u.rad
+
 
 class TestRectangularAnnulus(BaseTestAperture):
     aperture = RectangularAnnulus(POSITIONS, w_in=10.0, w_out=20.0, h_out=17,
@@ -75,6 +79,10 @@ class TestRectangularAnnulus(BaseTestAperture):
         assert aper == self.aperture
         aper.w_in = 2.0
         assert aper != self.aperture
+
+    def test_theta(self):
+        assert isinstance(self.aperture.theta, u.Quantity)
+        assert self.aperture.theta.unit == u.rad
 
 
 class TestSkyRectangularAperture(BaseTestAperture):

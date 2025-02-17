@@ -41,6 +41,10 @@ class TestEllipticalAperture(BaseTestAperture):
         aper.a = 20.0
         assert aper != self.aperture
 
+    def test_theta(self):
+        assert isinstance(self.aperture.theta, u.Quantity)
+        assert self.aperture.theta.unit == u.rad
+
 
 class TestEllipticalAnnulus(BaseTestAperture):
     aperture = EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=20.0, b_out=17.0,
@@ -74,6 +78,10 @@ class TestEllipticalAnnulus(BaseTestAperture):
         assert aper == self.aperture
         aper.a_in = 2.0
         assert aper != self.aperture
+
+    def test_theta(self):
+        assert isinstance(self.aperture.theta, u.Quantity)
+        assert self.aperture.theta.unit == u.rad
 
 
 class TestSkyEllipticalAperture(BaseTestAperture):
