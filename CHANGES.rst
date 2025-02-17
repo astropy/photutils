@@ -16,6 +16,12 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.segmentation``
+
+  - Fixed an issue where the ``SegmentationImage`` ``polygons``
+    attribute would raise an error if any source segment contained a
+    hole. [#2005]
+
 API Changes
 ^^^^^^^^^^^
 
