@@ -1345,9 +1345,9 @@ class PSFPhotometry(ModelImageMixin):
               fit, and error of the source flux
             * ``npixfit`` : the number of unmasked pixels used to fit
               the source
-            * ``qfit`` : a quality-of-fit metric defined as the
-              absolute value of the sum of the fit residuals divided by
-              the fit flux
+            * ``qfit`` : a quality-of-fit metric defined as the the sum
+              of the absolute value of the fit residuals divided by the
+              fit flux
             * ``cfit`` : a quality-of-fit metric defined as the
               fit residual in the initial central pixel value divided by
               the fit flux. NaN values indicate that the central pixel
