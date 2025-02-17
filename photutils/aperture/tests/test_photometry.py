@@ -661,7 +661,7 @@ def test_rectangular_bbox():
     assert a.bbox.shape == (height + 1, width + 1)
 
     a = RectangularAperture((50, 50), w=width, h=height,
-                            theta=90.0 * np.pi / 180.0)
+                            theta=np.deg2rad(90.0))
     assert a.bbox.shape == (width, height)
 
     # test even sizes
@@ -674,7 +674,7 @@ def test_rectangular_bbox():
     assert a.bbox.shape == (height, width)
 
     a = RectangularAperture((50.5, 50.5), w=width, h=height,
-                            theta=90.0 * np.pi / 180.0)
+                            theta=np.deg2rad(90.0))
     assert a.bbox.shape == (width, height)
 
 
@@ -688,7 +688,7 @@ def test_elliptical_bbox():
     ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
     assert ap.bbox.shape == (2 * b, 2 * a)
 
-    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.0 * np.pi / 180.0)
+    ap = EllipticalAperture((50, 50), a=a, b=b, theta=np.deg2rad(90.0))
     assert ap.bbox.shape == (2 * a + 1, 2 * b + 1)
 
     # fractional axes
@@ -700,7 +700,7 @@ def test_elliptical_bbox():
     ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
     assert ap.bbox.shape == (2 * b + 1, 2 * a + 1)
 
-    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.0 * np.pi / 180.0)
+    ap = EllipticalAperture((50, 50), a=a, b=b, theta=np.deg2rad(90.0))
     assert ap.bbox.shape == (2 * a, 2 * b)
 
 
@@ -727,7 +727,7 @@ def test_to_sky_pixel(wcs_type):
     assert_allclose(ap.r_out, ap2.r_out)
 
     ap = EllipticalAperture(((12.3, 15.7), (48.19, 98.14)), a=3.14, b=5.32,
-                            theta=103.0 * np.pi / 180.0)
+                            theta=np.deg2rad(103.0))
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.a, ap2.a)
@@ -736,7 +736,7 @@ def test_to_sky_pixel(wcs_type):
 
     ap = EllipticalAnnulus(((12.3, 15.7), (48.19, 98.14)), a_in=3.14,
                            a_out=15.32, b_out=4.89,
-                           theta=103.0 * np.pi / 180.0)
+                           theta=np.deg2rad(103.0))
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.a_in, ap2.a_in)
@@ -745,7 +745,7 @@ def test_to_sky_pixel(wcs_type):
     assert_allclose(ap.theta, ap2.theta)
 
     ap = RectangularAperture(((12.3, 15.7), (48.19, 98.14)), w=3.14, h=5.32,
-                             theta=103.0 * np.pi / 180.0)
+                             theta=np.deg2rad(103.0))
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.w, ap2.w)
@@ -754,7 +754,7 @@ def test_to_sky_pixel(wcs_type):
 
     ap = RectangularAnnulus(((12.3, 15.7), (48.19, 98.14)), w_in=3.14,
                             w_out=15.32, h_out=4.89,
-                            theta=103.0 * np.pi / 180.0)
+                            theta=np.deg2rad(103.0))
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
     assert_allclose(ap.positions, ap2.positions)
     assert_allclose(ap.w_in, ap2.w_in)
