@@ -7,6 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import Angle, SkyCoord
+from astropy.tests.helper import assert_quantity_allclose
 
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus,
@@ -144,8 +145,8 @@ def test_ellipse_theta_quantity():
     theta = Angle(90 * u.deg)
     aper3 = EllipticalAperture(POSITIONS, a=10.0, b=5.0, theta=theta)
 
-    assert aper1._theta_radians == aper2._theta_radians
-    assert aper1._theta_radians == aper3._theta_radians
+    assert_quantity_allclose(aper1.theta, aper2.theta)
+    assert_quantity_allclose(aper1.theta, aper3.theta)
 
 
 def test_ellipse_annulus_theta_quantity():
@@ -158,5 +159,5 @@ def test_ellipse_annulus_theta_quantity():
     aper3 = EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=20.0, b_out=17.0,
                               theta=theta)
 
-    assert aper1._theta_radians == aper2._theta_radians
-    assert aper1._theta_radians == aper3._theta_radians
+    assert_quantity_allclose(aper1.theta, aper2.theta)
+    assert_quantity_allclose(aper1.theta, aper3.theta)

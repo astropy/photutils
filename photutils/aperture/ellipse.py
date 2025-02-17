@@ -92,16 +92,16 @@ class EllipticalMaskMixin:
         masks = []
         for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
             ny, nx = bbox.shape
+            theta_rad = self.theta.to(u.radian).value
             mask = elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                            edges[3], nx, ny, a, b,
-                                           self._theta_radians,
-                                           use_exact, subpixels)
+                                           theta_rad, use_exact, subpixels)
 
             # subtract the inner ellipse for an annulus
             if hasattr(self, 'a_in'):
                 mask -= elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                                 edges[3], nx, ny, self.a_in,
-                                                self.b_in, self._theta_radians,
+                                                self.b_in, theta_rad,
                                                 use_exact, subpixels)
 
             masks.append(ApertureMask(mask, bbox))
@@ -116,8 +116,9 @@ class EllipticalMaskMixin:
         """
         Calculate half of the bounding box extents of an ellipse.
         """
-        cos_theta = np.cos(theta)
-        sin_theta = np.sin(theta)
+        theta_rad = theta.to(u.radian).value
+        cos_theta = np.cos(theta_rad)
+        sin_theta = np.sin(theta_rad)
         semimajor_x = semimajor_axis * cos_theta
         semimajor_y = semimajor_axis * sin_theta
         semiminor_x = semiminor_axis * -sin_theta
@@ -189,12 +190,11 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         self.positions = positions
         self.a = a
         self.b = b
-        self._theta_radians = 0.0  # defined by theta setter
         self.theta = theta
 
     @property
     def _xy_extents(self):
-        return self._calc_extents(self.a, self.b, self._theta_radians)
+        return self._calc_extents(self.a, self.b, self.theta)
 
     @property
     def area(self):
@@ -230,9 +230,9 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
                                                                **kwargs)
 
-        theta_deg = self._theta_radians * 180.0 / np.pi
+        angle = self.theta.to(u.deg).value
         patches = [mpatches.Ellipse(xy_position, 2.0 * self.a, 2.0 * self.b,
-                                    angle=theta_deg, **patch_kwargs)
+                                    angle=angle, **patch_kwargs)
                    for xy_position in xy_positions]
 
         if self.isscalar:
@@ -356,12 +356,11 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
             raise ValueError('"b_out" must be greater than "b_in".')
         self.b_in = b_in
 
-        self._theta_radians = 0.0  # defined by theta setter
         self.theta = theta
 
     @property
     def _xy_extents(self):
-        return self._calc_extents(self.a_out, self.b_out, self._theta_radians)
+        return self._calc_extents(self.a_out, self.b_out, self.theta)
 
     @property
     def area(self):
@@ -398,12 +397,12 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
                                                                **kwargs)
 
         patches = []
-        theta_deg = self._theta_radians * 180.0 / np.pi
+        angle = self.theta.to(u.deg).value
         for xy_position in xy_positions:
             patch_inner = mpatches.Ellipse(xy_position, 2.0 * self.a_in,
-                                           2.0 * self.b_in, angle=theta_deg)
+                                           2.0 * self.b_in, angle=angle)
             patch_outer = mpatches.Ellipse(xy_position, 2.0 * self.a_out,
-                                           2.0 * self.b_out, angle=theta_deg)
+                                           2.0 * self.b_out, angle=angle)
             path = self._make_annulus_path(patch_inner, patch_outer)
             patches.append(mpatches.PathPatch(path, **patch_kwargs))
 

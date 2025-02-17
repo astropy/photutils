@@ -7,6 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import Angle, SkyCoord
+from astropy.tests.helper import assert_quantity_allclose
 
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture,
@@ -146,8 +147,8 @@ def test_rectangle_theta_quantity():
     theta = Angle(90 * u.deg)
     aper3 = RectangularAperture(POSITIONS, w=10.0, h=5.0, theta=theta)
 
-    assert aper1._theta_radians == aper2._theta_radians
-    assert aper1._theta_radians == aper3._theta_radians
+    assert_quantity_allclose(aper1.theta, aper2.theta)
+    assert_quantity_allclose(aper1.theta, aper3.theta)
 
 
 def test_rectangle_annulus_theta_quantity():
@@ -160,5 +161,5 @@ def test_rectangle_annulus_theta_quantity():
     aper3 = RectangularAnnulus(POSITIONS, w_in=10.0, w_out=20.0, h_out=17,
                                theta=theta)
 
-    assert aper1._theta_radians == aper2._theta_radians
-    assert aper1._theta_radians == aper3._theta_radians
+    assert_quantity_allclose(aper1.theta, aper2.theta)
+    assert_quantity_allclose(aper1.theta, aper3.theta)

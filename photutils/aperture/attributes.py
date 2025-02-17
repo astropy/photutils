@@ -175,6 +175,10 @@ class ScalarAngleOrValue(ApertureAttribute):
     Check that value is a scalar angle, either as a
     `~astropy.coordinates.Angle` or `~astropy.units.Quantity` with
     angular units, or a scalar float.
+
+    The value is always output as a `~astropy.units.Quantity` with
+    angular units. If the value is not a `~astropy.units.Quantity`, it
+    is assumed to be in radians.
     """
 
     def __set__(self, instance, value):
@@ -182,13 +186,11 @@ class ScalarAngleOrValue(ApertureAttribute):
         # no need to reset if not already in the instance dict
         if self.name in instance.__dict__:
             self._reset_lazyproperties(instance)
-        instance.__dict__[self.name] = value
 
-        # also store the angle in radians as a float
-        if isinstance(value, u.Quantity):
-            value = value.to(u.radian).value
-        name = f'_{self.name}_radians'
-        instance.__dict__[name] = value
+        # if theta is not a Quantity, it is assumed to be in radians
+        if not isinstance(value, u.Quantity):
+            value <<= u.radian
+        instance.__dict__[self.name] = value
 
     def _validate(self, value):
         if isinstance(value, u.Quantity):
