@@ -3,6 +3,7 @@
 Tests for converting regions.Region to Aperture.
 """
 
+import numpy as np
 import pytest
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
@@ -16,7 +17,9 @@ from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 SkyCircularAnnulus, SkyCircularAperture,
                                 SkyEllipticalAnnulus, SkyEllipticalAperture,
                                 SkyRectangularAnnulus, SkyRectangularAperture)
-from photutils.aperture.converters import region_to_aperture
+from photutils.aperture.converters import (_scalar_aperture_to_region,
+                                           aperture_to_region,
+                                           region_to_aperture)
 from photutils.utils._optional_deps import HAS_REGIONS
 
 
@@ -436,3 +439,65 @@ def test_translation_polygon():
     match = r'Cannot convert .* to an Aperture object'
     with pytest.raises(TypeError, match=match):
         region_to_aperture(region_shape)
+
+
+def test_aperture_to_region():
+    from regions import Region, Regions
+
+    xypos = [(10, 20), (30, 40), (50, 60), (70, 80)]
+    ra, dec = np.transpose(xypos)
+    skycoord = SkyCoord(ra=ra, dec=dec, unit='deg')
+    unit = u.arcsec
+
+    apertures = [CircularAperture(xypos, r=3.0),
+                 CircularAnnulus(xypos, r_in=3.0, r_out=7.0),
+                 SkyCircularAperture(skycoord, r=3.0 * unit),
+                 SkyCircularAnnulus(skycoord, r_in=3.0 * unit,
+                                    r_out=7.0 * unit),
+                 EllipticalAperture(xypos, a=10.0, b=5.0, theta=np.pi / 2.0),
+                 EllipticalAnnulus(xypos, a_in=10.0, a_out=20.0, b_out=17.0,
+                                   theta=np.pi / 3),
+                 SkyEllipticalAperture(skycoord, a=10.0 * unit, b=5.0 * unit,
+                                       theta=30 * u.deg),
+                 SkyEllipticalAnnulus(skycoord, a_in=10.0 * unit,
+                                      a_out=20.0 * unit, b_out=17.0 * unit,
+                                      theta=60 * u.deg),
+                 RectangularAperture(xypos, w=10.0, h=5.0, theta=np.pi / 2.0),
+                 RectangularAnnulus(xypos, w_in=10.0, w_out=20.0, h_out=17,
+                                    theta=np.pi / 3),
+                 SkyRectangularAperture(skycoord, w=10.0 * unit, h=5.0 * unit,
+                                        theta=30 * u.deg),
+                 SkyRectangularAnnulus(skycoord, w_in=10.0 * unit,
+                                       w_out=20.0 * unit, h_out=17.0 * unit,
+                                       theta=60 * u.deg)]
+
+    for aperture in apertures:
+        region0 = aperture_to_region(aperture[0])
+        region = aperture_to_region(aperture)
+
+        assert isinstance(region0, Region)
+        assert isinstance(region, Regions)
+        assert len(region) == len(aperture)
+
+        aper0 = region_to_aperture(region0)
+        assert aper0 == aperture[0]
+
+
+def test_invalid_inputs():
+    from regions import CirclePixelRegion, PixCoord
+
+    aperture = CircularAperture((10, 12), r=4.2)
+    region = CirclePixelRegion(center=PixCoord(x=10, y=12), radius=4.2)
+
+    match = 'Input region must be a Region object'
+    with pytest.raises(TypeError, match=match):
+        region_to_aperture(aperture)
+
+    match = 'Input aperture must be an Aperture object'
+    with pytest.raises(TypeError, match=match):
+        aperture_to_region(region)
+
+    aperture = CircularAperture(((10, 12), (21, 7)), r=4.2)
+    match = r'Only scalar .* apertures are supported'
+    with pytest.raises(ValueError, match=match):
+        _scalar_aperture_to_region(aperture)

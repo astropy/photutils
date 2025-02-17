@@ -264,6 +264,9 @@ def aperture_to_region(aperture):
     """
     from regions import Regions
 
+    if not isinstance(aperture, Aperture):
+        raise TypeError('Input aperture must be an Aperture object')
+
     if aperture.shape == ():
         return _scalar_aperture_to_region(aperture)
 
@@ -295,9 +298,6 @@ def _scalar_aperture_to_region(aperture):
                          RectangleAnnulusPixelRegion,
                          RectangleAnnulusSkyRegion, RectanglePixelRegion,
                          RectangleSkyRegion)
-
-    if not isinstance(aperture, Aperture):
-        raise TypeError('Input aperture must be an Aperture object')
 
     if aperture.shape != ():
         msg = 'Only scalar (single-position) apertures are supported.'
@@ -365,7 +365,7 @@ def _scalar_aperture_to_region(aperture):
             aperture.h_in, aperture.h_out,
             angle=(aperture.theta + (90 * u.deg)))
 
-    else:
+    else:  # pragma: no cover
         raise TypeError('Cannot convert input aperture to a Region object')
 
     return region
