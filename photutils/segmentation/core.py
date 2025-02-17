@@ -1331,7 +1331,8 @@ class SegmentationImage:
         from shapely import transform
         from shapely.geometry import shape
 
-        polygons = [shape(geo_poly[0]) for geo_poly in self._geo_polygons]
+        polygons = [shape(geo_poly[0]) for geo_poly in self._geo_polygons
+                    if geo_poly[1] != 0]
 
         # shift the vertices so that the (0, 0) origin is at the
         # center of the lower-left pixel

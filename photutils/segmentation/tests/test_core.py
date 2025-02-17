@@ -448,6 +448,21 @@ class TestSegmentationImage:
 
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+    def test_polygon_hole(self):
+
+        data = np.zeros((11, 11), dtype=int)
+        data[3:8, 3:8] = 10
+        data[5, 5] = 0  # hole
+        segm = SegmentationImage(data)
+        polygons = segm.polygons
+        assert len(polygons) == 1
+        verts = np.array(polygons[0].exterior.coords)
+        expected_verts = np.array([[2.5, 2.5], [2.5, 7.5], [7.5, 7.5],
+                                   [7.5, 2.5], [2.5, 2.5]])
+        assert_equal(verts, expected_verts)
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_patches(self):
         from matplotlib.patches import Polygon
