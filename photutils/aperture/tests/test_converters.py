@@ -441,6 +441,7 @@ def test_translation_polygon():
         region_to_aperture(region_shape)
 
 
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_aperture_to_region():
     from regions import Region, Regions
 
@@ -483,6 +484,7 @@ def test_aperture_to_region():
         assert aper0 == aperture[0]
 
 
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_invalid_inputs():
     from regions import CirclePixelRegion, PixCoord
 
