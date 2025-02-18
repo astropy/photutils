@@ -1,9 +1,6 @@
 2.2.0 (unreleased)
 ------------------
 
-General
-^^^^^^^
-
 New Features
 ^^^^^^^^^^^^
 
@@ -20,9 +17,8 @@ New Features
 
 - ``photutils.segmentation``
 
-    - Added a ``to_regions`` method to ``SegmentationImage`` that
-      converts the segment outlines to a ``regions.Regions`` object.
-      [#2010]
+  - Added a ``to_regions`` method to ``SegmentationImage`` that converts
+    the segment outlines to a ``regions.Regions`` object. [#2010]
 
 Bug Fixes
 ^^^^^^^^^

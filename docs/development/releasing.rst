@@ -22,6 +22,11 @@ repository is called ``upstream``.
    sure to push all changes to the repository so that CI can run on the
    bugfix branch.
 
+#. Ensure that a "What's New" page is added to the documentation for the
+   new release. This page should be added to the ``docs/whats_new``
+   directory and should be named ``<X.Y.Z>.rst``. Update the "What's
+   New" link on the main page (``docs/index.rst``) to the new version.
+
 #. Ensure that `CI tests <https://github.com/astropy/photutils/actions>`_
    are passing for the branch you are going to
    release. Also, ensure that `Read the Docs builds
