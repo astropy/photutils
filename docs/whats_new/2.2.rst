@@ -1,0 +1,56 @@
+.. doctest-skip-all
+
+.. _whatsnew-2.2:
+
+****************************
+What's New in Photutils 2.2?
+****************************
+
+Here we highlight some of the new functionality of the 2.2 release.
+In addition to these changes, Photutils 2.2 includes several
+smaller improvements and bug fixes, which are described in the full
+:ref:`changelog`.
+
+
+Converting Aperture Objects to Region Objects
+---------------------------------------------
+
+A new `~photutils.aperture.aperture_to_region` function was added to
+convert an `~photutils.aperture.Aperture` object to a `regions.Region`
+or `regions.Regions` object. Because a `regions.Region` object can only
+have one position, a `regions.Regions` object will be returned if the
+input aperture has more than one position. Otherwise, a `regions.Region`
+object will be returned.
+
+The :meth:`regions.Region.write` and :meth:`regions.Regions.write`
+methods can be used to write the region(s) to a file.
+
+
+Segmentation Image Outlines as Regions Objects
+----------------------------------------------
+
+A new :meth:`~photutils.segmentation.SegmentationImage.to_regions`
+method was added to convert the outlines of the source segments to
+a `regions.Regions` object. The `regions.Regions` object contains a
+list of `regions.PolygonPixelRegion` objects, one for each source
+segment. The `regions.Regions` object can be written to a file using the
+:meth:`regions.Region.write` method.
+
+
+Raw Radial Profile
+------------------
+
+New ``data_radius`` and ``data_profile`` attributes were added to the
+`~photutils.profiles.RadialProfile` class for calculating the raw radial
+profile. These attributes return the radii and values of the data points
+within the maximum radius defined by the input radii.
+
+
+Pixel-based Aperture ``theta`` Units
+------------------------------------
+
+The ``theta`` attribute of `~photutils.aperture.EllipticalAperture`,
+`~photutils.aperture.EllipticalAnnulus`,
+`~photutils.aperture.RectangularAperture`, and
+`~photutils.aperture.RectangularAnnulus` apertures is now always
+returned as an angular `~astropy.units.Quantity` object.

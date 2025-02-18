@@ -1348,8 +1348,9 @@ class SegmentationImage:
 
     def to_regions(self):
         """
-        Return a list of `~regions.PolygonPixelRegion` objects
-        representing each source segment.
+        Return a `regions.Regions` object containing a list of
+        `~regions.PolygonPixelRegion` objects representing each source
+        segment.
 
         Returns
         -------
@@ -1360,7 +1361,7 @@ class SegmentationImage:
         Notes
         -----
         The polygons can be written to a file using the
-        `~regions.Regions` write method.
+        :meth:`regions.Regions.write` method.
         """
         from regions import Regions
 
