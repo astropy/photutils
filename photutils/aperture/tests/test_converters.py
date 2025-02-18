@@ -18,9 +18,10 @@ from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 SkyEllipticalAnnulus, SkyEllipticalAperture,
                                 SkyRectangularAnnulus, SkyRectangularAperture)
 from photutils.aperture.converters import (_scalar_aperture_to_region,
+                                           _shapely_polygon_to_region,
                                            aperture_to_region,
                                            region_to_aperture)
-from photutils.utils._optional_deps import HAS_REGIONS
+from photutils.utils._optional_deps import HAS_REGIONS, HAS_SHAPELY
 
 
 @pytest.fixture
@@ -503,3 +504,21 @@ def test_invalid_inputs():
     match = r'Only scalar .* apertures are supported'
     with pytest.raises(ValueError, match=match):
         _scalar_aperture_to_region(aperture)
+
+
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+@pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+def test_shapely_polygon_to_region():
+    from regions import PixCoord, PolygonPixelRegion
+    from shapely.geometry import Polygon
+
+    ref_region = PolygonPixelRegion(vertices=PixCoord(x=[1, 3, 2, 1],
+                                                      y=[1, 1, 4, 2]))
+
+    polygon = Polygon([(1, 1), (3, 1), (2, 4), (1, 2)])
+    region = _shapely_polygon_to_region(polygon)
+    assert region == ref_region
+
+    match = 'Input polygon must be a shapely Polygon object'
+    with pytest.raises(TypeError, match=match):
+        _shapely_polygon_to_region('foo')
