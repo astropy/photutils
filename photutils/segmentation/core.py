@@ -15,6 +15,7 @@ from scipy.ndimage import find_objects, grey_dilation
 from scipy.signal import fftconvolve
 
 from photutils.aperture import BoundingBox
+from photutils.aperture.converters import _shapely_polygon_to_region
 from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
 from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
@@ -1338,6 +1339,34 @@ class SegmentationImage:
         # center of the lower-left pixel
         return transform(polygons, lambda x: x - [0.5, 0.5])
 
+    @staticmethod
+    def _get_polygon_vertices(polygon, origin=(0, 0), scale=1.0):
+        xy = np.array(polygon.exterior.coords)
+        xy = scale * (xy + 0.5) - 0.5
+        xy -= origin
+        return xy
+
+    def to_regions(self):
+        """
+        Return a list of `~regions.PolygonPixelRegion` objects
+        representing each source segment.
+
+        Returns
+        -------
+        regions : `~regions.Regions`
+            A list of `~regions.PolygonPixelRegion` objects stored in a
+            `~regions.Regions` object.
+
+        Notes
+        -----
+        The polygons can be written to a file using the
+        `~regions.Regions` write method.
+        """
+        from regions import Regions
+
+        return Regions([_shapely_polygon_to_region(poly)
+                        for poly in self.polygons])
+
     def to_patches(self, *, origin=(0, 0), scale=1.0, **kwargs):
         """
         Return a list of `~matplotlib.patches.Polygon` objects
@@ -1374,9 +1403,7 @@ class SegmentationImage:
 
         patches = []
         for poly in self.polygons:
-            xy = np.array(poly.exterior.coords)
-            xy = scale * (xy + 0.5) - 0.5
-            xy -= origin
+            xy = self._get_polygon_vertices(poly, origin=origin, scale=scale)
             patches.append(Polygon(xy, **patch_kwargs))
 
         return patches

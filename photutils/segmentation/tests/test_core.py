@@ -12,7 +12,7 @@ from numpy.testing import assert_allclose, assert_equal
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.utils import circular_footprint
 from photutils.utils._optional_deps import (HAS_MATPLOTLIB, HAS_RASTERIO,
-                                            HAS_SHAPELY)
+                                            HAS_REGIONS, HAS_SHAPELY)
 
 
 class TestSegmentationImage:
@@ -460,6 +460,28 @@ class TestSegmentationImage:
         expected_verts = np.array([[2.5, 2.5], [2.5, 7.5], [7.5, 7.5],
                                    [7.5, 2.5], [2.5, 2.5]])
         assert_equal(verts, expected_verts)
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+    def test_regions(self):
+        from regions import PolygonPixelRegion, Regions
+        regions = self.segm.to_regions()
+
+        assert isinstance(regions, Regions)
+        assert isinstance(regions[0], PolygonPixelRegion)
+        assert len(regions) == self.segm.nlabels
+
+        data = np.zeros((5, 5), dtype=int)
+        data[2, 2] = 10
+        segm = SegmentationImage(data)
+        regions = segm.to_regions()
+        assert len(regions) == 1
+        verts = regions[0].vertices
+        expected_xverts = np.array([1.5, 1.5, 2.5, 2.5])
+        expected_yverts = np.array([1.5, 2.5, 2.5, 1.5])
+        assert_equal(verts.x, expected_xverts)
+        assert_equal(verts.y, expected_yverts)
 
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
