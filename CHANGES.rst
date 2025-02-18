@@ -18,6 +18,12 @@ New Features
     ``RadialProfile`` class for calculating the raw radial profile.
     [#2001]
 
+- ``photutils.segmentation``
+
+    - Added a ``to_regions`` method to ``SegmentationImage`` that
+      converts the segment outlines to a ``regions.Regions`` object.
+      [#2010]
+
 Bug Fixes
 ^^^^^^^^^
 
