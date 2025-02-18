@@ -211,7 +211,7 @@ def aperture_to_region(aperture):
     The elliptical aperture ``a`` and ``b`` parameters represent the
     semi-major and semi-minor axes, respectively. The ``a`` and ``b``
     parameters are mapped to the ellipse ``width`` and ``height`` region
-    parameters, respectively, by multiplying by 2 because the represent
+    parameters, respectively, by multiplying by 2 because they represent
     the full extent of the ellipse.
 
     The region ``angle`` for sky-based regions is defined as the angle
