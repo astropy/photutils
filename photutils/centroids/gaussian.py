@@ -201,7 +201,7 @@ def centroid_2dg(data, error=None, mask=None):
     >>> data = data[40:80, 70:110]
     >>> x1, y1 = centroid_2dg(data)
     >>> print(np.array((x1, y1)))
-    [19.98519436 20.0149016 ]
+    [19.9851944  20.01490157]
 
     .. plot::
 
@@ -270,7 +270,7 @@ def centroid_2dg(data, error=None, mask=None):
                         y_mean=props.ycentroid,
                         x_stddev=props.semimajor_sigma.value,
                         y_stddev=props.semiminor_sigma.value,
-                        theta=props.orientation.value)
+                        theta=props.orientation)
 
     # Gaussian2D [x/y]_stddev are bounded to be strictly positive
     fitter = TRFLSQFitter()
