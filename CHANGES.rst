@@ -10,6 +10,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.centroids``
+
+  - Fixed an issue with the initial Gaussian theta units in
+    ``centroid_2dg``. [#2013]
+
 API Changes
 ^^^^^^^^^^^
 
