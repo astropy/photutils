@@ -179,6 +179,15 @@ class ApertureStats:
     `~regions.Region` objects are converted to `Aperture` objects using
     the :func:`region_to_aperture` function.
 
+    The returned statistics are measured for the pixels within the
+    input aperture at its input position. This class does not change
+    the position of the input aperture. This class returns the centroid
+    value of the pixels within the input aperture, but the input
+    aperture is not recentered at the measured centroid position
+    when making the measurements. If desired, you can create a new
+    `Aperture` object using the measured centroid and then re-run
+    `~photutils.aperture.ApertureStats`.
+
     Most source properties are calculated using the "center"
     aperture-mask method, which gives aperture weights of 0 or 1. This
     avoids the need to compute weighted statistics --- the ``data``
