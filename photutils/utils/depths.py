@@ -80,8 +80,7 @@ class ImageDepth:
     progress_bar : bool, optional
         Whether to display a progress bar. The progress bar requires
         that the `tqdm <https://tqdm.github.io/>`_ optional dependency
-        be installed. Note that the progress bar does not currently work
-        in the Jupyter console due to limitations in ``tqdm``.
+        be installed.
 
     Attributes
     ----------

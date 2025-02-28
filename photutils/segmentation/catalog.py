@@ -240,8 +240,6 @@ class SourceCatalog:
         ``fluxfrac_radius``, ``circular_photometry``, ``centroid_win``,
         ``centroid_quad``). The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
-        Note that the progress bar does not currently work in the
-        Jupyter console due to limitations in ``tqdm``.
 
     Notes
     -----
