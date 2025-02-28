@@ -159,8 +159,6 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         Whether to display a progress bar while adding the sources
         to the image. The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
-        Note that the progress bar does not currently work in the
-        Jupyter console due to limitations in ``tqdm``.
 
     Returns
     -------

@@ -126,9 +126,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         deblended. If multiprocessing is used (``nproc > 1``), the ID
         shown is the last source label that was deblended. The progress
         bar requires that the `tqdm <https://tqdm.github.io/>`_ optional
-        dependency be installed. Note that the progress bar does not
-        currently work in the Jupyter console due to limitations in
-        ``tqdm``.
+        dependency be installed.
 
     Returns
     -------

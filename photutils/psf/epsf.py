@@ -276,8 +276,6 @@ class EPSFBuilder:
         Whether to print the progress bar during the build
         iterations. The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
-        Note that the progress bar does not currently work in the
-        Jupyter console due to limitations in ``tqdm``.
 
     norm_radius : float, optional
         The pixel radius over which the ePSF is normalized.

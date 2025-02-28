@@ -68,9 +68,7 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
     progress_bar : bool, optional
         Whether to display a progress bar when creating the sources. The
         progress bar requires that the `tqdm <https://tqdm.github.io/>`_
-        optional dependency be installed. Note that the progress
-        bar does not currently work in the Jupyter console due to
-        limitations in ``tqdm``.
+        optional dependency be installed.
 
     **kwargs
         Keyword arguments are accepted for additional model parameters.

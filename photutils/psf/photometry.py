@@ -265,8 +265,6 @@ class PSFPhotometry(ModelImageMixin):
         Whether to display a progress bar when fitting the sources
         (or groups). The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
-        Note that the progress bar does not currently work in the
-        Jupyter console due to limitations in ``tqdm``.
 
     Notes
     -----
@@ -1565,8 +1563,6 @@ class IterativePSFPhotometry(ModelImageMixin):
         Whether to display a progress bar when fitting the sources
         (or groups). The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
-        Note that the progress bar does not currently work in the
-        Jupyter console due to limitations in ``tqdm``.
 
     Notes
     -----

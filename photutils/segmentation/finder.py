@@ -98,12 +98,11 @@ class SourceFinder:
     progress_bar : bool, optional
         Whether to display a progress bar. If ``nproc = 1``, then the
         ID shown after the progress bar is the source label being
-        deblended. If multiprocessing is used (``nproc > 1``), the ID
-        shown is the last source label that was deblended. The progress
-        bar requires that the `tqdm <https://tqdm.github.io/>`_ optional
-        dependency be installed. Note that the progress bar does not
-        currently work in the Jupyter console due to limitations in
-        ``tqdm``. This keyword is ignored unless ``deblend=True``.
+        deblended. If multiprocessing is used (``nproc > 1``), the
+        ID shown is the last source label that was deblended. The
+        progress bar requires that the `tqdm <https://tqdm.github.io/>`_
+        optional dependency be installed. This keyword is ignored unless
+        ``deblend=True``.
 
     See Also
     --------
