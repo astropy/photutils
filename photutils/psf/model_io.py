@@ -374,7 +374,7 @@ def _get_metadata(filename, detector_id):
 
     detector, filter_name = parts[1:3]
     if ('SWC' in filename.split('/')) and ('~jayander' in filename.split('/')):
-        #Fix bug with the Jay Anderson NIRCam short wavelength STDPSFs
+        # Fix bug with the Jay Anderson NIRCam short wavelength STDPSFs
         filter_name, detector = parts[1:3]
         
     meta = {'STDPSF': filename,
