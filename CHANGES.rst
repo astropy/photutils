@@ -15,6 +15,11 @@ Bug Fixes
   - Fixed an issue with the initial Gaussian theta units in
     ``centroid_2dg``. [#2013]
 
+- ``photutils.psf``
+
+  - Adapt ``psf.GriddedPSFModel.read()`` to the changed STDPSF file name
+    convention for NIRCam's short wavelength channel. [#2017]
+
 API Changes
 ^^^^^^^^^^^
 
