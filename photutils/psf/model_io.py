@@ -373,6 +373,10 @@ def _get_metadata(filename, detector_id):
         return None  # filename from astropy download_file
 
     detector, filter_name = parts[1:3]
+    if (inst_det[1] == 'NRCSW') and ('~jayander' in filename.split('/')): 
+        #Fix bug with the Jay Anderson NIRCam short wavelength STDPSFs
+        filter_name, detector = parts[1:3]
+        
     meta = {'STDPSF': filename,
             'detector': detector,
             'filter': filter_name}
