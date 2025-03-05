@@ -129,19 +129,16 @@ xfail_strict = true
 remote_data_strict = true
 filterwarnings = [
     'error',  # turn warnings into exceptions
-    'ignore:numpy.ndarray size changed:RuntimeWarning',
 ]
 
 [tool.coverage.run]
 omit = [
-    'photutils/_astropy_init*',
     'photutils/conftest.py',
     'photutils/*setup_package*',
     'photutils/tests/*',
     'photutils/*/tests/*',
     'photutils/extern/*',
     'photutils/version*',
-    '*/photutils/_astropy_init*',
     '*/photutils/conftest.py',
     '*/photutils/*setup_package*',
     '*/photutils/tests/*',
