@@ -194,11 +194,11 @@ checks = [
     'all',   # report on all checks, except the below
     'ES01',  # missing extended summary
     'EX01',  # missing "Examples"
+    'RT01',  # do not require return type for lazy properties
+    'RT02',  # only type in "Returns" section (no name)
     'SA01',  # missing "See Also"
     'SA04',  # missing "See Also" description
-    'RT02',  # only type in "Returns" section (no name)
     'SS06',  # single-line summary
-    'RT01',  # do not require return type for lazy properties
 ]
 
 # don't report on objects that match any of these regex;
