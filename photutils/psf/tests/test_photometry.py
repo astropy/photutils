@@ -281,6 +281,22 @@ def test_psf_photometry_nddata(test_data):
     assert resid_data3.unit == unit
 
 
+def test_psf_photometry_finite_weights(test_data):
+    data, _, sources = test_data
+    error = np.zeros_like(data)
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    match1 = 'divide by zero'
+    match2 = 'Fit weights contain a non-finite value'
+    with (pytest.warns(RuntimeWarning, match=match1),
+          pytest.raises(ValueError, match=match2)):
+        _ = psfphot(data, error=error)
+
+
 def test_model_residual_image(test_data):
     data, error, _ = test_data
 

@@ -1073,7 +1073,14 @@ class PSFPhotometry(ModelImageMixin):
             psf_model = self._make_psf_model(sources_)
             yi, xi, cutout = self._define_fit_data(sources_, data, mask)
 
-            weights = 1.0 / error[yi, xi] if error is not None else None
+            if error is not None:
+                weights = 1.0 / error[yi, xi]
+                if np.any(~np.isfinite(weights)):
+                    raise ValueError('Fit weights contain a non-finite '
+                                     'value. Check the input error array '
+                                     'for any zeros or non-finite values.')
+            else:
+                weights = None
 
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', AstropyUserWarning)
