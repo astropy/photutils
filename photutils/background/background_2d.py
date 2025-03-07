@@ -81,22 +81,25 @@ class Background2D:
 
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is
-        masked. Masked data are excluded from calculations. ``mask`` is
-        intended to mask sources or bad pixels. Use ``coverage_mask``
-        to mask blank areas of an image. ``mask`` and ``coverage_mask``
-        differ only in that ``coverage_mask`` is applied to the output
-        background and background RMS maps (see ``fill_value``).
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from the background and background
+        RMS calculations. ``mask`` is intended to mask sources or bad
+        pixels, but a background and background RMS value will be
+        calculated for them based on interpolation of the low-resolution
+        background and background RMS maps. Use ``coverage_mask`` to
+        mask blank areas of an image. ``coverage_mask`` pixels are
+        assigned a value of ``fill_value`` (default = 0) in the output
+        background and background RMS maps.
 
     coverage_mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
         ``coverage_mask`` should be `True` where there is no coverage
         (i.e., no data) for a given pixel (e.g., blank areas in a mosaic
-        image). It should not be used for bad pixels (in that case use
-        ``mask`` instead). ``mask`` and ``coverage_mask`` differ only in
-        that ``coverage_mask`` is applied to the output background and
-        background RMS maps (see ``fill_value``).
+        image). It should not be used to mask sources or bad pixels (in
+        that case use ``mask`` instead). ``coverage_mask`` pixels are
+        assigned a value of ``fill_value`` (default = 0) in the output
+        background and background RMS maps.
 
     fill_value : float, optional
         The value used to fill the output background and background RMS
@@ -226,11 +229,14 @@ class Background2D:
         else:
             self._unit = None
 
-        # this is a temporary instance variable to store the input data
+        # self._data is a temporary instance variable to store the input
+        # data (deleted in self._calculate_stats)
         self._data = self._validate_array(data, 'data', shape=False)
-
         self._data_dtype = self._data.dtype
+        self._data_shape = self._data.shape
 
+        # self._mask is a temporary instance variable to store the input
+        # mask array (deleted in self._calculate_stats)
         self._mask = self._validate_array(mask, 'mask')
         self.coverage_mask = self._validate_array(coverage_mask,
                                                   'coverage_mask')
