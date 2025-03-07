@@ -28,6 +28,7 @@ from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._repr import make_repr
 from photutils.utils.cutouts import _overlap_slices as overlap_slices
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -360,6 +361,12 @@ class PSFPhotometry(ModelImageMixin):
         self.results = None
         self.fit_info = defaultdict(list)
         self._group_results = defaultdict(list)
+
+    def __repr__(self):
+        params = ('psf_model', 'fit_shape', 'finder', 'grouper', 'fitter',
+                  'fitter_maxiters', 'xy_bounds', 'localbkg_estimator',
+                  'aperture_radius', 'progress_bar')
+        return make_repr(self, params)
 
     def _validate_grouper(self, grouper):
         if grouper is not None and not isinstance(grouper, SourceGrouper):
@@ -1670,6 +1677,25 @@ class IterativePSFPhotometry(ModelImageMixin):
         Reset these attributes for each __call__.
         """
         self.fit_results = []
+
+    def __repr__(self):
+        params = ('psf_model', 'fit_shape', 'finder', 'grouper', 'fitter',
+                  'fitter_maxiters', 'xy_bounds', 'maxiters', 'mode',
+                  'localbkg_estimator', 'aperture_radius', 'sub_shape',
+                  'progress_bar')
+        overrides = {
+            'psf_model': self._psfphot.psf_model,
+            'fit_shape': self._psfphot.fit_shape,
+            'finder': self._psfphot.finder,
+            'grouper': self._psfphot.grouper,
+            'fitter': self._psfphot.fitter,
+            'fitter_maxiters': self._psfphot.fitter_maxiters,
+            'xy_bounds': self._psfphot.xy_bounds,
+            'localbkg_estimator': self._psfphot.localbkg_estimator,
+            'aperture_radius': self._psfphot.aperture_radius,
+            'progress_bar': self._psfphot.progress_bar
+        }
+        return make_repr(self, params, overrides=overrides)
 
     @staticmethod
     def _validate_maxiters(maxiters):
