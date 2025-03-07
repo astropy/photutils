@@ -7,6 +7,12 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise an error
+    if the input ``error`` array contains non-finite or zero values.
+    [#2022]
+
 Bug Fixes
 ^^^^^^^^^
 
