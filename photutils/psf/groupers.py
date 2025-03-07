@@ -8,6 +8,8 @@ from collections import defaultdict
 import numpy as np
 from scipy.cluster.hierarchy import fclusterdata
 
+from photutils.utils._repr import make_repr
+
 __all__ = ['SourceGrouper']
 
 
@@ -30,6 +32,9 @@ class SourceGrouper:
 
     def __init__(self, min_separation):
         self.min_separation = min_separation
+
+    def __repr__(self):
+        return make_repr(self, 'min_separation')
 
     def __call__(self, x, y):
         """
