@@ -205,7 +205,9 @@ class SourceCatalog:
         * 'none': do not mask any pixels (equivalent to MASK_TYPE=NONE
           in SourceExtractor).
 
-        This keyword will be ignored if ``detection_cat`` is input.
+        This keyword will be ignored if ``detection_cat`` is input. In
+        that case, the ``apermask_method`` set in the ``detection_cat``
+        will be used.
 
     kron_params : tuple of 2 or 3 floats, optional
         A list of parameters used to determine the Kron aperture.
