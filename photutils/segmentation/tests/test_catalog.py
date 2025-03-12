@@ -844,7 +844,19 @@ class TestSourceCatalog:
 
         assert len(cutouts) == len(cat)
         assert isinstance(cutouts[1], CutoutImage)
-        assert cutouts[1].data.shape == shape
+        for cutout in cutouts:
+            assert cutout.data.shape == shape
+
+        # test making cutouts from an input image
+        image = np.ones(data.shape)
+        cutouts = cat.make_cutouts(shape, array=image, mode='partial')
+        for cutout in cutouts:
+            assert np.all(cutout.data[np.isfinite(cutout.data)] == 1)
+            assert cutout.data.shape == shape
+
+        match = 'array must have the same shape as data'
+        with pytest.raises(ValueError, match=match):
+            cat.make_cutouts(shape, array=np.ones((3, 3)), mode='partial')
 
         obj = cat[1]
         cut = obj.make_cutouts(shape)
