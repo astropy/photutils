@@ -3660,7 +3660,8 @@ class SourceCatalog:
         return result
 
     @as_scalar
-    def make_cutouts(self, shape, mode='partial', fill_value=np.nan):
+    def make_cutouts(self, shape, *, array=None, mode='partial',
+                     fill_value=np.nan):
         """
         Make cutout arrays for each source.
 
@@ -3672,6 +3673,14 @@ class SourceCatalog:
         ----------
         shape : 2-tuple
             The cutout shape along each axis in ``(ny, nx)`` order.
+
+        array : `None` or 2D `~numpy.ndarray`
+            A 2D array with the same shape as the ``data`` array input
+            to `~photutils.segmentation.SourceCatalog`. If `None` then
+            the ``data`` array will be used. If any cutout arrays
+            are not fully contained within the ``array`` array and
+            ``mode='partial'`` with ``fill_value=np.nan``, then the
+            input ``array`` must have a float data type.
 
         mode : {'partial', 'trim'}, optional
             The mode used for extracting the cutout array. In
@@ -3698,6 +3707,11 @@ class SourceCatalog:
             cutout will be `None` where the source `centroid` position
             is not finite or where the source is completely masked.
         """
+        if array is None:
+            array = self._data
+        elif array.shape != self._data.shape:
+            raise ValueError('array must have the same shape as data')
+
         if mode not in ('partial', 'trim'):
             raise ValueError('mode must be "partial" or "trim"')
 
@@ -3710,7 +3724,7 @@ class SourceCatalog:
                 cutouts.append(None)
                 continue
 
-            cutouts.append(CutoutImage(self._data, (ycen, xcen), shape,
+            cutouts.append(CutoutImage(array, (ycen, xcen), shape,
                                        mode=mode, fill_value=fill_value))
 
         return cutouts
