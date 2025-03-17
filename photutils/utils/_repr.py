@@ -4,7 +4,7 @@ This module provides tools for class __repr__ and __str__ strings.
 """
 
 
-def make_repr(instance, params, ellipsis=(), long=False):
+def make_repr(instance, params, *, overrides=None, long=False):
     """
     Generate a __repr__ string for a class instance.
 
@@ -13,14 +13,20 @@ def make_repr(instance, params, ellipsis=(), long=False):
     instance : object
         The class instance.
 
-    params : list of str
-        List of parameter names to include in the repr.
+    params : str or list of str
+        List of parameter names to include in the repr. The order of
+        returned parameters is the same as the order of ``params``.
 
-    ellipsis : list of str
-        List of parameter names to replace with '...' if not None.
+    overrides : `None` or dict, optional
+        Dictionary of parameter names and values to override the
+        instance's attributes. This is useful for cases where the
+        instance's attributes are not stored long-term (e.g.,
+        Background2D). The keys of ``overrides`` must also be in
+        ``params``, which determines the order of the returned
+        parameters.
 
-    long : bool
-        Whether to include the module name in the class name.
+    long : bool, optional
+        Whether to use the "long" format typically used by __str__.
 
     Returns
     -------
@@ -31,11 +37,29 @@ def make_repr(instance, params, ellipsis=(), long=False):
     if long:
         cls_name = f'{instance.__class__.__module__}.{cls_name}'
 
+    if isinstance(params, str):
+        params = [params]
+
+    if (overrides is not None
+            and not set(overrides.keys()).issubset(set(params))):
+        raise ValueError('The overrides keys must be a subset of the params '
+                         'list.')
+
     cls_info = []
     for param in params:
-        value = getattr(instance, param)
-        if param in ellipsis and value is not None:
-            value = '...'
+        if overrides is not None and param in overrides:
+            # overrides may contain input parameters that are not
+            # stored long-term in the instance (e.g., Background2D)
+            if param in instance.__dict__ and instance.__dict__[param] is None:
+                value = None
+            else:
+                value = overrides[param]
+        elif param in instance.__dict__:
+            value = instance.__dict__[param]
+        else:
+            raise ValueError(f'Parameter {param!r} not found in instance '
+                             'or overrides.')
+
         cls_info.append((param, value))
 
     if long:

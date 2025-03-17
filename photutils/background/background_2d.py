@@ -81,22 +81,25 @@ class Background2D:
 
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is
-        masked. Masked data are excluded from calculations. ``mask`` is
-        intended to mask sources or bad pixels. Use ``coverage_mask``
-        to mask blank areas of an image. ``mask`` and ``coverage_mask``
-        differ only in that ``coverage_mask`` is applied to the output
-        background and background RMS maps (see ``fill_value``).
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from the background and background
+        RMS calculations. ``mask`` is intended to mask sources or bad
+        pixels, but a background and background RMS value will be
+        calculated for them based on interpolation of the low-resolution
+        background and background RMS maps. Use ``coverage_mask`` to
+        mask blank areas of an image. ``coverage_mask`` pixels are
+        assigned a value of ``fill_value`` (default = 0) in the output
+        background and background RMS maps.
 
     coverage_mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
         ``coverage_mask`` should be `True` where there is no coverage
         (i.e., no data) for a given pixel (e.g., blank areas in a mosaic
-        image). It should not be used for bad pixels (in that case use
-        ``mask`` instead). ``mask`` and ``coverage_mask`` differ only in
-        that ``coverage_mask`` is applied to the output background and
-        background RMS maps (see ``fill_value``).
+        image). It should not be used to mask sources or bad pixels (in
+        that case use ``mask`` instead). ``coverage_mask`` pixels are
+        assigned a value of ``fill_value`` (default = 0) in the output
+        background and background RMS maps.
 
     fill_value : float, optional
         The value used to fill the output background and background RMS
@@ -226,11 +229,14 @@ class Background2D:
         else:
             self._unit = None
 
-        # this is a temporary instance variable to store the input data
+        # self._data is a temporary instance variable to store the input
+        # data (deleted in self._calculate_stats)
         self._data = self._validate_array(data, 'data', shape=False)
-
         self._data_dtype = self._data.dtype
+        self._data_shape = self._data.shape
 
+        # self._mask is a temporary instance variable to store the input
+        # mask array (deleted in self._calculate_stats)
         self._mask = self._validate_array(mask, 'mask')
         self.coverage_mask = self._validate_array(coverage_mask,
                                                   'coverage_mask')
@@ -261,10 +267,6 @@ class Background2D:
         self.bkgrms_estimator = bkgrms_estimator
 
         self._box_npixels = None
-        self._params = ('box_size', 'coverage_mask',
-                        'fill_value', 'exclude_percentile', 'filter_size',
-                        'filter_threshold', 'edge_method', 'sigma_clip',
-                        'bkg_estimator', 'bkgrms_estimator', 'interpolator')
 
         # store the interpolator keyword arguments for later use
         # (before self._data is deleted in self._calculate_stats)
@@ -293,13 +295,36 @@ class Background2D:
             self._interp_kwargs['mesh_yxcen'] = self._calculate_mesh_yxcen()
             self._interp_kwargs['mesh_nan_mask'] = self._mesh_nan_mask
 
+    def __repr_str_params(self):
+        params = ('data', 'box_size', 'mask', 'coverage_mask', 'fill_value',
+                  'exclude_percentile', 'filter_size', 'filter_threshold',
+                  'edge_method', 'sigma_clip', 'bkg_estimator',
+                  'bkgrms_estimator', 'interpolator')
+
+        data_repr = f'<array; shape={self._interp_kwargs["shape"]}>'
+
+        if '_mask' in self.__dict__ and self._mask is None:
+            mask_repr = None
+        else:
+            mask_repr = data_repr
+
+        if 'coverage_mask' in self.__dict__ and self.coverage_mask is None:
+            coverage_mask_repr = None
+        else:
+            coverage_mask_repr = data_repr
+
+        overrides = {'data': data_repr, 'mask': mask_repr,
+                     'coverage_mask': coverage_mask_repr}
+
+        return params, overrides
+
     def __repr__(self):
-        ellipsis = ('coverage_mask',)
-        return make_repr(self, self._params, ellipsis=ellipsis)
+        params, overrides = self.__repr_str_params()
+        return make_repr(self, params, overrides=overrides)
 
     def __str__(self):
-        ellipsis = ('coverage_mask',)
-        return make_repr(self, self._params, ellipsis=ellipsis, long=True)
+        params, overrides = self.__repr_str_params()
+        return make_repr(self, params, overrides=overrides, long=True)
 
     def _validate_array(self, array, name, shape=True):
         """
@@ -347,7 +372,8 @@ class Background2D:
             return self._mask
 
         mask = np.logical_or(self._mask, self.coverage_mask)
-        del self._mask
+        if self._mask is not None:
+            del self._mask
         return mask
 
     def _combine_all_masks(self, mask):

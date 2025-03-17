@@ -74,6 +74,12 @@ class CutoutImage:
         the original ``data`` array. If `True`, then the cutout data
         will hold a copy of the original ``data`` array.
 
+    Notes
+    -----
+    If the cutout array is not fully contained within the input ``data``
+    array and ``mode='partial'`` with ``fill_value=np.nan``, then the
+    input ``data`` must have a float data type.
+
     Examples
     --------
     >>> import numpy as np

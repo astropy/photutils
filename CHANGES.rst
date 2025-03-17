@@ -7,6 +7,17 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise an error
+    if the input ``error`` array contains non-finite or zero values.
+    [#2022]
+
+- ``photutils.segmentation``
+
+  - An optional ``array`` keyword was added to the ``SourceCatalog``
+    ``make_cutouts`` method. [#2023]
+
 Bug Fixes
 ^^^^^^^^^
 
