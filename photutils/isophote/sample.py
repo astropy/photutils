@@ -369,16 +369,8 @@ class EllipseSample:
         """
         angles = self.values[0]
         radii = self.values[1]
-        x = np.zeros(len(angles))
-        y = np.zeros(len(angles))
-
-        for i in range(len(x)):
-            x[i] = (radii[i] * np.cos(angles[i] + self.geometry.pa)
-                    + self.geometry.x0)
-
-            y[i] = (radii[i] * np.sin(angles[i] + self.geometry.pa)
-                    + self.geometry.y0)
-
+        x = radii * np.cos(angles + self.geometry.pa) + self.geometry.x0
+        y = radii * np.sin(angles + self.geometry.pa) + self.geometry.y0
         return x, y
 
 
