@@ -215,6 +215,7 @@ class PixelAperture(Aperture):
 
         return use_exact, subpixels
 
+    @property
     @abc.abstractmethod
     def _xy_extents(self):
         """
@@ -282,6 +283,7 @@ class PixelAperture(Aperture):
 
         return edges
 
+    @property
     @abc.abstractmethod
     def area(self):
         """

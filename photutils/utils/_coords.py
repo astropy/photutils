@@ -80,10 +80,11 @@ def make_random_xycoords(size, x_range, y_range, min_separation=0.0,
     xycoords : `~numpy.ndarray`
         The (x, y) random coordinates with shape ``(size, 2)``.
     """
+    ncoords = size
     if min_separation > 0:
         # scale the number of random coordinates to account for
         # some being discarded due to min_separation
-        ncoords = size * 10
+        ncoords *= 10
 
     rng = np.random.default_rng(seed)
     xc = rng.uniform(x_range[0], x_range[1], ncoords)

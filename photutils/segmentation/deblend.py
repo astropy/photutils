@@ -20,8 +20,7 @@ from scipy.ndimage import sum_labels
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.detect import _detect_sources
 from photutils.segmentation.utils import _make_binary_structure
-from photutils.utils._optional_deps import tqdm
-from photutils.utils._progress_bars import add_progress_bar
+from photutils.utils._progress_bars import add_progress_bar, tqdm
 from photutils.utils._stats import nanmax, nanmin, nansum
 
 __all__ = ['deblend_sources']

@@ -263,11 +263,11 @@ class EllipseSample:
         upper = mean + self.sclip * sig
 
         count = 0
-        for k in range(len(intensities)):
-            if intensities[k] >= lower and intensities[k] < upper:
+        for k, intensity in enumerate(intensities):
+            if lower <= intensity < upper:
                 r_angles.append(angles[k])
                 r_radii.append(radii[k])
-                r_intensities.append(intensities[k])
+                r_intensities.append(intensity)
                 count += 1
 
         return r_angles, r_radii, r_intensities
@@ -369,16 +369,8 @@ class EllipseSample:
         """
         angles = self.values[0]
         radii = self.values[1]
-        x = np.zeros(len(angles))
-        y = np.zeros(len(angles))
-
-        for i in range(len(x)):
-            x[i] = (radii[i] * np.cos(angles[i] + self.geometry.pa)
-                    + self.geometry.x0)
-
-            y[i] = (radii[i] * np.sin(angles[i] + self.geometry.pa)
-                    + self.geometry.y0)
-
+        x = radii * np.cos(angles + self.geometry.pa) + self.geometry.x0
+        y = radii * np.sin(angles + self.geometry.pa) + self.geometry.y0
         return x, y
 
 
