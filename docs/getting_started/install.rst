@@ -66,13 +66,6 @@ Photutils will be installed from a source file. In this case you will
 need a C compiler (e.g., ``gcc`` or ``clang``) to be installed for the
 installation to succeed (see :ref:`building_source` prerequisites).
 
-If you get a ``PermissionError``, this means that you do not have the
-required administrative access to install new packages to your Python
-installation.  In this case you may consider using the ``--user``
-option to install the package into your home directory.  You can read
-more about how to do this in the `pip documentation
-<https://pip.pypa.io/en/stable/user_guide/#user-installs>`_.
-
 
 Using conda
 -----------
@@ -130,15 +123,11 @@ dependencies), run::
     cd photutils
     pip install ".[all]"
 
-If you wish to install the package in "editable" mode, instead include
-the "-e" option::
-
-    pip install -e ".[all]"
-
-Alternatively, `pip`_ can be used to retrieve and install the
-latest development pre-built wheel::
+Alternatively, `pip`_ can be used to retrieve and install the latest
+development wheel (with all optional dependencies::
 
     pip install --upgrade --extra-index-url https://pypi.anaconda.org/astropy/simple "photutils[all]" --pre
+
 
 Testing an installed Photutils
 ==============================
