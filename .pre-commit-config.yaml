@@ -55,7 +55,7 @@ repos:
         # Enforce that all noqa annotations always occur with specific codes.
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.9.9"
+    rev: "v0.11.4"
     hooks:
       - id: ruff
         args: ["--fix", "--show-fixes"]
@@ -77,7 +77,7 @@ repos:
         additional_dependencies: [toml]
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.1.2
+    rev: 7.2.0
     hooks:
       - id: flake8
         args: ["--ignore", "E501,W503"]
@@ -96,15 +96,21 @@ repos:
       - id: numpydoc-validation
         exclude: "extern/"
 
-  # temporarily use commit from master branch until the next release
-  # see https://github.com/PyCQA/docformatter/pull/287
-  - repo: https://github.com/PyCQA/docformatter
-    rev: 06907d0267368b49b9180eed423fae5697c1e909
+  # temporarily use to the latest PyPI release instead of GitHub
+  # https://github.com/PyCQA/docformatter/pull/287#issuecomment-2401028403
+  - repo: local
     hooks:
-      - id: docformatter
-        additional_dependencies: [tomli]
-        args: [--in-place, --config, ./pyproject.toml]
-        exclude: "extern/"
+    - id: docformatter
+      name: docformatter
+      description: Formats docstrings to follow PEP 257.
+      entry: python -Im docformatter
+      additional_dependencies:
+        - docformatter == 1.7.5
+      args: [--in-place, --config, ./pyproject.toml]
+      exclude: "extern/"
+      language: python
+      types:
+        - python
 
   # - repo: https://github.com/MarcoGorelli/absolufy-imports
   #   rev: v0.3.1
