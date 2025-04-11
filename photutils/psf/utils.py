@@ -20,6 +20,52 @@ from photutils.utils._parameters import as_pair
 __all__ = ['fit_2dgaussian', 'fit_fwhm']
 
 
+def _make_mask(image, mask):
+    """
+    Create a mask for the input image.
+
+    Non-finite values (e.g., NaN or inf) in the ``image`` array are
+    automatically masked. If a mask is provided, then the non-finite
+    values are combined with the provided mask.
+
+    Parameters
+    ----------
+    image : 2D `~numpy.ndarray`
+        The input image.
+
+    mask : 2D bool `~numpy.array` or None
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+
+    Returns
+    -------
+    mask : 2D bool `~numpy.ndarray` or `None`
+        The mask for the input image. A `True` value indicates the
+        corresponding element of ``image`` is masked.
+    """
+    def warn_nonfinite():
+        warnings.warn('Input data contains unmasked non-finite values '
+                      '(NaN or inf), which were automatically ignored.',
+                      AstropyUserWarning)
+
+    # if NaNs are in the data, no actual fitting takes place
+    # https://github.com/astropy/astropy/pull/12811
+    finite_mask = ~np.isfinite(image)
+
+    if mask is not None:
+        finite_mask |= mask
+        if np.any(finite_mask & ~mask):
+            warn_nonfinite()
+    else:
+        mask = finite_mask
+        if np.any(finite_mask):
+            warn_nonfinite()
+        else:
+            mask = None
+
+    return mask
+
+
 def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
                    fit_shape=None, mask=None, error=None):
     """
@@ -145,8 +191,11 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     # prevent circular import
     from photutils.psf.photometry import PSFPhotometry
 
+    # mask non-finite values
+    mask = _make_mask(data, mask)
+
     if xypos is None:
-        xypos = centroid_com(data)
+        xypos = centroid_com(data, mask=mask)
     xypos = np.atleast_2d(xypos)
 
     if fit_shape is None:
@@ -158,7 +207,8 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     flux_init = []
     for yxpos in xypos[:, ::-1]:
         cutout = CutoutImage(data, yxpos, tuple(fit_shape))
-        flux_init.append(np.sum(cutout.data))
+        cutout = cutout.data[np.isfinite(cutout.data)]
+        flux_init.append(np.nansum(cutout))
 
     if isinstance(data, Quantity):
         flux_init <<= data.unit

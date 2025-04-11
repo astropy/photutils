@@ -26,6 +26,11 @@ Bug Fixes
   - Fixed an issue with the initial Gaussian theta units in
     ``centroid_2dg``. [#2013]
 
+- ``photutils.psf``
+
+  - Fixed a bug in ``fit_2dgaussian`` and ``fit_fwhm`` where the fit
+    would fail if there were NaN values in the input data. [#2030]
+
 API Changes
 ^^^^^^^^^^^
 

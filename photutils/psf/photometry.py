@@ -23,7 +23,8 @@ from photutils.aperture import CircularAperture
 from photutils.background import LocalBackground
 from photutils.datasets import make_model_image as _make_model_image
 from photutils.psf.groupers import SourceGrouper
-from photutils.psf.utils import _get_psf_model_params, _validate_psf_model
+from photutils.psf.utils import (_get_psf_model_params, _make_mask,
+                                 _validate_psf_model)
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
@@ -611,30 +612,6 @@ class PSFPhotometry(ModelImageMixin):
             init_params = self._check_init_units(init_params, 'local_bkg')
 
         return init_params
-
-    @staticmethod
-    def _make_mask(image, mask):
-        def warn_nonfinite():
-            warnings.warn('Input data contains unmasked non-finite values '
-                          '(NaN or inf), which were automatically ignored.',
-                          AstropyUserWarning)
-
-        # if NaNs are in the data, no actual fitting takes place
-        # https://github.com/astropy/astropy/pull/12811
-        finite_mask = ~np.isfinite(image)
-
-        if mask is not None:
-            finite_mask |= mask
-            if np.any(finite_mask & ~mask):
-                warn_nonfinite()
-        else:
-            mask = finite_mask
-            if np.any(finite_mask):
-                warn_nonfinite()
-            else:
-                mask = None
-
-        return mask
 
     def _get_aper_fluxes(self, data, mask, init_params):
         xpos = init_params[self._param_maps['init_cols']['x']]
@@ -1234,7 +1211,7 @@ class PSFPhotometry(ModelImageMixin):
         data = self._validate_array(data, 'data')
         error = self._validate_array(error, 'error', data_shape=data.shape)
         mask = self._validate_array(mask, 'mask', data_shape=data.shape)
-        mask = self._make_mask(data, mask)
+        mask = _make_mask(data, mask)
         init_params = self._validate_init_params(init_params)  # copies
 
         fluxcol = self._param_maps['init_cols']['flux']
