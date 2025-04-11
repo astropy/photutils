@@ -191,8 +191,11 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     # prevent circular import
     from photutils.psf.photometry import PSFPhotometry
 
+    # mask non-finite values
+    mask = _make_mask(data, mask)
+
     if xypos is None:
-        xypos = centroid_com(data)
+        xypos = centroid_com(data, mask=mask)
     xypos = np.atleast_2d(xypos)
 
     if fit_shape is None:
@@ -204,7 +207,8 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     flux_init = []
     for yxpos in xypos[:, ::-1]:
         cutout = CutoutImage(data, yxpos, tuple(fit_shape))
-        flux_init.append(np.sum(cutout.data))
+        cutout = cutout.data[np.isfinite(cutout.data)]
+        flux_init.append(np.nansum(cutout))
 
     if isinstance(data, Quantity):
         flux_init <<= data.unit
