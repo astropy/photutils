@@ -47,6 +47,24 @@ def test_fit_2dgaussian_single(fix_fwhm):
         assert 'fwhm_fit' in fit_tbl.colnames
         assert_allclose(fit_tbl['fwhm_fit'], fwhm)
 
+    # test with NaNs
+    data[22, 29] = np.nan
+    match = 'Input data contains non-finite values'
+    match = 'Input data contains unmasked non-finite values'
+    with pytest.warns(AstropyUserWarning, match=match):
+        fit = fit_2dgaussian(data, fwhm=3, fix_fwhm=fix_fwhm)
+    fit_tbl = fit.results
+    assert isinstance(fit_tbl, QTable)
+    assert len(fit_tbl) == 1
+
+    # test with NaNs and mask
+    data[22, 29] = np.nan
+    mask = np.isnan(data)
+    fit = fit_2dgaussian(data, fwhm=3, fix_fwhm=fix_fwhm, mask=mask)
+    fit_tbl = fit.results
+    assert isinstance(fit_tbl, QTable)
+    assert len(fit_tbl) == 1
+
 
 @pytest.mark.parametrize(('fix_fwhm', 'with_units'),
                          [(False, True), (True, False)])
