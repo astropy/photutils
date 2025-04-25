@@ -207,7 +207,7 @@ You can also create your own custom PSF model using the Astropy modeling
 framework. The PSF model must be a 2D model that is a subclass of
 `~astropy.modeling.Fittable2DModel`. It must have parameters called
 ``x_0``, ``y_0``, and ``flux``, specifying the central position and
-total integrated flux, and it should be normalized to unit flux.
+total integrated flux.
 
 
 Analytic PSF Models

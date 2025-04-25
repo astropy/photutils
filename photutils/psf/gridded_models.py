@@ -49,14 +49,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         of ``(N_psf, ePSF_ny, ePSF_nx)``. The length of the x and y axes
         must both be at least 4. All elements of the input image data
         must be finite. The PSF peak is assumed to be located at the
-        center of the input image. The array must be normalized so that
-        the total flux of a source is 1.0. This means that the sum of
-        the values in the input image PSF over an infinite grid is 1.0.
-        In practice, the sum of the data values in the input image may
-        be less than 1.0 if the input image only covers a finite region
-        of the PSF. These correction factors can be estimated from the
-        ensquared or encircled energy of the PSF based on the size of
-        the input image.
+        center of the input image. Please see the Notes section below
+        for details on the normalization of the input image data.
 
         The meta attribute must be dictionary containing the following:
 
@@ -98,6 +92,23 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
     Notes
     -----
+    The fitted PSF model flux represents the total flux of the source,
+    assuming the input image was properly normalized. This flux is
+    determined as a multiplicative scale factor applied to the input
+    image PSF, after accounting for any oversampling. Theoretically,
+    the sum of all values in the PSF image over an infinite grid should
+    equal 1.0 (assuming no oversampling). However, when the PSF is
+    represented over a finite region, the sum of the values may be less
+    than 1.0. For oversampled PSF images, the normalization should be
+    adjusted so that the sum of the array values equals the product
+    of the oversampling factors (e.g., oversampling squared if the
+    oversampling is the same along both axes). If the input image only
+    covers a finite region of the PSF, the sum may again be less than
+    the product of the oversampling factors. Correction factors based on
+    the encircled or ensquared energy of the PSF can be used to estimate
+    the proper scaling for the finite region of the input PSF image and
+    ensure correct flux normalization.
+
     Internally, the grid of ePSFs will be arranged and stored such that
     it is sorted first by the y reference pixel coordinate and then by
     the x reference pixel coordinate.
