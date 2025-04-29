@@ -5,7 +5,6 @@ This module provides tools for calculating total error arrays.
 
 import astropy.units as u
 import numpy as np
-from astropy.utils.misc import isiterable
 
 __all__ = ['calc_total_error']
 
@@ -161,7 +160,7 @@ def calc_total_error(data, bkg_error, effective_gain):
                                f'{datagain_unit}, but it must have count '
                                'units (e.g., u.electron or u.photon).')
 
-    if not isiterable(effective_gain):
+    if not np.iterable(effective_gain):
         effective_gain = np.zeros(data.shape) + effective_gain
     else:
         effective_gain = np.asanyarray(effective_gain)
