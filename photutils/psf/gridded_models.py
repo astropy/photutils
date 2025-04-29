@@ -52,6 +52,10 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         center of the input image. Please see the Notes section below
         for details on the normalization of the input image data.
 
+        If the N_psf is 1, the model will be evaluated using the single
+        ePSF image at every (x, y) position. This is equivalent to using
+        the `~photutils.psf.ImagePSF` model with the single ePSF.
+
         The meta attribute must be dictionary containing the following:
 
         * ``'grid_xypos'``: A list of the (x, y) grid positions of
@@ -581,7 +585,13 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         xi += self.origin[0]
         yi += self.origin[1]
 
-        evaluated_model = flux * self._calc_model_values(x_0, y_0, xi, yi)
+        if self.data.shape[0] == 1:
+            # if there is only one ePSF, we do not need to perform
+            # the bilinear interpolation
+            evaluated_model = flux * self._calc_interpolator(0)(xi, yi,
+                                                                grid=False)
+        else:
+            evaluated_model = flux * self._calc_model_values(x_0, y_0, xi, yi)
 
         if self.fill_value is not None:
             # set pixels that are outside the input pixel grid to the
