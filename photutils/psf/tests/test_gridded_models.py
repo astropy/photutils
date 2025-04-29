@@ -83,6 +83,22 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError, match=match):
             psfmodel.evaluate(x=x2, y=y2, flux=100, x_0=40, y_0=60)
 
+    def test_gridded_psf_model_single_psf(self, psfmodel):
+        psfmodel = psfmodel.copy()
+        psfmodel.data = psfmodel.data[0:1, :, :]
+        assert psfmodel(0, 0) == 1
+        assert psfmodel(100, 100) == 0
+        assert_allclose(psfmodel([0, 100], [0, 100]), [1, 0])
+
+        y, x = np.mgrid[0:100, 0:100]
+        psf = psfmodel.evaluate(x=x, y=y, flux=100, x_0=40, y_0=60)
+        assert psf.shape == (100, 100)
+
+        _, y2, x2 = np.mgrid[0:100, 0:100, 0:100]
+        match = 'x and y must be 1D or 2D'
+        with pytest.raises(ValueError, match=match):
+            psfmodel.evaluate(x=x2, y=y2, flux=100, x_0=40, y_0=60)
+
     def test_gridded_psf_model_eval_outside_grid(self, psfmodel):
         y, x = np.mgrid[-50:50, -50:50]
         psf1 = psfmodel.evaluate(x=x, y=y, flux=100, x_0=0, y_0=0)
