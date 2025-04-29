@@ -13,6 +13,9 @@ New Features
     if the input ``error`` array contains non-finite or zero values.
     [#2022]
 
+  - ``GriddedPSFModel`` can now be used with a single input ePSF model,
+    which will be equivalent to ``ImagePSF``. [#2034]
+
 - ``photutils.segmentation``
 
   - An optional ``array`` keyword was added to the ``SourceCatalog``
