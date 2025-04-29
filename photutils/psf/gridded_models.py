@@ -419,16 +419,29 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         The resulting interpolator is cached in the `_interpolator`
         dictionary for reuse.
+
+        Parameters
+        ----------
+        grid_idx : int
+            The index of the ePSF image in the reference grid.
+
+        Returns
+        -------
+        interp : `~scipy.interpolate.RectBivariateSpline`
+            The interpolator for the input ePSF image.
         """
-        xypos = tuple(self.grid_xypos[grid_idx])
-        if xypos in self._interpolator:
-            return self._interpolator[xypos]
+        # check if the interpolator is already cached
+        if grid_idx in self._interpolator:
+            return self._interpolator[grid_idx]
 
         # RectBivariateSpline expects the data to be in (x, y) axis order
         data = self.data[grid_idx]
         interp = RectBivariateSpline(*self._interp_xyidx, data.T, kx=3, ky=3,
                                      s=0)
-        self._interpolator[xypos] = interp
+
+        # cache the interpolator for reuse
+        self._interpolator[grid_idx] = interp
+
         return interp
 
     def _find_bounding_points(self, x, y):
