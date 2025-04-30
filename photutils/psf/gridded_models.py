@@ -46,13 +46,14 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         A `~astropy.nddata.NDData` object containing the grid of
         reference ePSF arrays. The data attribute must contain a 3D
         `~numpy.ndarray` containing a stack of the 2D ePSFs with a shape
-        of ``(N_psf, ePSF_ny, ePSF_nx)``. The length of the x and y axes
-        must both be at least 4. All elements of the input image data
-        must be finite. The PSF peak is assumed to be located at the
-        center of the input image. Please see the Notes section below
-        for details on the normalization of the input image data.
+        of ``(N_psf, ePSF_ny, ePSF_nx)``. The length of the x and y
+        axes must both be at least 4. ``N_psf`` must not be 2 or 3. All
+        elements of the input image data must be finite. The PSF peak is
+        assumed to be located at the center of the input image. Please
+        see the Notes section below for details on the normalization of
+        the input image data.
 
-        If the N_psf is 1, the model will be evaluated using the single
+        If ``N_psf`` is 1, the model will be evaluated using the single
         ePSF image at every (x, y) position. This is equivalent to using
         the `~photutils.psf.ImagePSF` model with the single ePSF.
 
