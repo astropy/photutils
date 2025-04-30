@@ -40,6 +40,11 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - The ``GriddedPSFModel`` ``data`` and ``grid_xypos`` attributes are
+    now read-only. [#2036]
+
 
 2.2.0 (2025-02-18)
 ------------------
