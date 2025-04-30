@@ -46,13 +46,14 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         A `~astropy.nddata.NDData` object containing the grid of
         reference ePSF arrays. The data attribute must contain a 3D
         `~numpy.ndarray` containing a stack of the 2D ePSFs with a shape
-        of ``(N_psf, ePSF_ny, ePSF_nx)``. The length of the x and y axes
-        must both be at least 4. All elements of the input image data
-        must be finite. The PSF peak is assumed to be located at the
-        center of the input image. Please see the Notes section below
-        for details on the normalization of the input image data.
+        of ``(N_psf, ePSF_ny, ePSF_nx)``. The length of the x and y
+        axes must both be at least 4. ``N_psf`` must not be 2 or 3. All
+        elements of the input image data must be finite. The PSF peak is
+        assumed to be located at the center of the input image. Please
+        see the Notes section below for details on the normalization of
+        the input image data.
 
-        If the N_psf is 1, the model will be evaluated using the single
+        If ``N_psf`` is 1, the model will be evaluated using the single
         ePSF image at every (x, y) position. This is equivalent to using
         the `~photutils.psf.ImagePSF` model with the single ePSF.
 
@@ -168,10 +169,13 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         if data.data.ndim != 3:
             raise ValueError('The NDData data attribute must be a 3D numpy '
-                             'ndarray')
+                             'ndarray.')
 
         if not np.all(np.isfinite(data.data)):
             raise ValueError('All elements of input data must be finite.')
+
+        if data.data.shape[0] in (2, 3):
+            raise ValueError('The number of ePSFs must not be 2 or 3.')
 
         # this is required by RectBivariateSpline for kx=3, ky=3
         if np.any(np.array(data.data.shape[1:]) < 4):
@@ -185,11 +189,16 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     @staticmethod
     def _is_rectangular_grid(grid_xypos):
         """
-        Check if the input ``grid_xypos`` forms a rectangular grid.
+        Determine if the given (x, y) pixel positions form an axis-
+        aligned rectangular grid.
+
+        Spacing does not need to be uniform along x or y, but there must
+        be at least two unique x and y values, and all combinations of x
+        and y must be present.
 
         Parameters
         ----------
-        grid_xypos : array of (x, y) pairs
+        grid_xypos : (N, 2) array of (x, y) pairs
             The fiducial (x, y) positions of the ePSFs.
 
         Returns
@@ -198,11 +207,17 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
             Returns `True` if the input ``grid_xypos`` forms a
             rectangular grid.
         """
-        xgrid = np.unique(grid_xypos[:, 0])  # sorted
-        ygrid = np.unique(grid_xypos[:, 1])  # sorted
-        expected_points = {(x, y) for x in xgrid for y in ygrid}
-        grid = set(map(tuple, grid_xypos))
-        return grid == expected_points
+        if len(grid_xypos) < 4:  # pragma: no cover
+            return False
+
+        x_vals = np.unique(grid_xypos[:, 0])  # sorted
+        y_vals = np.unique(grid_xypos[:, 1])  # sorted
+        # Must have at least 2 unique x and y values to form a 2D grid
+        if len(x_vals) < 2 or len(y_vals) < 2:
+            return False
+
+        expected_points = {(x, y) for x in x_vals for y in y_vals}
+        return set(map(tuple, grid_xypos)) == expected_points
 
     def _validate_grid(self, data):
         """
@@ -228,7 +243,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
             raise ValueError('The length of grid_xypos must match the number '
                              'of input ePSFs.')
 
-        if not self._is_rectangular_grid(grid_xypos):
+        if len(grid_xypos) != 1 and not self._is_rectangular_grid(grid_xypos):
             raise ValueError('grid_xypos must form a rectangular grid.')
 
     def _define_grid(self, nddata):

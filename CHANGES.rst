@@ -34,6 +34,9 @@ Bug Fixes
   - Fixed a bug in ``fit_2dgaussian`` and ``fit_fwhm`` where the fit
     would fail if there were NaN values in the input data. [#2030]
 
+  - Fixed the check in ``GriddedPSFModel`` for rectangular pixel grids.
+    [#2035]
+
 API Changes
 ^^^^^^^^^^^
 

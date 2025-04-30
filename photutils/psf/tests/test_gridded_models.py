@@ -127,7 +127,13 @@ class TestGriddedPSFModel:
 
         match = 'The length of the PSF x and y axes must both be at least 4'
         with pytest.raises(ValueError, match=match):
-            GriddedPSFModel(NDData(np.ones((3, 3, 3))))
+            GriddedPSFModel(NDData(np.ones((4, 3, 3))))
+
+        match = 'The number of ePSFs must not be 2 or 3'
+        meta = {'grid_xypos': [[0, 0], [1, 0], [1, 0]], 'oversampling': 4}
+        nddata = NDData(np.ones((3, 4, 4)), meta=meta)
+        with pytest.raises(ValueError, match=match):
+            GriddedPSFModel(nddata)
 
         match = 'All elements of input data must be finite'
         data2 = np.ones((4, 5, 5))
@@ -151,6 +157,13 @@ class TestGriddedPSFModel:
 
         # check if grid_xypos is a regular grid
         meta = {'grid_xypos': [[0, 0], [1, 0], [1, 0], [3, 4]],
+                'oversampling': 4}
+        nddata = NDData(data, meta=meta)
+        match = 'grid_xypos must form a rectangular grid'
+        with pytest.raises(ValueError, match=match):
+            GriddedPSFModel(nddata)
+
+        meta = {'grid_xypos': [[0, 0], [0, 2], [0, 4], [0, 6]],
                 'oversampling': 4}
         nddata = NDData(data, meta=meta)
         match = 'grid_xypos must form a rectangular grid'
