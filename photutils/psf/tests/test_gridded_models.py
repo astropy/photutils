@@ -69,6 +69,13 @@ class TestGriddedPSFModel:
         xypos = grid_xypos[idx]
         assert_allclose(xypos, grid_xypos)
 
+        # check that data and grid_xypos attributes are read-only
+        match = 'object has no setter'
+        with pytest.raises(AttributeError, match=match):
+            psfmodel.data = np.ones((4, 5, 5))
+        with pytest.raises(AttributeError, match=match):
+            psfmodel.grid_xypos = [[0, 0], [1, 1]]
+
     def test_gridded_psf_model_basic_eval(self, psfmodel):
         assert psfmodel(0, 0) == 1
         assert psfmodel(100, 100) == 0
@@ -85,7 +92,7 @@ class TestGriddedPSFModel:
 
     def test_gridded_psf_model_single_psf(self, psfmodel):
         psfmodel = psfmodel.copy()
-        psfmodel.data = psfmodel.data[0:1, :, :]
+        psfmodel._data = psfmodel.data[0:1, :, :]
         assert psfmodel(0, 0) == 1
         assert psfmodel(100, 100) == 0
         assert_allclose(psfmodel([0, 100], [0, 100]), [1, 0])
