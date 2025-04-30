@@ -131,7 +131,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
     def __init__(self, nddata, *, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, fill_value=0.0):
 
-        self.data, self.grid_xypos = self._define_grid(nddata)
+        self._data, self._grid_xypos = self._define_grid(nddata)
         self._meta = nddata.meta.copy()  # _meta to avoid the meta descriptor
         self._oversampling = as_pair('oversampling',
                                      nddata.meta['oversampling'],
@@ -289,6 +289,28 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
     def __str__(self):
         return self._format_str(keywords=self._cls_info())
+
+    @property
+    def data(self):
+        """
+        The 3D array of ePSFs.
+
+        The shape is ``(N_psf, ePSF_ny, ePSF_nx)``.
+        """
+        return self._data
+
+    @property
+    def grid_xypos(self):
+        """
+        The (x, y) positions of the ePSFs.
+
+        The order of positions should match the first axis of the 3D
+        `~numpy.ndarray` of ePSFs. In other words, ``grid_xypos[i]``
+        should be the (x, y) position of the reference ePSF defined in
+        ``nddata.data[i]``. The grid positions must form a rectangular
+        grid.
+        """
+        return self._grid_xypos
 
     def copy(self):
         """
