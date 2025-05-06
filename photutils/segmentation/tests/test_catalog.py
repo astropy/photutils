@@ -737,6 +737,9 @@ class TestSourceCatalog:
         assert cat._has_len([1, 2, 3])
         assert not cat._has_len('test_string')
 
+        cat.add_extra_property('segment_snr4', segment_snr, overwrite=True)
+        cat.add_extra_property('segment_snr4', segment_snr, overwrite=True)
+
     def test_extra_properties_invalid(self):
         cat = SourceCatalog(self.data, self.segm)
         match = 'value must have the same number of elements as the catalog'
