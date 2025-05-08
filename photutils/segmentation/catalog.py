@@ -659,7 +659,7 @@ class SourceCatalog:
                              'property.')
 
         setattr(self, name, value)
-        if not overwrite:
+        if name not in self._extra_properties:
             self._extra_properties.append(name)
 
     def remove_extra_property(self, name):

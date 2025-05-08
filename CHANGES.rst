@@ -24,6 +24,12 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.segmentation``
+
+  - Fixed an issue where a newly-defined extra property of a
+    ``SourceCatalog`` with ``overwrite=True`` would not be added to
+    the ``extra_properties`` attribute.
+
 - ``photutils.centroids``
 
   - Fixed an issue with the initial Gaussian theta units in
