@@ -1215,6 +1215,8 @@ class SourceCatalog:
         An array with a single NaN is returned for completely-masked
         sources.
         """
+        if self._error is None:
+            return self._null_objects
         return self._get_values(self.error_ma)
 
     @lazyproperty
@@ -1225,6 +1227,8 @@ class SourceCatalog:
         An array with a single NaN is returned for completely-masked
         sources.
         """
+        if self._background is None:
+            return self._null_objects
         return self._get_values(self.background_ma)
 
     @lazyproperty
