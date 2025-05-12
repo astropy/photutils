@@ -92,7 +92,7 @@ class EllipseGeometry:
 
             \epsilon =  1  -  \frac{b}{a}
 
-        where a and b are the lengths of the semimajor and semimior
+        where a and b are the lengths of the semimajor and semiminor
         axes, respectively.
     pa : float
         The position angle (in radians) of the semimajor axis in
