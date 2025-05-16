@@ -42,10 +42,10 @@ class ModelImageMixin:
     residuals.
     """
 
-    def make_model_image(self, shape, psf_shape=None, include_localbkg=False):
+    def make_model_image(self, shape, psf_shape=None, include_localbkg=False, model_params=None):
         """
-        Create a 2D image from the fit PSF models and optional local
-        background.
+        Create a 2D image from the fit PSF models or a provided catalog 
+        and optional local background.
 
         Parameters
         ----------
@@ -67,6 +67,12 @@ class ModelImageMixin:
             ``psf_shape``. Thus, regions where the ``psf_shape`` of
             sources overlap will have the local background added
             multiple times.
+
+        model_params : `~astropy.table.Table`, optional
+            A table of objects to simulate using the PSF model.
+            The table must contain columns that match those output
+            of fitting, typically `x_0`, `y_0`, and `flux`.
+            If `None`, the most recent fit will be used.
 
         Returns
         -------
@@ -102,7 +108,8 @@ class ModelImageMixin:
                 fit_params = self.fit_results[-1]._fit_model_params
                 local_bkgs = self.fit_results[-1].init_params['local_bkg']
 
-        model_params = fit_params
+        if model_params is None:
+            model_params = fit_params
 
         if include_localbkg:
             # add local_bkg
