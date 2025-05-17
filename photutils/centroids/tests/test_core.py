@@ -76,6 +76,15 @@ def test_centroid_comquad(test_simple_data, x_std, y_std, theta, units):
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
 
 
+@pytest.mark.parametrize('ndim', [1, 2, 3, 4, 5])
+def test_centroid_com_zero_sum(ndim):
+    data = np.zeros([10] * ndim)
+    cen = centroid_com(data)
+    assert cen.shape == (ndim,)
+    for cen_ in cen:
+        assert np.isnan(cen_)
+
+
 @pytest.mark.parametrize('use_mask', [True, False])
 def test_centroid_comquad_nan_withmask(use_mask):
     xc_ref = 24.7

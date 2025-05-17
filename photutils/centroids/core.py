@@ -87,7 +87,7 @@ def centroid_com(data, mask=None):
 
     total = np.sum(data)
     if total == 0:
-        return np.array((np.nan, np.nan))
+        return np.full(data.ndim, np.nan)
 
     indices = np.ogrid[tuple(slice(0, i) for i in data.shape)]
 
