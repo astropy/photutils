@@ -17,6 +17,7 @@ def build_ellipse_model(
     isolist,
     fill: float = 0.0,
     high_harmonics=False,
+    sma_interval: float = 0.1,
 ):
     """
     Build a model elliptical galaxy image from a list of isophotes.
@@ -50,6 +51,10 @@ def build_ellipse_model(
         ``a4``, and ``b4``; see `~photutils.isophote.Isophote` for
         details) to the result.
 
+    sma_interval : optional, float
+        The interval between node values of the semi-major axis, which is used
+        to spline interpolate values of other shape parameters.
+
     Returns
     -------
     result : 2D `~numpy.ndarray`
@@ -64,7 +69,6 @@ def build_ellipse_model(
     finely_spaced_sma = np.arange(
         isolist[0].sma, isolist[-1].sma, sma_interval,
     )
-    phi_min = 0.05
 
     # interpolate ellipse parameters
 
