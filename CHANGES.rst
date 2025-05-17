@@ -37,6 +37,10 @@ Bug Fixes
   - Fixed an issue with the initial Gaussian theta units in
     ``centroid_2dg``. [#2013]
 
+  - Fixed a corner-case issue where zero-sum arrays with ndim > 2 input
+    to ``centroid_com`` would return only two np.nan coordinates instead
+    of matching the dimensionality of the input array. [#2045]
+
 - ``photutils.psf``
 
   - Fixed a bug in ``fit_2dgaussian`` and ``fit_fwhm`` where the fit

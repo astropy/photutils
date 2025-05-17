@@ -76,6 +76,15 @@ def test_centroid_comquad(test_simple_data, x_std, y_std, theta, units):
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
 
 
+@pytest.mark.parametrize('ndim', [1, 2, 3, 4, 5])
+def test_centroid_com_zero_sum(ndim):
+    data = np.zeros([10] * ndim)
+    cen = centroid_com(data)
+    assert cen.shape == (ndim,)
+    for cen_ in cen:
+        assert np.isnan(cen_)
+
+
 @pytest.mark.parametrize('use_mask', [True, False])
 def test_centroid_comquad_nan_withmask(use_mask):
     xc_ref = 24.7
@@ -186,6 +195,11 @@ def test_centroid_quadratic_npts():
 
 
 def test_centroid_quadratic_invalid_inputs():
+    data = np.zeros((4, 4, 4))
+    match = 'data must be a 2D array'
+    with pytest.raises(ValueError, match=match):
+        centroid_quadratic(data)
+
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
     match = 'xpeak and ypeak must both be input or "None"'
@@ -193,14 +207,17 @@ def test_centroid_quadratic_invalid_inputs():
         centroid_quadratic(data, xpeak=3, ypeak=None)
     with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, xpeak=None, ypeak=3)
+
     match = 'fit_boxsize must have 1 or 2 elements'
     with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, fit_boxsize=(2, 2, 2))
+
     match = 'fit_boxsize must have an odd value for both axes'
     with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, fit_boxsize=(-2, 2))
     with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, fit_boxsize=(2, 2))
+
     match = 'data and mask must have the same shape'
     with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, mask=mask)

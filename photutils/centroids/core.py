@@ -87,7 +87,7 @@ def centroid_com(data, mask=None):
 
     total = np.sum(data)
     if total == 0:
-        return np.array((np.nan, np.nan))
+        return np.full(data.ndim, np.nan)
 
     indices = np.ogrid[tuple(slice(0, i) for i in data.shape)]
 
@@ -222,6 +222,8 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     # preserve input data - which should be a small cutout image
     data = np.asanyarray(data, dtype=float).copy()
+    if data.ndim != 2:
+        raise ValueError('data must be a 2D array')
     ny, nx = data.shape
 
     badmask = ~np.isfinite(data)
