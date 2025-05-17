@@ -72,6 +72,8 @@ def centroid_1dg(data, error=None, mask=None):
     (data, error), _ = process_quantities((data, error), ('data', 'error'))
 
     data = np.ma.asanyarray(data)
+    if data.ndim != 2:
+        raise ValueError('data must be a 2D array')
 
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asanyarray(mask)
@@ -225,6 +227,8 @@ def centroid_2dg(data, error=None, mask=None):
     (data, error), _ = process_quantities((data, error), ('data', 'error'))
 
     data = np.ma.asanyarray(data)
+    if data.ndim != 2:
+        raise ValueError('data must be a 2D array')
 
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asanyarray(mask)

@@ -102,10 +102,16 @@ def test_centroids_nan_withmask(use_mask):
             assert len(warnlist) == nwarn
 
 
-def test_invalid_mask_shape():
+def test_invalid_shapes():
+    data = np.zeros((4, 4, 4))
+    match = 'data must be a 2D array'
+    with pytest.raises(ValueError, match=match):
+        centroid_1dg(data)
+    with pytest.raises(ValueError, match=match):
+        centroid_2dg(data)
+
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
-
     match = 'data and mask must have the same shape'
     with pytest.raises(ValueError, match=match):
         centroid_1dg(data, mask=mask)
