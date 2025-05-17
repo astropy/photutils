@@ -17,6 +17,8 @@ def build_ellipse_model(
     isolist,
     fill: float = 0.0,
     high_harmonics=False,
+    phi_min: float = 0.05,
+    sma_interval: float = 0.1,
     num_threads: int = 1,
 ):
     """
@@ -51,6 +53,14 @@ def build_ellipse_model(
         ``a4``, and ``b4``; see `~photutils.isophote.Isophote` for
         details) to the result.
 
+    phi_min : float, optional
+        The minimum increment of the position angle, after the initial
+        value of zero. The maximum value of phi will be 2*pi + phi_min.
+
+    sma_interval : optional, float
+        The interval between node values of the semi-major axis, which is used
+        to spline interpolate values of other shape parameters.
+
     num_threads : int, optional
         The number of threads to use for parallel evaluation. A value of None
         will result in automatic selection based on parallel library
@@ -71,7 +81,6 @@ def build_ellipse_model(
     finely_spaced_sma = np.arange(
         isolist[0].sma, isolist[-1].sma, sma_interval
     )
-    phi_min = 0.05
 
     # interpolate ellipse parameters
 
@@ -117,7 +126,7 @@ def build_ellipse_model(
     # correct deviations caused by fluctuations in spline solution
     eps_array[np.where(eps_array < 0.0)] = 0.0
 
-    phi_max = 2.0*np.pi + phi_min
+    phi_max = 2.0 * np.pi + phi_min
 
     # for each interpolated isophote, generate intensity values on the
     # output image array
