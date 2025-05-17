@@ -222,6 +222,8 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     # preserve input data - which should be a small cutout image
     data = np.asanyarray(data, dtype=float).copy()
+    if data.ndim != 2:
+        raise ValueError('data must be a 2D array')
     ny, nx = data.shape
 
     badmask = ~np.isfinite(data)
