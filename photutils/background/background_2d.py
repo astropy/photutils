@@ -372,8 +372,10 @@ class Background2D:
             return self._mask
 
         mask = np.logical_or(self._mask, self.coverage_mask)
+
         if self._mask is not None:
             del self._mask
+
         return mask
 
     def _combine_all_masks(self, mask):
@@ -389,14 +391,18 @@ class Background2D:
         if input_mask is None:
             if np.any(mask):
                 warnings.warn(msg, AstropyUserWarning)
-            return mask
 
-        total_mask = np.logical_or(input_mask, mask)
-
-        if input_mask is not None:
+            total_mask = mask
+        else:
             condition = np.logical_and(np.logical_not(input_mask), mask)
             if np.any(condition):
                 warnings.warn(msg, AstropyUserWarning)
+
+            total_mask = np.logical_or(input_mask, mask)
+
+        if np.all(total_mask):
+            msg = 'All input pixels are masked. Cannot compute a background.'
+            raise ValueError(msg)
 
         return total_mask
 
