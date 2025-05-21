@@ -290,9 +290,27 @@ class TestBackground2D:
 
     def test_completely_masked(self):
         mask = np.ones(DATA.shape, dtype=bool)
-        match = 'All boxes contain'
+        match = 'All input pixels are masked. Cannot compute a background.'
         with pytest.raises(ValueError, match=match):
             Background2D(DATA, (25, 25), mask=mask)
+        with pytest.raises(ValueError, match=match):
+            Background2D(DATA, (25, 25), coverage_mask=mask)
+
+        mask = np.zeros(DATA.shape, dtype=bool)
+        coverage_mask = np.zeros(DATA.shape, dtype=bool)
+        mask[:, 0:40] = True
+        coverage_mask[:, 40:] = True
+        with pytest.raises(ValueError, match=match):
+            Background2D(DATA, (25, 25), mask=mask,
+                         coverage_mask=coverage_mask)
+
+        data = DATA.copy()
+        data[:] = np.nan
+        match1 = 'Input data contains invalid values'
+        ctx1 = pytest.warns(AstropyUserWarning, match=match1)
+        ctx2 = pytest.raises(ValueError, match=match)
+        with ctx1, ctx2:
+            Background2D(data, (25, 25))
 
     def test_zero_padding(self):
         """
