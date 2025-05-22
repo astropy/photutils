@@ -44,8 +44,7 @@ def test_model():
     assert data.shape == model.shape
 
     residual = data - model
-    assert np.mean(residual) <= 5.0
-    assert np.mean(residual) >= -5.0
+    assert np.abs(np.mean(residual)) <= 5.0
 
 
 def test_model_simulated_data():
@@ -67,8 +66,8 @@ def test_model_simulated_data():
     assert data.shape == model.shape
 
     residual = data - model
-    assert np.mean(residual) <= 5.0
-    assert np.mean(residual) >= -5.0
+    assert np.abs(np.mean(residual)) <= 0.01
+    assert np.abs(np.median(residual)) <= 0.01
 
 
 def test_model_minimum_radius():
