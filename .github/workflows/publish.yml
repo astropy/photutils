@@ -43,23 +43,14 @@ jobs:
       test_command: pytest -p no:warnings --pyargs photutils
       targets: |
         # Linux wheels
-        - cp311-manylinux_x86_64
-        - cp312-manylinux_x86_64
-        - cp313-manylinux_x86_64
+        - cp*-manylinux_x86_64
 
         # MacOS X wheels
-        - cp311*macosx_x86_64
-        - cp312*macosx_x86_64
-        - cp313*macosx_x86_64
-
-        - cp311*macosx_arm64
-        - cp312*macosx_arm64
-        - cp313*macosx_arm64
+        - cp*macosx_x86_64
+        - cp*macosx_arm64
 
         # Windows wheels
-        - cp311*win_amd64
-        - cp312*win_amd64
-        - cp313*win_amd64
+        - cp*win_amd64
 
       # Developer wheels
       upload_to_anaconda: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
