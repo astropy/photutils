@@ -309,6 +309,3 @@ convention = 'numpy'
 ignore-words-list = """
     ned,
 """
-
-[tool.distutils.bdist_wheel]
-py-limited-api = "cp311"
