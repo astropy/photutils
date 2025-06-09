@@ -662,7 +662,7 @@ class Background2D:
             filled by IDW interpolation.
         """
         if not np.any(np.isnan(data)):
-            # output integer dtype if input data was integer dtyle
+            # output integer dtype if input data was integer dtype
             if data.dtype != self._data_dtype:
                 data = data.astype(self._data_dtype)
             return data
@@ -681,7 +681,7 @@ class Background2D:
         interp_data = np.copy(data)  # copy to avoid modifying the input data
         interp_data[idx] = interp_values
 
-        # output integer dtype if input data was integer dtyle
+        # output integer dtype if input data was integer dtype
         if interp_data.dtype != self._data_dtype:
             interp_data = interp_data.astype(self._data_dtype)
 
