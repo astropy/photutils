@@ -100,18 +100,27 @@ dev = 'dev' in release
 
 # -- Options for HTML output --------------------------------------------------
 
-html_theme_options.update(  # noqa: F405
-    {
-        'github_url': 'https://github.com/astropy/photutils',
-        'header_links_before_dropdown': 6,
-        'navigation_with_keys': False,
-        'use_edit_page_button': False,
-        'logo': {
-            'image_light': 'photutils_logo_light_plain_path.svg',
-            'image_dark': 'photutils_logo_dark_plain_path.svg',
-        },
-    }
-)
+html_theme_options = {
+    'header_links_before_dropdown': 6,
+    'collapse_navigation': True,
+    'navigation_depth': 2,
+    'show_nav_level': 2,
+    'navigation_with_keys': False,
+    'use_edit_page_button': False,
+    'logo': {
+        'image_light': 'photutils_logo_light_plain_path.svg',
+        'image_dark': 'photutils_logo_dark_plain_path.svg',
+    },
+    # alternate way to set the logo
+    # 'github_url': 'https://github.com/astropy/photutils',
+    'icon_links': [
+        {'name': 'GitHub',
+         'url': 'https://github.com/astropy/photutils',
+         'icon': 'fa-brands fa-github',
+         'type': 'fontawesome',
+         },
+    ],
+}
 
 html_title = f'{project} {release}'
 html_show_sourcelink = False
