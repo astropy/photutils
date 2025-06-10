@@ -29,6 +29,14 @@ New Features
   - An optional ``array`` keyword was added to the ``SourceCatalog``
     ``make_cutouts`` method. [#2023]
 
+- ``photutils.isophote``
+
+  - ``build_ellipse_model`` is now Cythonized and considerably faster.
+
+  - ``build_ellipse_model`` also has additional optional keyword
+     arguments ``phi_min`` and ``sma_interval``, which were previously
+     hardcoded values.
+
 Bug Fixes
 ^^^^^^^^^
 
