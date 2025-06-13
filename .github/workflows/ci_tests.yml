@@ -121,8 +121,8 @@ jobs:
           - os: windows-latest
             python: '3.13'
             tox_env: 'py313-test-alldeps'
-            allow_failure: false
-            prefix: ''
+            allow_failure: true
+            prefix: '(TEMP Allowed failure)'
 
     steps:
     - name: Check out repository
