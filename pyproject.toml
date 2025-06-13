@@ -193,6 +193,19 @@ ignore = [
     'PY005',  # ignore having a tests/ folder
 ]
 
+[tool.codespell]
+ignore-words-list = """
+    conver,
+    exten,
+    fom,
+    ned,
+"""
+
+[tool.docformatter]
+    wrap-summaries = 72
+    pre-summary-newline = true
+    make-summary-multi-line = true
+
 [tool.numpydoc_validation]
 checks = [
     'all',   # report on all checks, except the below
@@ -237,11 +250,6 @@ exclude = [
     # GL08: inner function
     '\.optimize_func$',
 ]
-
-[tool.docformatter]
-    wrap-summaries = 72
-    pre-summary-newline = true
-    make-summary-multi-line = true
 
 [tool.ruff]
 line-length = 79
@@ -304,11 +312,3 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = 'numpy'
-
-[tool.codespell]
-ignore-words-list = """
-    conver,
-    exten,
-    fom,
-    ned,
-"""
