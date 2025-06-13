@@ -307,5 +307,8 @@ convention = 'numpy'
 
 [tool.codespell]
 ignore-words-list = """
+    conver,
+    exten,
+    fom,
     ned,
 """
