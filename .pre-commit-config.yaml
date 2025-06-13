@@ -112,6 +112,11 @@ repos:
       types:
         - python
 
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.9.0
+    hooks:
+    - id: zizmor
+
   # - repo: https://github.com/MarcoGorelli/absolufy-imports
   #   rev: v0.3.1
   #   hooks:
