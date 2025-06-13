@@ -305,3 +305,6 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = 'numpy'
+
+[tool.distutils.bdist_wheel]
+py-limited-api = "cp311"
