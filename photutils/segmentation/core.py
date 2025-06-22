@@ -6,6 +6,7 @@ segment within a segmentation image.
 
 import inspect
 import warnings
+from collections import defaultdict
 from copy import copy, deepcopy
 
 import numpy as np
@@ -122,6 +123,10 @@ class SegmentationImage:
         segments = []
 
         if HAS_RASTERIO and HAS_SHAPELY:
+            if len(self.polygons) != len(self.labels):
+                raise ValueError('The number of polygons does not match '
+                                 'the number of labels. Please report this '
+                                 'error.')
             for label, slc, bbox, area, polygon in zip(self.labels,
                                                        self.slices,
                                                        self.bbox,
@@ -1303,48 +1308,101 @@ class SegmentationImage:
         return fftconvolve(mask, footprint, 'same') > 0.5
 
     @lazyproperty
-    def _geo_polygons(self):
+    def _geojson_polygons(self):
         """
-        A list of polygons representing each source segment.
+        A dictionary of GeoJSON-like polygons representing each source
+        segment.
 
-        Each item in the list is tuple of (polygon, value) where the
-        polygon is a GeoJSON-like dict and the value is the label from
-        the segmentation image.
+        The keys are the unique label numbers in the segmentation image,
+        and the values are lists of polygons for each label.
 
-        Note that the coordinates of these polygon vertices are in a
-        reference frame with the (0, 0) origin at the *lower-left*
-        corner of the lower-left pixel.
+        Each item in the dictionary is list containing tuples of
+        (polygon, value) where the polygon is a GeoJSON-like dict and
+        the value is the label from the segmentation image. Non-
+        contiguous segments for a single label will have multiple tuples
+        in the list (e.g., from slicing the segmentation image where a
+        segment label is split into non-contiguous segments). Segments
+        with holes will have a single tuple with a polygon containing
+        the outer ring and the inner rings (holes) as a list of lists.
+
+        Note that the coordinates of these polygon vertices are
+        transformed to a reference frame with the (0, 0) origin at the
+        center of the lower-left pixel. This is done by shifting the
+        vertices by 0.5 pixels in both x and y directions, so that the
+        origin is at the center of the lower-left pixel. By default,
+        rasterio and GeoJSON use the corner of the lower-left pixel as
+        the origin, which is not compatible with the pixel coordinates
+        used in Photutils.
         """
         from rasterio.features import shapes
+        from rasterio.transform import Affine
 
-        polygons = list(shapes(self.data.astype('int32'), connectivity=8))
+        rasterio_int_dtypes = {np.dtype('uint8'), np.dtype('int8'),
+                               np.dtype('uint16'), np.dtype('int16'),
+                               np.dtype('int32')}
+
+        # try to convert the data to int32 if it has an unsupported
+        # dtype
+        if self.data.dtype not in rasterio_int_dtypes:
+            min_val, max_val = self.data.min(), self.data.max()
+            int32_info = np.iinfo(np.int32)
+
+            if min_val >= int32_info.min and max_val <= int32_info.max:
+                dtype = np.int32
+            else:
+                msg = (f'The segmentation image dtype is {self.data.dtype} '
+                       'with values outside the safe np.int32 range '
+                       f'[{int32_info.min}, {int32_info.max}]. The rasterio '
+                       'library cannot create polygons in this case. You may '
+                       'try to relabel your data to fit within an int32 '
+                       'range.')
+                raise ValueError(msg)
+        else:
+            dtype = self.data.dtype
+
+        # shift the vertices so that the (0, 0) origin is at the
+        # center of the lower-left pixel
+        transform = Affine(1.0, 0.0, -0.5, 0.0, 1.0, -0.5)
+
+        mask = self.data > 0  # mask out the background pixels
+        polygons = list(shapes(self.data.astype(dtype), connectivity=8,
+                               mask=mask, transform=transform))
+
         polygons.sort(key=lambda x: x[1])  # sort in label order
+        # polygons = [poly for poly in polygons if poly[1] != 0]
 
-        # do not include polygons for background (label = 0)
-        return polygons[1:]
+        # group polygons by label
+        polygon_dict = defaultdict(list)
+        for polygon, label in polygons:
+            polygon_dict[int(label)].append(polygon)
+
+        return polygon_dict
 
     @lazyproperty
     def polygons(self):
         """
         A list of `Shapely <https://shapely.readthedocs.io/en/stable/>`_
         polygons representing each source segment.
+
+        Polygon or MultiPolygon objects are returned, depending on
+        whether the source segment is a single polygon or multiple
+        polygons (e.g., holes or non-contiguous) for the same label.
         """
-        from shapely import transform
-        from shapely.geometry import shape
+        from shapely.geometry import MultiPolygon, shape
 
-        polygons = [shape(geo_poly[0]) for geo_poly in self._geo_polygons
-                    if geo_poly[1] != 0]
+        polygons = []
+        for label, geo_polys in self._geojson_polygons.items():
+            if len(geo_polys) == 0:
+                msg = f'Could not create a polygon for label {label}.'
+                raise ValueError(msg)
+            if len(geo_polys) == 1:
+                polygons.append(shape(geo_polys[0]))
+            elif len(geo_polys) > 1:
+                # merge multiple polygons for the same label
+                polys = [shape(poly) for poly in geo_polys]
+                polygons.append(MultiPolygon(polys))
 
-        # shift the vertices so that the (0, 0) origin is at the
-        # center of the lower-left pixel
-        return transform(polygons, lambda x: x - [0.5, 0.5])
-
-    @staticmethod
-    def _get_polygon_vertices(polygon, origin=(0, 0), scale=1.0):
-        xy = np.array(polygon.exterior.coords)
-        xy = scale * (xy + 0.5) - 0.5
-        xy -= origin
-        return xy
+        return polygons
 
     def to_regions(self):
         """
@@ -1360,21 +1418,108 @@ class SegmentationImage:
 
         Notes
         -----
+        The number of regions returned may not be equal to the number of
+        unique labels in the segmentation image. This occurs when the
+        segmentation image contains non-contiguous segments for a single
+        label. That can happen as a result of slicing the segmentation
+        image where a segment label is split into non-contiguous
+        segments.
+
         The polygons can be written to a file using the
         :meth:`regions.Regions.write` method.
         """
         from regions import Regions
 
-        return Regions([_shapely_polygon_to_region(poly)
-                        for poly in self.polygons])
+        # a list of Regions objects
+        regions_lst = [_shapely_polygon_to_region(poly)
+                       for poly in self.polygons]
+
+        # combine all Regions objects into a single Regions object
+        all_regions = []
+        for reg in regions_lst:
+            all_regions.extend(reg.regions)
+
+        return Regions(all_regions)
+
+    @staticmethod
+    def _convert_ring_to_path(ring):
+        """
+        Helper function to process a single Shapely ring (exterior or
+        interior) into vertices and Matplotlib path codes.
+        """
+        from matplotlib import path
+
+        coords = np.array(ring.coords)
+
+        # A closed polygon path in Matplotlib starts with MOVETO,
+        # is followed by LINETO for each subsequent vertex,
+        # and ends with a CLOSEPOLY.
+        codes = ([path.Path.MOVETO] + [path.Path.LINETO] * (len(coords) - 2)
+                 + [path.Path.CLOSEPOLY])
+
+        return coords, codes
+
+    def _convert_shapely_to_pathpatch(self, geometry, origin=(0, 0),
+                                      scale=1.0, **kwargs):
+        """
+        Create a single Matplotlib PathPatch from a Shapely geometry.
+
+        Parameters
+        ----------
+        geometry : `shapely.geometry.base.BaseGeometry`
+            The Shapely geometry to convert to a PathPatch.
+
+        **kwargs : dict, optional
+            Any keyword arguments accepted by
+            `matplotlib.patches.PathPatch`.
+
+        Returns
+        -------
+        patch : `matplotlib.patches.PathPatch` or `None`
+            A Matplotlib PathPatch representing the geometry, or `None`
+            if the geometry is empty.
+        """
+        from matplotlib import path
+        from matplotlib.patches import PathPatch
+
+        if geometry.is_empty:
+            return None
+
+        if geometry.geom_type == 'Polygon':
+            polygons = [geometry]
+        else:
+            polygons = list(geometry.geoms)
+
+        all_vertices = []
+        all_codes = []
+        for poly in polygons:
+            # For each polygon, process its exterior and all its
+            # interior rings. This loop structure avoids repeating the
+            # call to the helper function.
+            for ring in [poly.exterior, *list(poly.interiors)]:
+                vertices, codes = self._convert_ring_to_path(ring)
+
+                # TODO: handle origin and scale keywords
+                vertices = scale * (vertices + 0.5) - 0.5
+                vertices -= origin
+
+                all_vertices.append(vertices)
+                all_codes.extend(codes)
+
+        if not all_vertices:
+            return None
+
+        final_path = path.Path(np.concatenate(all_vertices), all_codes)
+
+        return PathPatch(final_path, **kwargs)
 
     def to_patches(self, *, origin=(0, 0), scale=1.0, **kwargs):
         """
-        Return a list of `~matplotlib.patches.Polygon` objects
+        Return a list of `~matplotlib.patches.PathPatch` objects
         representing each source segment.
 
-        By default, the polygon patch will have a white edge color and
-        no face color.
+        By default, the patch will have a white edge color and no face
+        color.
 
         Parameters
         ----------
@@ -1388,31 +1533,25 @@ class SegmentationImage:
 
         **kwargs : dict, optional
             Any keyword arguments accepted by
-            `matplotlib.patches.Polygon`.
+            `matplotlib.patches.PathPatch`.
 
         Returns
         -------
-        patches : list of `~matplotlib.patches.Polygon`
-            A list of matplotlib polygon patches for the source
-            segments.
+        patches : list of `~matplotlib.patches.PathPatch`
+            A list of matplotlib patches for the source segments.
         """
-        from matplotlib.patches import Polygon
-
         origin = np.array(origin)
         patch_kwargs = {'edgecolor': 'white', 'facecolor': 'none'}
         patch_kwargs.update(kwargs)
 
-        patches = []
-        for poly in self.polygons:
-            xy = self._get_polygon_vertices(poly, origin=origin, scale=scale)
-            patches.append(Polygon(xy, **patch_kwargs))
-
-        return patches
+        return [self._convert_shapely_to_pathpatch(geometry, origin=origin,
+                                                   scale=scale, **patch_kwargs)
+                for geometry in self.polygons if geometry.is_valid]
 
     def plot_patches(self, *, ax=None, origin=(0, 0), scale=1.0, labels=None,
                      **kwargs):
         """
-        Plot the `~matplotlib.patches.Polygon` objects for the source
+        Plot the `~matplotlib.patches.PathPatch` objects for the source
         segments on a matplotlib `~matplotlib.axes.Axes` instance.
 
         Parameters
@@ -1434,14 +1573,13 @@ class SegmentationImage:
 
         **kwargs : dict, optional
             Any keyword arguments accepted by
-            `matplotlib.patches.Polygon`.
+            `matplotlib.patches.PathPatch`.
 
         Returns
         -------
-        patches : list of `~matplotlib.patches.Polygon`
-            A list of matplotlib polygon patches for the plotted
-            polygons. The patches can be used, for example, when adding
-            a plot legend.
+        patches : list of `~matplotlib.patches.PathPatch`
+            A list of matplotlib patches for the plotted polygons. The
+            patches can be used, for example, when adding a plot legend.
 
         Examples
         --------
