@@ -289,9 +289,11 @@ ignore = [
     'N803',
     'PD011',
     'PERF203',
+    'PLC0415',  # import-outside-top-level
     'PLR0912',
     'PLR0913',
     'PLR2004',
+    'PLW1641',  # eq-without-hash
     'PLW2901',
     'PTH',
     'Q000',
@@ -303,6 +305,9 @@ ignore = [
     'TD003',
     'TRY003',
     'UP038',
+    'PT028',  # TEMP: pytest-parameter-with-default-argument
+    'PT031',  # TEMP: pytest-warns-with-multiple-statements
+    'RUF005',  # TEMP: collection-literal-concatenation
 ]
 
 [tool.ruff.lint.per-file-ignores]
