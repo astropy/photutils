@@ -96,21 +96,13 @@ repos:
       - id: numpydoc-validation
         exclude: "extern/"
 
-  # temporarily use to the latest PyPI release instead of GitHub
-  # https://github.com/PyCQA/docformatter/pull/287#issuecomment-2401028403
-  - repo: local
+  # Formats docstrings to follow PEP 257
+  - repo: https://github.com/PyCQA/docformatter
+    rev: v1.7.7
     hooks:
-    - id: docformatter
-      name: docformatter
-      description: Formats docstrings to follow PEP 257.
-      entry: python -Im docformatter
-      additional_dependencies:
-        - docformatter == 1.7.5
-      args: [--in-place, --config, ./pyproject.toml]
-      exclude: "extern/"
-      language: python
-      types:
-        - python
+      - id: docformatter
+        args: [--in-place, --config, ./pyproject.toml]
+        exclude: "extern/"
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
     rev: v1.9.0
