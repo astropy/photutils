@@ -289,9 +289,11 @@ ignore = [
     'N803',
     'PD011',
     'PERF203',
+    'PLC0415',  # import-outside-top-level
     'PLR0912',
     'PLR0913',
     'PLR2004',
+    'PLW1641',  # eq-without-hash
     'PLW2901',
     'PTH',
     'Q000',

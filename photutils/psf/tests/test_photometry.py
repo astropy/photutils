@@ -396,11 +396,11 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
 
     # test results when fit does not converge (fitter_maxiters=3)
     match = r'One or more fit\(s\) may not have converged.'
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4, fitter_maxiters=3)
     with pytest.warns(AstropyUserWarning, match=match):
-        psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                                aperture_radius=4, fitter_maxiters=3)
         phot = psfphot(data, error=error)
-        assert len(phot) == len(sources)
+    assert len(phot) == len(sources)
 
 
 @pytest.mark.parametrize('mode', ['new', 'all'])
@@ -498,7 +498,7 @@ def test_psf_photometry_mask(test_data):
     match = 'Input data contains unmasked non-finite values'
     with pytest.warns(AstropyUserWarning, match=match):
         phot1 = psfphot(data, error=error, mask=None)
-        assert len(phot1) == len(sources)
+    assert len(phot1) == len(sources)
 
     mask = ~np.isfinite(data)
     phot2 = psfphot(data, error=error, mask=mask)
@@ -506,16 +506,16 @@ def test_psf_photometry_mask(test_data):
 
     # unmasked NaN with mask not None
     match = 'Input data contains unmasked non-finite values'
+    mask = ~np.isfinite(data)
+    mask[55, 65] = False
     with pytest.warns(AstropyUserWarning, match=match):
-        mask = ~np.isfinite(data)
-        mask[55, 65] = False
         phot = psfphot(data, error=error, mask=mask)
-        assert len(phot) == len(sources)
+    assert len(phot) == len(sources)
 
     # mask all True; finder returns no sources
     match = 'No sources were found'
+    mask = np.ones(data.shape, dtype=bool)
     with pytest.warns(NoDetectionsWarning, match=match):
-        mask = np.ones(data.shape, dtype=bool)
         psfphot(data, mask=mask)
 
     # completely masked source
@@ -749,8 +749,8 @@ def test_large_group_warning():
                                              flux=(500, 700),
                                              min_separation=10, seed=0)
     match = 'Some groups have more than'
+    psfphot = PSFPhotometry(psf_model, fit_shape, grouper=grouper)
     with pytest.warns(AstropyUserWarning, match=match):
-        psfphot = PSFPhotometry(psf_model, fit_shape, grouper=grouper)
         psfphot(data, init_params=true_params)
 
 
@@ -806,7 +806,7 @@ def test_fit_warning(test_data):
     match = r'One or more fit\(s\) may not have converged.'
     with pytest.warns(AstropyUserWarning, match=match):
         _ = psfphot(data)
-        assert len(psfphot.fit_info['fit_error_indices']) > 0
+    assert len(psfphot.fit_info['fit_error_indices']) > 0
 
 
 def test_fitter_no_maxiters_no_metrics(test_data):
@@ -825,9 +825,9 @@ def test_fitter_no_maxiters_no_metrics(test_data):
     with pytest.warns(AstropyUserWarning, match=match):
         psfphot = PSFPhotometry(psf_model, fit_shape, fitter=fitter,
                                 finder=finder, aperture_radius=4)
-        phot = psfphot(data, error=error)
-        assert np.all(np.isnan(phot['qfit']))
-        assert np.all(np.isnan(phot['cfit']))
+    phot = psfphot(data, error=error)
+    assert np.all(np.isnan(phot['qfit']))
+    assert np.all(np.isnan(phot['cfit']))
 
 
 def test_xy_bounds(test_data):
@@ -973,7 +973,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     match = 'No sources were found'
     with pytest.warns(NoDetectionsWarning, match=match):
         phot = psfphot(data, error=error)
-        assert phot is None
+    assert phot is None
 
 
 def test_iterative_psf_photometry_mode_all():
@@ -1078,7 +1078,7 @@ def test_iterative_psf_photometry_overlap():
     match = r'One or more .* may not have converged'
     with pytest.warns(AstropyUserWarning, match=match):
         phot = psfphot(data, error=error)
-        assert len(phot) == 38
+    assert len(phot) == 38
 
 
 def test_iterative_psf_photometry_subshape():

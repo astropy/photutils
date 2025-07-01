@@ -258,7 +258,7 @@ class TestDeblendSources:
         with pytest.warns(AstropyUserWarning, match=match):
             segm = deblend_sources(data, self.segm, self.npixels,
                                    progress_bar=False)
-            assert segm.info['warnings']['nonposmin']['input_labels'] == 1
+        assert segm.info['warnings']['nonposmin']['input_labels'] == 1
 
     def test_source_zero_min(self):
         data = self.data.copy()
@@ -267,7 +267,7 @@ class TestDeblendSources:
         with pytest.warns(AstropyUserWarning, match=match):
             segm = deblend_sources(data, self.segm, self.npixels,
                                    progress_bar=False)
-            assert segm.info['warnings']['nonposmin']['input_labels'] == 1
+        assert segm.info['warnings']['nonposmin']['input_labels'] == 1
 
     def test_connectivity(self):
         """
@@ -381,6 +381,6 @@ def test_nmarkers_fallback():
     match = 'The deblending mode of one or more source labels from the'
     with pytest.warns(AstropyUserWarning, match=match):
         segm2 = deblend_sources(data, segm, 1, mode='exponential')
-        assert segm2.info['warnings']['nmarkers']['input_labels'][0] == 1
-        mesg = segm2.info['warnings']['nmarkers']['message']
-        assert mesg.startswith('Deblending mode changed')
+    assert segm2.info['warnings']['nmarkers']['input_labels'][0] == 1
+    mesg = segm2.info['warnings']['nmarkers']['message']
+    assert mesg.startswith('Deblending mode changed')

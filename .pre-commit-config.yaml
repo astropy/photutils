@@ -55,7 +55,7 @@ repos:
         # Enforce that all noqa annotations always occur with specific codes.
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.11.12"
+    rev: "v0.12.1"
     hooks:
       - id: ruff
         args: ["--fix", "--show-fixes"]
@@ -77,7 +77,7 @@ repos:
         additional_dependencies: [toml]
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.2.0
+    rev: 7.3.0
     hooks:
       - id: flake8
         args: ["--ignore", "E501,W503"]
@@ -91,31 +91,29 @@ repos:
           - tomli
 
   - repo: https://github.com/numpy/numpydoc
-    rev: v1.8.0
+    rev: v1.9.0
     hooks:
       - id: numpydoc-validation
         exclude: "extern/"
 
-  # temporarily use to the latest PyPI release instead of GitHub
-  # https://github.com/PyCQA/docformatter/pull/287#issuecomment-2401028403
-  - repo: local
+  # Formats docstrings to follow PEP 257
+  - repo: https://github.com/PyCQA/docformatter
+    rev: v1.7.7
     hooks:
-    - id: docformatter
-      name: docformatter
-      description: Formats docstrings to follow PEP 257.
-      entry: python -Im docformatter
-      additional_dependencies:
-        - docformatter == 1.7.5
-      args: [--in-place, --config, ./pyproject.toml]
-      exclude: "extern/"
-      language: python
-      types:
-        - python
+      - id: docformatter
+        args: [--in-place, --config, ./pyproject.toml]
+        exclude: "extern/"
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.9.0
+    rev: v1.11.0
     hooks:
     - id: zizmor
+
+  - repo: https://github.com/sphinx-contrib/sphinx-lint
+    rev: v1.0.0
+    hooks:
+      - id: sphinx-lint
+        exclude: "(docs/_build/|photutils/extern/)"
 
   # - repo: https://github.com/MarcoGorelli/absolufy-imports
   #   rev: v0.3.1

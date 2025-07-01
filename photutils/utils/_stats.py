@@ -44,7 +44,7 @@ if HAS_BOTTLENECK:
         array_new = np.transpose(array, other_axes + axis)
 
         # Reshape the array by combining the moved axes
-        return array_new.reshape(array_new.shape[:len(other_axes)] + (-1,))
+        return array_new.reshape((*array_new.shape[:len(other_axes)], -1))
 
     def _apply_bottleneck(function, array, axis=None, **kwargs):
         """

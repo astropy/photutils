@@ -67,15 +67,15 @@ class TestDAOStarFinder:
 
     def test_daofind_nosources(self, data):
         match = 'No sources were found'
+        finder = DAOStarFinder(threshold=100, fwhm=2)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = DAOStarFinder(threshold=100, fwhm=2)
             tbl = finder(data)
-            assert tbl is None
+        assert tbl is None
 
+        finder = DAOStarFinder(threshold=1, fwhm=2)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = DAOStarFinder(threshold=1, fwhm=2)
             tbl = finder(-data)
-            assert tbl is None
+        assert tbl is None
 
     def test_daofind_exclude_border(self):
         data = np.zeros((9, 9))
@@ -95,30 +95,30 @@ class TestDAOStarFinder:
         Sources found, but none pass the sharpness criteria.
         """
         match = 'Sources were found, but none pass'
+        finder = DAOStarFinder(threshold=1, fwhm=1.0, sharplo=1.0)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = DAOStarFinder(threshold=1, fwhm=1.0, sharplo=1.0)
             tbl = finder(data)
-            assert tbl is None
+        assert tbl is None
 
     def test_daofind_roundness(self, data):
         """
         Sources found, but none pass the roundness criteria.
         """
         match = 'Sources were found, but none pass'
+        finder = DAOStarFinder(threshold=1, fwhm=1.0, roundlo=1.0)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = DAOStarFinder(threshold=1, fwhm=1.0, roundlo=1.0)
             tbl = finder(data)
-            assert tbl is None
+        assert tbl is None
 
     def test_daofind_peakmax(self, data):
         """
         Sources found, but none pass the peakmax criteria.
         """
         match = 'Sources were found, but none pass'
+        finder = DAOStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = DAOStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
             tbl = finder(data)
-            assert tbl is None
+        assert tbl is None
 
     def test_daofind_peakmax_filtering(self, data):
         """

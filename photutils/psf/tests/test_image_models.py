@@ -217,29 +217,29 @@ class TestFittableImageModel:
         with pytest.warns(AstropyDeprecationWarning):
             model_nonorm = FittableImageModel(gmodel_old(xx, yy))
 
-            assert_allclose(model_nonorm(0, 0), gmodel_old(0, 0))
-            assert_allclose(model_nonorm(1, 1), gmodel_old(1, 1))
-            assert_allclose(model_nonorm(-2, 1), gmodel_old(-2, 1))
+        assert_allclose(model_nonorm(0, 0), gmodel_old(0, 0))
+        assert_allclose(model_nonorm(1, 1), gmodel_old(1, 1))
+        assert_allclose(model_nonorm(-2, 1), gmodel_old(-2, 1))
 
-            # subpixel should *not* match, but be reasonably close
-            # in this case good to ~0.1% seems to be fine
-            assert_allclose(model_nonorm(0.5, 0.5), gmodel_old(0.5, 0.5),
-                            rtol=.001)
-            assert_allclose(model_nonorm(-0.5, 1.75), gmodel_old(-0.5, 1.75),
-                            rtol=.001)
+        # subpixel should *not* match, but be reasonably close
+        # in this case good to ~0.1% seems to be fine
+        assert_allclose(model_nonorm(0.5, 0.5), gmodel_old(0.5, 0.5),
+                        rtol=.001)
+        assert_allclose(model_nonorm(-0.5, 1.75), gmodel_old(-0.5, 1.75),
+                        rtol=.001)
 
         with pytest.warns(AstropyDeprecationWarning):
             model_norm = FittableImageModel(gmodel_old(xx, yy), normalize=True)
-            assert not np.allclose(model_norm(0, 0), gmodel_old(0, 0))
-            assert_allclose(np.sum(model_norm(xx, yy)), 1)
+        assert not np.allclose(model_norm(0, 0), gmodel_old(0, 0))
+        assert_allclose(np.sum(model_norm(xx, yy)), 1)
 
         with pytest.warns(AstropyDeprecationWarning):
             model_norm2 = FittableImageModel(gmodel_old(xx, yy),
                                              normalize=True,
                                              normalization_correction=2)
-            assert not np.allclose(model_norm2(0, 0), gmodel_old(0, 0))
-            assert_allclose(model_norm(0, 0), model_norm2(0, 0) * 2)
-            assert_allclose(np.sum(model_norm2(xx, yy)), 0.5)
+        assert not np.allclose(model_norm2(0, 0), gmodel_old(0, 0))
+        assert_allclose(model_norm(0, 0), model_norm2(0, 0) * 2)
+        assert_allclose(np.sum(model_norm2(xx, yy)), 0.5)
 
     def test_fittable_image_model_oversampling(self, gmodel_old):
         oversamp = 3  # oversampling factor
@@ -250,26 +250,26 @@ class TestFittableImageModel:
 
         with pytest.warns(AstropyDeprecationWarning):
             model_oversampled = FittableImageModel(im, oversampling=oversamp)
-            assert_allclose(model_oversampled(0, 0), gmodel_old(0, 0))
-            assert_allclose(model_oversampled(1, 1), gmodel_old(1, 1))
-            assert_allclose(model_oversampled(-2, 1), gmodel_old(-2, 1))
-            assert_allclose(model_oversampled(0.5, 0.5), gmodel_old(0.5, 0.5),
-                            rtol=.001)
-            assert_allclose(model_oversampled(-0.5, 1.75),
-                            gmodel_old(-0.5, 1.75), rtol=.001)
+        assert_allclose(model_oversampled(0, 0), gmodel_old(0, 0))
+        assert_allclose(model_oversampled(1, 1), gmodel_old(1, 1))
+        assert_allclose(model_oversampled(-2, 1), gmodel_old(-2, 1))
+        assert_allclose(model_oversampled(0.5, 0.5), gmodel_old(0.5, 0.5),
+                        rtol=.001)
+        assert_allclose(model_oversampled(-0.5, 1.75),
+                        gmodel_old(-0.5, 1.75), rtol=.001)
 
         # without oversampling the same tests should fail except for at
         # the origin
         with pytest.warns(AstropyDeprecationWarning):
             model_wrongsampled = FittableImageModel(im)
-            assert_allclose(model_wrongsampled(0, 0), gmodel_old(0, 0))
-            assert not np.allclose(model_wrongsampled(1, 1), gmodel_old(1, 1))
-            assert not np.allclose(model_wrongsampled(-2, 1),
-                                   gmodel_old(-2, 1))
-            assert not np.allclose(model_wrongsampled(0.5, 0.5),
-                                   gmodel_old(0.5, 0.5), rtol=.001)
-            assert not np.allclose(model_wrongsampled(-0.5, 1.75),
-                                   gmodel_old(-0.5, 1.75), rtol=.001)
+        assert_allclose(model_wrongsampled(0, 0), gmodel_old(0, 0))
+        assert not np.allclose(model_wrongsampled(1, 1), gmodel_old(1, 1))
+        assert not np.allclose(model_wrongsampled(-2, 1),
+                               gmodel_old(-2, 1))
+        assert not np.allclose(model_wrongsampled(0.5, 0.5),
+                               gmodel_old(0.5, 0.5), rtol=.001)
+        assert not np.allclose(model_wrongsampled(-0.5, 1.75),
+                               gmodel_old(-0.5, 1.75), rtol=.001)
 
     def test_centering_oversampled(self, gmodel_old):
         oversamp = 3
@@ -279,18 +279,18 @@ class TestFittableImageModel:
             model_oversampled = FittableImageModel(gmodel_old(xx, yy),
                                                    oversampling=oversamp)
 
-            valcen = gmodel_old(0, 0)
-            val36 = gmodel_old(0.66, 0.66)
+        valcen = gmodel_old(0, 0)
+        val36 = gmodel_old(0.66, 0.66)
 
-            assert_allclose(valcen, model_oversampled(0, 0))
-            assert_allclose(val36, model_oversampled(0.66, 0.66), rtol=1.0e-6)
+        assert_allclose(valcen, model_oversampled(0, 0))
+        assert_allclose(val36, model_oversampled(0.66, 0.66), rtol=1.0e-6)
 
-            model_oversampled.x_0 = 2.5
-            model_oversampled.y_0 = -3.5
+        model_oversampled.x_0 = 2.5
+        model_oversampled.y_0 = -3.5
 
-            assert_allclose(valcen, model_oversampled(2.5, -3.5))
-            assert_allclose(val36, model_oversampled(2.5 + 0.66, -3.5 + 0.66),
-                            rtol=1.0e-6)
+        assert_allclose(valcen, model_oversampled(2.5, -3.5))
+        assert_allclose(val36, model_oversampled(2.5 + 0.66, -3.5 + 0.66),
+                        rtol=1.0e-6)
 
     def test_oversampling_inputs(self):
         data = np.arange(30).reshape(5, 6)

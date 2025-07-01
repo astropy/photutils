@@ -199,10 +199,10 @@ def test_radial_profile_nonfinite(profile_data):
     match = 'Input data contains non-finite values'
     with pytest.warns(AstropyUserWarning, match=match):
         rp3 = RadialProfile(data2, xycen, edge_radii, error=error, mask=None)
-        assert_allclose(rp1.profile, rp3.profile)
+    assert_allclose(rp1.profile, rp3.profile)
 
     error2 = error.copy()
     error2[40, 40] = np.inf
     with pytest.warns(AstropyUserWarning, match=match):
         rp4 = RadialProfile(data, xycen, edge_radii, error=error2, mask=None)
-        assert_allclose(rp1.profile, rp4.profile)
+    assert_allclose(rp1.profile, rp4.profile)
