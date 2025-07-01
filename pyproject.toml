@@ -305,7 +305,6 @@ ignore = [
     'TD003',
     'TRY003',
     'UP038',
-    'PT028',  # TEMP: pytest-parameter-with-default-argument
     'PT031',  # TEMP: pytest-warns-with-multiple-statements
     'RUF005',  # TEMP: collection-literal-concatenation
 ]

@@ -63,13 +63,15 @@ from photutils.isophote.integrator import BILINEAR
 #                                   'synth_highsnr'])
 @pytest.mark.parametrize('name', ['synth_highsnr'])
 @pytest.mark.remote_data
-def test_regression(name, integrmode=BILINEAR, verbose=False):
+def test_regression(name):
     """
     NOTE: The original code in SPP won't create the right table
     for the MEAN integration moder, so use the screen output
     at synth_table_mean.txt to compare results visually with
     synth_table_mean.fits.
     """
+    integrmode = BILINEAR
+    verbose = False
     filename = f'{name}_table.fits'
     path = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
     table = Table.read(path)

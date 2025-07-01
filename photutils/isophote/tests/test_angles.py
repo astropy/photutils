@@ -16,7 +16,9 @@ def sector_area(a, eps, phi, r):
     return abs(a**2 * (1.0 - eps) / 2.0 * math.acos(aux))
 
 
-def test_angles(phi_min=0.05, phi_max=0.2):
+def test_angles():
+    phi_min = 0.05
+    phi_max = 0.2
     a = 40.0
     astep = 1.1
     eps = 0.1
