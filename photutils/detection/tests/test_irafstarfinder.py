@@ -50,47 +50,47 @@ class TestIRAFStarFinder:
     def test_irafstarfind_nosources(self):
         data = np.ones((3, 3))
         match = 'No sources were found'
+        finder = IRAFStarFinder(threshold=10, fwhm=1)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = IRAFStarFinder(threshold=10, fwhm=1)
             tbl = finder(data)
-            assert tbl is None
+        assert tbl is None
 
         data = np.ones((5, 5))
         data[2, 2] = 10.0
+        finder = IRAFStarFinder(threshold=0.1, fwhm=0.1)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = IRAFStarFinder(threshold=0.1, fwhm=0.1)
             tbl = finder(-data)
-            assert tbl is None
+        assert tbl is None
 
     def test_irafstarfind_sharpness(self, data):
         """
         Sources found, but none pass the sharpness criteria.
         """
         match = 'Sources were found, but none pass'
+        finder = IRAFStarFinder(threshold=1, fwhm=1.0, sharplo=2.0)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = IRAFStarFinder(threshold=1, fwhm=1.0, sharplo=2.0)
             tbl = finder(data)
-            assert tbl is None
+        assert tbl is None
 
     def test_irafstarfind_roundness(self, data):
         """
         Sources found, but none pass the roundness criteria.
         """
         match = 'Sources were found, but none pass'
+        finder = IRAFStarFinder(threshold=1, fwhm=1.0, roundlo=1.0)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = IRAFStarFinder(threshold=1, fwhm=1.0, roundlo=1.0)
             tbl = finder(data)
-            assert tbl is None
+        assert tbl is None
 
     def test_irafstarfind_peakmax(self, data):
         """
         Sources found, but none pass the peakmax criteria.
         """
         match = 'Sources were found, but none pass'
+        finder = IRAFStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = IRAFStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
             tbl = finder(data)
-            assert tbl is None
+        assert tbl is None
 
     def test_irafstarfind_peakmax_filtering(self, data):
         """

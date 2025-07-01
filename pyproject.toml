@@ -305,7 +305,6 @@ ignore = [
     'TD003',
     'TRY003',
     'UP038',
-    'PT031',  # TEMP: pytest-warns-with-multiple-statements
 ]
 
 [tool.ruff.lint.per-file-ignores]

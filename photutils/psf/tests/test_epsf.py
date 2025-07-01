@@ -89,26 +89,25 @@ class TestEPSFBuild:
 
         size = 25
         match = 'were not extracted because their cutout region extended'
+        ndd_inputs = (ndd1, ndd2, ndd3)
         with pytest.warns(AstropyUserWarning, match=match):
-            ndd_inputs = (ndd1, ndd2, ndd3)
-
             outputs = [extract_stars(ndd_input, self.init_stars, size=size)
                        for ndd_input in ndd_inputs]
 
-            for stars in outputs:
-                assert len(stars) == 81
-                assert isinstance(stars, EPSFStars)
-                assert isinstance(stars[0], EPSFStars)
-                assert stars[0].data.shape == (size, size)
-                assert stars[0].weights.shape == (size, size)
+        for stars in outputs:
+            assert len(stars) == 81
+            assert isinstance(stars, EPSFStars)
+            assert isinstance(stars[0], EPSFStars)
+            assert stars[0].data.shape == (size, size)
+            assert stars[0].weights.shape == (size, size)
 
         assert_allclose(outputs[0].weights, outputs[1].weights)
         assert_allclose(outputs[0].weights, outputs[2].weights)
 
         match = 'One or more weight values is not finite'
+        uncertainty = StdDevUncertainty(np.zeros(shape))
+        ndd = NDData(self.nddata.data, uncertainty=uncertainty)
         with pytest.warns(AstropyUserWarning, match=match):
-            uncertainty = StdDevUncertainty(np.zeros(shape))
-            ndd = NDData(self.nddata.data, uncertainty=uncertainty)
             stars = extract_stars(ndd, self.init_stars[0:3], size=size)
 
     def test_epsf_build(self):

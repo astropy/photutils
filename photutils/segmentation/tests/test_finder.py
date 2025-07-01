@@ -56,7 +56,7 @@ class TestSourceFinder:
         match = 'No sources were found'
         with pytest.warns(NoDetectionsWarning, match=match):
             segm = finder(self.convolved_data, 1000)
-            assert segm is None
+        assert segm is None
 
     @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_npixels_tuple(self):

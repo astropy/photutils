@@ -109,7 +109,7 @@ class TestImageDepth:
         match = 'One or more flux_limit values was zero'
         with pytest.warns(AstropyUserWarning, match=match):
             limits = depth(data, mask)
-            assert_allclose(limits, (0.0, np.inf))
+        assert_allclose(limits, (0.0, np.inf))
 
     def test_all_masked(self):
         radius = 4

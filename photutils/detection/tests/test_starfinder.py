@@ -60,17 +60,17 @@ class TestStarFinder:
 
     def test_nosources(self, data, kernel):
         match = 'No sources were found'
+        finder = StarFinder(100, kernel)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = StarFinder(100, kernel)
             tbl = finder(data)
-            assert tbl is None
+        assert tbl is None
 
         data = np.ones((5, 5))
         data[2, 2] = 10.0
+        finder = StarFinder(1, kernel)
         with pytest.warns(NoDetectionsWarning, match=match):
-            finder = StarFinder(1, kernel)
             tbl = finder(-data)
-            assert tbl is None
+        assert tbl is None
 
     def test_min_separation(self, data, kernel):
         finder1 = StarFinder(1, kernel, min_separation=0)
@@ -89,10 +89,10 @@ class TestStarFinder:
         assert len(tbl2) == 16
 
         match = 'Sources were found, but none pass'
+        starfinder = StarFinder(10, kernel, peakmax=5)
         with pytest.warns(NoDetectionsWarning, match=match):
-            starfinder = StarFinder(10, kernel, peakmax=5)
             tbl = starfinder(data)
-            assert tbl is None
+        assert tbl is None
 
     def test_peakmax_limit(self):
         """

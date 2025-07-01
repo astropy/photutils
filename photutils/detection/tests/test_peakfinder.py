@@ -171,7 +171,7 @@ class TestFindPeaks:
         match = 'Input data is constant'
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = find_peaks(data, 0.0)
-            assert tbl is None
+        assert tbl is None
 
     def test_no_peaks(self, data):
         """
@@ -182,20 +182,20 @@ class TestFindPeaks:
         match = 'No local peaks were found'
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = find_peaks(data, 10000)
-            assert tbl is None
+        assert tbl is None
 
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = find_peaks(data, 100000, centroid_func=centroid_com)
-            assert tbl is None
+        assert tbl is None
 
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = find_peaks(data, 100000, wcs=fits_wcs)
-            assert tbl is None
+        assert tbl is None
 
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = find_peaks(data, 100000, wcs=fits_wcs,
                              centroid_func=centroid_com)
-            assert tbl is None
+        assert tbl is None
 
     def test_data_nans(self, data):
         """

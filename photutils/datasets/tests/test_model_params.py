@@ -59,13 +59,13 @@ def test_make_model_params_nsources():
     ``n_sources``.
     """
     match = r'Unable to produce .* coordinates within the given shape'
+    shape = (200, 500)
+    n_sources = 100
     with pytest.warns(AstropyUserWarning, match=match):
-        shape = (200, 500)
-        n_sources = 100
         params = make_model_params(shape, n_sources, min_separation=50,
                                    amplitude=(100, 500), x_stddev=(1, 5),
                                    y_stddev=(1, 5), theta=(0, np.pi))
-        assert len(params) < 100
+    assert len(params) < 100
 
 
 def test_make_model_params_border_size():
