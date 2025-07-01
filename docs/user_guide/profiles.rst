@@ -281,7 +281,7 @@ in the `~photutils.profiles.RadialProfile.gaussian_profile` attribute::
      3.20636838e-03 1.24452479e-03 4.61765823e-04 1.63782737e-04]
 
 Finally, let's plot the fitted 1D Gaussian model for the
-class:`~photutils.profiles.RadialProfile` radial profile:
+:class:`~photutils.profiles.RadialProfile` radial profile:
 
 .. plot::
    :include-source:
