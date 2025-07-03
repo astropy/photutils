@@ -487,10 +487,10 @@ class TestSegmentationImage:
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_patches(self):
-        from matplotlib.patches import Polygon
+        from matplotlib.patches import PathPatch
 
         patches = self.segm.to_patches(edgecolor='blue')
-        assert isinstance(patches[0], Polygon)
+        assert isinstance(patches[0], PathPatch)
         assert patches[0].get_edgecolor() == (0, 0, 1, 1)
 
         scale = 2.0
@@ -501,18 +501,18 @@ class TestSegmentationImage:
         assert_allclose(v2, v3)
 
         patches = self.segm.plot_patches(edgecolor='red')
-        assert isinstance(patches[0], Polygon)
+        assert isinstance(patches[0], PathPatch)
         assert patches[0].get_edgecolor() == (1, 0, 0, 1)
 
         patches = self.segm.plot_patches(labels=1)
         assert len(patches) == 1
         assert isinstance(patches, list)
-        assert isinstance(patches[0], Polygon)
+        assert isinstance(patches[0], PathPatch)
 
         patches = self.segm.plot_patches(labels=(4, 7))
         assert len(patches) == 2
         assert isinstance(patches, list)
-        assert isinstance(patches[0], Polygon)
+        assert isinstance(patches[0], PathPatch)
 
     def test_deblended_labels(self):
         data = np.array([[1, 1, 0, 0, 4, 4],
