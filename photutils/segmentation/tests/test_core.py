@@ -472,6 +472,13 @@ class TestSegmentationImage:
         assert isinstance(regions[0], PolygonPixelRegion)
         assert len(regions) == self.segm.nlabels
 
+        segm = self.segm.copy()
+        segm.reassign_labels(labels=4, new_label=1)
+        regions = segm.to_regions(grouped=True)
+        assert isinstance(regions, list)
+        assert isinstance(regions[0], Regions)
+        assert isinstance(regions[1], PolygonPixelRegion)
+
         data = np.zeros((5, 5), dtype=int)
         data[2, 2] = 10
         segm = SegmentationImage(data)
@@ -513,6 +520,93 @@ class TestSegmentationImage:
         assert len(patches) == 2
         assert isinstance(patches, list)
         assert isinstance(patches[0], PathPatch)
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_polygons_complex(self):
+        """
+        Test polygons, patches, and regions for segments that have holes
+        and/or are non-continguous.
+        """
+        from matplotlib.patches import PathPatch
+        from regions import PolygonPixelRegion, Regions
+        from shapely.geometry import MultiPolygon, Polygon
+
+        image = np.zeros((150, 150), dtype=np.uint32)
+
+        # polygon with one hole
+        image[10:90, 10:90] = 1
+        image[30:70, 30:70] = 0
+
+        # simple Polygon
+        image[15:25, 110:140] = 2
+        image[25:55, 110:120] = 2
+
+        # MultiPolygon
+        image[100:120, 20:40] = 3
+        image[105:120, 45:55] = 3
+        image[114:130, 60:80] = 3
+
+        # single polygon with multiple holes
+        image[85:145, 95:145] = 4
+        image[105:115, 105:115] = 0
+        image[125:135, 125:138] = 0
+        image[120:125, 100:120] = 0
+
+        # simple Polygon
+        image[5, 125:145] = 5
+
+        segm = SegmentationImage(image)
+
+        polygons = segm.polygons
+        assert len(polygons) == 5
+        for polygon in polygons:
+            assert isinstance(polygon, (Polygon, MultiPolygon))
+        assert isinstance(polygons[2], MultiPolygon)
+
+        segments = segm.segments
+        assert len(segments) == 5
+        assert isinstance(segments[0], Segment)
+
+        patches = segm.to_patches()
+        assert len(patches) == 5
+        for patch in patches:
+            assert isinstance(patch, PathPatch)
+
+        regions = segm.to_regions()
+        assert len(regions) == 7
+        assert isinstance(regions, Regions)
+        for region in regions:
+            assert isinstance(region, PolygonPixelRegion)
+
+        regions = segm.to_regions(grouped=True)
+        assert len(regions) == 5
+        assert isinstance(regions, list)
+        for region in regions:
+            assert isinstance(region, (Regions, PolygonPixelRegion))
+        assert isinstance(regions[2], Regions)
+
+        # combine all segments into a single segment;
+        # now have multipolygon objects, some with holes
+        segm.reassign_labels(segm.labels, new_label=4)
+        polygons = segm.polygons
+        assert len(polygons) == 1
+        assert isinstance(polygons[0], MultiPolygon)
+        segments = segm.segments
+        assert len(segments) == 1
+        patches = segm.to_patches()
+        assert len(patches) == 1
+        assert isinstance(patches[0], PathPatch)
+        regions = segm.to_regions()
+        assert len(regions) == 7
+        assert isinstance(regions, Regions)
+        assert isinstance(regions[0], PolygonPixelRegion)
+        regions = segm.to_regions(grouped=True)
+        assert len(regions) == 1
+        assert isinstance(regions, list)
+        assert isinstance(regions[0], Regions)
+        assert len(regions[0]) == 7
 
     def test_deblended_labels(self):
         data = np.array([[1, 1, 0, 0, 4, 4],
