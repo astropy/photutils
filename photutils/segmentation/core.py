@@ -1592,7 +1592,7 @@ class SegmentationImage:
 
     def to_regions(self, grouped=False):
         """
-        Return the `region.Region` objects representing the source
+        Return the `regions.Region` objects representing the source
         segments.
 
         The returned polygon region objects are defined as the exteriors
