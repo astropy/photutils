@@ -1584,42 +1584,76 @@ class SegmentationImage:
 
         return patches
 
-    def to_regions(self):
+    def to_regions(self, grouped=False):
         """
-        Return a `regions.Regions` object containing a list of
-        `~regions.PolygonPixelRegion` objects representing each source
-        segment.
+        Return the `region.Region` objects representing the source
+        segments.
+
+        The returned polygon region objects are defined as the exteriors
+        of the source segments. Interior holes within the source
+        segments are not included.
+
+        See the ``grouped`` keyword below for details about how
+        non-contiguous segments for a single label are handled.
+
+        Parameters
+        ----------
+        grouped : bool, optional
+            If `False` (the default), then a `regions.Regions`
+            object will be returned with a flattened list of
+            `~regions.PolygonPixelRegion` objects. Note that in this
+            case, there will be multiple `~regions.PolygonPixelRegion`
+            objects for a single label if the label has non-contiguous
+            segments. Because of this, the number of regions returned
+            may not be equal to the number of unique labels in the
+            segmentation image.
+
+            If `True`, then a list of `~regions.PolygonPixelRegion`
+            or `~regions.Regions` objects will be returned. There
+            will be one item in the list for each label. If a
+            label has non-contiguous segments, then the item will
+            be a `~regions.Regions` object containing multiple
+            `~regions.PolygonPixelRegion` objects for that label.
 
         Returns
         -------
         regions : `~regions.Regions`
-            A list of `~regions.PolygonPixelRegion` objects stored in a
-            `~regions.Regions` object.
+            A list of `~regions.Region` objects or a `~regions.Regions`
+            object, depending on the value of ``grouped`` (see above).
 
         Notes
         -----
-        The number of regions returned may not be equal to the number of
-        unique labels in the segmentation image. This occurs when the
-        segmentation image contains non-contiguous segments for a single
-        label. That can happen as a result of slicing the segmentation
-        image where a segment label is split into non-contiguous
-        segments.
+        If ``grouped=False``, then the number of regions returned may
+        not be equal to the number of unique labels in the segmentation
+        image. This occurs when the segmentation image contains
+        non-contiguous segments for a single label. That can happen as a
+        result of slicing the segmentation image where a segment label
+        is split into non-contiguous segments.
 
-        The polygons can be written to a file using the
-        :meth:`regions.Regions.write` method.
+        The meta attribute of the `~regions.PolygonPixelRegion` objects
+        will contain the label number as an integer value under the
+        'label' key. This can be used to identify the label of the
+        region.
         """
         from regions import Regions
 
-        # a list of Regions objects
-        regions_lst = [_shapely_polygon_to_region(poly)
-                       for poly in self.polygons]
+        regions = []
+        for label, poly in zip(self.labels, self.polygons, strict=True):
+            regions.append(_shapely_polygon_to_region(poly, label=int(label)))
 
-        # combine all Regions objects into a single Regions object
-        all_regions = []
-        for reg in regions_lst:
-            all_regions.extend(reg.regions)
+        if grouped:
+            return regions
 
-        return Regions(all_regions)
+        # If not grouped, return a Regions object with a flattened list
+        # of region objects
+        flat_regions = []
+        for region in regions:
+            if isinstance(region, Regions):
+                flat_regions.extend(region.regions)
+            else:
+                flat_regions.append(region)
+
+        return Regions(flat_regions)
 
     def imshow(self, ax=None, figsize=None, dpi=None, cmap=None, alpha=None):
         """
