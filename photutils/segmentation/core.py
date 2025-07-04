@@ -123,10 +123,6 @@ class SegmentationImage:
         segments = []
 
         if HAS_RASTERIO and HAS_SHAPELY:
-            if len(self.polygons) != len(self.labels):
-                raise ValueError('The number of polygons does not match '
-                                 'the number of labels. Please report this '
-                                 'error.')
             for label, slc, bbox, area, polygon in zip(self.labels,
                                                        self.slices,
                                                        self.bbox,
