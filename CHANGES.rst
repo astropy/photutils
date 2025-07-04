@@ -29,6 +29,10 @@ New Features
   - An optional ``array`` keyword was added to the ``SourceCatalog``
     ``make_cutouts`` method. [#2023]
 
+  - Added a ``grouped`` keyword to the ``SegmentationImage``
+    ``to_regions`` method. [#2060]
+
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -55,6 +59,10 @@ Bug Fixes
     ``SourceCatalog`` with ``overwrite=True`` would not be added to
     the ``extra_properties`` attribute.
 
+  - Fixed an issue where the ``SegmentationImage`` ``segments``
+    attribute would fail if any source segment was non-contiguous.
+    [#2060]
+
 API Changes
 ^^^^^^^^^^^
 
@@ -62,6 +70,19 @@ API Changes
 
   - The ``GriddedPSFModel`` ``data`` and ``grid_xypos`` attributes are
     now read-only. [#2036]
+
+- ``photutils.segmentation``
+
+  - The ``SegmentationImage`` ``polygons`` list may now include either
+    Shapely ``Polygon`` or ``MultiPolygon`` (non-contiguous) objects.
+    [#2060]
+
+  - The ``SegmentationImage`` ``to_patches`` and ``plot_patches``
+    methods now return ``matplotlib.patches.PathPatch`` objects. [#2060]
+
+  - The ``SegmentationImage`` ``to_regions`` method now returns
+    ``PolygonPixelRegion`` regions that have the segment label stored in
+    the object ``meta`` dictionary. [#2060]
 
 
 2.2.0 (2025-02-18)
