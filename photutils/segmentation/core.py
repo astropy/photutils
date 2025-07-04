@@ -1369,12 +1369,22 @@ class SegmentationImage:
                                mask=mask, transform=transform))
 
         polygons.sort(key=lambda x: x[1])  # sort in label order
-        # polygons = [poly for poly in polygons if poly[1] != 0]
 
         # group polygons by label
         polygon_dict = defaultdict(list)
         for polygon, label in polygons:
             polygon_dict[int(label)].append(polygon)
+
+        # Check that the polygon labels match the segmentation image
+        # labels; this is a sanity check to ensure that the rasterio
+        # library is working correctly.
+        # Note that polygons have been sorted by label.
+        if not np.all(np.array(list(polygon_dict.keys())) == self.labels):
+            msg = ('The segmentation image labels do not match the '
+                   'polygon labels. This may be due to a bug in the '
+                   'rasterio library or an unexpected data type in the '
+                   'segmentation image.')
+            raise ValueError(msg)
 
         return polygon_dict
 
