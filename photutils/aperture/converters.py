@@ -374,7 +374,7 @@ def _scalar_aperture_to_region(aperture):
     return region
 
 
-def _shapely_polygon_to_region(polygon):
+def _shapely_polygon_to_region(polygon, label=None):
     """
     Convert a `shapely.geometry.polygon.Polygon` object to a
     `regions.PolygonPixelRegion` object.
@@ -385,20 +385,22 @@ def _shapely_polygon_to_region(polygon):
             or `shapely.geometry.MultiPolygon`
         A Shapely Polygon or MultiPolygon object.
 
+    label : str or `None`, optional
+        A label for the region. If provided, it will be stored in the
+        meta attribute of the returned `regions.PolygonPixelRegion`
+        objects.
+
     Returns
     -------
-    regions : `regions.Regions`
-        A `regions.Regions` object containing one or more
+    result : list of `regions.PolygonPixelRegion` or `regions.Regions`
+        If the polygon is a `shapely.geometry.polygon.Polygon`,
+        then a `regions.PolygonPixelRegion` object is returned. If
+        the polygon is a `shapely.geometry.MultiPolygon`, then a
+        `regions.Regions` object is returned containing one or more
         `regions.PolygonPixelRegion` objects.
 
     Notes
     -----
-    The number of regions returned will be one if the input is a
-    `shapely.geometry.polygon.Polygon` object. If the input is a
-    `shapely.geometry.MultiPolygon` object, then the number of
-    regions returned will be equal to the number of polygons in the
-    `shapely.geometry.MultiPolygon` object.
-
     The `regions.PolygonPixelRegion` object does not include the
     last Shapely vertex, which is the same as the first vertex. The
     `regions.PolygonPixelRegion` does not need to include the last
@@ -416,15 +418,16 @@ def _shapely_polygon_to_region(polygon):
     from regions import PixCoord, PolygonPixelRegion, Regions
     from shapely.geometry import MultiPolygon, Polygon
 
-    regions = []
+    meta = {'label': label} if label is not None else None
+
     if isinstance(polygon, Polygon):
         x, y = np.transpose(polygon.exterior.coords[:-1])
-        regions.append(PolygonPixelRegion(vertices=PixCoord(x=x, y=y)))
-    elif isinstance(polygon, MultiPolygon):
+        return PolygonPixelRegion(vertices=PixCoord(x=x, y=y), meta=meta)
+    if isinstance(polygon, MultiPolygon):
+        geoms = []
         for poly in polygon.geoms:
             x, y = np.transpose(poly.exterior.coords[:-1])
-            regions.append(PolygonPixelRegion(vertices=PixCoord(x=x, y=y)))
-    else:
-        raise TypeError('Input must be a Polygon or MultiPolygon object')
-
-    return Regions(regions)
+            geoms.append(PolygonPixelRegion(vertices=PixCoord(x=x, y=y),
+                                            meta=meta))
+        return Regions(geoms)
+    raise TypeError('Input must be a Polygon or MultiPolygon object')
