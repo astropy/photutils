@@ -519,6 +519,6 @@ def test_shapely_polygon_to_region():
     region = _shapely_polygon_to_region(polygon)
     assert region == ref_region
 
-    match = 'Input polygon must be a shapely Polygon object'
+    match = 'Input must be a Polygon or MultiPolygon object'
     with pytest.raises(TypeError, match=match):
         _shapely_polygon_to_region('foo')
