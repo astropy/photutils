@@ -234,6 +234,10 @@ class Background2D:
         self._data = self._validate_array(data, 'data', shape=False)
         self._data_dtype = self._data.dtype
         self._data_shape = self._data.shape
+        if np.all(~np.isfinite(self._data)):
+            msg = ('Input data contains all non-finite (NaN or infinity) '
+                   'values. Cannot compute a background.')
+            raise ValueError(msg)
 
         # self._mask is a temporary instance variable to store the input
         # mask array (deleted in self._calculate_stats)
@@ -247,14 +251,15 @@ class Background2D:
 
         self.fill_value = fill_value
         if exclude_percentile < 0 or exclude_percentile > 100:
-            raise ValueError('exclude_percentile must be between 0 and 100 '
-                             '(inclusive).')
+            msg = 'exclude_percentile must be between 0 and 100 (inclusive).'
+            raise ValueError(msg)
         self.exclude_percentile = exclude_percentile
         self.filter_size = as_pair('filter_size', filter_size,
                                    lower_bound=(0, 1), check_odd=True)
         self.filter_threshold = filter_threshold
         if edge_method not in ('pad', 'crop'):
-            raise ValueError('edge_method must be "pad" or "crop"')
+            msg = 'edge_method must be "pad" or "crop"'
+            raise ValueError(msg)
         self.edge_method = edge_method
         self.sigma_clip = sigma_clip
         self.interpolator = interpolator
@@ -335,9 +340,11 @@ class Background2D:
         if array is not None:
             array = np.asanyarray(array)
             if array.ndim != 2:
-                raise ValueError(f'{name} must be a 2D array.')
+                msg = f'{name} must be a 2D array.'
+                raise ValueError(msg)
             if shape and array.shape != self._data.shape:
-                raise ValueError(f'data and {name} must have the same shape.')
+                msg = f'data and {name} must have the same shape.'
+                raise ValueError(msg)
         return array
 
     def _apply_units(self, data):
@@ -385,8 +392,8 @@ class Background2D:
         """
         input_mask = self._combine_input_masks()
 
-        msg = ('Input data contains invalid values (NaNs or infs), which '
-               'were automatically masked.')
+        msg = ('Input data contains non-finite (NaN or infinity) values, '
+               'which were automatically masked.')
 
         if input_mask is None:
             if np.any(mask):
@@ -609,11 +616,12 @@ class Background2D:
                 ngood = np.hstack([ngood, col_ngood])
 
         if np.all(np.isnan(bkg)):
-            raise ValueError('All boxes contain <= '
-                             f'{self._good_npixels_threshold} good pixels. '
-                             'Please check your data or increase '
-                             '"exclude_percentile" to allow more boxes to '
-                             'be included.')
+            msg = (f'All boxes contain <= {self._good_npixels_threshold} '
+                   f'unmasked or finite pixels ({self.box_size=}, '
+                   f'{self.exclude_percentile=}). Please check your data '
+                   'or increase "exclude_percentile" to allow more boxes to '
+                   'be included.')
+            raise ValueError(msg)
 
         # we no longer need the copy of the input array
         del self._data
