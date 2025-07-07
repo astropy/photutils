@@ -228,12 +228,13 @@ class TestBackground2D:
         assert_equal(bkg1.background[:50, :50], fill_value)
         assert_equal(bkg1.background_rms[:50, :50], fill_value)
 
-        # test combination of masks
+        # test that combined mask and coverage_mask gives the same
+        # results
         mask = np.zeros(DATA.shape, dtype=bool)
         coverage_mask = np.zeros(DATA.shape, dtype=bool)
         mask[:50, :25] = True
         coverage_mask[:50, 25:50] = True
-        match = 'Input data contains invalid values'
+        match = r'Input data contains non-finite \(NaN or infinity\) values'
         with pytest.warns(AstropyUserWarning, match=match):
             bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
                                 coverage_mask=mask, fill_value=0.0,
@@ -244,7 +245,7 @@ class TestBackground2D:
     def test_mask_nonfinite(self):
         data = DATA.copy()
         data[0, 0:50] = np.nan
-        match = 'Input data contains invalid values'
+        match = r'Input data contains non-finite \(NaN or infinity\) values'
         with pytest.warns(AstropyUserWarning, match=match):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1))
         assert_allclose(bkg.background, DATA, rtol=1e-5)
@@ -306,10 +307,8 @@ class TestBackground2D:
 
         data = DATA.copy()
         data[:] = np.nan
-        match1 = 'Input data contains invalid values'
-        ctx1 = pytest.warns(AstropyUserWarning, match=match1)
-        ctx2 = pytest.raises(ValueError, match=match)
-        with ctx1, ctx2:
+        match = r'Input data contains all non-finite \(NaN or infinity\)'
+        with pytest.raises(ValueError, match=match):
             Background2D(data, (25, 25))
 
     def test_zero_padding(self):
@@ -334,7 +333,7 @@ class TestBackground2D:
         """
         data = np.copy(DATA)
         data[0:50, 0:50] = np.nan
-        match = 'Input data contains invalid values'
+        match = r'Input data contains non-finite \(NaN or infinity\) values'
         with pytest.warns(AstropyUserWarning, match=match):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1),
                                exclude_percentile=100.0)
@@ -344,6 +343,15 @@ class TestBackground2D:
         data = np.ones((111, 121))
         bkg = Background2D(data, box_size=10, exclude_percentile=100)
         assert_allclose(bkg.background_mesh, np.ones((12, 13)))
+
+        data[:] = np.nan
+        data[0, 0] = 1.0
+        match1 = r'Input data contains non-finite \(NaN or infinity\) values'
+        match2 = r'All boxes contain .* unmasked or finite pixels'
+        ctx1 = pytest.warns(AstropyUserWarning, match=match1)
+        ctx2 = pytest.raises(ValueError, match=match2)
+        with ctx1, ctx2:
+            Background2D(data, (10, 10))
 
     def test_filter_threshold(self):
         """
@@ -467,6 +475,18 @@ class TestBackground2D:
         cls_repr = repr(bkg)
         assert cls_repr.startswith(f'{bkg.__class__.__name__}')
 
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:10, 0:10] = True
+        bkg = Background2D(data, (74, 99), mask=mask)
+        cls_repr = repr(bkg)
+        assert cls_repr.startswith(f'{bkg.__class__.__name__}')
+        assert 'mask' in cls_repr
+
+        bkg = Background2D(data, (74, 99), coverage_mask=mask)
+        cls_repr = repr(bkg)
+        assert cls_repr.startswith(f'{bkg.__class__.__name__}')
+        assert 'coverage_mask' in cls_repr
+
     def test_str(self):
         data = np.ones((300, 500))
         bkg = Background2D(data, (74, 99))
@@ -498,7 +518,7 @@ class TestBackground2D:
         arr2 = arr.copy()
         arr2[mask] = np.nan
         arr3 = arr2.copy()
-        match = 'Input data contains invalid values'
+        match = r'Input data contains non-finite \(NaN or infinity\) values'
         with pytest.warns(AstropyUserWarning, match=match):
             bkg2 = Background2D(arr2, box_size, mask=None,
                                 exclude_percentile=exclude_percentile,
