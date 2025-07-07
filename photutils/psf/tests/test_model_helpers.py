@@ -346,8 +346,8 @@ class TestPRFAdapter:
         if adapterkwargs['renormalize_psf']:
             mof = self.normalize_moffat(mof)
 
-        integrand, itol = dblquad(mof, -1.5, 1.5, lambda x: -1.5,
-                                  lambda x: 1.5)
+        integrand, itol = dblquad(mof, -1.5, 1.5, lambda _: -1.5,
+                                  lambda _: 1.5)
         assert_allclose(np.sum(evalmod), integrand, atol=itol * 10)
 
     @pytest.mark.parametrize('adapterkwargs', [
@@ -372,7 +372,7 @@ class TestPRFAdapter:
         eval11 = prf1(xg1, yg1)
         eval22 = prf2(xg2, yg2)
 
-        _, itol = dblquad(mof1, -2, 2, lambda x: -2, lambda x: 2)
+        _, itol = dblquad(mof1, -2, 2, lambda _: -2, lambda _: 2)
         # it's a bit of a guess that the above itol is appropriate, but
         # it should be close
         assert_allclose(np.sum(eval11), np.sum(eval22), atol=itol * 100)

@@ -539,8 +539,8 @@ class PRFAdapter(Fittable2DModel):
         if renormalize_psf:
             self._psf_scale_factor = 1.0 / dblquad(self.psfmodel,
                                                    -np.inf, np.inf,
-                                                   lambda x: -np.inf,
-                                                   lambda x: np.inf)[0]
+                                                   lambda _: -np.inf,
+                                                   lambda _: np.inf)[0]
         else:
             self._psf_scale_factor = 1
 
@@ -608,6 +608,6 @@ class PRFAdapter(Fittable2DModel):
         for i, (xi, yi) in enumerate(zip(dx.ravel(), dy.ravel(), strict=True)):
             outravel[i] = dblquad(self.psfmodel,
                                   xi - 0.5, xi + 0.5,
-                                  lambda x: yi - 0.5, lambda x: yi + 0.5,
+                                  lambda _: yi - 0.5, lambda _: yi + 0.5,
                                   **self._dblquadkwargs)[0]
         return out
