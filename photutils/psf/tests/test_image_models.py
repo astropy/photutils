@@ -86,7 +86,7 @@ class TestImagePSF:
         for x, y in [(0, 0), (1, 1), (-2, 1)]:
             assert_allclose(model(x + 2, y + 2), gaussian_psf(x, y), atol=5e-6)
 
-    def test_bounding_box(self, gaussian_psf):
+    def test_bounding_box(self):
         psf_data = np.arange(30, dtype=float).reshape(5, 6)
         psf_data /= np.sum(psf_data)
         model = ImagePSF(psf_data, flux=1, x_0=0, y_0=0)

@@ -376,7 +376,7 @@ class CentralEllipseFitter(EllipseFitter):
     the galaxy image.
     """
 
-    def fit(self, **kwargs):
+    def fit(self, **kwargs):  # noqa: ARG002
         """
         Perform just a simple 1-pixel extraction at the current (x0, y0)
         position using bilinear interpolation.
