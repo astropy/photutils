@@ -224,7 +224,7 @@ class TestDAOStarFinder:
             fwhm=2.5,
             roundlo=0,
             sharphi=1.407913491884342,
-            peakmax=1.0e20
+            peakmax=1.0e20,
         )
         tbl = finder.find_stars(data)
 

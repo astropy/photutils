@@ -350,5 +350,5 @@ INTEGRATORS = {
     NEAREST_NEIGHBOR: _NearestNeighborIntegrator,
     BILINEAR: _BiLinearIntegrator,
     MEAN: _MeanIntegrator,
-    MEDIAN: _MedianIntegrator
+    MEDIAN: _MedianIntegrator,
 }

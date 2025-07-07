@@ -38,7 +38,7 @@ def image_2d_wcs():
             'CDELT2': 0.0002777777778,
             'CRPIX2': 1,
             'CRVAL2': -20.833333059999998,
-        }
+        },
     )
 
 
@@ -92,7 +92,7 @@ def test_translation_ellipse(image_2d_wcs):
 
     region_shape = EllipsePixelRegion(
         center=PixCoord(x=42, y=43), width=16, height=10,
-        angle=Angle(30, 'deg')
+        angle=Angle(30, 'deg'),
     )
     aperture = region_to_aperture(region_shape)
     assert isinstance(aperture, EllipticalAperture)
@@ -150,7 +150,7 @@ def test_translation_rectangle(image_2d_wcs):
 
     region_shape = RectanglePixelRegion(
         center=PixCoord(x=42, y=43), width=16, height=10,
-        angle=Angle(30, 'deg')
+        angle=Angle(30, 'deg'),
     )
     aperture = region_to_aperture(region_shape)
     assert isinstance(aperture, RectangularAperture)
@@ -210,7 +210,7 @@ def test_translation_circle_annulus(image_2d_wcs):
     from regions import CircleAnnulusPixelRegion, PixCoord
 
     region_shape = CircleAnnulusPixelRegion(
-        center=PixCoord(x=42, y=43), inner_radius=5, outer_radius=8
+        center=PixCoord(x=42, y=43), inner_radius=5, outer_radius=8,
     )
     aperture = region_to_aperture(region_shape)
     assert isinstance(aperture, CircularAnnulus)
@@ -232,15 +232,15 @@ def test_translation_circle_annulus(image_2d_wcs):
     with pytest.raises(ValueError, match=match):
         CircleAnnulusPixelRegion(
             center=PixCoord(x=[0, 42], y=[1, 43]), inner_radius=5,
-            outer_radius=8
+            outer_radius=8,
         )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         CircleAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_radius=[1, 5], outer_radius=8
+            center=PixCoord(x=42, y=43), inner_radius=[1, 5], outer_radius=8,
         )
     with pytest.raises(ValueError, match=r'must be .* scalar'):
         CircleAnnulusPixelRegion(
-            center=PixCoord(x=42, y=43), inner_radius=5, outer_radius=[8, 10]
+            center=PixCoord(x=42, y=43), inner_radius=5, outer_radius=[8, 10],
         )
 
 

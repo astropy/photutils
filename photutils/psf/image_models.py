@@ -793,7 +793,7 @@ class FittableImageModel(Fittable2DModel):
         x = np.arange(self._nx, dtype=float)
         y = np.arange(self._ny, dtype=float)
         self.interpolator = RectBivariateSpline(
-            x, y, self._data.T, kx=degx, ky=degy, s=smoothness
+            x, y, self._data.T, kx=degx, ky=degy, s=smoothness,
         )
 
         self._store_interpolator_kwargs(**kwargs)
@@ -1242,7 +1242,7 @@ class _LegacyEPSFModel(Fittable2DModel):
         x = np.arange(self._nx, dtype=float) / self.oversampling[1]
         y = np.arange(self._ny, dtype=float) / self.oversampling[0]
         self.interpolator = RectBivariateSpline(
-            x, y, self._data.T, kx=degx, ky=degy, s=smoothness
+            x, y, self._data.T, kx=degx, ky=degy, s=smoothness,
         )
 
         self._store_interpolator_kwargs(**kwargs)

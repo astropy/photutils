@@ -352,7 +352,7 @@ class SourceCatalog:
             'circ': {'method': 'exact'},
             'kron': {'method': 'exact'},
             'fluxfrac': {'method': 'exact'},
-            'cen_win': {'method': 'center'}
+            'cen_win': {'method': 'center'},
         }
 
         self.default_columns = DEFAULT_COLUMNS
@@ -433,7 +433,7 @@ class SourceCatalog:
             'circ': {'method': 'subpixel', 'subpixels': 5},
             'kron': {'method': 'center'},
             'fluxfrac': {'method': 'subpixel', 'subpixels': 5},
-            'cen_win': {'method': 'subpixel', 'subpixels': 11}
+            'cen_win': {'method': 'subpixel', 'subpixels': 11},
         }
 
     @property

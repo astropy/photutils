@@ -1678,7 +1678,7 @@ class IterativePSFPhotometry(ModelImageMixin):
             'xy_bounds': self._psfphot.xy_bounds,
             'localbkg_estimator': self._psfphot.localbkg_estimator,
             'aperture_radius': self._psfphot.aperture_radius,
-            'progress_bar': self._psfphot.progress_bar
+            'progress_bar': self._psfphot.progress_bar,
         }
         return make_repr(self, params, overrides=overrides)
 
