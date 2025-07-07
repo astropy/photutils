@@ -77,7 +77,6 @@ def test_inside_array_simple(aperture_class, params):
 def test_aperture_plots(aperture_class, params):
     # This test should run without any errors, and there is no return
     # value.
-    # TODO: check the content of the plot
     aperture = aperture_class((20.0, 20.0), *params)
     aperture.plot()
 

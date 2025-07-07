@@ -1468,7 +1468,6 @@ class SegmentationImage:
             for ring in [poly.exterior, *list(poly.interiors)]:
                 vertices, codes = self._convert_ring_to_path(ring)
 
-                # TODO: handle origin and scale keywords
                 vertices = scale * (vertices + 0.5) - 0.5
                 vertices -= origin
 

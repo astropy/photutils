@@ -269,13 +269,12 @@ ignore = [
     'D105',
     'D200',
     'D205',
-    'D301',
+    'D301',  # backslashes in docstrings (need line continuation)
     'D401',
     'D404',
     'EM101',
     'EM102',
     'FBT002',
-    'FIX002',
     'I001',
     'N803',
     'PLC0415',  # import-outside-top-level

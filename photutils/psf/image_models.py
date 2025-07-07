@@ -980,8 +980,8 @@ class _LegacyEPSFModel(Fittable2DModel):
         a given radius.
         """
         xypos = (self._nx / 2.0, self._ny / 2.0)
-        # TODO: generalize "radius" (ellipse?) is oversampling is
-        # different along x/y axes
+        # How to generalize "radius" if oversampling is
+        # different along x/y axes (ellipse?)
         radius = self._norm_radius * self.oversampling[0]
         aper = CircularAperture(xypos, r=radius)
         flux, _ = aper.do_photometry(self._data, method='exact')
