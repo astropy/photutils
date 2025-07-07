@@ -608,6 +608,7 @@ class PRFAdapter(Fittable2DModel):
         for i, (xi, yi) in enumerate(zip(dx.ravel(), dy.ravel(), strict=True)):
             outravel[i] = dblquad(self.psfmodel,
                                   xi - 0.5, xi + 0.5,
-                                  lambda _: yi - 0.5, lambda _: yi + 0.5,
+                                  lambda _, y=yi: y - 0.5,
+                                  lambda _, y=yi: y + 0.5,
                                   **self._dblquadkwargs)[0]
         return out
