@@ -235,7 +235,7 @@ class Background2D:
             self._unit = None
 
         # self._data is a temporary instance variable to store the input
-        # data (deleted in self._calculate_stats)
+        # data (the variable is deleted in self._calculate_stats)
         self._data = self._validate_array(data, 'data', shape=False)
         self._data_dtype = self._data.dtype
         self._data_shape = self._data.shape

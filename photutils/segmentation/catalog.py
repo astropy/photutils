@@ -695,7 +695,7 @@ class SourceCatalog:
 
         # we copy the list here to prevent changing the list in-place
         # during the for loop below, e.g., in case a user inputs
-        # names=self.extra_properties
+        # self.extra_properties to ``names``
         extra_properties = self._extra_properties.copy()
 
         for name in names:
