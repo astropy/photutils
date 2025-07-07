@@ -66,6 +66,11 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.background``
+
+  - An explicit ``ValueError`` is now raised in the input ``data`` to
+    ``Background2D`` contains all non-finite values. [#2062]
+
 - ``photutils.psf``
 
   - The ``GriddedPSFModel`` ``data`` and ``grid_xypos`` attributes are
