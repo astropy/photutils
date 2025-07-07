@@ -35,6 +35,8 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['IterativePSFPhotometry', 'ModelImageMixin', 'PSFPhotometry']
 
+FITTER_DEFAULT = TRFLSQFitter()
+
 
 class ModelImageMixin:
     """
@@ -320,8 +322,8 @@ class PSFPhotometry(ModelImageMixin):
                                        alternative='fit_info')
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
-                 fitter=TRFLSQFitter(), fitter_maxiters=100,
-                 xy_bounds=None, localbkg_estimator=None, aperture_radius=None,
+                 fitter=FITTER_DEFAULT, fitter_maxiters=100, xy_bounds=None,
+                 localbkg_estimator=None, aperture_radius=None,
                  progress_bar=False):
 
         self._param_maps = self._define_param_maps(psf_model)
@@ -1623,10 +1625,9 @@ class IterativePSFPhotometry(ModelImageMixin):
     """
 
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
-                 fitter=TRFLSQFitter(), fitter_maxiters=100,
-                 xy_bounds=None, maxiters=3, mode='new',
-                 localbkg_estimator=None, aperture_radius=None,
-                 sub_shape=None, progress_bar=False):
+                 fitter=FITTER_DEFAULT, fitter_maxiters=100, xy_bounds=None,
+                 maxiters=3, mode='new', localbkg_estimator=None,
+                 aperture_radius=None, sub_shape=None, progress_bar=False):
 
         if finder is None:
             raise ValueError('finder cannot be None for '

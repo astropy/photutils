@@ -18,9 +18,11 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['detect_sources', 'detect_threshold']
 
+SIGMA_CLIP_DEFAULT = SigmaClip(sigma=3.0, maxiters=10)
+
 
 def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
-                     sigma_clip=SigmaClip(sigma=3.0, maxiters=10)):
+                     sigma_clip=SIGMA_CLIP_DEFAULT):
     """
     Calculate a pixel-wise threshold image that can be used to detect
     sources.

@@ -262,7 +262,6 @@ select = ['ALL']
 exclude = ["photutils/extern/*"]
 ignore = [
     'ANN',
-    'B008',
     'B023',
     'B028',
     'BLE001',

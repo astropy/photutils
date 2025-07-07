@@ -28,6 +28,11 @@ __all__ = ['Background2D']
 
 __doctest_skip__ = ['Background2D']
 
+SIGMA_CLIP_DEFAULT = SigmaClip(sigma=3.0, maxiters=10)
+BKG_ESTIMATOR_DEFAULT = SExtractorBackground(sigma_clip=None)
+BKGRMS_ESTIMATOR_DEFAULT = StdBackgroundRMS(sigma_clip=None)
+INTERPOLATOR_DEFAULT = BkgZoomInterpolator()
+
 
 class Background2D:
     """
@@ -218,10 +223,10 @@ class Background2D:
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
                  fill_value=0.0, exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, edge_method='pad',
-                 sigma_clip=SigmaClip(sigma=3.0, maxiters=10),
-                 bkg_estimator=SExtractorBackground(sigma_clip=None),
-                 bkgrms_estimator=StdBackgroundRMS(sigma_clip=None),
-                 interpolator=BkgZoomInterpolator()):
+                 sigma_clip=SIGMA_CLIP_DEFAULT,
+                 bkg_estimator=BKG_ESTIMATOR_DEFAULT,
+                 bkgrms_estimator=BKGRMS_ESTIMATOR_DEFAULT,
+                 interpolator=INTERPOLATOR_DEFAULT):
 
         if isinstance(data, (u.Quantity, NDData)):  # includes CCDData
             self._unit = data.unit

@@ -27,6 +27,9 @@ from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['EPSFBuilder', 'EPSFFitter']
 
+FITTER_DEFAULT = TRFLSQFitter()
+SIGMA_CLIP_DEFAULT = SigmaClip(sigma=3, cenfunc='median', maxiters=10)
+
 
 class EPSFFitter:
     """
@@ -53,7 +56,7 @@ class EPSFFitter:
         of the input ``fitter``.
     """
 
-    def __init__(self, *, fitter=TRFLSQFitter(), fit_boxsize=5,
+    def __init__(self, *, fitter=FITTER_DEFAULT, fit_boxsize=5,
                  **fitter_kwargs):
 
         self.fitter = fitter
@@ -219,6 +222,9 @@ class EPSFFitter:
         return star
 
 
+EPSF_FITTER = EPSFFitter()
+
+
 class EPSFBuilder:
     """
     Class to build an effective PSF (ePSF).
@@ -311,10 +317,10 @@ class EPSFBuilder:
 
     def __init__(self, *, oversampling=4, shape=None,
                  smoothing_kernel='quartic', recentering_func=centroid_com,
-                 recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
+                 recentering_maxiters=20, fitter=EPSF_FITTER, maxiters=10,
                  progress_bar=True, norm_radius=5.5,
                  recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
-                 sigma_clip=SigmaClip(sigma=3, cenfunc='median', maxiters=10)):
+                 sigma_clip=SIGMA_CLIP_DEFAULT):
 
         if oversampling is None:
             raise ValueError("'oversampling' must be specified.")

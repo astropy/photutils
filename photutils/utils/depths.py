@@ -20,6 +20,8 @@ __all__ = ['ImageDepth']
 
 __doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['skimage']}
 
+SIGMA_CLIP_DEFAULT = SigmaClip(sigma=3.0, maxiters=10)
+
 
 class ImageDepth:
     r"""
@@ -194,7 +196,7 @@ class ImageDepth:
 
     def __init__(self, aper_radius, *, nsigma=5.0, mask_pad=0, napers=1000,
                  niters=10, overlap=True, overlap_maxiters=100, seed=None,
-                 zeropoint=0.0, sigma_clip=SigmaClip(sigma=3.0, maxiters=10),
+                 zeropoint=0.0, sigma_clip=SIGMA_CLIP_DEFAULT,
                  progress_bar=True):
 
         if aper_radius <= 0:

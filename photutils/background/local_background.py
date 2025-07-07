@@ -12,6 +12,8 @@ from photutils.utils._repr import make_repr
 
 __all__ = ['LocalBackground']
 
+BKG_ESTIMATOR_DEFAULT = MedianBackground()
+
 
 class LocalBackground:
     """
@@ -37,7 +39,7 @@ class LocalBackground:
     """
 
     def __init__(self, inner_radius, outer_radius,
-                 bkg_estimator=MedianBackground()):
+                 bkg_estimator=BKG_ESTIMATOR_DEFAULT):
         self.inner_radius = inner_radius
         self.outer_radius = outer_radius
         self.bkg_estimator = bkg_estimator
