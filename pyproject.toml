@@ -270,9 +270,7 @@ ignore = [
     'BLE001',
     'C901',
     'COM812',
-    'D101',
     'D102',
-    'D103',
     'D105',
     'D200',
     'D205',
@@ -286,9 +284,6 @@ ignore = [
     'FIX002',
     'I001',
     'N803',
-    'N803',
-    'PD011',
-    'PERF203',
     'PLC0415',  # import-outside-top-level
     'PLR0912',
     'PLR0913',
@@ -299,7 +294,6 @@ ignore = [
     'Q000',
     'RUF015',
     'RUF100',
-    'S101',
     'SLF001',
     'TD002',
     'TD003',
@@ -311,6 +305,8 @@ ignore = [
 '__init__.py' = ['D104', 'I']
 'docs/conf.py' = ['ERA001', 'INP001', 'TRY400']
 'model_io.py' = ['ARG001']
+'test_*.py' = ['D', 'S101']
+'conftest.py' = ['D', 'S101']
 
 [tool.ruff.lint.pydocstyle]
 convention = 'numpy'
