@@ -75,7 +75,8 @@ def centroid_com(data, mask=None):
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asarray(mask, dtype=bool)
         if data.shape != mask.shape:
-            raise ValueError('data and mask must have the same shape.')
+            msg = 'data and mask must have the same shape'
+            raise ValueError(msg)
         data[mask] = 0.0
 
     badmask = ~np.isfinite(data)
@@ -213,23 +214,28 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     """
     if ((xpeak is None and ypeak is not None)
             or (xpeak is not None and ypeak is None)):
-        raise ValueError('xpeak and ypeak must both be input or "None"')
+        msg = 'xpeak and ypeak must both be input or "None"'
+        raise ValueError(msg)
 
     if xpeak is not None and ((xpeak < 0) or (xpeak > data.shape[1] - 1)):
-        raise ValueError('xpeak is outside of the input data')
+        msg = 'xpeak is outside of the input data'
+        raise ValueError(msg)
     if ypeak is not None and ((ypeak < 0) or (ypeak > data.shape[0] - 1)):
-        raise ValueError('ypeak is outside of the input data')
+        msg = 'ypeak is outside of the input data'
+        raise ValueError(msg)
 
     # preserve input data - which should be a small cutout image
     data = np.asanyarray(data, dtype=float).copy()
     if data.ndim != 2:
-        raise ValueError('data must be a 2D array')
+        msg = 'data must be a 2D array'
+        raise ValueError(msg)
     ny, nx = data.shape
 
     badmask = ~np.isfinite(data)
     if mask is not None:
         if data.shape != mask.shape:
-            raise ValueError('data and mask must have the same shape.')
+            msg = 'data and mask must have the same shape'
+            raise ValueError(msg)
         data[mask] = np.nan
         badmask &= ~mask
 
@@ -243,8 +249,9 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
                           upper_bound=data.shape, check_odd=True)
 
     if np.prod(fit_boxsize) < 6:
-        raise ValueError('fit_boxsize is too small. 6 values are required '
-                         'to fit a 2D quadratic polynomial.')
+        msg = ('fit_boxsize is too small. 6 values are required to fit a '
+               '2D quadratic polynomial.')
+        raise ValueError(msg)
 
     if xpeak is None or ypeak is None:
         yidx, xidx = np.unravel_index(np.nanargmax(data), data.shape)
@@ -441,31 +448,35 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
     xpos = np.atleast_1d(xpos)
     ypos = np.atleast_1d(ypos)
     if xpos.ndim != 1:
-        raise ValueError('xpos must be a 1D array.')
+        msg = 'xpos must be a 1D array'
+        raise ValueError(msg)
     if ypos.ndim != 1:
-        raise ValueError('ypos must be a 1D array.')
+        msg = 'ypos must be a 1D array'
+        raise ValueError(msg)
 
     if (np.any(np.min(xpos) < 0) or np.any(np.min(ypos) < 0)
             or np.any(np.max(xpos) > data.shape[1] - 1)
             or np.any(np.max(ypos) > data.shape[0] - 1)):
-        raise ValueError('xpos, ypos values contains points outside of '
-                         'input data')
+        msg = 'xpos, ypos values contains points outside of input data'
+        raise ValueError(msg)
 
     if footprint is None:
         if box_size is None:
-            raise ValueError('box_size or footprint must be defined.')
+            msg = 'box_size or footprint must be defined'
+            raise ValueError(msg)
         box_size = as_pair('box_size', box_size, lower_bound=(0, 1),
                            check_odd=True)
         footprint = np.ones(box_size, dtype=bool)
     else:
         footprint = np.asanyarray(footprint, dtype=bool)
         if footprint.ndim != 2:
-            raise ValueError('footprint must be a 2D array.')
+            msg = 'footprint must be a 2D array'
+            raise ValueError(msg)
 
     spec = inspect.signature(centroid_func)
     if 'mask' not in spec.parameters:
-        raise ValueError('The input "centroid_func" must have a "mask" '
-                         'keyword.')
+        msg = 'The input "centroid_func" must have a "mask" keyword.'
+        raise ValueError(msg)
 
     # drop any **kwargs not supported by the centroid_func
     centroid_kwargs = {key: val for key, val in kwargs.items()
@@ -489,10 +500,11 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
             mask_cutout = footprint_mask
 
         if np.all(mask_cutout):
-            raise ValueError(f'The cutout for the source at ({xp, yp}) is '
-                             'completely masked. Please check your input '
-                             'mask and footprint. Also note that footprint '
-                             'must be a small, local footprint.')
+            msg = (f'The cutout for the source at ({xp, yp}) is completely '
+                   'masked. Please check your input mask and footprint. '
+                   'Also note that footprint must be a small, local '
+                   'footprint.')
+            raise ValueError(msg)
 
         centroid_kwargs.update({'mask': mask_cutout})
 
