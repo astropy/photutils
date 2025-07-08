@@ -133,8 +133,8 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
         x_name = 'offset_0'
     else:
         if x_name not in input_model.param_names:
-            raise ValueError(f'{x_name!r} parameter name not found in the '
-                             'input model.')
+            msg = f'{x_name!r} parameter name not found in the input model'
+            raise ValueError(msg)
 
         x_model = Identity(1)
         x_name = _shift_model_param(input_model, x_name, shift=2)
@@ -146,8 +146,8 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
         y_name = 'offset_1'
     else:
         if y_name not in input_model.param_names:
-            raise ValueError(f'{y_name!r} parameter name not found in the '
-                             'input model.')
+            msg = f'{y_name!r} parameter name not found in the input model'
+            raise ValueError(msg)
 
         y_model = Identity(1)
         y_name = _shift_model_param(input_model, y_name, shift=2)
@@ -170,8 +170,9 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
                                     use_dblquad=use_dblquad)
 
         if integral == 0:
-            raise ValueError('Cannot normalize the model because the '
-                             'integrated flux is zero.')
+            msg = ('Cannot normalize the model because the integrated flux '
+                   'is zero')
+            raise ValueError(msg)
 
         psf_model *= Const2D(1.0 / integral, name='normalization_scaling')
 
@@ -184,8 +185,8 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     names = (x_name, y_name, flux_name)
     for name in names:
         if name not in psf_model.param_names:
-            raise ValueError(f'{name!r} parameter name not found in the '
-                             'output model.')
+            msg = f'{name!r} parameter name not found in the output model'
+            raise ValueError(msg)
 
     # set the parameter names for the PSF photometry classes
     psf_model.x_name = x_name
@@ -278,15 +279,18 @@ def _integrate_model(model, x_name=None, y_name=None, dx=50, dy=50,
         return dblquad(model, -np.inf, np.inf, -np.inf, np.inf)[0]
 
     if dx <= 0 or dy <= 0:
-        raise ValueError('dx and dy must be > 0')
+        msg = 'dx and dy must be > 0'
+        raise ValueError(msg)
     if subsample < 1:
-        raise ValueError('subsample must be >= 1')
+        msg = 'subsample must be >= 1'
+        raise ValueError(msg)
 
     xc = getattr(model, x_name)
     yc = getattr(model, y_name)
 
     if np.any(~np.isfinite((xc.value, yc.value))):
-        raise ValueError('model x and y positions must be finite')
+        msg = 'model x and y positions must be finite'
+        raise ValueError(msg)
 
     hx = (dx - 1) / 2
     hy = (dy - 1) / 2
@@ -374,15 +378,16 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     # make sure, if provided, that ``grid_xypos`` is the same length as
     # ``epsfs``
     if grid_xypos is not None and len(grid_xypos) != len(epsfs):
-        raise ValueError('``grid_xypos`` must be the same length as '
-                         '``epsfs``.')
+        msg = 'grid_xypos must be the same length as epsfs'
+        raise ValueError(msg)
 
     # loop over input once
     for i, epsf in enumerate(epsfs):
 
         # check input type
         if not isinstance(epsf, ImagePSF):
-            raise TypeError('All input `epsfs` must be of type ImagePSF')
+            msg = 'All input epsfs must be of type ImagePSF'
+            raise TypeError(msg)
 
         # get data array from EPSF
         data_arrs.append(epsf.data)
@@ -405,29 +410,34 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
                 dat_unit = epsf.data.unit
         else:
             if np.any(epsf.oversampling != oversampling):
-                raise ValueError('All input ImagePSF models must have the '
-                                 'same value for ``oversampling``.')
+                msg = ('All input ImagePSF models must have the same value '
+                       'for oversampling')
+                raise ValueError(msg)
 
             if epsf.fill_value != fill_value:
-                raise ValueError('All input ImagePSF models must have the '
-                                 'same value for ``fill_value``.')
+                msg = ('All input ImagePSF models must have the same value '
+                       'for fill_value')
+                raise ValueError(msg)
 
             if epsf.data.ndim != data_arrs[0].ndim:
-                raise ValueError('All input ImagePSF models must have data '
-                                 'with the same dimensions.')
+                msg = ('All input ImagePSF models must have data with the '
+                       'same dimensions')
+                raise ValueError(msg)
 
             try:
                 unitt = epsf.data_unit
                 if unitt != dat_unit:
-                    raise ValueError('All input data must have the same unit.')
+                    msg = 'All input data must have the same unit'
+                    raise ValueError(msg)
             except AttributeError as exc:
                 if dat_unit is not None:
-                    raise ValueError('All input data must have the same '
-                                     'unit.') from exc
+                    msg = 'All input data must have the same unit'
+                    raise ValueError(msg) from exc
 
             if epsf.flux != flux:
-                raise ValueError('All input ImagePSF models must have the '
-                                 'same value for ``flux``.')
+                msg = ('All input ImagePSF models must have the same value '
+                       'for flux')
+                raise ValueError(msg)
 
         if grid_xypos is None:  # get gridxy_pos from x_0, y_0 if not provided
             x_0s.append(epsf.x_0.value)
@@ -436,8 +446,9 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
             # also check that origin is the same, if using x_0s and y_0s
             # from input
             if np.all(epsf.origin != origin):
-                raise ValueError('If using ``x_0``, ``y_0`` as fiducial point,'
-                                 '``origin`` must match for each input EPSF.')
+                msg = ('If using (x_0, y_0) as fiducial point, origin must '
+                       'match for each input EPSF')
+                raise ValueError(msg)
 
     # if not supplied, use from x_0, y_0 of input EPSFs as fiducuals
     # these are checked when GriddedPSFModel is created to make sure they

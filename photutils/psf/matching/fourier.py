@@ -81,8 +81,9 @@ def create_matching_kernel(source_psf, target_psf, *, window=None):
     target_psf = np.copy(np.asanyarray(target_psf))
 
     if source_psf.shape != target_psf.shape:
-        raise ValueError('source_psf and target_psf must have the same shape '
-                         '(i.e., registered with the same pixel scale).')
+        msg = ('source_psf and target_psf must have the same shape '
+               '(i.e., registered with the same pixel scale).')
+        raise ValueError(msg)
 
     # ensure input PSFs are normalized
     source_psf /= source_psf.sum()

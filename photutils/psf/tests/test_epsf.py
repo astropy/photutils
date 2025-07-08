@@ -182,7 +182,7 @@ def test_epsfbuilder_inputs():
     match = 'oversampling must be > 0'
     with pytest.raises(ValueError, match=match):
         EPSFBuilder(oversampling=-1)
-    match = "'maxiters' must be a positive number"
+    match = 'maxiters must be a positive number'
     with pytest.raises(ValueError, match=match):
         EPSFBuilder(maxiters=-1)
     match = 'oversampling must be > 0'

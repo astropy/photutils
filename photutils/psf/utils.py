@@ -376,10 +376,12 @@ def _interpolate_missing_data(data, mask, method='cubic'):
     data_interp = np.copy(data)
 
     if len(data_interp.shape) != 2:
-        raise ValueError("'data' must be a 2D array.")
+        msg = 'data must be a 2D array'
+        raise ValueError(msg)
 
     if mask.shape != data.shape:
-        raise ValueError("'mask' and 'data' must have the same shape.")
+        msg = 'mask and data must have the same shape'
+        raise ValueError(msg)
 
     # initialize the interpolator
     y, x = np.indices(data_interp.shape)
@@ -392,7 +394,8 @@ def _interpolate_missing_data(data, mask, method='cubic'):
     elif method == 'cubic':
         interpol = interpolate.CloughTocher2DInterpolator(xy, z)
     else:
-        raise ValueError('Unsupported interpolation method.')
+        msg = 'Unsupported interpolation method'
+        raise ValueError(msg)
 
     xy_missing = np.dstack((x[mask].ravel(), y[mask].ravel()))[0]
     data_interp[mask] = interpol(xy_missing)
@@ -428,11 +431,13 @@ def _validate_psf_model(psf_model):
         n_outputs=1.
     """
     if not isinstance(psf_model, Model):
-        raise TypeError('psf_model must be an Astropy Model subclass.')
+        msg = 'psf_model must be an Astropy Model subclass'
+        raise TypeError(msg)
 
     if psf_model.n_inputs != 2 or psf_model.n_outputs != 1:
-        raise ValueError('psf_model must be two-dimensional with '
-                         'n_inputs=2 and n_outputs=1.')
+        msg = ('psf_model must be two-dimensional with '
+               'n_inputs=2 and n_outputs=1')
+        raise ValueError(msg)
 
     return psf_model
 
@@ -469,7 +474,7 @@ def _get_psf_model_params(psf_model):
     elif all(params := [getattr(psf_model, name, None) for name in params2]):
         model_params = tuple(params)
     else:
-        msg = 'Invalid PSF model - could not find PSF parameter names.'
+        msg = 'Invalid PSF model - could not find PSF parameter names'
         raise ValueError(msg)
 
     return model_params

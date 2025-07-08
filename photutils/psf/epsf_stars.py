@@ -70,8 +70,9 @@ class EPSFStar:
 
         if weights is not None:
             if weights.shape != data.shape:
-                raise ValueError('weights must have the same shape as the '
-                                 'input data array.')
+                msg = ('weights must have the same shape as the input '
+                       'data array')
+                raise ValueError(msg)
             self.weights = np.asanyarray(weights, dtype=float).copy()
         else:
             self.weights = np.ones_like(self._data, dtype=float)
@@ -121,8 +122,9 @@ class EPSFStar:
         if value is None:
             value = ((self.shape[1] - 1) / 2.0, (self.shape[0] - 1) / 2.0)
         elif len(value) != 2:
-            raise ValueError('The "cutout_center" attribute must have '
-                             'two elements in (x, y) form.')
+            msg = ('The "cutout_center" attribute must have two elements '
+                   'in (x, y) form.')
+            raise ValueError(msg)
 
         self._cutout_center = np.asarray(value)
 
@@ -301,8 +303,9 @@ class EPSFStars:
         elif isinstance(stars_list, list):
             self._data = stars_list
         else:
-            raise TypeError('stars_list must be a list of EPSFStar and/or '
-                            'LinkedEPSFStar objects.')
+            msg = ('stars_list must be a list of EPSFStar and/or '
+                   'LinkedEPSFStar objects')
+            raise TypeError(msg)
 
     def __len__(self):
         return len(self._data)
@@ -459,11 +462,12 @@ class LinkedEPSFStar(EPSFStars):
     def __init__(self, stars_list):
         for star in stars_list:
             if not isinstance(star, EPSFStar):
-                raise TypeError('stars_list must contain only EPSFStar '
-                                'objects.')
+                msg = 'stars_list must contain only EPSFStar objects'
+                raise TypeError(msg)
             if star.wcs_large is None:
-                raise ValueError('Each EPSFStar object must have a valid '
-                                 'wcs_large attribute.')
+                msg = ('Each EPSFStar object must have a valid wcs_large '
+                       'attribute')
+                raise ValueError(msg)
 
         super().__init__(stars_list)
 
@@ -588,41 +592,43 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
 
     for img in data:
         if not isinstance(img, NDData):
-            raise TypeError('data must be a single NDData or list of NDData '
-                            'objects.')
+            msg = 'data must be a single NDData or list of NDData objects'
+            raise TypeError(msg)
 
     for cat in catalogs:
         if not isinstance(cat, Table):
-            raise TypeError('catalogs must be a single Table or list of Table '
-                            'objects.')
+            msg = 'catalogs must be a single Table or list of Table objects'
+            raise TypeError(msg)
 
     if len(catalogs) == 1 and len(data) > 1:
         if 'skycoord' not in catalogs[0].colnames:
-            raise ValueError('When inputting a single catalog with multiple '
-                             'NDData objects, the catalog must have a '
-                             '"skycoord" column.')
+            msg = ('When inputting a single catalog with multiple NDData '
+                   'objects, the catalog must have a "skycoord" column.')
+            raise ValueError(msg)
 
         if any(img.wcs is None for img in data):
-            raise ValueError('When inputting a single catalog with multiple '
-                             'NDData objects, each NDData object must have '
-                             'a wcs attribute.')
+            msg = ('When inputting a single catalog with multiple NDData '
+                   'objects, each NDData object must have a wcs attribute.')
+            raise ValueError(msg)
     else:
         for cat in catalogs:
             if 'x' not in cat.colnames or 'y' not in cat.colnames:
                 if 'skycoord' not in cat.colnames:
-                    raise ValueError('When inputting multiple catalogs, '
-                                     'each one must have a "x" and "y" '
-                                     'column or a "skycoord" column.')
+                    msg = ('When inputting multiple catalogs, each one '
+                           'must have a "x" and "y" column or a '
+                           '"skycoord" column.')
+                    raise ValueError(msg)
 
                 if any(img.wcs is None for img in data):
-                    raise ValueError('When inputting catalog(s) with only '
-                                     'skycoord positions, each NDData object '
-                                     'must have a wcs attribute.')
+                    msg = ('When inputting catalog(s) with only skycoord '
+                           'positions, each NDData object must have a '
+                           'wcs attribute.')
+                    raise ValueError(msg)
 
         if len(data) != len(catalogs):
-            raise ValueError('When inputting multiple catalogs, the number '
-                             'of catalogs must match the number of input '
-                             'images.')
+            msg = ('When inputting multiple catalogs, the number of '
+                   'catalogs must match the number of input images.')
+            raise ValueError(msg)
 
     size = as_pair('size', size, lower_bound=(3, 0), check_odd=True)
 

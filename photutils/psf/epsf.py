@@ -98,7 +98,8 @@ class EPSFFitter:
             return stars
 
         if not isinstance(epsf, ImagePSF):
-            raise TypeError('The input epsf must be an ImagePSF.')
+            msg = 'The input epsf must be an ImagePSF'
+            raise TypeError(msg)
 
         epsf = _LegacyEPSFModel(epsf.data, flux=epsf.flux, x_0=epsf.x_0,
                                 y_0=epsf.y_0, oversampling=epsf.oversampling,
@@ -129,8 +130,9 @@ class EPSFFitter:
                 fitted_star.constrain_centers()
 
             else:
-                raise TypeError('stars must contain only EPSFStar and/or '
-                                'LinkedEPSFStar objects.')
+                msg = ('stars must contain only EPSFStar and/or '
+                       'LinkedEPSFStar objects')
+                raise TypeError(msg)
 
             fitted_stars.append(fitted_star)
 
@@ -323,7 +325,8 @@ class EPSFBuilder:
                  sigma_clip=SIGMA_CLIP_DEFAULT):
 
         if oversampling is None:
-            raise ValueError("'oversampling' must be specified.")
+            msg = "'oversampling' must be specified"
+            raise ValueError(msg)
         self.oversampling = as_pair('oversampling', oversampling,
                                     lower_bound=(0, 1))
         self._norm_radius = norm_radius
@@ -340,23 +343,26 @@ class EPSFBuilder:
         self.smoothing_kernel = smoothing_kernel
 
         if not isinstance(fitter, EPSFFitter):
-            raise TypeError('fitter must be an EPSFFitter instance.')
+            msg = 'fitter must be an EPSFFitter instance'
+            raise TypeError(msg)
         self.fitter = fitter
 
         if center_accuracy <= 0.0:
-            raise ValueError('center_accuracy must be a positive number.')
+            msg = 'center_accuracy must be a positive number'
+            raise ValueError(msg)
         self.center_accuracy_sq = center_accuracy**2
 
         maxiters = int(maxiters)
         if maxiters <= 0:
-            raise ValueError("'maxiters' must be a positive number.")
+            msg = 'maxiters must be a positive number'
+            raise ValueError(msg)
         self.maxiters = maxiters
 
         self.progress_bar = progress_bar
 
         if not isinstance(sigma_clip, SigmaClip):
-            raise TypeError('sigma_clip must be an astropy.stats.SigmaClip '
-                            'instance.')
+            msg = 'sigma_clip must be an astropy.stats.SigmaClip instance'
+            raise TypeError(msg)
         self._sigma_clip = sigma_clip
 
         # store each ePSF build iteration
@@ -556,7 +562,8 @@ class EPSFBuilder:
                   -0.07428311]])
 
         else:
-            raise TypeError('Unsupported kernel.')
+            msg = 'Unsupported kernel'
+            raise TypeError(msg)
 
         return convolve(epsf_data, kernel)
 
@@ -678,8 +685,9 @@ class EPSFBuilder:
             The updated ePSF.
         """
         if len(stars) < 1:
-            raise ValueError('stars must contain at least one EPSFStar or '
-                             'LinkedEPSFStar object.')
+            msg = ('stars must contain at least one EPSFStar or '
+                   'LinkedEPSFStar object')
+            raise ValueError(msg)
 
         if epsf is None:
             # create an initial ePSF (array of zeros)
@@ -803,7 +811,8 @@ class EPSFBuilder:
             fit_failed = np.array([star._fit_error_status > 0
                                    for star in stars.all_stars])
             if np.all(fit_failed):
-                raise ValueError('The ePSF fitting failed for all stars.')
+                msg = 'The ePSF fitting failed for all stars.'
+                raise ValueError(msg)
 
             # permanently exclude fitting any star where the fit fails
             # after 3 iterations

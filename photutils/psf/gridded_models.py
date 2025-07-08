@@ -165,26 +165,30 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
             data contains NaNs or infs.
         """
         if not isinstance(data, NDData):
-            raise TypeError('data must be an NDData instance.')
+            msg = 'data must be an NDData instance'
+            raise TypeError(msg)
 
         if data.data.ndim != 3:
-            raise ValueError('The NDData data attribute must be a 3D numpy '
-                             'ndarray.')
+            msg = 'The NDData data attribute must be a 3D numpy ndarray'
+            raise ValueError(msg)
 
         if not np.all(np.isfinite(data.data)):
-            raise ValueError('All elements of input data must be finite.')
+            msg = 'All elements of input data must be finite'
+            raise ValueError(msg)
 
         if data.data.shape[0] in (2, 3):
-            raise ValueError('The number of ePSFs must not be 2 or 3.')
+            msg = 'The number of ePSFs must not be 2 or 3'
+            raise ValueError(msg)
 
         # this is required by RectBivariateSpline for kx=3, ky=3
         if np.any(np.array(data.data.shape[1:]) < 4):
-            raise ValueError('The length of the PSF x and y axes must both '
-                             'be at least 4.')
+            msg = ('The length of the PSF x and y axes must both be at '
+                   'least 4')
+            raise ValueError(msg)
 
         if 'oversampling' not in data.meta:
-            raise ValueError('"oversampling" must be in the nddata meta '
-                             'dictionary.')
+            msg = '"oversampling" must be in the nddata meta dictionary'
+            raise ValueError(msg)
 
     @staticmethod
     def _is_rectangular_grid(grid_xypos):
@@ -236,15 +240,17 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         try:
             grid_xypos = np.array(data.meta['grid_xypos'])
         except KeyError as exc:
-            raise ValueError('"grid_xypos" must be in the nddata meta '
-                             'dictionary.') from exc
+            msg = '"grid_xypos" must be in the nddata meta dictionary'
+            raise ValueError(msg) from exc
 
         if len(grid_xypos) != data.data.shape[0]:
-            raise ValueError('The length of grid_xypos must match the number '
-                             'of input ePSFs.')
+            msg = ('The length of grid_xypos must match the number of '
+                   'input ePSFs')
+            raise ValueError(msg)
 
         if len(grid_xypos) != 1 and not self._is_rectangular_grid(grid_xypos):
-            raise ValueError('grid_xypos must form a rectangular grid.')
+            msg = 'grid_xypos must form a rectangular grid'
+            raise ValueError(msg)
 
     def _define_grid(self, nddata):
         """
@@ -618,7 +624,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
             The evaluated model.
         """
         if x.ndim > 2:
-            raise ValueError('x and y must be 1D or 2D.')
+            msg = 'x and y must be 1D or 2D'
+            raise ValueError(msg)
 
         # the base Model.__call__() method converts scalar inputs to
         # size-1 arrays before calling evaluate(), but we need scalar

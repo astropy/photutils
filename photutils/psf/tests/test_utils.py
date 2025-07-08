@@ -137,11 +137,11 @@ def test_interpolate_missing_data():
     data_int = _interpolate_missing_data(data, mask, method='cubic')
     assert 54 <= data_int[5, 5] <= 56
 
-    match = "'data' must be a 2D array."
+    match = 'data must be a 2D array'
     with pytest.raises(ValueError, match=match):
         _interpolate_missing_data(np.arange(10), mask)
 
-    match = "'mask' and 'data' must have the same shape."
+    match = 'mask and data must have the same shape'
     with pytest.raises(ValueError, match=match):
         _interpolate_missing_data(data, mask[1:, :])
 
