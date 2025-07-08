@@ -25,4 +25,5 @@ def __getattr__(name):
             return False
         return True
 
-    raise AttributeError(f'Module {__name__!r} has no attribute {name!r}.')
+    msg = f'Module {__name__!r} has no attribute {name!r}'
+    raise AttributeError(msg)

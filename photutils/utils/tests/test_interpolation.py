@@ -50,7 +50,7 @@ class TestShepardIDWInterpolator:
         assert_allclose(f([0.5, 0.5, 0.5]), 1.0)
 
     def test_no_coordinates(self):
-        match = 'You must enter at least one data point'
+        match = 'coordinates must have at least one data point'
         with pytest.raises(ValueError, match=match):
             IDWInterp([], 0)
 

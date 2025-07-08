@@ -21,7 +21,8 @@ def _overlap_slices(large_array_shape, small_array_shape, position,
     # fix for https://github.com/astropy/astropy/pull/16544
     for i in (0, 1):
         if slc_lg[i].stop - slc_lg[i].start == 0:
-            raise NoOverlapError('Arrays do not overlap.')
+            msg = 'Arrays do not overlap'
+            raise NoOverlapError(msg)
 
     return slc_lg, slc_sm
 

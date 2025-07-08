@@ -131,20 +131,22 @@ class ShepardIDWInterpolator:
 
         ncoords = coordinates.shape[0]
         if ncoords < 1:
-            raise ValueError('You must enter at least one data point.')
+            msg = 'coordinates must have at least one data point'
+            raise ValueError(msg)
 
         if values.shape[0] != ncoords:
-            raise ValueError('The number of values must match the number '
-                             'of coordinates.')
+            msg = 'The number of values must match the number of coordinates.'
+            raise ValueError(msg)
 
         if weights is not None:
             weights = np.asanyarray(weights).ravel()
             if weights.shape[0] != ncoords:
-                raise ValueError('The number of weights must match the '
-                                 'number of coordinates.')
+                msg = ('The number of weights must match the number of '
+                       'coordinates.')
+                raise ValueError(msg)
             if np.any(weights < 0.0):
-                raise ValueError('All weight values must be non-negative '
-                                 'numbers.')
+                msg = 'All weight values must be non-negative numbers.'
+                raise ValueError(msg)
 
         self.coordinates = coordinates
         self.ncoords = ncoords
@@ -215,7 +217,8 @@ class ShepardIDWInterpolator:
         """
         n_neighbors = int(n_neighbors)
         if n_neighbors < 1:
-            raise ValueError('n_neighbors must be a positive integer')
+            msg = 'n_neighbors must be a positive integer'
+            raise ValueError(msg)
 
         if conf_dist is not None and conf_dist <= 0.0:
             conf_dist = None
@@ -224,20 +227,22 @@ class ShepardIDWInterpolator:
         if positions.ndim == 0:
             # assume we have a single 1D coordinate
             if self.coords_ndim != 1:
-                raise ValueError('The dimensionality of the input position '
-                                 'does not match the dimensionality of the '
-                                 'coordinates used to initialize the '
-                                 'interpolator.')
+                msg = ('The dimensionality of the input position does '
+                       'not match the dimensionality of the coordinates '
+                       'used to initialize the interpolator.')
+                raise ValueError(msg)
         elif positions.ndim == 1:
             # assume we have a single point
             if self.coords_ndim not in (1, positions.shape[-1]):
-                raise ValueError('The input position was provided as a 1D '
-                                 'array, but its length does not match the '
-                                 'dimensionality of the coordinates used '
-                                 'to initialize the interpolator.')
+                msg = ('The input position was provided as a 1D array, '
+                       'but its length does not match the dimensionality '
+                       'of the coordinates used to initialize the '
+                       'interpolator.')
+                raise ValueError(msg)
         elif positions.ndim != 2:
-            raise ValueError('The input positions must be an array_like '
-                             'object of dimensionality no larger than 2.')
+            msg = ('The input positions must be an array_like object '
+                   'of dimensionality no larger than 2.')
+            raise ValueError(msg)
 
         positions = np.reshape(positions, (-1, self.coords_ndim))
         npositions = positions.shape[0]
