@@ -729,7 +729,7 @@ class TestSourceCatalog:
 
         # key in extra_properties, but not a defined attribute
         cat._extra_properties.append('invalid')
-        match = 'already exists in the "extra_properties" attribute'
+        match = 'already exists in the extra_properties attribute'
         with pytest.raises(ValueError, match=match):
             cat.add_extra_property('invalid', segment_snr)
         cat._extra_properties.remove('invalid')

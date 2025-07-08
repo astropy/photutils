@@ -215,7 +215,7 @@ class TestDeblendSources:
                             progress_bar=False)
 
         segm_wrong = SegmentationImage(segm_wrong)  # wrong shape
-        match = 'The data and segmentation image must have the same shape'
+        match = 'segment_img must have the same shape as data'
         with pytest.raises(ValueError, match=match):
             deblend_sources(self.data, segm_wrong, self.npixels,
                             progress_bar=False)

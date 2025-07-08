@@ -143,22 +143,26 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         data = data.value
 
     if not isinstance(segment_img, SegmentationImage):
-        raise TypeError('segment_img must be a SegmentationImage')
+        msg = 'segment_img must be a SegmentationImage'
+        raise TypeError(msg)
 
     if segment_img.shape != data.shape:
-        raise ValueError('The data and segmentation image must have '
-                         'the same shape')
+        msg = 'segment_img must have the same shape as data'
+        raise ValueError(msg)
 
     if nlevels < 1:
-        raise ValueError('nlevels must be >= 1')
+        msg = 'nlevels must be >= 1'
+        raise ValueError(msg)
     if contrast < 0 or contrast > 1:
-        raise ValueError('contrast must be >= 0 and <= 1')
+        msg = 'contrast must be >= 0 and <= 1'
+        raise ValueError(msg)
 
     if contrast == 1:  # no deblending
         return segment_img.copy()
 
     if mode not in ('exponential', 'linear', 'sinh'):
-        raise ValueError('mode must be "exponential", "linear", or "sinh"')
+        msg = 'mode must be "exponential", "linear", or "sinh"'
+        raise ValueError(msg)
 
     if labels is None:
         labels = segment_img.labels
@@ -658,10 +662,10 @@ class _SingleSourceDeblender:
         markers = self.apply_watershed(markers)
 
         if not np.array_equal(self.segment_mask, markers.astype(bool)):
-            raise ValueError(f'Deblending failed for source "{self.label}". '
-                             'Please ensure you used the same pixel '
-                             'connectivity in detect_sources and '
-                             'deblend_sources.')
+            msg = (f'Deblending failed for source {self.label!r}. '
+                   'Please ensure you used the same pixel connectivity '
+                   'in detect_sources and deblend_sources.')
+            raise ValueError(msg)
 
         if len(_get_labels(markers)) == 1:  # no deblending
             return None

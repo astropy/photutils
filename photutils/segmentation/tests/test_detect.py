@@ -264,7 +264,7 @@ class TestDetectSources:
         """
         Test if error raises if connectivity is invalid.
         """
-        match = 'Invalid connectivity=10. Options are 4 or 8'
+        match = 'Invalid connectivity=10 -- options are 4 or 8'
         with pytest.raises(ValueError, match=match):
             detect_sources(self.data, threshold=1, npixels=1, connectivity=10)
 
