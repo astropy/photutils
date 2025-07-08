@@ -1590,7 +1590,7 @@ class SegmentationImage:
 
         return patches
 
-    def to_regions(self, grouped=False):
+    def to_regions(self, *, grouped=False):
         """
         Return the `regions.Region` objects representing the source
         segments.
