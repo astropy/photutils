@@ -57,7 +57,8 @@ def apply_poisson_noise(data, seed=None):
     """
     data = np.asanyarray(data)
     if np.any(data < 0):
-        raise ValueError('data must not contain any negative values')
+        msg = 'data must not contain any negative values'
+        raise ValueError(msg)
 
     rng = np.random.default_rng(seed)
 
@@ -130,18 +131,21 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
         ax2.set_title(r'Poisson noise ($\mu=5$)')
     """
     if mean is None:
-        raise ValueError('"mean" must be input')
+        msg = '"mean" must be input'
+        raise ValueError(msg)
 
     rng = np.random.default_rng(seed)
 
     if distribution == 'gaussian':
         if stddev is None:
-            raise ValueError('"stddev" must be input for Gaussian noise')
+            msg = '"stddev" must be input for Gaussian noise'
+            raise ValueError(msg)
         image = rng.normal(loc=mean, scale=stddev, size=shape)
     elif distribution == 'poisson':
         image = rng.poisson(lam=mean, size=shape)
     else:
-        raise ValueError(f'Invalid distribution: {distribution}. Use either '
-                         '"gaussian" or "poisson".')
+        msg = (f'Invalid distribution: {distribution}. Use either '
+               '"gaussian" or "poisson".')
+        raise ValueError(msg)
 
     return image

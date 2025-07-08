@@ -127,7 +127,8 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
     yrange = (border_size[0], shape[0] - border_size[0])
 
     if xrange[0] >= xrange[1] or yrange[0] >= yrange[1]:
-        raise ValueError('border_size is too large for the given shape')
+        msg = 'border_size is too large for the given shape'
+        raise ValueError(msg)
 
     rng = np.random.default_rng(seed)
     xycoords = make_random_xycoords(n_sources, xrange, yrange,
@@ -142,7 +143,8 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
 
     for param, prange in kwargs.items():
         if len(prange) != 2:
-            raise ValueError(f'{param} must be a 2-tuple')
+            msg = f'{param} must be a 2-tuple'
+            raise ValueError(msg)
         vals = rng.uniform(*prange, len(model_params))
         model_params[param] = vals
 
@@ -269,8 +271,8 @@ def params_table_to_models(params_table, model):
     param_names = set(model.param_names)
     colnames = set(params_table.colnames)
     if param_names.isdisjoint(colnames):
-        raise ValueError('No matching model parameter names found in '
-                         'params_table')
+        msg = 'No matching model parameter names found in params_table'
+        raise ValueError(msg)
 
     param_names = [*list(param_names), 'name']
     models = []
