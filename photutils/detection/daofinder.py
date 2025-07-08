@@ -171,10 +171,12 @@ class DAOStarFinder(StarFinderBase):
         _ = process_quantities(inputs, names)
 
         if not isscalar(threshold):
-            raise ValueError('threshold must be a scalar value.')
+            msg = 'threshold must be a scalar value'
+            raise ValueError(msg)
 
         if not np.isscalar(fwhm):
-            raise TypeError('fwhm must be a scalar value.')
+            msg = 'fwhm must be a scalar value'
+            raise TypeError(msg)
 
         self.threshold = threshold
         self.fwhm = fwhm
@@ -190,13 +192,15 @@ class DAOStarFinder(StarFinderBase):
         self.peakmax = peakmax
 
         if min_separation < 0:
-            raise ValueError('min_separation must be >= 0')
+            msg = 'min_separation must be >= 0'
+            raise ValueError(msg)
         self.min_separation = min_separation
 
         if xycoords is not None:
             xycoords = np.asarray(xycoords)
             if xycoords.ndim != 2 or xycoords.shape[1] != 2:
-                raise ValueError('xycoords must be shaped as a Nx2 array')
+                msg = 'xycoords must be shaped as a Nx2 array'
+                raise ValueError(msg)
         self.xycoords = xycoords
 
         self.kernel = _StarFinderKernel(self.fwhm,

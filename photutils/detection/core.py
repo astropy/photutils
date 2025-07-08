@@ -130,7 +130,8 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             A table of found stars. If no stars are found then `None` is
             returned.
         """
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        msg = 'Needs to be implemented in a subclass'
+        raise NotImplementedError(msg)
 
 
 class _StarFinderKernel:
@@ -187,14 +188,16 @@ class _StarFinderKernel:
                  normalize_zerosum=True):
 
         if fwhm < 0:
-            raise ValueError('fwhm must be positive.')
+            msg = 'fwhm must be positive'
+            raise ValueError(msg)
 
         if ratio <= 0 or ratio > 1:
-            raise ValueError('ratio must be positive and less or equal '
-                             'than 1.')
+            msg = 'ratio must be positive and less or equal than 1'
+            raise ValueError(msg)
 
         if sigma_radius <= 0:
-            raise ValueError('sigma_radius must be positive.')
+            msg = 'sigma_radius must be positive'
+            raise ValueError(msg)
 
         self.fwhm = fwhm
         self.ratio = ratio
@@ -269,9 +272,11 @@ def _validate_brightest(brightest):
     """
     if brightest is not None:
         if brightest <= 0:
-            raise ValueError('brightest must be >= 0')
+            msg = 'brightest must be >= 0'
+            raise ValueError(msg)
         bright_int = int(brightest)
         if bright_int != brightest:
-            raise ValueError('brightest must be an integer')
+            msg = 'brightest must be an integer'
+            raise ValueError(msg)
         brightest = bright_int
     return brightest
