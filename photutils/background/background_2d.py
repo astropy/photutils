@@ -256,7 +256,7 @@ class Background2D:
 
         self.fill_value = fill_value
         if exclude_percentile < 0 or exclude_percentile > 100:
-            msg = 'exclude_percentile must be between 0 and 100 (inclusive).'
+            msg = 'exclude_percentile must be between 0 and 100 (inclusive)'
             raise ValueError(msg)
         self.exclude_percentile = exclude_percentile
         self.filter_size = as_pair('filter_size', filter_size,
@@ -345,10 +345,10 @@ class Background2D:
         if array is not None:
             array = np.asanyarray(array)
             if array.ndim != 2:
-                msg = f'{name} must be a 2D array.'
+                msg = f'{name} must be a 2D array'
                 raise ValueError(msg)
             if shape and array.shape != self._data.shape:
-                msg = f'data and {name} must have the same shape.'
+                msg = f'data and {name} must have the same shape'
                 raise ValueError(msg)
         return array
 
