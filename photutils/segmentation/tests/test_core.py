@@ -527,7 +527,7 @@ class TestSegmentationImage:
     def test_polygons_complex(self):
         """
         Test polygons, patches, and regions for segments that have holes
-        and/or are non-continguous.
+        and/or are non-contiguous.
         """
         from matplotlib.patches import PathPatch
         from regions import PolygonPixelRegion, Regions
