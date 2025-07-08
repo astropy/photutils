@@ -88,7 +88,8 @@ class RectangularMaskMixin:
             w = self.w_out
             h = self.h_out
         else:
-            raise ValueError('Cannot determine the aperture radius.')
+            msg = 'Cannot determine the aperture radius'
+            raise ValueError(msg)
 
         masks = []
         for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
@@ -372,7 +373,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):
         if not w_out > w_in:
-            raise ValueError('"w_out" must be greater than "w_in"')
+            msg = '"w_out" must be greater than "w_in"'
+            raise ValueError(msg)
 
         self.positions = positions
         self.w_in = w_in
@@ -382,7 +384,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
         elif not h_out > h_in:
-            raise ValueError('"h_out" must be greater than "h_in"')
+            msg = '"h_out" must be greater than "h_in"'
+            raise ValueError(msg)
         self.h_in = h_in
 
         self.theta = theta
@@ -606,7 +609,8 @@ class SkyRectangularAnnulus(SkyAperture):
     def __init__(self, positions, w_in, w_out, h_out, h_in=None,
                  theta=0.0 * u.deg):
         if not w_out > w_in:
-            raise ValueError('"w_out" must be greater than "w_in".')
+            msg = '"w_out" must be greater than "w_in"'
+            raise ValueError(msg)
 
         self.positions = positions
         self.w_in = w_in
@@ -616,7 +620,8 @@ class SkyRectangularAnnulus(SkyAperture):
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
         elif not h_out > h_in:
-            raise ValueError('"h_out" must be greater than "h_in".')
+            msg = '"h_out" must be greater than "h_in"'
+            raise ValueError(msg)
         self.h_in = h_in
 
         self.theta = theta

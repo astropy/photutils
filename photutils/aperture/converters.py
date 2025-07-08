@@ -113,7 +113,8 @@ def region_to_aperture(region):
                          RectangleSkyRegion, Region)
 
     if not isinstance(region, Region):
-        raise TypeError('Input region must be a Region object')
+        msg = 'Input region must be a Region object'
+        raise TypeError(msg)
 
     if isinstance(region, CirclePixelRegion):
         aperture = CircularAperture(region.center.xy, region.radius)
@@ -178,8 +179,9 @@ def region_to_aperture(region):
             theta=(region.angle - (90 * u.deg)))
 
     else:
-        raise TypeError(f'Cannot convert {region.__class__.__name__!r} to '
-                        'an Aperture object')
+        msg = (f'Cannot convert {region.__class__.__name__!r} to an '
+               'Aperture object')
+        raise TypeError(msg)
 
     return aperture
 
@@ -268,7 +270,8 @@ def aperture_to_region(aperture):
     from regions import Regions
 
     if not isinstance(aperture, Aperture):
-        raise TypeError('Input aperture must be an Aperture object')
+        msg = 'Input aperture must be an Aperture object'
+        raise TypeError(msg)
 
     if aperture.shape == ():
         return _scalar_aperture_to_region(aperture)
@@ -303,7 +306,7 @@ def _scalar_aperture_to_region(aperture):
                          RectangleSkyRegion)
 
     if aperture.shape != ():
-        msg = 'Only scalar (single-position) apertures are supported.'
+        msg = 'Only scalar (single-position) apertures are supported'
         raise ValueError(msg)
 
     if isinstance(aperture, CircularAperture):
@@ -369,7 +372,8 @@ def _scalar_aperture_to_region(aperture):
             angle=(aperture.theta + (90 * u.deg)))
 
     else:  # pragma: no cover
-        raise TypeError('Cannot convert input aperture to a Region object')
+        msg = 'Cannot convert input aperture to a Region object'
+        raise TypeError(msg)
 
     return region
 
@@ -430,4 +434,5 @@ def _shapely_polygon_to_region(polygon, label=None):
             geoms.append(PolygonPixelRegion(vertices=PixCoord(x=x, y=y),
                                             meta=meta))
         return Regions(geoms)
-    raise TypeError('Input must be a Polygon or MultiPolygon object')
+    msg = 'Input must be a Polygon or MultiPolygon object'
+    raise TypeError(msg)
