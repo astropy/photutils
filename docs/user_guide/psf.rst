@@ -174,7 +174,7 @@ empirical PSF models for ACS and WFC3 (e.g., `WFC3 PSF Search
 <https://www.stsci.edu/hst/instrumentation/wfc3/data-analysis/psf/psf-search>`_).
 Similarly, the `James Webb Space Telescope <https://www.stsci.edu/jwst>`_
 and the `Nancy Grace Roman Space Telescope <https://www.stsci.edu/roman>`_
-provide the `WebbPSF <https://webbpsf.readthedocs.io/>`_ Python software
+provide the `STPSF <https://stpsf.readthedocs.io/>`_ Python software
 for creating PSF models. In particular, WebbPSF outputs gridded PSF
 models directly as Photutils `~photutils.psf.GriddedPSFModel` instances.
 
