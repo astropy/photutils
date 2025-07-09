@@ -47,7 +47,8 @@ class SegmentationImage:
 
     def __init__(self, data):
         if not isinstance(data, np.ndarray):
-            raise TypeError('Input data must be a numpy array')
+            msg = 'Input data must be a numpy array'
+            raise TypeError(msg)
         self.data = data
         self._deblend_label_map = {}  # set by source deblender
 
@@ -75,7 +76,8 @@ class SegmentationImage:
                         and (key[i].start != key[i].stop) for i in (0, 1))):
             return SegmentationImage(self.data[key])
 
-        raise TypeError(f'{key!r} is not a valid 2D slice object')
+        msg = f'{key!r} is not a valid 2D slice object'
+        raise TypeError(msg)
 
     def __array__(self):
         """
@@ -210,12 +212,13 @@ class SegmentationImage:
     @data.setter
     def data(self, value):
         if not np.issubdtype(value.dtype, np.integer):
-            raise TypeError('data must be have integer type')
+            msg = 'data must be have integer type'
+            raise TypeError(msg)
 
         labels = self._get_labels(value)  # array([]) if value all zeros
         if labels.shape != (0,) and np.min(labels) < 0:
-            raise ValueError('The segmentation image cannot contain '
-                             'negative integers.')
+            msg = 'The segmentation image cannot contain negative integers.'
+            raise ValueError(msg)
 
         if '_data' in self.__dict__:
             # reset cached properties when data is reassigned, but not on init
@@ -350,8 +353,8 @@ class SegmentationImage:
         bounding boxes containing the labeled regions.
         """
         if self._ndim != 2:
-            raise ValueError('The "bbox" attribute requires a 2D '
-                             'segmentation image.')
+            msg = 'The "bbox" attribute requires a 2D segmentation image.'
+            raise ValueError(msg)
 
         return [BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
                             iymin=slc[0].start, iymax=slc[0].stop)
@@ -490,8 +493,10 @@ class SegmentationImage:
 
         if bad_labels:  # bad_labels is a set
             if len(bad_labels) == 1:
-                raise ValueError(f'label {bad_labels} is invalid')
-            raise ValueError(f'labels {bad_labels} are invalid')
+                msg = f'label {bad_labels} is invalid'
+                raise ValueError(msg)
+            msg = f'labels {bad_labels} are invalid'
+            raise ValueError(msg)
 
     def _make_cmap(self, ncolors, background_color='#000000ff', seed=None):
         """
@@ -815,7 +820,8 @@ class SegmentationImage:
             return
 
         if start_label <= 0:
-            raise ValueError('start_label must be > 0.')
+            msg = 'start_label must be > 0'
+            raise ValueError(msg)
 
         if ((self.labels[0] == start_label)
                 and (self.labels[-1] - self.labels[0] + 1) == self.nlabels):
@@ -1108,8 +1114,9 @@ class SegmentationImage:
                [7, 7, 0, 0, 5, 5]])
         """
         if border_width >= min(self.shape) / 2:
-            raise ValueError('border_width must be smaller than half the '
-                             'array size in any dimension')
+            msg = ('border_width must be smaller than half the array size '
+                   'in any dimension')
+            raise ValueError(msg)
 
         border_mask = np.zeros(self.shape, dtype=bool)
         for i in range(border_mask.ndim):
@@ -1182,8 +1189,8 @@ class SegmentationImage:
                [7, 7, 0, 0, 5, 5]])
         """
         if mask.shape != self.shape:
-            raise ValueError('mask must have the same shape as the '
-                             'segmentation array')
+            msg = 'mask must have the same shape as the segmentation array'
+            raise ValueError(msg)
         remove_labels = self._get_labels(self.data[mask])
         if not partial_overlap:
             interior_labels = self._get_labels(self.data[~mask])
@@ -1399,7 +1406,7 @@ class SegmentationImage:
         polygons = []
         for label, geo_polys in self._geojson_polygons.items():
             if len(geo_polys) == 0:
-                msg = f'Could not create a polygon for label {label}.'
+                msg = f'Could not create a polygon for label {label}'
                 raise ValueError(msg)
             if len(geo_polys) == 1:
                 polygons.append(shape(geo_polys[0]))
@@ -1468,7 +1475,6 @@ class SegmentationImage:
             for ring in [poly.exterior, *list(poly.interiors)]:
                 vertices, codes = self._convert_ring_to_path(ring)
 
-                # TODO: handle origin and scale keywords
                 vertices = scale * (vertices + 0.5) - 0.5
                 vertices -= origin
 
@@ -1971,8 +1977,8 @@ class Segment:
             The cutout array.
         """
         if data.shape != self._segment_data.shape:
-            raise ValueError('data must have the same shape as the '
-                             'segmentation array.')
+            msg = 'data must have the same shape as the segmentation array'
+            raise ValueError(msg)
 
         if masked_array:
             mask = (self._segment_data[self.slices] != self.label)

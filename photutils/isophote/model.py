@@ -51,7 +51,8 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False):
         The image with the model galaxy.
     """
     if len(isolist) == 0:
-        raise ValueError('isolist must not be empty')
+        msg = 'isolist must not be empty'
+        raise ValueError(msg)
 
     # the target grid is spaced in 0.1 pixel intervals so as
     # to ensure no gaps will result on the output array.

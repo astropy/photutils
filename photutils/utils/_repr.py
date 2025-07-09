@@ -42,8 +42,8 @@ def make_repr(instance, params, *, overrides=None, long=False):
 
     if (overrides is not None
             and not set(overrides.keys()).issubset(set(params))):
-        raise ValueError('The overrides keys must be a subset of the params '
-                         'list.')
+        msg = 'The overrides keys must be a subset of the params list.'
+        raise ValueError(msg)
 
     cls_info = []
     for param in params:
@@ -57,8 +57,8 @@ def make_repr(instance, params, *, overrides=None, long=False):
         elif param in instance.__dict__:
             value = instance.__dict__[param]
         else:
-            raise ValueError(f'Parameter {param!r} not found in instance '
-                             'or overrides.')
+            msg = f'Parameter {param!r} not found in instance or overrides'
+            raise ValueError(msg)
 
         cls_info.append((param, value))
 

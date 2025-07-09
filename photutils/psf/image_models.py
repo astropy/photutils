@@ -151,18 +151,21 @@ class ImagePSF(Fittable2DModel):
     @staticmethod
     def _validate_data(data):
         if not isinstance(data, np.ndarray):
-            raise TypeError('Input data must be a 2D numpy array.')
+            msg = 'Input data must be a 2D numpy array'
+            raise TypeError(msg)
 
         if data.ndim != 2:
-            raise ValueError('Input data must be a 2D numpy array.')
+            msg = 'Input data must be a 2D numpy array'
+            raise ValueError(msg)
 
         if not np.all(np.isfinite(data)):
-            raise ValueError('All elements of input data must be finite.')
+            msg = 'All elements of input data must be finite'
+            raise ValueError(msg)
 
         # this is required by RectBivariateSpline for kx=3, ky=3
         if np.any(np.array(data.shape) < 4):
-            raise ValueError('The length of the x and y axes must both be at '
-                             'least 4.')
+            msg = 'The length of the x and y axes must both be at least 4'
+            raise ValueError(msg)
 
     def _cls_info(self):
         return [('PSF shape (oversampled pixels)', self.data.shape),
@@ -240,9 +243,11 @@ class ImagePSF(Fittable2DModel):
         else:
             origin = np.asarray(origin)
             if origin.ndim != 1 or len(origin) != 2:
-                raise ValueError('origin must be 1D and have 2-elements')
+                msg = 'origin must be 1D and have 2-elements'
+                raise ValueError(msg)
             if not np.all(np.isfinite(origin)):
-                raise ValueError('All elements of origin must be finite')
+                msg = 'All elements of origin must be finite'
+                raise ValueError(msg)
         self._origin = origin
 
     @lazyproperty
@@ -472,21 +477,23 @@ class FittableImageModel(Fittable2DModel):
                                      lower_bound=(0, 1))
 
         if normalization_correction <= 0:
-            raise ValueError("'normalization_correction' must be strictly "
-                             'positive.')
+            msg = 'normalization_correction must be strictly positive'
+            raise ValueError(msg)
         self._normalization_correction = normalization_correction
         self._normalization_constant = 1.0 / self._normalization_correction
 
         self._data = np.array(data, copy=True, dtype=float)
 
         if not np.all(np.isfinite(self._data)):
-            raise ValueError("All elements of input 'data' must be finite.")
+            msg = 'All elements of input data must be finite'
+            raise ValueError(msg)
 
         # set input image related parameters:
         self._ny, self._nx = self._data.shape
         self._shape = self._data.shape
         if self._data.size < 1:
-            raise ValueError('Image data array cannot be zero-sized.')
+            msg = 'Image data array cannot be zero-sized'
+            raise ValueError(msg)
 
         # set the origin of the coordinate system in image's pixel grid:
         self.origin = origin
@@ -686,8 +693,9 @@ class FittableImageModel(Fittable2DModel):
         elif hasattr(origin, '__iter__') and len(origin) == 2:
             self._x_origin, self._y_origin = origin
         else:
-            raise TypeError('Parameter "origin" must be either None or an '
-                            'iterable with two elements.')
+            msg = ('Parameter "origin" must be either None or an iterable '
+                   'with two elements')
+            raise TypeError(msg)
 
     @property
     def x_origin(self):
@@ -782,8 +790,8 @@ class FittableImageModel(Fittable2DModel):
                 degx = int(degree)
                 degy = int(degree)
             if degx < 0 or degy < 0:
-                raise ValueError('Interpolator degree must be a non-negative '
-                                 'integer')
+                msg = 'Interpolator degree must be a non-negative integer'
+                raise ValueError(msg)
         else:
             degx = 3
             degy = 3
@@ -793,7 +801,7 @@ class FittableImageModel(Fittable2DModel):
         x = np.arange(self._nx, dtype=float)
         y = np.arange(self._ny, dtype=float)
         self.interpolator = RectBivariateSpline(
-            x, y, self._data.T, kx=degx, ky=degy, s=smoothness
+            x, y, self._data.T, kx=degx, ky=degy, s=smoothness,
         )
 
         self._store_interpolator_kwargs(**kwargs)
@@ -935,21 +943,23 @@ class _LegacyEPSFModel(Fittable2DModel):
                                      lower_bound=(0, 1))
 
         if normalization_correction <= 0:
-            raise ValueError("'normalization_correction' must be strictly "
-                             'positive.')
+            msg = 'normalization_correction must be strictly positive'
+            raise ValueError(msg)
         self._normalization_correction = normalization_correction
         self._normalization_constant = 1.0 / self._normalization_correction
 
         self._data = np.array(data, copy=True, dtype=float)
 
         if not np.all(np.isfinite(self._data)):
-            raise ValueError("All elements of input 'data' must be finite.")
+            msg = 'All elements of input data must be finite'
+            raise ValueError(msg)
 
         # set input image related parameters:
         self._ny, self._nx = self._data.shape
         self._shape = self._data.shape
         if self._data.size < 1:
-            raise ValueError('Image data array cannot be zero-sized.')
+            msg = 'Image data array cannot be zero-sized'
+            raise ValueError(msg)
 
         # set the origin of the coordinate system in image's pixel grid:
         self.origin = origin
@@ -980,8 +990,8 @@ class _LegacyEPSFModel(Fittable2DModel):
         a given radius.
         """
         xypos = (self._nx / 2.0, self._ny / 2.0)
-        # TODO: generalize "radius" (ellipse?) is oversampling is
-        # different along x/y axes
+        # How to generalize "radius" if oversampling is
+        # different along x/y axes (ellipse?)
         radius = self._norm_radius * self.oversampling[0]
         aper = CircularAperture(xypos, r=radius)
         flux, _ = aper.do_photometry(self._data, method='exact')
@@ -1133,8 +1143,9 @@ class _LegacyEPSFModel(Fittable2DModel):
         elif (hasattr(origin, '__iter__') and len(origin) == 2):
             self._x_origin, self._y_origin = origin
         else:
-            raise TypeError('Parameter "origin" must be either None or an '
-                            'iterable with two elements.')
+            msg = ('Parameter "origin" must be either None or an iterable '
+                   'with two elements')
+            raise TypeError(msg)
 
     @property
     def x_origin(self):
@@ -1229,8 +1240,8 @@ class _LegacyEPSFModel(Fittable2DModel):
                 degx = int(degree)
                 degy = int(degree)
             if degx < 0 or degy < 0:
-                raise ValueError('Interpolator degree must be a non-negative '
-                                 'integer')
+                msg = 'Interpolator degree must be a non-negative integer'
+                raise ValueError(msg)
         else:
             degx = 3
             degy = 3
@@ -1242,7 +1253,7 @@ class _LegacyEPSFModel(Fittable2DModel):
         x = np.arange(self._nx, dtype=float) / self.oversampling[1]
         y = np.arange(self._ny, dtype=float) / self.oversampling[0]
         self.interpolator = RectBivariateSpline(
-            x, y, self._data.T, kx=degx, ky=degy, s=smoothness
+            x, y, self._data.T, kx=degx, ky=degy, s=smoothness,
         )
 
         self._store_interpolator_kwargs(**kwargs)

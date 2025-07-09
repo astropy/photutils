@@ -18,9 +18,11 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['detect_sources', 'detect_threshold']
 
+SIGMA_CLIP_DEFAULT = SigmaClip(sigma=3.0, maxiters=10)
+
 
 def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
-                     sigma_clip=SigmaClip(sigma=3.0, maxiters=10)):
+                     sigma_clip=SIGMA_CLIP_DEFAULT):
     """
     Calculate a pixel-wise threshold image that can be used to detect
     sources.
@@ -92,7 +94,8 @@ def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
     (data, background, error) = inputs
 
     if not isinstance(sigma_clip, SigmaClip):
-        raise TypeError('sigma_clip must be a SigmaClip object')
+        msg = 'sigma_clip must be a SigmaClip object'
+        raise TypeError(msg)
 
     if background is None or error is None:
         if mask is not None:
@@ -105,14 +108,16 @@ def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
         background = nanmean(clipped_data)
 
     if not np.isscalar(background) and background.shape != data.shape:
-        raise ValueError('If input background is 2D, then it must have the '
-                         'same shape as the input data.')
+        msg = ('If input background is 2D, then it must have the same '
+               'shape as the input data.')
+        raise ValueError(msg)
 
     if error is None:
         error = nanstd(clipped_data)
     if not np.isscalar(error) and error.shape != data.shape:
-        raise ValueError('If input error is 2D, then it must have the same '
-                         'shape as the input data.')
+        msg = ('If input error is 2D, then it must have the same shape '
+               'as the input data.')
+        raise ValueError(msg)
 
     threshold = (np.broadcast_to(background, data.shape)
                  + np.broadcast_to(error * nsigma, data.shape))
@@ -354,17 +359,17 @@ def detect_sources(data, threshold, npixels, *, connectivity=8, mask=None):
     _ = process_quantities((data, threshold), ('data', 'threshold'))
 
     if (npixels <= 0) or (int(npixels) != npixels):
-        raise ValueError('npixels must be a positive integer, got '
-                         f'"{npixels}"')
+        msg = f'npixels must be a positive integer, got {npixels!r}'
+        raise ValueError(msg)
 
     if mask is not None:
         if mask.shape != data.shape:
-            raise ValueError('mask must have the same shape as the input '
-                             'image.')
+            msg = 'mask must have the same shape as the input image'
+            raise ValueError(msg)
         if mask.all():
-            raise ValueError('mask must not be True for every pixel. There '
-                             'are no unmasked pixels in the image to detect '
-                             'sources.')
+            msg = ('mask must not be True for every pixel. There are no '
+                   'unmasked pixels in the image to detect sources.')
+            raise ValueError(msg)
         inverse_mask = np.logical_not(mask)
     else:
         inverse_mask = None

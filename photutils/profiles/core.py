@@ -85,7 +85,8 @@ class ProfileBase(metaclass=abc.ABCMeta):
                                                  ('data', 'error'))
 
         if error is not None and error.shape != data.shape:
-            raise ValueError('error must have the same shape as data')
+            msg = 'error must have the same shape as data'
+            raise ValueError(msg)
 
         self.data = data
         self.unit = unit
@@ -100,13 +101,15 @@ class ProfileBase(metaclass=abc.ABCMeta):
     def _validate_radii(self, radii):
         radii = np.array(radii)
         if radii.ndim != 1 or radii.size < 2:
-            raise ValueError('radii must be a 1D array and have at '
-                             'least two values')
+            msg = 'radii must be a 1D array and have at least two values'
+            raise ValueError(msg)
         if radii.min() < 0:
-            raise ValueError('minimum radii must be >= 0')
+            msg = 'minimum radii must be >= 0'
+            raise ValueError(msg)
 
         if not np.all(radii[1:] > radii[:-1]):
-            raise ValueError('radii must be strictly increasing')
+            msg = 'radii must be strictly increasing'
+            raise ValueError(msg)
 
         return radii
 
@@ -120,7 +123,8 @@ class ProfileBase(metaclass=abc.ABCMeta):
             badmask |= ~np.isfinite(error)
         if mask is not None:
             if mask.shape != data.shape:
-                raise ValueError('mask must have the same shape as data')
+                msg = 'mask must have the same shape as data'
+                raise ValueError(msg)
             badmask &= ~mask  # non-finite values not in input mask
             mask |= badmask  # all masked pixels
         else:
@@ -138,7 +142,8 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         The profile radius in pixels as a 1D `~numpy.ndarray`.
         """
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        msg = 'Needs to be implemented in a subclass'
+        raise NotImplementedError(msg)
 
     @property
     @abc.abstractmethod
@@ -146,7 +151,8 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         The radial profile as a 1D `~numpy.ndarray`.
         """
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        msg = 'Needs to be implemented in a subclass'
+        raise NotImplementedError(msg)
 
     @property
     @abc.abstractmethod
@@ -154,7 +160,8 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         The radial profile errors as a 1D `~numpy.ndarray`.
         """
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        msg = 'Needs to be implemented in a subclass'
+        raise NotImplementedError(msg)
 
     @lazyproperty
     def _circular_apertures(self):
@@ -229,7 +236,8 @@ class ProfileBase(metaclass=abc.ABCMeta):
         elif method == 'sum':
             normalization = nansum(self.profile)
         else:
-            raise ValueError('invalid method, must be "max" or "sum"')
+            msg = 'invalid method, must be "max" or "sum"'
+            raise ValueError(msg)
 
         # NOTE: max and sum will never be NaN (automatically masked)
         if normalization == 0:

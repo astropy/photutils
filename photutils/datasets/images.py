@@ -224,14 +224,18 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     option should be used with care.
     """
     if not isinstance(shape, tuple) or len(shape) != 2:
-        raise ValueError('shape must be a 2-tuple')
+        msg = 'shape must be a 2-tuple'
+        raise ValueError(msg)
 
     if not isinstance(model, Model):
-        raise TypeError('model must be a Model instance')
+        msg = 'model must be a Model instance'
+        raise TypeError(msg)
     if model.n_inputs != 2 or model.n_outputs != 1:
-        raise ValueError('model must be a 2D model')
+        msg = 'model must be a 2D model'
+        raise ValueError(msg)
     if not isinstance(params_table, Table):
-        raise TypeError('params_table must be an astropy Table')
+        msg = 'params_table must be an astropy Table'
+        raise TypeError(msg)
 
     xypos_map = {x_name: x_name, y_name: y_name}
 
@@ -248,10 +252,11 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
     for key, value in params_map.items():
         if key not in model.param_names:
-            raise ValueError(f'key "{key}" not in model parameter names')
+            msg = f'key "{key}" not in model parameter names'
+            raise ValueError(msg)
         if value not in params_table.colnames:
-            raise ValueError(f'value "{value}" not in params_table column '
-                             'names')
+            msg = f'value "{value}" not in params_table column names'
+            raise ValueError(msg)
 
     if model_shape is not None:
         model_shape = as_pair('model_shape', model_shape, lower_bound=(0, 1))
@@ -268,8 +273,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         try:
             _ = model.bounding_box
         except NotImplementedError as exc:
-            raise ValueError('model_shape must be specified if the model '
-                             'does not have a bounding_box attribute') from exc
+            msg = ('model_shape must be specified if the model does not '
+                   'have a bounding_box attribute')
+            raise ValueError(msg) from exc
 
     if 'local_bkg' in params_table.colnames:
         local_bkg = params_table['local_bkg']
@@ -325,8 +331,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
             try:
                 image[slc_lg] += subimg + local_bkg[i]
             except u.UnitConversionError as exc:
-                raise ValueError('The local_bkg column must have the same '
-                                 'flux units as the output image') from exc
+                msg = ('The local_bkg column must have the same flux units '
+                       'as the output image')
+                raise ValueError(msg) from exc
 
         except NoOverlapError:
             continue

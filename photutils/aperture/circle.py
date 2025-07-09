@@ -83,7 +83,8 @@ class CircularMaskMixin:
         elif hasattr(self, 'r_out'):  # annulus
             radius = self.r_out
         else:
-            raise ValueError('Cannot determine the aperture radius.')
+            msg = 'Cannot determine the aperture radius'
+            raise ValueError(msg)
 
         masks = []
         for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
@@ -273,7 +274,8 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     def __init__(self, positions, r_in, r_out):
         if not r_out > r_in:
-            raise ValueError('r_out must be greater than r_in')
+            msg = 'r_out must be greater than r_in'
+            raise ValueError(msg)
 
         self.positions = positions
         self.r_in = r_in
@@ -443,8 +445,8 @@ class SkyCircularAnnulus(SkyAperture):
 
     def __init__(self, positions, r_in, r_out):
         if r_in.unit.physical_type != r_out.unit.physical_type:
-            raise ValueError('r_in and r_out should either both be angles '
-                             'or in pixels.')
+            msg = 'r_in and r_out should either both be angles or in pixels'
+            raise ValueError(msg)
 
         self.positions = positions
         self.r_in = r_in

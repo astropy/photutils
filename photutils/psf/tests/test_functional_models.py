@@ -54,7 +54,8 @@ def make_gaussian_models(name):
         model_init = CircularGaussianSigmaPRF(flux=flux_i, x_0=x_0_i,
                                               y_0=y_0_i, sigma=x_fwhm_i / 2.35)
     else:
-        raise ValueError('invalid model name')
+        msg = 'invalid model name'
+        raise ValueError(msg)
 
     return model, model_init
 

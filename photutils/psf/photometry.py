@@ -35,6 +35,8 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['IterativePSFPhotometry', 'ModelImageMixin', 'PSFPhotometry']
 
+FITTER_DEFAULT = TRFLSQFitter()
+
 
 class ModelImageMixin:
     """
@@ -320,8 +322,8 @@ class PSFPhotometry(ModelImageMixin):
                                        alternative='fit_info')
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
-                 fitter=TRFLSQFitter(), fitter_maxiters=100,
-                 xy_bounds=None, localbkg_estimator=None, aperture_radius=None,
+                 fitter=FITTER_DEFAULT, fitter_maxiters=100, xy_bounds=None,
+                 localbkg_estimator=None, aperture_radius=None,
                  progress_bar=False):
 
         self._param_maps = self._define_param_maps(psf_model)
@@ -371,7 +373,8 @@ class PSFPhotometry(ModelImageMixin):
 
     def _validate_grouper(self, grouper):
         if grouper is not None and not isinstance(grouper, SourceGrouper):
-            raise ValueError('grouper must be a SourceGrouper instance.')
+            msg = 'grouper must be a SourceGrouper instance'
+            raise ValueError(msg)
         return grouper
 
     @staticmethod
@@ -442,13 +445,14 @@ class PSFPhotometry(ModelImageMixin):
     @staticmethod
     def _validate_callable(obj, name):
         if obj is not None and not callable(obj):
-            raise TypeError(f'{name!r} must be a callable object')
+            msg = f'{name!r} must be a callable object'
+            raise TypeError(msg)
         return obj
 
     def _validate_localbkg(self, value, name):
         if value is not None and not isinstance(value, LocalBackground):
-            raise ValueError('localbkg_estimator must be a '
-                             'LocalBackground instance.')
+            msg = 'localbkg_estimator must be a LocalBackground instance'
+            raise ValueError(msg)
         return self._validate_callable(value, name)
 
     def _validate_maxiters(self, maxiters):
@@ -468,20 +472,23 @@ class PSFPhotometry(ModelImageMixin):
         if len(xy_bounds) == 1:
             xy_bounds = np.array((xy_bounds[0], xy_bounds[0]))
         if len(xy_bounds) != 2:
-            raise ValueError('xy_bounds must have 1 or 2 elements')
+            msg = 'xy_bounds must have 1 or 2 elements'
+            raise ValueError(msg)
         if xy_bounds.ndim != 1:
-            raise ValueError('xy_bounds must be a 1D array')
+            msg = 'xy_bounds must be a 1D array'
+            raise ValueError(msg)
         non_none = [i for i in xy_bounds if i is not None]
         if np.any(np.array(non_none) <= 0):
-            raise ValueError('xy_bounds must be strictly positive')
+            msg = 'xy_bounds must be strictly positive'
+            raise ValueError(msg)
         return xy_bounds
 
     @staticmethod
     def _validate_radius(radius):
         if radius is not None and (not np.isscalar(radius)
                                    or radius <= 0 or ~np.isfinite(radius)):
-            raise ValueError('aperture_radius must be a strictly-positive '
-                             'scalar')
+            msg = 'aperture_radius must be a strictly-positive scalar'
+            raise ValueError(msg)
         return radius
 
     def _validate_array(self, array, name, data_shape=None):
@@ -490,9 +497,11 @@ class PSFPhotometry(ModelImageMixin):
         if array is not None:
             array = np.asanyarray(array)
             if array.ndim != 2:
-                raise ValueError(f'{name} must be a 2D array.')
+                msg = f'{name} must be a 2D array'
+                raise ValueError(msg)
             if data_shape is not None and array.shape != data_shape:
-                raise ValueError(f'data and {name} must have the same shape.')
+                msg = f'data and {name} must have the same shape'
+                raise ValueError(msg)
         return array
 
     @lazyproperty
@@ -542,19 +551,19 @@ class PSFPhotometry(ModelImageMixin):
         values = init_params[colname]
         if isinstance(values, u.Quantity):
             if self.data_unit is None:
-                raise ValueError(f'init_params {colname} column has '
-                                 'units, but the input data does not '
-                                 'have units.')
+                msg = (f'init_params {colname} column has units, but the '
+                       'input data does not have units')
+                raise ValueError(msg)
             try:
                 init_params[colname] = values.to(self.data_unit)
             except u.UnitConversionError as exc:
-                raise ValueError(f'init_params {colname} column has '
-                                 'units that are incompatible with '
-                                 'the input data units.') from exc
+                msg = (f'init_params {colname} column has units that are '
+                       'incompatible with the input data units')
+                raise ValueError(msg) from exc
         elif self.data_unit is not None:
-            raise ValueError('The input data has units, but the '
-                             f'init_params {colname} column does not '
-                             'have units.')
+            msg = ('The input data has units, but the init_params '
+                   f'{colname} column does not have units.')
+            raise ValueError(msg)
 
         return init_params
 
@@ -586,7 +595,8 @@ class PSFPhotometry(ModelImageMixin):
             return init_params
 
         if not isinstance(init_params, Table):
-            raise TypeError('init_params must be an astropy Table')
+            msg = 'init_params must be an astropy Table'
+            raise TypeError(msg)
 
         # copy is used to preserve the input init_params
         init_params = self._rename_init_columns(init_params.copy(),
@@ -598,8 +608,9 @@ class PSFPhotometry(ModelImageMixin):
         ycolname = self._param_maps['init_cols']['y']
         if (xcolname not in init_params.colnames
                 or ycolname not in init_params.colnames):
-            raise ValueError('init_param must contain valid column names '
-                             'for the x and y source positions')
+            msg = ('init_param must contain valid column names for the '
+                   'x and y source positions')
+            raise ValueError(msg)
 
         fluxcolname = self._param_maps['init_cols']['flux']
         if fluxcolname in init_params.colnames:
@@ -607,8 +618,9 @@ class PSFPhotometry(ModelImageMixin):
 
         if 'local_bkg' in init_params.colnames:
             if not np.all(np.isfinite(init_params['local_bkg'])):
-                raise ValueError('init_params local_bkg column contains '
-                                 'non-finite values.')
+                msg = ('init_params local_bkg column contains non-finite '
+                       'values')
+                raise ValueError(msg)
             init_params = self._check_init_units(init_params, 'local_bkg')
 
         return init_params
@@ -628,8 +640,8 @@ class PSFPhotometry(ModelImageMixin):
 
         if init_params is None:
             if self.finder is None:
-                raise ValueError('finder must be defined if init_params '
-                                 'is not input')
+                msg = 'finder must be defined if init_params is not input'
+                raise ValueError(msg)
 
             # restore units to the input data (stripped earlier)
             if self.data_unit is not None:
@@ -713,9 +725,10 @@ class PSFPhotometry(ModelImageMixin):
         data shape.
         """
         if np.any(self._get_invalid_positions(init_params, shape)):
-            raise ValueError('Some of the sources have no overlap with the '
-                             'data. Check the initial source positions or '
-                             'increase the fit_shape.')
+            msg = ('Some of the sources have no overlap with the data. '
+                   'Check the initial source positions or increase the '
+                   'fit_shape.')
+            raise ValueError(msg)
 
     def _make_psf_model(self, sources):
         """
@@ -1006,7 +1019,8 @@ class PSFPhotometry(ModelImageMixin):
             fit_param_errs.extend(self._split_param_errs(param_err, nfitparam))
 
         if len(fit_models) != len(fit_infos):  # pragma: no cover
-            raise ValueError('fit_models and fit_infos have different lengths')
+            msg = 'fit_models and fit_infos have different lengths'
+            raise ValueError(msg)
 
         # change the sorting from group_id to source id order
         fit_models = self._order_by_id(fit_models)
@@ -1053,9 +1067,10 @@ class PSFPhotometry(ModelImageMixin):
             if error is not None:
                 weights = 1.0 / error[yi, xi]
                 if np.any(~np.isfinite(weights)):
-                    raise ValueError('Fit weights contain a non-finite '
-                                     'value. Check the input error array '
-                                     'for any zeros or non-finite values.')
+                    msg = ('Fit weights contain a non-finite value. '
+                           'Check the input error array for any zeros or '
+                           'non-finite values.')
+                    raise ValueError(msg)
             else:
                 weights = None
 
@@ -1218,9 +1233,9 @@ class PSFPhotometry(ModelImageMixin):
         if (self.aperture_radius is None
             and (init_params is None
                  or fluxcol not in init_params.colnames)):
-            raise ValueError('aperture_radius must be defined if init_params '
-                             'is not input or if a flux column is not in '
-                             'init_params')
+            msg = ('aperture_radius must be defined if init_params is '
+                   'not input or if a flux column is not in init_params')
+            raise ValueError(msg)
 
         init_params = self._prepare_init_params(data, mask, init_params)
         if init_params is None:  # no sources detected by finder
@@ -1623,18 +1638,17 @@ class IterativePSFPhotometry(ModelImageMixin):
     """
 
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
-                 fitter=TRFLSQFitter(), fitter_maxiters=100,
-                 xy_bounds=None, maxiters=3, mode='new',
-                 localbkg_estimator=None, aperture_radius=None,
-                 sub_shape=None, progress_bar=False):
+                 fitter=FITTER_DEFAULT, fitter_maxiters=100, xy_bounds=None,
+                 maxiters=3, mode='new', localbkg_estimator=None,
+                 aperture_radius=None, sub_shape=None, progress_bar=False):
 
         if finder is None:
-            raise ValueError('finder cannot be None for '
-                             'IterativePSFPhotometry.')
+            msg = 'finder cannot be None for IterativePSFPhotometry'
+            raise ValueError(msg)
 
         if aperture_radius is None:
-            raise ValueError('aperture_radius cannot be None for '
-                             'IterativePSFPhotometry.')
+            msg = 'aperture_radius cannot be None for IterativePSFPhotometry'
+            raise ValueError(msg)
 
         self._psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                                       grouper=grouper, fitter=fitter,
@@ -1647,9 +1661,11 @@ class IterativePSFPhotometry(ModelImageMixin):
         self.maxiters = self._validate_maxiters(maxiters)
 
         if mode not in ['new', 'all']:
-            raise ValueError('mode must be "new" or "all".')
+            msg = 'mode must be "new" or "all"'
+            raise ValueError(msg)
         if mode == 'all' and grouper is None:
-            raise ValueError('grouper must be input for the "all" mode.')
+            msg = 'grouper must be input for the "all" mode'
+            raise ValueError(msg)
         self.mode = mode
 
         self.sub_shape = sub_shape
@@ -1677,7 +1693,7 @@ class IterativePSFPhotometry(ModelImageMixin):
             'xy_bounds': self._psfphot.xy_bounds,
             'localbkg_estimator': self._psfphot.localbkg_estimator,
             'aperture_radius': self._psfphot.aperture_radius,
-            'progress_bar': self._psfphot.progress_bar
+            'progress_bar': self._psfphot.progress_bar,
         }
         return make_repr(self, params, overrides=overrides)
 
@@ -1685,9 +1701,11 @@ class IterativePSFPhotometry(ModelImageMixin):
     def _validate_maxiters(maxiters):
         if (not np.isscalar(maxiters) or maxiters <= 0
                 or ~np.isfinite(maxiters)):
-            raise ValueError('maxiters must be a strictly-positive scalar')
+            msg = 'maxiters must be a strictly-positive scalar'
+            raise ValueError(msg)
         if maxiters != int(maxiters):
-            raise ValueError('maxiters must be an integer')
+            msg = 'maxiters must be an integer'
+            raise ValueError(msg)
         return maxiters
 
     @staticmethod

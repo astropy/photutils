@@ -75,9 +75,11 @@ class SourceGrouper:
         x = np.atleast_1d(x)
         y = np.atleast_1d(y)
         if x.shape != y.shape:
-            raise ValueError('x and y must have the same shape')
+            msg = 'x and y must have the same shape'
+            raise ValueError(msg)
         if x.shape == (0,):  # no sources
-            raise ValueError('x and y must not be empty')
+            msg = 'x and y must not be empty'
+            raise ValueError(msg)
         if x.shape == (1,):  # single source -> single group
             return np.array([1])
 

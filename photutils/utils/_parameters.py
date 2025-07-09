@@ -54,22 +54,28 @@ def as_pair(name, value, lower_bound=None, upper_bound=None, check_odd=False):
     value = np.atleast_1d(value)
 
     if np.any(~np.isfinite(value)):
-        raise ValueError(f'{name} must be a finite value')
+        msg = f'{name} must be a finite value'
+        raise ValueError(msg)
 
     if len(value) == 1:
         value = np.array((value[0], value[0]))
     if len(value) != 2:
-        raise ValueError(f'{name} must have 1 or 2 elements')
+        msg = f'{name} must have 1 or 2 elements'
+        raise ValueError(msg)
     if value.ndim != 1:
-        raise ValueError(f'{name} must be 1D')
+        msg = f'{name} must be 1D'
+        raise ValueError(msg)
     if value.dtype.kind != 'i':
-        raise ValueError(f'{name} must have integer values')
+        msg = f'{name} must have integer values'
+        raise ValueError(msg)
     if check_odd and np.all(value % 2) != 1:
-        raise ValueError(f'{name} must have an odd value for both axes')
+        msg = f'{name} must have an odd value for both axes'
+        raise ValueError(msg)
 
     if lower_bound is not None:
         if len(lower_bound) != 2:
-            raise ValueError('lower_bound must contain only 2 elements')
+            msg = 'lower_bound must contain only 2 elements'
+            raise ValueError(msg)
         bound, inclusive = lower_bound
         if inclusive == 1:
             oper = '>'
@@ -78,7 +84,8 @@ def as_pair(name, value, lower_bound=None, upper_bound=None, check_odd=False):
             oper = '>='
             mask = value < bound
         if np.any(mask):
-            raise ValueError(f'{name} must be {oper} {bound}')
+            msg = f'{name} must be {oper} {bound}'
+            raise ValueError(msg)
 
     if upper_bound is not None:
         # if value is larger than upper_bound, set to upper_bound;

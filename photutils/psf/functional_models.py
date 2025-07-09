@@ -422,7 +422,8 @@ class GaussianPSF(Fittable2DModel):
         # units otherwise this can lead to issues since rotation is not well
         # defined.
         if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
-            raise UnitsError("Units of 'x' and 'y' inputs should match")
+            msg = "Units of 'x' and 'y' inputs should match"
+            raise UnitsError(msg)
 
         return {'x_0': inputs_unit[self.inputs[0]],
                 'y_0': inputs_unit[self.inputs[0]],
@@ -982,7 +983,8 @@ class GaussianPRF(Fittable2DModel):
         # units otherwise this can lead to issues since rotation is not well
         # defined.
         if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
-            raise UnitsError("Units of 'x' and 'y' inputs should match")
+            msg = "Units of 'x' and 'y' inputs should match"
+            raise UnitsError(msg)
 
         return {'x_0': inputs_unit[self.inputs[0]],
                 'y_0': inputs_unit[self.inputs[0]],
@@ -1471,7 +1473,8 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         # units otherwise this can lead to issues since rotation is not well
         # defined.
         if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
-            raise UnitsError("Units of 'x' and 'y' inputs should match")
+            msg = "Units of 'x' and 'y' inputs should match"
+            raise UnitsError(msg)
 
         return {'x_0': inputs_unit[self.inputs[0]],
                 'y_0': inputs_unit[self.inputs[0]],

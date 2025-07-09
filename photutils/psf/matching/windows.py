@@ -32,7 +32,8 @@ def _radial_distance(shape):
         array center.
     """
     if len(shape) != 2:
-        raise ValueError('shape must have only 2 elements')
+        msg = 'shape must have only 2 elements'
+        raise ValueError(msg)
     position = (np.asarray(shape) - 1) / 2.0
     x = np.arange(shape[1]) - position[1]
     y = np.arange(shape[0]) - position[0]

@@ -380,7 +380,7 @@ class CentralEllipseSample(EllipseSample):
     the special case of the central pixel in the galaxy image.
     """
 
-    def update(self, fixed_parameters=None):
+    def update(self, fixed_parameters=None):  # noqa: ARG002
         """
         Update this `~photutils.isophote.EllipseSample` instance with
         the intensity integrated at the (x0, y0) center position using

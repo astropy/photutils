@@ -20,6 +20,8 @@ __all__ = ['ImageDepth']
 
 __doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['skimage']}
 
+SIGMA_CLIP_DEFAULT = SigmaClip(sigma=3.0, maxiters=10)
+
 
 class ImageDepth:
     r"""
@@ -194,13 +196,15 @@ class ImageDepth:
 
     def __init__(self, aper_radius, *, nsigma=5.0, mask_pad=0, napers=1000,
                  niters=10, overlap=True, overlap_maxiters=100, seed=None,
-                 zeropoint=0.0, sigma_clip=SigmaClip(sigma=3.0, maxiters=10),
+                 zeropoint=0.0, sigma_clip=SIGMA_CLIP_DEFAULT,
                  progress_bar=True):
 
         if aper_radius <= 0:
-            raise ValueError('aper_radius must be > 0')
+            msg = 'aper_radius must be > 0'
+            raise ValueError(msg)
         if mask_pad < 0:
-            raise ValueError('mask_pad must be >= 0')
+            msg = 'mask_pad must be >= 0'
+            raise ValueError(msg)
 
         self.aper_radius = aper_radius
         self.nsigma = nsigma
@@ -263,8 +267,9 @@ class ImageDepth:
             all_xycoords = self._make_all_coords(mask)
 
         if len(all_xycoords) == 0:
-            raise ValueError('There are no unmasked pixel values (including '
-                             'the masked image borders).')
+            msg = ('There are no unmasked pixel values (including the '
+                   'masked image borders).')
+            raise ValueError(msg)
 
         napers = self.napers
         if not self.overlap:
@@ -514,7 +519,8 @@ class ImageDepth:
             The (x, y) coordinates.
         """
         if napers > xycoords.shape[0]:
-            raise ValueError('Too many apertures for given unmasked area')
+            msg = 'Too many apertures for given unmasked area'
+            raise ValueError(msg)
 
         idx = self.rng.choice(xycoords.shape[0], napers, replace=False)
         xycoords = xycoords[idx, :].astype(float)

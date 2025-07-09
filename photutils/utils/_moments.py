@@ -32,7 +32,8 @@ def _moments_central(data, center=None, order=1):
     data = np.asarray(data).astype(float)
 
     if data.ndim != 2:
-        raise ValueError('data must be a 2D array.')
+        msg = 'data must be a 2D array'
+        raise ValueError(msg)
 
     if center is None:
         from photutils.centroids import centroid_com

@@ -104,7 +104,8 @@ def _read_stdpsf(filename):
         nxpsfs = header['NXPSFS']
         nypsfs = header['NYPSFS']
     except KeyError as exc:
-        raise ValueError('Invalid STDPDF FITS file.') from exc
+        msg = 'Invalid STDPDF FITS file'
+        raise ValueError(msg) from exc
 
     if 'IPSFX01' in header:
         xgrid = [header[f'IPSFX{i:02d}'] for i in range(1, nxpsfs + 1)]
@@ -119,7 +120,8 @@ def _read_stdpsf(filename):
         for ykey in ykeys:
             ygrid.extend([int(n) for n in header[ykey].split()])
     else:
-        raise ValueError('Unknown STDPSF FITS file.')
+        msg = 'Unknown STDPSF FITS file'
+        raise ValueError(msg)
 
     # STDPDF FITS positions are 1-indexed
     xgrid = np.array(xgrid) - 1
@@ -237,10 +239,11 @@ def _split_wfc_uvis(grid_data, detector_id):
         The y-grid for the specified detector.
     """
     if detector_id is None:
-        raise ValueError('detector_id must be specified for ACS/WFC and '
-                         'WFC3/UVIS ePSFs.')
+        msg = 'detector_id must be specified for ACS/WFC and WFC3/UVIS ePSFs'
+        raise ValueError(msg)
     if detector_id not in (1, 2):
-        raise ValueError('detector_id must be 1 or 2.')
+        msg = 'detector_id must be 1 or 2'
+        raise ValueError(msg)
 
     # ACS/WFC1 and WFC3/UVIS1 chip1 (sci, 2) are above chip2 (sci, 1)
     # in y-pixel coordinates
@@ -282,9 +285,11 @@ def _split_wfpc2(grid_data, detector_id):
         The y-grid for the specified detector.
     """
     if detector_id is None:
-        raise ValueError('detector_id must be specified for WFPC2 ePSFs')
+        msg = 'detector_id must be specified for WFPC2 ePSFs'
+        raise ValueError(msg)
     if detector_id not in range(1, 5):
-        raise ValueError('detector_id must be between 1 and 4, inclusive')
+        msg = 'detector_id must be between 1 and 4, inclusive'
+        raise ValueError(msg)
 
     nxdet = 2
     nydet = 2
@@ -327,9 +332,11 @@ def _split_nrcsw(grid_data, detector_id):
         The y-grid for the specified detector.
     """
     if detector_id is None:
-        raise ValueError('detector_id must be specified for NRCSW ePSFs')
+        msg = 'detector_id must be specified for NRCSW ePSFs'
+        raise ValueError(msg)
     if detector_id not in range(1, 9):
-        raise ValueError('detector_id must be between 1 and 8, inclusive')
+        msg = 'detector_id must be between 1 and 8, inclusive'
+        raise ValueError(msg)
 
     nxdet = 4
     nydet = 2
@@ -400,7 +407,8 @@ def _get_metadata(filename, detector_id):
         try:
             inst_det = detector_map[detector]
         except KeyError as exc:
-            raise ValueError(f'Unknown detector {detector}.') from exc
+            msg = f'Unknown detector {detector}'
+            raise ValueError(msg) from exc
 
         if inst_det[1] == 'WFPC2':
             wfpc2_map = {1: 'PC', 2: 'WF2', 3: 'WF3', 4: 'WF4'}
@@ -488,7 +496,8 @@ def stdpsf_reader(filename, detector_id=None):
         elif npsfs == 200:  # NIRCam SW data (8 chips)
             data, xgrid, ygrid = _split_nrcsw(grid_data, detector_id)
         else:
-            raise ValueError('Unknown detector or STDPSF format')
+            msg = 'Unknown detector or STDPSF format'
+            raise ValueError(msg)
     else:
         data = grid_data['data']
         xgrid = grid_data['xgrid']
@@ -551,11 +560,11 @@ def webbpsf_reader(filename):
     data = np.atleast_3d(data)
 
     if not any('DET_YX' in key for key in header):
-        raise ValueError('Invalid WebbPSF FITS file; missing "DET_YX{}" '
-                         'header keys.')
+        msg = 'Invalid WebbPSF FITS file; missing "DET_YX{}" header keys'
+        raise ValueError(msg)
     if 'OVERSAMP' not in header:
-        raise ValueError('Invalid WebbPSF FITS file; missing "OVERSAMP" '
-                         'header key.')
+        msg = 'Invalid WebbPSF FITS file; missing "OVERSAMP" header key'
+        raise ValueError(msg)
 
     # convert header to meta dict
     header = header.copy(strip=True)

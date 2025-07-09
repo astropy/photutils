@@ -86,7 +86,8 @@ class StarFinder(StarFinderBase):
         self.threshold = threshold
         self.kernel = kernel
         if min_separation < 0:
-            raise ValueError('min_separation must be >= 0')
+            msg = 'min_separation must be >= 0'
+            raise ValueError(msg)
         self.min_separation = min_separation
         self.exclude_border = exclude_border
         self.brightest = _validate_brightest(brightest)

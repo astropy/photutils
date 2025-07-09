@@ -230,7 +230,8 @@ class CurveOfGrowth(ProfileBase):
 
         radii = np.array(radii)
         if radii.min() <= 0:
-            raise ValueError('radii must be > 0')
+            msg = 'radii must be > 0'
+            raise ValueError(msg)
 
         super().__init__(data, xycen, radii, error=error, mask=mask,
                          method=method, subpixels=subpixels)
@@ -342,11 +343,11 @@ class CurveOfGrowth(ProfileBase):
             profile = profile[0:idx]
 
         if len(radius) < 2:
-            raise ValueError('The curve-of-growth profile is not '
-                             'monotonically increasing even at the '
-                             'smallest radii -- cannot interpolate. Try '
-                             'using different input radii (especially the '
-                             'starting radii) and/or using the "exact" '
-                             'aperture overlap method.')
+            msg = ('The curve-of-growth profile is not monotonically '
+                   'increasing even at the smallest radii -- cannot '
+                   'interpolate. Try using different input radii '
+                   '(especially the starting radii) and/or using the '
+                   '"exact" aperture overlap method.')
+            raise ValueError(msg)
 
         return PchipInterpolator(profile, radius, extrapolate=False)(ee)

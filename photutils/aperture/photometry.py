@@ -200,9 +200,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     skyaper = False
     if isinstance(apertures[0], SkyAperture):
         if wcs is None:
-            raise ValueError('A WCS transform must be defined by the input '
-                             'data or the wcs keyword when using a '
-                             'SkyAperture object.')
+            msg = ('A WCS transform must be defined by the input data or '
+                   'the wcs keyword when using a SkyAperture object.')
+            raise ValueError(msg)
 
         # used to include SkyCoord position in the output table
         skyaper = True
@@ -214,8 +214,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     positions = apertures[0].positions
     for aper in apertures[1:]:
         if not np.array_equal(aper.positions, positions):
-            raise ValueError('Input apertures must all have identical '
-                             'positions.')
+            msg = 'Input apertures must all have identical positions'
+            raise ValueError(msg)
 
     # define output table meta data
     meta = _get_meta()

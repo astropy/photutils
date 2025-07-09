@@ -34,8 +34,8 @@ class ApertureMask:
     def __init__(self, data, bbox):
         self.data = np.asanyarray(data)
         if self.data.shape != bbox.shape:
-            raise ValueError('mask data and bounding box must have the same '
-                             'shape')
+            msg = 'mask data and bounding box must have the same shape'
+            raise ValueError(msg)
         self.bbox = bbox
         self._mask = (self.data == 0)
 
@@ -105,7 +105,8 @@ class ApertureMask:
             A 2D array of the mask.
         """
         if len(shape) != 2:
-            raise ValueError('input shape must have 2 elements.')
+            msg = 'input shape must have 2 elements'
+            raise ValueError(msg)
 
         # find the overlap of the mask on the output image shape
         slices_large, slices_small = self.get_overlap_slices(shape)
@@ -153,7 +154,8 @@ class ApertureMask:
         """
         data = np.asanyarray(data)
         if data.ndim != 2:
-            raise ValueError('data must be a 2D array.')
+            msg = 'data must be a 2D array'
+            raise ValueError(msg)
 
         # find the overlap of the mask on the output image shape
         slices_large, slices_small = self.get_overlap_slices(data.shape)
@@ -261,7 +263,8 @@ class ApertureMask:
         used in this way by the `PixelAperture.do_photometry` method.
         """
         if mask is not None and mask.shape != shape:
-            raise ValueError('mask and data must have the same shape')
+            msg = 'mask and data must have the same shape'
+            raise ValueError(msg)
 
         slc_large, slc_small = self.get_overlap_slices(shape)
         if slc_large is None:  # no overlap

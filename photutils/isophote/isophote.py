@@ -143,49 +143,48 @@ class Isophote:
             (self.a4, self.b4, self.a4_err,
              self.b4_err) = self._compute_deviations(sample, 4)
 
+    @staticmethod
+    def _raise_sma_error(err):
+        msg = 'Comparison object does not have a "sma" attribute'
+        raise AttributeError(msg) from err
+
     # This method is useful for sorting lists of instances. Note
     # that __lt__ is the python3 way of supporting sorting.
     def __lt__(self, other):
         try:
             return self.sma < other.sma
         except AttributeError as err:
-            raise AttributeError('Comparison object does not have a "sma" '
-                                 'attribute.') from err
+            self._raise_sma_error(err)
 
     def __gt__(self, other):
         try:
             return self.sma > other.sma
         except AttributeError as err:
-            raise AttributeError('Comparison object does not have a "sma" '
-                                 'attribute.') from err
+            self._raise_sma_error(err)
 
     def __le__(self, other):
         try:
             return self.sma <= other.sma
         except AttributeError as err:
-            raise AttributeError('Comparison object does not have a "sma" '
-                                 'attribute.') from err
+            self._raise_sma_error(err)
 
     def __ge__(self, other):
         try:
             return self.sma >= other.sma
         except AttributeError as err:
-            raise AttributeError('Comparison object does not have a "sma" '
-                                 'attribute.') from err
+            self._raise_sma_error(err)
 
     def __eq__(self, other):
         try:
             return self.sma == other.sma
         except AttributeError as err:
-            raise AttributeError('Comparison object does not have a "sma" '
-                                 'attribute.') from err
+            self._raise_sma_error(err)
 
     def __ne__(self, other):
         try:
             return self.sma != other.sma
         except AttributeError as err:
-            raise AttributeError('Comparison object does not have a "sma" '
-                                 'attribute.') from err
+            self._raise_sma_error(err)
 
     def __str__(self):
         return str(self.to_table())
@@ -443,8 +442,7 @@ class CentralPixel(Isophote):
         try:
             return self.sma == other.sma
         except AttributeError as err:
-            raise AttributeError('Comparison object does not have a "sma" '
-                                 'attribute.') from err
+            self._raise_sma_error(err)
 
     @property
     def eps(self):

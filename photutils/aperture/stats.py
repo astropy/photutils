@@ -257,7 +257,8 @@ class ApertureStats:
         aperture_meta = _aperture_metadata(aperture)  # use input aperture
 
         if isinstance(aperture, SkyAperture) and wcs is None:
-            raise ValueError('A wcs is required when using a SkyAperture')
+            msg = 'A wcs is required when using a SkyAperture'
+            raise ValueError(msg)
 
         # convert region to aperture if necessary
         if not isinstance(aperture, Aperture):
@@ -269,7 +270,8 @@ class ApertureStats:
         self._wcs = wcs
 
         if sigma_clip is not None and not isinstance(sigma_clip, SigmaClip):
-            raise TypeError('sigma_clip must be a SigmaClip instance')
+            msg = 'sigma_clip must be a SigmaClip instance'
+            raise TypeError(msg)
         self.sigma_clip = sigma_clip
 
         self.sum_method = sum_method
@@ -279,17 +281,20 @@ class ApertureStats:
         if local_bkg is not None:
             local_bkg = np.atleast_1d(local_bkg)
             if local_bkg.ndim != 1:
-                raise ValueError('local_bkg must be a 1D array')
+                msg = 'local_bkg must be a 1D array'
+                raise ValueError(msg)
 
             n_local_bkg = len(local_bkg)
             if n_local_bkg not in (1, self.n_apertures):
-                raise ValueError('local_bkg must be scalar or have the same '
-                                 'length as the input aperture')
+                msg = ('local_bkg must be scalar or have the same length '
+                       'as the input aperture')
+                raise ValueError(msg)
             local_bkg = np.broadcast_to(local_bkg, self.n_apertures)
 
             if np.any(~np.isfinite(local_bkg)):
-                raise ValueError('local_bkg must not contain any non-finite '
-                                 '(e.g., inf or NaN) values')
+                msg = ('local_bkg must not contain any non-finite '
+                       '(e.g., inf or NaN) values')
+                raise ValueError(msg)
             self._local_bkg = local_bkg  # always an iterable
 
         self._ids = np.arange(self.n_apertures) + 1
@@ -331,7 +336,8 @@ class ApertureStats:
             aper_types = Aperture
 
         if not isinstance(aperture, aper_types):
-            raise TypeError('aperture must be an Aperture or Region object')
+            msg = 'aperture must be an Aperture or Region object'
+            raise TypeError(msg)
         return aperture
 
     def _validate_array(self, array, name, ndim=2, shape=True):
@@ -340,9 +346,11 @@ class ApertureStats:
         if array is not None:
             array = np.asanyarray(array)
             if array.ndim != ndim:
-                raise ValueError(f'{name} must be a {ndim}D array.')
+                msg = f'{name} must be a {ndim}D array'
+                raise ValueError(msg)
             if shape and array.shape != self._data.shape:
-                raise ValueError(f'data and {name} must have the same shape.')
+                msg = f'data and {name} must have the same shape'
+                raise ValueError(msg)
         return array
 
     @property
@@ -368,8 +376,9 @@ class ApertureStats:
 
     def __getitem__(self, index):
         if self.isscalar:
-            raise TypeError(f'A scalar {self.__class__.__name__!r} object '
-                            'cannot be indexed')
+            msg = (f'A scalar {self.__class__.__name__!r} object cannot '
+                   'be indexed')
+            raise TypeError(msg)
 
         newcls = object.__new__(self.__class__)
 
@@ -432,8 +441,8 @@ class ApertureStats:
 
     def __len__(self):
         if self.isscalar:
-            raise TypeError(f'Scalar {self.__class__.__name__!r} object has '
-                            'no len()')
+            msg = f'Scalar {self.__class__.__name__!r} object has no len()'
+            raise TypeError(msg)
         return self.n_apertures
 
     def __iter__(self):
@@ -530,7 +539,8 @@ class ApertureStats:
         """
         for id_num in np.atleast_1d(id_nums):
             if id_num not in self.ids:
-                raise ValueError(f'{id_num} is not a valid source ID number')
+                msg = f'{id_num} is not a valid source ID number'
+                raise ValueError(msg)
 
         sorter = np.argsort(self.id)
         indices = sorter[np.searchsorted(self.id, id_nums, sorter=sorter)]

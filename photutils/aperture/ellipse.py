@@ -87,7 +87,8 @@ class EllipticalMaskMixin:
             a = self.a_out
             b = self.b_out
         else:
-            raise ValueError('Cannot determine the aperture shape.')
+            msg = 'Cannot determine the aperture shape'
+            raise ValueError(msg)
 
         masks = []
         for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
@@ -343,7 +344,8 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     def __init__(self, positions, a_in, a_out, b_out, b_in=None, theta=0.0):
         if not a_out > a_in:
-            raise ValueError('"a_out" must be greater than "a_in".')
+            msg = '"a_out" must be greater than "a_in"'
+            raise ValueError(msg)
 
         self.positions = positions
         self.a_in = a_in
@@ -353,7 +355,8 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
         elif not b_out > b_in:
-            raise ValueError('"b_out" must be greater than "b_in".')
+            msg = '"b_out" must be greater than "b_in"'
+            raise ValueError(msg)
         self.b_in = b_in
 
         self.theta = theta
@@ -560,7 +563,8 @@ class SkyEllipticalAnnulus(SkyAperture):
     def __init__(self, positions, a_in, a_out, b_out, b_in=None,
                  theta=0.0 * u.deg):
         if not a_out > a_in:
-            raise ValueError('"a_out" must be greater than "a_in".')
+            msg = '"a_out" must be greater than "a_in"'
+            raise ValueError(msg)
 
         self.positions = positions
         self.a_in = a_in
@@ -570,7 +574,8 @@ class SkyEllipticalAnnulus(SkyAperture):
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
         elif not b_out > b_in:
-            raise ValueError('"b_out" must be greater than "b_in".')
+            msg = '"b_out" must be greater than "b_in"'
+            raise ValueError(msg)
         self.b_in = b_in
 
         self.theta = theta

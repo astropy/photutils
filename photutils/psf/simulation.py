@@ -152,8 +152,9 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
         try:
             model_shape = _model_shape_from_bbox(psf_model)
         except ValueError as exc:
-            raise ValueError('model_shape must be specified if the model '
-                             'does not have a bounding_box attribute') from exc
+            msg = ('model_shape must be specified if the model does not '
+                   'have a bounding_box attribute')
+            raise ValueError(msg) from exc
 
     if border_size is None:
         border_size = (np.array(model_shape) - 1) // 2

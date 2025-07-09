@@ -101,13 +101,13 @@ def test_invalid_inputs():
     with pytest.raises(ValueError, match=match):
         _ = psfphot(np.arange(3))
 
-    match = 'data and error must have the same shape.'
+    match = 'data and error must have the same shape'
     data = np.ones((11, 11))
     error = np.ones((3, 3))
     with pytest.raises(ValueError, match=match):
         _ = psfphot(data, error=error)
 
-    match = 'data and mask must have the same shape.'
+    match = 'data and mask must have the same shape'
     data = np.ones((11, 11))
     mask = np.ones((3, 3))
     with pytest.raises(ValueError, match=match):
@@ -1007,7 +1007,7 @@ def test_iterative_psf_photometry_mode_all():
     resid = psfphot.make_residual_image(data, psf_shape=sub_shape)
     assert_allclose(resid, 0, atol=1e-6)
 
-    match = 'mode must be "new" or "all".'
+    match = 'mode must be "new" or "all"'
     with pytest.raises(ValueError, match=match):
         psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                          grouper=grouper, aperture_radius=4,

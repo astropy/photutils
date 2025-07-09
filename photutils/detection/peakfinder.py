@@ -141,8 +141,9 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     if not np.isscalar(threshold):
         threshold = np.asanyarray(threshold)
         if data.shape != threshold.shape:
-            raise ValueError('A threshold array must have the same shape as '
-                             'the input data.')
+            msg = ('A threshold array must have the same shape as the '
+                   'input data')
+            raise ValueError(msg)
 
     if border_width is not None:
         border_width = as_pair('border_width', border_width,
@@ -167,7 +168,8 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     if mask is not None:
         mask = np.asanyarray(mask)
         if data.shape != mask.shape:
-            raise ValueError('data and mask must have the same shape')
+            msg = 'data and mask must have the same shape'
+            raise ValueError(msg)
         peak_goodmask = np.logical_and(peak_goodmask, ~mask)
 
     # Exclude peaks that are too close to the border
@@ -218,7 +220,8 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         from photutils.centroids import centroid_sources
 
         if not callable(centroid_func):
-            raise TypeError('centroid_func must be a callable object')
+            msg = 'centroid_func must be a callable object'
+            raise TypeError(msg)
 
         x_centroids, y_centroids = centroid_sources(
             data, x_peaks, y_peaks, box_size=box_size,
