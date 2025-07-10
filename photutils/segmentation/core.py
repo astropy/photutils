@@ -1415,6 +1415,15 @@ class SegmentationImage:
                 polys = [shape(poly) for poly in geo_polys]
                 polygons.append(MultiPolygon(polys))
 
+        # NOTE: the returned polygons may return False for
+        # is_valid due to ring self-intersections (e.g.,
+        # for corner-only intersections of two pixels). The
+        # shapely.validation.explain_validity function can be
+        # used to explain the validity of the polygons. The
+        # shapely.validation.make_valid function can be used to make the
+        # polygons valid, usually by converting Polygon objects into
+        # MultiPolyon objects.
+
         return polygons
 
     @staticmethod
@@ -1521,7 +1530,7 @@ class SegmentationImage:
 
         return [self._convert_shapely_to_pathpatch(geometry, origin=origin,
                                                    scale=scale, **patch_kwargs)
-                for geometry in self.polygons if geometry.is_valid]
+                for geometry in self.polygons]
 
     def plot_patches(self, *, ax=None, origin=(0, 0), scale=1.0, labels=None,
                      **kwargs):
