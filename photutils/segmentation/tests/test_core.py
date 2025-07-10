@@ -474,7 +474,7 @@ class TestSegmentationImage:
 
         segm = self.segm.copy()
         segm.reassign_labels(labels=4, new_label=1)
-        regions = segm.to_regions(grouped=True)
+        regions = segm.to_regions(group=True)
         assert isinstance(regions, list)
         assert isinstance(regions[0], Regions)
         assert isinstance(regions[1], PolygonPixelRegion)
@@ -580,7 +580,7 @@ class TestSegmentationImage:
         for region in regions:
             assert isinstance(region, PolygonPixelRegion)
 
-        regions = segm.to_regions(grouped=True)
+        regions = segm.to_regions(group=True)
         assert len(regions) == 5
         assert isinstance(regions, list)
         for region in regions:
@@ -602,7 +602,7 @@ class TestSegmentationImage:
         assert len(regions) == 7
         assert isinstance(regions, Regions)
         assert isinstance(regions[0], PolygonPixelRegion)
-        regions = segm.to_regions(grouped=True)
+        regions = segm.to_regions(group=True)
         assert len(regions) == 1
         assert isinstance(regions, list)
         assert isinstance(regions[0], Regions)

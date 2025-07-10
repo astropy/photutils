@@ -1605,7 +1605,7 @@ class SegmentationImage:
 
         return patches
 
-    def to_regions(self, *, grouped=False):
+    def to_regions(self, *, group=False):
         """
         Return the `regions.Region` objects representing the source
         segments.
@@ -1614,12 +1614,12 @@ class SegmentationImage:
         of the source segments. Interior holes within the source
         segments are not included.
 
-        See the ``grouped`` keyword below for details about how
+        See the ``group`` keyword below for details about how
         non-contiguous segments for a single label are handled.
 
         Parameters
         ----------
-        grouped : bool, optional
+        group : bool, optional
             If `False` (the default), then a `regions.Regions`
             object will be returned with a flattened list of
             `~regions.PolygonPixelRegion` objects. Note that in this
@@ -1640,12 +1640,12 @@ class SegmentationImage:
         -------
         regions : `~regions.Regions`
             A list of `~regions.Region` objects or a `~regions.Regions`
-            object, depending on the value of ``grouped`` (see above).
+            object, depending on the value of ``group`` (see above).
 
         Notes
         -----
-        If ``grouped=False``, then the number of regions returned may
-        not be equal to the number of unique labels in the segmentation
+        If ``group=False``, then the number of regions returned may not
+        be equal to the number of unique labels in the segmentation
         image. This occurs when the segmentation image contains
         non-contiguous segments for a single label. That can happen as a
         result of slicing the segmentation image where a segment label
@@ -1662,10 +1662,10 @@ class SegmentationImage:
         for label, poly in zip(self.labels, self.polygons, strict=True):
             regions.append(_shapely_polygon_to_region(poly, label=int(label)))
 
-        if grouped:
+        if group:
             return regions
 
-        # If not grouped, return a Regions object with a flattened list
+        # If group=False, return a Regions object with a flattened list
         # of region objects
         flat_regions = []
         for region in regions:
