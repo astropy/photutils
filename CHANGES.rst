@@ -29,8 +29,8 @@ New Features
   - An optional ``array`` keyword was added to the ``SourceCatalog``
     ``make_cutouts`` method. [#2023]
 
-  - Added a ``grouped`` keyword to the ``SegmentationImage``
-    ``to_regions`` method. [#2060]
+  - Added a ``group`` keyword to the ``SegmentationImage``
+    ``to_regions`` method. [#2060, #2065]]
 
 
 Bug Fixes
