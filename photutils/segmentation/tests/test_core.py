@@ -474,7 +474,7 @@ class TestSegmentationImage:
 
         segm = self.segm.copy()
         segm.reassign_labels(labels=4, new_label=1)
-        regions = segm.to_regions(grouped=True)
+        regions = segm.to_regions(group=True)
         assert isinstance(regions, list)
         assert isinstance(regions[0], Regions)
         assert isinstance(regions[1], PolygonPixelRegion)
@@ -520,6 +520,28 @@ class TestSegmentationImage:
         assert len(patches) == 2
         assert isinstance(patches, list)
         assert isinstance(patches[0], PathPatch)
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_patches_corners(self):
+        """
+        Regression test for a bug where patches were not generated for
+        "invalid" Shapely polygons.
+
+        This occurs when two pixels within a segment intersect only at a
+        corner.
+        """
+        data = np.zeros((10, 10), dtype=np.uint32)
+        data[5, 5] = 1
+        data[4, 4] = 1
+        data[3, 3] = 1
+        segm = SegmentationImage(data)
+        assert segm.nlabels == 1
+        assert len(segm.segments) == 1
+        assert len(segm.polygons) == 1
+        assert len(segm.to_patches()) == 1
+        assert len(segm.to_regions()) == 1
 
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
@@ -580,7 +602,7 @@ class TestSegmentationImage:
         for region in regions:
             assert isinstance(region, PolygonPixelRegion)
 
-        regions = segm.to_regions(grouped=True)
+        regions = segm.to_regions(group=True)
         assert len(regions) == 5
         assert isinstance(regions, list)
         for region in regions:
@@ -602,7 +624,7 @@ class TestSegmentationImage:
         assert len(regions) == 7
         assert isinstance(regions, Regions)
         assert isinstance(regions[0], PolygonPixelRegion)
-        regions = segm.to_regions(grouped=True)
+        regions = segm.to_regions(group=True)
         assert len(regions) == 1
         assert isinstance(regions, list)
         assert isinstance(regions[0], Regions)

@@ -1415,6 +1415,15 @@ class SegmentationImage:
                 polys = [shape(poly) for poly in geo_polys]
                 polygons.append(MultiPolygon(polys))
 
+        # NOTE: the returned polygons may return False for
+        # is_valid due to ring self-intersections (e.g.,
+        # for corner-only intersections of two pixels). The
+        # shapely.validation.explain_validity function can be
+        # used to explain the validity of the polygons. The
+        # shapely.validation.make_valid function can be used to make the
+        # polygons valid, usually by converting Polygon objects into
+        # MultiPolyon objects.
+
         return polygons
 
     @staticmethod
@@ -1521,7 +1530,7 @@ class SegmentationImage:
 
         return [self._convert_shapely_to_pathpatch(geometry, origin=origin,
                                                    scale=scale, **patch_kwargs)
-                for geometry in self.polygons if geometry.is_valid]
+                for geometry in self.polygons]
 
     def plot_patches(self, *, ax=None, origin=(0, 0), scale=1.0, labels=None,
                      **kwargs):
@@ -1596,7 +1605,7 @@ class SegmentationImage:
 
         return patches
 
-    def to_regions(self, *, grouped=False):
+    def to_regions(self, *, group=False):
         """
         Return the `regions.Region` objects representing the source
         segments.
@@ -1605,12 +1614,12 @@ class SegmentationImage:
         of the source segments. Interior holes within the source
         segments are not included.
 
-        See the ``grouped`` keyword below for details about how
+        See the ``group`` keyword below for details about how
         non-contiguous segments for a single label are handled.
 
         Parameters
         ----------
-        grouped : bool, optional
+        group : bool, optional
             If `False` (the default), then a `regions.Regions`
             object will be returned with a flattened list of
             `~regions.PolygonPixelRegion` objects. Note that in this
@@ -1631,12 +1640,12 @@ class SegmentationImage:
         -------
         regions : `~regions.Regions`
             A list of `~regions.Region` objects or a `~regions.Regions`
-            object, depending on the value of ``grouped`` (see above).
+            object, depending on the value of ``group`` (see above).
 
         Notes
         -----
-        If ``grouped=False``, then the number of regions returned may
-        not be equal to the number of unique labels in the segmentation
+        If ``group=False``, then the number of regions returned may not
+        be equal to the number of unique labels in the segmentation
         image. This occurs when the segmentation image contains
         non-contiguous segments for a single label. That can happen as a
         result of slicing the segmentation image where a segment label
@@ -1653,10 +1662,10 @@ class SegmentationImage:
         for label, poly in zip(self.labels, self.polygons, strict=True):
             regions.append(_shapely_polygon_to_region(poly, label=int(label)))
 
-        if grouped:
+        if group:
             return regions
 
-        # If not grouped, return a Regions object with a flattened list
+        # If group=False, return a Regions object with a flattened list
         # of region objects
         flat_regions = []
         for region in regions:
