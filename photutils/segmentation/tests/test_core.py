@@ -524,6 +524,28 @@ class TestSegmentationImage:
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_patches_corners(self):
+        """
+        Regression test for a bug where patches were not generated for
+        "invalid" Shapely polygons.
+
+        This occurs when two pixels within a segment intersect only at a
+        corner.
+        """
+        data = np.zeros((10, 10), dtype=np.uint32)
+        data[5, 5] = 1
+        data[4, 4] = 1
+        data[3, 3] = 1
+        segm = SegmentationImage(data)
+        assert segm.nlabels == 1
+        assert len(segm.segments) == 1
+        assert len(segm.polygons) == 1
+        assert len(segm.to_patches()) == 1
+        assert len(segm.to_regions()) == 1
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_polygons_complex(self):
         """
         Test polygons, patches, and regions for segments that have holes
