@@ -7,12 +7,18 @@ from a list of isophotes.
 import numpy as np
 from scipy.interpolate import LSQUnivariateSpline
 
-from photutils.isophote.geometry import EllipseGeometry
+from .ellipse_model import build_ellipse_model_c
 
 __all__ = ['build_ellipse_model']
 
 
-def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False):
+def build_ellipse_model(
+    shape,
+    isolist,
+    fill: float = 0.0,
+    high_harmonics=False,
+    sma_interval: float = 0.1,
+):
     """
     Build a model elliptical galaxy image from a list of isophotes.
 
@@ -45,6 +51,10 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False):
         ``a4``, and ``b4``; see `~photutils.isophote.Isophote` for
         details) to the result.
 
+    sma_interval : optional, float
+        The interval between node values of the semi-major axis, which is used
+        to spline interpolate values of other shape parameters.
+
     Returns
     -------
     result : 2D `~numpy.ndarray`
@@ -56,7 +66,9 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False):
 
     # the target grid is spaced in 0.1 pixel intervals so as
     # to ensure no gaps will result on the output array.
-    finely_spaced_sma = np.arange(isolist[0].sma, isolist[-1].sma, 0.1)
+    finely_spaced_sma = np.arange(
+        isolist[0].sma, isolist[-1].sma, sma_interval,
+    )
 
     # interpolate ellipse parameters
 
@@ -76,86 +88,45 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False):
         isolist.sma, isolist.y0, nodes)(finely_spaced_sma)
     grad_array = LSQUnivariateSpline(
         isolist.sma, isolist.grad, nodes)(finely_spaced_sma)
-    a3_array = LSQUnivariateSpline(
-        isolist.sma, isolist.a3, nodes)(finely_spaced_sma)
-    b3_array = LSQUnivariateSpline(
-        isolist.sma, isolist.b3, nodes)(finely_spaced_sma)
-    a4_array = LSQUnivariateSpline(
-        isolist.sma, isolist.a4, nodes)(finely_spaced_sma)
-    b4_array = LSQUnivariateSpline(
-        isolist.sma, isolist.b4, nodes)(finely_spaced_sma)
+    if high_harmonics:
+        a3_array = LSQUnivariateSpline(
+            isolist.sma, isolist.a3, nodes)(finely_spaced_sma)
+        b3_array = LSQUnivariateSpline(
+            isolist.sma, isolist.b3, nodes)(finely_spaced_sma)
+        a4_array = LSQUnivariateSpline(
+            isolist.sma, isolist.a4, nodes)(finely_spaced_sma)
+        b4_array = LSQUnivariateSpline(
+            isolist.sma, isolist.b4, nodes)(finely_spaced_sma)
 
-    # Return deviations from ellipticity to their original amplitude meaning
-    a3_array = -a3_array * grad_array * finely_spaced_sma
-    b3_array = -b3_array * grad_array * finely_spaced_sma
-    a4_array = -a4_array * grad_array * finely_spaced_sma
-    b4_array = -b4_array * grad_array * finely_spaced_sma
+        grad_sma = -grad_array * finely_spaced_sma
 
-    # correct deviations cased by fluctuations in spline solution
+        # Return deviations from ellipticity to their original amplitude
+        # meaning
+        kwargs_harm = {
+            'a3_array': a3_array * grad_sma,
+            'b3_array': b3_array * grad_sma,
+            'a4_array': a4_array * grad_sma,
+            'b4_array': b4_array * grad_sma,
+        }
+    else:
+        kwargs_harm = {}
+
+    # correct deviations caused by fluctuations in spline solution
     eps_array[np.where(eps_array < 0.0)] = 0.0
-
-    result = np.zeros(shape=shape)
-    weight = np.zeros(shape=shape)
-
-    eps_array[np.where(eps_array < 0.0)] = 0.05
 
     # for each interpolated isophote, generate intensity values on the
     # output image array
-    # for index in range(len(finely_spaced_sma)):
-    for index in range(1, len(finely_spaced_sma)):
-        sma0 = finely_spaced_sma[index]
-        eps = eps_array[index]
-        pa = pa_array[index]
-        x0 = x0_array[index]
-        y0 = y0_array[index]
-        geometry = EllipseGeometry(x0, y0, sma0, eps, pa)
-
-        intens = intens_array[index]
-
-        # scan angles. Need to go a bit beyond full circle to ensure
-        # full coverage.
-        r = sma0
-        phi = 0.0
-        while phi <= 2 * np.pi + geometry._phi_min:
-            # we might want to add the third and fourth harmonics
-            # to the basic isophotal intensity.
-            harm = 0.0
-            if high_harmonics:
-                harm = (a3_array[index] * np.sin(3.0 * phi)
-                        + b3_array[index] * np.cos(3.0 * phi)
-                        + a4_array[index] * np.sin(4.0 * phi)
-                        + b4_array[index] * np.cos(4.0 * phi))
-
-            # get image coordinates of (r, phi) pixel
-            x = r * np.cos(phi + pa) + x0
-            y = r * np.sin(phi + pa) + y0
-            i = int(x)
-            j = int(y)
-
-            if 0 < i < shape[1] - 1 and 0 < j < shape[0] - 1:
-                # get fractional deviations relative to target array
-                fx = x - float(i)
-                fy = y - float(j)
-
-                # add up the isophote contribution to the overlapping pixels
-                result[j, i] += (intens + harm) * (1.0 - fy) * (1.0 - fx)
-                result[j, i + 1] += (intens + harm) * (1.0 - fy) * fx
-                result[j + 1, i] += (intens + harm) * fy * (1.0 - fx)
-                result[j + 1, i + 1] += (intens + harm) * fy * fx
-
-                # add up the fractional area contribution to the
-                # overlapping pixels
-                weight[j, i] += (1.0 - fy) * (1.0 - fx)
-                weight[j, i + 1] += (1.0 - fy) * fx
-                weight[j + 1, i] += fy * (1.0 - fx)
-                weight[j + 1, i + 1] += fy * fx
-
-                # step towards next pixel on ellipse
-                phi = max((phi + 0.75 / r), geometry._phi_min)
-                r = max(geometry.radius(phi), 0.5)
-            # if outside image boundaries, ignore.
-            else:
-                break
+    result, weight = build_ellipse_model_c(
+        shape[0],
+        shape[1],
+        finely_spaced_sma,
+        intens_array,
+        eps_array,
+        pa_array,
+        x0_array,
+        y0_array,
+        **kwargs_harm,
+    )
 
     # zero weight values must be set to 1.0
     weight[np.where(weight <= 0.0)] = 1.0

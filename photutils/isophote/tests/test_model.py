@@ -44,11 +44,11 @@ def test_model():
     assert data.shape == model.shape
 
     residual = data - model
-    assert np.mean(residual) <= 5.0
-    assert np.mean(residual) >= -5.0
+    assert np.abs(np.mean(residual)) <= 5.0
 
 
-def test_model_simulated_data():
+@pytest.mark.parametrize('sma_interval', [0.05, 0.1])
+def test_model_simulated_data(sma_interval):
     data = make_test_image(nx=200, ny=200, i0=10.0, sma=5.0, eps=0.5,
                            pa=np.pi / 3.0, noise=0.05, seed=0)
 
@@ -62,13 +62,14 @@ def test_model_simulated_data():
         isophote_list = ellipse.fit_image()
 
     model = build_ellipse_model(data.shape, isophote_list,
-                                fill=np.mean(data[0:50, 0:50]))
+                                fill=np.mean(data[0:50, 0:50]),
+                                sma_interval=sma_interval)
 
     assert data.shape == model.shape
 
     residual = data - model
-    assert np.mean(residual) <= 5.0
-    assert np.mean(residual) >= -5.0
+    assert np.abs(np.mean(residual)) <= 0.01
+    assert np.abs(np.median(residual)) <= 0.01
 
 
 def test_model_minimum_radius():
