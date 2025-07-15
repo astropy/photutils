@@ -15,6 +15,14 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.isophote``
+
+  - ``build_ellipse_model`` is now Cythonized and considerably faster.
+    [#2046]
+
+  - ``build_ellipse_model`` also has an additional optional keyword
+     argument ``sma_interval``, which was previously hardcoded. [#2046]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise an error
@@ -31,14 +39,6 @@ New Features
 
   - Added a ``group`` keyword to the ``SegmentationImage``
     ``to_regions`` method. [#2060, #2065]]
-
-- ``photutils.isophote``
-
-  - ``build_ellipse_model`` is now Cythonized and considerably faster.
-    [#2046]
-
-  - ``build_ellipse_model`` also has an additional optional keyword
-     argument ``sma_interval``, which was previously hardcoded. [#2046]
 
 Bug Fixes
 ^^^^^^^^^
