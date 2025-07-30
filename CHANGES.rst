@@ -60,6 +60,9 @@ Bug Fixes
   - Fixed the check in ``GriddedPSFModel`` for rectangular pixel grids.
     [#2035]
 
+  - Fixed a bug in ``PSFPhotometry`` where the ``'group_id'`` would be
+    ignored if included in the ``init_params`` table. [#2070]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where a newly-defined extra property of a
