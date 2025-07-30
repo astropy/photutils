@@ -680,14 +680,17 @@ class PSFPhotometry(ModelImageMixin):
             init_params[fluxcolname] = flux
 
         if 'group_id' in init_params.colnames:
-            # grouper is ignored if group_id is input in init_params
+            # user-provided group_id takes precedence; disable grouper
             self.grouper = None
-        if self.grouper is not None:
+        elif self.grouper is not None:
+            # no group_id in init_params, but a grouper is provided
             group_id = self.grouper(init_params[xcolname],
                                     init_params[ycolname])
+            init_params['group_id'] = group_id
         else:
-            group_id = init_params['id'].copy()
-        init_params['group_id'] = group_id
+            # no user-provided groups and no grouper; each source is
+            # its own group
+            init_params['group_id'] = init_params['id'].copy()
 
         # add columns for any additional parameters that are fit
         for param_name, colname in self._param_maps['init'].items():
