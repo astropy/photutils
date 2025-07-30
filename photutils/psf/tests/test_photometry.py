@@ -282,7 +282,7 @@ def test_psf_photometry_nddata(test_data):
 
 
 def test_psf_photometry_finite_weights(test_data):
-    data, _, sources = test_data
+    data, _, _ = test_data
     error = np.zeros_like(data)
 
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
@@ -735,6 +735,38 @@ def test_grouper(test_data):
     assert len(phot) == len(sources)
     assert_equal(phot['group_id'], (1, 2, 3, 4, 5, 5, 5, 6, 6, 7))
     assert_equal(phot['group_size'], (1, 1, 1, 1, 3, 3, 3, 2, 2, 1))
+
+
+def test_grouper_init_params(test_data):
+    data, error, _ = test_data
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    grouper = SourceGrouper(min_separation=20)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            grouper=grouper, aperture_radius=4)
+    phot0 = psfphot(data, error=error)
+
+    init_params = QTable()
+    init_params['id'] = phot0['id']
+    init_params['group_id'] = 1
+    init_params['x'] = phot0['x_init']
+    init_params['y'] = phot0['y_init']
+    init_params['flux'] = phot0['flux_init']
+    phot1 = psfphot(data, error=error, init_params=init_params)
+    nsources = len(phot1)
+    assert isinstance(phot1, QTable)
+    assert_equal(phot1['group_id'], np.ones(nsources, dtype=int))
+    assert_equal(phot1['group_size'], np.ones(nsources, dtype=int) * nsources)
+
+    # test with grouper=None
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            grouper=None, aperture_radius=4)
+    phot2 = psfphot(data, error=error, init_params=init_params)
+    assert isinstance(phot2, QTable)
+    assert_equal(phot1['group_id'], np.ones(nsources, dtype=int))
+    assert_equal(phot1['group_size'], np.ones(nsources, dtype=int) * nsources)
 
 
 def test_large_group_warning():
