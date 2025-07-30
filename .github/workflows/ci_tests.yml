@@ -42,33 +42,26 @@ jobs:
             allow_failure: false
             prefix: ''
 
-          - os: macos-latest
+          - os: ubuntu-latest
             python: '3.12'
             tox_env: 'py312-test-alldeps'
             allow_failure: false
             prefix: ''
 
-          - os: macos-14
-            python: '3.12'
-            tox_env: 'py312-test-alldeps'
+          - os: macos-latest
+            python: '3.13'
+            tox_env: 'py313-test-alldeps'
             allow_failure: false
-            prefix: 'M1'
+            prefix: ''
 
           - os: windows-latest
-            python: '3.12'
-            tox_env: 'py312-test-alldeps'
+            python: '3.13'
+            tox_env: 'py313-test-alldeps'
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
-            python: '3.12'
-            tox_env: 'py312-test'
-            toxposargs: --remote-data=any
-            allow_failure: false
-            prefix: ''
-
-          - os: ubuntu-latest
-            python: '3.12'
+            python: '3.13'
             tox_env: 'py312-test-alldeps-cov'
             toxposargs: --remote-data=any
             allow_failure: false
@@ -76,32 +69,34 @@ jobs:
 
           # cannot use alldeps: rasterio does not have a arm64 wheel
           - os: ubuntu-24.04-arm
-            python: '3.12'
-            tox_env: 'py312-test'
+            python: '3.13'
+            tox_env: 'py313-test'
             allow_failure: false
             prefix: ''
 
+          # test without all dependencies
           - os: ubuntu-latest
-            python: '3.12'
-            tox_env: 'codestyle'
-            allow_failure: false
-            prefix: ''
-
-          - os: ubuntu-latest
-            python: '3.12'
-            tox_env: 'pep517'
-            allow_failure: false
-            prefix: ''
-
-          - os: ubuntu-latest
-            python: '3.12'
-            tox_env: 'bandit'
+            python: '3.13'
+            tox_env: 'py313-test'
+            toxposargs: --remote-data=any
             allow_failure: false
             prefix: ''
 
           - os: ubuntu-latest
             python: '3.13'
-            tox_env: 'py313-test-alldeps'
+            tox_env: 'codestyle'
+            allow_failure: false
+            prefix: ''
+
+          - os: ubuntu-latest
+            python: '3.13'
+            tox_env: 'pep517'
+            allow_failure: false
+            prefix: ''
+
+          - os: ubuntu-latest
+            python: '3.13'
+            tox_env: 'bandit'
             allow_failure: false
             prefix: ''
 
@@ -111,18 +106,6 @@ jobs:
             toxposargs: --remote-data=any
             allow_failure: true
             prefix: '(Allowed failure)'
-
-          - os: macos-latest
-            python: '3.13'
-            tox_env: 'py313-test-alldeps'
-            allow_failure: false
-            prefix: ''
-
-          - os: windows-latest
-            python: '3.13'
-            tox_env: 'py313-test-alldeps'
-            allow_failure: true
-            prefix: '(TEMP Allowed failure)'
 
     steps:
     - name: Check out repository

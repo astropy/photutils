@@ -35,7 +35,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: '3.12'
+            python: '3.13'
             tox_env: 'linkcheck'
             allow_failure: false
             prefix: ''
