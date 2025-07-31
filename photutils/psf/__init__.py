@@ -10,6 +10,7 @@ from .functional_models import *  # noqa: F401, F403
 from .gridded_models import *  # noqa: F401, F403
 from .groupers import *  # noqa: F401, F403
 from .image_models import *  # noqa: F401, F403
+from .iterative import *  # noqa: F401, F403
 from .model_helpers import *  # noqa: F401, F403
 from .model_io import *  # noqa: F401, F403
 from .model_plotting import *  # noqa: F401, F403
