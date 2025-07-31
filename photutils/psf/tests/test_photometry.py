@@ -568,7 +568,7 @@ def test_psf_photometry_init_params(test_data):
     assert isinstance(phot, QTable)
     assert len(phot) == 1
 
-    match = 'aperture_radius must be defined if init_params is not input'
+    match = 'aperture_radius must be defined if a flux column is not'
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=None)
     with pytest.raises(ValueError, match=match):

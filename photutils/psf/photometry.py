@@ -341,6 +341,8 @@ class PSFPhotometry(ModelImageMixin):
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
+        self.group_warning_threshold = 25
+
         # be sure to reset these attributes for each __call__
         # (see _reset_results)
         self.data_unit = None
@@ -633,80 +635,138 @@ class PSFPhotometry(ModelImageMixin):
         flux, _ = apertures.do_photometry(data, mask=mask)
         return flux
 
-    def _prepare_init_params(self, data, mask, init_params):
-        xcolname = self._param_maps['init_cols']['x']
-        ycolname = self._param_maps['init_cols']['y']
-        fluxcolname = self._param_maps['init_cols']['flux']
-
-        if init_params is None:
-            if self.finder is None:
-                msg = 'finder must be defined if init_params is not input'
-                raise ValueError(msg)
-
-            # restore units to the input data (stripped earlier)
-            if self.data_unit is not None:
-                sources = self.finder(data << self.data_unit, mask=mask)
-            else:
-                sources = self.finder(data, mask=mask)
-            if sources is None:
-                return None
-            self.finder_results = sources
-
-            init_params = QTable()
-            init_params['id'] = np.arange(len(sources)) + 1
-            init_params[xcolname] = sources['xcentroid']
-            init_params[ycolname] = sources['ycentroid']
-        else:
-            colnames = init_params.colnames
-            if 'id' not in colnames:
+    def _find_sources_if_needed(self, data, mask, init_params):
+        """
+        Find sources using the finder if initial positions are not
+        provided.
+        """
+        if init_params is not None:
+            if 'id' not in init_params.colnames:
                 init_params['id'] = np.arange(len(init_params)) + 1
+            return init_params
+
+        if self.finder is None:
+            msg = 'finder must be defined if init_params is not input'
+            raise ValueError(msg)
+
+        if self.data_unit is not None:
+            sources = self.finder(data << self.data_unit, mask=mask)
+        else:
+            sources = self.finder(data, mask=mask)
+
+        self.finder_results = sources
+        if sources is None:
+            return None
+
+        init_params = QTable()
+        init_params['id'] = np.arange(len(sources)) + 1
+        init_params[self._param_maps['init_cols']['x']] = sources['xcentroid']
+        init_params[self._param_maps['init_cols']['y']] = sources['ycentroid']
+
+        return init_params
+
+    def _estimate_flux_and_bkg_if_needed(self, data, mask, init_params):
+        """
+        Estimate initial fluxes and backgrounds if not provided.
+        """
+        xcol = self._param_maps['init_cols']['x']
+        ycol = self._param_maps['init_cols']['y']
+        fluxcol = self._param_maps['init_cols']['flux']
 
         if 'local_bkg' not in init_params.colnames:
             if self.localbkg_estimator is None:
                 local_bkg = np.zeros(len(init_params))
             else:
-                local_bkg = self.localbkg_estimator(
-                    data, init_params[xcolname], init_params[ycolname],
-                    mask=mask)
+                local_bkg = self.localbkg_estimator(data, init_params[xcol],
+                                                    init_params[ycol],
+                                                    mask=mask)
             if self.data_unit is not None:
                 local_bkg <<= self.data_unit
             init_params['local_bkg'] = local_bkg
 
-        if fluxcolname not in init_params.colnames:
+        if fluxcol not in init_params.colnames:
+            # check for aperture_radius before attempting to use it
+            if self.aperture_radius is None:
+                msg = ('aperture_radius must be defined if a flux column is '
+                       'not in init_params')
+                raise ValueError(msg)
+
             flux = self._get_aper_fluxes(data, mask, init_params)
             if self.data_unit is not None:
                 flux <<= self.data_unit
             flux -= init_params['local_bkg']
-            init_params[fluxcolname] = flux
+            init_params[fluxcol] = flux
 
+        return init_params
+
+    def _group_sources(self, init_params):
+        """
+        Group sources using the grouper or the user-provided 'group_id'
+        column.
+        """
         if 'group_id' in init_params.colnames:
-            # user-provided group_id takes precedence; disable grouper
+            # User-provided group_id takes precedence
             self.grouper = None
+
         elif self.grouper is not None:
-            # no group_id in init_params, but a grouper is provided
-            group_id = self.grouper(init_params[xcolname],
-                                    init_params[ycolname])
-            init_params['group_id'] = group_id
+            # Use the grouper to group sources
+            xcol = self._param_maps['init_cols']['x']
+            ycol = self._param_maps['init_cols']['y']
+            init_params['group_id'] = self.grouper(init_params[xcol],
+                                                   init_params[ycol])
+
         else:
-            # no user-provided groups and no grouper; each source is
-            # its own group
+            # No grouper provided, so each source is its own group
             init_params['group_id'] = init_params['id'].copy()
 
-        # add columns for any additional parameters that are fit
+        return init_params
+
+    def _build_initial_parameters(self, data, mask, init_params):
+        """
+        Build the table of initial parameters for fitting.
+
+        This method orchestrates finding sources, estimating initial
+        fluxes and backgrounds, and grouping sources.
+        """
+        init_params = self._find_sources_if_needed(data, mask, init_params)
+        if init_params is None:
+            return None
+
+        init_params = self._estimate_flux_and_bkg_if_needed(data, mask,
+                                                            init_params)
+        init_params = self._group_sources(init_params)
+
+        # Check for large group sizes after grouping is complete
+        warn_size = self.group_warning_threshold
+        if 'group_id' in init_params.colnames:
+            _, counts = np.unique(init_params['group_id'], return_counts=True)
+            if len(counts) > 0 and max(counts) > warn_size:
+                msg = (f'Some groups have more than {warn_size} '
+                       'sources. Fitting such groups may take a long time '
+                       'and be error-prone. You may want to consider using '
+                       'different `SourceGrouper` parameters or changing '
+                       'the "group_id" column in "init_params".')
+                warnings.warn(msg, AstropyUserWarning)
+
+        # Add columns for any additional model parameters that are
+        # fit, using the model's default value if not already present.
         for param_name, colname in self._param_maps['init'].items():
             if colname not in init_params.colnames:
                 init_params[colname] = getattr(self.psf_model, param_name)
-        extra_param_cols = []
-        for colname in self._param_maps['init_cols'].values():
-            if colname in (xcolname, ycolname, fluxcolname):
-                continue
-            extra_param_cols.append(colname)
 
-        # order init_params columns
-        colname_order = ['id', 'group_id', 'local_bkg', xcolname, ycolname,
-                         fluxcolname]
-        colname_order.extend(extra_param_cols)
-        return init_params[colname_order]
+        # Final column ordering
+        xcolname = self._param_maps['init_cols']['x']
+        ycolname = self._param_maps['init_cols']['y']
+        fluxcolname = self._param_maps['init_cols']['flux']
+        extra_param_cols = [
+            col for col in self._param_maps['init_cols'].values()
+            if col not in (xcolname, ycolname, fluxcolname)
+        ]
+        col_order = ['id', 'group_id', 'local_bkg', xcolname, ycolname,
+                     fluxcolname]
+        col_order.extend(extra_param_cols)
+
+        return init_params[col_order]
 
     def _get_invalid_positions(self, init_params, shape):
         """
@@ -732,6 +792,34 @@ class PSFPhotometry(ModelImageMixin):
                    'Check the initial source positions or increase the '
                    'fit_shape.')
             raise ValueError(msg)
+
+    def _prepare_fit_inputs(self, data, *, mask=None, error=None,
+                            init_params=None):
+        """
+        Prepare all inputs for the PSF fitting.
+
+        This method handles data validation, unit processing, source
+        finding, initial parameter estimation, and grouping. It returns
+        the processed inputs ready for the `_fit_sources` method.
+        """
+        (data, error), unit = process_quantities((data, error),
+                                                 ('data', 'error'))
+        self.data_unit = unit
+        data = self._validate_array(data, 'data')
+        error = self._validate_array(error, 'error', data_shape=data.shape)
+        mask = self._validate_array(mask, 'mask', data_shape=data.shape)
+        mask = _make_mask(data, mask)
+
+        init_params = self._validate_init_params(init_params)
+        init_params = self._build_initial_parameters(data, mask, init_params)
+
+        if init_params is None:
+            # propagate the "no sources found" case
+            return None, None, None, None
+
+        self._check_init_positions(init_params, data.shape)
+
+        return data, mask, error, init_params
 
     def _make_psf_model(self, sources):
         """
@@ -1206,57 +1294,40 @@ class PSFPhotometry(ModelImageMixin):
 
         return flags
 
-    def _prepare_fit_inputs(self, data, *, mask=None, error=None,
-                            init_params=None):
+    def _assemble_results_table(self, init_params, fit_params, data_shape):
         """
-        Prepare inputs for PSF fitting.
-
-        Tasks:
-
-        * Checks array input shapes and units.
-        * Calculates a total mask
-        * Validates inputs for init_params and aperture_radius
-        * Prepares initial parameters table
-
-          - Runs source finder if needed
-          - Runs aperture photometry if needed
-          - Runs local background estimation if needed
-          - Groups sources if needed
+        Assemble the final results table from the initial parameters and
+        fitted parameters.
         """
-        (data, error), unit = process_quantities((data, error),
-                                                 ('data', 'error'))
-        self.data_unit = unit
-        data = self._validate_array(data, 'data')
-        error = self._validate_array(error, 'error', data_shape=data.shape)
-        mask = self._validate_array(mask, 'mask', data_shape=data.shape)
-        mask = _make_mask(data, mask)
-        init_params = self._validate_init_params(init_params)  # copies
+        results_tbl = join(init_params, fit_params)
 
-        fluxcol = self._param_maps['init_cols']['flux']
-        if (self.aperture_radius is None
-            and (init_params is None
-                 or fluxcol not in init_params.colnames)):
-            msg = ('aperture_radius must be defined if init_params is '
-                   'not input or if a flux column is not in init_params')
-            raise ValueError(msg)
+        npixfit = np.array(self._ungroup(self._group_results['npixfit']))
+        results_tbl['npixfit'] = npixfit
 
-        init_params = self._prepare_init_params(data, mask, init_params)
-        if init_params is None:  # no sources detected by finder
-            return None
+        nmodels = np.array(self._ungroup(self._group_results['nmodels']))
+        index = results_tbl.index_column('group_id') + 1
+        results_tbl.add_column(nmodels, name='group_size', index=index)
 
-        self._check_init_positions(init_params, data.shape)
-        self.init_params = init_params
+        qfit, cfit = self._calc_fit_metrics(results_tbl)
+        results_tbl['qfit'] = qfit
+        results_tbl['cfit'] = cfit
 
-        _, counts = np.unique(init_params['group_id'], return_counts=True)
-        if max(counts) > 25:
-            warnings.warn('Some groups have more than 25 sources. Fitting '
-                          'such groups may take a long time and be '
-                          'error-prone. You may want to consider using '
-                          'different `SourceGrouper` parameters or '
-                          'changing the "group_id" column in "init_params".',
+        results_tbl['flags'] = self._define_flags(results_tbl, data_shape)
+
+        meta = _get_meta()
+        attrs = ('fit_shape', 'fitter_maxiters', 'aperture_radius',
+                 'progress_bar')
+        for attr in attrs:
+            meta[attr] = getattr(self, attr)
+        results_tbl.meta = meta
+
+        if len(self.fit_info['fit_error_indices']) > 0:
+            warnings.warn('One or more fit(s) may not have converged. Please '
+                          'check the "flags" column in the output table.',
                           AstropyUserWarning)
 
-        return data, mask, error, init_params
+        self.fit_info = dict(self.fit_info)
+        return results_tbl
 
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         """
@@ -1388,56 +1459,29 @@ class PSFPhotometry(ModelImageMixin):
             return self.__call__(data_, mask=mask, error=error,
                                  init_params=init_params)
 
-        # reset results from previous runs
+        # Reset state from previous runs
         self._reset_results()
 
-        # Prepare fit inputs, including defining the initial source
-        # parameters. This also runs the source finder, aperture
-        # photometry, local background estimator, and source grouper, if
-        # needed.
-        fit_inputs = self._prepare_fit_inputs(data, mask=mask, error=error,
-                                              init_params=init_params)
-        if fit_inputs is None:
+        # Prepare all inputs for sources to be fit
+        data, mask, error, init_params = self._prepare_fit_inputs(
+            data, mask=mask, error=error, init_params=init_params,
+        )
+
+        # Handle the case where no sources were found
+        if init_params is None:
             return None
 
-        # fit the sources
-        data, mask, error, init_params = fit_inputs
+        self.init_params = init_params
+
+        # Fit sources defined in init_params
         fit_params = self._fit_sources(data, init_params, error=error,
                                        mask=mask)
 
-        # stack initial and fit params to create output table
-        results_tbl = join(init_params, fit_params)
+        # Assemble the final results table
+        self.results = self._assemble_results_table(init_params, fit_params,
+                                                    data.shape)
 
-        npixfit = np.array(self._ungroup(self._group_results['npixfit']))
-        results_tbl['npixfit'] = npixfit
-
-        nmodels = np.array(self._ungroup(self._group_results['nmodels']))
-        index = results_tbl.index_column('group_id') + 1
-        results_tbl.add_column(nmodels, name='group_size', index=index)
-
-        qfit, cfit = self._calc_fit_metrics(results_tbl)
-        results_tbl['qfit'] = qfit
-        results_tbl['cfit'] = cfit
-
-        results_tbl['flags'] = self._define_flags(results_tbl, data.shape)
-
-        meta = _get_meta()
-        attrs = ('fit_shape', 'fitter_maxiters', 'aperture_radius',
-                 'progress_bar')
-        for attr in attrs:
-            meta[attr] = getattr(self, attr)
-        results_tbl.meta = meta
-
-        if len(self.fit_info['fit_error_indices']) > 0:
-            warnings.warn('One or more fit(s) may not have converged. Please '
-                          'check the "flags" column in the output table.',
-                          AstropyUserWarning)
-
-        # convert results from defaultdict to dict
-        self.fit_info = dict(self.fit_info)
-        self.results = results_tbl
-
-        return results_tbl
+        return self.results
 
     def make_model_image(self, shape, *, psf_shape=None,
                          include_localbkg=False):
