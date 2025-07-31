@@ -1252,22 +1252,3 @@ def test_make_psf_model():
                      tbl3['flux_fit'][0]), (xval, yval, flux))
     assert_allclose((tbl4['x_fit'][0], tbl4['y_fit'][0],
                      tbl4['flux_fit'][0]), (xval, yval, flux))
-
-
-def test_move_column():
-    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
-    fit_shape = (5, 5)
-    finder = DAOStarFinder(6.0, 2.0)
-    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                            aperture_radius=4)
-    tbl = QTable()
-    tbl['a'] = [1, 2, 3]
-    tbl['b'] = [4, 5, 6]
-    tbl['c'] = [7, 8, 9]
-
-    tbl1 = psfphot._move_column(tbl, 'a', 'c')
-    assert tbl1.colnames == ['b', 'c', 'a']
-    tbl2 = psfphot._move_column(tbl, 'd', 'b')
-    assert tbl2.colnames == ['a', 'b', 'c']
-    tbl3 = psfphot._move_column(tbl, 'b', 'b')
-    assert tbl3.colnames == ['a', 'b', 'c']

@@ -91,11 +91,9 @@ class ModelImageMixin:
             raise ValueError(msg)
 
         (psf_model,
-         fit_params,
+         model_params,
          local_bkgs,
          progress_bar) = self._model_image_parameters
-
-        model_params = fit_params
 
         if include_localbkg:
             # add local_bkg
@@ -586,10 +584,10 @@ def _validate_psf_model(psf_model):
     return psf_model
 
 
-def _get_psf_model_params(psf_model):
+def _get_psf_model_main_params(psf_model):
     """
-    Get the names of the PSF model parameters corresponding to x, y, and
-    flux.
+    Get the names of the main PSF model parameters corresponding to x,
+    y, and flux.
 
     The PSF model must have parameters called 'x_0', 'y_0', and
     'flux' or it must have 'x_name', 'y_name', and 'flux_name'
@@ -607,7 +605,8 @@ def _get_psf_model_params(psf_model):
     Returns
     -------
     model_params : tuple
-        A tuple of the PSF model parameter names.
+        A tuple of the PSF model parameter names. These are always
+        returned in the order of (x, y, flux).
     """
     psf_model = _validate_psf_model(psf_model)
 

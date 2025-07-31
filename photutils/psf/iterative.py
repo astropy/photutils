@@ -11,7 +11,7 @@ import astropy.units as u
 import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NDData, StdDevUncertainty
-from astropy.table import vstack
+from astropy.table import QTable, vstack
 
 from photutils.psf.photometry import PSFPhotometry
 from photutils.psf.utils import ModelImageMixin
@@ -303,17 +303,65 @@ class IterativePSFPhotometry(ModelImageMixin):
             warnings.warn_explicit(warning.message, warning.category,
                                    warning.filename, warning.lineno)
 
+    @staticmethod
+    def _move_column(table, colname, colname_after):
+        """
+        Move a column to a new position in a table.
+
+        The table is modified in place.
+
+        Parameters
+        ----------
+        table : `~astropy.table.Table`
+            The input table.
+
+        colname : str
+            The column name to move.
+
+        colname_after : str
+            The column name after which to place the moved column.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            The input table with the column moved.
+        """
+        colnames = table.colnames
+        if colname not in colnames or colname_after not in colnames:
+            return table
+        if colname == colname_after:
+            return table
+
+        old_index = colnames.index(colname)
+        new_index = colnames.index(colname_after)
+        if old_index > new_index:
+            new_index += 1
+        colnames.insert(new_index, colnames.pop(old_index))
+        return table[colnames]
+
     def _convert_finder_to_init(self, sources):
         """
         Convert the output of the finder to a table with initial (x, y)
         position column names.
         """
-        xcol = self._psfphot._param_maps['init_cols']['x']
-        ycol = self._psfphot._param_maps['init_cols']['y']
-        sources = sources[('xcentroid', 'ycentroid')]
-        sources.rename_column('xcentroid', xcol)
-        sources.rename_column('ycentroid', ycol)
-        return sources
+        param_mapper = self._psfphot._param_mapper
+
+        # find the x and y coordinate columns in the sources table
+        x_name_found = param_mapper.find_column(sources, 'x')
+        y_name_found = param_mapper.find_column(sources, 'y')
+        if x_name_found is None or y_name_found is None:
+            msg = ("The table returned by the 'finder' must contain valid "
+                   'x and y coordinate columns.')
+            raise ValueError(msg)
+        x_init_col = param_mapper.init_colnames['x']
+        y_init_col = param_mapper.init_colnames['y']
+
+        # create a new table with only the needed columns
+        init_pos = QTable()
+        init_pos[x_init_col] = sources[x_name_found]
+        init_pos[y_init_col] = sources[y_name_found]
+
+        return init_pos
 
     def _measure_init_fluxes(self, data, mask, sources):
         """
@@ -345,38 +393,79 @@ class IterativePSFPhotometry(ModelImageMixin):
             The input ``sources`` table with the new flux column added.
         """
         flux = self._psfphot._get_aper_fluxes(data, mask, sources)
-        unit = getattr(data, 'unit', None)
-        if unit is not None:
-            flux <<= unit
-        fluxcol = self._psfphot._param_maps['init_cols']['flux']
-        sources[fluxcol] = flux
+        flux_col = self._psfphot._param_mapper.init_colnames['flux']
+        sources[flux_col] = flux
         return sources
 
-    def _create_init_params(self, data, mask, new_sources, orig_sources):
+    def _prepare_next_iteration_sources(self, residual_data, mask, new_sources,
+                                        orig_sources):
         """
-        Create the initial parameters table by combining the original
-        and new sources.
+        Create an initial parameters table for the next iteration.
+
+        This method combines the results from the previous iteration
+        with newly found sources, ensuring all sources have unique
+        IDs and correctly named '_init' columns for the next run of
+        PSFPhotometry.
+
+        Parameters
+        ----------
+        residual_data : 2D `~numpy.ndarray`
+            The residual image from the previous iteration, used to
+            measure initial fluxes for new sources.
+
+        mask : 2D `~numpy.ndarray` or `None`
+            The mask for the data.
+
+        new_sources : `~astropy.table.Table`
+            A table with '_init' columns for the x and y positions of
+            newly detected sources.
+
+        orig_sources : `~astropy.table.Table`
+            The results table (from the previous iteration's fit) for
+            the original sources.
+
+        Returns
+        -------
+        init_params : `~astropy.table.Table`
+            A table ready to be used as `init_params` for the next
+            photometry iteration.
         """
-        # rename the columns from the fit results
-        init_params = self._psfphot._rename_init_columns(
-            orig_sources, self._psfphot._param_maps,
-            self._psfphot._find_column_name)
-        for colname in init_params.colnames:
-            if '_init' not in colname:
-                init_params.remove_column(colname)
+        param_mapper = self._psfphot._param_mapper
 
-        # add initial fluxes for the new sources from the residual data
-        new_sources = self._measure_init_fluxes(data, mask, new_sources)
+        # build a new table constructively, converting _fit columns to
+        # _init columns
+        prepared_orig = QTable()
+        prepared_orig['id'] = orig_sources['id']
 
-        # add columns for any additional parameters that are fit
-        for param_name, colname in self._psfphot._param_maps['init'].items():
-            if colname not in new_sources.colnames:
-                new_sources[colname] = getattr(self._psfphot.psf_model,
-                                               param_name)
+        for alias in param_mapper.alias_to_model_param:
+            fit_col = param_mapper.fit_colnames.get(alias)
+            init_col = param_mapper.init_colnames.get(alias)
+            if fit_col and init_col and fit_col in orig_sources.colnames:
+                # use the previous fit result as the initial guess for
+                # the next iteration
+                prepared_orig[init_col] = orig_sources[fit_col]
 
-        # combine original and new source tables
+        # prepare the newly found sources
+        max_id = np.max(orig_sources['id']) if len(orig_sources) > 0 else 0
+        new_sources['id'] = np.arange(len(new_sources)) + max_id + 1
+
+        # measure initial fluxes and add default values for other model
+        # parameters
+        new_sources = self._measure_init_fluxes(residual_data, mask,
+                                                new_sources)
+
+        model_param_mapper = param_mapper.alias_to_model_param
+        for alias, model_param_name in model_param_mapper.items():
+            init_col = param_mapper.init_colnames.get(alias)
+            if init_col and init_col not in new_sources.colnames:
+                default_value = getattr(self._psfphot.psf_model,
+                                        model_param_name)
+                new_sources[init_col] = default_value
+
+        # combine tables
         new_sources.meta.pop('date', None)  # prevent merge conflicts
-        return vstack([orig_sources, new_sources])
+
+        return vstack([prepared_orig, new_sources])
 
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         """
@@ -541,9 +630,10 @@ class IterativePSFPhotometry(ModelImageMixin):
                 finder_results = new_sources.copy()
                 new_sources = self._convert_finder_to_init(new_sources)
                 if self.mode == 'all':
-                    init_params = self._create_init_params(
+                    init_params = self._prepare_next_iteration_sources(
                         residual_data, mask, new_sources,
                         self._psfphot.fit_params)
+
                     residual_data = data
 
                     # keep track of the iteration number in which the source
@@ -557,8 +647,8 @@ class IterativePSFPhotometry(ModelImageMixin):
                     init_params = new_sources
 
                 # remove any sources that do not overlap the data
-                imask = self._psfphot._get_invalid_positions(init_params,
-                                                             data.shape)
+                imask = self._psfphot._get_no_overlap_mask(init_params,
+                                                           data.shape)
                 init_params = init_params[~imask]
                 if self.mode == 'all':
                     iter_detected = iter_detected[~imask]
@@ -583,8 +673,8 @@ class IterativePSFPhotometry(ModelImageMixin):
                 iter_num += 1
 
             # move 'iter_detected' column
-            phot_tbl = self._psfphot._move_column(phot_tbl, 'iter_detected',
-                                                  'group_size')
+            phot_tbl = self._move_column(phot_tbl, 'iter_detected',
+                                         'group_size')
 
         # emit unique warnings
         recorded_warnings = rwarn0 + rwarn1
@@ -605,26 +695,25 @@ class IterativePSFPhotometry(ModelImageMixin):
             return psf_model, None, None, progress_bar
 
         if self.mode == 'new':
-            # In 'new' mode, we stack the results from all iterations.
+            # in 'new' mode: we stack the results from all iterations
             all_fit_params = []
             all_local_bkgs = []
             for result_obj in self.fit_results:
-                if result_obj._fit_model_params is not None:
-                    all_fit_params.append(result_obj._fit_model_params)
+                if result_obj._fit_model_all_params is not None:
+                    all_fit_params.append(result_obj._fit_model_all_params)
                     all_local_bkgs.append(result_obj.init_params['local_bkg'])
 
             fit_params = vstack(all_fit_params) if all_fit_params else None
             local_bkgs = list(chain.from_iterable(all_local_bkgs))
 
         elif self.mode == 'all':
-            # In 'all' mode, only the final iteration contains all sources.
+            # in 'all' mode: only the final iteration contains all sources
             final_result = self.fit_results[-1]
-            fit_params = final_result._fit_model_params
+            fit_params = final_result._fit_model_all_params
             local_bkgs = final_result.init_params['local_bkg']
 
         else:  # pragma: no cover
-            # This should never happen due to the mode validation in
-            # __init__.
+            # should never happen due to the mode validation in __init__
             msg = f'Invalid mode "{self.mode}"'
             raise ValueError(msg)
 

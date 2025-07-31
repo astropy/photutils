@@ -8,7 +8,7 @@ import numpy as np
 
 from photutils.datasets import make_model_image, make_model_params
 from photutils.datasets.images import _model_shape_from_bbox
-from photutils.psf.utils import _get_psf_model_params
+from photutils.psf.utils import _get_psf_model_main_params
 from photutils.utils._parameters import as_pair
 
 __all__ = ['make_psf_model_image']
@@ -144,7 +144,7 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
                                             seed=0, sigma=(1, 2))
         plt.imshow(data, origin='lower')
     """
-    psf_params = _get_psf_model_params(psf_model)
+    main_params = _get_psf_model_main_params(psf_model)
 
     if model_shape is not None:
         model_shape = as_pair('model_shape', model_shape, lower_bound=(0, 1))
@@ -161,13 +161,13 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
 
     other_params = {}
     if kwargs:
-        # include only kwargs that are not x, y, or flux
+        # include only kwargs that are not x, y, or flux (main params)
         for key, val in kwargs.items():
-            if key not in psf_model.param_names or key in psf_params[0:2]:
+            if key not in psf_model.param_names or key in main_params[0:2]:
                 continue  # skip the x, y parameters
             other_params[key] = val
 
-    x_name, y_name = psf_params[0:2]
+    x_name, y_name = main_params[0:2]
     params = make_model_params(shape, n_sources, x_name=x_name, y_name=y_name,
                                min_separation=min_separation,
                                border_size=border_size, seed=seed,
