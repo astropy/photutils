@@ -7,6 +7,7 @@ import contextlib
 import inspect
 import warnings
 from collections import defaultdict
+from itertools import chain
 
 import astropy.units as u
 import numpy as np
@@ -20,9 +21,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.aperture import CircularAperture
 from photutils.background import LocalBackground
 from photutils.psf.groupers import SourceGrouper
-from photutils.psf.utils import (ModelImageMixin, _flatten,
-                                 _get_psf_model_params, _make_mask,
-                                 _validate_psf_model)
+from photutils.psf.utils import (ModelImageMixin, _get_psf_model_params,
+                                 _make_mask, _validate_psf_model)
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
@@ -886,9 +886,9 @@ class PSFPhotometry(ModelImageMixin):
 
         # flatten the lists, which may contain arrays of different lengths
         # due to masking
-        xi = _flatten(xi)
-        yi = _flatten(yi)
-        cutout = _flatten(cutout)
+        xi = self._flatten(xi)
+        yi = self._flatten(yi)
+        cutout = self._flatten(cutout)
 
         self._group_results['npixfit'].append(npixfit)
         self._group_results['psfcenter_indices'].append(cen_index)
@@ -915,7 +915,7 @@ class PSFPhotometry(ModelImageMixin):
         """
         Expand a list of lists (groups) and reorder in source-id order.
         """
-        iterable = _flatten(iterable)
+        iterable = self._flatten(iterable)
         return self._order_by_id(iterable)
 
     def _get_fit_error_indices(self):
@@ -1344,6 +1344,23 @@ class PSFPhotometry(ModelImageMixin):
                                                     data.shape)
 
         return self.results
+
+    @staticmethod
+    def _flatten(iterable):
+        """
+        Flatten a list of lists.
+        """
+        return list(chain.from_iterable(iterable))
+
+    @property
+    def _model_image_parameters(self):
+        """
+        A helper property that provides the necessary parameters to
+        ModelImageMixin.
+        """
+        # the local_bkg values do not change during the fit
+        return (self.psf_model, self._fit_model_params,
+                self.init_params['local_bkg'], self.progress_bar)
 
     def make_model_image(self, shape, *, psf_shape=None,
                          include_localbkg=False):

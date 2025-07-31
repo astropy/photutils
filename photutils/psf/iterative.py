@@ -5,6 +5,7 @@ This module provides classes to perform PSF-fitting photometry.
 
 import warnings
 from copy import deepcopy
+from itertools import chain
 
 import astropy.units as u
 import numpy as np
@@ -590,6 +591,44 @@ class IterativePSFPhotometry(ModelImageMixin):
         self._emit_warnings(recorded_warnings)
 
         return phot_tbl
+
+    @property
+    def _model_image_parameters(self):
+        """
+        A helper property that provides the necessary parameters to
+        ModelImageMixin.
+        """
+        psf_model = self._psfphot.psf_model
+        progress_bar = self._psfphot.progress_bar
+
+        if not self.fit_results:
+            return psf_model, None, None, progress_bar
+
+        if self.mode == 'new':
+            # In 'new' mode, we stack the results from all iterations.
+            all_fit_params = []
+            all_local_bkgs = []
+            for result_obj in self.fit_results:
+                if result_obj._fit_model_params is not None:
+                    all_fit_params.append(result_obj._fit_model_params)
+                    all_local_bkgs.append(result_obj.init_params['local_bkg'])
+
+            fit_params = vstack(all_fit_params) if all_fit_params else None
+            local_bkgs = list(chain.from_iterable(all_local_bkgs))
+
+        elif self.mode == 'all':
+            # In 'all' mode, only the final iteration contains all sources.
+            final_result = self.fit_results[-1]
+            fit_params = final_result._fit_model_params
+            local_bkgs = final_result.init_params['local_bkg']
+
+        else:  # pragma: no cover
+            # This should never happen due to the mode validation in
+            # __init__.
+            msg = f'Invalid mode "{self.mode}"'
+            raise ValueError(msg)
+
+        return psf_model, fit_params, local_bkgs, progress_bar
 
     def make_model_image(self, shape, *, psf_shape=None,
                          include_localbkg=False):

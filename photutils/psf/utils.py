@@ -5,12 +5,11 @@ This module provides utilities for PSF-fitting photometry.
 
 import warnings
 from copy import deepcopy
-from itertools import chain
 
 import numpy as np
 from astropy.modeling import Model
 from astropy.nddata import NDData
-from astropy.table import QTable, vstack
+from astropy.table import QTable
 from astropy.units import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy import interpolate
@@ -61,36 +60,40 @@ class ModelImageMixin:
         array : 2D `~numpy.ndarray`
             The rendered image from the fit PSF models. This image will
             not have any units.
+
+        Notes
+        -----
+        Classes that inherit from this mixin class must have a
+        `_model_image_parameters` attribute that is a tuple containing
+        the following items:
+
+        * `~photutils.psf.PSFModel` instance
+          The PSF model used to fit the sources.
+        * `~astropy.table.QTable`
+          The fit parameters for the PSF model.
+        * `~numpy.ndarray`
+          The local background values for each source.
+        * bool
+          Whether to show a progress bar during the rendering of the
+          model image.
+
+        If the `_model_image_parameters` attribute is not set, then a
+        `ValueError` will be raised.
+
+        Raises
+        ------
+        ValueError
+            If the `_model_image_parameters` attribute is not set.
         """
-        from photutils.psf.photometry import PSFPhotometry
+        if not hasattr(self, '_model_image_parameters'):
+            msg = ('The `_model_image_parameters` attribute must be set '
+                   'in the class that inherits from ModelImageMixin.')
+            raise ValueError(msg)
 
-        if isinstance(self, PSFPhotometry):
-            progress_bar = self.progress_bar
-            psf_model = self.psf_model
-            fit_params = self._fit_model_params
-            local_bkgs = self.init_params['local_bkg']
-        else:
-            psf_model = self._psfphot.psf_model
-            progress_bar = self._psfphot.progress_bar
-
-            if self.mode == 'new':
-                # collect the fit params and local backgrounds from each
-                # iteration
-                local_bkgs = []
-                for i, psfphot in enumerate(self.fit_results):
-                    if i == 0:
-                        fit_params = psfphot._fit_model_params
-                    else:
-                        fit_params = vstack((fit_params,
-                                             psfphot._fit_model_params))
-                    local_bkgs.append(psfphot.init_params['local_bkg'])
-
-                local_bkgs = _flatten(local_bkgs)
-            else:
-                # use the fit params and local backgrounds only from the
-                # final iteration, which includes all sources
-                fit_params = self.fit_results[-1]._fit_model_params
-                local_bkgs = self.fit_results[-1].init_params['local_bkg']
+        (psf_model,
+         fit_params,
+         local_bkgs,
+         progress_bar) = self._model_image_parameters
 
         model_params = fit_params
 
@@ -159,13 +162,6 @@ class ModelImageMixin:
             np.subtract(data, residual, out=residual)
 
         return residual
-
-
-def _flatten(iterable):
-    """
-    Flatten a list of lists.
-    """
-    return list(chain.from_iterable(iterable))
 
 
 def _make_mask(image, mask):
