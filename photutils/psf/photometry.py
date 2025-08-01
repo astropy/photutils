@@ -856,6 +856,14 @@ class PSFPhotometry(ModelImageMixin):
         cutout = []
         npixfit = []
         cen_index = []
+
+        # Create a grid of pixel offsets for the fit_shape. Calling
+        # mgrid once is more efficient than calling it in the loop
+        # for each source. This is possible because the fit_shape is
+        # constant for all sources.
+        ny, nx = self.fit_shape
+        y_offsets, x_offsets = np.mgrid[0:ny, 0:nx]
+
         for row in sources:
             # get the initial center position
             x_cen = row[self._param_mapper.init_colnames['x']]
@@ -871,7 +879,15 @@ class PSFPhotometry(ModelImageMixin):
                        'overlap with the input data.')
                 raise ValueError(msg) from exc
 
-            yy, xx = np.mgrid[slc_lg]
+            # get the local grid of pixel offsets for the fit_shape
+            y_start = slc_lg[0].start
+            x_start = slc_lg[1].start
+            ny_cutout = slc_lg[0].stop - y_start
+            nx_cutout = slc_lg[1].stop - x_start
+            trimmed_y_offsets = y_offsets[:ny_cutout, :nx_cutout]
+            trimmed_x_offsets = x_offsets[:ny_cutout, :nx_cutout]
+            yy = trimmed_y_offsets + y_start
+            xx = trimmed_x_offsets + x_start
 
             if mask is not None:
                 inv_mask = ~mask[yy, xx]
