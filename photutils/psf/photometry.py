@@ -1204,35 +1204,43 @@ class PSFPhotometry(ModelImageMixin):
         y_col = self._param_mapper.fit_colnames['y']
         flux_col = self._param_mapper.fit_colnames['flux']
 
-        for index, row in enumerate(results_tbl):
-            if row['npixfit'] < np.prod(self.fit_shape):
-                flags[index] += 1
-            if (row[x_col] < 0 or row[y_col] < 0
-                    or row[x_col] > shape[1] or row[y_col] > shape[0]):
-                flags[index] += 2
-            if row[flux_col] <= 0:
-                flags[index] += 4
+        # flag=1: if npixfit is less than the maximum number of pixels
+        flag1_mask = results_tbl['npixfit'] < np.prod(self.fit_shape)
+        flags[flag1_mask] += 1
 
+        # flag=2: the fit x and/or y position lies outside of the input data
+        ny, nx = shape
+        x_fit = results_tbl[x_col]
+        y_fit = results_tbl[y_col]
+        flag2_mask = ((x_fit < 0) | (y_fit < 0) | (x_fit > nx) | (y_fit > ny))
+        flags[flag2_mask] += 2
+
+        # flag=4: the fit flux is less than or equal to zero
+        flag4_mask = results_tbl[flux_col] <= 0
+        flags[flag4_mask] += 4
+
+        # flag=8: the fitter may not have converged
         flags[self.fit_info['fit_error_indices']] += 8
 
+        # flag=16: the fitter parameter covariance matrix was not returned
         try:
             for index, fit_info in enumerate(self.fit_info['fit_infos']):
                 if fit_info['param_cov'] is None:
                     flags[index] += 16
-        except KeyError:
+        except (KeyError, IndexError):
             pass
 
-        # add flag = 32 if x or y fitted value is at the bounds
+        # flag=32: x or y fitted value is at the bounds
         if self.xy_bounds is not None:
-            x_col = self._param_mapper.alias_to_model_param['x']
-            y_col = self._param_mapper.alias_to_model_param['y']
+            x_param = self._param_mapper.alias_to_model_param['x']
+            y_param = self._param_mapper.alias_to_model_param['y']
             for index, row in enumerate(self._fit_model_all_params):
-                x_bounds = row[f'{x_col}_bounds']
+                x_bounds = row[f'{x_param}_bounds']
+                y_bounds = row[f'{y_param}_bounds']
                 x_bounds = np.array([i for i in x_bounds if i is not None])
-                y_bounds = row[f'{y_col}_bounds']
                 y_bounds = np.array([i for i in y_bounds if i is not None])
-                dx = x_bounds - row[x_col]
-                dy = y_bounds - row[y_col]
+                dx = x_bounds - row[x_param]
+                dy = y_bounds - row[y_param]
                 if np.any(dx == 0) or np.any(dy == 0):
                     flags[index] += 32
 
