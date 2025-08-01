@@ -1156,7 +1156,7 @@ class PSFPhotometry(ModelImageMixin):
         fit_models = []
         fit_infos = []
 
-        if self.progress_bar:
+        if self.progress_bar:  # pragma: no cover
             source_groups = add_progress_bar(source_groups,
                                              desc='Fit source/group')
 

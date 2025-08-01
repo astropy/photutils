@@ -350,9 +350,12 @@ class IterativePSFPhotometry(ModelImageMixin):
         x_name_found = param_mapper.find_column(sources, 'x')
         y_name_found = param_mapper.find_column(sources, 'y')
         if x_name_found is None or y_name_found is None:
-            msg = ("The table returned by the 'finder' must contain valid "
-                   'x and y coordinate columns.')
+            msg = ("The table returned by the 'finder' must contain columns "
+                   'for x and y coordinates. Valid column names are: '
+                   f"x: {param_mapper._VALID_INIT_COLNAMES['x']}, "
+                   f"y: {param_mapper._VALID_INIT_COLNAMES['y']}")
             raise ValueError(msg)
+
         x_init_col = param_mapper.init_colnames['x']
         y_init_col = param_mapper.init_colnames['y']
 
