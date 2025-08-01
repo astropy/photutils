@@ -931,11 +931,6 @@ class PSFPhotometry(ModelImageMixin):
         for i in range(0, model.n_submodels, chunk_size):
             yield model[i:i + chunk_size]
 
-    @staticmethod
-    def _split_param_errs(param_err, nparam):
-        for i in range(0, len(param_err), nparam):
-            yield param_err[i:i + nparam]
-
     def _order_by_id(self, iterable):
         """
         Reorder the list from group-id to source-id order.
