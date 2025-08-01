@@ -32,6 +32,11 @@ New Features
   - ``GriddedPSFModel`` can now be used with a single input ePSF model,
     which will be equivalent to ``ImagePSF``. [#2034]
 
+  - The ``finder`` callable input to ``PSFPhotometry`` is no longer
+    restricted to have x and y column names of ``'xcentroid'`` and
+    ``'ycentroid'``. The allowed column names are now the same as those
+    allowed in the ``init_params`` table. [#2072]
+
 - ``photutils.segmentation``
 
   - An optional ``array`` keyword was added to the ``SourceCatalog``
@@ -62,6 +67,10 @@ Bug Fixes
 
   - Fixed a bug in ``PSFPhotometry`` where the ``'group_id'`` would be
     ignored if included in the ``init_params`` table. [#2070]
+
+  - Fixed a bug in ``PSFPhotometry`` where the output ``flux_err``
+    column would not have units if the input data had units and the flux
+    model parameter was fixed in value. [#2072]
 
 - ``photutils.segmentation``
 
