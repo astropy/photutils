@@ -972,57 +972,99 @@ class PSFPhotometry(ModelImageMixin):
 
         return np.array(indices, dtype=int)
 
-    def _parse_fit_results(self, group_models, group_fit_infos):
+    def _parse_single_group(self, group_model, group_fit_info):
         """
-        Parse the fit results for each source or group of sources.
+        Parse the results for a single fitted group.
+
+        This helper method unpacks a potentially compound model from
+        a group fit into its constituent single-source models and
+        parameter errors.
+
+        Parameters
+        ----------
+        group_model : `astropy.modeling.Model`
+            The fitted model for a single group. This can be a compound
+            model.
+
+        group_fit_info : dict
+            The fit_info dictionary corresponding to the group fit.
+
+        Returns
+        -------
+        source_models : list
+            A list of the individual fitted models for each source in
+            the group.
+
+        source_param_errs : list
+            A list of numpy arrays, where each array contains the
+            parameter errors for a single source in the group.
+
+        source_fit_infos : list
+            A list of views of the `group_fit_info` dictionary, one for
+            each source in the group.
         """
         psf_nsub = self.psf_model.n_submodels
-
-        fit_models = []
-        fit_infos = []
-        fit_param_errs = []
         nfitparam = len(self._param_mapper.fitted_param_names)
+        num_sources = group_model.n_submodels // psf_nsub
 
+        # Extract parameter errors from the covariance matrix.
+        # source_params_errs is a 2D array with a shape
+        # of (num_sources, nfitparam).
+        param_cov = group_fit_info.get('param_cov')
+        if param_cov is None:
+            # handle cases where the fitter doesn't return a covariance
+            # matrix or where all parameters were fixed
+            source_param_errs = np.full((num_sources, nfitparam), np.nan)
+        else:
+            param_err_1d = np.sqrt(np.diag(param_cov))
+            source_param_errs = param_err_1d.reshape(num_sources, nfitparam)
+
+        # split the models and errors for each source in the group
+        if num_sources == 1:
+            source_models = [group_model]
+        else:
+            # split the compound model into a list of individual models
+            source_models = list(self._split_compound_model(group_model,
+                                                            psf_nsub))
+
+        # each source in the group shares the same fit_info dictionary
+        source_fit_infos = [group_fit_info] * num_sources
+
+        return source_models, source_param_errs, source_fit_infos
+
+    def _parse_fit_results(self, group_models, group_fit_infos):
+        """
+        Parse and reorder all fit results from group-order to source-ID-
+        order.
+
+        This method orchestrates the parsing of all fitted groups,
+        reorders the results to match the original source IDs, and
+        populates the ``self.fit_info`` dictionary.
+        """
+        # Parse each group's results into lists of individual source
+        # results. These lists will be in the order the groups were fit.
+        all_models_grouped = []
+        all_param_errs_grouped = []
+        all_fit_infos_grouped = []
         for model, fit_info in zip(group_models, group_fit_infos, strict=True):
-            model_nsub = model.n_submodels
-            npsf_models = model_nsub // psf_nsub
+            s_models, s_errs, s_infos = self._parse_single_group(model,
+                                                                 fit_info)
+            all_models_grouped.extend(s_models)
+            all_param_errs_grouped.extend(s_errs)
+            all_fit_infos_grouped.extend(s_infos)
 
-            # NOTE: param_cov/param_err are returned in the same order
-            # as the model parameters
-            param_cov = fit_info.get('param_cov', None)
-            if param_cov is None:
-                if nfitparam == 0:  # model params are all fixed
-                    nfitparam = 3   # x_err, y_err, and flux_err are np.nan
-                param_err = np.array([np.nan] * nfitparam * npsf_models)
-            else:
-                param_err = np.sqrt(np.diag(param_cov))
+        # reorder the results from group-order to source-ID-order
+        fit_models_by_id = self._order_by_id(all_models_grouped)
+        fit_param_errs_by_id = np.array(
+            self._order_by_id(all_param_errs_grouped))
+        fit_infos_by_id = self._order_by_id(all_fit_infos_grouped)
 
-            # model is for a single source (which may be compound)
-            if npsf_models == 1:
-                fit_models.append(model)
-                fit_infos.append(fit_info)
-                fit_param_errs.append(param_err)
-                continue
-
-            # model is a grouped model for multiple sources
-            fit_models.extend(self._split_compound_model(model, psf_nsub))
-            fit_infos.extend([fit_info] * npsf_models)  # views
-            fit_param_errs.extend(self._split_param_errs(param_err, nfitparam))
-
-        if len(fit_models) != len(fit_infos):  # pragma: no cover
-            msg = 'fit_models and fit_infos have different lengths'
-            raise ValueError(msg)
-
-        # change the sorting from group_id to source id order
-        fit_models = self._order_by_id(fit_models)
-        fit_infos = self._order_by_id(fit_infos)
-        fit_param_errs = np.array(self._order_by_id(fit_param_errs))
-
-        self.fit_info['fit_infos'] = fit_infos
+        # finalize and store results in the fit_info attribute
+        self.fit_info['fit_infos'] = fit_infos_by_id
+        self.fit_info['fit_param_errs'] = fit_param_errs_by_id
         self.fit_info['fit_error_indices'] = self._get_fit_error_indices()
-        self.fit_info['fit_param_errs'] = fit_param_errs
 
-        return fit_models
+        return fit_models_by_id
 
     def _fit_sources(self, data, init_params, *, error=None, mask=None):
         if self.fitter_maxiters is not None:
