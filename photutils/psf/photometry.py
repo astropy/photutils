@@ -1136,110 +1136,128 @@ class PSFPhotometry(ModelImageMixin):
 
         return fit_model, fit_info
 
-    def _fit_ungrouped_sources(self, data, init_params, *, error=None,
-                               mask=None):
+    def _perform_fits(self, source_groups, data, mask, error):
         """
-        Fit sources individually.
+        Fit all sources or groups of sources.
 
-        This is a streamlined path for the case where no grouping is
-        present.
+        This function is a generic fitting loop that iterates over a
+        list of fittable units (either single sources or groups), runs
+        the fitter for each, and returns the raw results.
+
+        Parameters
+        ----------
+        source_groups : list of `~astropy.table.Table`
+            A list where each element is a table representing a single
+            source or a group of sources to be fit simultaneously.
+
+        Returns
+        -------
+        fit_models : list
+            A list of the raw fitted model objects from the fitter.
+
+        fit_infos : list
+            A list of the ``fit_info`` dictionaries from the fitter.
         """
-        sources = init_params
-        if self.progress_bar:
-            desc = 'Fit source'
-            sources = add_progress_bar(sources, desc=desc)
-
         fit_models = []
         fit_infos = []
 
-        for source in sources:
-            source_group = Table(source)
-            self._group_results['nmodels'].append([1])
-            psf_model = self._make_psf_model(source_group)
+        if self.progress_bar:
+            source_groups = add_progress_bar(source_groups,
+                                             desc='Fit source/group')
 
+        for source_group in source_groups:
+            nmodels = len(source_group)
+            self._group_results['nmodels'].append([nmodels] * nmodels)
+            psf_model = self._make_psf_model(source_group)
             fit_model, fit_info = self._run_fitter(psf_model, source_group,
                                                    data, mask, error)
             fit_models.append(fit_model)
             fit_infos.append(fit_info)
 
-        param_covs = [info.get('param_cov', None) for info in fit_infos]
-        nfitparam = len(self._param_mapper.fitted_param_names)
-        fit_param_errs = []
-        for cov in param_covs:
-            if cov is None:
-                if nfitparam == 0:
-                    nfitparam = 3
-                fit_param_errs.append(np.array([np.nan] * nfitparam))
-            else:
-                fit_param_errs.append(np.sqrt(np.diag(cov)))
+        return fit_models, fit_infos
 
-        self.fit_info['fit_infos'] = fit_infos
-        self.fit_info['fit_error_indices'] = self._get_fit_error_indices()
-        self.fit_info['fit_param_errs'] = np.array(fit_param_errs)
+    def _finalize_results(self, fit_models, fit_infos, is_grouped):
+        """
+        Parse the raw fitter results and assemble the final fit_params
+        table.
+
+        This method uses the `is_grouped` flag to determine whether to
+        use the simple parsing logic for ungrouped sources or the more
+        complex `_parse_fit_results` for grouped sources.
+
+        Parameters
+        ----------
+        fit_models : list
+            The raw fitted models from `_perform_fits`.
+
+        fit_infos : list
+            The raw `fit_info` dictionaries from `_perform_fits`.
+
+        is_grouped : bool
+            A flag indicating whether the fits were performed on grouped
+            sources.
+
+        Returns
+        -------
+        fit_params : `~astropy.table.QTable`
+            The final, processed table of fitted parameters and errors.
+        """
         self._group_results['fit_infos'] = fit_infos
 
-        _fit_model_all_params = self._all_model_params_to_table(fit_models)
-        fit_params = self._prepare_fit_results(_fit_model_all_params)
-        self._fit_model_all_params = _fit_model_all_params
+        if is_grouped:
+            # use the complex parser for compound models
+            final_models = self._parse_fit_results(fit_models, fit_infos)
+        else:
+            # simple case: results are already 1-to-1 with sources
+            final_models = fit_models
+            param_covs = [info.get('param_cov', None) for info in fit_infos]
+            nfitparam = len(self._param_mapper.fitted_param_names)
+
+            fit_param_errs = []
+            for cov in param_covs:
+                if cov is None:
+                    fit_param_errs.append(np.array([np.nan] * nfitparam))
+                else:
+                    fit_param_errs.append(np.sqrt(np.diag(cov)))
+
+            self.fit_info['fit_infos'] = fit_infos
+            self.fit_info['fit_error_indices'] = self._get_fit_error_indices()
+            self.fit_info['fit_param_errs'] = np.array(fit_param_errs)
+
+        fitted_models_table = self._all_model_params_to_table(final_models)
+        fit_params = self._prepare_fit_results(fitted_models_table)
+
+        self._fit_model_all_params = fitted_models_table
         self.fit_params = fit_params
-
-        return fit_params
-
-    def _fit_grouped_sources(self, data, init_params, *, error=None,
-                             mask=None):
-        """
-        Fit sources in groups.
-
-        This path handles the complexity of compound models and result
-        parsing.
-        """
-        sources = init_params.group_by('group_id')
-        ungroup_idx = np.argsort(sources['id'].value)
-        self._group_results['ungroup_indices'] = ungroup_idx
-        groups = sources.groups
-        if self.progress_bar:
-            desc = 'Fit source/group'
-            groups = add_progress_bar(groups, desc=desc)
-
-        group_fit_models = []
-        group_fit_infos = []
-
-        for group in groups:
-            self._group_results['nmodels'].append([len(group)] * len(group))
-            psf_model = self._make_psf_model(group)
-
-            fit_model, fit_info = self._run_fitter(psf_model, group,
-                                                   data, mask, error)
-            group_fit_models.append(fit_model)
-            group_fit_infos.append(fit_info)
-
-        self._group_results['fit_infos'] = group_fit_infos
-        fit_models = self._parse_fit_results(group_fit_models,
-                                             group_fit_infos)
-        _fit_model_all_params = self._all_model_params_to_table(fit_models)
-        fit_params = self._prepare_fit_results(_fit_model_all_params)
-        self._fit_model_all_params = _fit_model_all_params
-        self.fit_params = fit_params
-
         return fit_params
 
     def _fit_sources(self, data, init_params, *, error=None, mask=None):
         """
-        Dispatcher to fit sources.
-
-        It chooses a simple path for individual fits or a more complex
-        one for grouped fits.
+        Dispatcher to prepare, execute, and finalize PSF fitting.
         """
+        # determine if sources are grouped
         _, counts = np.unique(init_params['group_id'], return_counts=True)
         is_grouped = np.any(counts > 1)
 
+        # create list of source groups to fit
         if is_grouped:
-            return self._fit_grouped_sources(data, init_params, error=error,
-                                             mask=mask)
+            groups = init_params.group_by('group_id')
+            self._group_results['ungroup_indices'] = np.argsort(
+                groups['id'].value)
+            source_groups = groups.groups
+        else:
+            self._group_results['ungroup_indices'] = np.arange(
+                len(init_params))
+            source_groups = [Table(row) for row in init_params]
 
-        self._group_results['ungroup_indices'] = np.arange(len(init_params))
-        return self._fit_ungrouped_sources(data, init_params, error=error,
-                                           mask=mask)
+        # run the fitting loop on the source groups
+        raw_fit_models, raw_fit_infos = self._perform_fits(
+            source_groups, data, mask, error,
+        )
+
+        # parse the raw results and assemble the final table
+        return self._finalize_results(raw_fit_models, raw_fit_infos,
+                                      is_grouped)
 
     def _calc_fit_metrics(self, results_tbl):
         # Keep cen_idx as a list because it can have NaNs with the ints.
