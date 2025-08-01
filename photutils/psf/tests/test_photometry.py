@@ -568,7 +568,7 @@ def test_psf_photometry_init_params(test_data):
     assert isinstance(phot, QTable)
     assert len(phot) == 1
 
-    match = 'aperture_radius must be defined if init_params is not input'
+    match = 'aperture_radius must be defined if a flux column is not'
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=None)
     with pytest.raises(ValueError, match=match):
@@ -819,6 +819,26 @@ def test_fixed_params(test_data):
     match = r'`bounds` must contain 2 elements'
     with pytest.raises(ValueError, match=match):
         psfphot(data, error=error)
+
+
+def test_fixed_params_units(test_data):
+    data, error, _ = test_data
+    unit = u.nJy
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    psf_model.x_0.fixed = False
+    psf_model.y_0.fixed = False
+    psf_model.flux.fixed = True
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0 * unit, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+
+    phot = psfphot(data << unit, error=error << unit)
+    assert phot['local_bkg'].unit == unit
+    assert phot['flux_init'].unit == unit
+    assert phot['flux_fit'].unit == unit
+    assert phot['flux_err'].unit == unit
 
 
 def test_fit_warning(test_data):
@@ -1254,12 +1274,125 @@ def test_make_psf_model():
                      tbl4['flux_fit'][0]), (xval, yval, flux))
 
 
+def make_mock_finder(x_col, y_col):
+    def finder(data, mask=None):  # noqa: ARG001
+        source_table = Table()
+        source_table[x_col] = [25.1]
+        source_table[y_col] = [24.9]
+        return source_table
+    return finder
+
+
+FINDER_COLUMN_NAMES = [
+    ('x', 'y'),
+    ('x_init', 'y_init'),
+    ('xcentroid', 'ycentroid'),
+    ('x_centroid', 'y_centroid'),
+    ('xpos', 'ypos'),
+    ('x_peak', 'y_peak'),
+    ('xcen', 'ycen'),
+    ('x_fit', 'y_fit'),
+    ('x_invalid', 'y_invalid'),
+]
+
+
+@pytest.mark.parametrize(('x_col', 'y_col'), FINDER_COLUMN_NAMES)
+def test_finder_column_names(x_col, y_col):
+    """
+    Test that PSFPhotometry works correctly with a finder that returns
+    different column names for source positions.
+    """
+    finder = make_mock_finder(x_col, y_col)
+
+    sources = Table()
+    sources['id'] = [1]
+    sources['flux'] = 7.0
+    sources['x_0'] = 25.0
+    sources['y_0'] = 25.0
+    shape = (31, 31)
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    data = make_model_image(shape, psf_model, sources)
+
+    fit_shape = (9, 9)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=10)
+
+    # invalid column names should raise an error
+    if x_col == 'x_invalid' or y_col == 'y_invalid':
+        match = 'must contain columns for x and y coordinates'
+        with pytest.raises(ValueError, match=match):
+            psfphot(data)
+        return
+
+    phot_tbl = psfphot(data)
+
+    assert len(phot_tbl) == 1
+    assert_allclose(phot_tbl['x_init'][0], 25.1)
+    assert_allclose(phot_tbl['y_init'][0], 24.9)
+    assert_allclose(phot_tbl['x_fit'][0], 25.0, atol=1e-6)
+    assert_allclose(phot_tbl['y_fit'][0], 25.0, atol=1e-6)
+    assert_allclose(phot_tbl['flux_fit'][0], 7.0, rtol=1e-6)
+
+
+@pytest.mark.parametrize(('x_col', 'y_col'), FINDER_COLUMN_NAMES)
+def test_iterative_finder_column_names(x_col, y_col):
+    """
+    Test that IterativePSFPhotometry works correctly with a finder that
+    returns different column names for source positions.
+    """
+    finder = make_mock_finder(x_col, y_col)
+
+    sources = Table()
+    sources['id'] = [1]
+    sources['flux'] = 7.0
+    sources['x_0'] = 25.0
+    sources['y_0'] = 25.0
+    shape = (31, 31)
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    data = make_model_image(shape, psf_model, sources)
+
+    fit_shape = (9, 9)
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                     aperture_radius=10, maxiters=3)
+
+    # invalid column names should raise an error
+    if x_col == 'x_invalid' or y_col == 'y_invalid':
+        match = 'must contain columns for x and y coordinates'
+        with pytest.raises(ValueError, match=match):
+            psfphot(data, init_params=sources)
+        return
+
+    phot_tbl = psfphot(data)
+
+    assert_allclose(phot_tbl['x_init'][0], 25.1)
+    assert_allclose(phot_tbl['y_init'][0], 24.9)
+    assert_allclose(phot_tbl['x_fit'][0], 25.0, atol=1e-6)
+    assert_allclose(phot_tbl['y_fit'][0], 25.0, atol=1e-6)
+    assert_allclose(phot_tbl['flux_fit'][0], 7.0, rtol=1e-6)
+
+
+def test_repr():
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    fit_shape = (9, 9)
+    finder = DAOStarFinder(6.0, 2.0)
+
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=10)
+    cls_repr = repr(psfphot)
+    assert cls_repr.startswith(f'{psfphot.__class__.__name__}(')
+
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                     aperture_radius=10)
+    cls_repr = repr(psfphot)
+    assert cls_repr.startswith(f'{psfphot.__class__.__name__}(')
+
+
 def test_move_column():
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
-    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                            aperture_radius=4)
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                     aperture_radius=4, maxiters=1)
     tbl = QTable()
     tbl['a'] = [1, 2, 3]
     tbl['b'] = [4, 5, 6]

@@ -12,7 +12,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
 from photutils.psf import CircularGaussianPRF, make_psf_model_image
-from photutils.psf.utils import (_get_psf_model_params,
+from photutils.psf.utils import (_get_psf_model_main_params,
                                  _interpolate_missing_data,
                                  _validate_psf_model, fit_2dgaussian, fit_fwhm)
 
@@ -168,21 +168,21 @@ def test_validate_psf_model():
         _validate_psf_model(model)
 
 
-def test_get_psf_model_params():
+def test_get_psf_model_main_params():
     model = CircularGaussianPRF(fwhm=1.0)
-    params = _get_psf_model_params(model)
+    params = _get_psf_model_main_params(model)
     assert len(params) == 3
     assert params == ('x_0', 'y_0', 'flux')
 
     match = 'Invalid PSF model - could not find PSF parameter names'
     model = Gaussian2D()
     with pytest.raises(ValueError, match=match):
-        _get_psf_model_params(model)
+        _get_psf_model_main_params(model)
 
     set_params = ('x_mean', 'y_mean', 'amplitude')
     model.x_name = set_params[0]
     model.y_name = set_params[1]
     model.flux_name = set_params[2]
-    params = _get_psf_model_params(model)
+    params = _get_psf_model_main_params(model)
     assert len(params) == 3
     assert params == set_params
