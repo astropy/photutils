@@ -1272,3 +1272,63 @@ def test_make_psf_model():
                      tbl3['flux_fit'][0]), (xval, yval, flux))
     assert_allclose((tbl4['x_fit'][0], tbl4['y_fit'][0],
                      tbl4['flux_fit'][0]), (xval, yval, flux))
+
+
+def make_mock_finder(x_col, y_col):
+    def finder(data, mask=None):  # noqa: ARG001
+        source_table = Table()
+        source_table[x_col] = [25.1]
+        source_table[y_col] = [24.9]
+        return source_table
+    return finder
+
+
+FINDER_COLUMN_NAMES = [
+    ('x', 'y'),
+    ('x_init', 'y_init'),
+    ('xcentroid', 'ycentroid'),
+    ('x_centroid', 'y_centroid'),
+    ('xpos', 'ypos'),
+    ('x_peak', 'y_peak'),
+    ('xcen', 'ycen'),
+    ('x_fit', 'y_fit'),
+    ('x_invalid', 'y_invalid'),
+]
+
+
+@pytest.mark.parametrize(('x_col', 'y_col'), FINDER_COLUMN_NAMES)
+def test_finder_column_names(x_col, y_col):
+    """
+    Tests that PSFPhotometry works correctly with a finder that returns
+    different column names for source positions.
+    """
+    finder = make_mock_finder(x_col, y_col)
+
+    sources = Table()
+    sources['id'] = [1]
+    sources['flux'] = 7.0
+    sources['x_0'] = 25.0
+    sources['y_0'] = 25.0
+    shape = (31, 31)
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    data = make_model_image(shape, psf_model, sources)
+
+    fit_shape = (9, 9)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=10)
+
+    # invalid column names should raise an error
+    if x_col == 'x_invalid' or y_col == 'y_invalid':
+        match = 'must contain columns for x and y coordinates'
+        with pytest.raises(ValueError, match=match):
+            psfphot(data)
+        return
+
+    phot_tbl = psfphot(data)
+
+    assert len(phot_tbl) == 1
+    assert_allclose(phot_tbl['x_init'][0], 25.1)
+    assert_allclose(phot_tbl['y_init'][0], 24.9)
+    assert_allclose(phot_tbl['x_fit'][0], 25.0, atol=1e-6)
+    assert_allclose(phot_tbl['y_fit'][0], 25.0, atol=1e-6)
+    assert_allclose(phot_tbl['flux_fit'][0], 7.0, rtol=1e-6)
