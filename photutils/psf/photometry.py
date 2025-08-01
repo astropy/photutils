@@ -816,17 +816,12 @@ class PSFPhotometry(ModelImageMixin):
         columns with a '_fit' suffix, and merges them with the parameter
         errors.
         """
-        # define the required model parameters in the fit results
+        # alias_to_model_param always contains the main parameters
+        # (i.e., 'x', 'y', 'flux') and any additional parameters that
+        # were fit. The main parameters are always returned.
         mapper = self._param_mapper.alias_to_model_param
-        model_params = [mapper[alias]
-                        for alias in self._param_mapper.fit_colnames]
-
-        # also include the 'id' column
-        model_params = ['id', *model_params]
-
-        # filter the fit model parameters to include only the required
-        # model parameters
-        fit_params = fit_model_all_params[model_params]
+        col_names = ['id', *list(mapper.values())]
+        fit_params = fit_model_all_params[col_names]
 
         # rename the fitted parameter columns to have the "_fit" suffix
         for col_name in fit_params.colnames:
