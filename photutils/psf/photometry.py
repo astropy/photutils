@@ -950,22 +950,38 @@ class PSFPhotometry(ModelImageMixin):
         return self._order_by_id(iterable)
 
     def _get_fit_error_indices(self):
-        indices = []
-        for index, fit_info in enumerate(self.fit_info['fit_infos']):
-            ierr = fit_info.get('ierr', None)
-            # check value of ierr
-            if ierr is not None:
-                # scipy.optimize.leastsq: solution was not found
-                if ierr not in (1, 2, 3, 4):
-                    indices.append(index)
-            else:
-                # scipy.optimize.least_squares: termination due to an
-                # irregular condition
-                status = fit_info.get('status', None)
-                if status is not None and status in (-2, -1, 0):
-                    indices.append(index)
+        """
+        Get the indices of fits that did not converge.
 
-        return np.array(indices, dtype=int)
+        This method checks the fit_info dictionary for each group and
+        identifies the indices of fits that did not converge. The
+        criteria for convergence depend on the fitter used:
+        - For `scipy.optimize.leastsq`, it checks the `ierr` value.
+        - For `scipy.optimize.least_squares`, it checks the `status`
+          value.
+
+        The ierr/status codes checked here are specific to the
+        scipy.optimize fitters used by default in astropy. Custom
+        fitters may require different logic.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            An array of indices where the fit did not converge.
+        """
+        # same "good" flags for both leastsq and least_squares
+        converged_status = {1, 2, 3, 4}
+
+        # ierr and status values that indicate convergence and will not both
+        # be present in the fit_info dictionary.
+        bad_indices = [
+            idx for idx, info in enumerate(self.fit_info['fit_infos'])
+            if (('ierr' in info and info['ierr'] not in converged_status)
+                or ('status' in info and info['status']
+                    not in converged_status))
+        ]
+
+        return np.array(bad_indices, dtype=int)
 
     def _parse_single_group(self, group_model, group_fit_info):
         """
