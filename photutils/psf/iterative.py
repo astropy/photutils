@@ -339,33 +339,6 @@ class IterativePSFPhotometry(ModelImageMixin):
         colnames.insert(new_index, colnames.pop(old_index))
         return table[colnames]
 
-    def _convert_finder_to_init(self, sources):
-        """
-        Convert the output of the finder to a table with initial (x, y)
-        position column names.
-        """
-        param_mapper = self._psfphot._param_mapper
-
-        # find the x and y coordinate columns in the sources table
-        x_name_found = param_mapper.find_column(sources, 'x')
-        y_name_found = param_mapper.find_column(sources, 'y')
-        if x_name_found is None or y_name_found is None:
-            msg = ("The table returned by the 'finder' must contain columns "
-                   'for x and y coordinates. Valid column names are: '
-                   f"x: {param_mapper._VALID_INIT_COLNAMES['x']}, "
-                   f"y: {param_mapper._VALID_INIT_COLNAMES['y']}")
-            raise ValueError(msg)
-
-        x_init_col = param_mapper.init_colnames['x']
-        y_init_col = param_mapper.init_colnames['y']
-
-        # create a new table with only the needed columns
-        init_pos = QTable()
-        init_pos[x_init_col] = sources[x_name_found]
-        init_pos[y_init_col] = sources[y_name_found]
-
-        return init_pos
-
     def _measure_init_fluxes(self, data, mask, sources):
         """
         Measure initial fluxes for the new sources from the residual
@@ -631,7 +604,11 @@ class IterativePSFPhotometry(ModelImageMixin):
                         break
 
                 finder_results = new_sources.copy()
-                new_sources = self._convert_finder_to_init(new_sources)
+
+                param_mapper = self._psfphot._param_mapper
+                new_sources = self._psfphot._convert_finder_to_init(
+                    param_mapper, new_sources)
+
                 if self.mode == 'all':
                     init_params = self._prepare_next_iteration_sources(
                         residual_data, mask, new_sources,

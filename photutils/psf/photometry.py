@@ -492,6 +492,32 @@ class PSFPhotometry(ModelImageMixin):
         flux, _ = apertures.do_photometry(data, mask=mask)
         return flux
 
+    @staticmethod
+    def _convert_finder_to_init(param_mapper, sources):
+        """
+        Convert the output table of the finder to a table with initial
+        (x, y) position column names.
+        """
+        # find the first valid column names for x and y
+        x_name_found = param_mapper.find_column(sources, 'x')
+        y_name_found = param_mapper.find_column(sources, 'y')
+        if x_name_found is None or y_name_found is None:
+            msg = ("The table returned by the 'finder' must contain columns "
+                   'for x and y coordinates. Valid column names are: '
+                   f"x: {param_mapper._VALID_INIT_COLNAMES['x']}, "
+                   f"y: {param_mapper._VALID_INIT_COLNAMES['y']}")
+            raise ValueError(msg)
+
+        # create a new table with only the needed columns
+        init_params = QTable()
+        init_params['id'] = np.arange(len(sources)) + 1
+        x_col = param_mapper.init_colnames['x']
+        y_col = param_mapper.init_colnames['y']
+        init_params[x_col] = sources[x_name_found]
+        init_params[y_col] = sources[y_name_found]
+
+        return init_params
+
     def _find_sources_if_needed(self, data, mask, init_params):
         """
         Find sources using the finder if initial positions are not
@@ -519,25 +545,7 @@ class PSFPhotometry(ModelImageMixin):
         if sources is None:
             return None
 
-        init_params = QTable()
-        init_params['id'] = np.arange(len(sources)) + 1
-        x_col = self._param_mapper.init_colnames['x']
-        y_col = self._param_mapper.init_colnames['y']
-
-        # find the first valid column names for x and y
-        x_name_found = self._param_mapper.find_column(sources, 'x')
-        y_name_found = self._param_mapper.find_column(sources, 'y')
-        if x_name_found is None or y_name_found is None:
-            msg = ("The table returned by the 'finder' must contain columns "
-                   'for x and y coordinates. Valid column names are: '
-                   f"x: {self._param_mapper._VALID_INIT_COLNAMES['x']}, "
-                   f"y: {self._param_mapper._VALID_INIT_COLNAMES['y']}")
-            raise ValueError(msg)
-
-        init_params[x_col] = sources[x_name_found]
-        init_params[y_col] = sources[y_name_found]
-
-        return init_params
+        return self._convert_finder_to_init(self._param_mapper, sources)
 
     def _estimate_flux_and_bkg_if_needed(self, data, mask, init_params):
         """
