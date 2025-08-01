@@ -821,6 +821,26 @@ def test_fixed_params(test_data):
         psfphot(data, error=error)
 
 
+def test_fixed_params_units(test_data):
+    data, error, _ = test_data
+    unit = u.nJy
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    psf_model.x_0.fixed = False
+    psf_model.y_0.fixed = False
+    psf_model.flux.fixed = True
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0 * unit, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+
+    phot = psfphot(data << unit, error=error << unit)
+    assert phot['local_bkg'].unit == unit
+    assert phot['flux_init'].unit == unit
+    assert phot['flux_fit'].unit == unit
+    assert phot['flux_err'].unit == unit
+
+
 def test_fit_warning(test_data):
     data, _, _ = test_data
 
