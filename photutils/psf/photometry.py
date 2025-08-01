@@ -1077,80 +1077,169 @@ class PSFPhotometry(ModelImageMixin):
 
         return fit_models_by_id
 
-    def _fit_sources(self, data, init_params, *, error=None, mask=None):
+    def _run_fitter(self, psf_model, sources_for_fit, data, mask, error):
+        """
+        Run the fitter for a single model and a set of sources.
+
+        This is a helper function to consolidate the fitting logic that is
+        common to both single and grouped source fitting.
+
+        Parameters
+        ----------
+        psf_model : `astropy.modeling.Model`
+            The model to be fit (can be simple or compound).
+        sources_for_fit : `astropy.table.Table`
+            A table of the source(s) corresponding to the ``psf_model``.
+        data : 2D `~numpy.ndarray`
+            The data array.
+        mask : 2D bool `~numpy.ndarray` or `None`
+            The mask array.
+        error : 2D `~numpy.ndarray` or `None`
+            The error array.
+
+        Returns
+        -------
+        fit_model : `astropy.modeling.Model`
+            The fitted model.
+        fit_info : dict
+            The dictionary of fit information from the fitter.
+        """
         if self.fitter_maxiters is not None:
             kwargs = {'maxiter': self.fitter_maxiters}
         else:
             kwargs = {}
 
-        sources = init_params.group_by('group_id')
-        ungroup_idx = np.argsort(sources['id'].value)
-        self._group_results['ungroup_indices'] = ungroup_idx
-        sources = sources.groups
-        if self.progress_bar:  # pragma: no cover
-            desc = 'Fit source/group'
-            sources = add_progress_bar(sources, desc=desc)
+        yi, xi, cutout = self._define_fit_data(sources_for_fit, data, mask)
 
-        # Save the fit_info results for these keys if they are present.
-        # Some of these keys are returned only by some fitters. These
-        # keys contain the fit residuals (fvec or fun), the parameter
-        # covariance matrix (param_cov), and the fit status (ierr,
-        # message) or (status).
+        weights = None
+        if error is not None:
+            weights = 1.0 / error[yi, xi]
+            if np.any(~np.isfinite(weights)):
+                msg = ('Fit weights contain a non-finite value. Check the '
+                       'input error array for any zeros or non-finite '
+                       'values.')
+                raise ValueError(msg)
+
         fit_info_keys = ('fvec', 'fun', 'param_cov', 'ierr', 'message',
                          'status')
 
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyUserWarning)
+            fit_model = self.fitter(psf_model, xi, yi, cutout,
+                                    weights=weights, **kwargs)
+            with contextlib.suppress(AttributeError):
+                fit_model.clear_cache()
+
+            fit_info = {key: self.fitter.fit_info.get(key) for key in
+                        fit_info_keys if self.fitter.fit_info.get(key)
+                        is not None}
+
+        return fit_model, fit_info
+
+    def _fit_ungrouped_sources(self, data, init_params, *, error=None,
+                               mask=None):
+        """
+        Fit sources individually.
+
+        This is a streamlined path for the case where no grouping is
+        present.
+        """
+        sources = init_params
+        if self.progress_bar:
+            desc = 'Fit source'
+            sources = add_progress_bar(sources, desc=desc)
+
         fit_models = []
         fit_infos = []
-        nmodels = []
-        for source_group in sources:  # fit in group_id order
-            nsources = len(source_group)
-            nmodels.append([nsources] * nsources)
+
+        for source in sources:
+            source_group = Table(source)
+            self._group_results['nmodels'].append([1])
             psf_model = self._make_psf_model(source_group)
-            yi, xi, cutout = self._define_fit_data(source_group, data, mask)
 
-            if error is not None:
-                weights = 1.0 / error[yi, xi]
-                if np.any(~np.isfinite(weights)):
-                    msg = ('Fit weights contain a non-finite value. '
-                           'Check the input error array for any zeros or '
-                           'non-finite values.')
-                    raise ValueError(msg)
-            else:
-                weights = None
-
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', AstropyUserWarning)
-                fit_model = self.fitter(psf_model, xi, yi, cutout,
-                                        weights=weights, **kwargs)
-
-                # clear psf_model cache (if it has one) to reduce memory
-                with contextlib.suppress(AttributeError):
-                    fit_model.clear_cache()
-
-                fit_info = {}
-                for key in fit_info_keys:
-                    value = self.fitter.fit_info.get(key, None)
-                    if value is not None:
-                        fit_info[key] = value
-
+            fit_model, fit_info = self._run_fitter(psf_model, source_group,
+                                                   data, mask, error)
             fit_models.append(fit_model)
             fit_infos.append(fit_info)
 
+        param_covs = [info.get('param_cov', None) for info in fit_infos]
+        nfitparam = len(self._param_mapper.fitted_param_names)
+        fit_param_errs = []
+        for cov in param_covs:
+            if cov is None:
+                if nfitparam == 0:
+                    nfitparam = 3
+                fit_param_errs.append(np.array([np.nan] * nfitparam))
+            else:
+                fit_param_errs.append(np.sqrt(np.diag(cov)))
+
+        self.fit_info['fit_infos'] = fit_infos
+        self.fit_info['fit_error_indices'] = self._get_fit_error_indices()
+        self.fit_info['fit_param_errs'] = np.array(fit_param_errs)
         self._group_results['fit_infos'] = fit_infos
-        self._group_results['nmodels'] = nmodels
 
-        # split the groups and return objects in source-id order
-        fit_models = self._parse_fit_results(fit_models, fit_infos)
-
-        # all parameters of the ungrouped fitted models, including
-        # "fixed" and "bounds" properties
         _fit_model_all_params = self._all_model_params_to_table(fit_models)
+        fit_params = self._prepare_fit_results(_fit_model_all_params)
         self._fit_model_all_params = _fit_model_all_params
+        self.fit_params = fit_params
 
-        # table of only the fitted parameters and their errors
-        self.fit_params = self._prepare_fit_results(_fit_model_all_params)
+        return fit_params
 
-        return self.fit_params
+    def _fit_grouped_sources(self, data, init_params, *, error=None,
+                             mask=None):
+        """
+        Fit sources in groups.
+
+        This path handles the complexity of compound models and result
+        parsing.
+        """
+        sources = init_params.group_by('group_id')
+        ungroup_idx = np.argsort(sources['id'].value)
+        self._group_results['ungroup_indices'] = ungroup_idx
+        groups = sources.groups
+        if self.progress_bar:
+            desc = 'Fit source/group'
+            groups = add_progress_bar(groups, desc=desc)
+
+        group_fit_models = []
+        group_fit_infos = []
+
+        for group in groups:
+            self._group_results['nmodels'].append([len(group)] * len(group))
+            psf_model = self._make_psf_model(group)
+
+            fit_model, fit_info = self._run_fitter(psf_model, group,
+                                                   data, mask, error)
+            group_fit_models.append(fit_model)
+            group_fit_infos.append(fit_info)
+
+        self._group_results['fit_infos'] = group_fit_infos
+        fit_models = self._parse_fit_results(group_fit_models,
+                                             group_fit_infos)
+        _fit_model_all_params = self._all_model_params_to_table(fit_models)
+        fit_params = self._prepare_fit_results(_fit_model_all_params)
+        self._fit_model_all_params = _fit_model_all_params
+        self.fit_params = fit_params
+
+        return fit_params
+
+    def _fit_sources(self, data, init_params, *, error=None, mask=None):
+        """
+        Dispatcher to fit sources.
+
+        It chooses a simple path for individual fits or a more complex
+        one for grouped fits.
+        """
+        _, counts = np.unique(init_params['group_id'], return_counts=True)
+        is_grouped = np.any(counts > 1)
+
+        if is_grouped:
+            return self._fit_grouped_sources(data, init_params, error=error,
+                                             mask=mask)
+
+        self._group_results['ungroup_indices'] = np.arange(len(init_params))
+        return self._fit_ungrouped_sources(data, init_params, error=error,
+                                           mask=mask)
 
     def _calc_fit_metrics(self, results_tbl):
         # Keep cen_idx as a list because it can have NaNs with the ints.
