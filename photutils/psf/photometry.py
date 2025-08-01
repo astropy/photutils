@@ -347,7 +347,7 @@ class PSFPhotometry(ModelImageMixin):
         self.finder_results = None
         self.init_params = None
         self.fit_params = None
-        self._fit_model_all_params = None
+        self._fitted_models_table = None
         self.results = None
         self.fit_info = defaultdict(list)
         self._group_results = defaultdict(list)
@@ -1225,11 +1225,11 @@ class PSFPhotometry(ModelImageMixin):
             self.fit_info['fit_param_errs'] = np.array(fit_param_errs)
 
         fitted_models_table = self._all_model_params_to_table(final_models)
-        fit_params = self._prepare_fit_results(fitted_models_table)
+        self._fitted_models_table = fitted_models_table
 
-        self._fit_model_all_params = fitted_models_table
-        self.fit_params = fit_params
-        return fit_params
+        self.fit_params = self._prepare_fit_results(fitted_models_table)
+
+        return self.fit_params
 
     def _fit_sources(self, data, init_params, *, error=None, mask=None):
         """
@@ -1394,7 +1394,7 @@ class PSFPhotometry(ModelImageMixin):
         if self.xy_bounds is not None:
             x_param = self._param_mapper.alias_to_model_param['x']
             y_param = self._param_mapper.alias_to_model_param['y']
-            for index, row in enumerate(self._fit_model_all_params):
+            for index, row in enumerate(self._fitted_models_table):
                 x_bounds = row[f'{x_param}_bounds']
                 y_bounds = row[f'{y_param}_bounds']
                 x_bounds = np.array([i for i in x_bounds if i is not None])
@@ -1609,7 +1609,7 @@ class PSFPhotometry(ModelImageMixin):
         ModelImageMixin.
         """
         # the local_bkg values do not change during the fit
-        return (self.psf_model, self._fit_model_all_params,
+        return (self.psf_model, self._fitted_models_table,
                 self.init_params['local_bkg'], self.progress_bar)
 
     def make_model_image(self, shape, *, psf_shape=None,

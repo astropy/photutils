@@ -699,8 +699,8 @@ class IterativePSFPhotometry(ModelImageMixin):
             all_fit_params = []
             all_local_bkgs = []
             for result_obj in self.fit_results:
-                if result_obj._fit_model_all_params is not None:
-                    all_fit_params.append(result_obj._fit_model_all_params)
+                if result_obj._fitted_models_table is not None:
+                    all_fit_params.append(result_obj._fitted_models_table)
                     all_local_bkgs.append(result_obj.init_params['local_bkg'])
 
             fit_params = vstack(all_fit_params) if all_fit_params else None
@@ -709,7 +709,7 @@ class IterativePSFPhotometry(ModelImageMixin):
         elif self.mode == 'all':
             # in 'all' mode: only the final iteration contains all sources
             final_result = self.fit_results[-1]
-            fit_params = final_result._fit_model_all_params
+            fit_params = final_result._fitted_models_table
             local_bkgs = final_result.init_params['local_bkg']
 
         else:  # pragma: no cover
