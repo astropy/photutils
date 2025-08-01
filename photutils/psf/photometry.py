@@ -1538,6 +1538,7 @@ class PSFPhotometry(ModelImageMixin):
               the fit flux. NaN values indicate that the central pixel
               was masked.
             * ``flags`` : bitwise flag values
+
               - 0 : no flags
               - 1 : one or more pixels in the ``fit_shape`` region
                 were masked

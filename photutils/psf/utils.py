@@ -68,7 +68,7 @@ class ModelImageMixin:
         `_model_image_parameters` attribute that is a tuple containing
         the following items:
 
-        * `~photutils.psf.PSFModel` instance
+        * 2D `astropy.modeling.Model` instance
           The PSF model used to fit the sources.
         * `~astropy.table.QTable`
           The fit parameters for the PSF model.
