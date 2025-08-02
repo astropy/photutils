@@ -2,6 +2,7 @@
 name = 'photutils'
 description = 'An Astropy package for source detection and photometry'
 readme = 'README.rst'
+license = 'BSD-3-Clause'
 license-files = ['LICENSE.rst']
 authors = [
     {name = 'Photutils Developers', email = 'astropy.team@gmail.com'},
