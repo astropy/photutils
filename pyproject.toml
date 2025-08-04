@@ -183,6 +183,10 @@ force-exclude = """
 [tool.bandit.assert_used]
 skips = ['*_test.py', '*/test_*.py']
 
+[tool.cibuildwheel]
+# explicitly skip free-threaded builds
+skip = ["cp314t-*"]
+
 [tool.repo-review]
 ignore = [
     'MY',  # ignore MyPy
