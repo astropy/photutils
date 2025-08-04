@@ -186,6 +186,7 @@ def _make_mask(image, mask):
         The mask for the input image. A `True` value indicates the
         corresponding element of ``image`` is masked.
     """
+
     def warn_nonfinite():
         warnings.warn('Input data contains unmasked non-finite values '
                       '(NaN or inf), which were automatically ignored.',

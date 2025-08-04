@@ -275,6 +275,7 @@ class _StarFinderCatalog:
         Return all lazyproperties (even in superclasses).
         """
 
+
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
 

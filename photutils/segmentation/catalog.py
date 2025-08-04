@@ -63,6 +63,7 @@ def as_scalar(method):
     decorator : function
         The decorated method.
     """
+
     @functools.wraps(method)
     def _as_scalar(*args, **kwargs):
         result = method(*args, **kwargs)
@@ -90,6 +91,7 @@ def use_detcat(method):
     decorator : function
         The decorated method.
     """
+
     @functools.wraps(method)
     def _use_detcat(self, *args, **kwargs):
         if self._detection_cat is None:
@@ -455,6 +457,8 @@ class SourceCatalog:
         A list of all class properties, include lazyproperties (even in
         superclasses).
         """
+
+
         def isproperty(obj):
             return isinstance(obj, property)
 
@@ -479,6 +483,7 @@ class SourceCatalog:
         """
         A list of all class lazyproperties (even in superclasses).
         """
+
 
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
@@ -2254,12 +2259,10 @@ class SourceCatalog:
         the perimeter around the inner hole (e.g., an annulus) will also
         contribute to the total perimeter.
 
-        References
-        ----------
-        .. [1] K. Benkrid, D. Crookes, and A. Benkrid. "Design and FPGA
-               Implementation of a Perimeter Estimator". Proceedings of
-               the Irish Machine Vision and Image Processing Conference,
-               pp. 51-57 (2000).
+        References ---------- .. [1] K. Benkrid, D. Crookes, and A.
+        Benkrid. "Design and FPGA        Implementation of a Perimeter
+        Estimator". Proceedings of        the Irish Machine Vision and
+        Image Processing Conference,        pp. 51-57 (2000).
         """
         footprint = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
         kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])

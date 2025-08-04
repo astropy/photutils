@@ -2,6 +2,7 @@
 """
 This module provides tools for generating curves of growth.
 """
+
 import numpy as np
 from astropy.utils import lazyproperty
 from scipy.interpolate import PchipInterpolator

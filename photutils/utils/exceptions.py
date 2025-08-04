@@ -12,3 +12,4 @@ class NoDetectionsWarning(AstropyWarning):
     """
     A warning class to indicate no sources were detected.
     """
+

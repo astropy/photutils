@@ -51,6 +51,7 @@ def as_scalar(method):
     decorator : function
         The decorated method.
     """
+
     @functools.wraps(method)
     def _decorator(*args, **kwargs):
         result = method(*args, **kwargs)
@@ -358,6 +359,8 @@ class ApertureStats:
         """
         A list of all class lazyproperties (even in superclasses).
         """
+
+
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
 

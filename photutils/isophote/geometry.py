@@ -370,11 +370,9 @@ class EllipseGeometry:
         Compute the semimajor axis of the two ellipses that bound the
         annulus where integrations take place.
 
-        Returns
-        -------
-        sma1, sma2 : float
-            The smaller and larger values of semimajor axis length that
-            define the annulus bounding ellipses.
+        Returns ------- sma1, sma2 : float     The smaller and larger
+        values of semimajor axis length that     define the annulus
+        bounding ellipses.
         """
         if self.linear_growth:
             a1 = self.sma - self.astep / 2.0

@@ -3,7 +3,6 @@
 This module provides tools for class __repr__ and __str__ strings.
 """
 
-
 def make_repr(instance, params, *, overrides=None, long=False):
     """
     Generate a __repr__ string for a class instance.

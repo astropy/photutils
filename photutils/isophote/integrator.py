@@ -245,7 +245,7 @@ class _AreaIntegrator(_Integrator):
 
         # ignore data point if the elliptical sector lies
         # partially, ou totally, outside image boundaries
-        if (i1 in self._i_range) and (j1 in self._j_range) and \
+        if (i1 in self._i_range) and (j1 in self._j_range) and\
            (i2 in self._i_range) and (j2 in self._j_range):
 
             # Scan rectangular image area, compute sample value.
