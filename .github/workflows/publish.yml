@@ -46,11 +46,11 @@ jobs:
         - cp*-manylinux_x86_64
 
         # MacOS X wheels
-        - cp*macosx_x86_64
-        - cp*macosx_arm64
+        - cp*-macosx_x86_64
+        - cp*-macosx_arm64
 
         # Windows wheels
-        - cp*win_amd64
+        - cp*-win_amd64
 
       # Developer wheels
       upload_to_anaconda: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
