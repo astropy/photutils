@@ -615,6 +615,12 @@ class PSFPhotometry(ModelImageMixin):
         if init_params is None:
             return None
 
+        # strip any units from the x/y position columns
+        for axis in ('x', 'y'):
+            colname = self._param_mapper.init_colnames[axis]
+            if isinstance(init_params[colname], u.Quantity):
+                init_params[colname] = init_params[colname].value
+
         init_params = self._estimate_flux_and_bkg_if_needed(data, mask,
                                                             init_params)
         init_params = self._group_sources(init_params)
