@@ -516,13 +516,6 @@ class Background2D:
         Calculate the background and background RMS statistics in each
         box.
 
-        Parameters
-        ----------
-        data : 2D `~numpy.ndarray`
-            The 2D input data array. The data array is assumed to have
-            been prepared by the ``_prepare_data`` method, where NaNs
-            are used to mask invalid data values.
-
         Returns
         -------
         bkg : 2D `~numpy.ndarray`
