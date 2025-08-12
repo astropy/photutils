@@ -516,13 +516,6 @@ class Background2D:
         Calculate the background and background RMS statistics in each
         box.
 
-        Parameters
-        ----------
-        data : 2D `~numpy.ndarray`
-            The 2D input data array. The data array is assumed to have
-            been prepared by the ``_prepare_data`` method, where NaNs
-            are used to mask invalid data values.
-
         Returns
         -------
         bkg : 2D `~numpy.ndarray`
@@ -637,45 +630,43 @@ class Background2D:
                           reg=0.0):
         """
         Fill in any NaN values in the low-resolution 2D mesh background
-        and background RMS images.
+        and background RMS images using inverse distance weighting (IDW)
+        interpolation.
 
-        IDW interpolation is used to replace the NaN pixels.
-
-        This is required to use a regular-grid interpolator to expand
-        the low-resolution image to the full size image.
+        This method ensures that the low-resolution mesh contains no
+        NaNs before applying a regular-grid interpolator to expand it to
+        the full image size. If there are no NaNs, the input is returned
+        (cast to the original dtype). Otherwise, NaN pixels are replaced
+        by IDW interpolation using valid mesh values.
 
         Parameters
         ----------
         data : 2D `~numpy.ndarray`
-            A 2D array of the box statistics.
+            A 2D array of the box statistics, possibly containing NaNs.
 
         n_neighbors : int, optional
             The maximum number of nearest neighbors to use during the
             interpolation.
 
         eps : float, optional
-            Set to use approximate nearest neighbors; the kth neighbor
-            is guaranteed to be no further than (1 + ``eps``) times the
-            distance to the real *k*-th nearest neighbor. See
-            `scipy.spatial.cKDTree.query` for further information.
+            Approximation parameter for nearest neighbors (see
+            `scipy.spatial.cKDTree.query`).
 
         power : float, optional
             The power of the inverse distance used for the interpolation
-            weights. See the Notes section for more details.
+            weights.
 
         reg : float, optional
-            The regularization parameter. It may be used to control the
-            smoothness of the interpolator. See the Notes section for
-            more details.
+            Regularization parameter to control the smoothness of the
+            interpolator.
 
         Returns
         -------
         result : 2D `~numpy.ndarray`
-            A 2D array of the box values where NaN values have been
-            filled by IDW interpolation.
+            The input array with NaNs replaced by interpolated values.
         """
         if not np.any(np.isnan(data)):
-            # output integer dtype if input data was integer dtype
+            # change output dtype to integer if input data dtype was integer
             if data.dtype != self._data_dtype:
                 data = data.astype(self._data_dtype)
             return data
@@ -694,7 +685,7 @@ class Background2D:
         interp_data = np.copy(data)  # copy to avoid modifying the input data
         interp_data[idx] = interp_values
 
-        # output integer dtype if input data was integer dtype
+        # change output dtype to integer if input data dtype was integer
         if interp_data.dtype != self._data_dtype:
             interp_data = interp_data.astype(self._data_dtype)
 
