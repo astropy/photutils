@@ -4,6 +4,31 @@ This module provides parameter validation tools.
 """
 
 import numpy as np
+from astropy.stats import SigmaClip
+
+
+class SigmaClipSentinelDefault:
+    """
+    A sentinel object to indicate the default value for sigma_clip.
+    """
+
+    def __init__(self, sigma=3.0, maxiters=10):
+        """
+        Initialize the sentinel with default SigmaClip parameters.
+        """
+        self.sigma = sigma
+        self.maxiters = maxiters
+
+    def __repr__(self):
+        return (f'<default: SigmaClip(sigma={self.sigma}, '
+                f'maxiters={self.maxiters})>')
+
+
+def create_default_sigmaclip(sigma=3.0, maxiters=10):
+    """
+    Return a new, default SigmaClip instance.
+    """
+    return SigmaClip(sigma=sigma, maxiters=maxiters)
 
 
 def as_pair(name, value, lower_bound=None, upper_bound=None, check_odd=False):

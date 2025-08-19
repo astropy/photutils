@@ -231,6 +231,10 @@ exclude = [
     '^test_*',  # test code
     '^conftest.*$',  # pytest configuration
 
+    # PR01: private classes/functions
+    'SigmaClipSentinelDefault$',
+    'create_default_sigmaclip$',
+
     # PR02: subclasses without __init__
     'Background$',
     'BackgroundRMS$',
