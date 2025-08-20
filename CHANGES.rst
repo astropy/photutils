@@ -72,6 +72,10 @@ Bug Fixes
     column would not have units if the input data had units and the flux
     model parameter was fixed in value. [#2072]
 
+  - Fixed a bug in ``PSFPhotometry`` and ``IterativePSFPhotometry``
+    where an error would be raised if the x or y columns in
+    ``init_params`` had units. [#2079]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where a newly-defined extra property of a
