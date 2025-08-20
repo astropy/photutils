@@ -76,6 +76,9 @@ Bug Fixes
     where an error would be raised if the x or y columns in
     ``init_params`` had units. [#2079]
 
+  - Fixed an bug in ``PSFPhotometry`` and ``IterativePSFPhotometry`` for
+    the boundary conditions where flag=2 would be set. [#2080]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where a newly-defined extra property of a
