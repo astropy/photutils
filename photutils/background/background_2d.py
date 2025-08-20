@@ -9,7 +9,6 @@ import warnings
 import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData, block_replicate, reshape_as_blocks
-from astropy.stats import SigmaClip
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
@@ -20,7 +19,8 @@ from photutils.background.core import SExtractorBackground, StdBackgroundRMS
 from photutils.background.interpolators import (BkgIDWInterpolator,
                                                 BkgZoomInterpolator)
 from photutils.utils import ShepardIDWInterpolator
-from photutils.utils._parameters import as_pair
+from photutils.utils._parameters import (SigmaClipSentinelDefault, as_pair,
+                                         create_default_sigmaclip)
 from photutils.utils._repr import make_repr
 from photutils.utils._stats import nanmedian, nanmin
 
@@ -28,10 +28,8 @@ __all__ = ['Background2D']
 
 __doctest_skip__ = ['Background2D']
 
-SIGMA_CLIP_DEFAULT = SigmaClip(sigma=3.0, maxiters=10)
-BKG_ESTIMATOR_DEFAULT = SExtractorBackground(sigma_clip=None)
-BKGRMS_ESTIMATOR_DEFAULT = StdBackgroundRMS(sigma_clip=None)
-INTERPOLATOR_DEFAULT = BkgZoomInterpolator()
+
+SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
 
 
 class Background2D:
@@ -166,11 +164,10 @@ class Background2D:
           smaller than the ``data`` size to minimize the amount of
           cropping.
 
-    sigma_clip : `astropy.stats.SigmaClip` instance, optional
+    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters. If `None` then no sigma clipping will
-        be performed. The default is to perform sigma clipping with
-        ``sigma=3.0`` and ``maxiters=10``.
+        be performed.
 
     bkg_estimator : callable, optional
         A callable object (a function or e.g., an instance of
@@ -223,10 +220,8 @@ class Background2D:
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
                  fill_value=0.0, exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, edge_method='pad',
-                 sigma_clip=SIGMA_CLIP_DEFAULT,
-                 bkg_estimator=BKG_ESTIMATOR_DEFAULT,
-                 bkgrms_estimator=BKGRMS_ESTIMATOR_DEFAULT,
-                 interpolator=INTERPOLATOR_DEFAULT):
+                 sigma_clip=SIGMA_CLIP, bkg_estimator=None,
+                 bkgrms_estimator=None, interpolator=None):
 
         if isinstance(data, (u.Quantity, NDData)):  # includes CCDData
             self._unit = data.unit
@@ -266,8 +261,20 @@ class Background2D:
             msg = 'edge_method must be "pad" or "crop"'
             raise ValueError(msg)
         self.edge_method = edge_method
+
+        if sigma_clip is SIGMA_CLIP:
+            sigma_clip = create_default_sigmaclip(sigma=SIGMA_CLIP.sigma,
+                                                  maxiters=SIGMA_CLIP.maxiters)
         self.sigma_clip = sigma_clip
+
+        if interpolator is None:
+            interpolator = BkgZoomInterpolator()
         self.interpolator = interpolator
+
+        if bkg_estimator is None:
+            bkg_estimator = SExtractorBackground(sigma_clip=None)
+        if bkgrms_estimator is None:
+            bkgrms_estimator = StdBackgroundRMS(sigma_clip=None)
 
         # we perform sigma clipping as a separate step to avoid
         # calling it twice for the background and background RMS
