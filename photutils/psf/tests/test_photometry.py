@@ -1436,3 +1436,20 @@ def test_move_column():
     assert tbl2.colnames == ['a', 'b', 'c']
     tbl3 = psfphot._move_column(tbl, 'b', 'b')
     assert tbl3.colnames == ['a', 'b', 'c']
+
+
+def test_flag2_boundaries():
+    shape = (35, 21)
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    init_params = QTable()
+    init_params['x_0'] = [-0.4, 20.4, -1.0, 21.0, 5.0, 5.0, 15.0, 15.0]
+    init_params['y_0'] = [10.0, 10.0, 20.0, 20.0, -0.4, 34.4, -1.0, 35.0]
+    init_params['flux'] = 500
+    data = make_model_image(shape, psf_model, init_params)
+
+    fit_shape = (5, 5)
+    psfphot = PSFPhotometry(psf_model, fit_shape)
+    phot = psfphot(data, init_params=init_params)
+    assert len(phot) == 8
+    assert_equal(phot['flags'][[2, 3, 6, 7]], [3, 3, 3, 3])
+    assert_equal(phot['flags'][[0, 1, 4, 5]], [1, 1, 1, 1])

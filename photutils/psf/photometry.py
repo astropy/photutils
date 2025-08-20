@@ -1379,10 +1379,13 @@ class PSFPhotometry(ModelImageMixin):
         flags[flag1_mask] += 1
 
         # flag=2: the fit x and/or y position lies outside of the input data
+        # Since integer coordinates are at pixel centers, the image
+        # boundaries are -0.5 to ny-0.5 and -0.5 to nx-0.5.
         ny, nx = shape
         x_fit = results_tbl[x_col]
         y_fit = results_tbl[y_col]
-        flag2_mask = ((x_fit < 0) | (y_fit < 0) | (x_fit > nx) | (y_fit > ny))
+        flag2_mask = ((x_fit < -0.5) | (y_fit < -0.5) | (x_fit > nx - 0.5)
+                      | (y_fit > ny - 0.5))
         flags[flag2_mask] += 2
 
         # flag=4: the fit flux is less than or equal to zero
