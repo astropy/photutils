@@ -12,8 +12,6 @@ from photutils.utils._repr import make_repr
 
 __all__ = ['LocalBackground']
 
-BKG_ESTIMATOR_DEFAULT = MedianBackground()
-
 
 class LocalBackground:
     """
@@ -38,10 +36,11 @@ class LocalBackground:
         (i.e., sigma-clipped median).
     """
 
-    def __init__(self, inner_radius, outer_radius,
-                 bkg_estimator=BKG_ESTIMATOR_DEFAULT):
+    def __init__(self, inner_radius, outer_radius, bkg_estimator=None):
         self.inner_radius = inner_radius
         self.outer_radius = outer_radius
+        if bkg_estimator is None:
+            bkg_estimator = MedianBackground()
         self.bkg_estimator = bkg_estimator
         self._aperture = CircularAnnulus((0, 0), inner_radius, outer_radius)
 

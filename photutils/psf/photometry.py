@@ -31,8 +31,6 @@ from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['PSFPhotometry']
 
-FITTER_DEFAULT = TRFLSQFitter()
-
 
 class _PSFParameterManager:
     """
@@ -228,8 +226,9 @@ class PSFPhotometry(ModelImageMixin):
         warning is raised if any group size is larger than 25 sources.
 
     fitter : `~astropy.modeling.fitting.Fitter`, optional
-        The fitter object used to perform the fit of the model to the
-        data.
+        The fitter object used to perform the fit of the
+        model to the data. If `None`, then the default
+        `astropy.modeling.fitting.TRFLSQFitter` is used.
 
     fitter_maxiters : int, optional
         The maximum number of iterations in which the ``fitter`` is
@@ -316,7 +315,7 @@ class PSFPhotometry(ModelImageMixin):
                                        alternative='fit_info')
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
-                 fitter=FITTER_DEFAULT, fitter_maxiters=100, xy_bounds=None,
+                 fitter=None, fitter_maxiters=100, xy_bounds=None,
                  localbkg_estimator=None, aperture_radius=None,
                  progress_bar=False):
 
@@ -327,6 +326,8 @@ class PSFPhotometry(ModelImageMixin):
                                  check_odd=True)
         self.grouper = self._validate_grouper(grouper)
         self.finder = self._validate_callable(finder, 'finder')
+        if fitter is None:
+            fitter = TRFLSQFitter()
         self.fitter = self._validate_callable(fitter, 'fitter')
         self.localbkg_estimator = self._validate_localbkg(
             localbkg_estimator, 'localbkg_estimator')

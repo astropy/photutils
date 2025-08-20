@@ -19,7 +19,8 @@ from photutils.centroids import centroid_com
 from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from photutils.psf.image_models import ImagePSF, _LegacyEPSFModel
 from photutils.psf.utils import _interpolate_missing_data
-from photutils.utils._parameters import as_pair
+from photutils.utils._parameters import (SigmaClipSentinelDefault, as_pair,
+                                         create_default_sigmaclip)
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._round import py2intround
 from photutils.utils._stats import nanmedian
@@ -27,8 +28,8 @@ from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['EPSFBuilder', 'EPSFFitter']
 
-FITTER_DEFAULT = TRFLSQFitter()
-SIGMA_CLIP_DEFAULT = SigmaClip(sigma=3, cenfunc='median', maxiters=10)
+
+SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
 
 
 class EPSFFitter:
@@ -38,7 +39,8 @@ class EPSFFitter:
     Parameters
     ----------
     fitter : `astropy.modeling.fitting.Fitter`, optional
-        A `~astropy.modeling.fitting.Fitter` object.
+        A `~astropy.modeling.fitting.Fitter` object. If `None`, then the
+        default `~astropy.modeling.fitting.TRFLSQFitter` will be used.
 
     fit_boxsize : int, tuple of int, or `None`, optional
         The size (in pixels) of the box centered on the star to be used
@@ -56,9 +58,11 @@ class EPSFFitter:
         of the input ``fitter``.
     """
 
-    def __init__(self, *, fitter=FITTER_DEFAULT, fit_boxsize=5,
+    def __init__(self, *, fitter=None, fit_boxsize=5,
                  **fitter_kwargs):
 
+        if fitter is None:
+            fitter = TRFLSQFitter()
         self.fitter = fitter
         self.fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
         self.fit_boxsize = as_pair('fit_boxsize', fit_boxsize,
@@ -224,9 +228,6 @@ class EPSFFitter:
         return star
 
 
-EPSF_FITTER = EPSFFitter()
-
-
 class EPSFBuilder:
     """
     Class to build an effective PSF (ePSF).
@@ -273,9 +274,10 @@ class EPSFBuilder:
         each ePSF build iteration.
 
     fitter : `EPSFFitter` object, optional
-        A `EPSFFitter` object use to fit the ePSF to stars. To set
-        custom fitter options, input a new `EPSFFitter` object. See the
-        `EPSFFitter` documentation for options.
+        A `EPSFFitter` object use to fit the ePSF to stars. If `None`,
+        then the default `EPSFFitter` will be used. To set custom fitter
+        options, input a new `EPSFFitter` object. See the `EPSFFitter`
+        documentation for options.
 
     maxiters : int, optional
         The maximum number of iterations to perform.
@@ -319,10 +321,10 @@ class EPSFBuilder:
 
     def __init__(self, *, oversampling=4, shape=None,
                  smoothing_kernel='quartic', recentering_func=centroid_com,
-                 recentering_maxiters=20, fitter=EPSF_FITTER, maxiters=10,
+                 recentering_maxiters=20, fitter=None, maxiters=10,
                  progress_bar=True, norm_radius=5.5,
                  recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
-                 sigma_clip=SIGMA_CLIP_DEFAULT):
+                 sigma_clip=SIGMA_CLIP):
 
         if oversampling is None:
             msg = "'oversampling' must be specified"
@@ -342,6 +344,8 @@ class EPSFBuilder:
                                            lower_bound=(3, 0), check_odd=True)
         self.smoothing_kernel = smoothing_kernel
 
+        if fitter is None:
+            fitter = EPSFFitter()
         if not isinstance(fitter, EPSFFitter):
             msg = 'fitter must be an EPSFFitter instance'
             raise TypeError(msg)
@@ -360,6 +364,9 @@ class EPSFBuilder:
 
         self.progress_bar = progress_bar
 
+        if sigma_clip is SIGMA_CLIP:
+            sigma_clip = create_default_sigmaclip(sigma=SIGMA_CLIP.sigma,
+                                                  maxiters=SIGMA_CLIP.maxiters)
         if not isinstance(sigma_clip, SigmaClip):
             msg = 'sigma_clip must be an astropy.stats.SigmaClip instance'
             raise TypeError(msg)

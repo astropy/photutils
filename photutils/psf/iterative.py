@@ -9,7 +9,6 @@ from itertools import chain
 
 import astropy.units as u
 import numpy as np
-from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, vstack
 
@@ -19,8 +18,6 @@ from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['IterativePSFPhotometry']
-
-FITTER_DEFAULT = TRFLSQFitter()
 
 
 class IterativePSFPhotometry(ModelImageMixin):
@@ -88,8 +85,9 @@ class IterativePSFPhotometry(ModelImageMixin):
         size is larger than 25 sources.
 
     fitter : `~astropy.modeling.fitting.Fitter`, optional
-        The fitter object used to perform the fit of the model to the
-        data.
+        The fitter object used to perform the fit of the
+        model to the data. If `None`, then the default
+        `~astropy.modeling.fitting.TRFLSQFitter` fitter is used.
 
     fitter_maxiters : int, optional
         The maximum number of iterations in which the ``fitter`` is
@@ -213,7 +211,7 @@ class IterativePSFPhotometry(ModelImageMixin):
     """
 
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
-                 fitter=FITTER_DEFAULT, fitter_maxiters=100, xy_bounds=None,
+                 fitter=None, fitter_maxiters=100, xy_bounds=None,
                  maxiters=3, mode='new', localbkg_estimator=None,
                  aperture_radius=None, sub_shape=None, progress_bar=False):
 
