@@ -40,6 +40,20 @@ def fixture_test_data():
     return data, error, true_params
 
 
+def make_mock_finder(x_col, y_col, units=False):
+    def finder(data, mask=None):  # noqa: ARG001
+        source_table = Table()
+        x_val = [25.1]
+        y_val = [24.9]
+        if units:
+            x_val *= u.pixel
+            y_val *= u.pixel
+        source_table[x_col] = x_val
+        source_table[y_col] = y_val
+        return source_table
+    return finder
+
+
 def test_invalid_inputs():
     model = CircularGaussianPRF(fwhm=1.0)
 
@@ -1206,6 +1220,33 @@ def test_negative_xy():
     assert_equal(phot['y_init'], sources['y_0'])
 
 
+def test_init_params_xy_with_units():
+    """
+    Test that init_params table x/y columns with units are accepted.
+    """
+    shape = (41, 41)
+    psf_model = CircularGaussianPRF(flux=500, fwhm=3.0)
+    data = np.zeros(shape)
+    init_params = QTable()
+    init_params['x'] = [20.0] * u.pixel  # units should be stripped
+    init_params['y'] = [20.0] * u.pixel
+    init_params['flux'] = [500]
+    fit_shape = (5, 5)
+    psfphot = PSFPhotometry(psf_model, fit_shape, aperture_radius=None)
+    phot = psfphot(data, init_params=init_params)
+    assert len(phot) == 1
+    assert_equal(phot['x_init'][0], 20.0)
+    assert_equal(phot['y_init'][0], 20.0)
+
+    finder = make_mock_finder('x', 'y', units=True)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    phot = psfphot(data, init_params=None)
+    assert len(phot) == 1
+    assert_equal(phot['x_init'][0], 25.1)
+    assert_equal(phot['y_init'][0], 24.9)
+
+
 def test_out_of_bounds_centroids():
     sources = Table()
     sources['id'] = np.arange(8) + 1
@@ -1272,15 +1313,6 @@ def test_make_psf_model():
                      tbl3['flux_fit'][0]), (xval, yval, flux))
     assert_allclose((tbl4['x_fit'][0], tbl4['y_fit'][0],
                      tbl4['flux_fit'][0]), (xval, yval, flux))
-
-
-def make_mock_finder(x_col, y_col):
-    def finder(data, mask=None):  # noqa: ARG001
-        source_table = Table()
-        source_table[x_col] = [25.1]
-        source_table[y_col] = [24.9]
-        return source_table
-    return finder
 
 
 FINDER_COLUMN_NAMES = [
