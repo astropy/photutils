@@ -37,6 +37,9 @@ New Features
     ``'ycentroid'``. The allowed column names are now the same as those
     allowed in the ``init_params`` table. [#2072]
 
+  - Added a ``group_warning_threshold`` keyword to ``PSFPhotometry`` and
+    ``IterativePSFPhotometry``. [#2081]
+
 - ``photutils.segmentation``
 
   - An optional ``array`` keyword was added to the ``SourceCatalog``
