@@ -128,6 +128,13 @@ class IterativePSFPhotometry(ModelImageMixin):
         ``init_params`` table, they will override this keyword *only for
         the first iteration*.
 
+    group_warning_threshold : int, optional
+        The maximum number of sources in a group before a warning is
+        raised. If the number of sources in a group exceeds this value,
+        a warning is raised to inform the user that fitting such large
+        groups may take a long time and be error-prone. The default is
+        25 sources.
+
     sub_shape : `None`, int, or length-2 array_like
         The rectangular shape around the center of a star that will be
         used when subtracting the fitted PSF models. If ``sub_shape`` is
@@ -213,7 +220,8 @@ class IterativePSFPhotometry(ModelImageMixin):
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
                  fitter=None, fitter_maxiters=100, xy_bounds=None,
                  maxiters=3, mode='new', localbkg_estimator=None,
-                 aperture_radius=None, sub_shape=None, progress_bar=False):
+                 aperture_radius=None, group_warning_threshold=25,
+                 sub_shape=None, progress_bar=False):
 
         if finder is None:
             msg = 'finder cannot be None for IterativePSFPhotometry'
@@ -223,12 +231,14 @@ class IterativePSFPhotometry(ModelImageMixin):
             msg = 'aperture_radius cannot be None for IterativePSFPhotometry'
             raise ValueError(msg)
 
+        threshold = group_warning_threshold
         self._psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                                       grouper=grouper, fitter=fitter,
                                       fitter_maxiters=fitter_maxiters,
                                       xy_bounds=xy_bounds,
                                       localbkg_estimator=localbkg_estimator,
                                       aperture_radius=aperture_radius,
+                                      group_warning_threshold=threshold,
                                       progress_bar=progress_bar)
 
         self.maxiters = self._validate_maxiters(maxiters)

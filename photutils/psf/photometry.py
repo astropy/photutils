@@ -258,6 +258,13 @@ class PSFPhotometry(ModelImageMixin):
         flux of each source. If initial flux values are present in the
         ``init_params`` table, they will override this keyword.
 
+    group_warning_threshold : int, optional
+        The maximum number of sources in a group before a warning is
+        raised. If the number of sources in a group exceeds this value,
+        a warning is raised to inform the user that fitting such large
+        groups may take a long time and be error-prone. The default is
+        25 sources.
+
     progress_bar : bool, optional
         Whether to display a progress bar when fitting the sources
         (or groups). The progress bar requires that the `tqdm
@@ -317,7 +324,7 @@ class PSFPhotometry(ModelImageMixin):
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
                  fitter=None, fitter_maxiters=100, xy_bounds=None,
                  localbkg_estimator=None, aperture_radius=None,
-                 progress_bar=False):
+                 group_warning_threshold=25, progress_bar=False):
 
         self.psf_model = _validate_psf_model(psf_model)
         self._param_mapper = _PSFParameterManager(self.psf_model)
@@ -336,7 +343,7 @@ class PSFPhotometry(ModelImageMixin):
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.progress_bar = progress_bar
 
-        self.group_warning_threshold = 25
+        self.group_warning_threshold = group_warning_threshold
 
         self._reset_results()
 
