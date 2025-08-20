@@ -1438,6 +1438,24 @@ def test_move_column():
     assert tbl3.colnames == ['a', 'b', 'c']
 
 
+def test_group_warning_threshold(test_data):
+    data, error, sources = test_data
+    sources['group_id'] = [1, 1, 1, 1, 1, 1, 1, 2, 2, 2]
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4, group_warning_threshold=6)
+    match = 'Some groups have more than 6 sources'
+    with pytest.warns(AstropyUserWarning, match=match):
+        phot = psfphot(data, error=error, init_params=sources)
+
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4, group_warning_threshold=7)
+    phot = psfphot(data, error=error, init_params=sources)
+    assert len(phot) == 10
+
+
 def test_flag2_boundaries():
     shape = (35, 21)
     psf_model = CircularGaussianPRF(fwhm=3.0)
