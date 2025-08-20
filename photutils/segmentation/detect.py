@@ -12,17 +12,20 @@ from scipy.ndimage import label as ndi_label
 
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _make_binary_structure
+from photutils.utils._parameters import (SigmaClipSentinelDefault,
+                                         create_default_sigmaclip)
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._stats import nanmean, nanstd
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['detect_sources', 'detect_threshold']
 
-SIGMA_CLIP_DEFAULT = SigmaClip(sigma=3.0, maxiters=10)
+
+SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
 
 
 def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
-                     sigma_clip=SIGMA_CLIP_DEFAULT):
+                     sigma_clip=SIGMA_CLIP):
     """
     Calculate a pixel-wise threshold image that can be used to detect
     sources.
@@ -65,9 +68,10 @@ def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
         Masked pixels are ignored when computing the image background
         statistics.
 
-    sigma_clip : `astropy.stats.SigmaClip` instance, optional
+    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters.
+        clipping parameters. If `None` then no sigma clipping will be
+        performed.
 
     Returns
     -------
@@ -93,6 +97,9 @@ def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
     inputs, unit = process_quantities(inputs, names)
     (data, background, error) = inputs
 
+    if sigma_clip is SIGMA_CLIP:
+        sigma_clip = create_default_sigmaclip(sigma=SIGMA_CLIP.sigma,
+                                              maxiters=SIGMA_CLIP.maxiters)
     if not isinstance(sigma_clip, SigmaClip):
         msg = 'sigma_clip must be a SigmaClip object'
         raise TypeError(msg)

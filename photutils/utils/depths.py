@@ -7,11 +7,12 @@ import warnings
 
 import astropy.units as u
 import numpy as np
-from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import binary_dilation
 
 from photutils.utils._coords import apply_separation
+from photutils.utils._parameters import (SigmaClipSentinelDefault,
+                                         create_default_sigmaclip)
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._repr import make_repr
 from photutils.utils.footprints import circular_footprint
@@ -20,7 +21,7 @@ __all__ = ['ImageDepth']
 
 __doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['skimage']}
 
-SIGMA_CLIP_DEFAULT = SigmaClip(sigma=3.0, maxiters=10)
+SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
 
 
 class ImageDepth:
@@ -74,7 +75,7 @@ class ImageDepth:
             m_{\mathrm{lim}} = -2.5 \log_{10} f_{\mathrm{lim}}
                 + \mathrm{zeropoint}
 
-    sigma_clip : `astropy.stats.SigmaClip` instance, optional
+    sigma_clip : `astropy.stats.SigmaClip`, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters to use when computing the limiting flux. If
         `None` then no sigma clipping will be performed.
@@ -196,8 +197,7 @@ class ImageDepth:
 
     def __init__(self, aper_radius, *, nsigma=5.0, mask_pad=0, napers=1000,
                  niters=10, overlap=True, overlap_maxiters=100, seed=None,
-                 zeropoint=0.0, sigma_clip=SIGMA_CLIP_DEFAULT,
-                 progress_bar=True):
+                 zeropoint=0.0, sigma_clip=SIGMA_CLIP, progress_bar=True):
 
         if aper_radius <= 0:
             msg = 'aper_radius must be > 0'
@@ -215,6 +215,9 @@ class ImageDepth:
         self.overlap_maxiters = overlap_maxiters
         self.seed = seed
         self.zeropoint = zeropoint
+        if sigma_clip is SIGMA_CLIP:
+            sigma_clip = create_default_sigmaclip(sigma=SIGMA_CLIP.sigma,
+                                                  maxiters=SIGMA_CLIP.maxiters)
         self.sigma_clip = sigma_clip
         self.progress_bar = progress_bar
 
