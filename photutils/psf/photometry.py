@@ -409,7 +409,7 @@ class PSFPhotometry(ModelImageMixin):
     @staticmethod
     def _validate_radius(radius):
         if radius is not None and (not np.isscalar(radius)
-                                   or radius <= 0 or ~np.isfinite(radius)):
+                                   or radius <= 0 or not np.isfinite(radius)):
             msg = 'aperture_radius must be a strictly-positive scalar'
             raise ValueError(msg)
         return radius
