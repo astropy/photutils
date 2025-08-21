@@ -60,6 +60,12 @@ Bug Fixes
     to ``centroid_com`` would return only two np.nan coordinates instead
     of matching the dimensionality of the input array. [#2045]
 
+- ``photutils.datasets``
+
+  - Fixed a bug in ``make_model_image`` where the output image would not
+    have units in the case where the input params had units and none
+    of the models overlapped the image shape. [#2082]
+
 - ``photutils.psf``
 
   - Fixed a bug in ``fit_2dgaussian`` and ``fit_fwhm`` where the fit

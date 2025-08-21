@@ -68,6 +68,31 @@ def test_make_model_image_units():
         make_model_image(shape, model, params, model_shape=model_shape)
 
 
+def test_make_model_image_units_no_overlap():
+    """
+    Test that the model image is created with the correct units when
+    there is no overlap between the model and the image.
+    """
+    unit = u.Jy
+    params = QTable()
+    params['x_0'] = [50, 70.5]
+    params['y_0'] = [50, 50.5]
+    params['flux'] = [2, 3] * unit
+    model = CircularGaussianSigmaPRF(sigma=1.5)
+    shape = (10, 12)
+    image = make_model_image(shape, model, params)
+    assert image.shape == shape
+    assert isinstance(image, u.Quantity)
+    assert image.unit == unit
+    assert model.flux == 1.0  # default flux (unchanged)
+
+    params['flux'] = [2, 3]
+    image = make_model_image(shape, model, params)
+    assert image.shape == shape
+    assert not isinstance(image, u.Quantity)
+    assert model.flux == 1.0  # default flux (unchanged)
+
+
 def test_make_model_image_discretize_method():
     params = QTable()
     params['x_0'] = [50, 70, 90]
