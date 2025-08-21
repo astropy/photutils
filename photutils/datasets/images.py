@@ -336,6 +336,10 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
                 raise ValueError(msg) from exc
 
         except NoOverlapError:
+            # evaluate the model to get the model output units
+            result = model(0, 0)
+            if isinstance(result, u.Quantity):
+                image <<= result.unit
             continue
 
     return image
