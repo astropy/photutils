@@ -65,36 +65,37 @@ class ModelImageMixin:
         Notes
         -----
         Classes that inherit from this mixin class must have a
-        `_model_image_parameters` attribute that is a tuple containing
-        the following items:
+        `_model_image_params` attribute that is a `dict` containing the
+        following items:
 
-        * 2D `astropy.modeling.Model` instance
+        * 'psf_model': 2D `astropy.modeling.Model` instance
           The PSF model used to fit the sources.
-        * `~astropy.table.QTable`
+        * 'fitted_models_table': `~astropy.table.QTable`
           The fit parameters for the PSF model.
-        * `~numpy.ndarray`
+        * 'local_bkg': `~numpy.ndarray`
           The local background values for each source.
-        * bool
+        * 'progress_bar': bool
           Whether to show a progress bar during the rendering of the
           model image.
 
-        If the `_model_image_parameters` attribute is not set, then a
+        If the `_model_image_params` attribute is not set, then a
         `ValueError` will be raised.
 
         Raises
         ------
         ValueError
-            If the `_model_image_parameters` attribute is not set.
+            If the `_model_image_params` attribute is not set.
         """
-        if not hasattr(self, '_model_image_parameters'):
-            msg = ('The `_model_image_parameters` attribute must be set '
+        image_params = getattr(self, '_model_image_params', None)
+        if image_params is None:
+            msg = ('The `_model_image_params` attribute must be set '
                    'in the class that inherits from ModelImageMixin.')
             raise ValueError(msg)
 
-        (psf_model,
-         model_params,
-         local_bkgs,
-         progress_bar) = self._model_image_parameters
+        psf_model = image_params.get('psf_model')
+        model_params = image_params.get('model_params')
+        local_bkgs = image_params.get('local_bkg')
+        progress_bar = image_params.get('progress_bar', False)
 
         if include_localbkg:
             # add local_bkg
