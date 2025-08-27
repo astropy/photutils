@@ -66,6 +66,10 @@ Bug Fixes
     have units in the case where the input params had units and none
     of the models overlapped the image shape. [#2082]
 
+  - Fixed a bug in ``make_model_image`` where an error would be raised
+    if any row in the input parameters table contained non-finite model
+    parameters. Such sources are now silently ignored. [#2083]
+
 - ``photutils.psf``
 
   - Fixed a bug in ``fit_2dgaussian`` and ``fit_fwhm`` where the fit

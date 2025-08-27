@@ -222,3 +222,31 @@ def test_make_model_image_params_map():
     image2 = make_model_image(shape, model, params, model_shape=model_shape,
                               params_map=params_map)
     assert_allclose(image, image2)
+
+
+def test_make_model_image_nonfinite():
+    params = QTable()
+    params['x_0'] = [50, np.nan, 90, 100]
+    params['y_0'] = [50, 50, 50, 50]
+    params['gamma'] = [1.7, 2.32, 5.8, np.inf]
+    params['alpha'] = [2.9, 5.7, 4.6, 3.1]
+    model = Moffat2D(amplitude=1)
+    shape = (300, 500)
+    model_shape = (11, 11)
+    image = make_model_image(shape, model, params, model_shape=model_shape)
+    assert image.shape == shape
+    assert image.sum() < 33
+    assert image[50, 100] == 0
+
+    # all invalid sources
+    params = QTable()
+    params['x_0'] = [50, np.nan, 90, 100]
+    params['y_0'] = [-np.inf, 50, 50, 50]
+    params['gamma'] = [1.7, 2.32, 5.8, np.inf]
+    params['alpha'] = [2.9, 5.7, np.nan, 3.1]
+    model = Moffat2D(amplitude=1)
+    shape = (300, 500)
+    model_shape = (11, 11)
+    image = make_model_image(shape, model, params, model_shape=model_shape)
+    assert image.shape == shape
+    assert image.sum() == 0

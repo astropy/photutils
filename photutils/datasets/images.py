@@ -55,8 +55,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         and y positions can be specified using the ``x_name`` and
         ``y_name`` keywords. Model parameters not defined in the table
         or ``params_maps`` will be set to the ``model`` default value.
-        To attach units to model parameters, ``params_table`` must be
-        input as a `~astropy.table.QTable`.
+        To attach units to model parameters, ``params_table`` must
+        be input as a `~astropy.table.QTable`. Rows that contain any
+        non-finite model parameters will be skipped.
 
         If the table contains a column named 'model_shape', then
         the values in that column will be used to override the
@@ -290,57 +291,70 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         params_table = add_progress_bar(params_table, desc=desc)
 
     image = np.zeros(shape, dtype=float)
+    apply_units = True
     for i, source in enumerate(params_table):
         for key, param in params_map.items():
-            setattr(model, key, source[param])
+            value = source[param]
+            # skip if any parameter value is not finite
+            if not np.isfinite(value):
+                break
+            setattr(model, key, value)
 
-        # This assumes that if the user also uses params_table to
-        # override the (x/y)_name mapping that the x_name and y_name
-        # values are correct (i.e., the mapping keys include x_name and
-        # y_name). There is no good way to check/enforce this.
-        x0 = getattr(model, x_name).value
-        y0 = getattr(model, y_name).value
+        else:  # all parameters are finite for the source
+            # This assumes that if the user also uses params_table to
+            # override the (x/y)_name mapping that the x_name and y_name
+            # values are correct (i.e., the mapping keys include x_name
+            # and y_name). There is no good way to check/enforce this.
+            x0 = getattr(model, x_name).value
+            y0 = getattr(model, y_name).value
 
-        if variable_shape:
-            mod_shape = model_shape[i]
-        elif model_shape is None:
-            # the bounding box size generally depends on model parameters,
-            # so needs to be calculated for each source
-            mod_shape = _model_shape_from_bbox(model, bbox_factor=bbox_factor)
-        else:
-            mod_shape = model_shape
-
-        try:
-            slc_lg, _ = overlap_slices(shape, mod_shape, (y0, x0), mode='trim')
-
-            if discretize_method == 'center':
-                yy, xx = np.mgrid[slc_lg]
-                subimg = model(xx, yy)
+            if variable_shape:
+                mod_shape = model_shape[i]
+            elif model_shape is None:
+                # the bounding box size generally depends on model
+                # parameters, so needs to be calculated for each source
+                mod_shape = _model_shape_from_bbox(model,
+                                                   bbox_factor=bbox_factor)
             else:
-                if discretize_method == 'interp':
-                    discretize_method = 'linear_interp'
-                x_range = (slc_lg[1].start, slc_lg[1].stop)
-                y_range = (slc_lg[0].start, slc_lg[0].stop)
-                subimg = discretize_model(model, x_range=x_range,
-                                          y_range=y_range,
-                                          mode=discretize_method,
-                                          factor=discretize_oversample)
+                mod_shape = model_shape
 
-            if i == 0 and isinstance(subimg, u.Quantity):
-                image <<= subimg.unit
             try:
-                image[slc_lg] += subimg + local_bkg[i]
-            except u.UnitConversionError as exc:
-                msg = ('The local_bkg column must have the same flux units '
-                       'as the output image')
-                raise ValueError(msg) from exc
+                slc_lg, _ = overlap_slices(shape, mod_shape, (y0, x0),
+                                           mode='trim')
 
-        except NoOverlapError:
-            # evaluate the model to get the model output units
-            result = model(0, 0)
-            if isinstance(result, u.Quantity):
-                image <<= result.unit
-            continue
+                if discretize_method == 'center':
+                    yy, xx = np.mgrid[slc_lg]
+                    subimg = model(xx, yy)
+                else:
+                    if discretize_method == 'interp':
+                        discretize_method = 'linear_interp'
+                    x_range = (slc_lg[1].start, slc_lg[1].stop)
+                    y_range = (slc_lg[0].start, slc_lg[0].stop)
+                    subimg = discretize_model(model, x_range=x_range,
+                                              y_range=y_range,
+                                              mode=discretize_method,
+                                              factor=discretize_oversample)
+
+                # if the model is a Quantity, then the output image
+                # should also be a Quantity with the same units;
+                # but apply the units only once
+                if apply_units and isinstance(subimg, u.Quantity):
+                    apply_units = False
+                    image <<= subimg.unit
+
+                try:
+                    image[slc_lg] += subimg + local_bkg[i]
+                except u.UnitConversionError as exc:
+                    msg = ('The local_bkg column must have the same flux '
+                           'units as the output image')
+                    raise ValueError(msg) from exc
+
+            except NoOverlapError:
+                # evaluate the model to get the model output units
+                result = model(0, 0)
+                if isinstance(result, u.Quantity):
+                    image <<= result.unit
+                continue
 
     return image
 
