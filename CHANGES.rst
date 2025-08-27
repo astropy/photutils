@@ -40,6 +40,16 @@ New Features
   - Added a ``group_warning_threshold`` keyword to ``PSFPhotometry`` and
     ``IterativePSFPhotometry``. [#2081]
 
+  - The ``PSFPhotometry`` and ``IterativePSFPhotometry`` classes no
+    longer fail for invalid sources, defined as those that have no
+    overlap with the input data, are completely masked, or have too few
+    unmasked pixels for a fit.  These classes have new flags (64, 128,
+    256, respectively) for these invalid conditions. [#2084]
+
+  - The ``PSFPhotometry`` and ``IterativePSFPhotometry`` classes have
+    new ``results_to_init_params`` and ``results_to_model_params``
+    classes for outputting fit results in different formats. [#2084]
+
 - ``photutils.segmentation``
 
   - An optional ``array`` keyword was added to the ``SourceCatalog``
@@ -114,6 +124,12 @@ API Changes
 
   - The ``GriddedPSFModel`` ``data`` and ``grid_xypos`` attributes are
     now read-only. [#2036]
+
+  - The ``PSFPhotometry`` ``fit_param`` attribute is not deprecated. Use
+    the new ``results_to_init_params`` method instead. [#2084]
+
+  - The deprecated ``PSFPhotometry`` ``fit_results`` attribute has been
+    removed. [#2084]
 
 - ``photutils.segmentation``
 
