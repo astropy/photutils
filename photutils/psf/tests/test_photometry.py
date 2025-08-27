@@ -1363,6 +1363,53 @@ def test_invalid_sources(test_data, units):
     assert_equal(model_params['id'], np.arange(1, 7))
 
 
+def test_init_params_id_order(test_data):
+    data, error, sources = test_data
+    init_params = sources.copy()
+
+    # one item in group is invalid
+    init_params['x_0'][0] = 1000
+    init_params['y_0'][0] = 1000
+    init_params['x_0'][5] = 1000
+
+    # entire group is invalid
+    init_params['x_0'][-2] = 1000
+    init_params['x_0'][-1] = 1000
+
+    init_params['id'] = [19, 4, 1, 3, 22, 10, 5, 88, 7, 6]
+    init_params['group_id'] = [1, 2, 1, 2, 2, 3, 2, 3, 4, 4]
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    phot = psfphot(data, error=error, init_params=init_params)
+
+    assert len(phot) == len(init_params)
+    assert_equal(phot['id'], np.sort(init_params['id']))
+    assert_equal(phot['group_id'], [1, 2, 2, 2, 4, 4, 3, 1, 2, 3])
+    assert_equal(phot['group_size'], [2, 4, 2, 4, 4, 2, 4, 2, 2, 2])
+
+    cols = ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
+            'qfit', 'cfit')
+    for col in cols:
+        assert np.all(np.isnan(phot[col][4:8]))
+
+    resid = psfphot.make_residual_image(data, psf_shape=fit_shape)
+    assert isinstance(resid, np.ndarray)
+    assert resid.shape == data.shape
+
+    init_params = psfphot.results_to_init_params()
+    assert isinstance(init_params, QTable)
+    assert len(init_params) == 6  # 6 valid sources
+    assert_equal(init_params['id'], np.arange(1, 7))
+
+    model_params = psfphot.results_to_model_params()
+    assert isinstance(model_params, QTable)
+    assert len(model_params) == 6
+    assert_equal(model_params['id'], np.arange(1, 7))
+
+
 def test_psf_photometry_table_serialization(test_data):
     """
     Test that photometry results table can be written to file.
