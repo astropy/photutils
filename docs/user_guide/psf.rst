@@ -79,9 +79,9 @@ of the DAOPHOT algorithm described by Stetson in his `seminal paper
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_ for
 crowded-field stellar photometry.
 
-The star-finding step is controlled by the ``finder``
+The source-finding step is controlled by the ``finder``
 keyword, where one inputs a callable function or class
-instance. Typically, this would be one of the star-detection
+instance. Typically, this would be one of the source-detection
 classes implemented in the `photutils.detection`
 subpackage, e.g., `~photutils.detection.DAOStarFinder`,
 `~photutils.detection.IRAFStarFinder`, or
@@ -90,15 +90,15 @@ subpackage, e.g., `~photutils.detection.DAOStarFinder`,
 After finding sources, one can optionally apply a clustering algorithm
 to group overlapping sources using the ``grouper`` keyword. Usually,
 groups are formed by a distance criterion, which is the case of the
-grouping algorithm proposed by Stetson. Stars that grouped are fit
+grouping algorithm proposed by Stetson. Sources that grouped are fit
 simultaneously. The reason behind the construction of groups and not
-fitting all stars simultaneously is illustrated as follows: imagine
-that one would like to fit 300 stars and the model for each star has
-three parameters to be fitted. If one constructs a single model to fit
-the 300 stars simultaneously, then the optimization algorithm will
-have to search for the solution in a 900-dimensional space, which
+fitting all sources simultaneously is illustrated as follows: imagine
+that one would like to fit 300 sources and the model for each source
+has three parameters to be fitted. If one constructs a single model to
+fit the 300 sources simultaneously, then the optimization algorithm
+will have to search for the solution in a 900-dimensional space, which
 is computationally expensive and error-prone. Having smaller groups
-of stars effectively reduces the dimension of the parameter space,
+of sources effectively reduces the dimension of the parameter space,
 which facilitates the optimization process. For more details see
 :ref:`psf-grouping`.
 
@@ -114,8 +114,8 @@ task is performed using an astropy fitter, for example
 `~astropy.modeling.fitting.TRFLSQFitter`, input via the ``fitter``
 keyword. The shape of the region to be fitted can be configured using
 the ``fit_shape`` parameter. In general, ``fit_shape`` should be set to
-a small size (e.g., (5, 5)) that covers the central star region with
-the highest flux signal-to-noise. The initial positions are derived
+a small size (e.g., (5, 5)) that covers the central part of the source
+with the highest flux signal-to-noise. The initial positions are derived
 from the ``finder`` algorithm. The initial flux values for the fit are
 derived from measuring the flux in a circular aperture with radius
 ``aperture_radius``. Alternatively, the initial positions and fluxes can
@@ -341,11 +341,11 @@ Let's plot the image:
     plt.colorbar()
 
 
-Fitting multiple stars
-^^^^^^^^^^^^^^^^^^^^^^
+Fitting multiple sources
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Now let's use `~photutils.psf.PSFPhotometry` to perform PSF photometry
-on the stars in this image. Note that the input image must be
+on the sources in this image. Note that the input image must be
 background-subtracted prior to using the photometry classes. See
 :ref:`background` for tools to subtract a global background from an
 image. This step is not needed for our synthetic image because it does
@@ -354,7 +354,7 @@ not include background.
 We'll use the `~photutils.detection.DAOStarFinder` class for
 source detection. We'll estimate the initial fluxes of each
 source using a circular aperture with a radius 4 pixels. The
-central 5x5 pixel region of each star will be fit using an
+central 5x5 pixel region of each source will be fit using an
 `~photutils.psf.CircularGaussianPRF` PSF model. First, let's create an
 instance of the `~photutils.psf.PSFPhotometry` class::
 
@@ -493,33 +493,13 @@ astropy table)::
       9    5.5858   89.8664    0.5741 ... 54.3786 505.6093 -6.7595     -2.1188
      10   71.8303   90.5624    0.6038 ... 73.5747 639.9299 -7.0153     -2.4516
 
-The ``fit_info`` attribute contains a dictionary with detailed
-information returned from the ``fitter`` for each source::
-
-    >>> psfphot.fit_info.keys()
-    dict_keys(['fit_infos', 'fit_error_indices'])
-
-The ``fit_error_indices`` key contains the indices of sources for which
-the fit reported warnings or errors.
-
-As an example, let's print the covariance matrix of the fit parameters
-for the first source (note that not all astropy fitters will return a
-covariance matrix):
-
-.. doctest-skip::
-
-    >>> psfphot.fit_info['fit_infos'][0]['param_cov']  # doctest: +FLOAT_CMP
-    array([[ 7.27034774e-01,  8.86845334e-04,  3.98593038e-03],
-           [ 8.86845334e-04,  2.92871525e-06, -6.36805464e-07],
-           [ 3.98593038e-03, -6.36805464e-07,  4.29520185e-05]])
-
 
 Fitting a single source
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 In some cases, one may want to fit only a single source (or few sources)
-in an image. We can do that by defining a table of the sources that
-we want to fit. For this example, let's fit the single star at ``(x,
+in an image. We can do that by defining a table of the sources that we
+want to fit. For this example, let's fit the single source at ``(x,
 y) = (63, 49)``. We first define a table with this position and then
 pass that table into the ``init_params`` keyword when calling the PSF
 photometry class on the data::
@@ -545,7 +525,7 @@ The output table contains only the fit results for the input source::
       1 63.2340 48.6408 563.3426
 
 Finally, let's show the residual image. The red circular aperture shows
-the location of the star that was fit and subtracted.
+the location of the source that was fit and subtracted.
 
 .. plot::
 
@@ -691,7 +671,7 @@ Source Grouping
 
 Source grouping is an optional feature. To turn it on, create a
 `~photutils.psf.SourceGrouper` instance and input it via the ``grouper``
-keyword. Here we'll group stars that are within 20 pixels of each
+keyword. Here we'll group sources that are within 20 pixels of each
 other::
 
     >>> from photutils.psf import SourceGrouper
@@ -701,7 +681,7 @@ other::
     >>> phot = psfphot(data, error=error)
 
 The ``group_id`` column shows that seven groups were identified. The
-stars in each group were simultaneously fit::
+sources in each group were simultaneously fit::
 
     >>> print(phot[('id', 'group_id', 'group_size')])
      id group_id group_size
@@ -717,13 +697,14 @@ stars in each group were simultaneously fit::
       9        6          2
      10        7          1
 
-Care should be taken in defining the star groups. Simultaneously fitting
-very large star groups is computationally expensive and error-prone.
-Internally, source grouping requires the creation of a compound Astropy
-model. Due to the way compound Astropy models are currently constructed,
-large groups also require excessively large amounts of memory; this will
-hopefully be fixed in a future Astropy version. A warning will be raised
-if the number of sources in a group exceeds 25.
+Care should be taken in defining the source groups. Simultaneously
+fitting very large source groups is computationally expensive and
+error-prone. Internally, source grouping requires the creation of a
+compound Astropy model. Due to the way compound Astropy models are
+currently constructed, large groups also require excessively large
+amounts of memory; this will hopefully be fixed in a future Astropy
+version. A warning will be raised if the number of sources in a group
+exceeds a threshold defined by the ``group_warning_threshold`` keyword.
 
 
 Local Background Subtraction
@@ -770,13 +751,14 @@ Iterative PSF Photometry
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 Now let's use the `~photutils.psf.IterativePSFPhotometry` class to
-iteratively fit the stars in the image. This class is useful for crowded
-fields where faint stars are very close to bright stars. The faint stars
-may not be detected until after the bright stars are subtracted.
+iteratively fit the sources in the image. This class is useful for
+crowded fields where faint sources are very close to bright sources. The
+faint sources may not be detected until after the bright sources are
+subtracted.
 
-For this simple example, let's input a table of three stars for the
+For this simple example, let's input a table of three sources for the
 first fit iteration. Subsequent iterations will use the ``finder`` to
-find additional stars::
+find additional sources::
 
     >>> from photutils.background import LocalBackground, MMMBackground
     >>> from photutils.psf import IterativePSFPhotometry

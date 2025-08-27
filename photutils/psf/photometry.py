@@ -1560,9 +1560,9 @@ class PSFPhotometry(ModelImageMixin):
         """
         The table of fit parameters and their errors.
 
-        This table is a subset of the `results` table, containing only
-        the fit parameters and their errors. It can be used as the
-        `init_params` for subsequent `PSFPhotometry` fits.
+        This table is a subset of the ``results`` table, containing
+        only the fit parameters and their errors. It can be used as the
+        ``init_params`` for subsequent `PSFPhotometry` fits.
         """
         if self.results is None:
             return None
@@ -1580,7 +1580,7 @@ class PSFPhotometry(ModelImageMixin):
         Create a table of the fitted model parameters from the results.
 
         The table columns are named according to those expected for the
-        initial parameters table. It can be used as the `init_params`
+        initial parameters table. It can be used as the ``init_params``
         for subsequent `PSFPhotometry` fits.
 
         Rows that contain non-finite fitted values are removed.
@@ -1690,7 +1690,7 @@ class PSFPhotometry(ModelImageMixin):
         Create a table of the fitted model parameters from the results.
 
         The table columns are named according to those expected for the
-        initial parameters table. It can be used as the `init_params`
+        initial parameters table. It can be used as the ``init_params``
         for subsequent `PSFPhotometry` fits.
 
         Rows that contain non-finite fitted values are removed.
