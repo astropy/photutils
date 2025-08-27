@@ -1466,30 +1466,22 @@ def test_psf_photometry_table_serialization(test_data):
     # Test file writing - this should not raise any errors
     with tempfile.NamedTemporaryFile(mode='w', suffix='.ecsv',
                                      delete=False) as tmp:
-        try:
-            # Write table to ECSV format
-            results.write(tmp.name, format='ascii.ecsv', overwrite=True)
+        # Write table to ECSV format
+        results.write(tmp.name, format='ascii.ecsv', overwrite=True)
 
-            # Read it back to verify it's readable
-            from astropy.table import Table
-            read_table = Table.read(tmp.name, format='ascii.ecsv')
+        # Read it back to verify it's readable
+        read_table = Table.read(tmp.name, format='ascii.ecsv')
 
-            # Basic checks that the table was written and read correctly
-            assert len(read_table) == len(results)
-            assert set(read_table.colnames) == set(results.colnames)
+        # Basic checks that the table was written and read correctly
+        assert len(read_table) == len(results)
+        assert set(read_table.colnames) == set(results.colnames)
 
-            # Check that metadata was preserved
-            read_meta = read_table.meta
-            assert 'psf_model' in read_meta
-            assert 'finder' in read_meta
-            assert isinstance(read_meta['psf_model'], str)
-            assert isinstance(read_meta['finder'], str)
-
-        finally:
-            # Clean up the temporary file
-            import os
-            if os.path.exists(tmp.name):
-                os.unlink(tmp.name)
+        # Check that metadata was preserved
+        read_meta = read_table.meta
+        assert 'psf_model' in read_meta
+        assert 'finder' in read_meta
+        assert isinstance(read_meta['psf_model'], str)
+        assert isinstance(read_meta['finder'], str)
 
 
 def test_psf_photometry_invalid_coordinates():
