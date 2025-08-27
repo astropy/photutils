@@ -7,10 +7,10 @@ import warnings
 from copy import deepcopy
 from itertools import chain
 
-import astropy.units as u
 import numpy as np
-from astropy.nddata import NDData, StdDevUncertainty
+from astropy.nddata import NDData
 from astropy.table import QTable, vstack
+from astropy.utils import lazyproperty
 
 from photutils.psf.photometry import PSFPhotometry
 from photutils.psf.utils import ModelImageMixin
@@ -26,8 +26,8 @@ class IterativePSFPhotometry(ModelImageMixin):
 
     This is a convenience class that iteratively calls the
     `PSFPhotometry` class to perform PSF photometry on an input image.
-    It can be useful for crowded fields where faint stars are very
-    close to bright stars and are not detected in the first pass of
+    It can be useful for crowded fields where faint sources are very
+    close to bright sources and are not detected in the first pass of
     PSF photometry. For complex cases, one may need to manually run
     `PSFPhotometry` in an iterative manner and inspect the residual
     image after each iteration.
@@ -44,17 +44,17 @@ class IterativePSFPhotometry(ModelImageMixin):
         (e.g., x and y) and provides 1 output.
 
     fit_shape : int or length-2 array_like
-        The rectangular shape around the center of a star that will
-        be used to define the PSF-fitting data. If ``fit_shape`` is a
-        scalar then a square shape of size ``fit_shape`` will be used.
-        If ``fit_shape`` has two elements, they must be in ``(ny,
-        nx)`` order. Each element of ``fit_shape`` must be an odd
+        The rectangular shape around the initial center of a source that
+        will be used to define the PSF-fitting data. If ``fit_shape``
+        is a scalar then a square shape of size ``fit_shape`` will
+        be used. If ``fit_shape`` has two elements, they must be in
+        ``(ny, nx)`` order. Each element of ``fit_shape`` must be an odd
         number. In general, ``fit_shape`` should be set to a small size
         (e.g., ``(5, 5)``) that covers the region with the highest flux
         signal-to-noise.
 
     finder : callable or `~photutils.detection.StarFinderBase`
-        A callable used to identify stars in an image. The
+        A callable used to identify sources in an image. The
         ``finder`` must accept a 2D image as input and return a
         `~astropy.table.Table` containing the x and y centroid
         positions. These positions are used as the starting points for
@@ -73,25 +73,26 @@ class IterativePSFPhotometry(ModelImageMixin):
         information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
-        A callable used to group stars. Typically, grouped stars are
-        those that overlap with their neighbors. Stars that are grouped
-        are fit simultaneously. The ``grouper`` must accept the x and
-        y coordinates of the sources and return an integer array of
-        the group id numbers (starting from 1) indicating the group
-        in which a given source belongs. If `None`, then no grouping
-        is performed, i.e. each source is fit independently. The
-        ``group_id`` values in ``init_params`` override this keyword
+        A callable used to group sources. Typically, grouped sources
+        are those that overlap with their neighbors. Sources that are
+        grouped are fit simultaneously. The ``grouper`` must accept
+        the x and y coordinates of the sources and return an integer
+        array of the group id numbers (starting from 1) indicating
+        the group in which a given source belongs. If `None`, then no
+        grouping is performed, i.e. each source is fit independently.
+        The ``group_id`` values in ``init_params`` override this keyword
         *only for the first iteration*. A warning is raised if any group
-        size is larger than 25 sources.
+        size is larger than ``group_warning_threshold`` sources.
 
     fitter : `~astropy.modeling.fitting.Fitter`, optional
         The fitter object used to perform the fit of the
         model to the data. If `None`, then the default
-        `~astropy.modeling.fitting.TRFLSQFitter` fitter is used.
+        `astropy.modeling.fitting.TRFLSQFitter` is used.
 
     fitter_maxiters : int, optional
         The maximum number of iterations in which the ``fitter`` is
-        called for each source.
+        called for each source. The value can be increased if the fit is
+        not converging for sources.
 
     xy_bounds : `None`, float, or 2-tuple of float, optional
         The maximum distance in pixels that a fitted source can be from
@@ -99,7 +100,7 @@ class IterativePSFPhotometry(ModelImageMixin):
         maximum distance is used for both x and y. If a 2-tuple of
         floats, then the distances are in ``(x, y)`` order. If `None`,
         then no bounds are applied. Either value can also be `None` to
-        indicate no bound in that direction.
+        indicate no bound along that axis.
 
     maxiters : int, optional
         The maximum number of PSF-fitting/subtraction iterations to
@@ -113,6 +114,14 @@ class IterativePSFPhotometry(ModelImageMixin):
         unsubtracted, data. For the 'all' mode, a source ``grouper``
         must be input. See the Notes section for more details.
 
+    aperture_radius : float, optional
+        The radius of the circular aperture used to estimate the initial
+        flux of each source. If `None`, then the initial flux values
+        must be provided in the ``init_params`` table. The aperture
+        radius must be a strictly positive scalar. If initial flux
+        values are present in the ``init_params`` table, they will
+        override this keyword *only for the first iteration*.
+
     localbkg_estimator : `~photutils.background.LocalBackground` or `None`, \
             optional
         The object used to estimate the local background around each
@@ -122,12 +131,6 @@ class IterativePSFPhotometry(ModelImageMixin):
         fields where the ``fit_shape`` of sources overlap (see Notes
         below).
 
-    aperture_radius : float, optional
-        The radius of the circular aperture used to estimate the initial
-        flux of each source. If initial flux values are present in the
-        ``init_params`` table, they will override this keyword *only for
-        the first iteration*.
-
     group_warning_threshold : int, optional
         The maximum number of sources in a group before a warning is
         raised. If the number of sources in a group exceeds this value,
@@ -136,13 +139,14 @@ class IterativePSFPhotometry(ModelImageMixin):
         25 sources.
 
     sub_shape : `None`, int, or length-2 array_like
-        The rectangular shape around the center of a star that will be
-        used when subtracting the fitted PSF models. If ``sub_shape`` is
-        a scalar then a square shape of size ``sub_shape`` will be used.
-        If ``sub_shape`` has two elements, they must be in ``(ny, nx)``
-        order. Each element of ``sub_shape`` must be an odd number. If
-        `None`, then ``sub_shape`` will be defined by the model bounding
-        box. This keyword must be specified if the model does not have a
+        The rectangular shape around the fitted center of a source
+        that will be used when subtracting the fitted PSF models.
+        If ``sub_shape`` is a scalar then a square shape of size
+        ``sub_shape`` will be used. If ``sub_shape`` has two
+        elements, they must be in ``(ny, nx)`` order. Each element
+        of ``sub_shape`` must be an odd number. If `None`, then
+        ``sub_shape`` will be defined by the model bounding box.
+        This keyword must be specified if the model does not have a
         ``bounding_box`` attribute.
 
     progress_bar : bool, optional
@@ -161,20 +165,25 @@ class IterativePSFPhotometry(ModelImageMixin):
     to the true source positions. One way to ensure this is to use a
     ``finder`` to identify sources in the data.
 
-    If the fitted positions are significantly different from the initial
-    positions, one can rerun the `PSFPhotometry` class using the fit
-    results as the input ``init_params``, which will change the fitted
-    cutout region for each source. After calling `PSFPhotometry` on the
-    data, it will have a ``fit_params`` attribute containing the fitted
-    model parameters. This table can be used as the ``init_params``
-    input in a subsequent call to `PSFPhotometry`.
+    If the fitted positions are significantly different from the
+    initial positions, one can rerun the `IterativePSFPhotometry` class
+    using the fit results as the input ``init_params``, which will
+    change the fitted cutout region for each source. After running
+    `IterativePSFPhotometry`, you can use the `results_to_init_params`
+    method to generate a table of initial parameters that can be used
+    in a subsequent call to `IterativePSFPhotometry`. This table will
+    contain the fitted (x, y) positions, fluxes, and any other model
+    parameters that were fit.
 
-    If the returned model parameter errors are NaN, then either the
-    fit did not converge, the model parameter was fixed, or the
-    input ``fitter`` did not return parameter errors. For the later
-    case, one can try a different fitter that may return parameter
-    errors (e.g., `astropy.modeling.fitting.DogBoxLSQFitter` or
-    `astropy.modeling.fitting.LMLSQFitter`).
+    If the fitted model parameters are NaN, then the source was
+    not valid, likely due to not enough valid data pixels in the
+    ``fit_shape`` region. The ``flags`` column in the output ``results``
+    table indicates the reason why a source was not valid.
+
+    If the fitted model parameter errors are NaN, then either the fit
+    did not converge, the model parameter was fixed, or the input
+    ``fitter`` did not return parameter errors. For the later case, one
+    can try a different Astropy fitter that returns parameter errors.
 
     The local background value around each source is optionally
     estimated using the ``localbkg_estimator`` or obtained from the
@@ -207,20 +216,20 @@ class IterativePSFPhotometry(ModelImageMixin):
     the fit. Again, the process is repeated until no new sources are
     detected or a maximum number of iterations is reached.
 
-    Care should be taken in defining the star groups. Simultaneously
-    fitting very large star groups is computationally expensive and
-    error-prone. Internally, source grouping requires the creation of a
-    compound Astropy model. Due to the way compound Astropy models are
-    currently constructed, large groups also require excessively large
-    amounts of memory; this will hopefully be fixed in a future Astropy
-    version. A warning will be raised if the number of sources in a
-    group exceeds 25.
+    Care should be taken in defining the source groups. Simultaneously
+    fitting very large source groups is computationally expensive and
+    error-prone. Internally, source grouping requires the creation of
+    a compound Astropy model. Due to the way compound Astropy models
+    are currently constructed, large groups also require excessively
+    large amounts of memory; this will hopefully be fixed in a future
+    Astropy version. A warning will be raised if the number of sources
+    in a group exceeds the ``group_warning_threshold`` value.
     """
 
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
                  fitter=None, fitter_maxiters=100, xy_bounds=None,
-                 maxiters=3, mode='new', localbkg_estimator=None,
-                 aperture_radius=None, group_warning_threshold=25,
+                 maxiters=3, mode='new', aperture_radius=None,
+                 localbkg_estimator=None, group_warning_threshold=25,
                  sub_shape=None, progress_bar=False):
 
         if finder is None:
@@ -236,8 +245,8 @@ class IterativePSFPhotometry(ModelImageMixin):
                                       grouper=grouper, fitter=fitter,
                                       fitter_maxiters=fitter_maxiters,
                                       xy_bounds=xy_bounds,
-                                      localbkg_estimator=localbkg_estimator,
                                       aperture_radius=aperture_radius,
+                                      localbkg_estimator=localbkg_estimator,
                                       group_warning_threshold=threshold,
                                       progress_bar=progress_bar)
 
@@ -253,13 +262,15 @@ class IterativePSFPhotometry(ModelImageMixin):
 
         self.sub_shape = sub_shape
 
-        self.fit_results = []
+        self._reset_results()
 
     def _reset_results(self):
         """
         Reset these attributes for each __call__.
         """
         self.fit_results = []
+        self.results = None
+        self.__dict__.pop('_model_image_params', None)  # lazyproperty
 
     def __repr__(self):
         params = ('psf_model', 'fit_shape', 'finder', 'grouper', 'fitter',
@@ -422,12 +433,11 @@ class IterativePSFPhotometry(ModelImageMixin):
         prepared_orig['id'] = orig_sources['id']
 
         for alias in param_mapper.alias_to_model_param:
-            fit_col = param_mapper.fit_colnames.get(alias)
             init_col = param_mapper.init_colnames.get(alias)
-            if fit_col and init_col and fit_col in orig_sources.colnames:
+            if init_col and init_col in orig_sources.colnames:
                 # use the previous fit result as the initial guess for
                 # the next iteration
-                prepared_orig[init_col] = orig_sources[fit_col]
+                prepared_orig[init_col] = orig_sources[init_col]
 
         # prepare the newly found sources
         max_id = np.max(orig_sources['id']) if len(orig_sources) > 0 else 0
@@ -560,19 +570,12 @@ class IterativePSFPhotometry(ModelImageMixin):
               - 16 : the fitter parameter covariance matrix was not
                 returned
               - 32 : the fit x or y position is at the bounded value
+              - 64 : the source had no overlap with the input data
+              - 128 : the source region was completely masked
+              - 256 : the source had too few unmasked pixels for a fit
         """
         if isinstance(data, NDData):
-            data_ = data.data
-            if data.unit is not None:
-                data_ <<= data.unit
-            mask = data.mask
-            unc = data.uncertainty
-            if unc is not None:
-                error = unc.represent_as(StdDevUncertainty).quantity
-                if error.unit is u.dimensionless_unscaled:
-                    error = error.value
-                else:
-                    error = error.to(data.unit)
+            data_, mask, error = PSFPhotometry._coerce_nddata(data)
             return self.__call__(data_, mask=mask, error=error,
                                  init_params=init_params)
 
@@ -613,14 +616,15 @@ class IterativePSFPhotometry(ModelImageMixin):
 
                 finder_results = new_sources.copy()
 
-                param_mapper = self._psfphot._param_mapper
-                new_sources = self._psfphot._convert_finder_to_init(
-                    param_mapper, new_sources)
+                # Convert finder results to init params format
+                data_processor = self._psfphot._data_processor
+                new_sources = data_processor._convert_finder_to_init(
+                    new_sources)
 
                 if self.mode == 'all':
                     init_params = self._prepare_next_iteration_sources(
                         residual_data, mask, new_sources,
-                        self._psfphot.fit_params)
+                        self._psfphot.results_to_init_params())
 
                     residual_data = data
 
@@ -633,13 +637,6 @@ class IterativePSFPhotometry(ModelImageMixin):
                 elif self.mode == 'new':
                     # fit new sources on the residual data
                     init_params = new_sources
-
-                # remove any sources that do not overlap the data
-                imask = self._psfphot._get_no_overlap_mask(init_params,
-                                                           data.shape)
-                init_params = init_params[~imask]
-                if self.mode == 'all':
-                    iter_detected = iter_detected[~imask]
 
                 new_tbl = self._psfphot(residual_data, mask=mask, error=error,
                                         init_params=init_params)
@@ -664,14 +661,48 @@ class IterativePSFPhotometry(ModelImageMixin):
             phot_tbl = self._move_column(phot_tbl, 'iter_detected',
                                          'group_size')
 
+        # add table metadata not already set by PSFPhotometry
+        phot_tbl.meta['psf_class'] = self.__class__.__name__
+        phot_tbl.meta['maxiters'] = self.maxiters
+        phot_tbl.meta['mode'] = self.mode
+        phot_tbl.meta['sub_shape'] = self.sub_shape
+
         # emit unique warnings
         recorded_warnings = rwarn0 + rwarn1
         self._emit_warnings(recorded_warnings)
 
+        self.results = phot_tbl
+
         return phot_tbl
 
-    @property
-    def _model_image_parameters(self):
+    def results_to_init_params(self):
+        """
+        Create a table of the fitted model parameters from the results.
+
+        The table columns are named according to those expected for the
+        initial parameters table. It can be used as the ``init_params``
+        for subsequent `PSFPhotometry` fits.
+
+        Rows that contain non-finite fitted values are removed.
+        """
+        return self._psfphot._results_to_init_params(self.results,
+                                                     reset_id=True)
+
+    def results_to_model_params(self):
+        """
+        Create a table of the fitted model parameters from the results.
+
+        The table columns are named according to the PSF model parameter
+        names. It can also be used to reconstruct the fitted PSF models
+        for visualization or further analysis.
+
+        Rows that contain non-finite fitted values are removed.
+        """
+        return self._psfphot._results_to_model_params(
+            self.results, self._psfphot._param_mapper, reset_id=True)
+
+    @lazyproperty
+    def _model_image_params(self):
         """
         A helper property that provides the necessary parameters to
         ModelImageMixin.
@@ -679,16 +710,14 @@ class IterativePSFPhotometry(ModelImageMixin):
         psf_model = self._psfphot.psf_model
         progress_bar = self._psfphot.progress_bar
 
-        if not self.fit_results:
-            return psf_model, None, None, progress_bar
-
         if self.mode == 'new':
             # in 'new' mode: we stack the results from all iterations
             all_fit_params = []
             all_local_bkgs = []
             for result_obj in self.fit_results:
-                if result_obj._fitted_models_table is not None:
-                    all_fit_params.append(result_obj._fitted_models_table)
+                fm_tbl = result_obj.results_to_model_params()
+                if fm_tbl is not None:
+                    all_fit_params.append(fm_tbl)
                     all_local_bkgs.append(result_obj.init_params['local_bkg'])
 
             fit_params = vstack(all_fit_params) if all_fit_params else None
@@ -697,7 +726,7 @@ class IterativePSFPhotometry(ModelImageMixin):
         elif self.mode == 'all':
             # in 'all' mode: only the final iteration contains all sources
             final_result = self.fit_results[-1]
-            fit_params = final_result._fitted_models_table
+            fit_params = final_result.results_to_model_params()
             local_bkgs = final_result.init_params['local_bkg']
 
         else:  # pragma: no cover
@@ -705,15 +734,31 @@ class IterativePSFPhotometry(ModelImageMixin):
             msg = f'Invalid mode "{self.mode}"'
             raise ValueError(msg)
 
-        return psf_model, fit_params, local_bkgs, progress_bar
+        return {'psf_model': psf_model,
+                'model_params': fit_params,
+                'local_bkg': local_bkgs,
+                'progress_bar': progress_bar,
+                }
 
     def make_model_image(self, shape, *, psf_shape=None,
                          include_localbkg=False):
+
+        if not self.fit_results:
+            msg = ('No results available. Please run the '
+                   'IterativePSFPhotometry instance first.')
+            raise ValueError(msg)
+
         return ModelImageMixin.make_model_image(
             self, shape, psf_shape=psf_shape,
             include_localbkg=include_localbkg)
 
     def make_residual_image(self, data, *, psf_shape=None,
                             include_localbkg=False):
+
+        if not self.fit_results:
+            msg = ('No results available. Please run the '
+                   'IterativePSFPhotometry instance first.')
+            raise ValueError(msg)
+
         return ModelImageMixin.make_residual_image(
             self, data, psf_shape=psf_shape, include_localbkg=include_localbkg)

@@ -159,7 +159,8 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     if flux_name is None:
         psf_model *= Const2D(1.0, name='flux')
         # "amplitude" is the Const2D parameter name;
-        # the flux scaling is always the last component
+        # the flux scaling is always the last component (prior to
+        # normalization)
         flux_name = psf_model.param_names[-1]
     else:
         flux_name = _shift_model_param(input_model, flux_name, shift=2)
