@@ -1496,31 +1496,27 @@ def test_psf_photometry_invalid_coordinates():
     """
     Test PSF photometry with invalid coordinates.
     """
-    # Create simple test data
-    data = np.ones((50, 50)) * 0.1
-    data[25, 25] = 100
+    yy, xx = np.mgrid[:50, :50]
 
-    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    psf_model = CircularGaussianPRF(x_0=25, y_0=25, flux=120, fwhm=2.7)
+    data = psf_model(xx, yy)
     psfphot = PSFPhotometry(psf_model, (5, 5), aperture_radius=3)
 
-    n_sources = 12
+    n_sources = 3
     init_params = Table()
     init_params['id'] = np.arange(1, n_sources + 1)
+    init_params['x_init'] = [25.0, -5.0, 55.0]
+    init_params['y_init'] = [25.0, 25.0, 25.0]
+    init_params['flux_init'] = 100.0
+    init_params['group_id'] = 1
 
-    # Create coordinates - mostly valid with some invalid
-    x_positions = [25.0] * 10 + [-5.0, 55.0]  # 10 valid + 2 invalid
-    y_positions = [25.0] * 10 + [25.0, 25.0]  # all y valid for now
-
-    init_params['x_init'] = x_positions
-    init_params['y_init'] = y_positions
-    init_params['flux_init'] = [100.0] * n_sources
-
-    init_params['group_id'] = [1] * n_sources
     results = psfphot(data, init_params=init_params)
     assert len(results) == n_sources
-
-    valid_fits = np.sum(np.isfinite(results['x_fit']))
-    assert valid_fits >= 10
+    assert_equal(results['group_size'], [3, 3, 3])
+    cols = ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
+            'qfit', 'cfit')
+    for col in cols:
+        assert np.all(np.isnan(results[col][1:]))
 
 
 def test_should_skip_source_coverage():
