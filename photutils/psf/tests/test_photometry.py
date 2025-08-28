@@ -246,7 +246,7 @@ def test_psf_photometry(test_data):
     assert resid_datau.unit == unit
     colnames = ('qfit', 'cfit')
     for col in colnames:
-        assert not isinstance(col, u.Quantity)
+        assert not isinstance(photu[col], u.Quantity)
 
     match = 'The fit_params function is deprecated'
     with pytest.warns(AstropyDeprecationWarning, match=match):
@@ -492,8 +492,10 @@ def test_psf_photometry_mask(test_data):
     mask = np.ones(data.shape, dtype=bool)
     phot_masked = psfphot(data_orig, mask=mask, init_params=init_params)
     assert len(phot_masked) == 1
-    for col in ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
-                'qfit', 'cfit'):
+
+    colnames = ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
+                'qfit', 'cfit')
+    for col in colnames:
         assert np.isnan(phot_masked[col][0])
     assert phot_masked['npixfit'][0] == 0
     assert phot_masked['group_size'][0] == 1
@@ -575,6 +577,9 @@ def test_psf_photometry_init_params(test_data):
         with pytest.raises(ValueError, match=match):
             _ = psfphot(data << u.Jy, init_params=init_params2)
 
+    colnames = ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
+                'qfit', 'cfit')
+
     # no-overlap source should return NaNs and not raise; also test
     # too-few-pixels
     init_params = QTable()
@@ -583,8 +588,7 @@ def test_psf_photometry_init_params(test_data):
     init_params['flux'] = [100]
     phot_no_overlap = psfphot(data, init_params=init_params)
     assert len(phot_no_overlap) == 1
-    for col in ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
-                'qfit', 'cfit'):
+    for col in colnames:
         assert np.isnan(phot_no_overlap[col][0])
     assert phot_no_overlap['npixfit'][0] == 0
     assert phot_no_overlap['group_size'][0] == 1
@@ -601,8 +605,7 @@ def test_psf_photometry_init_params(test_data):
     mask[49, 64] = False
     phot_few = psfphot(data, error=error, mask=mask, init_params=init_params)
     assert len(phot_few) == 1
-    for col in ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
-                'qfit', 'cfit'):
+    for col in colnames:
         assert np.isnan(phot_few[col][0])
     assert phot_few['npixfit'][0] == 2
     assert phot_few['group_size'][0] == 1
@@ -878,8 +881,9 @@ def test_fitter_no_maxiters_no_metrics(test_data):
         psfphot = PSFPhotometry(psf_model, fit_shape, fitter=fitter,
                                 finder=finder, aperture_radius=4)
     phot = psfphot(data, error=error)
-    assert np.all(np.isnan(phot['qfit']))
-    assert np.all(np.isnan(phot['cfit']))
+    colnames = ('qfit', 'cfit')
+    for col in colnames:
+        assert np.all(np.isnan(phot[col]))
 
 
 def test_xy_bounds(test_data):
@@ -1363,53 +1367,6 @@ def test_invalid_sources(test_data, units):
     assert_equal(model_params['id'], np.arange(1, 7))
 
 
-def test_init_params_id_order(test_data):
-    data, error, sources = test_data
-    init_params = sources.copy()
-
-    # one item in group is invalid
-    init_params['x_0'][0] = 1000
-    init_params['y_0'][0] = 1000
-    init_params['x_0'][5] = 1000
-
-    # entire group is invalid
-    init_params['x_0'][-2] = 1000
-    init_params['x_0'][-1] = 1000
-
-    init_params['id'] = [19, 4, 1, 3, 22, 10, 5, 88, 7, 6]
-    init_params['group_id'] = [1, 2, 1, 2, 2, 3, 2, 3, 4, 4]
-    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
-    fit_shape = (5, 5)
-    finder = DAOStarFinder(6.0, 2.0)
-    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                            aperture_radius=4)
-    phot = psfphot(data, error=error, init_params=init_params)
-
-    assert len(phot) == len(init_params)
-    assert_equal(phot['id'], np.sort(init_params['id']))
-    assert_equal(phot['group_id'], [1, 2, 2, 2, 4, 4, 3, 1, 2, 3])
-    assert_equal(phot['group_size'], [2, 4, 2, 4, 4, 2, 4, 2, 2, 2])
-
-    cols = ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
-            'qfit', 'cfit')
-    for col in cols:
-        assert np.all(np.isnan(phot[col][4:8]))
-
-    resid = psfphot.make_residual_image(data, psf_shape=fit_shape)
-    assert isinstance(resid, np.ndarray)
-    assert resid.shape == data.shape
-
-    init_params = psfphot.results_to_init_params()
-    assert isinstance(init_params, QTable)
-    assert len(init_params) == 6  # 6 valid sources
-    assert_equal(init_params['id'], np.arange(1, 7))
-
-    model_params = psfphot.results_to_model_params()
-    assert isinstance(model_params, QTable)
-    assert len(model_params) == 6
-    assert_equal(model_params['id'], np.arange(1, 7))
-
-
 def test_psf_photometry_table_serialization(test_data):
     """
     Test that photometry results table can be written to file.
@@ -1689,3 +1646,82 @@ def test_levmar_fitter_with_fvec_residuals():
 
     # Verify that 'fvec' was found in fit_info
     assert 'fvec' in psfphot.fitter.fit_info
+
+
+def _compare_lists_with_arrays(list1, list2):
+    if len(list1) != len(list2):
+        return False
+    for item1, item2 in zip(list1, list2, strict=True):
+        if isinstance(item1, dict) and isinstance(item2, dict):
+            if item1.keys() != item2.keys():
+                return False
+            for key in item1:
+                if isinstance(item1[key], np.ndarray):
+                    if not np.array_equal(item1[key], item2[key],
+                                          equal_nan=True):
+                        return False
+                elif item1[key] != item2[key]:
+                    return False
+        elif item1 != item2:
+            return False
+    return True
+
+
+@pytest.mark.parametrize('reorder', ['reversed', 'permutate'])
+@pytest.mark.parametrize('with_groups', [True, False])
+@pytest.mark.parametrize('nonconsec_groups', [True, False])
+@pytest.mark.parametrize('nonconsec_ids', [True, False])
+def test_init_params_id_order(test_data, reorder, with_groups,
+                              nonconsec_groups, nonconsec_ids):
+    data, error, sources = test_data
+    init_params = sources.copy()
+
+    nsrc = len(sources)
+    rng = np.random.default_rng(seed=0)
+    init_params['id'] = np.arange(1, nsrc + 1)
+    if with_groups:
+        # same groupings, but different group ids
+        if nonconsec_groups:
+            group_ids = [11, 20, 11, 20, 20, 39, 20, 39, 44, 44]
+        else:
+            group_ids = [1, 2, 1, 2, 2, 3, 2, 3, 4, 4]
+        init_params['group_id'] = group_ids
+    init_params['local_bkg'] = rng.normal(size=nsrc)
+    init_params['x_0'][0] = 1000
+    init_params['y_0'][0] = 1000
+    init_params['x_0'][5] = 1000
+    init_params['x_0'][-2] = 1000
+    init_params['x_0'][-1] = 1000
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+    psfphot1 = PSFPhotometry(psf_model, fit_shape)
+    phot1 = psfphot1(data, error=error, init_params=init_params)
+
+    # reorder init_params
+    init_params2 = init_params.copy()
+    if nonconsec_ids:
+        # non-consecutive random ids
+        # monotonically increasing so final results order should be same
+        steps = rng.integers(1, 51, size=nsrc - 1)
+        init_params2['id'] = np.concatenate(([1], 1 + np.cumsum(steps)))
+    if reorder == 'reversed':
+        init_params2 = init_params2[::-1]
+    elif reorder == 'permutate':
+        init_params2 = init_params2[rng.permutation(nsrc)]
+
+    psfphot2 = PSFPhotometry(psf_model, fit_shape)
+    phot2 = psfphot2(data, error=error, init_params=init_params2)
+
+    if not nonconsec_ids:
+        assert_equal(phot1['id'], phot2['id'])
+
+    if with_groups:
+        # without group_id, group_id gets set to id
+        assert_equal(phot1['group_id'], phot2['group_id'])
+
+    assert np.all([np.allclose(phot1[col], phot2[col], equal_nan=True)
+                   for col in phot1.colnames if col not in ('id', 'group_id')])
+
+    # Compare fit_info with special handling for numpy arrays
+    _compare_lists_with_arrays(psfphot1.fit_info, psfphot2.fit_info)
