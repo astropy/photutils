@@ -51,8 +51,8 @@ Aperture Photometry
 
     aperture.rst
 
-PSF Photometry and Tools
-------------------------
+PSF Photometry
+--------------
 
 .. toctree::
     :maxdepth: 1
@@ -60,6 +60,13 @@ PSF Photometry and Tools
     psf.rst
     epsf.rst
     grouping.rst
+
+PSF Matching
+------------
+
+.. toctree::
+    :maxdepth: 1
+
     psf_matching.rst
 
 Radial Profiles
