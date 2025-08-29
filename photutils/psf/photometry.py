@@ -917,6 +917,16 @@ class PSFPhotometry(ModelImageMixin):
         """
         return self._psf_fitter.run_fitter(psf_model, xi, yi, cutout, error)
 
+    def _extract_source_covariances(self, group_cov, num_sources, nfitparam):
+        """
+        Extract individual source covariance matrices from group
+        covariance.
+
+        This method delegates to the PSF fitter component.
+        """
+        return self._psf_fitter.extract_source_covariances(
+            group_cov, num_sources, nfitparam)
+
     @staticmethod
     def _split_compound_model(model, chunk_size):
         """
@@ -926,30 +936,37 @@ class PSFPhotometry(ModelImageMixin):
         """
         return PSFFitter.split_compound_model(model, chunk_size)
 
-    def _ungroup_fit_results(self, group_model, group_fit_info, row_indices,
-                             valid_mask):
+    def _ungroup_fit_results(self, row_indices, valid_mask, group_model,
+                             group_fit_info):
         """
-        Immediately ungroup fitted results and store per-source data.
+        Ungroup fitted results and store per-source data.
 
         This method extracts individual source parameters, errors, and
         covariance information directly from the group fit results and
         stores them in the state container. This avoids storing large
         grouped model objects and covariance matrices.
 
+        The results for each valid source in the group are stored
+        directly in the state container, including the fitted model
+        parameters, parameter errors, and fit_info dictionary.
+        ``row_indices`` is used to ensure that the order of the sources
+        in the state container matches the source ID order in the input
+        ``init_params`` table.
+
         Parameters
         ----------
+        row_indices : list
+            The row indices for sources in this group.
+
+        valid_mask : ndarray
+            Boolean mask indicating which sources in the group are valid.
+
         group_model : `astropy.modeling.Model`
             The fitted model for a single group. This can be a compound
             model.
 
         group_fit_info : dict
             The fit_info dictionary corresponding to the group fit.
-
-        row_indices : list
-            The row indices for sources in this group.
-
-        valid_mask : ndarray
-            Boolean mask indicating which sources in the group are valid.
         """
         psf_nsub = self.psf_model.n_submodels
         nfitparam = len(self._param_mapper.fitted_param_names)
@@ -968,7 +985,7 @@ class PSFPhotometry(ModelImageMixin):
             source_covs = self._extract_source_covariances(
                 param_cov, num_valid, nfitparam)
 
-        # Split models and extract parameters immediately
+        # Split models and extract parameters
         if num_valid == 1:
             source_models = [group_model]
         else:
@@ -985,7 +1002,7 @@ class PSFPhotometry(ModelImageMixin):
             param_errs = source_param_errs[valid_idx]
             source_cov = source_covs[valid_idx]
 
-            # Extract and store model parameters immediately
+            # Extract and store model parameters
             self._cache_fitted_parameters(row_index, model)
             self._state['fit_param_errs'][row_index] = param_errs
 
@@ -998,152 +1015,6 @@ class PSFPhotometry(ModelImageMixin):
             self._state['valid_mask_by_id'][row_index] = True
 
             valid_idx += 1
-
-    def _extract_source_covariances(self, group_cov, num_sources, nfitparam):
-        """
-        Extract individual source covariance matrices from group
-        covariance.
-
-        This method delegates to the PSF fitter component.
-        """
-        return self._psf_fitter.extract_source_covariances(
-            group_cov, num_sources, nfitparam)
-
-    def _get_fit_error_indices(self):
-        """
-        Get the indices of fits that did not converge.
-
-        This method delegates to the results assembler component.
-        """
-        return self._results_assembler.get_fit_error_indices(self.fit_info)
-
-    def _create_fit_results(self, fit_model_all_params):
-        """
-        Create the table of fitted parameter values and errors.
-
-        This method delegates to the results assembler component.
-        """
-        fit_param_errs = self._state['fit_param_errs']
-        valid_mask = self._state.get('valid_mask_by_id')
-
-        return self._results_assembler.create_fit_results(
-            fit_model_all_params, fit_param_errs, valid_mask, self.data_unit)
-
-    def _fit_source_groups(self, source_groups, data, mask, error):
-        """
-        Fit PSF models to groups of sources in the input data.
-
-        This method processes each group of sources, fits PSF models,
-        and immediately stores the results to minimize memory usage.
-        Individual source results are extracted and stored as soon as
-        each group is fitted.
-
-        Parameters
-        ----------
-        source_groups : iterable
-            Groups of sources to fit, where each group contains sources
-            that should be fit simultaneously.
-
-        data : 2D ndarray
-            The input image data.
-
-        mask : 2D ndarray or None
-            Boolean mask for the input data.
-
-        error : 2D ndarray or None
-            The 1-sigma uncertainties of the input data.
-        """
-        if self.progress_bar:  # pragma: no cover
-            source_groups = add_progress_bar(source_groups,
-                                             desc='Fit source/group')
-
-        y_offsets, x_offsets = self._get_fit_offsets()
-        nfitparam_per_source = len(self._param_mapper.fitted_param_names)
-
-        for source_group in source_groups:
-            group_size = len(source_group)
-            xi_all = []
-            yi_all = []
-            cutout_all = []
-            npixfit_full = []
-            cen_index_full = []
-            valid_mask_list = []
-            invalid_reasons = []
-            row_indices = []
-
-            # Process all sources with pre-filtering optimization
-            for row in source_group:
-                # Always use pre-filtering for all group sizes
-                should_skip, reason = self._should_skip_source(row, data.shape)
-                if should_skip:
-                    res = {
-                        'valid': False,
-                        'reason': reason,
-                        'xx': None,
-                        'yy': None,
-                        'cutout': None,
-                        'npix': 0,
-                        'cen_index': np.nan,
-                    }
-                else:
-                    res = self._get_source_cutout_data(row, data, mask,
-                                                       y_offsets, x_offsets)
-
-                # Common processing for all sources
-                npixfit_full.append(res['npix'])
-                cen_index_full.append(res['cen_index'])
-                invalid_reasons.append(res['reason'])
-                row_indices.append(row['_row_index'])
-
-                if res['valid'] and res['npix'] >= nfitparam_per_source:
-                    valid_mask_list.append(True)
-                    xi_all.append(res['xx'])
-                    yi_all.append(res['yy'])
-                    cutout_all.append(res['cutout'])
-                else:
-                    if res['valid'] and res['npix'] < nfitparam_per_source:
-                        invalid_reasons[-1] = 'too_few_pixels'
-                    valid_mask_list.append(False)
-
-            valid_mask = np.array(valid_mask_list, dtype=bool)
-            num_valid = int(np.count_nonzero(valid_mask))
-
-            # Store basic info for all sources in group
-            row_indices_arr = np.array(row_indices)
-            self._state['group_size'][row_indices_arr] = group_size
-            self._state['npixfit'][row_indices_arr] = np.array(npixfit_full,
-                                                               dtype=int)
-
-            for i, row_index in enumerate(row_indices):
-                reason = invalid_reasons[i]
-                self._state['invalid_reasons'][row_index] = (
-                    '' if reason is None else reason
-                )
-
-            if num_valid == 0:
-                # Handle all-invalid group
-                for row_index in row_indices:
-                    self._state['valid_mask_by_id'][row_index] = False
-                    self._cache_fitted_parameters(row_index, None)
-                continue
-
-            # Fit the group
-            xi_concat = np.concatenate(xi_all)
-            yi_concat = np.concatenate(yi_all)
-            cutout_concat = np.concatenate(cutout_all)
-            valid_sources = source_group[valid_mask]
-            psf_model = self._make_psf_model(valid_sources)
-            fit_model, fit_info = self._run_fitter(psf_model, xi_concat,
-                                                   yi_concat, cutout_concat,
-                                                   error)
-
-            # Immediately ungroup and store per-source results
-            self._ungroup_fit_results(
-                fit_model, fit_info, row_indices, valid_mask)
-
-            # Calculate residual metrics for valid sources
-            self._calculate_residual_metrics(
-                row_indices, valid_mask, npixfit_full, cen_index_full)
 
     def _calculate_residual_metrics(self, row_indices, valid_mask,
                                     npixfit_full, cen_index_full):
@@ -1230,6 +1101,146 @@ class PSFPhotometry(ModelImageMixin):
         self._state['cen_residuals'][row_indices_arr] = cen_residuals
 
         return sum_abs_residuals, cen_residuals
+
+    def _fit_source_groups(self, source_groups, data, mask, error):
+        """
+        Fit PSF models to groups of sources in the input data.
+
+        This method processes each group of sources, fits PSF models,
+        and stores the results. Individual source results are extracted
+        and stored as soon as each group is fitted.
+
+        Parameters
+        ----------
+        source_groups : iterable
+            Groups of sources to fit, where each group contains sources
+            that should be fit simultaneously.
+
+        data : 2D ndarray
+            The input image data.
+
+        mask : 2D ndarray or None
+            Boolean mask for the input data.
+
+        error : 2D ndarray or None
+            The 1-sigma uncertainties of the input data.
+        """
+        if self.progress_bar:  # pragma: no cover
+            source_groups = add_progress_bar(source_groups,
+                                             desc='Fit source/group')
+
+        y_offsets, x_offsets = self._get_fit_offsets()
+        nfitparam_per_source = len(self._param_mapper.fitted_param_names)
+
+        # sources are fit by groups in group ID order
+        for source_group in source_groups:
+            group_size = len(source_group)
+            xi_all = []
+            yi_all = []
+            cutout_all = []
+            npixfit_full = []
+            cen_index_full = []
+            valid_mask_list = []
+            invalid_reasons = []
+            row_indices = []
+
+            # Process all sources with pre-filtering optimization
+            for row in source_group:
+                # Always use pre-filtering for all group sizes
+                should_skip, reason = self._should_skip_source(row, data.shape)
+                if should_skip:
+                    res = {
+                        'valid': False,
+                        'reason': reason,
+                        'xx': None,
+                        'yy': None,
+                        'cutout': None,
+                        'npix': 0,
+                        'cen_index': np.nan,
+                    }
+                else:
+                    res = self._get_source_cutout_data(row, data, mask,
+                                                       y_offsets, x_offsets)
+
+                # Common processing for all sources
+                npixfit_full.append(res['npix'])
+                cen_index_full.append(res['cen_index'])
+                invalid_reasons.append(res['reason'])
+                row_indices.append(row['_row_index'])
+
+                if res['valid'] and res['npix'] >= nfitparam_per_source:
+                    valid_mask_list.append(True)
+                    xi_all.append(res['xx'])
+                    yi_all.append(res['yy'])
+                    cutout_all.append(res['cutout'])
+                else:
+                    if res['valid'] and res['npix'] < nfitparam_per_source:
+                        invalid_reasons[-1] = 'too_few_pixels'
+                    valid_mask_list.append(False)
+
+            valid_mask = np.array(valid_mask_list, dtype=bool)
+            num_valid = int(np.count_nonzero(valid_mask))
+
+            # Store basic info for all sources in group.
+            # row_indices is used to store results in the original
+            # source ID order given by init_params.
+            row_indices_arr = np.array(row_indices)
+            self._state['group_size'][row_indices_arr] = group_size
+            self._state['npixfit'][row_indices_arr] = np.array(npixfit_full,
+                                                               dtype=int)
+
+            for i, row_index in enumerate(row_indices):
+                reason = invalid_reasons[i]
+                self._state['invalid_reasons'][row_index] = (
+                    '' if reason is None else reason
+                )
+
+            if num_valid == 0:
+                # Handle all-invalid group
+                for row_index in row_indices:
+                    self._state['valid_mask_by_id'][row_index] = False
+                    self._cache_fitted_parameters(row_index, None)
+                continue
+
+            # Fit the group
+            xi_concat = np.concatenate(xi_all)
+            yi_concat = np.concatenate(yi_all)
+            cutout_concat = np.concatenate(cutout_all)
+            valid_sources = source_group[valid_mask]
+            psf_model = self._make_psf_model(valid_sources)
+            fit_model, fit_info = self._run_fitter(psf_model, xi_concat,
+                                                   yi_concat, cutout_concat,
+                                                   error)
+
+            # Ungroup and store per-source results. row_indices is used
+            # to ensure that results are stored in the original source
+            # ID order given by init_params.
+            self._ungroup_fit_results(row_indices, valid_mask, fit_model,
+                                      fit_info)
+
+            # Calculate residual metrics for valid sources
+            self._calculate_residual_metrics(
+                row_indices, valid_mask, npixfit_full, cen_index_full)
+
+    def _get_fit_error_indices(self):
+        """
+        Get the indices of fits that did not converge.
+
+        This method delegates to the results assembler component.
+        """
+        return self._results_assembler.get_fit_error_indices(self.fit_info)
+
+    def _create_fit_results(self, fit_model_all_params):
+        """
+        Create the table of fitted parameter values and errors.
+
+        This method delegates to the results assembler component.
+        """
+        fit_param_errs = self._state['fit_param_errs']
+        valid_mask = self._state.get('valid_mask_by_id')
+
+        return self._results_assembler.create_fit_results(
+            fit_model_all_params, fit_param_errs, valid_mask, self.data_unit)
 
     def _assemble_fit_results(self):
         """
