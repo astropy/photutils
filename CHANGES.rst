@@ -44,7 +44,7 @@ New Features
     longer fail for invalid sources, defined as those that have no
     overlap with the input data, are completely masked, or have too few
     unmasked pixels for a fit.  These classes have new flags (64, 128,
-    256, respectively) for these invalid conditions. [#2084]
+    256, respectively) for these invalid conditions. [#2084, #2085]
 
   - The ``PSFPhotometry`` and ``IterativePSFPhotometry`` classes have
     new ``results_to_init_params`` and ``results_to_model_params``
@@ -125,7 +125,7 @@ API Changes
   - The ``GriddedPSFModel`` ``data`` and ``grid_xypos`` attributes are
     now read-only. [#2036]
 
-  - The ``PSFPhotometry`` ``fit_param`` attribute is not deprecated. Use
+  - The ``PSFPhotometry`` ``fit_param`` attribute is now deprecated. Use
     the new ``results_to_init_params`` method instead. [#2084]
 
   - The deprecated ``PSFPhotometry`` ``fit_results`` attribute has been
