@@ -557,8 +557,12 @@ class IterativePSFPhotometry(ModelImageMixin):
               fit residual in the initial central pixel value divided by
               the fit flux. NaN values indicate that the central pixel
               was masked.
+            * ``reduced_chi2`` : the reduced chi-squared statistic. If
+              no ``error`` array is provided, ``reduced_chi2`` values
+              will be NaN.
             * ``flags`` : bitwise flag values
 
+              - 0 : no flags
               - 1 : one or more pixels in the ``fit_shape`` region
                 were masked
               - 2 : the fit x and/or y position lies outside of the

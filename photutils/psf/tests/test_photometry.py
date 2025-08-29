@@ -35,9 +35,10 @@ def fixture_test_data():
                                              model_shape=model_shape,
                                              flux=(500, 700),
                                              min_separation=10, seed=0)
-    noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
+    sigma = 0.9
+    noise = make_noise_image(data.shape, mean=0, stddev=sigma, seed=0)
     data += noise
-    error = np.abs(noise)
+    error = np.full(data.shape, sigma)
 
     return data, error, true_params
 
@@ -244,7 +245,7 @@ def test_psf_photometry(test_data):
     resid_datau = psfphotu.make_residual_image(data << unit,
                                                psf_shape=fit_shape)
     assert resid_datau.unit == unit
-    colnames = ('qfit', 'cfit')
+    colnames = ('qfit', 'cfit', 'reduced_chi2')
     for col in colnames:
         assert not isinstance(photu[col], u.Quantity)
 
@@ -494,7 +495,7 @@ def test_psf_photometry_mask(test_data):
     assert len(phot_masked) == 1
 
     colnames = ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
-                'qfit', 'cfit')
+                'qfit', 'cfit', 'reduced_chi2')
     for col in colnames:
         assert np.isnan(phot_masked[col][0])
     assert phot_masked['npixfit'][0] == 0
@@ -578,7 +579,7 @@ def test_psf_photometry_init_params(test_data):
             _ = psfphot(data << u.Jy, init_params=init_params2)
 
     colnames = ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
-                'qfit', 'cfit')
+                'qfit', 'cfit', 'reduced_chi2')
 
     # no-overlap source should return NaNs and not raise; also test
     # too-few-pixels
@@ -881,7 +882,7 @@ def test_fitter_no_maxiters_no_metrics(test_data):
         psfphot = PSFPhotometry(psf_model, fit_shape, fitter=fitter,
                                 finder=finder, aperture_radius=4)
     phot = psfphot(data, error=error)
-    colnames = ('qfit', 'cfit')
+    colnames = ('qfit', 'cfit', 'reduced_chi2')
     for col in colnames:
         assert np.all(np.isnan(phot[col]))
 
@@ -918,7 +919,8 @@ def test_xy_bounds(test_data):
 
     xy_bounds = (1, None)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
-                            aperture_radius=4, xy_bounds=xy_bounds)
+                            aperture_radius=4, xy_bounds=xy_bounds,
+                            fitter_maxiters=500)
     phot = psfphot(data, error=error, init_params=init_params)
     assert_allclose(phot['x_fit'], 64.0)  # at lower bound
     assert phot['y_fit'] < 50.0
@@ -1345,7 +1347,7 @@ def test_invalid_sources(test_data, units):
     assert_equal(phot['group_size'], [2, 4, 2, 4, 4, 2, 4, 2, 2, 2])
 
     cols = ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
-            'qfit', 'cfit')
+            'qfit', 'cfit', 'reduced_chi2')
     for col in cols:
         assert np.all(np.isnan(phot[col][[0, 5, -2, -1]]))
 
@@ -1463,7 +1465,7 @@ def test_psf_photometry_invalid_coordinates():
     assert len(results) == n_sources
     assert_equal(results['group_size'], [3, 3, 3])
     cols = ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
-            'qfit', 'cfit')
+            'qfit', 'cfit', 'reduced_chi2')
     for col in cols:
         assert np.all(np.isnan(results[col][1:]))
 
@@ -1725,3 +1727,36 @@ def test_init_params_id_order(test_data, reorder, with_groups,
 
     # Compare fit_info with special handling for numpy arrays
     _compare_lists_with_arrays(psfphot1.fit_info, psfphot2.fit_info)
+
+
+def test_reduced_chi2_metric():
+    """
+    Test the reduced chi-squared metric calculation.
+    """
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    model_shape = (9, 9)
+    n_sources = 3
+    shape = (51, 51)
+    data, true_params = make_psf_model_image(shape, psf_model, n_sources,
+                                             model_shape=model_shape,
+                                             flux=(500, 700),
+                                             min_separation=10, seed=0)
+
+    sigma = 0.9
+    noise = make_noise_image(data.shape, mean=0, stddev=sigma, seed=0)
+    data += noise
+    error = np.full(data.shape, sigma)
+
+    # Test with error array
+    psfphot = PSFPhotometry(psf_model, (5, 5), aperture_radius=4)
+    results = psfphot(data, error=error, init_params=true_params)
+
+    assert 'reduced_chi2' in results.colnames
+    valid_fits = results['flags'] == 0
+    assert np.all(np.isfinite(results['reduced_chi2'][valid_fits]))
+    assert np.all(results['reduced_chi2'][valid_fits] > 0)
+    assert not isinstance(results['reduced_chi2'], u.Quantity)
+
+    # Test without error array
+    results_no_error = psfphot(data, init_params=true_params)
+    assert np.all(np.isnan(results_no_error['reduced_chi2']))

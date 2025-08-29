@@ -440,6 +440,7 @@ class PSFPhotometry(ModelImageMixin):
             'invalid_reasons': None,
             'sum_abs_residuals': None,
             'cen_residuals': None,
+            'reduced_chi2': None,
         }
 
         # remove cached properties
@@ -462,6 +463,7 @@ class PSFPhotometry(ModelImageMixin):
             'invalid_reasons': [''] * n_sources,
             'sum_abs_residuals': np.full(n_sources, np.nan, dtype=float),
             'cen_residuals': np.full(n_sources, np.nan, dtype=float),
+            'reduced_chi2': np.full(n_sources, np.nan, dtype=float),
             'group_size': np.ones(n_sources, dtype=int),
             'valid_mask_by_id': np.full(n_sources, fill_value=False,
                                         dtype=bool),
@@ -1017,7 +1019,8 @@ class PSFPhotometry(ModelImageMixin):
             valid_idx += 1
 
     def _calculate_residual_metrics(self, row_indices, valid_mask,
-                                    npixfit_full, cen_index_full):
+                                    npixfit_full, cen_index_full, error=None,
+                                    xi_all=None, yi_all=None):
         """
         Calculate residual-based fit metrics for valid sources.
 
@@ -1035,6 +1038,16 @@ class PSFPhotometry(ModelImageMixin):
         cen_index_full : array-like
             Center pixel indices for each source.
 
+        error : 2D array or None, optional
+            The 1-sigma uncertainties of the input data. Used for
+            calculating reduced chi-squared.
+
+        xi_all : list or None, optional
+            List of x-coordinates for each valid source's cutout pixels.
+
+        yi_all : list or None, optional
+            List of y-coordinates for each valid source's cutout pixels.
+
         Returns
         -------
         sum_abs_residuals : ndarray
@@ -1044,6 +1057,10 @@ class PSFPhotometry(ModelImageMixin):
         cen_residuals : ndarray
             Center residuals for each source, or np.nan for invalid
             sources.
+
+        reduced_chi2 : ndarray
+            Reduced chi-squared values for each source, or np.nan for
+            invalid sources.
         """
         # Extract residuals from fit_info
         residual_key = None
@@ -1063,6 +1080,7 @@ class PSFPhotometry(ModelImageMixin):
         n_sources = len(row_indices)
         sum_abs_residuals = np.full(n_sources, np.nan, dtype=float)
         cen_residuals = np.full(n_sources, np.nan, dtype=float)
+        reduced_chi2 = np.full(n_sources, np.nan, dtype=float)
 
         if residuals is not None:
             # convert to numpy arrays for vectorized operations
@@ -1077,6 +1095,9 @@ class PSFPhotometry(ModelImageMixin):
 
                 # calculate cumulative pixel positions
                 cumsum_npix = np.concatenate(([0], np.cumsum(npix_valid)))
+
+                # get the number of fitted parameters
+                nfitparam = len(self._param_mapper.fitted_param_names)
 
                 # process all valid sources
                 for idx, valid_idx in enumerate(valid_indices):
@@ -1096,11 +1117,28 @@ class PSFPhotometry(ModelImageMixin):
                     else:
                         cen_residuals[valid_idx] = np.nan
 
+                    # Calculate chi-squared. The residuals have already
+                    # been weighted by (1 / error). If errors are not
+                    # input, then reduced_chi2 will be NaN.
+                    dof = float(npix_valid[idx] - nfitparam)
+                    if (error is not None and xi_all is not None
+                            and yi_all is not None):
+                        # Extract error values for this source's pixels
+                        xi_source = xi_all[idx]
+                        yi_source = yi_all[idx]
+                        error_vals = error[yi_source, xi_source]
+
+                        if (np.all(error_vals > 0)
+                                and np.all(np.isfinite(error_vals))):
+                            chi2 = np.sum(source_residuals**2)
+                            reduced_chi2[valid_idx] = chi2 / dof
+
         row_indices_arr = np.array(row_indices)
         self._state['sum_abs_residuals'][row_indices_arr] = sum_abs_residuals
         self._state['cen_residuals'][row_indices_arr] = cen_residuals
+        self._state['reduced_chi2'][row_indices_arr] = reduced_chi2
 
-        return sum_abs_residuals, cen_residuals
+        return sum_abs_residuals, cen_residuals, reduced_chi2
 
     def _fit_source_groups(self, source_groups, data, mask, error):
         """
@@ -1220,7 +1258,8 @@ class PSFPhotometry(ModelImageMixin):
 
             # Calculate residual metrics for valid sources
             self._calculate_residual_metrics(
-                row_indices, valid_mask, npixfit_full, cen_index_full)
+                row_indices, valid_mask, npixfit_full, cen_index_full,
+                error=error, xi_all=xi_all, yi_all=yi_all)
 
     def _get_fit_error_indices(self):
         """
@@ -1306,15 +1345,16 @@ class PSFPhotometry(ModelImageMixin):
 
     def _calc_fit_metrics(self, results_tbl):
         """
-        Calculate fit quality metrics qfit and cfit.
+        Calculate fit quality metrics qfit, cfit, and reduced_chi2.
 
         This method delegates to the results assembler component.
         """
         sum_abs_residuals = self._state['sum_abs_residuals']
         cen_residuals = self._state['cen_residuals']
+        reduced_chi2 = self._state['reduced_chi2']
 
         return self._results_assembler.calc_fit_metrics(
-            results_tbl, sum_abs_residuals, cen_residuals)
+            results_tbl, sum_abs_residuals, cen_residuals, reduced_chi2)
 
     def _define_flags(self, results_tbl, shape):
         """
@@ -1500,6 +1540,9 @@ class PSFPhotometry(ModelImageMixin):
               fit residual in the initial central pixel value divided by
               the fit flux. NaN values indicate that the central pixel
               was masked.
+            * ``reduced_chi2`` : the reduced chi-squared statistic. If
+              no ``error`` array is provided, ``reduced_chi2`` values
+              will be NaN.
             * ``flags`` : bitwise flag values
 
               - 0 : no flags
