@@ -920,7 +920,7 @@ def test_xy_bounds(test_data):
     xy_bounds = (1, None)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
                             aperture_radius=4, xy_bounds=xy_bounds,
-                            fitter_maxiters=200)
+                            fitter_maxiters=500)
     phot = psfphot(data, error=error, init_params=init_params)
     assert_allclose(phot['x_fit'], 64.0)  # at lower bound
     assert phot['y_fit'] < 50.0
