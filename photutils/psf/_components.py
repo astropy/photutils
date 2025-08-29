@@ -686,6 +686,16 @@ class PSFFitter:
 
         weights = None
         if error is not None:
+            # Extract cutout weights from full error array. Weights are
+            # (1 / error), yielding residuals (objective function) of
+            # (data - model) / error. The fitter minimizes the squared
+            # residuals. If errors are input, the residuals returned by
+            # the fitter are scaled by the errors, i.e., the objective
+            # function is equivalent to chi2. If errors are not input,
+            # the residuals are just (data - model), and the objective
+            # function is a sum-of-squares. Note that the residuals
+            # returned by astropy fitters are reversed in sign from the
+            # definition here (model - data).
             err = error[yi, xi]
             if np.any(err <= 0) or np.any(~np.isfinite(err)):
                 msg = ('Error array contains non-positive or non-finite '
@@ -957,9 +967,10 @@ class PSFResultsAssembler:
 
         return fit_table
 
-    def calc_fit_metrics(self, results_tbl, sum_abs_residuals, cen_residuals):
+    def calc_fit_metrics(self, results_tbl, sum_abs_residuals, cen_residuals,
+                         reduced_chi2):
         """
-        Calculate fit quality metrics qfit and cfit.
+        Calculate fit quality metrics qfit, cfit, and reduced_chi2.
 
         Parameters
         ----------
@@ -972,6 +983,9 @@ class PSFResultsAssembler:
         cen_residuals : array-like
             Array of central pixel residuals for each source.
 
+        reduced_chi2 : array-like
+            Array of reduced chi-squared values for each source.
+
         Returns
         -------
         qfit : `~numpy.ndarray`
@@ -981,6 +995,9 @@ class PSFResultsAssembler:
         cfit : `~numpy.ndarray`
             Array of cfit quality metrics (central pixel residual
             divided by flux).
+
+        reduced_chi2 : `~numpy.ndarray`
+            Array of reduced chi-squared values.
         """
         flux_col = self.param_mapper.fit_colnames['flux']
         flux_vals = results_tbl[flux_col]
@@ -1009,7 +1026,7 @@ class PSFResultsAssembler:
             cfit[cfit_mask] = (cen_residuals[cfit_mask]
                                / flux_vals[cfit_mask])
 
-        return qfit, cfit
+        return qfit, cfit, reduced_chi2
 
     def define_flags(self, results_tbl, shape, fit_error_indices, fit_info,
                      fitted_models_table, valid_mask, invalid_reasons):
@@ -1181,13 +1198,15 @@ class PSFResultsAssembler:
         fit_params['group_size'] = state.pop('group_size')
 
         # Calculate fit metrics and remove the underlying data
-        qfit, cfit = calc_fit_metrics_func(fit_params)
+        qfit, cfit, reduced_chi2 = calc_fit_metrics_func(fit_params)
         fit_params['qfit'] = qfit
         fit_params['cfit'] = cfit
+        fit_params['reduced_chi2'] = reduced_chi2
 
         # Clean up residual data after metrics calculation
         state.pop('sum_abs_residuals', None)
         state.pop('cen_residuals', None)
+        state.pop('reduced_chi2', None)
 
         # Calculate flags and check for convergence warnings before cleanup
         fit_params['flags'] = define_flags_func(fit_params, data_shape)
