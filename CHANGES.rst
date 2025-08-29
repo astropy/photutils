@@ -102,6 +102,10 @@ Bug Fixes
   - Fixed an bug in ``PSFPhotometry`` and ``IterativePSFPhotometry`` for
     the boundary conditions where flag=2 would be set. [#2080]
 
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now return a
+    reduced chi-squared statistic (``reduced_chi2`` column in the
+    results table). [#2086]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where a newly-defined extra property of a
