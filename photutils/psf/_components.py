@@ -1172,25 +1172,38 @@ class PSFResultsAssembler:
             - Bitwise flags indicating fit conditions
             - Iterator statistics (npixfit, group_size)
         """
-        results_tbl = join(init_params, fit_params, join_type='left')
+        # Add metrics and flags column to fit_params. The results in the
+        # state container match the order of the fit_params results,
+        # which are in the same source ID order as the init_params.
 
         # Consume npixfit and group_size data, removing from state
-        results_tbl['npixfit'] = state.pop('npixfit')
-        index = results_tbl.index_column('group_id') + 1
-        results_tbl.add_column(
-            state.pop('group_size'), name='group_size', index=index)
+        fit_params['npixfit'] = state.pop('npixfit')
+        fit_params['group_size'] = state.pop('group_size')
 
         # Calculate fit metrics and remove the underlying data
-        qfit, cfit = calc_fit_metrics_func(results_tbl)
-        results_tbl['qfit'] = qfit
-        results_tbl['cfit'] = cfit
+        qfit, cfit = calc_fit_metrics_func(fit_params)
+        fit_params['qfit'] = qfit
+        fit_params['cfit'] = cfit
 
         # Clean up residual data after metrics calculation
         state.pop('sum_abs_residuals', None)
         state.pop('cen_residuals', None)
 
         # Calculate flags and check for convergence warnings before cleanup
-        results_tbl['flags'] = define_flags_func(results_tbl, data_shape)
+        fit_params['flags'] = define_flags_func(fit_params, data_shape)
+
+        # Join the fit_params table (with metrics and flags) to the
+        # init_params table. By default, join will sort the rows by the
+        # 'id' column.
+        results_tbl = join(init_params, fit_params, keys='id',
+                           join_type='left')
+
+        # Reorder columns to place group_size after group_id
+        # (both columns should always be present).
+        group_size = results_tbl['group_size']
+        results_tbl.remove_column('group_size')
+        index = results_tbl.colnames.index('group_id') + 1
+        results_tbl.add_column(group_size, index=index)
 
         # Check for fit convergence warnings before cleaning up state
         fit_error_indices = state.get('fit_error_indices')
