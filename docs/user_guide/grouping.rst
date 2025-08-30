@@ -6,43 +6,52 @@ Source Grouping Algorithms
 Introduction
 ------------
 
-In Point Spread Function (PSF) photometry, the PSF model fit for a given
-star can be affected by the presence of the profile of neighboring
-stars. In this case, a grouping algorithm can be used to combine
-neighboring stars into groups that can be fit simultaneously. The goal
-is to separate the stars into groups such that the profile of each
-star in the group does not extend into the fitting region of a star
-in another group. Creating groups reduces the number of stars that
-need to be fit simultaneously, which can be computationally expensive.
-Simultaneous fitting of all stars in an image is generally not feasible,
-especially for crowded fields.
+In Point Spread Function (PSF) photometry, the accuracy of measuring
+a source's brightness can be compromised by the light from nearby
+sources. When sources are close to each other, their individual
+light profiles overlap, affecting the fit of the PSF model used for
+measurement. To address this, a grouping algorithm can be employed to
+combine neighboring sources into distinct sets that are then analyzed
+simultaneously.
 
-Stetson (`1987, PASP 99, 191
-<https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_),
-provided a simple grouping algorithm to decide whether the profile of a
-given star extends into the fitting region of any other star. The paper
-defines this in terms of a "critical separation" parameter, which is
-defined as the minimal distance that any two stars must be separated by
-in order to be in different groups. The critical separation is generally
-defined as a multiple of the stellar full width at half maximum (FWHM).
+The primary objective of this grouping is to ensure that the light from
+any source within one group does not significantly spill over into the
+area where a source in another group is being measured. This method of
+creating and analyzing smaller groups of sources is more computationally
+efficient than attempting to fit a model to all the sources in an
+image at once, a task that is often impractical, especially in densely
+populated star fields.
+
+A straightforward method for this grouping was introduced by `Stetson (1987)
+<https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_. This
+algorithm determines whether a given source's light profile interferes
+with that of any other source by using a "critical separation"
+parameter. This parameter sets the minimum distance required between
+two source for them to be placed in separate groups. Typically, this
+critical separation is defined as a multiple of the stellar full width
+at half maximum (FWHM), which is a measure of the source's apparent
+size.
 
 
 Getting Started
 ---------------
 
-Photutils provides the :class:`~photutils.psf.SourceGrouper`
-class to group stars. The groups are formed using hierarchical
-agglomerative clustering with a distance criterion, calling the
-`scipy.cluster.hierarchy.fclusterdata` function.
+To group sources, Photutils includes a tool called
+:class:`~photutils.psf.SourceGrouper`. This class organizes stars into
+groups by applying a technique known as hierarchical agglomerative
+clustering, which uses a distance-based criterion. This functionality is
+implemented using the `scipy.cluster.hierarchy.fclusterdata` function
+from the SciPy library.
 
-To group stars during PSF fitting, typically one would simply pass an
-instance of the :class:`~photutils.psf.SourceGrouper` class with a
-defined minimum separation to the PSF photometry classes. Here, we will
-demonstrate how to use the :class:`~photutils.psf.SourceGrouper` class
-separately to group stars in a simulated image.
+Typically, to group stars during PSF fitting, one would provide a
+:class:`~photutils.psf.SourceGrouper` object, configured with a minimum
+separation distance, directly to one of the PSF photometry classes.
+However, for the purpose of illustration, we will show how to use the
+SourceGrouper class independently to group stars within a sample image.
 
-First, let's create a simulated image containing 2D Gaussian sources
-using `~photutils.psf.make_psf_model_image`::
+The first step is to generate a simulated astronomical image that
+contains sources modeled as 2D Gaussians, which we will accomplish using
+the `~photutils.psf.make_psf_model_image` function::
 
     >>> from photutils.psf import CircularGaussianPRF, make_psf_model_image
     >>> shape = (256, 256)
@@ -85,35 +94,40 @@ Let's display the image:
     plt.imshow(data, origin='lower', interpolation='nearest')
     plt.show()
 
-The ``make_psf_model_image`` function returns the simulated image
-(``data``) and a table of the star positions and fluxes (``stars``).
-The star positions are stored in the ``x_0`` and ``y_0`` columns of the
-table.
 
-Now, let's find the stellar groups. We start by creating
-a `~photutils.psf.SourceGrouper` object. Here we set the
-``min_separation`` parameter ``2.5 * fwhm``, where the ``fwhm`` is taken
-from the 2D Gaussian PSF model used to generate the stars. In general,
-one will need to measure the FWHM of the stellar profiles::
+The `~photutils.psf.make_psf_model_image` provides two outputs: the
+image itself, which we'll call ``data``, and a table containing the
+positions and fluxes of the stars, which we'll call ``stars``. The x
+and y coordinates of the stars are located in the ``x_0`` and ``y_0``
+columns of this table.
+
+With the simulated data ready, we can now identify groups of stars.
+The first step is to create a `~photutils.psf.SourceGrouper` object.
+For this example, we will define the minimum separation between stars
+in different groups (``min_separation``) as 2.5 times the full width
+at half maximum (FWHM). The FWHM value is known because it was used to
+create the simulated stars. In a real-world scenario, you would first
+need to measure the FWHM from the actual star images::
 
     >>> from photutils.psf import SourceGrouper
     >>> fwhm = 4.7
     >>> min_separation = 2.5 * fwhm
     >>> grouper = SourceGrouper(min_separation)
 
-We then call the class instance on arrays of the star ``(x, y)``
-positions. Here will use the known positions of the stars when
-we generated the image. In general, one can use a star finder
-(:ref:`source_detection`) to find the sources::
+After initializing the `~photutils.psf.SourceGrouper`, we apply it to
+the x and y coordinates of the stars. While we are using the known, true
+positions from our simulated data, you would typically use a source
+detection tool to find the star positions in an actual image::
 
    >>> import numpy as np
    >>> x = np.array(stars['x_0'])
    >>> y = np.array(stars['y_0'])
    >>> groups = grouper(x, y)
 
-The ``groups`` output is an array of integers (ordered the same as the
-``(x, y)`` inputs) containing the group indices. Stars with the same
-group index are in the same group.
+The result of this process, which we call ``groups``, is an array of
+integers that corresponds to the input star coordinates. Each integer
+represents a group ID, so stars that have the same number belong to the
+same group.
 
 The grouping algorithm separated the 100 stars into 65 distinct groups:
 
@@ -128,13 +142,15 @@ For example, to find the positions of the stars in group 3::
    >>> x[mask], y[mask]
    (array([60.32708921, 58.73063714]), array([147.24184586, 158.0612346 ]))
 
-When performing PSF photometry, the group indices can be included in the
-``init_params`` table when calling the PSF photometry classes. These
-group indices would override the input `~photutils.psf.SourceGrouper`
-instance.
+When performing PSF photometry, you can add these group IDs to
+the initial parameters table (``init_params``) that is passed
+to the photometry tool. If you provide these group IDs, a
+`~photutils.psf.SourceGrouper` does not need to be passed to the
+photometry class, as the grouping will already be defined.
 
-Finally, let's plot a circular aperture around each star, where stars in
-the same group have the same aperture color:
+To visualize the results, we can draw a circle around each star, using a
+unique color for the circles in each group to show which stars have been
+grouped together.
 
 .. doctest-skip::
 
