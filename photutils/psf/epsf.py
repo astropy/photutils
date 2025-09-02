@@ -411,9 +411,9 @@ class EPSFBuilder:
             # Stars class should have odd-sized dimensions, and thus we
             # get the oversampled shape as oversampling * len + 1; if
             # len=25, then newlen=101, for example.
-            x_shape = (np.ceil(stars._max_shape[0]) * oversampling[1]
+            x_shape = (np.ceil(stars._max_shape[1]) * oversampling[1]
                        + 1).astype(int)
-            y_shape = (np.ceil(stars._max_shape[1]) * oversampling[0]
+            y_shape = (np.ceil(stars._max_shape[0]) * oversampling[0]
                        + 1).astype(int)
 
             shape = np.array((y_shape, x_shape))
@@ -428,8 +428,8 @@ class EPSFBuilder:
         # the center of the pixel, so the center should be at (v.5, w.5)
         # detector pixels) value is simply the average of the two values
         # at the extremes.
-        xcenter = stars._max_shape[0] / 2.0
-        ycenter = stars._max_shape[1] / 2.0
+        xcenter = stars._max_shape[1] / 2.0
+        ycenter = stars._max_shape[0] / 2.0
 
         return _LegacyEPSFModel(data=data, origin=(xcenter, ycenter),
                                 oversampling=oversampling,
