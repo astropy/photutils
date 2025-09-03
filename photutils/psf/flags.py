@@ -1,11 +1,272 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 Utilities for decoding PSF photometry bit flags.
+
+This module provides tools for working with PSF photometry flags,
+including centralized flag definitions and decoding utilities.
 """
+
+from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 
-__all__ = ['decode_psf_flags']
+__all__ = ['PSF_FLAGS', 'decode_psf_flags']
+
+
+@dataclass(frozen=True)
+class _PSFFlagDefinition:
+    """
+    A single PSF flag definition.
+
+    Attributes
+    ----------
+    bit_value : int
+        The bit value (power of 2) for this flag.
+
+    name : str
+        Short name for the flag (used in decode_psf_flags).
+
+    description : str
+        Brief description of what this flag indicates.
+
+    detailed_description : str
+        Detailed description for use in docstrings.
+    """
+
+    bit_value: int
+    name: str
+    description: str
+    detailed_description: str
+
+
+class _PSFFlags:
+    """
+    Centralized definition of PSF photometry flags.
+
+    This class provides a single source of truth for all PSF flag
+    definitions, including bit values, names, and descriptions. It
+    enables consistent flag handling across the PSF photometry codebase
+    and supports dynamic docstring generation.
+
+    Examples
+    --------
+    >>> from photutils.psf.flags import _PSFFlags
+    >>> flags = _PSFFlags()
+    >>> flags.NPIXFIT_PARTIAL
+    1
+    >>> flags.get_name(1)
+    'npixfit_partial'
+    >>> flags.get_description(8)
+    'possible non-convergence'
+    """
+
+    # Define all PSF flags with their properties
+    FLAG_DEFINITIONS: ClassVar = [
+        _PSFFlagDefinition(
+            bit_value=1,
+            name='npixfit_partial',
+            description='npixfit smaller than full fit_shape region',
+            detailed_description=('The number of fitted pixels (npixfit) is '
+                                  'smaller than the full fit_shape region, '
+                                  'indicating partial PSF fitting'),
+        ),
+        _PSFFlagDefinition(
+            bit_value=2,
+            name='outside_bounds',
+            description='fitted position outside input image bounds',
+            detailed_description=('The fitted source position is outside the '
+                                  'bounds of the input image'),
+        ),
+        _PSFFlagDefinition(
+            bit_value=4,
+            name='negative_flux',
+            description='non-positive flux',
+            detailed_description=('The fitted flux value is negative or zero, '
+                                  'which is non-physical'),
+        ),
+        _PSFFlagDefinition(
+            bit_value=8,
+            name='no_convergence',
+            description='possible non-convergence',
+            detailed_description=('The PSF fitting algorithm may not have '
+                                  'converged to a stable solution'),
+        ),
+        _PSFFlagDefinition(
+            bit_value=16,
+            name='no_covariance',
+            description='missing parameter covariance',
+            detailed_description=('Parameter covariance matrix is not '
+                                  'available, preventing error estimation'),
+        ),
+        _PSFFlagDefinition(
+            bit_value=32,
+            name='near_bound',
+            description='fitted parameter near a bound',
+            detailed_description=('One or more fitted parameters are very '
+                                  'close to their imposed bounds'),
+        ),
+        _PSFFlagDefinition(
+            bit_value=64,
+            name='no_overlap',
+            description='no overlap with data',
+            detailed_description=('The source PSF fitting region has no '
+                                  'overlap with valid data pixels'),
+        ),
+        _PSFFlagDefinition(
+            bit_value=128,
+            name='fully_masked',
+            description='fully masked source',
+            detailed_description=('All pixels in the source fitting region '
+                                  'are masked'),
+        ),
+        _PSFFlagDefinition(
+            bit_value=256,
+            name='too_few_pixels',
+            description='too few pixels for fitting',
+            detailed_description=('Insufficient unmasked pixels available '
+                                  'for reliable PSF fitting'),
+        ),
+    ]
+
+    def __init__(self):
+        for flag_def in self.FLAG_DEFINITIONS:
+            # Create uppercase constants (e.g., NPIXFIT_PARTIAL = 1)
+            setattr(self, flag_def.name.upper(), flag_def.bit_value)
+
+        # Create lookup dictionaries for efficient access
+        self._bit_to_def = {fd.bit_value: fd for fd in self.FLAG_DEFINITIONS}
+        self._name_to_def = {fd.name: fd for fd in self.FLAG_DEFINITIONS}
+
+    @property
+    def all_flags(self):
+        """
+        Return all flag definitions.
+        """
+        return self.FLAG_DEFINITIONS.copy()
+
+    @property
+    def bit_values(self):
+        """
+        Return all bit values.
+        """
+        return [fd.bit_value for fd in self.FLAG_DEFINITIONS]
+
+    @property
+    def names(self):
+        """
+        Return all flag names.
+        """
+        return [fd.name for fd in self.FLAG_DEFINITIONS]
+
+    @property
+    def flag_dict(self):
+        """
+        Return dictionary mapping bit values to names.
+        """
+        return {fd.bit_value: fd.name for fd in self.FLAG_DEFINITIONS}
+
+    def get_definition(self, identifier):
+        """
+        Get flag definition by bit value or name.
+
+        Parameters
+        ----------
+        identifier : int or str
+            Either the bit value (int) or name (str) of the flag.
+
+        Returns
+        -------
+        definition : `_PSFFlagDefinition`
+            The flag definition.
+
+        Raises
+        ------
+        KeyError
+            If the identifier is not found.
+        """
+        if isinstance(identifier, int):
+            if identifier not in self._bit_to_def:
+                msg = f"No flag with bit value {identifier}"
+                raise KeyError(msg)
+            return self._bit_to_def[identifier]
+
+        if isinstance(identifier, str):
+            if identifier not in self._name_to_def:
+                msg = f"No flag with name '{identifier}'"
+                raise KeyError(msg)
+            return self._name_to_def[identifier]
+
+        msg = 'identifier must be int (bit value) or str (name)'
+        raise TypeError(msg)
+
+    def get_name(self, bit_value):
+        """
+        Get flag name from bit value.
+
+        Parameters
+        ----------
+        bit_value : int
+            The bit value of the flag.
+
+        Returns
+        -------
+        name : str
+            The name of the flag.
+        """
+        return self.get_definition(bit_value).name
+
+    def get_bit_value(self, name):
+        """
+        Get flag bit value from name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the flag.
+
+        Returns
+        -------
+        bit_value : int
+            The bit value of the flag.
+        """
+        return self.get_definition(name).bit_value
+
+    def get_description(self, bit_value):
+        """
+        Get flag description from bit value.
+
+        Parameters
+        ----------
+        bit_value : int
+            The bit value of the flag.
+
+        Returns
+        -------
+        description : str
+            The brief description of the flag.
+        """
+        return self.get_definition(bit_value).description
+
+    def get_detailed_description(self, bit_value):
+        """
+        Get detailed flag description from bit value.
+
+        Parameters
+        ----------
+        bit_value : int
+            The bit value of the flag.
+
+        Returns
+        -------
+        detailed_description : str
+            The detailed description of the flag.
+        """
+        return self.get_definition(bit_value).detailed_description
+
+
+# Create a singleton instance for global use
+PSF_FLAGS = _PSFFlags()
 
 
 def decode_psf_flags(flags):
@@ -106,18 +367,8 @@ def decode_psf_flags(flags):
     Source 1: negative_flux
     Source 3: npixfit_partial, no_covariance, too_few_pixels
     """
-    # Flag definitions with descriptive names
-    flag_definitions = {
-        1: 'npixfit_partial',   # npixfit smaller than full fit_shape
-        2: 'outside_bounds',    # fitted position outside image bounds
-        4: 'negative_flux',     # non-positive flux
-        8: 'no_convergence',    # possible non-convergence
-        16: 'no_covariance',    # missing parameter covariance
-        32: 'near_bound',       # near a positional bound
-        64: 'no_overlap',       # no overlap with data
-        128: 'fully_masked',    # fully masked source
-        256: 'too_few_pixels',  # too few pixels for fitting
-    }
+    # Get flag definitions from centralized source
+    flag_definitions = PSF_FLAGS.flag_dict
 
     def _decode_single_flag(flag_value):
         """
@@ -126,6 +377,10 @@ def decode_psf_flags(flags):
         if not isinstance(flag_value, (int, np.integer)):
             msg = 'Flag value must be an integer'
             raise TypeError(msg)
+
+        if flag_value < 0:
+            msg = 'Flag value must be a non-negative integer'
+            raise ValueError(msg)
 
         active_flags = []
         for bit_value, description in flag_definitions.items():
