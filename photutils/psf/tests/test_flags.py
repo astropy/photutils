@@ -8,7 +8,8 @@ import pytest
 
 from photutils.psf import IterativePSFPhotometry, PSFPhotometry
 from photutils.psf.flags import (PSF_FLAGS, _PSFFlagDefinition, _PSFFlags,
-                                 _update_call_docstring, decode_psf_flags)
+                                 _update_call_docstring,
+                                 _update_decode_docstring, decode_psf_flags)
 
 
 def test_decode_psf_flags():
@@ -508,3 +509,60 @@ def test_psf_classes_docstrings():
         for flag_desc in dynamic_flags:
             msg = f"Missing flag description in {cls.__name__}: {flag_desc}"
             assert flag_desc in docstring, msg
+
+
+def test_decode_psf_flags_docstring():
+    """
+    Test that the decode_psf_flags function has dynamic flag
+    documentation.
+    """
+    docstring = decode_psf_flags.__doc__
+
+    # Should not have placeholder
+    assert '<flag descriptions>' not in docstring
+
+    # Should have all expected flag names in the expected format
+    expected_flags = [
+        "``'npixfit_partial'`` : bit 1",
+        "``'outside_bounds'`` : bit 2",
+        "``'negative_flux'`` : bit 4",
+        "``'no_convergence'`` : bit 8",
+        "``'no_covariance'`` : bit 16",
+        "``'near_bound'`` : bit 32",
+        "``'no_overlap'`` : bit 64",
+        "``'fully_masked'`` : bit 128",
+        "``'too_few_pixels'`` : bit 256",
+    ]
+
+    for flag_desc in expected_flags:
+        msg = f"Missing flag in docstring: {flag_desc}"
+        assert flag_desc in docstring, msg
+
+    # Should have flag descriptions
+    expected_descriptions = [
+        'npixfit smaller than full fit_shape region',
+        'fitted position outside input image bounds',
+        'non-positive flux',
+        'possible non-convergence',
+        'missing parameter covariance',
+        'fitted parameter near a bound',
+        'no overlap with data',
+        'fully masked source',
+        'too few pixels for fitting',
+    ]
+
+    for desc in expected_descriptions:
+        assert desc in docstring, f"Missing description: {desc}"
+
+
+def test_update_decode_docstring_noop():
+    """
+    Test that the update_decode_docstring decorator is a no-op if no
+    docstring exists.
+    """
+    @_update_decode_docstring
+    def test_func(data):
+        pass
+
+    docstring = test_func.__doc__
+    assert docstring is None
