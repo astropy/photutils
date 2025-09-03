@@ -21,6 +21,8 @@ from photutils.aperture import CircularAperture
 from photutils.utils._misc import _get_meta
 from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
+from .flags import PSF_FLAGS
+
 __all__ = ['PSFDataProcessor', 'PSFFitter', 'PSFResultsAssembler']
 
 
@@ -1078,7 +1080,7 @@ class PSFResultsAssembler:
 
         # Flag=1: npixfit smaller than full fit_shape region
         flag1_mask = results_tbl['npixfit'] < np.prod(self.fit_shape)
-        flags[flag1_mask] |= 1
+        flags[flag1_mask] |= PSF_FLAGS.NPIXFIT_PARTIAL
 
         # Flag=2: fitted position outside input image bounds
         ny, nx = shape
@@ -1086,20 +1088,20 @@ class PSFResultsAssembler:
         y_fit = results_tbl[y_col]
         flag2_mask = ((x_fit < -0.5) | (y_fit < -0.5) | (x_fit > nx - 0.5)
                       | (y_fit > ny - 0.5))
-        flags[flag2_mask] |= 2
+        flags[flag2_mask] |= PSF_FLAGS.OUTSIDE_BOUNDS
 
         # Flag=4: non-positive flux
         flag4_mask = results_tbl[flux_col] <= 0
-        flags[flag4_mask] |= 4
+        flags[flag4_mask] |= PSF_FLAGS.NEGATIVE_FLUX
 
         # Flag=8: possible non-convergence
         if fit_error_indices is not None:
-            flags[fit_error_indices] |= 8
+            flags[fit_error_indices] |= PSF_FLAGS.NO_CONVERGENCE
 
         # Flag=16: missing parameter covariance
         missing_cov_mask = np.array(['param_cov' not in info
                                      for info in fit_info])
-        flags[missing_cov_mask] |= 16
+        flags[missing_cov_mask] |= PSF_FLAGS.NO_COVARIANCE
 
         # Flag=32: near a positional bound
         bound_tol = 0.01
@@ -1125,15 +1127,15 @@ class PSFResultsAssembler:
                     if bounds.size == 0:
                         continue
                     if np.any(np.abs(bounds - row[param]) <= bound_tol):
-                        flags[index] |= 32
+                        flags[index] |= PSF_FLAGS.NEAR_BOUND
                         break
 
         # Flag=64, 128, 256: invalid source reasons
         if invalid_reasons is not None:
             reasons = np.array(invalid_reasons, dtype=object)
-            flags[reasons == 'no_overlap'] |= 64
-            flags[reasons == 'fully_masked'] |= 128
-            flags[reasons == 'too_few_pixels'] |= 256
+            flags[reasons == 'no_overlap'] |= PSF_FLAGS.NO_OVERLAP
+            flags[reasons == 'fully_masked'] |= PSF_FLAGS.FULLY_MASKED
+            flags[reasons == 'too_few_pixels'] |= PSF_FLAGS.TOO_FEW_PIXELS
 
         return flags
 
