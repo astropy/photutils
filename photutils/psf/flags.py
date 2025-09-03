@@ -265,6 +265,10 @@ class _PSFFlags:
         return self.get_definition(bit_value).detailed_description
 
 
+# Create a singleton instance for global use
+PSF_FLAGS = _PSFFlags()
+
+
 def _update_call_docstring(cls):
     """
     Decorator to update __call__ method docstring with PSF flag
@@ -314,11 +318,55 @@ def _update_call_docstring(cls):
     return cls
 
 
-# Create a singleton instance for global use
-PSF_FLAGS = _PSFFlags()
+def _update_decode_docstring(func):
+    """
+    Decorator to update function docstring with PSF flag documentation.
+
+    This decorator can be applied to functions like decode_psf_flags to
+    automatically replace manually defined flag lists with dynamically
+    generated ones.
+
+    Parameters
+    ----------
+    func : function
+        The function to decorate.
+
+    Returns
+    -------
+    func : function
+        The decorated function with updated docstring.
+    """
+    if not hasattr(func, '__doc__') or func.__doc__ is None:
+        return func
+
+    docstring = func.__doc__
+
+    # Look for the placeholder text
+    placeholder = '<flag descriptions>'
+
+    if placeholder in docstring:
+        # Generate the flag descriptions
+        flag_descriptions = ['']
+
+        indent = ' ' * 4
+        for flag_def in PSF_FLAGS.FLAG_DEFINITIONS:
+            name = flag_def.name
+            bit_val = flag_def.bit_value
+            desc = flag_def.description
+            line = f"{indent}- ``'{name}'`` : bit {bit_val}, {desc}"
+            flag_descriptions.append(line)
+
+        # Replace the placeholder with the flag descriptions
+        flag_text = '\n'.join(flag_descriptions)
+        new_docstring = docstring.replace(placeholder, flag_text)
+        func.__doc__ = new_docstring
+
+    return func
 
 
+@_update_decode_docstring
 def decode_psf_flags(flags):
+    # numpydoc ignore: RT05
     """
     Decode PSF photometry bit flags into individual components.
 
@@ -338,22 +386,11 @@ def decode_psf_flags(flags):
     Returns
     -------
     decoded : list of str or list of list of str
-        List of active flag names, or list of lists if input is
-        an array. Each string represents a specific condition
-        that was detected during PSF fitting. If no flags are
-        set, returns an empty list. Possible flag names are:
-
-        - ``'npixfit_partial'`` : bit 1, npixfit smaller than
-          full fit_shape region
-        - ``'outside_bounds'`` : bit 2, fitted position outside
-          input image bounds
-        - ``'negative_flux'`` : bit 4, non-positive flux
-        - ``'no_convergence'`` : bit 8, possible non-convergence
-        - ``'no_covariance'`` : bit 16, missing parameter covariance
-        - ``'near_bound'`` : bit 32, fitted parameter near a bound
-        - ``'no_overlap'`` : bit 64, no overlap with data
-        - ``'fully_masked'`` : bit 128, fully masked source
-        - ``'too_few_pixels'`` : bit 256, too few pixels for fitting
+        List of active flag names, or list of lists if input is an
+        array. Each string represents a specific condition that was
+        detected during PSF fitting. If no flags are set, an empty list
+        is returned. Possible flag names are:
+        <flag descriptions>
 
     Examples
     --------
