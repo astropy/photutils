@@ -58,6 +58,9 @@ New Features
   - Added a ``group`` keyword to the ``SegmentationImage``
     ``to_regions`` method. [#2060, #2065]]
 
+  - Added a ``decode_psf_flags`` utility function for decoding PSF
+    photometry bit flags. [#2090]
+
 Bug Fixes
 ^^^^^^^^^
 
