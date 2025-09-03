@@ -17,9 +17,12 @@ from photutils.psf.utils import ModelImageMixin
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
+from .flags import _update_call_docstring
+
 __all__ = ['IterativePSFPhotometry']
 
 
+@_update_call_docstring
 class IterativePSFPhotometry(ModelImageMixin):
     """
     Class to iteratively perform PSF photometry.
@@ -561,22 +564,7 @@ class IterativePSFPhotometry(ModelImageMixin):
               no ``error`` array is provided, ``reduced_chi2`` values
               will be NaN.
             * ``flags`` : bitwise flag values
-
-              - 0 : no flags
-              - 1 : one or more pixels in the ``fit_shape`` region
-                were masked
-              - 2 : the fit x and/or y position lies outside of the
-                input data
-              - 4 : the fit flux is less than or equal to zero
-              - 8 : the fitter may not have converged. In this case,
-                you can try increasing the maximum number of fit
-                iterations using the ``fitter_maxiters`` keyword.
-              - 16 : the fitter parameter covariance matrix was not
-                returned
-              - 32 : the fit x or y position is at the bounded value
-              - 64 : the source had no overlap with the input data
-              - 128 : the source region was completely masked
-              - 256 : the source had too few unmasked pixels for a fit
+              <flag descriptions>
         """
         if isinstance(data, NDData):
             data_, mask, error = PSFPhotometry._coerce_nddata(data)

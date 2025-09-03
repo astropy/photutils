@@ -265,6 +265,55 @@ class _PSFFlags:
         return self.get_definition(bit_value).detailed_description
 
 
+def _update_call_docstring(cls):
+    """
+    Decorator to update __call__ method docstring with PSF flag
+    documentation.
+
+    This decorator can be applied to PSF photometry classes to
+    automatically replace manually defined flag lists with dynamically
+    generated ones.
+
+    Parameters
+    ----------
+    cls : class
+        The class to decorate.
+
+    Returns
+    -------
+    cls : class
+        The decorated class with updated __call__ method docstring.
+    """
+    if (not callable(cls)
+            or not hasattr(cls.__call__, '__doc__')
+            or cls.__call__.__doc__ is None):
+        return cls
+
+    docstring = cls.__call__.__doc__
+
+    # Look for the placeholder text
+    placeholder = '<flag descriptions>'
+
+    indent = ' ' * 6
+    if placeholder in docstring:
+        # Generate the flag descriptions
+        flag_descriptions = []
+        flag_descriptions.append('')
+        flag_descriptions.append(f'{indent}- 0 : no flags')
+
+        for flag_def in PSF_FLAGS.FLAG_DEFINITIONS:
+            desc = flag_def.description
+            line = f'{indent}- {flag_def.bit_value} : {desc}'
+            flag_descriptions.append(line)
+
+        # Replace the placeholder with the flag descriptions
+        flag_text = '\n'.join(flag_descriptions)
+        new_docstring = docstring.replace(placeholder, flag_text)
+        cls.__call__.__doc__ = new_docstring
+
+    return cls
+
+
 # Create a singleton instance for global use
 PSF_FLAGS = _PSFFlags()
 
