@@ -6,7 +6,10 @@ Tests for the flags module.
 import numpy as np
 import pytest
 
-from photutils.psf import decode_psf_flags
+from photutils.psf import IterativePSFPhotometry, PSFPhotometry
+from photutils.psf.flags import (PSF_FLAGS, _PSFFlagDefinition, _PSFFlags,
+                                 _update_call_docstring,
+                                 _update_decode_docstring, decode_psf_flags)
 
 
 def test_decode_psf_flags():
@@ -159,11 +162,10 @@ def test_decode_psf_flags_edge_cases():
                     'no_overlap', 'fully_masked', 'too_few_pixels']
     assert set(decoded) == set(expected_all)
 
-    # Test with negative flag (should still work)
-    # Note: This is technically invalid input but numpy ints can be negative
-    negative_flag = -1  # All bits set in two's complement
-    decoded = decode_psf_flags(negative_flag)
-    assert len(decoded) == 9  # All our flags should be detected
+    match = 'Flag value must be a non-negative integer'
+    with pytest.raises(ValueError, match=match):
+        decode_psf_flags(-2)
+
     # Test with empty array
     empty_array = np.array([], dtype=int)
     decoded = decode_psf_flags(empty_array)
@@ -177,3 +179,390 @@ def test_decode_psf_flags_edge_cases():
     assert decoded[1] == ['npixfit_partial']
     assert decoded[2] == ['no_convergence']
     assert set(decoded[3]) == {'no_convergence', 'fully_masked'}
+
+
+def test_psf_flags_singleton():
+    """
+    Test _PSFFlags singleton behavior.
+    """
+    # Test that PSF_FLAGS is accessible and is a _PSFFlags instance
+    assert isinstance(PSF_FLAGS, _PSFFlags)
+
+    # Test that multiple references point to the same object
+    flags1 = PSF_FLAGS
+    flags2 = PSF_FLAGS
+    assert flags1 is flags2
+
+    # Test that creating a new instance works independently
+    new_flags = _PSFFlags()
+    assert isinstance(new_flags, _PSFFlags)
+    assert new_flags is not PSF_FLAGS  # Different instances
+
+
+def test_psf_flags_constants():
+    """
+    Test _PSFFlags constant access.
+    """
+    # Test all flag constants exist and have correct values
+    expected_constants = {
+        'NPIXFIT_PARTIAL': 1,
+        'OUTSIDE_BOUNDS': 2,
+        'NEGATIVE_FLUX': 4,
+        'NO_CONVERGENCE': 8,
+        'NO_COVARIANCE': 16,
+        'NEAR_BOUND': 32,
+        'NO_OVERLAP': 64,
+        'FULLY_MASKED': 128,
+        'TOO_FEW_PIXELS': 256,
+    }
+
+    for const_name, expected_value in expected_constants.items():
+        assert hasattr(PSF_FLAGS, const_name)
+        actual_value = getattr(PSF_FLAGS, const_name)
+        assert actual_value == expected_value
+        assert isinstance(actual_value, int)
+
+
+def test_psf_flags_properties():
+    """
+    Test _PSFFlags property access methods.
+    """
+    # Test bit_values property
+    bit_values = PSF_FLAGS.bit_values
+    expected_bits = [1, 2, 4, 8, 16, 32, 64, 128, 256]
+    assert set(bit_values) == set(expected_bits)
+    assert len(bit_values) == 9
+
+    # Test names property
+    names = PSF_FLAGS.names
+    expected_names = [
+        'npixfit_partial', 'outside_bounds', 'negative_flux',
+        'no_convergence', 'no_covariance', 'near_bound',
+        'no_overlap', 'fully_masked', 'too_few_pixels',
+    ]
+    assert set(names) == set(expected_names)
+    assert len(names) == 9
+
+    # Test flag_dict property
+    flag_dict = PSF_FLAGS.flag_dict
+    assert isinstance(flag_dict, dict)
+    assert len(flag_dict) == 9
+    for bit_val, name in flag_dict.items():
+        assert bit_val in expected_bits
+        assert name in expected_names
+
+    # Test all_flags property
+    all_flags = PSF_FLAGS.all_flags
+    assert isinstance(all_flags, list)
+    assert len(all_flags) == 9
+    for flag_def in all_flags:
+        assert isinstance(flag_def, _PSFFlagDefinition)
+
+
+def test_psf_flags_get_methods():
+    """
+    Test _PSFFlags getter methods.
+    """
+    # Test get_name
+    assert PSF_FLAGS.get_name(1) == 'npixfit_partial'
+    assert PSF_FLAGS.get_name(8) == 'no_convergence'
+    assert PSF_FLAGS.get_name(256) == 'too_few_pixels'
+
+    # Test get_bit_value
+    assert PSF_FLAGS.get_bit_value('npixfit_partial') == 1
+    assert PSF_FLAGS.get_bit_value('no_convergence') == 8
+    assert PSF_FLAGS.get_bit_value('too_few_pixels') == 256
+
+    # Test get_description
+    desc1 = PSF_FLAGS.get_description(1)
+    assert 'npixfit smaller than full fit_shape region' in desc1
+
+    desc8 = PSF_FLAGS.get_description(8)
+    assert 'possible non-convergence' in desc8
+
+    # Test get_detailed_description
+    detailed1 = PSF_FLAGS.get_detailed_description(1)
+    assert 'number of fitted pixels' in detailed1
+    assert 'partial PSF fitting' in detailed1
+
+    detailed8 = PSF_FLAGS.get_detailed_description(8)
+    assert 'algorithm may not have converged' in detailed8
+
+
+def test_psf_flags_get_definition():
+    """
+    Test _PSFFlags get_definition method.
+    """
+    # Test get_definition by bit value
+    def_by_bit = PSF_FLAGS.get_definition(1)
+    assert isinstance(def_by_bit, _PSFFlagDefinition)
+    assert def_by_bit.bit_value == 1
+    assert def_by_bit.name == 'npixfit_partial'
+
+    # Test get_definition by name
+    def_by_name = PSF_FLAGS.get_definition('npixfit_partial')
+    assert isinstance(def_by_name, _PSFFlagDefinition)
+    assert def_by_name.bit_value == 1
+    assert def_by_name.name == 'npixfit_partial'
+
+    # Test that both methods return the same object
+    assert def_by_bit is def_by_name
+
+    # Test error cases
+    with pytest.raises(KeyError, match='No flag with bit value 999'):
+        PSF_FLAGS.get_definition(999)
+
+    with pytest.raises(KeyError, match="No flag with name 'invalid'"):
+        PSF_FLAGS.get_definition('invalid')
+
+    with pytest.raises(TypeError, match='identifier must be int'):
+        PSF_FLAGS.get_definition(3.14)
+
+
+def test_psf_flag_definition():
+    """
+    Test _PSFFlagDefinition dataclass.
+    """
+    # Create a flag definition
+    flag_def = _PSFFlagDefinition(
+        bit_value=1,
+        name='test_flag',
+        description='test description',
+        detailed_description='detailed test description',
+    )
+
+    # Test attributes
+    assert flag_def.bit_value == 1
+    assert flag_def.name == 'test_flag'
+    assert flag_def.description == 'test description'
+    assert flag_def.detailed_description == 'detailed test description'
+
+    # Test immutability (frozen dataclass)
+    with pytest.raises(AttributeError):
+        flag_def.bit_value = 2
+
+    # Test equality
+    flag_def2 = _PSFFlagDefinition(
+        bit_value=1,
+        name='test_flag',
+        description='test description',
+        detailed_description='detailed test description',
+    )
+    assert flag_def == flag_def2
+
+    # Test inequality
+    flag_def3 = _PSFFlagDefinition(
+        bit_value=2,
+        name='test_flag',
+        description='test description',
+        detailed_description='detailed test description',
+    )
+    assert flag_def != flag_def3
+
+
+def test_psf_flags_integration_with_decode():
+    """
+    Test integration between _PSFFlags and decode_psf_flags.
+    """
+    # Test that decode_psf_flags uses PSF_FLAGS internally
+    test_flags = [PSF_FLAGS.NPIXFIT_PARTIAL, PSF_FLAGS.NO_CONVERGENCE,
+                  PSF_FLAGS.FULLY_MASKED]
+
+    decoded = decode_psf_flags(test_flags)
+    assert len(decoded) == 3
+    assert decoded[0] == ['npixfit_partial']
+    assert decoded[1] == ['no_convergence']
+    assert decoded[2] == ['fully_masked']
+
+    # Test combined flags
+    combined = PSF_FLAGS.NO_CONVERGENCE | PSF_FLAGS.FULLY_MASKED
+    decoded_combined = decode_psf_flags(combined)
+    assert set(decoded_combined) == {'no_convergence', 'fully_masked'}
+
+    # Test all constants work with decode
+    for const_name in ['NPIXFIT_PARTIAL', 'OUTSIDE_BOUNDS', 'NEGATIVE_FLUX',
+                       'NO_CONVERGENCE', 'NO_COVARIANCE', 'NEAR_BOUND',
+                       'NO_OVERLAP', 'FULLY_MASKED', 'TOO_FEW_PIXELS']:
+        const_value = getattr(PSF_FLAGS, const_name)
+        decoded_const = decode_psf_flags(const_value)
+        assert len(decoded_const) == 1
+
+        # The decoded name should match the constant name (lowercase)
+        expected_name = const_name.lower()
+        assert decoded_const[0] == expected_name
+
+
+def test_psf_flags_completeness():
+    """
+    Test that _PSFFlags covers all expected flag scenarios.
+    """
+    # Test that we have the expected number of flags
+    assert len(PSF_FLAGS.all_flags) == 9
+
+    # Test that bit values are powers of 2
+    for bit_val in PSF_FLAGS.bit_values:
+        assert bit_val > 0
+        assert (bit_val & (bit_val - 1)) == 0  # Power of 2 check
+
+    # Test that bit values are unique
+    bit_values = PSF_FLAGS.bit_values
+    assert len(bit_values) == len(set(bit_values))
+
+    # Test that names are unique
+    names = PSF_FLAGS.names
+    assert len(names) == len(set(names))
+
+    # Test that all names are valid Python identifiers (for compatibility)
+    for name in names:
+        assert name.isidentifier()
+        assert '_' in name or name.islower()  # Snake_case convention
+
+    # Test that all flags can be combined without conflicts
+    all_combined = 0
+    for bit_val in PSF_FLAGS.bit_values:
+        all_combined |= bit_val
+
+    decoded_all = decode_psf_flags(all_combined)
+    assert len(decoded_all) == 9
+    assert set(decoded_all) == set(PSF_FLAGS.names)
+
+
+def test_update_call_docstring_decorator():
+    """
+    Test the update_call_docstring decorator.
+    """
+    @_update_call_docstring
+    class DecoratedPSFClass:
+        def __call__(self, data):
+            """
+            Perform decorated PSF photometry.
+
+            Returns
+            -------
+            table : Table
+                Results with flags:
+
+                * ``flags`` : bitwise flag values
+                  <flag descriptions>
+            """
+
+    # Verify decorator was applied
+    docstring = DecoratedPSFClass.__call__.__doc__
+
+    # Should have new dynamic descriptions
+    assert 'npixfit smaller than full fit_shape region' in docstring
+    assert 'possible non-convergence' in docstring
+
+    # Should not have placeholder
+    assert '<insert description list here>' not in docstring
+
+    # Should preserve other content
+    assert 'Perform decorated PSF photometry' in docstring
+
+
+def test_update_call_docstring_noop():
+    """
+    Test that the update_call_docstring decorator is a no-op when
+    conditions are not met.
+    """
+    @_update_call_docstring
+    class NoCallPSFClass:
+        pass
+
+    @_update_call_docstring
+    class NoCallDocsPSFClass:
+        def __call__(self, data):
+            pass
+
+    docstring = NoCallPSFClass.__call__.__doc__
+    assert docstring == 'Call self as a function.'
+
+    docstring = NoCallDocsPSFClass.__call__.__doc__
+    assert docstring is None
+
+
+def test_psf_classes_docstrings():
+    """
+    Test that the PSF classes have dynamic flag documentation.
+    """
+    classes_to_test = [PSFPhotometry, IterativePSFPhotometry]
+
+    for cls in classes_to_test:
+        docstring = cls.__call__.__doc__
+
+        # Should have flags section
+        assert '* ``flags`` : bitwise flag values' in docstring
+
+        # Should have all dynamic flag descriptions
+        dynamic_flags = [
+            'npixfit smaller than full fit_shape region',
+            'fitted position outside input image bounds',
+            'non-positive flux',
+            'possible non-convergence',
+            'missing parameter covariance',
+            'fitted parameter near a bound',
+            'no overlap with data',
+            'fully masked source',
+            'too few pixels for fitting',
+        ]
+
+        for flag_desc in dynamic_flags:
+            msg = f"Missing flag description in {cls.__name__}: {flag_desc}"
+            assert flag_desc in docstring, msg
+
+
+def test_decode_psf_flags_docstring():
+    """
+    Test that the decode_psf_flags function has dynamic flag
+    documentation.
+    """
+    docstring = decode_psf_flags.__doc__
+
+    # Should not have placeholder
+    assert '<flag descriptions>' not in docstring
+
+    # Should have all expected flag names in the expected format
+    expected_flags = [
+        "``'npixfit_partial'`` : bit 1",
+        "``'outside_bounds'`` : bit 2",
+        "``'negative_flux'`` : bit 4",
+        "``'no_convergence'`` : bit 8",
+        "``'no_covariance'`` : bit 16",
+        "``'near_bound'`` : bit 32",
+        "``'no_overlap'`` : bit 64",
+        "``'fully_masked'`` : bit 128",
+        "``'too_few_pixels'`` : bit 256",
+    ]
+
+    for flag_desc in expected_flags:
+        msg = f"Missing flag in docstring: {flag_desc}"
+        assert flag_desc in docstring, msg
+
+    # Should have flag descriptions
+    expected_descriptions = [
+        'npixfit smaller than full fit_shape region',
+        'fitted position outside input image bounds',
+        'non-positive flux',
+        'possible non-convergence',
+        'missing parameter covariance',
+        'fitted parameter near a bound',
+        'no overlap with data',
+        'fully masked source',
+        'too few pixels for fitting',
+    ]
+
+    for desc in expected_descriptions:
+        assert desc in docstring, f"Missing description: {desc}"
+
+
+def test_update_decode_docstring_noop():
+    """
+    Test that the update_decode_docstring decorator is a no-op if no
+    docstring exists.
+    """
+    @_update_decode_docstring
+    def test_func(data):
+        pass
+
+    docstring = test_func.__doc__
+    assert docstring is None

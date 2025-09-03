@@ -61,6 +61,10 @@ New Features
   - Added a ``decode_psf_flags`` utility function for decoding PSF
     photometry bit flags. [#2090]
 
+  - Added a ``PSF_FLAGS`` object to hold all PSF photometry bit flags in
+    one place. PSF_FLAGS provides readable, named constants for each bit
+    flag and helper utilities for decoding bit flags. [#2091]
+
 Bug Fixes
 ^^^^^^^^^
 
