@@ -6,8 +6,9 @@ Tests for the flags module.
 import numpy as np
 import pytest
 
+from photutils.psf import IterativePSFPhotometry, PSFPhotometry
 from photutils.psf.flags import (PSF_FLAGS, _PSFFlagDefinition, _PSFFlags,
-                                 decode_psf_flags)
+                                 _update_call_docstring, decode_psf_flags)
 
 
 def test_decode_psf_flags():
@@ -423,3 +424,87 @@ def test_psf_flags_completeness():
     decoded_all = decode_psf_flags(all_combined)
     assert len(decoded_all) == 9
     assert set(decoded_all) == set(PSF_FLAGS.names)
+
+
+def test_update_call_docstring_decorator():
+    """
+    Test the update_call_docstring decorator.
+    """
+    @_update_call_docstring
+    class DecoratedPSFClass:
+        def __call__(self, data):
+            """
+            Perform decorated PSF photometry.
+
+            Returns
+            -------
+            table : Table
+                Results with flags:
+
+                * ``flags`` : bitwise flag values
+                  <flag descriptions>
+            """
+
+    # Verify decorator was applied
+    docstring = DecoratedPSFClass.__call__.__doc__
+
+    # Should have new dynamic descriptions
+    assert 'npixfit smaller than full fit_shape region' in docstring
+    assert 'possible non-convergence' in docstring
+
+    # Should not have placeholder
+    assert '<insert description list here>' not in docstring
+
+    # Should preserve other content
+    assert 'Perform decorated PSF photometry' in docstring
+
+
+def test_update_call_docstring_noop():
+    """
+    Test that the update_call_docstring decorator is a no-op when
+    conditions are not met.
+    """
+    @_update_call_docstring
+    class NoCallPSFClass:
+        pass
+
+    @_update_call_docstring
+    class NoCallDocsPSFClass:
+        def __call__(self, data):
+            pass
+
+    docstring = NoCallPSFClass.__call__.__doc__
+    assert docstring == 'Call self as a function.'
+
+    docstring = NoCallDocsPSFClass.__call__.__doc__
+    assert docstring is None
+
+
+def test_psf_classes_docstrings():
+    """
+    Test that the PSF classes have dynamic flag documentation.
+    """
+    classes_to_test = [PSFPhotometry, IterativePSFPhotometry]
+
+    for cls in classes_to_test:
+        docstring = cls.__call__.__doc__
+
+        # Should have flags section
+        assert '* ``flags`` : bitwise flag values' in docstring
+
+        # Should have all dynamic flag descriptions
+        dynamic_flags = [
+            'npixfit smaller than full fit_shape region',
+            'fitted position outside input image bounds',
+            'non-positive flux',
+            'possible non-convergence',
+            'missing parameter covariance',
+            'fitted parameter near a bound',
+            'no overlap with data',
+            'fully masked source',
+            'too few pixels for fitting',
+        ]
+
+        for flag_desc in dynamic_flags:
+            msg = f"Missing flag description in {cls.__name__}: {flag_desc}"
+            assert flag_desc in docstring, msg
