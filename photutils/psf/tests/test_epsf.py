@@ -122,32 +122,33 @@ class TestEPSFBuild:
             stars = extract_stars(ndd, epsf_test_data['init_stars'][0:3],
                                   size=size)
 
-    def test_epsf_build(self, epsf_test_data):
+    @pytest.mark.parametrize('shape', [(25, 25), (19, 25), (25, 19)])
+    def test_epsf_build(self, epsf_test_data, shape):
         """
         This is an end-to-end test of EPSFBuilder on a simulated image.
         """
-        size = 25
         oversampling = 4
         match = 'were not extracted because their cutout region extended'
         with pytest.warns(AstropyUserWarning, match=match):
             stars = extract_stars(epsf_test_data['nddata'],
-                                  epsf_test_data['init_stars'], size=size)
+                                  epsf_test_data['init_stars'], size=shape)
         epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=15,
                                    progress_bar=False, norm_radius=25,
                                    recentering_maxiters=15)
         epsf, fitted_stars = epsf_builder(stars)
 
-        ref_size = (size * oversampling) + 1
-        assert epsf.data.shape == (ref_size, ref_size)
+        ref_size = np.array(shape) * oversampling + 1
+        assert epsf.data.shape == tuple(ref_size)
 
-        y0 = (ref_size - 1) / 2 / oversampling
-        y = np.arange(ref_size, dtype=float) / oversampling
+        y0_center = (ref_size - 1) / 2 / oversampling
+        yy = np.arange(ref_size[0], dtype=float) / oversampling
+        xx = np.arange(ref_size[1], dtype=float) / oversampling
 
         psf_model = CircularGaussianPRF(fwhm=epsf_test_data['fwhm'])
-        z = epsf.data
-        x = psf_model.evaluate(y.reshape(-1, 1), y.reshape(1, -1), 1, y0, y0,
-                               epsf_test_data['fwhm'])
-        assert_allclose(z, x, rtol=1e-2, atol=1e-5)
+        psf_mod = psf_model.evaluate(xx.reshape(1, -1), yy.reshape(-1, 1), 1,
+                                     y0_center[1], y0_center[0],
+                                     epsf_test_data['fwhm'])
+        assert_allclose(epsf.data, psf_mod, rtol=1e-2, atol=1e-5)
 
         resid_star = fitted_stars[0].compute_residual_image(epsf)
         assert_almost_equal(np.sum(resid_star) / fitted_stars[0].flux, 0,
