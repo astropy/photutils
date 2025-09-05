@@ -11,6 +11,10 @@ In addition to these changes, Photutils 2.3 includes several
 smaller improvements and bug fixes, which are described in the full
 :ref:`changelog`.
 
+.. contents::
+   :local:
+   :depth: 2
+
 
 Dependency Version Updates
 ==========================
