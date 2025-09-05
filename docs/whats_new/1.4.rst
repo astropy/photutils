@@ -4,6 +4,11 @@
 What's New in Photutils 1.4?
 ****************************
 
+.. contents::
+   :local:
+   :depth: 2
+
+
 New ApertureStats class
 =======================
 

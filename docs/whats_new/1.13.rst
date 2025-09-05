@@ -9,6 +9,10 @@ In addition to these changes, Photutils 1.13 includes a large number
 of smaller improvements and bug fixes, which are described in the full
 :ref:`changelog`.
 
+.. contents::
+   :local:
+   :depth: 2
+
 
 Testing the installed version of Photutils
 ==========================================
@@ -26,8 +30,8 @@ This method replaces the old method of running the test suite using the
 ``photutils.test()`` Python function, which has been removed.
 
 
-Datasets subpackage reoganization
-=================================
+Datasets subpackage reorganization
+==================================
 
 The ``photutils.datasets`` subpackage has been reorganized and
 the ``make`` module has been deprecated. Instead of importing
