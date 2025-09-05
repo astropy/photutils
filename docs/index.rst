@@ -23,7 +23,7 @@ Photutils
 *********
 
 | **Version**: |release| -- **Date**: |today|
-| Useful links: :doc:`getting_started/install` | :ref:`whatsnew-2.3`
+| Useful links: :doc:`getting_started/install` | :doc:`release_notes/index`
 
 **Photutils** is a Python library that provides commonly-used tools
 and key functionality for detecting and performing photometry of
@@ -53,7 +53,7 @@ for astronomical image analysis.
     user_guide/index
     reference/index
     development/index
-    Release Notes <changelog>
+    Release Notes <release_notes/index>
 
 
 .. grid:: 3
