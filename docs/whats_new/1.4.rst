@@ -40,7 +40,7 @@ attributes or output to an Astropy `~astropy.table.QTable` using the
 :meth:`~photutils.aperture.ApertureStats.to_table` method.
 
 Please see :class:`~photutils.aperture.ApertureStats` for the
-the complete list of properties that can be calculated and the
+complete list of properties that can be calculated and the
 :ref:`photutils-aperture-stats` documentation for examples.
 
 New clip keyword in BkgZoomInterpolator

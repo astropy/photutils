@@ -124,7 +124,7 @@ dependencies), run::
     pip install ".[all]"
 
 Alternatively, `pip`_ can be used to retrieve and install the latest
-development wheel (with all optional dependencies::
+development wheel (with all optional dependencies)::
 
     pip install --upgrade --extra-index-url https://pypi.anaconda.org/astropy/simple "photutils[all]" --pre
 

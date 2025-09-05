@@ -657,7 +657,7 @@ The model parameter ``bounds`` can also be set using the ``min`` and/or
     >>> psf_model3.bounds  # doctest: +FLOAT_CMP
     {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (0.0, None)}
 
-For this example, let's constrain the flux value to be between between
+For this example, let's constrain the flux value to be between
 400 and 600::
 
     >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)

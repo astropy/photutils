@@ -32,7 +32,7 @@ A new :class:`~photutils.segmentation.SourceFinder`
 convenience class was added, combining source detection and
 deblending. The `~photutils.segmentation.detect_sources` and
 `~photutils.segmentation.deblend_sources` functions also still remain
-available. The separate tools can be used, for example, to effienciently
+available. The separate tools can be used, for example, to efficiently
 explore the various deblending parameters.
 
 
