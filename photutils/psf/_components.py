@@ -10,11 +10,13 @@ of the PSFPhotometry class and are not intended for direct public use.
 import contextlib
 import warnings
 
+import astropy
 import astropy.units as u
 import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NoOverlapError
 from astropy.table import QTable, Table, hstack, join
+from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
@@ -681,10 +683,10 @@ class PSFFitter:
         ValueError
             If error array contains non-positive or non-finite values.
         """
+        kwargs = {'inplace': True} if minversion(astropy, '7.0') else {}
+
         if self.fitter_maxiters is not None:
-            kwargs = {'maxiter': self.fitter_maxiters}
-        else:
-            kwargs = {}
+            kwargs.update({'maxiter': self.fitter_maxiters})
 
         weights = None
         if error is not None:
