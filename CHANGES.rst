@@ -50,6 +50,11 @@ New Features
     new ``results_to_init_params`` and ``results_to_model_params``
     classes for outputting fit results in different formats. [#2084]
 
+  - The ``PSFPhotometry`` and ``IterativePSFPhotometry`` ``fitter``
+    object now modifies the PSF model in place instead of creating a
+    copy, improving performance and significantly reducing memory usage
+    in some cases. [#2093]
+
 - ``photutils.segmentation``
 
   - An optional ``array`` keyword was added to the ``SourceCatalog``
