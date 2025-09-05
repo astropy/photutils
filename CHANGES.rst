@@ -113,6 +113,10 @@ Bug Fixes
     reduced chi-squared statistic (``reduced_chi2`` column in the
     results table). [#2086]
 
+  - Fixed a bug in ``EPSFBuilder`` where the output PSF would have the
+    wrong shape if the input ``stars`` were non-square cutouts. [#2089,
+    #2092]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where a newly-defined extra property of a
