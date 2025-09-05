@@ -14,12 +14,11 @@ from astropy.stats import SigmaClip
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
-from scipy.spatial import cKDTree
 
 from photutils.datasets import make_model_image
+from photutils.psf import CircularGaussianPRF, make_psf_model_image
 from photutils.psf.epsf import EPSFBuilder, EPSFFitter
 from photutils.psf.epsf_stars import EPSFStars, extract_stars
-from photutils.psf.functional_models import CircularGaussianPRF
 
 
 @pytest.fixture
@@ -27,42 +26,21 @@ def epsf_test_data():
     """
     Create a simulated image for testing.
     """
+    fwhm = 2.7
+    psf_model = CircularGaussianPRF(flux=1, fwhm=fwhm)
+    model_shape = (9, 9)
+    n_sources = 100
     shape = (750, 750)
+    data, true_params = make_psf_model_image(shape, psf_model, n_sources,
+                                             model_shape=model_shape,
+                                             flux=(500, 700),
+                                             min_separation=25,
+                                             border_size=25, seed=0)
 
-    # define random star positions
-    nstars = 100
-
-    rng = np.random.default_rng(0)
-    xx = rng.uniform(low=0, high=shape[1], size=nstars)
-    yy = rng.uniform(low=0, high=shape[0], size=nstars)
-
-    # enforce a minimum separation
-    min_dist = 25
-    coords = [(yy[0], xx[0])]
-    for xxi, yyi in zip(xx, yy, strict=True):
-        newcoord = [yyi, xxi]
-        dist, _ = cKDTree([newcoord]).query(coords, 1)
-        if np.min(dist) > min_dist:
-            coords.append(newcoord)
-    yy, xx = np.transpose(coords)
-    zz = rng.uniform(low=0, high=200000, size=len(xx))
-
-    # define a table of model parameters
-    fwhm = 4.7
-    sources = Table()
-    sources['amplitude'] = zz
-    sources['x_0'] = xx
-    sources['y_0'] = yy
-    sources['fwhm'] = np.zeros(len(xx)) + fwhm
-    sources['theta'] = 0.0
-
-    psf_model = CircularGaussianPRF(fwhm=fwhm)
-    data = make_model_image(shape, psf_model, sources)
     nddata = NDData(data)
-
     init_stars = Table()
-    init_stars['x'] = xx.astype(int)
-    init_stars['y'] = yy.astype(int)
+    init_stars['x'] = true_params['x_0'].astype(int)
+    init_stars['y'] = true_params['y_0'].astype(int)
 
     return {
         'fwhm': fwhm,
@@ -76,12 +54,11 @@ class TestEPSFBuild:
 
     def test_extract_stars(self, epsf_test_data):
         size = 25
-        match = 'were not extracted because their cutout region extended'
-        with pytest.warns(AstropyUserWarning, match=match):
-            stars = extract_stars(epsf_test_data['nddata'],
-                                  epsf_test_data['init_stars'], size=size)
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'],
+                              size=size)
 
-        assert len(stars) == 81
+        assert len(stars) == len(epsf_test_data['init_stars'])
         assert isinstance(stars, EPSFStars)
         assert isinstance(stars[0], EPSFStars)
         assert stars[0].data.shape == (size, size)
@@ -100,13 +77,12 @@ class TestEPSFBuild:
         size = 25
         match = 'were not extracted because their cutout region extended'
         ndd_inputs = (ndd1, ndd2, ndd3)
-        with pytest.warns(AstropyUserWarning, match=match):
-            outputs = [extract_stars(ndd_input, epsf_test_data['init_stars'],
-                                     size=size)
-                       for ndd_input in ndd_inputs]
+
+        outputs = [extract_stars(ndd_input, epsf_test_data['init_stars'],
+                                 size=size) for ndd_input in ndd_inputs]
 
         for stars in outputs:
-            assert len(stars) == 81
+            assert len(stars) == len(epsf_test_data['init_stars'])
             assert isinstance(stars, EPSFStars)
             assert isinstance(stars[0], EPSFStars)
             assert stars[0].data.shape == (size, size)
@@ -115,9 +91,10 @@ class TestEPSFBuild:
         assert_allclose(outputs[0].weights, outputs[1].weights)
         assert_allclose(outputs[0].weights, outputs[2].weights)
 
-        match = 'One or more weight values is not finite'
         uncertainty = StdDevUncertainty(np.zeros(shape))
         ndd = NDData(epsf_test_data['nddata'].data, uncertainty=uncertainty)
+
+        match = 'One or more weight values is not finite'
         with pytest.warns(AstropyUserWarning, match=match):
             stars = extract_stars(ndd, epsf_test_data['init_stars'][0:3],
                                   size=size)
@@ -158,15 +135,16 @@ class TestEPSFBuild:
     def test_epsf_fitting_bounds(self, epsf_test_data):
         size = 25
         oversampling = 4
-        match = 'were not extracted because their cutout region extended'
-        with pytest.warns(AstropyUserWarning, match=match):
-            stars = extract_stars(epsf_test_data['nddata'],
-                                  epsf_test_data['init_stars'], size=size)
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'],
+                              size=size)
+
         epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=8,
                                    progress_bar=True, norm_radius=25,
                                    recentering_maxiters=5,
                                    fitter=EPSFFitter(fit_boxsize=31),
                                    smoothing_kernel='quadratic')
+
         # With a boxsize larger than the cutout we expect the fitting to
         # fail for all stars, due to star._fit_error_status
         match1 = 'The ePSF fitting failed for all stars'
@@ -233,7 +211,6 @@ def test_epsf_build_oversampling(oversamp):
     offset = 50
     size = oversamp * offset + offset
     y, x = np.mgrid[0:oversamp, 0:oversamp] * offset + offset
-    sources['amplitude'] = np.full((nstars,), 100.0)
     sources['x_0'] = x.ravel() + xdithers
     sources['y_0'] = y.ravel() + ydithers
     sources['fwhm'] = np.full((nstars,), fwhm)
