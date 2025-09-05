@@ -32,10 +32,11 @@ New Features
   - ``GriddedPSFModel`` can now be used with a single input ePSF model,
     which will be equivalent to ``ImagePSF``. [#2034]
 
-  - The ``finder`` callable input to ``PSFPhotometry`` is no longer
-    restricted to have x and y column names of ``'xcentroid'`` and
-    ``'ycentroid'``. The allowed column names are now the same as those
-    allowed in the ``init_params`` table. [#2072]
+  - The ``finder`` callable input to ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` is no longer restricted to have x and y
+    column names of ``'xcentroid'`` and ``'ycentroid'``. The allowed
+    column names are now the same as those allowed in the
+    ``init_params`` table. [#2072]
 
   - Added a ``group_warning_threshold`` keyword to ``PSFPhotometry`` and
     ``IterativePSFPhotometry``. [#2081]
@@ -48,12 +49,16 @@ New Features
 
   - The ``PSFPhotometry`` and ``IterativePSFPhotometry`` classes have
     new ``results_to_init_params`` and ``results_to_model_params``
-    classes for outputting fit results in different formats. [#2084]
+    methods for outputting fit results in different formats. [#2084]
 
   - The ``PSFPhotometry`` and ``IterativePSFPhotometry`` ``fitter``
     object now modifies the PSF model in place instead of creating a
     copy, improving performance and significantly reducing memory usage
     in some cases. [#2093]
+
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now return a
+    reduced chi-squared statistic (``reduced_chi2`` column in the
+    results table). [#2086]
 
 - ``photutils.segmentation``
 
@@ -61,7 +66,7 @@ New Features
     ``make_cutouts`` method. [#2023]
 
   - Added a ``group`` keyword to the ``SegmentationImage``
-    ``to_regions`` method. [#2060, #2065]]
+    ``to_regions`` method. [#2060, #2065]
 
   - Added a ``decode_psf_flags`` utility function for decoding PSF
     photometry bit flags. [#2090]
@@ -100,8 +105,8 @@ Bug Fixes
   - Fixed the check in ``GriddedPSFModel`` for rectangular pixel grids.
     [#2035]
 
-  - Fixed a bug in ``PSFPhotometry`` where the ``'group_id'`` would be
-    ignored if included in the ``init_params`` table. [#2070]
+  - Fixed a bug in ``PSFPhotometry`` where the ``'group_id'`` column
+    would be ignored if included in the ``init_params`` table. [#2070]
 
   - Fixed a bug in ``PSFPhotometry`` where the output ``flux_err``
     column would not have units if the input data had units and the flux
@@ -111,12 +116,8 @@ Bug Fixes
     where an error would be raised if the x or y columns in
     ``init_params`` had units. [#2079]
 
-  - Fixed an bug in ``PSFPhotometry`` and ``IterativePSFPhotometry`` for
+  - Fixed a bug in ``PSFPhotometry`` and ``IterativePSFPhotometry`` for
     the boundary conditions where flag=2 would be set. [#2080]
-
-  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now return a
-    reduced chi-squared statistic (``reduced_chi2`` column in the
-    results table). [#2086]
 
   - Fixed a bug in ``EPSFBuilder`` where the output PSF would have the
     wrong shape if the input ``stars`` were non-square cutouts. [#2089,
@@ -126,7 +127,7 @@ Bug Fixes
 
   - Fixed an issue where a newly-defined extra property of a
     ``SourceCatalog`` with ``overwrite=True`` would not be added to
-    the ``extra_properties`` attribute.
+    the ``extra_properties`` attribute. [#2039]
 
   - Fixed an issue where the ``SegmentationImage`` ``segments``
     attribute would fail if any source segment was non-contiguous.
@@ -137,7 +138,7 @@ API Changes
 
 - ``photutils.background``
 
-  - An explicit ``ValueError`` is now raised in the input ``data`` to
+  - An explicit ``ValueError`` is now raised if the input ``data`` to
     ``Background2D`` contains all non-finite values. [#2062]
 
 - ``photutils.psf``
@@ -229,13 +230,13 @@ New Features
 - ``photutils.datasets``
 
   - A ``params_map`` keyword was added to ``make_model_image`` to allow
-    a custom mapping between model parameter names and columns names in
+    a custom mapping between model parameter names and column names in
     the parameter table. [#1994]
 
 - ``photutils.detection``
 
   - The ``find_peaks`` ``border_width`` keyword can now accept two
-    values, indicating the border width along the the y and x edges,
+    values, indicating the border width along the y and x edges,
     respectively. [#1957]
 
 - ``photutils.morphology``
@@ -262,7 +263,7 @@ Bug Fixes
   - Fixed a bug to ensure that the dtype of the ``SegmentationImage``
     ``labels`` always matches the image dtype. [#1986]
 
-  - Fixed a issue with the source labels after source deblending when
+  - Fixed an issue with the source labels after source deblending when
     using ``relabel=False``. [#1988]
 
 API Changes
@@ -465,7 +466,7 @@ New Features
 
   - Improved the accuracy of the progress bar in ``deblend_sources`` and
     ``SourceFinder`` when using multiprocessing. Also added the source
-    ID label number to the progress bar. [#1925, 1926]
+    ID label number to the progress bar. [#1925, #1926]
 
 Bug Fixes
 ^^^^^^^^^
