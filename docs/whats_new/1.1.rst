@@ -4,6 +4,11 @@
 What's New in Photutils 1.1?
 ****************************
 
+.. contents::
+   :local:
+   :depth: 2
+
+
 Overview
 ========
 Photutils 1.1 is a major release that adds new functionality since the

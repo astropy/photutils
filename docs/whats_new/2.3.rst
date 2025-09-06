@@ -1,0 +1,160 @@
+.. doctest-skip-all
+
+.. _whatsnew-2.3:
+
+****************************
+What's New in Photutils 2.3?
+****************************
+
+Here we highlight some of the new functionality of the 2.3 release.
+In addition to these changes, Photutils 2.3 includes several
+smaller improvements and bug fixes, which are described in the full
+:ref:`changelog`.
+
+.. contents::
+   :local:
+   :depth: 2
+
+
+Dependency Version Updates
+==========================
+
+Photutils 2.3 bumps the minimum required versions of several key
+dependencies to provide users with access to the latest features and
+performance improvements:
+
+- NumPy minimum version is now 1.25
+- SciPy minimum version is now 1.11.1
+- Matplotlib minimum version is now 3.8
+- scikit-image minimum version is now 0.21
+
+
+PSF Photometry Improvements
+===========================
+
+Enhanced Error Handling and Validation
+---------------------------------------
+
+The PSF photometry classes have been significantly improved with better
+error handling and validation:
+
+- These classes no longer fail for invalid sources (those with no overlap
+  with the input data, completely masked sources, or sources with too few
+  unmasked pixels for fitting). Instead, they assign specific flag values
+  (64, 128, 256) to identify these conditions.
+
+- ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise an error if
+  the input ``error`` array contains non-finite or zero values, preventing
+  silent failures during fitting.
+
+- A new ``group_warning_threshold`` keyword has been added to control when
+  warnings are issued about source grouping.
+
+
+Improved Performance and Memory Usage
+-------------------------------------
+
+- The fitter object in ``PSFPhotometry`` and ``IterativePSFPhotometry``
+  now modifies the PSF model in place instead of creating copies, resulting
+  in improved performance and significantly reduced memory usage.
+
+
+New Reduced Chi-squared Fit Statistic
+-------------------------------------
+
+The PSF photometry classes now return a reduced chi-squared statistic
+(``reduced_chi2`` column) in the results table.
+
+
+New Methods
+-----------
+
+The PSF photometry classes now include new methods for flexible output
+formatting:
+
+- ``results_to_init_params``: Converts fit results to initialization
+  parameter format
+- ``results_to_model_params``: Converts fit results to model parameter
+  format
+
+
+Enhanced Flexibility
+---------------------
+
+- ``GriddedPSFModel`` can now be used with a single input ePSF model,
+  making it equivalent to ``ImagePSF`` for simpler use cases.
+
+- The ``finder`` callable input to ``PSFPhotometry`` and
+  ``IterativePSFPhotometry`` now can return more flexible column names
+  beyond the previously required ``'xcentroid'`` and ``'ycentroid'``.
+
+
+New Utility Functions
+---------------------
+
+- ``decode_psf_flags``: A utility function for decoding PSF photometry
+  bit flags.
+
+- ``PSF_FLAGS`` object: Provides readable, named constants for each PSF
+  photometry bit flag and includes helper utilities for decoding.
+
+
+Isophote Package Improvements
+=============================
+
+- The ``build_ellipse_model`` function in the isophote module has been
+  Cythonized, making it considerably faster.
+
+- The ``build_ellipse_model`` function now includes an optional
+  ``sma_interval`` keyword argument that was previously hardcoded.
+
+
+Segmentation Enhancements
+=========================
+
+``SegmentationImage`` Improvements
+-----------------------------------
+
+- The ``to_regions`` method now supports a ``group`` keyword for
+  better control over region grouping.
+
+- The ``polygons`` attribute can now handle non-contiguous segments,
+  returning either Shapely ``Polygon`` or ``MultiPolygon`` objects as
+  appropriate.
+
+- The ``to_patches`` and ``plot_patches`` methods now return
+  ``matplotlib.patches.PathPatch`` objects for improved rendering.
+
+- The ``to_regions`` method now stores segment labels in the region
+  object's ``meta`` dictionary for easy identification.
+
+
+``SourceCatalog`` Features
+---------------------------
+
+- The ``make_cutouts`` method now includes an optional ``array`` keyword
+  for more flexible cutout generation.
+
+
+API Changes
+===========
+
+``Background2D`` now raises an explicit ``ValueError`` if the input data
+contains all non-finite values.
+
+
+Breaking Changes
+----------------
+
+The ``GriddedPSFModel`` ``data`` and ``grid_xypos`` attributes are now
+read-only to prevent accidental modification.
+
+
+Deprecations and Removals
+-------------------------
+
+- The ``PSFPhotometry`` ``fit_param`` attribute is now deprecated. Use the
+  new ``results_to_init_params`` method instead.
+
+- The deprecated ``PSFPhotometry`` ``fit_results`` attribute has been
+  removed.

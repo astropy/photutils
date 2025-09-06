@@ -1,8 +1,15 @@
 .. doctest-skip-all
 
-
 ****************************
 What's New in Photutils 1.3?
 ****************************
+
+.. contents::
+   :local:
+   :depth: 2
+
+
+Other changes
+=============
 
 Please see the :ref:`changelog` for the complete list of changes.

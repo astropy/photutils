@@ -9,6 +9,10 @@ addition to these major changes, Photutils 1.9 includes a large number
 of smaller improvements and bug fixes, which are described in the full
 :ref:`changelog`.
 
+.. contents::
+   :local:
+   :depth: 2
+
 
 Improved PSF Photometry classes
 -------------------------------

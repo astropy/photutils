@@ -9,6 +9,10 @@ In addition to these changes, Photutils 1.10 includes a large number
 of smaller improvements and bug fixes, which are described in the full
 :ref:`changelog`.
 
+.. contents::
+   :local:
+   :depth: 2
+
 
 Reading WebbPSF Gridded PSF Models
 ----------------------------------

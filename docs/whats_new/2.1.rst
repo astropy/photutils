@@ -11,6 +11,10 @@ In addition to these changes, Photutils 2.1 includes several
 smaller improvements and bug fixes, which are described in the full
 :ref:`changelog`.
 
+.. contents::
+   :local:
+   :depth: 2
+
 
 Aperture Photometry Output Table
 --------------------------------
@@ -50,7 +54,7 @@ Find Peaks Border Width
 -----------------------
 
 The ``find_peaks`` ``border_width`` keyword can now accept two values,
-indicating the border width along the the y and x edges, respectively.
+indicating the border width along the y and x edges, respectively.
 
 
 Border Exclusion in DAOStarFinder and StarFinder
@@ -76,7 +80,7 @@ New params_map keyword in make_model_image
 ------------------------------------------
 
 An optional ``params_map`` keyword was added to ``make_model_image`` to
-allow a custom mapping between model parameter names and columns names
+allow a custom mapping between model parameter names and column names
 in the parameter table.
 
 

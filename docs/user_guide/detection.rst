@@ -196,7 +196,7 @@ keyword to :func:`~photutils.detection.find_peaks` to also compute
 centroid coordinates with subpixel precision.
 
 As a simple example, let's find the local peaks in an image that are 5
-sigma above the background and a separated by at least 5 pixels::
+sigma above the background and are separated by at least 5 pixels::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.datasets import make_100gaussians_image
