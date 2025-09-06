@@ -12,6 +12,3 @@ Getting Started
     importing
     pixel_conventions
     citation
-    contributing
-    contributors
-    ../whats_new/index
