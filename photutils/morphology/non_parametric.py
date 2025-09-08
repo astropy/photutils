@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides functions for measuring non-parametric morphologies
-of sources.
+Define tools for measuring non-parametric morphologies of sources.
 """
 
 import numpy as np
