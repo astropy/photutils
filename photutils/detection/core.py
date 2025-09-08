@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module implements the base class and star finder kernel for
-detecting stars in an astronomical image.
+Define the base class and star finder kernel for detecting stars in an
+astronomical image.
 
 Each star-finding class should define a method called ``find_stars``
 that finds stars in an image.

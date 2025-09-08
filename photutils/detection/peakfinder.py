@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides tools for finding local peaks in an astronomical
-image.
+Define tools for finding local peaks in an astronomical image.
 """
 
 import warnings
