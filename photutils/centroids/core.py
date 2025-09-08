@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-The module contains tools for centroiding sources.
+Define tools for centroiding sources.
 """
 
 import inspect
