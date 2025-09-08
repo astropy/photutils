@@ -21,7 +21,7 @@ New Features
     [#2046]
 
   - ``build_ellipse_model`` also has an additional optional keyword
-     argument ``sma_interval``, which was previously hardcoded. [#2046]
+    argument ``sma_interval``, which was previously hardcoded. [#2046]
 
 - ``photutils.psf``
 
@@ -51,10 +51,10 @@ New Features
     new ``results_to_init_params`` and ``results_to_model_params``
     methods for outputting fit results in different formats. [#2084]
 
-  - The ``PSFPhotometry`` and ``IterativePSFPhotometry`` ``fitter``
-    object now modifies the PSF model in place instead of creating a
-    copy, improving performance and significantly reducing memory usage
-    in some cases. [#2093]
+  - When using Astropy 7.0+, the ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` ``fitter`` object now modifies the PSF
+    model in place instead of creating a copy, improving performance and
+    significantly reducing memory usage in some cases. [#2093]
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now return a
     reduced chi-squared statistic (``reduced_chi2`` column in the
