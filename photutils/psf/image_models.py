@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides image-based PSF models.
+Define image-based PSF models.
 """
 
 import copy
@@ -860,11 +860,11 @@ class FittableImageModel(Fittable2DModel):
 
 class _LegacyEPSFModel(Fittable2DModel):
     """
+    A class that models an effective PSF (ePSF).
+
     This class will be removed when the deprecated EPSFModel is removed,
     which will require the EPSFBuilder class to be
     rewritten/refactored/replaced.
-
-    A class that models an effective PSF (ePSF).
 
     The EPSFModel is normalized such that the sum of the PSF over the
     (undersampled) pixels within the input ``norm_radius`` is 1.0.

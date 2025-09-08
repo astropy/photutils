@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides tools for making simulated images for documentation
-examples and tests.
+Provide tools for making simulated images for documentation examples and
+tests.
 """
 
 import astropy.units as u

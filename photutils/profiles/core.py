@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides a base class for profiles.
+Define a base class for profiles.
 """
 
 import abc

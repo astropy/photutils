@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines interpolator classes for Background2D.
+Define interpolator classes for Background2D.
 """
 
 import numpy as np
@@ -16,7 +16,7 @@ __all__ = ['BkgIDWInterpolator', 'BkgZoomInterpolator']
 
 class BkgZoomInterpolator:
     """
-    This class generates full-sized background and background RMS images
+    Class to generate a full-sized background and background RMS images
     from lower-resolution mesh images using the `~scipy.ndimage.zoom`
     (spline) interpolator.
 
@@ -118,7 +118,7 @@ class BkgZoomInterpolator:
 
 class BkgIDWInterpolator:
     """
-    This class generates full-sized background and background RMS images
+    Class to generate a full-sized background and background RMS images
     from lower-resolution mesh images using inverse-distance weighting
     (IDW) interpolation (`~photutils.utils.ShepardIDWInterpolator`).
 

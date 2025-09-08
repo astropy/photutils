@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides base classes for aperture tests.
+Define base classes for aperture tests.
 """
 
 from astropy.coordinates import SkyCoord

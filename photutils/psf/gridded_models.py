@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines gridded PSF models.
+Define gridded PSF models.
 """
 
 import copy

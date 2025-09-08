@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides utility functions for image segmentation.
+Define utility functions for image segmentation.
 """
 
 import numpy as np

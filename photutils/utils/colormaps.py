@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides tools for generating matplotlib colormaps.
+Define tools for generating matplotlib colormaps.
 """
 
 import numpy as np

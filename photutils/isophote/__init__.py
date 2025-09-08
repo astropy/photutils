@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This subpackage contains tools for fitting elliptical isophotes to
-galaxy images.
+Subpackage containing tools for fitting elliptical isophotes to galaxy
+images.
 """
 
 from .ellipse import *  # noqa: F401, F403

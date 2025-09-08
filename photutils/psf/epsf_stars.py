@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides tools to extract cutouts of stars and data
-structures to hold the cutouts for fitting and building ePSFs.
+Define tools to extract cutouts of stars and data structures to hold the
+cutouts for fitting and building ePSFs.
 """
 
 import warnings

@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module profiles tools for building a model elliptical galaxy image
-from a list of isophotes.
+Define tools for building a model elliptical galaxy image from a list of
+isophotes.
 """
 
 import numpy as np

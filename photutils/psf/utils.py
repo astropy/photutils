@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides utilities for PSF-fitting photometry.
+Define utilities for PSF-fitting photometry.
 """
 
 import warnings

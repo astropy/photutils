@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines tools to plot Gridded PSF models.
+Define tools to plot Gridded PSF models.
 """
 
 import astropy

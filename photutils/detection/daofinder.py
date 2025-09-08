@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module implements the DAOStarFinder class.
+Define the DAOStarFinder class.
 """
 
 import inspect

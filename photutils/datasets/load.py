@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides tools for loading example datasets, from both
-within photutils and remote servers.
+Provide tools for loading example datasets, from both within photutils
+and remote servers.
 """
 
 from urllib.error import HTTPError, URLError

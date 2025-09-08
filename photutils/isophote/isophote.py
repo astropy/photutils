@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides classes to store the results of isophote fits.
+Define classes to store the results of isophote fits.
 """
 
 import astropy.units as u

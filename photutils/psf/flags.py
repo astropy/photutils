@@ -1,9 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Utilities for decoding PSF photometry bit flags.
-
-This module provides tools for working with PSF photometry flags,
-including centralized flag definitions and decoding utilities.
+Define tools for working with PSF photometry flags, including
+centralized flag definitions and decoding utilities.
 """
 
 from dataclasses import dataclass

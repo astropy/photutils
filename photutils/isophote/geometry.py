@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides a container class to store parameters for the
-geometry of an ellipse.
+Define a container class to store parameters for the geometry of an
+ellipse.
 """
 
 import math

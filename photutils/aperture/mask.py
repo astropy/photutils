@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines a class for aperture masks.
+Define a class for aperture masks.
 """
 
 import warnings

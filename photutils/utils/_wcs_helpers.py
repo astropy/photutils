@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides WCS helper tools.
+Define WCS helper tools.
 """
 
 import astropy.units as u

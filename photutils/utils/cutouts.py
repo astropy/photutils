@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides tools for generating 2D image cutouts.
+Define tools for generating 2D image cutouts.
 """
 
 import numpy as np
