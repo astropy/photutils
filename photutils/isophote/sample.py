@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides a class to sample data along an elliptical path.
+Define a class to sample data along an elliptical path.
 """
 
 import copy
