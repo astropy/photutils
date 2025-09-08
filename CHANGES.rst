@@ -21,7 +21,7 @@ New Features
     [#2046]
 
   - ``build_ellipse_model`` also has an additional optional keyword
-     argument ``sma_interval``, which was previously hardcoded. [#2046]
+    argument ``sma_interval``, which was previously hardcoded. [#2046]
 
 - ``photutils.psf``
 
