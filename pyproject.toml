@@ -280,7 +280,6 @@ ignore = [
     'D205',
     'D301',  # backslashes in docstrings (need line continuation)
     'D401',
-    'D404',
     'FBT002',
     'I001',
     'N803',
