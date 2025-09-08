@@ -16,13 +16,13 @@ namespace. For example, the following will not work::
 The tools in each subpackage must be imported separately. For example,
 to import the aperture photometry tools, use::
 
-    >>> from photutils import aperture
-    >>> aper = aperture.CircularAperture((10, 20), r=4)
+    >>> from photutils.aperture import CircularAperture
+    >>> aper = CircularAperture((10, 20), r=4)
 
 or::
 
-    >>> from photutils.aperture import CircularAperture
-    >>> aper = CircularAperture((10, 20), r=4)
+    >>> from photutils import aperture
+    >>> aper = aperture.CircularAperture((10, 20), r=4)
 
 
 .. warning::
@@ -45,5 +45,5 @@ or::
     begins with a leading underscore, then none of its members are
     public, regardless of whether they begin with a leading underscore.
 
-    Private objects are not intended for public use and may change
-    without notice.
+    **Private objects are not intended for public use and may change
+    without notice.**
