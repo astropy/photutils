@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides tools for generating curves of growth.
+Define tools for generating curves of growth.
 """
 import numpy as np
 from astropy.utils import lazyproperty
