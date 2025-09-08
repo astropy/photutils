@@ -54,9 +54,10 @@ error handling and validation:
 Improved Performance and Memory Usage
 -------------------------------------
 
-- The fitter object in ``PSFPhotometry`` and ``IterativePSFPhotometry``
-  now modifies the PSF model in place instead of creating copies, resulting
-  in improved performance and significantly reduced memory usage.
+- When using Astropy 7.0+, the fitter object in ``PSFPhotometry`` and
+  ``IterativePSFPhotometry`` now modifies the PSF model in place instead
+  of creating copies, resulting in improved performance and significantly
+  reduced memory usage.
 
 
 New Reduced Chi-squared Fit Statistic
