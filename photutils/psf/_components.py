@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides private implementation classes for PSF photometry
-components.
+Define private implementation classes for PSF photometry components.
 
 This is a private module. The classes within are implementation details
 of the PSFPhotometry class and are not intended for direct public use.

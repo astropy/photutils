@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides image-based PSF models.
+Define image-based PSF models.
 """
 
 import copy

@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides classes to perform PSF-fitting photometry.
+Define tools to perform PSF-fitting photometry.
 """
 
 import contextlib

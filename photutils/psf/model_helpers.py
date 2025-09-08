@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides helper utilities for making PSF models.
+Define helper utilities for making PSF models.
 """
 
 import contextlib
