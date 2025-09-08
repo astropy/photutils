@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines classes to estimate local background using a
-circular annulus aperture.
+Define classes to estimate local background using a circular annulus
+aperture.
 """
 
 import numpy as np

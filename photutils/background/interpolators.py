@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines interpolator classes for Background2D.
+Define interpolator classes for Background2D.
 """
 
 import numpy as np
