@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines elliptical and elliptical-annulus apertures in both
-pixel and sky coordinates.
+Define elliptical and elliptical-annulus apertures in both pixel and sky
+coordinates.
 """
 
 import math

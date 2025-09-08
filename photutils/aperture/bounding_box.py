@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines a class for a rectangular bounding box.
+Define a class for a rectangular bounding box.
 """
 
 import math

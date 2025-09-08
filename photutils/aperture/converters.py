@@ -1,7 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines tools to convert `regions.Region` objects to
-Aperture objects.
+Define tools to convert between `regions.Region` and Aperture objects
+and between `shapely.geometry.Polygon` and `regions.PolygonRegion`
+objects.
 """
 
 import astropy.units as u

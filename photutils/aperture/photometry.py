@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines tools to perform aperture photometry.
+Define tools to perform aperture photometry.
 """
 
 import warnings

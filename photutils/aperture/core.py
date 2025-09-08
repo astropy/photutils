@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines the base aperture classes.
+Define the base aperture classes.
 """
 
 import abc
