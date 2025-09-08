@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines nan-ignoring statistical functions, using bottleneck
-for performance if available.
+Define nan-ignoring statistical functions, using bottleneck for
+performance if available.
 """
 
 from functools import partial

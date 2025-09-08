@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module provides tools to round numpy arrays.
+Define tools to round numpy arrays.
 """
 
 import numpy as np
