@@ -1108,15 +1108,33 @@ class PSFPhotometry(ModelImageMixin):
                     end_pos = cumsum_npix[idx + 1]
                     source_residuals = residuals[start_pos:end_pos]
 
+                    # For qfit and cfit calculations, we need raw residuals
+                    # (data - model), not weighted residuals
+                    # (data - model)/error. If errors were provided, convert
+                    # weighted residuals back to raw residuals.
+                    raw_residuals = source_residuals
+                    if (error is not None and xi_all is not None
+                            and yi_all is not None):
+                        # Extract error values for this source's pixels
+                        xi_source = xi_all[idx]
+                        yi_source = yi_all[idx]
+                        error_vals = error[yi_source, xi_source]
+
+                        # Convert weighted residuals to raw residuals:
+                        # multiply by error
+                        if (np.all(error_vals > 0)
+                                and np.all(np.isfinite(error_vals))):
+                            raw_residuals = source_residuals * error_vals
+
                     # sum of absolute residuals
                     sum_abs_residuals[valid_idx] = float(
-                        np.abs(source_residuals).sum())
+                        np.abs(raw_residuals).sum())
 
                     # center residual
                     cen_idx = cen_index_arr[valid_idx]
                     if np.isfinite(cen_idx):
                         cen_residuals[valid_idx] = float(
-                            -source_residuals[int(cen_idx)])
+                            -raw_residuals[int(cen_idx)])
                     else:
                         cen_residuals[valid_idx] = np.nan
 
