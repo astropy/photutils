@@ -553,18 +553,31 @@ class IterativePSFPhotometry(ModelImageMixin):
               fit, and error of the source flux
             * ``npixfit`` : the number of unmasked pixels used to fit
               the source
-            * ``qfit`` : a quality-of-fit metric defined as the
-              absolute value of the sum of the fit residuals divided by
-              the fit flux
+            * ``qfit`` : a quality-of-fit metric defined as the the sum
+              of the absolute value of the fit residuals divided by the
+              fit flux. ``qfit`` is zero for sources that are perfectly
+              fit by the PSF model.
             * ``cfit`` : a quality-of-fit metric defined as the
-              fit residual in the initial central pixel value divided by
-              the fit flux. NaN values indicate that the central pixel
-              was masked.
+              fit residual (data - model) in the initial central pixel
+              value divided by the fit flux. NaN values indicate that
+              the central pixel was masked. Large positive values
+              indicate sources that are sharper than the PSF model
+              (e.g., cosmic ray, hot pixel, etc.). Large negative values
+              indicate sources that are broader than the PSF model
             * ``reduced_chi2`` : the reduced chi-squared statistic. If
               no ``error`` array is provided, ``reduced_chi2`` values
               will be NaN.
             * ``flags`` : bitwise flag values
               <flag descriptions>
+
+        Notes
+        -----
+        The ``qfit`` and ``cfit`` metrics are
+        equivalent to the ``q`` and ``C`` fits metrics
+        defined by the HST PSF photometry `hst1pass
+        <https://www.stsci.edu/files/live/sites/www/files/home/hst/instr
+        umentation/acs/documentation/instrument-science-reports-isrs/_do
+        cuments/isr2202.pdf>`_ software.
         """
         if isinstance(data, NDData):
             data_, mask, error = PSFPhotometry._coerce_nddata(data)
