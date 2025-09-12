@@ -55,23 +55,23 @@ class IterativePSFPhotometry(ModelImageMixin):
         signal-to-noise.
 
     finder : callable or `~photutils.detection.StarFinderBase`
-        A callable used to identify sources in an image. The
-        ``finder`` must accept a 2D image as input and return a
-        `~astropy.table.Table` containing the x and y centroid
-        positions. These positions are used as the starting points for
-        the PSF fitting. The allowed ``x`` column names are (same suffix
-        for ``y``): ``'x_init'``, ``'xinit'``, ``'x'``, ``'x_0'``,
-        ``'x0'``, ``'xcentroid'``, ``'x_centroid'``, ``'x_peak'``,
-        ``'xcen'``, ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_fit'``,
-        and ``'xfit'``. If `None`, then the initial (x, y) model
-        positions must be input using the ``init_params`` keyword
-        when calling the class. The (x, y) values in ``init_params``
-        override this keyword *only for the first iteration*. If
-        this class is run on an image that has units (i.e., a
-        `~astropy.units.Quantity` array), then certain ``finder``
-        keywords (e.g., ``threshold``) must have the same units. Please
-        see the documentation for the specific ``finder`` class for more
-        information.
+        A callable used to identify sources in an image. This is a
+        required input for `IterativePSFPhotometry`. The ``finder`` must
+        accept a 2D image as input and return a `~astropy.table.Table`
+        containing the x and y centroid positions. These positions are
+        used as the starting points for the PSF fitting. The allowed
+        ``x`` column names are (same suffix for ``y``): ``'x_init'``,
+        ``'xinit'``, ``'x'``, ``'x_0'``, ``'x0'``, ``'xcentroid'``,
+        ``'x_centroid'``, ``'x_peak'``, ``'xcen'``, ``'x_cen'``,
+        ``'xpos'``, ``'x_pos'``, ``'x_fit'``, and ``'xfit'``. If `None`,
+        then the initial (x, y) model positions must be input using
+        the ``init_params`` keyword when calling the class. The (x, y)
+        values in ``init_params`` override this keyword *only for the
+        first iteration*. If this class is run on an image that has
+        units (i.e., a `~astropy.units.Quantity` array), then certain
+        ``finder`` keywords (e.g., ``threshold``) must have the same
+        units. Please see the documentation for the specific ``finder``
+        class for more information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group sources. Typically, grouped sources
@@ -116,11 +116,12 @@ class IterativePSFPhotometry(ModelImageMixin):
         must be input. See the Notes section for more details.
 
     aperture_radius : float, optional
-        The radius of the circular aperture used to estimate the initial
-        flux of each source. If `None`, then the initial flux values
-        must be provided in the ``init_params`` table. The aperture
-        radius must be a strictly positive scalar. If initial flux
-        values are present in the ``init_params`` table, they will
+        The radius of the circular aperture used to estimate the
+        initial flux of each source. This is a required input for
+        `IterativePSFPhotometry`. If `None`, then the initial flux
+        values must be provided in the ``init_params`` table. The
+        aperture radius must be a strictly positive scalar. If initial
+        flux values are present in the ``init_params`` table, they will
         override this keyword *only for the first iteration*.
 
     localbkg_estimator : `~photutils.background.LocalBackground` or `None`, \
