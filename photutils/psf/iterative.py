@@ -13,16 +13,14 @@ from astropy.table import QTable, vstack
 from astropy.utils import lazyproperty
 
 from photutils.psf.photometry import PSFPhotometry
-from photutils.psf.utils import ModelImageMixin
+from photutils.psf.utils import ModelImageMixin, _create_call_docstring
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
-
-from .flags import _update_call_docstring
 
 __all__ = ['IterativePSFPhotometry']
 
 
-@_update_call_docstring
+@_create_call_docstring(iterative=True)
 class IterativePSFPhotometry(ModelImageMixin):
     """
     Class to iteratively perform PSF photometry.
@@ -465,120 +463,6 @@ class IterativePSFPhotometry(ModelImageMixin):
         return vstack([prepared_orig, new_sources])
 
     def __call__(self, data, *, mask=None, error=None, init_params=None):
-        """
-        Perform PSF photometry.
-
-        Parameters
-        ----------
-        data : 2D `~numpy.ndarray`
-            The 2D array on which to perform photometry. Invalid data
-            values (i.e., NaN or inf) are automatically masked.
-
-        mask : 2D bool `~numpy.ndarray`, optional
-            A boolean mask with the same shape as ``data``, where a
-            `True` value indicates the corresponding element of ``data``
-            is masked.
-
-        error : 2D `~numpy.ndarray`, optional
-            The pixel-wise 1-sigma errors of the input ``data``.
-            ``error`` is assumed to include *all* sources of
-            error, including the Poisson error of the sources (see
-            `~photutils.utils.calc_total_error`) . ``error`` must have
-            the same shape as the input ``data``. If ``data`` is a
-            `~astropy.units.Quantity` array, then ``error`` must also be
-            a `~astropy.units.Quantity` array with the same units.
-
-        init_params : `~astropy.table.Table` or `None`, optional
-            A table containing the initial guesses of the model
-            parameters (e.g., x, y, flux) for each source *only for
-            the first iteration*. If the x and y values are not input,
-            then the ``finder`` will be used for all iterations. If the
-            flux values are not input, then the initial fluxes will be
-            measured using the ``aperture_radius`` keyword. Note that
-            the initial flux values refer to the model flux parameters
-            and are not corrected for local background values (computed
-            using ``localbkg_estimator`` or input in a ``local_bkg``
-            column) The allowed column names are:
-
-            * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
-              ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
-              ``x_cen``, ``xpos``, ``x_pos``, ``x_fit``, and ``xfit``.
-
-            * ``y_init``, ``yinit``, ``y``, ``y_0``, ``y0``,
-              ``ycentroid``, ``y_centroid``, ``y_peak``, ``ycen``,
-              ``y_cen``, ``ypos``, ``y_pos``, ``y_fit``, and ``yfit``.
-
-            * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
-              ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
-              ``segment_flux``, and ``kron_flux``.
-
-            * If the PSF model has additional free parameters that are
-              fit, they can be included in the table. The column
-              names must match the parameter names in the PSF model.
-              They can also be suffixed with either the "_init" or
-              "_fit" suffix. The suffix search order is "_init", ""
-              (no suffix), and "_fit". For example, if the PSF model
-              has an additional parameter named "sigma", then the
-              allowed column names are: "sigma_init", "sigma", and
-              "sigma_fit". If the column name is not found in the
-              table, then the default value from the PSF model will be
-              used. The default values from the PSF model will also be
-              used for all iterations after the first.
-
-            The parameter names are searched in the input table in the
-            above order, stopping at the first match.
-
-            If ``data`` is a `~astropy.units.Quantity` array, then the
-            initial flux values in this table must also must also have
-            compatible units.
-
-        Returns
-        -------
-        table : `~astropy.table.QTable`
-            An astropy table with the PSF-fitting results. The table
-            will contain the following columns:
-
-            * ``id`` : unique identification number for the source
-            * ``group_id`` : unique identification number for the
-              source group
-            * ``group_size`` : the total number of sources that were
-              simultaneously fit along with the given source
-            * ``iter_detected`` : the iteration number in which the
-              source was detected
-            * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
-              error of the source x center
-            * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit, and
-              error of the source y center
-            * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
-              fit, and error of the source flux
-            * ``npixfit`` : the number of unmasked pixels used to fit
-              the source
-            * ``qfit`` : a quality-of-fit metric defined as the the sum
-              of the absolute value of the fit residuals divided by the
-              fit flux. ``qfit`` is zero for sources that are perfectly
-              fit by the PSF model.
-            * ``cfit`` : a quality-of-fit metric defined as the
-              fit residual (data - model) in the initial central pixel
-              value divided by the fit flux. NaN values indicate that
-              the central pixel was masked. Large positive values
-              indicate sources that are sharper than the PSF model
-              (e.g., cosmic ray, hot pixel, etc.). Large negative values
-              indicate sources that are broader than the PSF model
-            * ``reduced_chi2`` : the reduced chi-squared statistic. If
-              no ``error`` array is provided, ``reduced_chi2`` values
-              will be NaN.
-            * ``flags`` : bitwise flag values
-              <flag descriptions>
-
-        Notes
-        -----
-        The ``qfit`` and ``cfit`` metrics are
-        equivalent to the ``q`` and ``C`` fits metrics
-        defined by the HST PSF photometry `hst1pass
-        <https://www.stsci.edu/files/live/sites/www/files/home/hst/instr
-        umentation/acs/documentation/instrument-science-reports-isrs/_do
-        cuments/isr2202.pdf>`_ software.
-        """
         if isinstance(data, NDData):
             data_, mask, error = PSFPhotometry._coerce_nddata(data)
             return self.__call__(data_, mask=mask, error=error,
