@@ -210,7 +210,6 @@ class _PSFParameterMapper:
         return table
 
 
-@_create_call_docstring(iterative=False)
 class PSFPhotometry(ModelImageMixin):
     """
     Class to perform PSF photometry.
@@ -1456,6 +1455,7 @@ class PSFPhotometry(ModelImageMixin):
 
         return data_array, mask, error
 
+    @_create_call_docstring(iterative=False)
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         # reset state from previous runs
         self._reset_results()

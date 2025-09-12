@@ -20,7 +20,6 @@ from photutils.utils.exceptions import NoDetectionsWarning
 __all__ = ['IterativePSFPhotometry']
 
 
-@_create_call_docstring(iterative=True)
 class IterativePSFPhotometry(ModelImageMixin):
     """
     Class to iteratively perform PSF photometry.
@@ -463,6 +462,7 @@ class IterativePSFPhotometry(ModelImageMixin):
 
         return vstack([prepared_orig, new_sources])
 
+    @_create_call_docstring(iterative=True)
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         if isinstance(data, NDData):
             data_, mask, error = PSFPhotometry._coerce_nddata(data)

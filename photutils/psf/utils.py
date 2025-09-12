@@ -627,11 +627,11 @@ def _get_psf_model_main_params(psf_model):
 
 def _create_call_docstring(iterative=False):
     """
-    Decorator factory to create the __call__ method docstring for both
-    PSF photometry classes.
+    Decorator factory to create the __call__ method docstring for PSF
+    photometry methods.
 
     This decorator factory creates a decorator that provides a base
-    docstring for PSF photometry classes and customizes it based on the
+    docstring for PSF photometry methods and customizes it based on the
     class type (PSFPhotometry vs IterativePSFPhotometry).
 
     Parameters
@@ -643,11 +643,11 @@ def _create_call_docstring(iterative=False):
     Returns
     -------
     decorator : callable
-        A class decorator that updates the __call__ method docstring.
+        A method decorator that updates the method's docstring.
     """
-    def decorator(cls):
+    def decorator(func):
         """
-        Class decorator that updates the __call__ method docstring.
+        Method decorator that updates the method's docstring.
         """
         # Import PSF_FLAGS here to avoid circular imports
         from .flags import PSF_FLAGS
@@ -809,8 +809,8 @@ def _create_call_docstring(iterative=False):
             customized_docstring = customized_docstring.replace(
                 placeholder, flag_text)
 
-        cls.__call__.__doc__ = customized_docstring
-
-        return cls
+        # Update the method's docstring
+        func.__doc__ = customized_docstring
+        return func
 
     return decorator
