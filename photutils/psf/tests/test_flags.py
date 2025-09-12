@@ -8,7 +8,6 @@ import pytest
 
 from photutils.psf import IterativePSFPhotometry, PSFPhotometry
 from photutils.psf.flags import (PSF_FLAGS, _PSFFlagDefinition, _PSFFlags,
-                                 _update_call_docstring,
                                  _update_decode_docstring, decode_psf_flags)
 
 
@@ -425,60 +424,6 @@ def test_psf_flags_completeness():
     decoded_all = decode_psf_flags(all_combined)
     assert len(decoded_all) == 9
     assert set(decoded_all) == set(PSF_FLAGS.names)
-
-
-def test_update_call_docstring_decorator():
-    """
-    Test the update_call_docstring decorator.
-    """
-    @_update_call_docstring
-    class DecoratedPSFClass:
-        def __call__(self, data):
-            """
-            Perform decorated PSF photometry.
-
-            Returns
-            -------
-            table : Table
-                Results with flags:
-
-                * ``flags`` : bitwise flag values
-                  <flag descriptions>
-            """
-
-    # Verify decorator was applied
-    docstring = DecoratedPSFClass.__call__.__doc__
-
-    # Should have new dynamic descriptions
-    assert 'npixfit smaller than full fit_shape region' in docstring
-    assert 'possible non-convergence' in docstring
-
-    # Should not have placeholder
-    assert '<insert description list here>' not in docstring
-
-    # Should preserve other content
-    assert 'Perform decorated PSF photometry' in docstring
-
-
-def test_update_call_docstring_noop():
-    """
-    Test that the update_call_docstring decorator is a no-op when
-    conditions are not met.
-    """
-    @_update_call_docstring
-    class NoCallPSFClass:
-        pass
-
-    @_update_call_docstring
-    class NoCallDocsPSFClass:
-        def __call__(self, data):
-            pass
-
-    docstring = NoCallPSFClass.__call__.__doc__
-    assert docstring == 'Call self as a function.'
-
-    docstring = NoCallDocsPSFClass.__call__.__doc__
-    assert docstring is None
 
 
 def test_psf_classes_docstrings():
