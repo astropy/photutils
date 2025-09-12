@@ -623,3 +623,194 @@ def _get_psf_model_main_params(psf_model):
         raise ValueError(msg)
 
     return model_params
+
+
+def _create_call_docstring(iterative=False):
+    """
+    Decorator factory to create the __call__ method docstring for PSF
+    photometry methods.
+
+    This decorator factory creates a decorator that provides a base
+    docstring for PSF photometry methods and customizes it based on the
+    class type (PSFPhotometry vs IterativePSFPhotometry).
+
+    Parameters
+    ----------
+    iterative : bool, optional
+        If True, customize the docstring for IterativePSFPhotometry.
+        If False, customize for PSFPhotometry.
+
+    Returns
+    -------
+    decorator : callable
+        A method decorator that updates the method's docstring.
+    """
+    def decorator(func):
+        """
+        Method decorator that updates the method's docstring.
+        """
+        # Import PSF_FLAGS here to avoid circular imports
+        from .flags import PSF_FLAGS
+
+        base_docstring = """
+        Perform PSF photometry.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D array on which to perform photometry. Invalid data
+            values (i.e., NaN or inf) are automatically masked.
+
+        mask : 2D bool `~numpy.ndarray`, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.
+
+        error : 2D `~numpy.ndarray`, optional
+            The pixel-wise 1-sigma errors of the input ``data``.
+            ``error`` is assumed to include *all* sources of error,
+            including the Poisson error of the sources. ``error`` must
+            have the same shape as the input ``data``. If ``data`` is a
+            `~astropy.units.Quantity` array, then ``error`` must also be
+            a `~astropy.units.Quantity` array with the same units.
+
+        init_params : `~astropy.table.Table` or `None`, optional
+            A table containing the initial guesses of the
+            model parameters (e.g., x, y, flux) for each
+            source{init_params_suffix}. If the initial x and y values
+            are not included, then the ``finder`` keyword must be
+            defined. If the initial flux values are not included,
+            then the ``aperture_radius`` keyword must be defined to
+            measure the initial flux values. Note that the initial
+            flux values refer to the model flux parameters and are
+            not corrected for local background values (computed using
+            ``localbkg_estimator`` or input in a ``local_bkg`` column).
+            The allowed column names are:
+
+            * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
+              ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
+              ``x_cen``, ``xpos``, ``x_pos``, ``x_fit``, and ``xfit``.
+
+            * ``y_init``, ``yinit``, ``y``, ``y_0``, ``y0``,
+              ``ycentroid``, ``y_centroid``, ``y_peak``, ``ycen``,
+              ``y_cen``, ``ypos``, ``y_pos``, ``y_fit``, and ``yfit``.
+
+            * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
+              ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
+              ``segment_flux``, and ``kron_flux``.
+
+            * If the PSF model has additional free parameters that are
+              fit, they can be included in the table. The column
+              names must match the parameter names in the PSF model.
+              They can also be suffixed with either the "_init" or
+              "_fit" suffix. The suffix search order is "_init", ""
+              (no suffix), and "_fit". For example, if the PSF model
+              has an additional parameter named "sigma", then the
+              allowed column names are: "sigma_init", "sigma", and
+              "sigma_fit". If the column name is not found in the
+              table, then the default value from the PSF model will be
+              used.
+
+            The parameter names are searched in the input table in the
+            above order, stopping at the first match.
+
+            If ``data`` is a `~astropy.units.Quantity` array, then the
+            initial flux values in this table must also must also have
+            compatible units.
+
+            The table can also have ``group_id`` and ``local_bkg``
+            columns. If ``group_id`` is input, the values will
+            be used and ``grouper`` keyword will be ignored. If
+            ``local_bkg`` is input, those values will be used and the
+            ``localbkg_estimator`` will be ignored. If ``data`` has
+            units, then the ``local_bkg`` values must have the same
+            units.
+
+        Returns
+        -------
+        table : `~astropy.table.QTable`
+            An astropy table with the PSF-fitting results. The table
+            will contain the following columns:
+
+            * ``id`` : unique identification number for the source
+            * ``group_id`` : unique identification number for the
+              source group
+            * ``group_size`` : the total number of sources in the group.
+              This number includes sources that are in the group, but were
+              not fit due to being masked, having no overlap with the
+              input data, or having too few pixels for a fit.
+{iter_detected_column}
+            * ``x_init``, ``x_fit``, ``x_err`` : the initial,
+              fit and error of the source x center
+            * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit,
+              and error of the source y center
+            * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
+              fit, and error of the source flux
+            * ``npixfit`` : the number of unmasked pixels used to fit
+              the source
+            * ``qfit`` : a quality-of-fit metric defined as the the sum
+              of the absolute value of the fit residuals divided by the
+              fit flux. ``qfit`` is zero for sources that are perfectly
+              fit by the PSF model.
+            * ``cfit`` : a quality-of-fit metric defined as the
+              fit residual (data - model) in the initial central pixel
+              value divided by the fit flux. NaN values indicate that
+              the central pixel was masked. Large positive values
+              indicate sources that are sharper than the PSF model
+              (e.g., cosmic ray, hot pixel, etc.). Large negative values
+              indicate sources that are broader than the PSF model
+            * ``reduced_chi2`` : the reduced chi-squared statistic. If
+              no ``error`` array is provided, ``reduced_chi2`` values
+              will be NaN.
+            * ``flags`` : bitwise flag values
+              <flag descriptions>
+
+        Notes
+        -----
+        The ``qfit`` and ``cfit`` metrics are equivalent to the ``q``
+        and ``C`` fits metrics defined by the HST PSF photometry
+        `hst1pass
+        <https://www.stsci.edu/files/live/sites/www/files/home/hst/instr
+        umentation/acs/documentation/instrument-science-reports-isrs/_do
+        cuments/isr2202.pdf>`_ software.
+        """
+
+        if iterative:
+            # Customizations for IterativePSFPhotometry
+            customized_docstring = base_docstring.format(
+                init_params_suffix=(' *only for\n            '
+                                    'the first iteration*'),
+                iter_detected_column=('            * ``iter_detected`` : the '
+                                      'iteration number in which the'
+                                      '\n              source was detected\n'),
+            )
+        else:
+            # Customizations for PSFPhotometry
+            customized_docstring = base_docstring.format(
+                init_params_suffix='',
+                iter_detected_column='',
+            )
+
+        # Apply the flag descriptions replacement
+        placeholder = '<flag descriptions>'
+        if placeholder in customized_docstring:
+            # Generate the flag descriptions
+            flag_descriptions = []
+            flag_descriptions.append('')
+            flag_descriptions.append('              - 0 : no flags')
+
+            for flag_def in PSF_FLAGS.FLAG_DEFINITIONS:
+                desc = flag_def.description
+                line = f'              - {flag_def.bit_value} : {desc}'
+                flag_descriptions.append(line)
+
+            # Replace the placeholder with the flag descriptions
+            flag_text = '\n'.join(flag_descriptions)
+            customized_docstring = customized_docstring.replace(
+                placeholder, flag_text)
+
+        # Update the method's docstring
+        func.__doc__ = customized_docstring
+        return func
+
+    return decorator

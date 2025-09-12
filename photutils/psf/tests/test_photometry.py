@@ -1760,3 +1760,42 @@ def test_reduced_chi2_metric():
     # Test without error array
     results_no_error = psfphot(data, init_params=true_params)
     assert np.all(np.isnan(results_no_error['reduced_chi2']))
+
+
+def test_qfit_cfit_with_different_errors(test_data):
+    """
+    Test qfit and cfit with different error values.
+    """
+    data, error, sources = test_data
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+
+    # Test without errors
+    phot_no_error = psfphot(data)
+
+    # Test without providing error array
+    phot = psfphot(data, error=error)
+
+    # Test with small errors
+    error_small = np.full(data.shape, 0.1)
+    phot_small_error = psfphot(data, error=error_small)
+
+    # Test with large errors
+    error_large = np.full(data.shape, 10.0)
+    phot_large_error = psfphot(data, error=error_large)
+
+    assert np.all(phot['qfit'] >= 0)
+    assert np.all(phot_no_error['qfit'] >= 0)
+    assert np.all(phot_small_error['qfit'] >= 0)
+    assert np.all(phot_large_error['qfit'] >= 0)
+
+    assert_allclose(phot['qfit'], phot_no_error['qfit'])
+    assert_allclose(phot['cfit'], phot_no_error['cfit'])
+    assert_allclose(phot_small_error['qfit'], phot_no_error['qfit'])
+    assert_allclose(phot_small_error['cfit'], phot_no_error['cfit'])
+    assert_allclose(phot_large_error['qfit'], phot_no_error['qfit'])
+    assert_allclose(phot_large_error['cfit'], phot_no_error['cfit'])

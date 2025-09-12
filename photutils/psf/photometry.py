@@ -21,14 +21,13 @@ from photutils.background import LocalBackground
 from photutils.psf._components import (PSFDataProcessor, PSFFitter,
                                        PSFResultsAssembler)
 from photutils.psf.groupers import SourceGrouper
-from photutils.psf.utils import (ModelImageMixin, _get_psf_model_main_params,
-                                 _make_mask, _validate_psf_model)
+from photutils.psf.utils import (ModelImageMixin, _create_call_docstring,
+                                 _get_psf_model_main_params, _make_mask,
+                                 _validate_psf_model)
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
-
-from .flags import _update_call_docstring
 
 __all__ = ['PSFPhotometry']
 
@@ -211,7 +210,6 @@ class _PSFParameterMapper:
         return table
 
 
-@_update_call_docstring
 class PSFPhotometry(ModelImageMixin):
     """
     Class to perform PSF photometry.
@@ -1108,15 +1106,33 @@ class PSFPhotometry(ModelImageMixin):
                     end_pos = cumsum_npix[idx + 1]
                     source_residuals = residuals[start_pos:end_pos]
 
+                    # For qfit and cfit calculations, we need raw residuals
+                    # (data - model), not weighted residuals
+                    # (data - model)/error. If errors were provided, convert
+                    # weighted residuals back to raw residuals.
+                    raw_residuals = source_residuals
+                    if (error is not None and xi_all is not None
+                            and yi_all is not None):
+                        # Extract error values for this source's pixels
+                        xi_source = xi_all[idx]
+                        yi_source = yi_all[idx]
+                        error_vals = error[yi_source, xi_source]
+
+                        # Convert weighted residuals to raw residuals:
+                        # multiply by error
+                        if (np.all(error_vals > 0)
+                                and np.all(np.isfinite(error_vals))):
+                            raw_residuals = source_residuals * error_vals
+
                     # sum of absolute residuals
                     sum_abs_residuals[valid_idx] = float(
-                        np.abs(source_residuals).sum())
+                        np.abs(raw_residuals).sum())
 
                     # center residual
                     cen_idx = cen_index_arr[valid_idx]
                     if np.isfinite(cen_idx):
                         cen_residuals[valid_idx] = float(
-                            -source_residuals[int(cen_idx)])
+                            -raw_residuals[int(cen_idx)])
                     else:
                         cen_residuals[valid_idx] = np.nan
 
@@ -1439,116 +1455,8 @@ class PSFPhotometry(ModelImageMixin):
 
         return data_array, mask, error
 
+    @_create_call_docstring(iterative=False)
     def __call__(self, data, *, mask=None, error=None, init_params=None):
-        """
-        Perform PSF photometry.
-
-        Parameters
-        ----------
-        data : 2D `~numpy.ndarray`
-            The 2D array on which to perform photometry. Invalid data
-            values (i.e., NaN or inf) are automatically masked.
-
-        mask : 2D bool `~numpy.ndarray`, optional
-            A boolean mask with the same shape as ``data``, where a
-            `True` value indicates the corresponding element of ``data``
-            is masked.
-
-        error : 2D `~numpy.ndarray`, optional
-            The pixel-wise 1-sigma errors of the input ``data``.
-            ``error`` is assumed to include *all* sources of
-            error, including the Poisson error of the sources
-            (see `~photutils.utils.calc_total_error`) . ``error``
-            must have the same shape as the input ``data``. If ``data``
-            is a `~astropy.units.Quantity` array, then ``error`` must
-            also be a `~astropy.units.Quantity` array with the same
-            units.
-
-        init_params : `~astropy.table.Table` or `None`, optional
-            A table containing the initial guesses of the model
-            parameters (e.g., x, y, flux) for each source. If the x and
-            y values are not input, then the ``finder`` keyword must be
-            defined. If the flux values are not input, then the initial
-            fluxes will be measured using the ``aperture_radius``
-            keyword, which must be defined. Note that the initial
-            flux values refer to the model flux parameters and are
-            not corrected for local background values (computed using
-            ``localbkg_estimator`` or input in a ``local_bkg`` column)
-            The allowed column names are:
-
-            * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
-              ``xcentroid``, ``x_centroid``, ``x_peak``, ``xcen``,
-              ``x_cen``, ``xpos``, ``x_pos``, ``x_fit``, and ``xfit``.
-
-            * ``y_init``, ``yinit``, ``y``, ``y_0``, ``y0``,
-              ``ycentroid``, ``y_centroid``, ``y_peak``, ``ycen``,
-              ``y_cen``, ``ypos``, ``y_pos``, ``y_fit``, and ``yfit``.
-
-            * ``flux_init``, ``fluxinit``, ``flux``, ``flux_0``,
-              ``flux0``, ``flux_fit``, ``fluxfit``, ``source_sum``,
-              ``segment_flux``, and ``kron_flux``.
-
-            * If the PSF model has additional free parameters that are
-              fit, they can be included in the table. The column names
-              must match the parameter names in the PSF model. They can
-              also be suffixed with either the "_init" or "_fit" suffix.
-              The suffix search order is "_init", "" (no suffix), and
-              "_fit". For example, if the PSF model has an additional
-              parameter named "sigma", then the allowed column names are:
-              "sigma_init", "sigma", and "sigma_fit". If the column name
-              is not found in the table, then the default value from the
-              PSF model will be used.
-
-            The parameter names are searched in the input table in the
-            above order, stopping at the first match.
-
-            If ``data`` is a `~astropy.units.Quantity` array, then the
-            initial flux values in this table must also must also have
-            compatible units.
-
-            The table can also have ``group_id`` and ``local_bkg``
-            columns. If ``group_id`` is input, the values will
-            be used and ``grouper`` keyword will be ignored. If
-            ``local_bkg`` is input, those values will be used and the
-            ``localbkg_estimator`` will be ignored. If ``data`` has
-            units, then the ``local_bkg`` values must have the same
-            units.
-
-        Returns
-        -------
-        table : `~astropy.table.QTable`
-            An astropy table with the PSF-fitting results. The table
-            will contain the following columns:
-
-            * ``id`` : unique identification number for the source
-            * ``group_id`` : unique identification number for the
-              source group
-            * ``group_size`` : the total number of sources in the
-              group. This number includes sources that are in the
-              group, but were not fit due to being masked, having
-              no overlap with the input data, or having too few
-              pixels for a fit.
-            * ``x_init``, ``x_fit``, ``x_err`` : the initial, fit, and
-              error of the source x center
-            * ``y_init``, ``y_fit``, ``y_err`` : the initial, fit, and
-              error of the source y center
-            * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
-              fit, and error of the source flux
-            * ``npixfit`` : the number of unmasked pixels used to fit
-              the source
-            * ``qfit`` : a quality-of-fit metric defined as the the sum
-              of the absolute value of the fit residuals divided by the
-              fit flux
-            * ``cfit`` : a quality-of-fit metric defined as the
-              fit residual in the initial central pixel value divided by
-              the fit flux. NaN values indicate that the central pixel
-              was masked.
-            * ``reduced_chi2`` : the reduced chi-squared statistic. If
-              no ``error`` array is provided, ``reduced_chi2`` values
-              will be NaN.
-            * ``flags`` : bitwise flag values
-              <flag descriptions>
-        """
         # reset state from previous runs
         self._reset_results()
 

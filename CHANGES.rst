@@ -123,6 +123,10 @@ Bug Fixes
     wrong shape if the input ``stars`` were non-square cutouts. [#2089,
     #2092]
 
+  - Fixed a bug in the calculation of the ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` ``qfit`` and ``cfit`` to not include the
+    fit weights. [#2099]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where a newly-defined extra property of a
