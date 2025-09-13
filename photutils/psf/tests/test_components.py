@@ -395,9 +395,21 @@ class TestPSFFitter:
 
         model = fitter.make_psf_model(sources)
 
-        # Should be a compound model
-        assert hasattr(model, 'submodel_names')
-        assert len(model.submodel_names) == 2
+        # Should be a flat model with parameters for each source
+        assert hasattr(model, 'flux_0')
+        assert hasattr(model, 'x_0_0')
+        assert hasattr(model, 'y_0_0')
+        assert hasattr(model, 'flux_1')
+        assert hasattr(model, 'x_0_1')
+        assert hasattr(model, 'y_0_1')
+
+        # Check parameter values
+        assert model.flux_0.value == 100.0
+        assert model.x_0_0.value == 10.0
+        assert model.y_0_0.value == 15.0
+        assert model.flux_1.value == 200.0
+        assert model.x_0_1.value == 20.0
+        assert model.y_0_1.value == 25.0
 
     def test_make_psf_model_with_xy_bounds(self, psf_model, param_mapper):
         """

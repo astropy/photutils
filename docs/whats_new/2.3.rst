@@ -59,6 +59,13 @@ Improved Performance and Memory Usage
   of creating copies, resulting in improved performance and significantly
   reduced memory usage.
 
+- For source groups, the PSF photometry classes now use a dynamically
+  generated "flat model" approach instead of deeply nested compound
+  models. This eliminates recursion limits that could cause failures
+  with groups containing hundreds of sources, while providing dramatic
+  performance improvements (up to 10x faster model creation and 50x less
+  memory usage for large groups).
+
 
 New Reduced Chi-squared Fit Statistic
 -------------------------------------

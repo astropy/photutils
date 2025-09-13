@@ -950,6 +950,60 @@ def test_xy_bounds(test_data):
         PSFPhotometry(psf_model, fit_shape, xy_bounds=(np.nan, 2))
 
 
+def test_grouper_with_xy_bounds(test_data):
+    """
+    Test source grouping functionality with xy_bounds applied.
+    """
+    data, error, _ = test_data
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+
+    init_params = QTable()
+    init_params['x_init'] = [20.0, 22.0, 25.0]
+    init_params['y_init'] = [20.0, 21.0, 23.0]
+    init_params['flux_init'] = [1000.0, 800.0, 600.0]
+
+    # Test with grouper and xy_bounds
+    grouper = SourceGrouper(min_separation=5)
+    xy_bounds = (1.0, 1.5)  # Different bounds for x and y
+
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
+                            grouper=grouper, xy_bounds=xy_bounds,
+                            aperture_radius=4)
+
+    phot = psfphot(data, error=error, init_params=init_params)
+
+    # verify sources were grouped
+    assert len(phot) == len(init_params)
+    assert len(np.unique(phot['group_id'])) < len(phot)
+
+    # Verify that xy_bounds were applied during fitting
+    # The fitted positions should be constrained
+    for i, row in enumerate(phot):
+        x_init = init_params['x_init'][i]
+        y_init = init_params['y_init'][i]
+        x_fit = row['x_fit']
+        y_fit = row['y_fit']
+
+        # Check that fitted positions are within bounds
+        # (allowing some tolerance for fitting convergence)
+        assert abs(x_fit - x_init) <= xy_bounds[0] + 0.1
+        assert abs(y_fit - y_init) <= xy_bounds[1] + 0.1
+
+    # Test that the flat model creation worked with xy_bounds
+    flat_model = psfphot._psf_fitter.make_psf_model(init_params)
+    if len(init_params) > 1:
+        # For multiple sources, check flat model has correct structure
+        assert hasattr(flat_model, 'flux_0')
+        assert hasattr(flat_model, 'x_0_0')
+        assert hasattr(flat_model, 'y_0_0')
+        if len(init_params) > 1:
+            assert hasattr(flat_model, 'flux_1')
+            assert hasattr(flat_model, 'x_0_1')
+            assert hasattr(flat_model, 'y_0_1')
+
+
 def test_negative_xy():
     sources = Table()
     sources['id'] = np.arange(3) + 1
