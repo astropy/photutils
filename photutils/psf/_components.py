@@ -7,7 +7,9 @@ of the PSFPhotometry class and are not intended for direct public use.
 """
 
 import contextlib
+import hashlib
 import warnings
+import weakref
 
 import astropy
 import astropy.units as u
@@ -211,8 +213,51 @@ def _instantiate_flat_model(model_class, sources, psf_model, param_mapper,
     return model
 
 
-# Global cache for flat model classes
-_FLAT_MODEL_CACHE = {}
+# Weak reference cache for flat model classes to prevent memory leaks
+_FLAT_MODEL_CACHE = weakref.WeakValueDictionary()
+
+
+def _create_cache_key(n_sources, psf_model):
+    """
+    Create a robust cache key for flat model classes.
+
+    Uses the PSF model's class name and a hash of its parameter
+    structure to avoid collisions between different model types with
+    similar parameter names.
+
+    Parameters
+    ----------
+    n_sources : int
+        Number of sources in the group.
+
+    psf_model : `~astropy.modeling.Model`
+        The PSF model to create a cache key for.
+
+    Returns
+    -------
+    cache_key : tuple
+        A tuple that uniquely identifies this model configuration.
+    """
+    # Use model class name and module to distinguish different model types
+    model_class = psf_model.__class__
+    model_type = f"{model_class.__module__}.{model_class.__name__}"
+
+    # Create a hash of the parameter structure for additional uniqueness
+    param_info = []
+    for param_name in sorted(psf_model.param_names):
+        param = getattr(psf_model, param_name)
+        # Include parameter properties that affect model structure
+        unit_str = ('None' if not hasattr(param, 'unit')
+                    or param.unit is None else str(param.unit))
+        param_info.extend([
+            param_name,
+            unit_str,
+            str(param.default),
+        ])
+
+    param_hash = hashlib.sha256('|'.join(param_info).encode()).hexdigest()[:8]
+
+    return (n_sources, model_type, param_hash)
 
 
 def _get_flat_model(sources, psf_model, param_mapper, xy_bounds=None):
@@ -223,8 +268,9 @@ def _get_flat_model(sources, psf_model, param_mapper, xy_bounds=None):
     to avoid recreating them for groups with the same characteristics,
     improving performance when processing many groups.
 
-    The caching is based on the number of sources and a hash of the PSF
-    model's parameter names to ensure compatibility.
+    The caching uses weak references to prevent memory leaks and
+    includes the PSF model type in the cache key to avoid collisions
+    between different model types with similar parameter names.
 
     Parameters
     ----------
@@ -249,9 +295,8 @@ def _get_flat_model(sources, psf_model, param_mapper, xy_bounds=None):
     """
     n_sources = len(sources)
 
-    # Create cache key based on n_sources and PSF model param names
-    param_names_key = tuple(sorted(psf_model.param_names))
-    cache_key = (n_sources, param_names_key)
+    # Create robust cache key to avoid model type collisions
+    cache_key = _create_cache_key(n_sources, psf_model)
 
     # Get cached model class or create new one
     if cache_key not in _FLAT_MODEL_CACHE:
