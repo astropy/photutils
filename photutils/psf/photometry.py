@@ -883,7 +883,10 @@ class PSFPhotometry(ModelImageMixin):
         Make a PSF model to fit a single source or several sources
         within a group.
 
-        This method delegates to the PSF fitter component.
+        For groups, a dynamic flat PSF model is created that avoids the
+        performance and memory issues associated with the deeply-nested
+        parameter structure and tree traversal of Astropy
+        CompoundModels.
         """
         return self._psf_fitter.make_psf_model(sources)
 
@@ -930,14 +933,15 @@ class PSFPhotometry(ModelImageMixin):
         return self._psf_fitter.extract_source_covariances(
             group_cov, num_sources, nfitparam)
 
-    @staticmethod
-    def _split_compound_model(model, chunk_size):
+    def _split_flat_model(self, flat_model, n_sources):
         """
-        Split a compound model into its constituent sub-models.
+        Split a flat model for grouped sources into individual source
+        models.
 
-        This method delegates to the PSF fitter component.
+        This method returns individual PSF models with parameters
+        extracted from the flat model's parameter values.
         """
-        return PSFFitter.split_compound_model(model, chunk_size)
+        return self._psf_fitter.split_flat_model(flat_model, n_sources)
 
     def _ungroup_fit_results(self, row_indices, valid_mask, group_model,
                              group_fit_info):
@@ -947,7 +951,7 @@ class PSFPhotometry(ModelImageMixin):
         This method extracts individual source parameters, errors, and
         covariance information directly from the group fit results and
         stores them in the state container. This avoids storing large
-        grouped model objects and covariance matrices.
+        group (flat) model objects and covariance matrices.
 
         The results for each valid source in the group are stored
         directly in the state container, including the fitted model
@@ -971,7 +975,6 @@ class PSFPhotometry(ModelImageMixin):
         group_fit_info : dict
             The fit_info dictionary corresponding to the group fit.
         """
-        psf_nsub = self.psf_model.n_submodels
         nfitparam = len(self._param_mapper.fitted_param_names)
         num_valid = int(np.count_nonzero(valid_mask))
 
@@ -982,6 +985,9 @@ class PSFPhotometry(ModelImageMixin):
             source_covs = [None] * num_valid
         else:
             param_err_1d = np.sqrt(np.diag(param_cov))
+
+            # For grouped (flat) models, parameters are arranged as,
+            # e.g., [flux_0, x_0_0, y_0_0, fwhm_0, flux_1, x_0_1, ...]
             source_param_errs = param_err_1d.reshape(num_valid, nfitparam)
 
             # Extract individual covariance matrices for each source
@@ -992,8 +998,9 @@ class PSFPhotometry(ModelImageMixin):
         if num_valid == 1:
             source_models = [group_model]
         else:
-            source_models = list(self._split_compound_model(
-                group_model, psf_nsub))
+            # For grouped (flat) models, create individual models from
+            # params
+            source_models = self._split_flat_model(group_model, num_valid)
 
         # Store results for each valid source
         valid_idx = 0
@@ -1490,9 +1497,8 @@ class PSFPhotometry(ModelImageMixin):
             self._reset_state()
             raise
 
-        else:
-            self._reset_state()
-            return self.results
+        self._reset_state()
+        return self.results
 
     def _reset_state(self):
         """
