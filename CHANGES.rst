@@ -60,6 +60,11 @@ New Features
     reduced chi-squared statistic (``reduced_chi2`` column in the
     results table). [#2086]
 
+  - The PSF photometry classes now use a dynamically generated "flat"
+    model instead of a compound model for grouped sources. This
+    eliminates recursion limits and significantly reduces memory usage
+    for large groups. [#2100]
+
 - ``photutils.segmentation``
 
   - An optional ``array`` keyword was added to the ``SourceCatalog``
