@@ -25,6 +25,10 @@ API Changes
   - Removed the deprecated ``grid_mode`` keyword from
     ``BkgZoomInterpolator``. [#2102]
 
+- ``photutils.psf``
+
+  - Removed the deprecated ``IntegratedGaussianPRF`` class. [#2103]
+
 
 2.3.0 (2025-09-15)
 ------------------
