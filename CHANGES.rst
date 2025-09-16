@@ -13,6 +13,11 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.background``
+
+  - Removed the deprecated ``grid_mode`` keyword from
+    ``BkgZoomInterpolator``. [#2102]
+
 
 2.3.0 (2025-09-15)
 ------------------
