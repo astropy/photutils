@@ -7,14 +7,13 @@ import contextlib
 import re
 
 import numpy as np
-from astropy.modeling import CompoundModel, Fittable2DModel, Parameter
+from astropy.modeling import CompoundModel
 from astropy.modeling.models import Const2D, Identity, Shift
 from astropy.nddata import NDData
 from astropy.units import Quantity
-from astropy.utils.decorators import deprecated
 from scipy.integrate import dblquad, trapezoid
 
-__all__ = ['PRFAdapter', 'grid_from_epsfs', 'make_psf_model']
+__all__ = ['grid_from_epsfs', 'make_psf_model']
 
 
 def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
@@ -469,158 +468,3 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     data = NDData(data_cube, meta=meta)
 
     return GriddedPSFModel(data, fill_value=fill_value)
-
-
-@deprecated('2.0.0', alternative='a FittableImageModel derived from the '
-            'discretize_model function in astropy.convolution')
-class PRFAdapter(Fittable2DModel):
-    """
-    A model that adapts a supplied PSF model to act as a PRF.
-
-    It integrates the PSF model over pixel "boxes". A critical built-in
-    assumption is that the PSF model scale and location parameters are
-    in *pixel* units.
-
-    Parameters
-    ----------
-    psfmodel : a 2D model
-        The model to assume as representative of the PSF.
-
-    renormalize_psf : bool, optional
-        If True, the model will be integrated from -inf to inf and
-        rescaled so that the total integrates to 1. Note that this
-        renormalization only occurs *once*, so if the total flux of
-        ``psfmodel`` depends on position, this will *not* be correct.
-
-    flux : float, optional
-        The total flux of the star.
-
-    x_0 : float, optional
-        The x position of the star.
-
-    y_0 : float, optional
-        The y position of the star.
-
-    xname : str or None, optional
-        The name of the ``psfmodel`` parameter that corresponds to the
-        x-axis center of the PSF. If None, the model will be assumed to
-        be centered at x=0.
-
-    yname : str or None, optional
-        The name of the ``psfmodel`` parameter that corresponds to the
-        y-axis center of the PSF. If None, the model will be assumed to
-        be centered at y=0.
-
-    fluxname : str or None, optional
-        The name of the ``psfmodel`` parameter that corresponds to
-        the total flux of the star. If None, a scaling factor will
-        be applied by the ``PRFAdapter`` instead of modifying the
-        ``psfmodel``.
-
-    **kwargs : dict, optional
-        Additional optional keyword arguments to be passed to the
-        `astropy.modeling.Model` parent class.
-
-    Notes
-    -----
-    This current implementation of this class (using numerical
-    integration for each pixel) is extremely slow, and only suited for
-    experimentation over relatively few small regions. It should be
-    used only when absolutely necessary. If a model class of this type
-    is needed, it is strongly recommended that you create a custom PRF
-    model instead.
-
-    If one needs a PRF model from an analytical PSF model, a
-    more efficient option is to discretize the model on a grid
-    using :func:`~astropy.convolution.discretize_model` using the
-    ``'oversample'`` or ``'integrate'`` ``mode``. The resulting 2D image
-    can then be used as the input to ``FittableImageModel`` to create an
-    ePSF model. This will be *much* faster than using this class.
-    """
-
-    flux = Parameter(default=1)
-    x_0 = Parameter(default=0)
-    y_0 = Parameter(default=0)
-
-    def __init__(self, psfmodel, *, renormalize_psf=True, flux=flux.default,
-                 x_0=x_0.default, y_0=y_0.default, xname=None, yname=None,
-                 fluxname=None, **kwargs):
-
-        self.psfmodel = psfmodel.copy()
-
-        if renormalize_psf:
-            self._psf_scale_factor = 1.0 / dblquad(self.psfmodel,
-                                                   -np.inf, np.inf,
-                                                   lambda _: -np.inf,
-                                                   lambda _: np.inf)[0]
-        else:
-            self._psf_scale_factor = 1
-
-        self.xname = xname
-        self.yname = yname
-        self.fluxname = fluxname
-
-        # these can be used to adjust the integration behavior. Might be
-        # used in the future to expose how the integration happens
-        self._dblquadkwargs = {}
-
-        super().__init__(n_models=1, x_0=x_0, y_0=y_0, flux=flux, **kwargs)
-
-    def evaluate(self, x, y, flux, x_0, y_0):
-        """
-        The evaluation function for PRFAdapter.
-
-        Parameters
-        ----------
-        x, y : float or array_like
-            The coordinates at which to evaluate the model.
-
-        flux : float
-            The total flux of the star.
-
-        x_0, y_0 : float
-            The position of the star.
-
-        Returns
-        -------
-        evaluated_model : `~numpy.ndarray`
-            The evaluated model.
-        """
-        if not np.isscalar(flux):
-            flux = flux[0]
-        if not np.isscalar(x_0):
-            x_0 = x_0[0]
-        if not np.isscalar(y_0):
-            y_0 = y_0[0]
-
-        if self.xname is None:
-            dx = x - x_0
-        else:
-            dx = x
-            setattr(self.psfmodel, self.xname, x_0)
-
-        if self.xname is None:
-            dy = y - y_0
-        else:
-            dy = y
-            setattr(self.psfmodel, self.yname, y_0)
-
-        if self.fluxname is None:
-            return (flux * self._psf_scale_factor
-                    * self._integrated_psfmodel(dx, dy))
-
-        setattr(self.psfmodel, self.yname, flux * self._psf_scale_factor)
-        return self._integrated_psfmodel(dx, dy)
-
-    def _integrated_psfmodel(self, dx, dy):
-        # infer type/shape from the PSF model. Seems wasteful, but the
-        # integration step is a *lot* more expensive so its just peanuts
-        out = np.empty_like(self.psfmodel(dx, dy))
-        outravel = out.ravel()
-        for i, (xi, yi) in enumerate(zip(dx.ravel(), dy.ravel(), strict=True)):
-            outravel[i] = dblquad(self.psfmodel,
-                                  xi - 0.5, xi + 0.5,
-                                  lambda _, y=yi: y - 0.5,
-                                  lambda _, y=yi: y + 0.5,
-                                  **self._dblquadkwargs)[0]
-        return out
