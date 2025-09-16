@@ -10,7 +10,6 @@ import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData, block_replicate, reshape_as_blocks
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import generic_filter
 
@@ -79,8 +78,10 @@ class Background2D:
         has two elements, they must be in ``(ny, nx)`` order. For best
         results, the box shape should be chosen such that the ``data``
         are covered by an integer number of boxes in both dimensions.
-        When this is not the case, see the ``edge_method`` keyword for
-        more options.
+        When this is not the case, the image will be padded along the
+        top and/or right edges. Ideally, the ``box_size`` should be
+        chosen such that an integer number of boxes is only slightly
+        larger than the ``data`` size to minimize the amount of padding.
 
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -138,32 +139,6 @@ class Background2D:
         than ``filter_threshold``. Set to `None` to filter all boxes
         (default).
 
-    edge_method : {'pad', 'crop'}, optional
-        This keyword will be removed in a future version and the default
-        version of ``'pad'`` will always be used. The ``'crop'`` option
-        has been strongly discouraged for some time now. Its usage
-        creates a undesirable scaling of the low-resolution maps that
-        leads to incorrect results.
-
-        The method used to determine how to handle the case where the
-        image size is not an integer multiple of the ``box_size``
-        in either dimension. Both options will resize the image for
-        internal calculations to give an exact multiple of ``box_size``
-        in both dimensions.
-
-        * ``'pad'``: pad the image along the top and/or right edges.
-          This is the default and recommended method. Ideally, the
-          ``box_size`` should be chosen such that an integer number
-          of boxes is only slightly larger than the ``data`` size to
-          minimize the amount of padding.
-
-        * ``'crop'``: crop the image along the top and/or right edges.
-          This method should be used sparingly, and it may be deprecated
-          in the future. Best results will occur when ``box_size`` is
-          chosen such that an integer number of boxes is only slightly
-          smaller than the ``data`` size to minimize the amount of
-          cropping.
-
     sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters. If `None` then no sigma clipping will
@@ -216,12 +191,10 @@ class Background2D:
     .. _bottleneck:  https://github.com/pydata/bottleneck
     """
 
-    @deprecated_renamed_argument('edge_method', None, '2.0.0')
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
                  fill_value=0.0, exclude_percentile=10.0, filter_size=(3, 3),
-                 filter_threshold=None, edge_method='pad',
-                 sigma_clip=SIGMA_CLIP, bkg_estimator=None,
-                 bkgrms_estimator=None, interpolator=None):
+                 filter_threshold=None, sigma_clip=SIGMA_CLIP,
+                 bkg_estimator=None, bkgrms_estimator=None, interpolator=None):
 
         if isinstance(data, (u.Quantity, NDData)):  # includes CCDData
             self._unit = data.unit
@@ -257,10 +230,6 @@ class Background2D:
         self.filter_size = as_pair('filter_size', filter_size,
                                    lower_bound=(0, 1), check_odd=True)
         self.filter_threshold = filter_threshold
-        if edge_method not in ('pad', 'crop'):
-            msg = 'edge_method must be "pad" or "crop"'
-            raise ValueError(msg)
-        self.edge_method = edge_method
 
         if sigma_clip is SIGMA_CLIP:
             sigma_clip = create_default_sigmaclip(sigma=SIGMA_CLIP.sigma,
@@ -289,8 +258,7 @@ class Background2D:
         # (before self._data is deleted in self._calculate_stats)
         self._interp_kwargs = {'shape': self._data.shape,
                                'dtype': self._data.dtype,
-                               'box_size': self.box_size,
-                               'edge_method': self.edge_method}
+                               'box_size': self.box_size}
 
         # perform the initial calculations to avoid storing large data
         # arrays and to keep the memory usage minimal
@@ -315,8 +283,8 @@ class Background2D:
     def __repr_str_params(self):
         params = ('data', 'box_size', 'mask', 'coverage_mask', 'fill_value',
                   'exclude_percentile', 'filter_size', 'filter_threshold',
-                  'edge_method', 'sigma_clip', 'bkg_estimator',
-                  'bkgrms_estimator', 'interpolator')
+                  'sigma_clip', 'bkg_estimator', 'bkgrms_estimator',
+                  'interpolator')
 
         data_repr = f'<array; shape={self._interp_kwargs["shape"]}>'
 
@@ -566,7 +534,7 @@ class Background2D:
 
         extra_row = y1 < self._data.shape[0]
         extra_col = x1 < self._data.shape[1]
-        if self.edge_method == 'pad' and (extra_row or extra_col):
+        if extra_row or extra_col:
             if extra_row:
                 # extra row of boxes
                 # here we need to make a copy of the data array to avoid
@@ -801,44 +769,6 @@ class Background2D:
         data = self._interpolate_grid(self._bkgrms_stats)
         self._bkgrms_stats = None  # delete to save memory
         return self._apply_units(self._filter_grid(data))
-
-    @property
-    @deprecated('2.0.0')
-    def background_mesh_masked(self):
-        """
-        The low-resolution background image prior to any interpolation
-        to fill NaN values.
-
-        The array has NaN values where meshes were excluded.
-        """
-        data = self.background_mesh.copy()
-        data[self._mesh_nan_mask] = np.nan
-        return data
-
-    @property
-    @deprecated('2.0.0')
-    def background_rms_mesh_masked(self):
-        """
-        The low-resolution background RMS image prior to any
-        interpolation to fill NaN values.
-
-        The array has NaN values where meshes were excluded.
-        """
-        data = self.background_rms_mesh.copy()
-        data[self._mesh_nan_mask] = np.nan
-        return data
-
-    @property
-    @deprecated('2.0.0', alternative='npixels_mesh')
-    def mesh_nmasked(self):
-        """
-        A 2D array of the number of masked pixels in each mesh.
-
-        NaN values indicate where meshes were excluded.
-        """
-        data = (np.prod(self.box_size) - self._ngood).astype(float)
-        data[self._mesh_nan_mask] = np.nan
-        return data
 
     @property
     def npixels_mesh(self):

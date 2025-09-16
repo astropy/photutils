@@ -5,8 +5,6 @@ Tests for the interpolators module.
 
 import astropy.units as u
 import numpy as np
-import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.background.background_2d import Background2D
 from photutils.background.interpolators import (BkgIDWInterpolator,
@@ -23,11 +21,6 @@ def test_zoom_interp():
     interp = BkgZoomInterpolator(clip=False)
     zoom = interp(mesh, **bkg._interp_kwargs)
     assert zoom.shape == (300, 300)
-
-    with pytest.warns(AstropyDeprecationWarning):
-        bkg = Background2D(data, 100, edge_method='crop')
-    zoom2 = interp(mesh, **bkg._interp_kwargs)
-    assert zoom2.shape == (300, 300)
 
     # test with units
     unit = u.nJy
