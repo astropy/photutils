@@ -85,19 +85,13 @@ class BkgZoomInterpolator:
             return np.full(kwargs['shape'], np.min(data),
                            dtype=kwargs['dtype'])
 
-        if kwargs['edge_method'] == 'pad':
-            # The mesh is first resized to the larger padded-data size
-            # (i.e., zoom_factor should be an integer) and then cropped
-            # back to the final data size.
-            zoom_factor = kwargs['box_size']
-            result = zoom(data, zoom_factor, order=self.order, mode=self.mode,
-                          cval=self.cval, grid_mode=True)
-            result = result[0:kwargs['shape'][0], 0:kwargs['shape'][1]]
-        else:
-            # The mesh is resized directly to the final data size.
-            zoom_factor = np.array(kwargs['shape']) / data.shape
-            result = zoom(data, zoom_factor, order=self.order, mode=self.mode,
-                          cval=self.cval)
+        # The mesh is first resized to the larger padded-data size
+        # (i.e., zoom_factor should be an integer) and then cropped
+        # back to the final data size.
+        zoom_factor = kwargs['box_size']
+        result = zoom(data, zoom_factor, order=self.order, mode=self.mode,
+                      cval=self.cval, grid_mode=True)
+        result = result[0:kwargs['shape'][0], 0:kwargs['shape'][1]]
 
         if self.clip:
             minval = np.min(data)

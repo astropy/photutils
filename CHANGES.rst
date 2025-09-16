@@ -15,6 +15,9 @@ API Changes
 
 - ``photutils.background``
 
+  - Removed the deprecated ``edge_method`` keyword from ``Background2D``.
+    [#2102]
+
   - Removed the deprecated ``grid_mode`` keyword from
     ``BkgZoomInterpolator``. [#2102]
 
