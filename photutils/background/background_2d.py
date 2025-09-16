@@ -10,7 +10,6 @@ import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData, block_replicate, reshape_as_blocks
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import generic_filter
 
@@ -770,44 +769,6 @@ class Background2D:
         data = self._interpolate_grid(self._bkgrms_stats)
         self._bkgrms_stats = None  # delete to save memory
         return self._apply_units(self._filter_grid(data))
-
-    @property
-    @deprecated('2.0.0')
-    def background_mesh_masked(self):
-        """
-        The low-resolution background image prior to any interpolation
-        to fill NaN values.
-
-        The array has NaN values where meshes were excluded.
-        """
-        data = self.background_mesh.copy()
-        data[self._mesh_nan_mask] = np.nan
-        return data
-
-    @property
-    @deprecated('2.0.0')
-    def background_rms_mesh_masked(self):
-        """
-        The low-resolution background RMS image prior to any
-        interpolation to fill NaN values.
-
-        The array has NaN values where meshes were excluded.
-        """
-        data = self.background_rms_mesh.copy()
-        data[self._mesh_nan_mask] = np.nan
-        return data
-
-    @property
-    @deprecated('2.0.0', alternative='npixels_mesh')
-    def mesh_nmasked(self):
-        """
-        A 2D array of the number of masked pixels in each mesh.
-
-        NaN values indicate where meshes were excluded.
-        """
-        data = (np.prod(self.box_size) - self._ngood).astype(float)
-        data[self._mesh_nan_mask] = np.nan
-        return data
 
     @property
     def npixels_mesh(self):

@@ -7,8 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import CCDData, NDData
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background.background_2d import Background2D
@@ -177,27 +176,22 @@ class TestBackground2D:
         mask[25:50, 25:50] = True
         bkg1 = Background2D(data, (25, 25), filter_size=(1, 1), mask=None,
                             bkg_estimator=MeanBackground())
-
-        with pytest.warns(AstropyDeprecationWarning):
-            assert_equal(bkg1.background_mesh, bkg1.background_mesh_masked)
-        with pytest.warns(AstropyDeprecationWarning):
-            assert_equal(bkg1.background_rms_mesh,
-                         bkg1.background_rms_mesh_masked)
-        with pytest.warns(AstropyDeprecationWarning):
-            assert np.count_nonzero(np.isnan(bkg1.mesh_nmasked)) == 0
+        assert np.all(bkg1.npixels_map == 625)
+        assert np.all(bkg1.npixels_mesh == 625)
+        assert bkg1.background.shape == data.shape
+        assert_allclose(bkg1.background_mesh[0, 0], 1.0)
+        assert_allclose(bkg1.background_mesh[1, 1], 100.0)
+        assert np.all(bkg1.background_rms_mesh == 0.0)
 
         bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
                             bkg_estimator=MeanBackground())
 
-        nboxes_tot = 25 * 25
-        with pytest.warns(AstropyDeprecationWarning):
-            assert (np.count_nonzero(~np.isnan(bkg2.background_mesh_masked))
-                    < nboxes_tot)
-        with pytest.warns(AstropyDeprecationWarning):
-            assert (np.count_nonzero(~np.isnan(
-                bkg2.background_rms_mesh_masked)) < nboxes_tot)
-        with pytest.warns(AstropyDeprecationWarning):
-            assert np.count_nonzero(np.isnan(bkg2.mesh_nmasked)) == 1
+        ngoodpix = DATA.size - 625
+        assert np.count_nonzero(bkg2.npixels_map == 625) == ngoodpix
+        assert np.count_nonzero(bkg2.npixels_mesh == 625) == 15
+        assert bkg2.background.shape == data.shape
+        assert_allclose(bkg2.background_mesh, 1.0)
+        assert np.all(bkg2.background_rms_mesh == 0.0)
 
     @pytest.mark.parametrize('fill_value', [0.0, np.nan, -1.0])
     def test_coverage_mask(self, fill_value):

@@ -18,6 +18,10 @@ API Changes
   - Removed the deprecated ``edge_method`` keyword from ``Background2D``.
     [#2102]
 
+  - Removed the deprecated ``background_mesh_masked``,
+    ``background_rms_mesh_masked``, and ``mesh_nmasked`` properties from
+    ``Background2D``. [#2102]
+
   - Removed the deprecated ``grid_mode`` keyword from
     ``BkgZoomInterpolator``. [#2102]
 
