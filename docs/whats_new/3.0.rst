@@ -16,6 +16,22 @@ smaller improvements and bug fixes, which are described in the full
    :depth: 2
 
 
+New Deprecations
+================
+
+The ``interpolator`` keyword argument for ``Background2D`` is
+now deprecated. When ``interpolator`` is eventually removed, the
+``scipy.ndimage.zoom`` cubic spline interpolator will always be used to
+resize the low-resolution arrays. The behavior will be identical to the
+current ``BkgZoomInterpolator`` default.
+
+Relatedly, the ``BkgIDWInterpolator`` and ``BkgZoomInterpolator``
+classes are now deprecated. The ``BkgIDWInterpolator`` is not
+well-suited for resizing images on a regular grid to larger sizes. It
+is also significantly slower than the default interpolator based on
+``scipy.ndimage.zoom``.
+
+
 Removed Deprecations
 ====================
 

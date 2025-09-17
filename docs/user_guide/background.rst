@@ -217,13 +217,18 @@ filter can be applied only to those boxes where the background level is
 above a specified threshold (``filter_threshold``).
 
 The low-resolution background and background RMS images are resized to
-the original data size using the function or callable object
-input via the ``interpolator`` keyword.  Photutils provides two
-interpolator classes:
-:class:`~photutils.background.BkgZoomInterpolator` (default), which
-performs spline interpolation, and
-:class:`~photutils.background.BkgIDWInterpolator`, which uses
-inverse-distance weighted (IDW) interpolation.
+the original data size using spline interpolation via
+`scipy.ndimage.zoom`.
+
+.. note::
+    Prior to version 3.0, the interpolation method could
+    be customized via the ``interpolator`` keyword using
+    :class:`~photutils.background.BkgZoomInterpolator` or
+    :class:`~photutils.background.BkgIDWInterpolator` classes. These
+    are now deprecated. The ``BkgIDWInterpolator`` is not well-suited
+    for resizing images on a regular grid to larger sizes. It is
+    also significantly slower than the default interpolator based on
+    ``scipy.ndimage.zoom``.
 
 For this example, we will create a test image by adding a strong
 background gradient to the image defined above::
