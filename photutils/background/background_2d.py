@@ -10,6 +10,7 @@ import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData, block_replicate, reshape_as_blocks
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import generic_filter
 
@@ -179,6 +180,13 @@ class Background2D:
         is an instance of `BkgZoomInterpolator`, which uses the
         `scipy.ndimage.zoom` function.
 
+        .. deprecated:: 3.0
+           This keyword argument is deprecated and will be removed in
+           a future version. When removed, the `scipy.ndimage.zoom`
+           cubic spline interpolator will always be used to resize the
+           low-resolution background and background RMS arrays to the
+           full image size.
+
     Notes
     -----
     Better performance will generally be obtained if you have the
@@ -191,6 +199,7 @@ class Background2D:
     .. _bottleneck:  https://github.com/pydata/bottleneck
     """
 
+    @deprecated_renamed_argument('interpolator', None, '3.0')
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
                  fill_value=0.0, exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, sigma_clip=SIGMA_CLIP,

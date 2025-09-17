@@ -2,9 +2,10 @@
 """
 Tests for the interpolators module.
 """
-
 import astropy.units as u
 import numpy as np
+import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.background.background_2d import Background2D
 from photutils.background.interpolators import (BkgIDWInterpolator,
@@ -57,7 +58,8 @@ def test_zoom_interp_clip():
 def test_idw_interp():
     data = np.ones((300, 300))
     interp = BkgIDWInterpolator()
-    bkg = Background2D(data, 100, interpolator=interp)
+    with pytest.warns(AstropyDeprecationWarning):
+        bkg = Background2D(data, 100, interpolator=interp)
     mesh = np.array([[0.01, 0.01, 0.02],
                      [0.01, 0.02, 0.03],
                      [0.03, 0.03, 12.9]])
@@ -67,7 +69,8 @@ def test_idw_interp():
 
     # test with units
     unit = u.nJy
-    bkg = Background2D(data << unit, 100, interpolator=interp)
+    with pytest.warns(AstropyDeprecationWarning):
+        bkg = Background2D(data << unit, 100, interpolator=interp)
     zoom = interp(mesh << unit, **bkg._interp_kwargs)
     assert zoom.shape == (300, 300)
 
