@@ -646,36 +646,12 @@ class PSFPhotometry(ModelImageMixin):
             maxiters = None
         return maxiters
 
-    def _validate_array(self, array, name, data_shape=None):
-        """
-        Validate input arrays (data, error, mask).
-
-        This method delegates to the data processor component.
-        """
-        return self._data_processor.validate_array(array, name, data_shape)
-
-    def _validate_init_params(self, init_params):
-        """
-        Validate the input init_params table.
-
-        This method delegates to the data processor component.
-        """
-        return self._data_processor.validate_init_params(init_params)
-
     def _sync_data_unit(self):
         """
         Synchronize data_unit between main class and components.
         """
         if hasattr(self, '_data_processor'):
             self._data_processor.data_unit = self.data_unit
-
-    def _get_aper_fluxes(self, data, mask, init_params):
-        """
-        Estimate aperture fluxes at the initial (x, y) positions.
-
-        This method delegates to the data processor component.
-        """
-        return self._data_processor.get_aper_fluxes(data, mask, init_params)
 
     def _find_sources_if_needed(self, data, mask, init_params):
         """
@@ -689,15 +665,6 @@ class PSFPhotometry(ModelImageMixin):
             data, mask, init_params)
         self.finder_results = self._data_processor.finder_results
         return result
-
-    def _estimate_flux_and_bkg_if_needed(self, data, mask, init_params):
-        """
-        Estimate initial fluxes and backgrounds if not provided.
-
-        This method delegates to the data processor component.
-        """
-        return self._data_processor.estimate_flux_and_bkg_if_needed(
-            data, mask, init_params)
 
     def _group_sources(self, init_params):
         """
@@ -777,8 +744,8 @@ class PSFPhotometry(ModelImageMixin):
             if isinstance(init_params[colname], u.Quantity):
                 init_params[colname] = init_params[colname].value
 
-        init_params = self._estimate_flux_and_bkg_if_needed(data, mask,
-                                                            init_params)
+        add_flux_bkg = self._data_processor.estimate_flux_and_bkg_if_needed
+        init_params = add_flux_bkg(data, mask, init_params)
         init_params = self._group_sources(init_params)
 
         # check for large group sizes after grouping is complete
@@ -864,12 +831,15 @@ class PSFPhotometry(ModelImageMixin):
                                                  ('data', 'error'))
         self.data_unit = unit
         self._sync_data_unit()  # Sync with components
-        data = self._validate_array(data, 'data')
-        error = self._validate_array(error, 'error', data_shape=data.shape)
-        mask = self._validate_array(mask, 'mask', data_shape=data.shape)
+
+        data = self._data_processor.validate_array(data, 'data')
+        error = self._data_processor.validate_array(error, 'error',
+                                                    data_shape=data.shape)
+        mask = self._data_processor.validate_array(mask, 'mask',
+                                                   data_shape=data.shape)
         mask = _make_mask(data, mask)
 
-        init_params = self._validate_init_params(init_params)
+        init_params = self._data_processor.validate_init_params(init_params)
         init_params = self._build_initial_parameters(data, mask, init_params)
 
         if init_params is None:
@@ -877,71 +847,6 @@ class PSFPhotometry(ModelImageMixin):
             return None, None, None, None
 
         return data, mask, error, init_params
-
-    def _make_psf_model(self, sources):
-        """
-        Make a PSF model to fit a single source or several sources
-        within a group.
-
-        For groups, a dynamic flat PSF model is created that avoids the
-        performance and memory issues associated with the deeply-nested
-        parameter structure and tree traversal of Astropy
-        CompoundModels.
-        """
-        return self._psf_fitter.make_psf_model(sources)
-
-    def _get_fit_offsets(self):
-        """
-        Return cached (y_offsets, x_offsets) arrays for fit_shape.
-
-        This method delegates to the data processor component.
-        """
-        return self._data_processor.get_fit_offsets()
-
-    def _should_skip_source(self, row, data_shape):
-        """
-        Quick validation to skip obviously invalid sources early.
-
-        This method delegates to the data processor component.
-        """
-        return self._data_processor.should_skip_source(row, data_shape)
-
-    def _get_source_cutout_data(self, row, data, mask, y_offsets, x_offsets):
-        """
-        Extract per-source pixel indices and cutout data.
-
-        This method delegates to the data processor component.
-        """
-        return self._data_processor.get_source_cutout_data(
-            row, data, mask, y_offsets, x_offsets)
-
-    def _run_fitter(self, psf_model, xi, yi, cutout, error):
-        """
-        Fit the PSF model to the input cutout data.
-
-        This method delegates to the PSF fitter component.
-        """
-        return self._psf_fitter.run_fitter(psf_model, xi, yi, cutout, error)
-
-    def _extract_source_covariances(self, group_cov, num_sources, nfitparam):
-        """
-        Extract individual source covariance matrices from group
-        covariance.
-
-        This method delegates to the PSF fitter component.
-        """
-        return self._psf_fitter.extract_source_covariances(
-            group_cov, num_sources, nfitparam)
-
-    def _split_flat_model(self, flat_model, n_sources):
-        """
-        Split a flat model for grouped sources into individual source
-        models.
-
-        This method returns individual PSF models with parameters
-        extracted from the flat model's parameter values.
-        """
-        return self._psf_fitter.split_flat_model(flat_model, n_sources)
 
     def _ungroup_fit_results(self, row_indices, valid_mask, group_model,
                              group_fit_info):
@@ -991,7 +896,7 @@ class PSFPhotometry(ModelImageMixin):
             source_param_errs = param_err_1d.reshape(num_valid, nfitparam)
 
             # Extract individual covariance matrices for each source
-            source_covs = self._extract_source_covariances(
+            source_covs = self._psf_fitter.extract_source_covariances(
                 param_cov, num_valid, nfitparam)
 
         # Split models and extract parameters
@@ -1000,7 +905,8 @@ class PSFPhotometry(ModelImageMixin):
         else:
             # For grouped (flat) models, create individual models from
             # params
-            source_models = self._split_flat_model(group_model, num_valid)
+            source_models = self._psf_fitter.split_flat_model(group_model,
+                                                              num_valid)
 
         # Store results for each valid source
         valid_idx = 0
@@ -1193,7 +1099,7 @@ class PSFPhotometry(ModelImageMixin):
             source_groups = add_progress_bar(source_groups,
                                              desc='Fit source/group')
 
-        y_offsets, x_offsets = self._get_fit_offsets()
+        y_offsets, x_offsets = self._data_processor.get_fit_offsets()
         nfitparam_per_source = len(self._param_mapper.fitted_param_names)
 
         # sources are fit by groups in group ID order
@@ -1211,7 +1117,8 @@ class PSFPhotometry(ModelImageMixin):
             # Process all sources with pre-filtering optimization
             for row in source_group:
                 # Always use pre-filtering for all group sizes
-                should_skip, reason = self._should_skip_source(row, data.shape)
+                should_skip_source = self._data_processor.should_skip_source
+                should_skip, reason = should_skip_source(row, data.shape)
                 if should_skip:
                     res = {
                         'valid': False,
@@ -1223,8 +1130,8 @@ class PSFPhotometry(ModelImageMixin):
                         'cen_index': np.nan,
                     }
                 else:
-                    res = self._get_source_cutout_data(row, data, mask,
-                                                       y_offsets, x_offsets)
+                    res = self._data_processor.get_source_cutout_data(
+                        row, data, mask, y_offsets, x_offsets)
 
                 # Common processing for all sources
                 npixfit_full.append(res['npix'])
@@ -1271,10 +1178,9 @@ class PSFPhotometry(ModelImageMixin):
             yi_concat = np.concatenate(yi_all)
             cutout_concat = np.concatenate(cutout_all)
             valid_sources = source_group[valid_mask]
-            psf_model = self._make_psf_model(valid_sources)
-            fit_model, fit_info = self._run_fitter(psf_model, xi_concat,
-                                                   yi_concat, cutout_concat,
-                                                   error)
+            psf_model = self._psf_fitter.make_psf_model(valid_sources)
+            fit_model, fit_info = self._psf_fitter.run_fitter(
+                psf_model, xi_concat, yi_concat, cutout_concat, error)
 
             # Ungroup and store per-source results. row_indices is used
             # to ensure that results are stored in the original source

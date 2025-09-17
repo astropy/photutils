@@ -1534,13 +1534,15 @@ def test_should_skip_source_coverage():
 
     data_shape = (50, 50)
 
+    should_skip_source = psfphot._data_processor.should_skip_source
+
     # Test outside bounds - clearly beyond fit region
     row_data = {
         psfphot._param_mapper.init_colnames['x']: -5.0,
         psfphot._param_mapper.init_colnames['y']: 25.0,
     }
     row = Table([row_data])[0]  # Create a table row
-    should_skip, reason = psfphot._should_skip_source(row, data_shape)
+    should_skip, reason = should_skip_source(row, data_shape)
     assert should_skip is True
     assert reason == 'no_overlap'
 
@@ -1550,7 +1552,7 @@ def test_should_skip_source_coverage():
         psfphot._param_mapper.init_colnames['y']: 60.0,
     }
     row = Table([row_data])[0]
-    should_skip, reason = psfphot._should_skip_source(row, data_shape)
+    should_skip, reason = should_skip_source(row, data_shape)
     assert should_skip is True
     assert reason == 'no_overlap'
 
@@ -1560,7 +1562,7 @@ def test_should_skip_source_coverage():
         psfphot._param_mapper.init_colnames['y']: 25.0,
     }
     row = Table([row_data])[0]
-    should_skip, reason = psfphot._should_skip_source(row, data_shape)
+    should_skip, reason = should_skip_source(row, data_shape)
     assert should_skip is True
     assert reason == 'invalid_position'
 
@@ -1570,7 +1572,7 @@ def test_should_skip_source_coverage():
         psfphot._param_mapper.init_colnames['y']: np.nan,
     }
     row = Table([row_data])[0]
-    should_skip, reason = psfphot._should_skip_source(row, data_shape)
+    should_skip, reason = should_skip_source(row, data_shape)
     assert should_skip is True
     assert reason == 'invalid_position'
 
@@ -1580,7 +1582,7 @@ def test_should_skip_source_coverage():
         psfphot._param_mapper.init_colnames['y']: 25.0,
     }
     row = Table([row_data])[0]
-    should_skip, reason = psfphot._should_skip_source(row, data_shape)
+    should_skip, reason = should_skip_source(row, data_shape)
     assert should_skip is False
     assert reason is None
 
@@ -1596,7 +1598,7 @@ def test_get_source_cutout_data_no_overlap():
     fit_shape = (5, 5)
     psfphot = PSFPhotometry(psf_model, fit_shape)
 
-    y_offsets, x_offsets = psfphot._get_fit_offsets()
+    y_offsets, x_offsets = psfphot._data_processor.get_fit_offsets()
 
     # Create a source that will definitely cause NoOverlapError
     # Place it far outside the data bounds (-100, -100) to trigger
@@ -1611,8 +1613,9 @@ def test_get_source_cutout_data_no_overlap():
     row = init_params[0]
 
     # Call the method that should trigger NoOverlapError
-    result = psfphot._get_source_cutout_data(row, data, None,
-                                             y_offsets, x_offsets)
+    result = psfphot._data_processor.get_source_cutout_data(row, data, None,
+                                                            y_offsets,
+                                                            x_offsets)
 
     # Verify the expected result for NoOverlapError exception handling
     assert result['valid'] is False
