@@ -388,7 +388,8 @@ class IterativePSFPhotometry(ModelImageMixin):
         sources : `~astropy.table.Table`
             The input ``sources`` table with the new flux column added.
         """
-        flux = self._psfphot._get_aper_fluxes(data, mask, sources)
+        flux = self._psfphot._data_processor.get_aper_fluxes(data, mask,
+                                                             sources)
         flux_col = self._psfphot._param_mapper.init_colnames['flux']
         sources[flux_col] = flux
         return sources
