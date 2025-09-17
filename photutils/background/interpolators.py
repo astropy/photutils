@@ -5,6 +5,7 @@ Define interpolator classes for Background2D.
 
 import numpy as np
 from astropy.units import Quantity
+from astropy.utils.decorators import deprecated
 from scipy.ndimage import zoom
 
 from photutils.utils import ShepardIDWInterpolator
@@ -101,6 +102,8 @@ class BkgZoomInterpolator:
         return result
 
 
+@deprecated(since='3.0', message=('BkgIDWInterpolator is deprecated and will '
+                                  'be removed in a future version.'))
 class BkgIDWInterpolator:
     """
     Class to generate a full-sized background and background RMS images

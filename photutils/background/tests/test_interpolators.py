@@ -57,7 +57,8 @@ def test_zoom_interp_clip():
 
 def test_idw_interp():
     data = np.ones((300, 300))
-    interp = BkgIDWInterpolator()
+    with pytest.warns(AstropyDeprecationWarning):
+        interp = BkgIDWInterpolator()
     with pytest.warns(AstropyDeprecationWarning):
         bkg = Background2D(data, 100, interpolator=interp)
     mesh = np.array([[0.01, 0.01, 0.02],
@@ -66,6 +67,10 @@ def test_idw_interp():
 
     zoom = interp(mesh, **bkg._interp_kwargs)
     assert zoom.shape == (300, 300)
+
+    # test constant mesh data
+    zoom = interp(np.ones_like(test_mesh), **bkg._interp_kwargs)
+    assert np.all(zoom == 1)
 
     # test with units
     unit = u.nJy
