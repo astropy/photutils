@@ -14,7 +14,7 @@ from photutils.utils._repr import make_repr
 __all__ = ['BkgIDWInterpolator', 'BkgZoomInterpolator']
 
 
-class BkgZoomInterpolator:
+class _BkgZoomInterpolator:
     """
     Class to generate a full-sized background and background RMS images
     from lower-resolution mesh images using the `~scipy.ndimage.zoom`
@@ -47,7 +47,7 @@ class BkgZoomInterpolator:
     -----
     When resizing the mesh to the full image size, the samples are
     considered as the centers of regularly-spaced grid elements (i.e.,
-    `~scipy.ndimage.zoom` ``grid_mode`` is True). This makes makes
+    `~scipy.ndimage.zoom` ``grid_mode`` is True). This makes
     zoom's behavior consistent with `scipy.ndimage.map_coordinates` and
     `skimage.transform.resize`
     """
@@ -100,6 +100,50 @@ class BkgZoomInterpolator:
             np.clip(result, minval, maxval, out=result)  # clip in place
 
         return result
+
+
+@deprecated(since='3.0', message=('BkgZoomInterpolator is deprecated and will '
+                                  'be removed in a future version.'))
+class BkgZoomInterpolator(_BkgZoomInterpolator):
+    """
+    Class to generate a full-sized background and background RMS images
+    from lower-resolution mesh images using the `~scipy.ndimage.zoom`
+    (spline) interpolator.
+
+    This class must be used in concert with the `Background2D` class.
+
+    Parameters
+    ----------
+    order : int, optional
+        The order of the spline interpolation used to resize the
+        low-resolution background and background RMS mesh images. The
+        value must be an integer in the range 0-5. The default is 3
+        (bicubic interpolation).
+
+    mode : {'reflect', 'constant', 'nearest', 'wrap'}, optional
+        Points outside the boundaries of the input are filled according
+        to the given mode. Default is 'reflect'.
+
+    cval : float, optional
+        The value used for points outside the boundaries of the input if
+        ``mode='constant'``. Default is 0.0.
+
+    clip : bool, optional
+        Whether to clip the output to the range of values in the
+        input image. This is enabled by default, since higher order
+        interpolation may produce values outside the given input range.
+
+    Notes
+    -----
+    When resizing the mesh to the full image size, the samples are
+    considered as the centers of regularly-spaced grid elements (i.e.,
+    `~scipy.ndimage.zoom` ``grid_mode`` is True). This makes
+    zoom's behavior consistent with `scipy.ndimage.map_coordinates` and
+    `skimage.transform.resize`
+    """
+
+    def __init__(self, *, order=3, mode='reflect', cval=0.0, clip=True):
+        super().__init__(order=order, mode=mode, cval=cval, clip=clip)
 
 
 @deprecated(since='3.0', message=('BkgIDWInterpolator is deprecated and will '

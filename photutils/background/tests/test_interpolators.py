@@ -9,7 +9,7 @@ from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.background.background_2d import Background2D
 from photutils.background.interpolators import (BkgIDWInterpolator,
-                                                BkgZoomInterpolator)
+                                                _BkgZoomInterpolator)
 
 
 def test_zoom_interp():
@@ -19,14 +19,14 @@ def test_zoom_interp():
                      [0.01, 0.02, 0.03],
                      [0.03, 0.03, 12.9]])
 
-    interp = BkgZoomInterpolator(clip=False)
+    interp = _BkgZoomInterpolator(clip=False)
     zoom = interp(mesh, **bkg._interp_kwargs)
     assert zoom.shape == (300, 300)
 
     # test with units
     unit = u.nJy
     bkg = Background2D(data << unit, 100)
-    interp = BkgZoomInterpolator(clip=False)
+    interp = _BkgZoomInterpolator(clip=False)
     zoom = interp(mesh << unit, **bkg._interp_kwargs)
     assert zoom.shape == (300, 300)
 
@@ -41,10 +41,10 @@ def test_zoom_interp_clip():
                      [0.01, 0.02, 0.03],
                      [0.03, 0.03, 12.9]])
 
-    interp1 = BkgZoomInterpolator(clip=False)
+    interp1 = _BkgZoomInterpolator(clip=False)
     zoom1 = interp1(mesh, **bkg._interp_kwargs)
 
-    interp2 = BkgZoomInterpolator(clip=True)
+    interp2 = _BkgZoomInterpolator(clip=True)
     zoom2 = interp2(mesh, **bkg._interp_kwargs)
 
     minval = np.min(mesh)

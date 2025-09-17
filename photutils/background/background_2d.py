@@ -17,7 +17,7 @@ from scipy.ndimage import generic_filter
 from photutils.aperture import RectangularAperture
 from photutils.background.core import SExtractorBackground, StdBackgroundRMS
 from photutils.background.interpolators import (BkgIDWInterpolator,
-                                                BkgZoomInterpolator)
+                                                _BkgZoomInterpolator)
 from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._parameters import (SigmaClipSentinelDefault, as_pair,
                                          create_default_sigmaclip)
@@ -246,7 +246,7 @@ class Background2D:
         self.sigma_clip = sigma_clip
 
         if interpolator is None:
-            interpolator = BkgZoomInterpolator()
+            interpolator = _BkgZoomInterpolator()
         self.interpolator = interpolator
 
         if bkg_estimator is None:
