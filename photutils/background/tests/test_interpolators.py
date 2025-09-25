@@ -2,6 +2,7 @@
 """
 Tests for the interpolators module.
 """
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -69,7 +70,7 @@ def test_idw_interp():
     assert zoom.shape == (300, 300)
 
     # test constant mesh data
-    zoom = interp(np.ones_like(test_mesh), **bkg._interp_kwargs)
+    zoom = interp(np.ones_like(mesh), **bkg._interp_kwargs)
     assert np.all(zoom == 1)
 
     # test with units

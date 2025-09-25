@@ -7,11 +7,12 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import CCDData, NDData
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
-from photutils.background.background_2d import Background2D
-from photutils.background.core import MeanBackground, SExtractorBackground
+from photutils.background import (Background2D, BkgZoomInterpolator,
+                                  MeanBackground, SExtractorBackground)
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 DATA = np.ones((100, 100))
@@ -497,3 +498,20 @@ class TestBackground2D:
         bkgim = bkg.background
         assert bkgim.shape == shape
         assert_equal(data, data_orig)
+
+    def test_interpolator_keyword_deprecation(self):
+        """
+        Test that the interpolator keyword is deprecated.
+        """
+        match = 'BkgZoomInterpolator is deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            interp = BkgZoomInterpolator()
+
+        match = '"interpolator" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            bkg = Background2D(DATA, (25, 25), interpolator=interp)
+
+        assert_allclose(bkg.background, DATA)
+
+        bkg = Background2D(DATA, (25, 25))  # Should not raise
+        assert_allclose(bkg.background, DATA)
