@@ -231,7 +231,7 @@ class IterativePSFPhotometry(ModelImageMixin):
                  fitter=None, fitter_maxiters=100, xy_bounds=None,
                  maxiters=3, mode='new', aperture_radius=None,
                  localbkg_estimator=None, group_warning_threshold=25,
-                 sub_shape=None, progress_bar=False):
+                 sub_shape=None, progress_bar=False, multiprocessing=False):
 
         if finder is None:
             msg = 'finder cannot be None for IterativePSFPhotometry'
@@ -249,7 +249,8 @@ class IterativePSFPhotometry(ModelImageMixin):
                                       aperture_radius=aperture_radius,
                                       localbkg_estimator=localbkg_estimator,
                                       group_warning_threshold=threshold,
-                                      progress_bar=progress_bar)
+                                      progress_bar=progress_bar,
+                                      multiprocessing=multiprocessing)
 
         self.maxiters = self._validate_maxiters(maxiters)
 
@@ -535,7 +536,11 @@ class IterativePSFPhotometry(ModelImageMixin):
                 self.fit_results.append(deepcopy(self._psfphot))
 
                 if self.mode == 'all':
-                    new_tbl['iter_detected'] = iter_detected
+                    try:
+                        new_tbl['iter_detected'] = iter_detected
+                    except Exception as e:
+                        print(len(new_tbl), len(iter_detected))
+                        raise e
                     phot_tbl = new_tbl
 
                 elif self.mode == 'new':

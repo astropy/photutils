@@ -5,6 +5,7 @@ Define tools to perform PSF-fitting photometry.
 
 import contextlib
 import inspect
+import multiprocessing
 import warnings
 from dataclasses import dataclass, field
 
@@ -28,6 +29,13 @@ from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
+
+# try loading optional dependencies for multiprocessing with progress bar
+try:
+    from p_tqdm import p_map, p_umap
+    from pathos.multiprocessing import ProcessPool # uses dill, more powerful than the standard multiprocessing
+except Exception:
+    pass
 
 __all__ = ['PSFPhotometry']
 
@@ -210,6 +218,7 @@ class _PSFParameterMapper:
         return table
 
 
+
 class PSFPhotometry(ModelImageMixin):
     """
     Class to perform PSF photometry.
@@ -372,7 +381,8 @@ class PSFPhotometry(ModelImageMixin):
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
                  fitter=None, fitter_maxiters=100, xy_bounds=None,
                  aperture_radius=None, localbkg_estimator=None,
-                 group_warning_threshold=25, progress_bar=False):
+                 group_warning_threshold=25, progress_bar=False,
+                 multiprocessing=False):
 
         self.psf_model = _validate_psf_model(psf_model)
         self._param_mapper = _PSFParameterMapper(self.psf_model)
@@ -391,6 +401,7 @@ class PSFPhotometry(ModelImageMixin):
             localbkg_estimator, 'localbkg_estimator')
         self.group_warning_threshold = group_warning_threshold
         self.progress_bar = progress_bar
+        self.multiprocessing = multiprocessing
 
         self._data_processor = PSFDataProcessor(
             self._param_mapper, self.fit_shape, finder=self.finder,
@@ -1072,6 +1083,100 @@ class PSFPhotometry(ModelImageMixin):
 
         return sum_abs_residuals, cen_residuals, reduced_chi2
 
+    def _group_fit_helper(self,idx_source_group,input_data):
+        ''' helper function to parallelize group fitting '''
+        
+        # unpack input data
+        idx, source_group = idx_source_group
+        data, mask, error, y_offsets, x_offsets, nfitparam_per_source = input_data
+        
+        group_size = len(source_group)
+        xi_all = []
+        yi_all = []
+        cutout_all = []
+        npixfit_full = []
+        cen_index_full = []
+        valid_mask_list = []
+        invalid_reasons = []
+        row_indices = []
+
+        # Process all sources with pre-filtering optimization
+        for row in source_group:
+            # Always use pre-filtering for all group sizes
+            should_skip_source = self._data_processor.should_skip_source
+            should_skip, reason = should_skip_source(row, data.shape)
+            if should_skip:
+                res = {
+                    'valid': False,
+                    'reason': reason,
+                    'xx': None,
+                    'yy': None,
+                    'cutout': None,
+                    'npix': 0,
+                    'cen_index': np.nan,
+                }
+            else:
+                res = self._data_processor.get_source_cutout_data(
+                    row, data, mask, y_offsets, x_offsets)
+
+            # Common processing for all sources
+            npixfit_full.append(res['npix'])
+            cen_index_full.append(res['cen_index'])
+            invalid_reasons.append(res['reason'])
+            row_indices.append(row['_row_index'])
+
+            if res['valid'] and res['npix'] >= nfitparam_per_source:
+                valid_mask_list.append(True)
+                xi_all.append(res['xx'])
+                yi_all.append(res['yy'])
+                cutout_all.append(res['cutout'])
+            else:
+                if res['valid'] and res['npix'] < nfitparam_per_source:
+                    invalid_reasons[-1] = 'too_few_pixels'
+                valid_mask_list.append(False)
+
+        valid_mask = np.array(valid_mask_list, dtype=bool)
+        num_valid = int(np.count_nonzero(valid_mask))
+        
+        # check for all-invalid group
+        if num_valid == 0:
+            res_dict = {
+                'row_indices_arr': np.array(row_indices),
+                'num_valid': num_valid,
+            }
+            return idx, res_dict
+
+        # Fit the group
+        xi_concat = np.concatenate(xi_all)
+        yi_concat = np.concatenate(yi_all)
+        cutout_concat = np.concatenate(cutout_all)
+        valid_sources = source_group[valid_mask]
+        psf_model = self._psf_fitter.make_psf_model(valid_sources)
+        fit_model, fit_info = self._psf_fitter.run_fitter(
+            psf_model, xi_concat, yi_concat, cutout_concat, error)
+
+        res_dict = {
+            'row_indices_arr': np.array(row_indices),
+            'valid_mask': valid_mask,
+            'fit_model': fit_model,
+            'fit_info': fit_info,
+            'fit_info_full': self.fitter.fit_info,
+            'npixfit_full': npixfit_full,
+            'cen_index_full': cen_index_full,
+            'error': error,
+            'xi_all': xi_all,
+            'yi_all': yi_all,
+            'num_valid': num_valid,
+            
+            # info to update _state
+            'group_size': group_size,
+            'invalid_reasons': invalid_reasons,
+            'npixfit': np.array(npixfit_full,dtype=int),
+            
+        }
+        
+        return idx, res_dict
+
     def _fit_source_groups(self, source_groups, data, mask, error):
         """
         Fit PSF models to groups of sources in the input data.
@@ -1095,7 +1200,7 @@ class PSFPhotometry(ModelImageMixin):
         error : 2D ndarray or None
             The 1-sigma uncertainties of the input data.
         """
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar and not self.multiprocessing:  # pragma: no cover
             source_groups = add_progress_bar(source_groups,
                                              desc='Fit source/group')
 
@@ -1103,96 +1208,102 @@ class PSFPhotometry(ModelImageMixin):
         nfitparam_per_source = len(self._param_mapper.fitted_param_names)
 
         # sources are fit by groups in group ID order
-        for source_group in source_groups:
-            group_size = len(source_group)
-            xi_all = []
-            yi_all = []
-            cutout_all = []
-            npixfit_full = []
-            cen_index_full = []
-            valid_mask_list = []
-            invalid_reasons = []
-            row_indices = []
+        # ------------------------------------------------------
+        # reset and cache model_image_params to avoid a pickle error
+        self.__dict__.pop('_model_image_params', None)
+        _ = self._model_image_params
+        
+        # info to send to worker processes
+        input_data = data, mask, error, y_offsets, x_offsets, nfitparam_per_source
+        
+        # wrapper to include additional info
+        self.__dict__.pop('helper', None)
+        def helper(idx_source_group):
+            return self._group_fit_helper(idx_source_group, input_data)
+        
+        if self.multiprocessing and self.progress_bar: # multiprocessing with progress bar
+            results_unordered = p_umap(helper, enumerate(source_groups), 
+                                       desc='Fit source/group (parallel)',
+                                       total=len(source_groups))
+            
+        elif self.multiprocessing and not self.progress_bar: # quiet multiprocessing 
+            # TODO: this might be slower because of the ordered multiprocessing. check!!
+            with ProcessPool() as pool:
+                results_unordered = pool.map(helper, enumerate(source_groups))
+                pool.clear()
+                
+        else: # no multiprocessing, simple map (same as for loop)
+            # results_unordered = list(map(lambda x: self._group_fit_helper(x, input_data), indexed_data))
+            results_unordered = list(map(helper, enumerate(source_groups)))
+        # ------------------------------------------------------
+        try:
+            results = [val for i, val in sorted(results_unordered, key=lambda x: x[0])]
+        except Exception as e:
+            print(len(results_unordered))
+            print(results_unordered[0])
+            print(results_unordered[1])
+            # print(results_unordered)
+            raise e
 
-            # Process all sources with pre-filtering optimization
-            for row in source_group:
-                # Always use pre-filtering for all group sizes
-                should_skip_source = self._data_processor.should_skip_source
-                should_skip, reason = should_skip_source(row, data.shape)
-                if should_skip:
-                    res = {
-                        'valid': False,
-                        'reason': reason,
-                        'xx': None,
-                        'yy': None,
-                        'cutout': None,
-                        'npix': 0,
-                        'cen_index': np.nan,
-                    }
-                else:
-                    res = self._data_processor.get_source_cutout_data(
-                        row, data, mask, y_offsets, x_offsets)
-
-                # Common processing for all sources
-                npixfit_full.append(res['npix'])
-                cen_index_full.append(res['cen_index'])
-                invalid_reasons.append(res['reason'])
-                row_indices.append(row['_row_index'])
-
-                if res['valid'] and res['npix'] >= nfitparam_per_source:
-                    valid_mask_list.append(True)
-                    xi_all.append(res['xx'])
-                    yi_all.append(res['yy'])
-                    cutout_all.append(res['cutout'])
-                else:
-                    if res['valid'] and res['npix'] < nfitparam_per_source:
-                        invalid_reasons[-1] = 'too_few_pixels'
-                    valid_mask_list.append(False)
-
-            valid_mask = np.array(valid_mask_list, dtype=bool)
-            num_valid = int(np.count_nonzero(valid_mask))
-
-            # Store basic info for all sources in group.
-            # row_indices is used to store results in the original
-            # source ID order given by init_params.
-            row_indices_arr = np.array(row_indices)
-            self._state['group_size'][row_indices_arr] = group_size
-            self._state['npixfit'][row_indices_arr] = np.array(npixfit_full,
-                                                               dtype=int)
-
-            for i, row_index in enumerate(row_indices):
-                reason = invalid_reasons[i]
-                self._state['invalid_reasons'][row_index] = (
-                    '' if reason is None else reason
-                )
-
-            if num_valid == 0:
-                # Handle all-invalid group
-                for row_index in row_indices:
-                    self._state['valid_mask_by_id'][row_index] = False
-                    self._cache_fitted_parameters(row_index, None)
-                continue
-
-            # Fit the group
-            xi_concat = np.concatenate(xi_all)
-            yi_concat = np.concatenate(yi_all)
-            cutout_concat = np.concatenate(cutout_all)
-            valid_sources = source_group[valid_mask]
-            psf_model = self._psf_fitter.make_psf_model(valid_sources)
-            fit_model, fit_info = self._psf_fitter.run_fitter(
-                psf_model, xi_concat, yi_concat, cutout_concat, error)
-
+        
+        # parse results
+        for result in results:
             # Ungroup and store per-source results. row_indices is used
             # to ensure that results are stored in the original source
             # ID order given by init_params.
-            self._ungroup_fit_results(row_indices, valid_mask, fit_model,
+            if result is None:
+                continue
+            
+            # Store basic info for all sources in group.
+            # row_indices is used to store results in the original
+            # source ID order given by init_params.
+            row_indices_arr = result['row_indices_arr']
+            num_valid = result['num_valid']
+            
+            if num_valid == 0:
+                # Handle all-invalid group
+                for row_index in row_indices_arr:
+                    self._state['valid_mask_by_id'][row_index] = False
+                    self._cache_fitted_parameters(row_index, None)
+                continue
+            else:
+                group_size = result['group_size']
+                invalid_reasons = result['invalid_reasons']
+                npixfit = result['npixfit'] # int array
+                
+                self._state['group_size'][row_indices_arr] = group_size
+                self._state['npixfit'][row_indices_arr] = npixfit
+                for i, row_index in enumerate(row_indices_arr):
+                    reason = invalid_reasons[i]
+                    self._state['invalid_reasons'][row_index] = (
+                        '' if reason is None else reason
+                    )
+            
+            # get other quantities
+            valid_mask = result['valid_mask']
+            fit_model = result['fit_model']
+            fit_info = result['fit_info']
+            npixfit_full = result['npixfit_full']
+            cen_index_full = result['cen_index_full']
+            error = result['error']
+            xi_all = result['xi_all']
+            yi_all = result['yi_all']
+
+            # set fit_info manually to mock for loop behavior
+            self.fitter.fit_info = result['fit_info_full']
+            
+            self._ungroup_fit_results(row_indices_arr, valid_mask, fit_model,
                                       fit_info)
 
             # Calculate residual metrics for valid sources
             self._calculate_residual_metrics(
-                row_indices, valid_mask, npixfit_full, cen_index_full,
+                row_indices_arr, valid_mask, npixfit_full, cen_index_full,
                 error=error, xi_all=xi_all, yi_all=yi_all)
 
+        # removed empty cached results
+        self.__dict__.pop('_model_image_params', None)
+                
+        
     def _get_fit_error_indices(self):
         """
         Get the indices of fits that did not converge.
