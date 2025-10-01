@@ -7,13 +7,12 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import CCDData, NDData
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
-from photutils.background.background_2d import Background2D
-from photutils.background.core import MeanBackground, SExtractorBackground
-from photutils.background.interpolators import (BkgIDWInterpolator,
-                                                BkgZoomInterpolator)
+from photutils.background import (Background2D, BkgZoomInterpolator,
+                                  MeanBackground, SExtractorBackground)
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 DATA = np.ones((100, 100))
@@ -23,7 +22,6 @@ BKG_RMS_MESH = np.zeros((4, 4))
 PADBKG_MESH = np.ones((5, 5))
 PADBKG_RMS_MESH = np.zeros((5, 5))
 FILTER_SIZES = [(1, 1), (3, 3)]
-INTERPOLATORS = [BkgZoomInterpolator(), BkgIDWInterpolator()]
 
 DATA1 = DATA << u.ct
 DATA2 = NDData(DATA, unit=None)
@@ -33,10 +31,8 @@ DATA4 = CCDData(DATA, unit=u.ct)
 
 class TestBackground2D:
     @pytest.mark.parametrize('filter_size', FILTER_SIZES)
-    @pytest.mark.parametrize('interpolator', INTERPOLATORS)
-    def test_background(self, filter_size, interpolator):
-        bkg = Background2D(DATA, (25, 25), filter_size=filter_size,
-                           interpolator=interpolator)
+    def test_background(self, filter_size):
+        bkg = Background2D(DATA, (25, 25), filter_size=filter_size)
         assert_allclose(bkg.background, DATA)
         assert_allclose(bkg.background_rms, BKG_RMS)
         assert_allclose(bkg.background_mesh, BKG_MESH)
@@ -50,10 +46,8 @@ class TestBackground2D:
     @pytest.mark.parametrize('dtype', ['int', 'int32', 'float32'])
     def test_background_dtype(self, box_size, dtype):
         filter_size = 3
-        interpolator = BkgZoomInterpolator()
         data2 = DATA.copy().astype(dtype)
-        bkg = Background2D(data2, box_size, filter_size=filter_size,
-                           interpolator=interpolator)
+        bkg = Background2D(data2, box_size, filter_size=filter_size)
         assert bkg.background.dtype == data2.dtype
         assert bkg.background_rms.dtype == data2.dtype
         assert bkg.background_mesh.dtype == data2.dtype
@@ -85,15 +79,13 @@ class TestBackground2D:
         assert bkg.background_median == 1.0
         assert bkg.background_rms_median == 0.0
 
-    @pytest.mark.parametrize('interpolator', INTERPOLATORS)
-    def test_background_rect(self, interpolator):
+    def test_background_rect(self):
         """
         Regression test for interpolators with non-square input data.
         """
         data = np.arange(12).reshape(3, 4)
         rms = np.zeros((3, 4))
-        bkg = Background2D(data, (1, 1), filter_size=1,
-                           interpolator=interpolator)
+        bkg = Background2D(data, (1, 1), filter_size=1)
         assert_allclose(bkg.background, data, atol=0.005)
         assert_allclose(bkg.background_rms, rms)
         assert_allclose(bkg.background_mesh, data)
@@ -101,18 +93,15 @@ class TestBackground2D:
         assert bkg.background_median == 5.5
         assert bkg.background_rms_median == 0.0
 
-    @pytest.mark.parametrize('interpolator', INTERPOLATORS)
-    def test_background_nonconstant(self, interpolator):
+    def test_background_nonconstant(self):
         data = np.copy(DATA)
         data[25:50, 50:75] = 10.0
         bkg_low_res = np.copy(BKG_MESH)
         bkg_low_res[1, 2] = 10.0
-        bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
-                            interpolator=interpolator)
+        bkg1 = Background2D(data, (25, 25), filter_size=(1, 1))
         assert_allclose(bkg1.background_mesh, bkg_low_res)
         assert bkg1.background.shape == data.shape
-        bkg2 = Background2D(data, (25, 25), filter_size=(1, 1),
-                            interpolator=interpolator)
+        bkg2 = Background2D(data, (25, 25), filter_size=(1, 1))
         assert_allclose(bkg2.background_mesh, bkg_low_res)
         assert bkg2.background.shape == data.shape
 
@@ -120,8 +109,7 @@ class TestBackground2D:
         data = rng.normal(1.0, 0.1, (121, 289))
         mask = np.zeros(data.shape, dtype=bool)
         mask[50:100, 50:100] = True
-        bkg = Background2D(data, (25, 25), mask=mask,
-                           interpolator=interpolator)
+        bkg = Background2D(data, (25, 25), mask=mask)
         assert np.mean(bkg.background) < 1.0
         assert np.mean(bkg.background_rms) < 1.0
         assert bkg.background_median < 1.0
@@ -510,3 +498,20 @@ class TestBackground2D:
         bkgim = bkg.background
         assert bkgim.shape == shape
         assert_equal(data, data_orig)
+
+    def test_interpolator_keyword_deprecation(self):
+        """
+        Test that the interpolator keyword is deprecated.
+        """
+        match = 'BkgZoomInterpolator is deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            interp = BkgZoomInterpolator()
+
+        match = '"interpolator" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            bkg = Background2D(DATA, (25, 25), interpolator=interp)
+
+        assert_allclose(bkg.background, DATA)
+
+        bkg = Background2D(DATA, (25, 25))  # Should not raise
+        assert_allclose(bkg.background, DATA)

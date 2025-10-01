@@ -25,6 +25,15 @@ API Changes
   - Removed the deprecated ``grid_mode`` keyword from
     ``BkgZoomInterpolator``. [#2102]
 
+  - The ``interpolator`` keyword argument for ``Background2D`` is
+    now deprecated. When ``interpolator`` is eventually removed,
+    the ``scipy.ndimage.zoom`` cubic spline interpolator will always be
+    used to resize the low-resolution arrays. The behavior will be
+    identical to the current default. [#2108]
+
+  - The ``BkgIDWInterpolator`` and ``BkgZoomInterpolator`` classes are
+    now deprecated. [#2108]
+
 - ``photutils.psf``
 
   - Removed the deprecated ``IntegratedGaussianPRF`` and ``PRFAdapter``
