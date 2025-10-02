@@ -157,7 +157,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
         for key, value in nddata_attr.items():
             if value is not None:
-                warnings.warn(f'The {key!r} keyword is be ignored. Its value '
+                warnings.warn(f'The {key!r} keyword will be ignored. Its value '
                               'is obtained from the input NDData object.',
                               AstropyUserWarning)
 
