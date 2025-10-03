@@ -31,6 +31,10 @@ well-suited for resizing images on a regular grid to larger sizes. It
 is also significantly slower than the default interpolator based on
 ``scipy.ndimage.zoom``.
 
+The ``grid_from_epsfs`` helper function is now deprecated. This function
+creates a ``GriddedPSFModel`` from a list of ePSFs. Instead, use the
+``GriddedPSFModel`` class directly.
+
 
 Removed Deprecations
 ====================

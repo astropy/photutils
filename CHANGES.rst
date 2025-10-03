@@ -39,6 +39,9 @@ API Changes
   - Removed the deprecated ``IntegratedGaussianPRF`` and ``PRFAdapter``
     classes. [#2103]
 
+  - The ``grid_from_epsfs`` helper function is now deprecated. Instead,
+    use ``GriddedPSFModel`` directly. [#2111]
+
 
 2.3.0 (2025-09-15)
 ------------------
