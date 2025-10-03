@@ -472,7 +472,7 @@ class PSFPhotometry(ModelImageMixin):
 
         # Initialize model parameter storage directly
         self._init_model_param_storage(n_sources)
-        self.fit_info = [{}] * n_sources
+        self.fit_info = [{} for _ in range(n_sources)]
 
     def _init_model_param_storage(self, n_sources):
         """
