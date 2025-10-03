@@ -10,6 +10,7 @@ from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Const2D, Gaussian2D, Moffat2D
 from astropy.nddata import NDData
 from astropy.table import Table
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils import datasets
@@ -247,7 +248,8 @@ class TestGridFromEPSFs:
         self.grid_xypos = [val['fiducial'] for val in quad_stars.values()]
 
     def test_basic_test_grid_from_epsfs(self):
-        psf_grid = grid_from_epsfs(self.epsfs)
+        with pytest.warns(AstropyDeprecationWarning):
+            psf_grid = grid_from_epsfs(self.epsfs)
 
         assert np.all(psf_grid.oversampling == self.epsfs[0].oversampling)
         assert psf_grid.data.shape == (4, psf_grid.oversampling[0] * 25 + 1,
@@ -258,7 +260,8 @@ class TestGridFromEPSFs:
         Test both options for setting PSF locations.
         """
         # default option x_0 and y_0s on input EPSFs
-        psf_grid = grid_from_epsfs(self.epsfs)
+        with pytest.warns(AstropyDeprecationWarning):
+            psf_grid = grid_from_epsfs(self.epsfs)
 
         assert psf_grid.meta['grid_xypos'] == [(0.0, 0.0), (1000.0, 1000.0),
                                                (0.0, 1000.0), (1000.0, 0.0)]
@@ -267,7 +270,8 @@ class TestGridFromEPSFs:
         grid_xypos = [(250.0, 250.0), (750.0, 750.0),
                       (250.0, 750.0), (750.0, 250.0)]
 
-        psf_grid = grid_from_epsfs(self.epsfs, grid_xypos=grid_xypos)
+        with pytest.warns(AstropyDeprecationWarning):
+            psf_grid = grid_from_epsfs(self.epsfs, grid_xypos=grid_xypos)
         assert psf_grid.meta['grid_xypos'] == grid_xypos
 
     def test_meta(self):
@@ -277,7 +281,8 @@ class TestGridFromEPSFs:
         keys = ['grid_xypos', 'oversampling', 'fill_value']
 
         # when 'meta' isn't provided, there should be just three keys
-        psf_grid = grid_from_epsfs(self.epsfs)
+        with pytest.warns(AstropyDeprecationWarning):
+            psf_grid = grid_from_epsfs(self.epsfs)
         for key in keys:
             assert key in psf_grid.meta
 
@@ -285,7 +290,8 @@ class TestGridFromEPSFs:
         # in the list above should be overwritten
         meta = {'grid_xypos': 0.0, 'oversampling': 0.0,
                 'fill_value': -999, 'extra_key': 'extra'}
-        psf_grid = grid_from_epsfs(self.epsfs, meta=meta)
+        with pytest.warns(AstropyDeprecationWarning):
+            psf_grid = grid_from_epsfs(self.epsfs, meta=meta)
         for key in [*keys, 'extra_key']:
             assert key in psf_grid.meta
         assert psf_grid.meta['grid_xypos'].sort() == self.grid_xypos.sort()
