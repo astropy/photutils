@@ -33,3 +33,8 @@ def test_local_background():
 
     cls_repr = repr(local_bkg)
     assert cls_repr.startswith(local_bkg.__class__.__name__)
+
+    # test default bkg_estimator
+    local_bkg2 = LocalBackground(5, 10, bkg_estimator=None)
+    bkg4 = local_bkg2(data, x, y)
+    assert_allclose(bkg4, bkg)
