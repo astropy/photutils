@@ -101,7 +101,7 @@ def test_invalid_inputs():
 
     match = 'localbkg_estimator must be a LocalBackground instance'
     localbkg = MMMBackground()
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(TypeError, match=match):
         _ = PSFPhotometry(model, 1, localbkg_estimator=localbkg)
 
     match = 'aperture_radius must be a strictly-positive scalar'
@@ -110,7 +110,7 @@ def test_invalid_inputs():
             _ = PSFPhotometry(model, 1, aperture_radius=radius)
 
     match = 'grouper must be a SourceGrouper instance'
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(TypeError, match=match):
         _ = PSFPhotometry(model, (5, 5), grouper=1)
 
     match = 'data must be a 2D array'

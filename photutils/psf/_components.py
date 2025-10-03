@@ -7,7 +7,6 @@ of the PSFPhotometry class and are not intended for direct public use.
 """
 
 import contextlib
-import hashlib
 import warnings
 import weakref
 
@@ -217,49 +216,6 @@ def _instantiate_flat_model(model_class, sources, psf_model, param_mapper,
 _FLAT_MODEL_CACHE = weakref.WeakValueDictionary()
 
 
-def _create_cache_key(n_sources, psf_model):
-    """
-    Create a robust cache key for flat model classes.
-
-    Uses the PSF model's class name and a hash of its parameter
-    structure to avoid collisions between different model types with
-    similar parameter names.
-
-    Parameters
-    ----------
-    n_sources : int
-        Number of sources in the group.
-
-    psf_model : `~astropy.modeling.Model`
-        The PSF model to create a cache key for.
-
-    Returns
-    -------
-    cache_key : tuple
-        A tuple that uniquely identifies this model configuration.
-    """
-    # Use model class name and module to distinguish different model types
-    model_class = psf_model.__class__
-    model_type = f"{model_class.__module__}.{model_class.__name__}"
-
-    # Create a hash of the parameter structure for additional uniqueness
-    param_info = []
-    for param_name in sorted(psf_model.param_names):
-        param = getattr(psf_model, param_name)
-        # Include parameter properties that affect model structure
-        unit_str = ('None' if not hasattr(param, 'unit')
-                    or param.unit is None else str(param.unit))
-        param_info.extend([
-            param_name,
-            unit_str,
-            str(param.default),
-        ])
-
-    param_hash = hashlib.sha256('|'.join(param_info).encode()).hexdigest()[:8]
-
-    return (n_sources, model_type, param_hash)
-
-
 def _get_flat_model(sources, psf_model, param_mapper, xy_bounds=None):
     """
     Get or create a flat model for a group of sources.
@@ -296,7 +252,10 @@ def _get_flat_model(sources, psf_model, param_mapper, xy_bounds=None):
     n_sources = len(sources)
 
     # Create robust cache key to avoid model type collisions
-    cache_key = _create_cache_key(n_sources, psf_model)
+    # Use number of sources and the PSF model class name
+    model_class = psf_model.__class__
+    model_type = f"{model_class.__module__}.{model_class.__name__}"
+    cache_key = (n_sources, model_type)
 
     # Get cached model class or create new one
     if cache_key not in _FLAT_MODEL_CACHE:
