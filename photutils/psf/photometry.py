@@ -369,6 +369,9 @@ class PSFPhotometry(ModelImageMixin):
     in a group exceeds the ``group_warning_threshold`` value.
     """
 
+    # Default value for parameter initialization (invalid sources)
+    DEFAULT_PARAM_VALUE = np.nan
+
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
                  fitter=None, fitter_maxiters=100, xy_bounds=None,
                  aperture_radius=None, localbkg_estimator=None,
@@ -484,15 +487,13 @@ class PSFPhotometry(ModelImageMixin):
         """
         # get all parameter names from the PSF model
         model_params = list(self.psf_model.param_names)
-        flux_param = self._param_mapper.alias_to_model_param['flux']
 
         # initialize parameter value storage
         param_data = {}
         for model_param in model_params:
-            # initialize with appropriate defaults
-            default_val = (0.0 if model_param == flux_param else np.nan)
-
-            param_data[model_param] = np.full(n_sources, default_val)
+            # initialize all parameters with np.nan (for invalid sources)
+            param_data[model_param] = np.full(n_sources,
+                                              self.DEFAULT_PARAM_VALUE)
             param_data[f'{model_param}_fixed'] = [None] * n_sources
             param_data[f'{model_param}_bounds'] = [None] * n_sources
 
@@ -520,16 +521,13 @@ class PSFPhotometry(ModelImageMixin):
             sources.
         """
         param_data = self._state['model_param_data']
-        flux_param = self._param_mapper.alias_to_model_param['flux']
 
         if model is None:
             # For invalid sources, use default template from psf_model
             template_model = self.psf_model
             for param_name in template_model.param_names:
-                if param_name == flux_param:
-                    param_data[param_name][row_index] = 0.0
-                else:
-                    param_data[param_name][row_index] = np.nan
+                # Set all parameters to np.nan for invalid sources
+                param_data[param_name][row_index] = self.DEFAULT_PARAM_VALUE
 
                 template_param = getattr(template_model, param_name)
                 param_data[f'{param_name}_fixed'][row_index] = (
