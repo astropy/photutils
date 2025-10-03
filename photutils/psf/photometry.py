@@ -507,13 +507,17 @@ class PSFPhotometry(ModelImageMixin):
         Extract and store model parameters directly instead of storing
         the full model object.
 
+        This method updates the internal state container with model
+        parameter values, fixed flags, and bounds for a specific source.
+
         Parameters
         ----------
         row_index : int
             The index of the source in the results arrays.
 
         model : astropy.modeling.Model or None
-            The fitted model for this source, or None for invalid sources.
+            The fitted model for this source, or None for invalid
+            sources.
         """
         param_data = self._state['model_param_data']
         flux_param = self._param_mapper.alias_to_model_param['flux']
@@ -570,9 +574,59 @@ class PSFPhotometry(ModelImageMixin):
         return make_repr(self, self._attrs)
 
     @staticmethod
+    def _validate_type(obj, name, expected_type):
+        """
+        Validate that object is of expected type.
+
+        Parameters
+        ----------
+        obj : object or None
+            Object to validate.
+
+        name : str
+            Name of the parameter for error messages.
+
+        expected_type : type or tuple of types
+            Expected type(s) for the object.
+
+        Returns
+        -------
+        obj : object or None
+            The validated object.
+
+        Raises
+        ------
+        error_type
+            If obj is not None and not an instance of expected_type.
+        """
+        if obj is not None and not isinstance(obj, expected_type):
+            type_name = expected_type.__name__
+            msg = f'{name} must be a {type_name} instance'
+            raise TypeError(msg)
+        return obj
+
+    @staticmethod
     def _validate_callable(obj, name):
         """
         Validate that the input object is callable.
+
+        Parameters
+        ----------
+        obj : object or None
+            Object to validate.
+
+        name : str
+            Name of the parameter for error messages.
+
+        Returns
+        -------
+        obj : object or None
+            The validated callable object.
+
+        Raises
+        ------
+        TypeError
+            If obj is not None and not callable.
         """
         if obj is not None and not callable(obj):
             msg = f'{name!r} must be a callable object'
@@ -582,15 +636,45 @@ class PSFPhotometry(ModelImageMixin):
     def _validate_grouper(self, grouper):
         """
         Validate the input ``grouper`` value.
+
+        Parameters
+        ----------
+        grouper : SourceGrouper or None
+            The source grouper to validate.
+
+        Returns
+        -------
+        grouper : SourceGrouper or None
+            The validated grouper.
+
+        Raises
+        ------
+        TypeError
+            If grouper is not None and not a SourceGrouper instance.
         """
-        if grouper is not None and not isinstance(grouper, SourceGrouper):
-            msg = 'grouper must be a SourceGrouper instance'
-            raise ValueError(msg)
-        return grouper
+        return self._validate_type(grouper, 'grouper', SourceGrouper)
 
     def _validate_bounds(self, xy_bounds):
         """
         Validate the input ``xy_bounds`` value.
+
+        Parameters
+        ----------
+        xy_bounds : float, tuple of float, or None
+            The maximum distance(s) in pixels that fitted sources can be
+            from initial positions.
+
+        Returns
+        -------
+        xy_bounds : ndarray or None
+            The validated xy_bounds as a 2-element array, or None if
+            input was None.
+
+        Raises
+        ------
+        ValueError
+            If xy_bounds has incorrect shape, dimension, or contains
+            invalid values (non-positive or non-finite).
         """
         if xy_bounds is None:
             return xy_bounds
@@ -618,6 +702,22 @@ class PSFPhotometry(ModelImageMixin):
     def _validate_radius(radius):
         """
         Validate the input ``aperture_radius`` value.
+
+        Parameters
+        ----------
+        radius : float or None
+            The aperture radius value to validate.
+
+        Returns
+        -------
+        radius : float or None
+            The validated aperture radius.
+
+        Raises
+        ------
+        ValueError
+            If radius is not None and is not a strictly positive finite
+            scalar.
         """
         if radius is not None and (not np.isscalar(radius)
                                    or radius <= 0 or not np.isfinite(radius)):
@@ -628,15 +728,43 @@ class PSFPhotometry(ModelImageMixin):
     def _validate_localbkg(self, value, name):
         """
         Validate the input ``localbkg_estimator`` value.
+
+        Parameters
+        ----------
+        value : LocalBackground or None
+            The local background estimator to validate.
+
+        name : str
+            Name of the parameter for error messages.
+
+        Returns
+        -------
+        value : LocalBackground or None
+            The validated local background estimator.
+
+        Raises
+        ------
+        TypeError
+            If value is not None and not a LocalBackground instance.
         """
-        if value is not None and not isinstance(value, LocalBackground):
-            msg = 'localbkg_estimator must be a LocalBackground instance'
-            raise ValueError(msg)
+        value = self._validate_type(value, 'localbkg_estimator',
+                                    LocalBackground)
         return self._validate_callable(value, name)
 
     def _validate_maxiters(self, maxiters):
         """
         Validate the input ``maxiters`` value.
+
+        Parameters
+        ----------
+        maxiters : int or None
+            Maximum number of fitter iterations to validate.
+
+        Returns
+        -------
+        maxiters : int or None
+            The validated maxiters value, or None if the fitter doesn't
+            support this parameter.
         """
         spec = inspect.signature(self.fitter.__call__)
         if 'maxiter' not in spec.parameters:
@@ -649,6 +777,12 @@ class PSFPhotometry(ModelImageMixin):
     def _sync_data_unit(self):
         """
         Synchronize data_unit between main class and components.
+
+        This method ensures that the data_unit attribute is consistent
+        between the PSFPhotometry instance and its internal component
+        objects (e.g., _data_processor).
+
+        This method modifies the internal state in-place.
         """
         if hasattr(self, '_data_processor'):
             self._data_processor.data_unit = self.data_unit
