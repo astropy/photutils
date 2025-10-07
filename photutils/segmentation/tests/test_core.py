@@ -424,7 +424,7 @@ class TestSegmentationImage:
         axim = self.segm.imshow(figsize=(5, 5))
         assert isinstance(axim, AxesImage)
 
-        axim, cbar = self.segm.imshow_map(figsize=(5, 5))
+        axim, _ = self.segm.imshow_map(figsize=(5, 5))
         assert isinstance(axim, AxesImage)
 
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')

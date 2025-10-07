@@ -138,7 +138,7 @@ def test_curve_of_growth_normalize(profile_data):
 
 
 def test_curve_of_growth_interp(profile_data):
-    xycen, data, error, _ = profile_data
+    xycen, data, _, _ = profile_data
     radii = np.arange(1, 36)
     cg1 = CurveOfGrowth(data, xycen, radii, error=None, mask=None)
     cg1.normalize()

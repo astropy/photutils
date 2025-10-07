@@ -1333,7 +1333,7 @@ def test_flag32_parameter_at_bounds():
 
 
 def test_psf_photometry_methods(test_data):
-    data, error, sources = test_data
+    data, error, _ = test_data
 
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
@@ -1823,7 +1823,7 @@ def test_qfit_cfit_with_different_errors(test_data):
     """
     Test qfit and cfit with different error values.
     """
-    data, error, sources = test_data
+    data, error, _ = test_data
 
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
