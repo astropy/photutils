@@ -37,8 +37,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: '3.13'
-            tox_env: 'py312-test-alldeps-devinfra'
+            python: '3.14'
+            tox_env: 'py314-test-alldeps-devinfra'
             allow_failure: false
 
     steps:
