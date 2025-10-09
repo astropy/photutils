@@ -16,6 +16,48 @@ smaller improvements and bug fixes, which are described in the full
    :depth: 2
 
 
+New SourceGroups class
+======================
+
+A new :class:`~photutils.psf.SourceGroups` class provides a convenient
+and feature-rich interface for working with source grouping results. It
+includes:
+
+* Direct access to group IDs via the ``groups`` attribute
+* Properties for ``n_sources``, ``n_groups``, ``sizes``, and
+  ``group_centers``
+* The ``get_group_sources(group_id)`` method to retrieve sources in a
+  specific group
+* A ``plot()`` method to visualize grouping results with color-coded
+  apertures
+
+A :class:`~photutils.psf.SourceGroups` object can be returned by the
+:class:`~photutils.psf.SourceGrouper` class when called with the
+``return_source_groups=True`` keyword argument::
+
+    >>> from photutils.psf import SourceGrouper
+    >>> grouper = SourceGrouper(min_separation=10)
+    >>> groups = grouper(x, y, return_source_groups=True)
+    >>> print(groups.n_groups)  # number of groups
+
+It can also be instantiated directly from source positions and group
+IDs::
+
+    >>> from photutils.psf import SourceGroups
+    >>> groups = SourceGroups(x, y, group_ids)
+
+
+Removed Deprecations
+====================
+
+The following previously deprecated features have been removed:
+
+* The ``Background2D`` ``edge_method`` keyword argument.
+* The ``Background2D`` ``background_mesh_masked``,
+  ``background_rms_mesh_masked``, and ``mesh_nmasked`` properties.
+* The ``BkgZoomInterpolator`` ``grid_mode`` keyword argument.
+
+
 New Deprecations
 ================
 
@@ -34,14 +76,3 @@ is also significantly slower than the default interpolator based on
 The ``grid_from_epsfs`` helper function is now deprecated. This function
 creates a ``GriddedPSFModel`` from a list of ePSFs. Instead, use the
 ``GriddedPSFModel`` class directly.
-
-
-Removed Deprecations
-====================
-
-The following previously deprecated features have been removed:
-
-* The ``Background2D`` ``edge_method`` keyword argument.
-* The ``Background2D`` ``background_mesh_masked``,
-  ``background_rms_mesh_masked``, and ``mesh_nmasked`` properties.
-* The ``BkgZoomInterpolator`` ``grid_mode`` keyword argument.
