@@ -882,11 +882,23 @@ class TestSourceCatalog:
         tbl = self.cat.to_table()
         assert tbl.meta == self.cat.meta
 
-        out = StringIO()
-        tbl.write(out, format='ascii.ecsv')
-        tbl2 = QTable.read(out.getvalue(), format='ascii.ecsv')
-        # check order of meta keys
-        assert list(tbl2.meta.keys()) == list(tbl.meta.keys())
+        # Skip ECSV round-trip test for Astropy 6.1 + NumPy 2.0
+        # due to YAML serialization issue with NumPy scalar types
+        # https://github.com/astropy/astropy/issues/16357
+        import astropy
+        from packaging.version import Version
+        np_version = Version(np.__version__)
+        astropy_version = Version(astropy.__version__)
+
+        skip_ecsv = (np_version >= Version('2.0.0')
+                     and astropy_version < Version('7.0.0'))
+
+        if not skip_ecsv:
+            out = StringIO()
+            tbl.write(out, format='ascii.ecsv')
+            tbl2 = QTable.read(out.getvalue(), format='ascii.ecsv')
+            # check order of meta keys
+            assert list(tbl2.meta.keys()) == list(tbl.meta.keys())
 
     def test_semode(self):
         self.cat._set_semode()

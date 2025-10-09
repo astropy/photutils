@@ -9,38 +9,38 @@ Photutils has the following strict requirements:
 
 * `Python <https://www.python.org/>`_ 3.11 or later
 
-* `NumPy <https://numpy.org/>`_ 1.25 or later
+* `NumPy <https://numpy.org/>`_ 2.0 or later
 
-* `Astropy`_ 5.3 or later
+* `SciPy <https://scipy.org/>`_ 1.13 or later
 
-* `SciPy <https://scipy.org/>`_ 1.11.1 or later
+* `Astropy`_ 6.1.1 or later
 
 Photutils also optionally depends on other packages for some features:
 
-* `Matplotlib <https://matplotlib.org/>`_ 3.8 or later: Used to power a
+* `Matplotlib <https://matplotlib.org/>`_ 3.9 or later: Used to power a
   variety of plotting features (e.g., plotting apertures).
 
 * `Regions <https://astropy-regions.readthedocs.io/>`_ 0.9 or
   later: Required to perform aperture photometry using region objects.
 
-* `scikit-image <https://scikit-image.org/>`_ 0.21 or later: Required
+* `scikit-image <https://scikit-image.org/>`_ 0.23 or later: Required
   to deblend segmented sources.
 
 * `GWCS <https://gwcs.readthedocs.io/en/stable/>`_ 0.20 or later:
   Required in `~photutils.datasets.make_gwcs` to create a simple celestial
   gwcs object.
 
-* `Bottleneck <https://github.com/pydata/bottleneck>`_: 1.3.6 or later:
+* `Bottleneck <https://github.com/pydata/bottleneck>`_: 1.4 or later:
   Improves the performance of sigma clipping and other functionality that
   may require computing statistics on arrays with NaN values.
 
-* `tqdm <https://tqdm.github.io/>`_: 4.65 or later: Required to display
+* `tqdm <https://tqdm.github.io/>`_: 4.66 or later: Required to display
   optional progress bars.
 
-* `Rasterio <https://rasterio.readthedocs.io/en/stable/>`_: 1.3.7 or
+* `Rasterio <https://rasterio.readthedocs.io/en/stable/>`_: 1.4 or
   later: Required to convert source segments into polygon objects.
 
-* `Shapely <https://shapely.readthedocs.io/en/stable/>`_: 2.0.0 or
+* `Shapely <https://shapely.readthedocs.io/en/stable/>`_: 2.0 or
   later: Required to convert source segments into polygon objects.
 
 
