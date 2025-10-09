@@ -1,7 +1,7 @@
-.. _psf-grouping:
+.. _source-grouping:
 
-Source Grouping Algorithms
-==========================
+Source Grouping
+===============
 
 Introduction
 ------------
@@ -37,17 +37,18 @@ Getting Started
 ---------------
 
 To group sources, Photutils includes a tool called
-:class:`~photutils.psf.SourceGrouper`. This class organizes stars into
-groups by applying a technique known as hierarchical agglomerative
+:class:`~photutils.psf.SourceGrouper`. This class organizes sources
+into groups by applying a technique known as hierarchical agglomerative
 clustering, which uses a distance-based criterion. This functionality is
 implemented using the `scipy.cluster.hierarchy.fclusterdata` function
 from the SciPy library.
 
-Typically, to group stars during PSF fitting, one would provide a
+Typically, to group sources during PSF fitting, one would provide a
 :class:`~photutils.psf.SourceGrouper` object, configured with a minimum
 separation distance, directly to one of the PSF photometry classes.
 However, for the purpose of illustration, we will show how to use the
-SourceGrouper class independently to group stars within a sample image.
+:class:`~photutils.psf.SourceGrouper` class independently to group stars
+within a sample image.
 
 The first step is to generate a simulated astronomical image that
 contains sources modeled as 2D Gaussians, which we will accomplish using
@@ -66,13 +67,19 @@ the `~photutils.psf.make_psf_model_image` function::
     ...                                    flux=flux,
     ...                                    border_size=border_size, seed=123)
 
+The `~photutils.psf.make_psf_model_image` provides two outputs: the
+image itself, which we call ``data``, and a table containing the
+positions and fluxes of the stars, which we call ``stars``. The x and y
+coordinates of the stars are located in the ``x_0`` and ``y_0`` columns
+of this table.
+
 Let's display the image:
 
 .. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
-    >>> plt.figure(figsize=(8, 8))
-    >>> plt.imshow(data, origin='lower', interpolation='nearest')
+    >>> fig, ax = plt.subplots(figsize=(8, 8))
+    >>> ax.imshow(data, origin='lower', interpolation='nearest')
 
 .. plot::
 
@@ -90,16 +97,9 @@ Let's display the image:
                                        flux=flux,
                                        model_shape=psf_shape,
                                        border_size=border_size, seed=123)
-    plt.figure(figsize=(8, 8))
-    plt.imshow(data, origin='lower', interpolation='nearest')
-    plt.show()
-
-
-The `~photutils.psf.make_psf_model_image` provides two outputs: the
-image itself, which we'll call ``data``, and a table containing the
-positions and fluxes of the stars, which we'll call ``stars``. The x
-and y coordinates of the stars are located in the ``x_0`` and ``y_0``
-columns of this table.
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.imshow(data, origin='lower', interpolation='nearest')
+    fig.show()
 
 With the simulated data ready, we can now identify groups of stars.
 The first step is to create a `~photutils.psf.SourceGrouper` object.
@@ -122,59 +122,108 @@ detection tool to find the star positions in an actual image::
    >>> import numpy as np
    >>> x = np.array(stars['x_0'])
    >>> y = np.array(stars['y_0'])
-   >>> groups = grouper(x, y)
+   >>> group_ids = grouper(x, y)
+   >>> print(group_ids[:20])  # first 20 group IDs
+   [ 1  2  3  4  5  6  7  8  9 10 11  4  6  3 12 13 14 15 16 17]
 
-The result of this process, which we call ``groups``, is an array of
-integers that corresponds to the input star coordinates. Each integer
-represents a group ID, so stars that have the same number belong to the
-same group.
+The result of this process is an array of integers, ``group_id``, where
+each integer represents the group to which the corresponding star.
+Stars that share the same group ID are considered part of the same
+group.
 
-The grouping algorithm separated the 100 stars into 65 distinct groups:
+When performing PSF photometry, you can add the group IDs to the initial
+parameters table (``init_params``) that is passed to the photometry
+tool. If you provide these group IDs, a `~photutils.psf.SourceGrouper`
+does not need to be passed to the photometry class, as the grouping will
+already be defined.
 
-.. doctest-skip::
 
-    >>> print(max(groups))
+Returning a SourceGroups Object
+-------------------------------
+
+Alternatively, you can set the ``return_groups_object`` keyword to
+`True` when calling the `~photutils.psf.SourceGrouper` object, and
+it will return a `~photutils.psf.SourceGroups` object instead of an
+array of integers::
+
+   >>> groups = grouper(x, y, return_groups_object=True)
+   >>> print(type(groups))
+   <class 'photutils.psf.groupers.SourceGroups'>
+
+In this case, ``groups`` is a `~photutils.psf.SourceGroups` object
+that contains the grouping results and provides convenient methods for
+analysis. This object stores the source coordinates, group IDs, and
+provides properties and methods to analyze the grouping.
+
+The grouping algorithm separated the 100 stars into 65 distinct groups::
+
+    >>> print(groups.n_groups)
     65
 
-For example, to find the positions of the stars in group 3::
+You can access the group IDs directly from the ``groups`` attribute,
+which is an array of integers corresponding to the input star
+coordinates. Stars with the same group ID belong to the same group::
 
-   >>> mask = groups == 3
-   >>> x[mask], y[mask]
-   (array([60.32708921, 58.73063714]), array([147.24184586, 158.0612346 ]))
+   >>> print(groups.groups[:20])  # first 20 group IDs
+   [ 1  2  3  4  5  6  7  8  9 10 11  4  6  3 12 13 14 15 16 17]
 
-When performing PSF photometry, you can add these group IDs to
-the initial parameters table (``init_params``) that is passed
-to the photometry tool. If you provide these group IDs, a
-`~photutils.psf.SourceGrouper` does not need to be passed to the
-photometry class, as the grouping will already be defined.
+Similar to above, you can add the group IDs from ``groups.groups`` to
+the initial parameters table (``init_params``) that is passed to the
+photometry tool to define the source grouping.
 
-To visualize the results, we can draw a circle around each star, using a
-unique color for the circles in each group to show which stars have been
-grouped together.
+To find the positions of the stars in group 3, you can use the
+`~photutils.psf.SourceGroups.get_group_sources` method::
+
+   >>> x_group3, y_group3 = groups.get_group_sources(3)
+   >>> print(x_group3, y_group3)
+   [60.32708921 58.73063714] [147.24184586 158.0612346 ]
+
+The `~photutils.psf.SourceGroups` object also provides useful properties
+and methods to analyze the grouping results::
+
+   >>> # Get the size of each group for each source
+   >>> sizes = groups.sizes
+   >>> print(f'Group sizes: {sizes[:5]}')  # first 5
+   Group sizes: [1 2 2 5 2]
+
+   >>> # Get the mapping of group IDs to group sizes
+   >>> size_map = groups.size_map
+   >>> print(f'Size map: {list(size_map.items())[:5]}')  # first 5
+   Size map: [(1, 1), (2, 2), (3, 2), (4, 5), (5, 2)]
+
+   >>> print(f'Largest group size: {max(size_map.values())}')
+   Largest group size: 5
+
+   >>> # Get a list of group IDs that have the largest group size
+   >>> largest_group_ids = ([gid for gid, size in size_map.items()
+   ...                       if size == max(size_map.values())])
+   >>> print(f'Largest group IDs: {largest_group_ids}')
+   Largest group IDs: [4]
+
+   >>> # Get the centroid of group 5
+   >>> xy_center = groups.group_centers[5]
+   >>> print(f'Group 5 center: {xy_center}')  # doctest: +FLOAT_CMP
+   Group 5 center: (48.35899721341876, 73.85258893310564)
+
+To visualize the results, we can use the
+`~photutils.psf.SourceGroups.plot` method, which draws color-coded
+circles around each star to show which stars have been grouped together:
 
 .. doctest-skip::
 
-    >>> import numpy as np
-    >>> from photutils.aperture import CircularAperture
-    >>> from photutils.utils import make_random_cmap
-    >>> plt.imshow(data, origin='lower', interpolation='nearest',
-    ...            cmap='Greys_r')
-    >>> cmap = make_random_cmap(seed=123)
-    >>> for i in np.arange(1, max(groups) + 1):
-    >>>     mask = groups == i
-    >>>     xypos = zip(x[mask], y[mask])
-    >>>     ap = CircularAperture(xypos, r=fwhm)
-    >>>     ap.plot(color=cmap.colors[i], lw=2)
-    >>> plt.show()
+    >>> import matplotlib.pyplot as plt
+    >>> fig, ax = plt.subplots(figsize=(8, 8))
+    >>> ax.imshow(data, origin='lower', interpolation='nearest',
+    ...           cmap='Greys_r')
+    >>> groups.plot(radius=fwhm, ax=ax, lw=2, seed=123)
+    >>> fig.show()
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from photutils.aperture import CircularAperture
     from photutils.psf import (CircularGaussianPRF, SourceGrouper,
                                make_psf_model_image)
-    from photutils.utils import make_random_cmap
 
     shape = (256, 256)
     psf_shape = (11, 11)
@@ -193,15 +242,54 @@ grouped together.
 
     x = np.array(stars['x_0'])
     y = np.array(stars['y_0'])
-    groups = grouper(x, y)
+    groups = grouper(x, y, return_groups_object=True)
 
-    plt.figure(figsize=(8, 8))
-    plt.imshow(data, origin='lower', interpolation='nearest', cmap='Greys_r')
-    cmap = make_random_cmap(seed=123)
-    for i in np.arange(1, max(groups) + 1):
-        mask = groups == i
-        xypos = zip(x[mask], y[mask])
-        ap = CircularAperture(xypos, r=fwhm)
-        ap.plot(color=cmap.colors[i], lw=2)
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.imshow(data, origin='lower', interpolation='nearest', cmap='Greys_r')
+    groups.plot(radius=fwhm, ax=ax, lw=2, seed=123)
+    fig.show()
 
-    plt.show()
+You can also label each group with its ID by setting the ``label_groups``
+keyword:
+
+.. doctest-skip::
+
+    >>> import matplotlib.pyplot as plt
+    >>> fig, ax = plt.subplots(figsize=(8, 8))
+    >>> ax.imshow(data, origin='lower', interpolation='nearest',
+    ...           cmap='Greys_r')
+    >>> groups.plot(radius=fwhm, ax=ax, lw=2, seed=123,
+                    label_groups=True, label_offset=(6, 6))
+    >>> fig.show()
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.psf import (CircularGaussianPRF, SourceGrouper,
+                               make_psf_model_image)
+
+    shape = (256, 256)
+    psf_shape = (11, 11)
+    border_size = (7, 7)
+    flux = (500, 1000)
+    fwhm = 4.7
+    psf_model = CircularGaussianPRF(fwhm=fwhm)
+    n_sources = 100
+    data, stars = make_psf_model_image(shape, psf_model, n_sources,
+                                       flux=flux,
+                                       model_shape=psf_shape,
+                                       border_size=border_size, seed=123)
+
+    min_separation = 2.5 * fwhm
+    grouper = SourceGrouper(min_separation)
+
+    x = np.array(stars['x_0'])
+    y = np.array(stars['y_0'])
+    groups = grouper(x, y, return_groups_object=True)
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.imshow(data, origin='lower', interpolation='nearest', cmap='Greys_r')
+    groups.plot(radius=fwhm, ax=ax, lw=2, seed=123, label_groups=True,
+                label_offset=(6, 6))
+    fig.show()
