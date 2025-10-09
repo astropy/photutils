@@ -109,7 +109,7 @@ def test_invalid_inputs():
         with pytest.raises(ValueError, match=match):
             _ = PSFPhotometry(model, 1, aperture_radius=radius)
 
-    match = 'grouper must be a SourceGrouper instance'
+    match = "'grouper' must be a callable object"
     with pytest.raises(TypeError, match=match):
         _ = PSFPhotometry(model, (5, 5), grouper=1)
 
