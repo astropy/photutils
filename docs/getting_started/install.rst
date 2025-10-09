@@ -13,7 +13,7 @@ Photutils has the following strict requirements:
 
 * `SciPy <https://scipy.org/>`_ 1.13 or later
 
-* `Astropy`_ 6.1 or later
+* `Astropy`_ 6.1.1 or later
 
 Photutils also optionally depends on other packages for some features:
 
