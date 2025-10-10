@@ -100,7 +100,7 @@ will have to search for the solution in a 900-dimensional space, which
 is computationally expensive and error-prone. Having smaller groups
 of sources effectively reduces the dimension of the parameter space,
 which facilitates the optimization process. For more details see
-:ref:`psf-grouping`.
+:ref:`source-grouping`.
 
 The local background around each source can optionally be subtracted
 using the ``localbkg_estimator`` keyword. This keyword accepts a
