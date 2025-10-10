@@ -294,7 +294,6 @@ ignore = [
     'RUF015',
     'RUF100',
     'SLF001',
-    'UP038',
 ]
 
 [tool.ruff.lint.per-file-ignores]

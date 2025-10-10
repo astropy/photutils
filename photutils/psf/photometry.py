@@ -20,7 +20,6 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.background import LocalBackground
 from photutils.psf._components import (PSFDataProcessor, PSFFitter,
                                        PSFResultsAssembler)
-from photutils.psf.groupers import SourceGrouper
 from photutils.psf.utils import (ModelImageMixin, _create_call_docstring,
                                  _get_psf_model_main_params, _make_mask,
                                  _validate_psf_model)
@@ -383,7 +382,7 @@ class PSFPhotometry(ModelImageMixin):
         self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 0),
                                  check_odd=True)
         self.finder = self._validate_callable(finder, 'finder')
-        self.grouper = self._validate_grouper(grouper)
+        self.grouper = self._validate_callable(grouper, 'grouper')
         if fitter is None:
             fitter = TRFLSQFitter()
         self.fitter = self._validate_callable(fitter, 'fitter')
@@ -630,27 +629,6 @@ class PSFPhotometry(ModelImageMixin):
             msg = f'{name!r} must be a callable object'
             raise TypeError(msg)
         return obj
-
-    def _validate_grouper(self, grouper):
-        """
-        Validate the input ``grouper`` value.
-
-        Parameters
-        ----------
-        grouper : SourceGrouper or None
-            The source grouper to validate.
-
-        Returns
-        -------
-        grouper : SourceGrouper or None
-            The validated grouper.
-
-        Raises
-        ------
-        TypeError
-            If grouper is not None and not a SourceGrouper instance.
-        """
-        return self._validate_type(grouper, 'grouper', SourceGrouper)
 
     def _validate_bounds(self, xy_bounds):
         """
