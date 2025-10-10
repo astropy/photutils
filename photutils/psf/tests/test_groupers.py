@@ -8,6 +8,7 @@ import pytest
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.psf import SourceGrouper, SourceGroups
+from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 
 class TestSourceGrouper:
@@ -723,6 +724,7 @@ class TestSourceGroups:
         assert result.n_groups == 1
         assert_equal(result.sizes, [4, 4, 4, 4])
 
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_basic(self, sample_groups):
         """
         Test basic plot functionality.
@@ -735,6 +737,7 @@ class TestSourceGroups:
         assert result_ax is ax
         plt.close(fig)
 
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_cmap(self, sample_groups):
         """
         Test cmap string input.
@@ -748,6 +751,7 @@ class TestSourceGroups:
         assert result_ax is ax
         plt.close(fig)
 
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_with_label_offset(self, sample_groups):
         """
         Test plot with label offset.
@@ -761,6 +765,7 @@ class TestSourceGroups:
         assert result_ax is ax
         plt.close(fig)
 
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_with_custom_kwargs(self, sample_groups):
         """
         Test plot with custom styling kwargs.
@@ -777,6 +782,7 @@ class TestSourceGroups:
         assert result_ax is ax
         plt.close(fig)
 
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_no_axes(self, sample_groups):
         """
         Test plot creates axes if none provided.
