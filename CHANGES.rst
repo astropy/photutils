@@ -15,6 +15,12 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Added a ``SourceGroups`` class that stores the results of grouping
+    sources and provides methods to analyze and plot the groupings.
+    [#2116]
+
 Bug Fixes
 ^^^^^^^^^
 
