@@ -42,11 +42,34 @@ class LocalBackground:
         if bkg_estimator is None:
             bkg_estimator = MedianBackground()
         self.bkg_estimator = bkg_estimator
-        self._aperture = CircularAnnulus((0, 0), inner_radius, outer_radius)
 
     def __repr__(self):
         params = ('inner_radius', 'outer_radius', 'bkg_estimator')
         return make_repr(self, params)
+
+    def to_aperture(self, x, y):
+        """
+        Return a `~photutils.aperture.CircularAnnulus` instance
+        representing the local background annulus at the given
+        positions.
+
+        Parameters
+        ----------
+        x, y : float or 1D float `~numpy.ndarray`
+            The aperture center (x, y) position(s) at which to create
+            the annulus aperture.
+
+        Returns
+        -------
+        apertures : `~photutils.aperture.CircularAnnulus` instance
+            The circular annulus aperture(s) at the given position(s).
+        """
+        x = np.atleast_1d(x)
+        y = np.atleast_1d(y)
+
+        positions = np.array(list(zip(x, y, strict=True)))
+        return CircularAnnulus(positions, self.inner_radius,
+                               self.outer_radius)
 
     def __call__(self, data, x, y, mask=None):
         """
@@ -71,11 +94,8 @@ class LocalBackground:
         value : float or 1D float `~numpy.ndarray`
             The local background values.
         """
-        x = np.atleast_1d(x)
-        y = np.atleast_1d(y)
-
-        self._aperture.positions = np.array(list(zip(x, y, strict=True)))
-        apermasks = self._aperture.to_mask(method='center')
+        apertures = self.to_aperture(x, y)
+        apermasks = apertures.to_mask(method='center')
 
         bkg = []
         for apermask in apermasks:
