@@ -37,6 +37,16 @@ class LocalBackground:
     """
 
     def __init__(self, inner_radius, outer_radius, bkg_estimator=None):
+        if inner_radius <= 0:
+            msg = 'inner_radius must be positive.'
+            raise ValueError(msg)
+        if outer_radius <= 0:
+            msg = 'outer_radius must be positive.'
+            raise ValueError(msg)
+        if outer_radius <= inner_radius:
+            msg = 'outer_radius must be greater than inner_radius.'
+            raise ValueError(msg)
+
         self.inner_radius = inner_radius
         self.outer_radius = outer_radius
         if bkg_estimator is None:
@@ -97,11 +107,11 @@ class LocalBackground:
         apertures = self.to_aperture(x, y)
         apermasks = apertures.to_mask(method='center')
 
-        bkg = []
-        for apermask in apermasks:
+        n_apertures = len(apermasks)
+        bkg = np.empty(n_apertures)
+        for i, apermask in enumerate(apermasks):
             values = apermask.get_values(data, mask=mask)
-            bkg.append(self.bkg_estimator(values))
-        bkg = np.array(bkg)
+            bkg[i] = self.bkg_estimator(values)
 
         if bkg.size == 1:
             bkg = bkg[0]
