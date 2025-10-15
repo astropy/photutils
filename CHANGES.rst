@@ -15,6 +15,10 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.background``
+
+  - Added a ``to_aperture`` method to ``LocalBackground``. [#2118]
+
 - ``photutils.psf``
 
   - Added a ``SourceGroups`` class that stores the results of grouping
