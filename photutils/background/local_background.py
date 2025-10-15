@@ -34,19 +34,85 @@ class LocalBackground:
         and have an ``axis`` keyword. The default is an instance of
         `~photutils.background.MedianBackground` with sigma clipping
         (i.e., sigma-clipped median).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from photutils.background import LocalBackground
+    >>> data = np.ones((101, 101))
+    >>> local_bkg = LocalBackground(5, 10)
+    >>> bkg = local_bkg(data, 50, 50)
+    >>> print(bkg)  # doctest: +FLOAT_CMP
+    1.0
+
+    >>> # Multiple positions
+    >>> x = [30, 50, 70]
+    >>> y = [30, 50, 70]
+    >>> bkg = local_bkg(data, x, y)
+    >>> print(bkg)  # doctest: +FLOAT_CMP
+    [1. 1. 1.]
     """
 
     def __init__(self, inner_radius, outer_radius, bkg_estimator=None):
+        if inner_radius <= 0:
+            msg = 'inner_radius must be positive.'
+            raise ValueError(msg)
+        if outer_radius <= 0:
+            msg = 'outer_radius must be positive.'
+            raise ValueError(msg)
+        if outer_radius <= inner_radius:
+            msg = 'outer_radius must be greater than inner_radius.'
+            raise ValueError(msg)
+
         self.inner_radius = inner_radius
         self.outer_radius = outer_radius
         if bkg_estimator is None:
             bkg_estimator = MedianBackground()
         self.bkg_estimator = bkg_estimator
-        self._aperture = CircularAnnulus((0, 0), inner_radius, outer_radius)
 
     def __repr__(self):
         params = ('inner_radius', 'outer_radius', 'bkg_estimator')
         return make_repr(self, params)
+
+    def to_aperture(self, x, y):
+        """
+        Return a `~photutils.aperture.CircularAnnulus` instance
+        representing the local background annulus at the given
+        positions.
+
+        Parameters
+        ----------
+        x, y : float or 1D float `~numpy.ndarray`
+            The aperture center (x, y) position(s) at which to create
+            the annulus aperture.
+
+        Returns
+        -------
+        apertures : `~photutils.aperture.CircularAnnulus` instance
+            The circular annulus aperture(s) at the given position(s).
+
+        Examples
+        --------
+        >>> from photutils.background import LocalBackground
+        >>> local_bkg = LocalBackground(5, 10)
+        >>> aperture = local_bkg.to_aperture(50, 50)
+        >>> aperture  # doctest: +FLOAT_CMP
+        <CircularAnnulus([[50., 50.]], r_in=5.0, r_out=10.0)>
+
+        >>> # Multiple positions
+        >>> aperture = local_bkg.to_aperture([30, 70], [40, 80])
+        >>> aperture  # doctest: +FLOAT_CMP
+        <CircularAnnulus([[30., 40.],
+                          [70., 80.]], r_in=5.0, r_out=10.0)>
+        >>> print(len(aperture.positions))
+        2
+        """
+        x = np.atleast_1d(x)
+        y = np.atleast_1d(y)
+
+        positions = np.array(list(zip(x, y, strict=True)))
+        return CircularAnnulus(positions, self.inner_radius,
+                               self.outer_radius)
 
     def __call__(self, data, x, y, mask=None):
         """
@@ -69,19 +135,38 @@ class LocalBackground:
         Returns
         -------
         value : float or 1D float `~numpy.ndarray`
-            The local background values.
+            The local background values. If all pixels in an annulus
+            are masked or outside the data bounds, the corresponding
+            value will be NaN.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from photutils.background import LocalBackground
+        >>> data = np.ones((101, 101))
+        >>> local_bkg = LocalBackground(5, 10)
+        >>> bkg = local_bkg(data, 50, 50)
+        >>> print(bkg)  # doctest: +FLOAT_CMP
+        1.0
+
+        >>> # Multiple positions
+        >>> bkg = local_bkg(data, [30, 50], [40, 60])
+        >>> print(bkg)  # doctest: +FLOAT_CMP
+        [1. 1.]
+
+        >>> # Position outside data returns NaN
+        >>> bkg = local_bkg(data, -50, -50)
+        >>> print(np.isnan(bkg))
+        True
         """
-        x = np.atleast_1d(x)
-        y = np.atleast_1d(y)
+        apertures = self.to_aperture(x, y)
+        apermasks = apertures.to_mask(method='center')
 
-        self._aperture.positions = np.array(list(zip(x, y, strict=True)))
-        apermasks = self._aperture.to_mask(method='center')
-
-        bkg = []
-        for apermask in apermasks:
+        n_apertures = len(apermasks)
+        bkg = np.empty(n_apertures)
+        for i, apermask in enumerate(apermasks):
             values = apermask.get_values(data, mask=mask)
-            bkg.append(self.bkg_estimator(values))
-        bkg = np.array(bkg)
+            bkg[i] = self.bkg_estimator(values)
 
         if bkg.size == 1:
             bkg = bkg[0]
