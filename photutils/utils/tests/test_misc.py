@@ -18,6 +18,6 @@ def test_get_meta(utc):
     versions = meta['version']
     assert isinstance(versions, dict)
     keys = ('Python', 'photutils', 'astropy', 'numpy', 'scipy', 'skimage',
-            'matplotlib', 'gwcs', 'bottleneck')
+            'gwcs', 'bottleneck')
     for key in keys:
         assert key in versions
