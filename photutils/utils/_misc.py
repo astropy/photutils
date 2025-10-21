@@ -21,7 +21,7 @@ def _get_version_info():
     versions = {'Python': sys.version.split()[0]}
 
     packages = ('photutils', 'astropy', 'numpy', 'scipy', 'skimage',
-                'matplotlib', 'gwcs', 'bottleneck')
+                'gwcs', 'bottleneck')
     for package in packages:
         try:
             pkg = __import__(package)
