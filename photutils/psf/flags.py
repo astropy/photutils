@@ -125,6 +125,14 @@ class _PSFFlags:
             detailed_description=('Insufficient unmasked pixels available '
                                   'for reliable PSF fitting'),
         ),
+        _PSFFlagDefinition(
+            bit_value=512,
+            name='non_finite_localbkg',
+            description='non-finite local background',
+            detailed_description=('The local background value is NaN or '
+                                  'inf, so it was not subtracted before '
+                                  'fitting'),
+        ),
     ]
 
     def __init__(self):
