@@ -29,7 +29,12 @@ def centroid_com(data, mask=None):
     ----------
     data : `~numpy.ndarray`
         The input n-dimensional array. The image should be a
-        background-subtracted cutout image containing a single source.
+        background-subtracted cutout image containing a single
+        source. The source should be significantly stronger than the
+        background noise. If the data contains nearly equal positive and
+        negative values (i.e., the sum is close to zero), the centroid
+        calculation will be numerically unstable and may produce
+        undefined results that fall outside the array bounds.
 
     mask : bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -38,8 +43,11 @@ def centroid_com(data, mask=None):
     Returns
     -------
     centroid : `~numpy.ndarray`
-        The coordinates of the centroid in pixel order (e.g., ``(x, y)``
-        or ``(x, y, z)``), not numpy axis order.
+        The coordinates of the centroid in pixel order (e.g., ``(x,
+        y)`` or ``(x, y, z)``), not numpy axis order. If the sum of the
+        (unmasked) data is zero, then a `~numpy.ndarray` of NaN values
+        will be returned. If the sum is close to zero, the centroid may
+        be poorly defined and fall outside the array bounds.
 
     Examples
     --------
