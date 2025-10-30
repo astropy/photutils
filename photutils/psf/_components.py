@@ -422,8 +422,7 @@ class PSFDataProcessor:
             If ``init_params`` is not an astropy Table.
 
         ValueError
-            If required position columns are missing or if local_bkg
-            contains non-finite values.
+            If required position columns are missing.
         """
         if init_params is None:
             return init_params
@@ -448,10 +447,8 @@ class PSFDataProcessor:
             init_params = self.normalize_init_units(init_params, flux_col)
 
         if 'local_bkg' in init_params.colnames:
-            if not np.all(np.isfinite(init_params['local_bkg'])):
-                msg = ('init_params local_bkg column contains non-finite '
-                       'values')
-                raise ValueError(msg)
+            # Non-finite local_bkg will not be subtracted, and a flag
+            # will be set in the results.
             init_params = self.normalize_init_units(init_params, 'local_bkg')
 
         return init_params
@@ -629,7 +626,20 @@ class PSFDataProcessor:
             flux = self.get_aper_fluxes(data, mask, init_params)
             if self.data_unit is not None:
                 flux <<= self.data_unit
-            flux -= init_params['local_bkg']
+
+            # Only subtract local_bkg if it's finite
+            local_bkg = init_params['local_bkg']
+            if hasattr(local_bkg, 'value'):
+                # Handle Quantity
+                local_bkg_vals = local_bkg.value
+            else:
+                local_bkg_vals = np.asarray(local_bkg)
+
+            # Subtract only finite local_bkg values
+            finite_mask = np.isfinite(local_bkg_vals)
+            if np.any(finite_mask):
+                flux[finite_mask] -= local_bkg[finite_mask]
+
             init_params[flux_col] = flux
 
         return init_params
@@ -772,11 +782,17 @@ class PSFDataProcessor:
         cutout = data[yy_flat, xx_flat]
 
         # Local background subtraction (local_bkg = 0 if not provided)
+        # Only subtract if the local_bkg is finite (not NaN or inf)
         local_bkg = row['local_bkg']
         if np.any(local_bkg != 0):
             if isinstance(local_bkg, u.Quantity):
-                local_bkg = local_bkg.value
-            cutout -= local_bkg
+                local_bkg_value = local_bkg.value
+            else:
+                local_bkg_value = local_bkg
+
+            # Only subtract if local_bkg is finite
+            if np.isfinite(local_bkg_value):
+                cutout -= local_bkg_value
 
         # Center pixel index (before trimming)
         x_cen_idx = np.ceil(x_cen - 0.5).astype(int)
@@ -1322,7 +1338,8 @@ class PSFResultsAssembler:
         return qfit, cfit, reduced_chi2
 
     def define_flags(self, results_tbl, shape, fit_error_indices, fit_info,
-                     fitted_models_table, valid_mask, invalid_reasons):
+                     fitted_models_table, valid_mask, invalid_reasons,
+                     init_params):
         """
         Define per-source bitwise flags summarizing fit conditions.
 
@@ -1349,6 +1366,9 @@ class PSFResultsAssembler:
         invalid_reasons : list or None
             List of reasons why sources were invalid.
 
+        init_params : `~astropy.table.QTable`
+            Initial parameter guesses for sources, containing local_bkg.
+
         Returns
         -------
         flags : `~numpy.ndarray`
@@ -1363,6 +1383,7 @@ class PSFResultsAssembler:
             - 64: no overlap with data
             - 128: fully masked source
             - 256: too few pixels for fitting
+            - 512: non-finite local background
         """
         flags = np.zeros(len(results_tbl), dtype=int)
         x_col = self.param_mapper.fit_colnames['x']
@@ -1427,6 +1448,14 @@ class PSFResultsAssembler:
             flags[reasons == 'no_overlap'] |= PSF_FLAGS.NO_OVERLAP
             flags[reasons == 'fully_masked'] |= PSF_FLAGS.FULLY_MASKED
             flags[reasons == 'too_few_pixels'] |= PSF_FLAGS.TOO_FEW_PIXELS
+
+        # Flag=512: non-finite local background
+        local_bkg_vals = init_params['local_bkg']
+        if hasattr(local_bkg_vals, 'value'):
+            # Handle Quantity
+            local_bkg_vals = local_bkg_vals.value
+        non_finite_bkg_mask = ~np.isfinite(local_bkg_vals)
+        flags[non_finite_bkg_mask] |= PSF_FLAGS.NON_FINITE_LOCALBKG
 
         return flags
 
@@ -1502,7 +1531,8 @@ class PSFResultsAssembler:
         state.pop('reduced_chi2', None)
 
         # Calculate flags and check for convergence warnings before cleanup
-        fit_params['flags'] = define_flags_func(fit_params, data_shape)
+        fit_params['flags'] = define_flags_func(
+            fit_params, data_shape, init_params)
 
         # Join the fit_params table (with metrics and flags) to the
         # init_params table. By default, join will sort the rows by the

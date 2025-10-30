@@ -1398,7 +1398,7 @@ class PSFPhotometry(ModelImageMixin):
         return self._results_assembler.calc_fit_metrics(
             results_tbl, sum_abs_residuals, cen_residuals, reduced_chi2)
 
-    def _define_flags(self, results_tbl, shape):
+    def _define_flags(self, results_tbl, shape, init_params):
         """
         Define per-source bitwise flags summarizing fit conditions.
 
@@ -1411,7 +1411,7 @@ class PSFPhotometry(ModelImageMixin):
 
         return self._results_assembler.define_flags(
             results_tbl, shape, fit_error_indices, self.fit_info,
-            fitted_models_table, valid_mask, invalid_reasons)
+            fitted_models_table, valid_mask, invalid_reasons, init_params)
 
     def _assemble_results_table(self, init_params, fit_params, data_shape):
         """
