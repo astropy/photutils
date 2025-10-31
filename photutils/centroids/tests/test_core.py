@@ -159,13 +159,13 @@ def test_centroid_quadratic_xypeak():
                                 search_boxsize=5)
     assert_allclose(xycen3, (7, 7))
 
-    match = 'xpeak is outside of the input data'
+    match = 'xpeak is outside the input data'
     with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, xpeak=15, ypeak=5)
-    match = 'ypeak is outside of the input data'
+    match = 'ypeak is outside the input data'
     with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, xpeak=5, ypeak=15)
-    match = 'xpeak is outside of the input data'
+    match = 'xpeak is outside the input data'
     with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, xpeak=15, ypeak=15)
 
@@ -293,7 +293,7 @@ class TestCentroidSources:
                                                centroid_1dg, centroid_2dg])
     def test_xypos(self, test_data, centroid_func):
         data = test_data[0]
-        match = 'xpos, ypos values contains points outside of input data'
+        match = 'xpos, ypos values contain points outside the input data'
         with pytest.raises(ValueError, match=match):
             centroid_sources(data, 47, 50, box_size=5,
                              centroid_func=centroid_func)
