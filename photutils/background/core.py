@@ -265,10 +265,10 @@ class ModeEstimatorBackground(BackgroundBase):
     Parameters
     ----------
     median_factor : float, optional
-        The multiplicative factor for the data median. Defaults to 3.
+        The multiplicative factor for the median value. Defaults to 3.
 
     mean_factor : float, optional
-        The multiplicative factor for the data mean. Defaults to 2.
+        The multiplicative factor for the mean value. Defaults to 2.
 
     sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
