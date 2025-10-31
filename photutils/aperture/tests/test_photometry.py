@@ -764,8 +764,8 @@ def test_to_sky_pixel(wcs_type):
 
 def test_scalar_aperture():
     """
-    Regression test to check that length-1 aperture list appends a "_0"
-    on the column names to be consistent with list inputs.
+    Regression test to check that a length-1 aperture list appends a
+    "_0" to the column names to be consistent with list inputs.
     """
     data = np.ones((20, 20), dtype=float)
 
@@ -786,7 +786,7 @@ def test_scalar_aperture():
 
 def test_nan_in_bbox():
     """
-    Regression test that non-finite data values outside of the aperture
+    Regression test that non-finite data values outside the aperture
     mask but within the bounding box do not affect the photometry.
     """
     data1 = np.ones((101, 101))
@@ -854,7 +854,7 @@ def test_nddata_input(units):
             continue
         assert_allclose(tbl1[column], tbl2[column])
 
-    match = 'keyword is be ignored. Its value is obtained from the input'
+    match = 'keyword is ignored. Its value is obtained from the input'
     with pytest.warns(AstropyUserWarning, match=match):
         aperture_photometry(nddata, aper, error=error)
 

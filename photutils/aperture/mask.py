@@ -95,7 +95,7 @@ class ApertureMask:
             The desired data type for the array. This should be a
             floating data type if the `ApertureMask` was created with
             the "exact" or "subpixel" mode, otherwise the fractional
-            mask weights will be altered. A integer data type may be
+            mask weights will be altered. An integer data type may be
             used if the `ApertureMask` was created with the "center"
             mode.
 
@@ -146,11 +146,11 @@ class ApertureMask:
         -------
         result : `~numpy.ndarray` or `None`
             A 2D array cut out from the input ``data`` representing
-            the same cutout region as the aperture mask. If there is
-            a partial overlap of the aperture mask with the input
-            data, pixels outside of the data will be assigned to
-            ``fill_value``. `None` is returned if there is no overlap of
-            the aperture with the input ``data``.
+            the same cutout region as the aperture mask. If there is a
+            partial overlap of the aperture mask with the input data,
+            pixels outside the data will be assigned to ``fill_value``.
+            `None` is returned if there is no overlap of the aperture
+            with the input ``data``.
         """
         data = np.asanyarray(data)
         if data.ndim != 2:
@@ -204,7 +204,7 @@ class ApertureMask:
         result : `~numpy.ndarray` or `None`
             A 2D mask-weighted cutout from the input ``data``. If
             there is a partial overlap of the aperture mask with the
-            input data, pixels outside of the data will be assigned to
+            input data, pixels outside the data will be assigned to
             ``fill_value`` before being multiplied with the mask. `None`
             is returned if there is no overlap of the aperture with the
             input ``data``.
@@ -218,7 +218,7 @@ class ApertureMask:
             warnings.simplefilter('ignore', RuntimeWarning)
             weighted_cutout = cutout * self.data
 
-        # fill values outside of the mask but within the bounding box
+        # fill values outside the mask but within the bounding box
         weighted_cutout[self._mask] = fill_value
 
         return weighted_cutout

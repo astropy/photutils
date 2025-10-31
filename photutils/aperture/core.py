@@ -137,7 +137,7 @@ class Aperture(metaclass=abc.ABCMeta):
 
     def copy(self):
         """
-        Make an deep copy of this object.
+        Make a deep copy of this object.
 
         Returns
         -------
@@ -470,7 +470,7 @@ class PixelAperture(Aperture):
             The pixel-wise Gaussian 1-sigma errors of the input
             ``data``. ``error`` is assumed to include *all* sources
             of error, including the Poisson error of the sources (see
-            `~photutils.utils.calc_total_error`) . ``error`` must have
+            `~photutils.utils.calc_total_error`). ``error`` must have
             the same shape as the input ``data``.
 
         mask : array_like (bool), optional
@@ -512,10 +512,10 @@ class PixelAperture(Aperture):
         Returns
         -------
         aperture_sums : `~numpy.ndarray` or `~astropy.units.Quantity`
-            The sums within each aperture.
+            The sum within each aperture.
 
         aperture_sum_errs : `~numpy.ndarray` or `~astropy.units.Quantity`
-            The errors on the sums within each aperture.
+            The errors on the sum within each aperture.
 
         Notes
         -----
@@ -527,7 +527,7 @@ class PixelAperture(Aperture):
         typically within 0.001 percent or better of the exact value.
         The differences can be larger for smaller apertures (e.g.,
         aperture sizes of one pixel or smaller). For such small sizes,
-        it is recommend to set ``method='subpixel'`` with a larger
+        it is recommended to set ``method='subpixel'`` with a larger
         ``subpixels`` size.
         """
         data = np.asanyarray(data)
@@ -601,7 +601,7 @@ class PixelAperture(Aperture):
         """
         Define a matplotlib annulus path from two patches.
 
-        This preserves the cubic Bezier curves (CURVE4) of the aperture
+        This preserves the cubic Bézier curves (CURVE4) of the aperture
         paths.
         """
         import matplotlib.path as mpath

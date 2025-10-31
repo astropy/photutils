@@ -95,9 +95,9 @@ class BoundingBox:
         Parameters
         ----------
         xmin, xmax, ymin, ymax : float
-            Float coordinates defining a rectangle. The lower values
-            (``xmin`` and ``ymin``) must not be greater than the
-            respective upper values (``xmax`` and ``ymax``).
+            The floating-point coordinates defining a rectangle. The
+            lower values (``xmin`` and ``ymin``) must not be greater
+            than the respective upper values (``xmax`` and ``ymax``).
 
         Returns
         -------
@@ -159,8 +159,8 @@ class BoundingBox:
 
     def get_overlap_slices(self, shape):
         """
-        Get slices for the overlapping part of the bounding box and an
-        2D array.
+        Get slices for the overlapping part of the bounding box and a 2D
+        array.
 
         Parameters
         ----------
@@ -214,8 +214,8 @@ class BoundingBox:
 
         The upper edges here are the actual pixel positions of the
         edges, i.e., they are not "exclusive" indices used for python
-        indexing. This is useful for plotting the bounding box using
-        Matplotlib.
+        indexing. The extent is useful for plotting the bounding box
+        using Matplotlib.
         """
         return (self.ixmin - 0.5, self.ixmax - 0.5,
                 self.iymin - 0.5, self.iymax - 0.5)

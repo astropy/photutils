@@ -44,7 +44,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         list of `~photutils.aperture.Aperture` or `regions.Region`
         The aperture(s) to use for the photometry. If ``apertures`` is
         a list of `~photutils.aperture.Aperture` or `regions.Region`,
-        then then they all must have the same position(s). If
+        then they all must have the same position(s). If
         ``apertures`` contains a `~photutils.aperture.SkyAperture` or
         `~regions.SkyRegion` object, then a WCS must be input using
         the ``wcs`` keyword. Region objects are converted to aperture
@@ -54,7 +54,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         The pixel-wise Gaussian 1-sigma errors of the input
         ``data``. ``error`` is assumed to include *all* sources
         of error, including the Poisson error of the sources (see
-        `~photutils.utils.calc_total_error`) . ``error`` must have the
+        `~photutils.utils.calc_total_error`). ``error`` must have the
         same shape as the input ``data``. If a `~astropy.units.Quantity`
         array, then ``data`` must also be a `~astropy.units.Quantity`
         array with the same units.
@@ -122,7 +122,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
           if a ``wcs`` is input.
 
         * ``'aperture_sum'``:
-          The sum of the values within the aperture.
+          The sum of the values within the aperture(s).
 
         * ``'aperture_sum_err'``:
           The corresponding uncertainty in the ``'aperture_sum'``
@@ -143,7 +143,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     subpixel approximation gives results typically within 0.001 percent
     or better of the exact value. The differences can be larger for
     smaller apertures (e.g., aperture sizes of one pixel or smaller).
-    For such small sizes, it is recommend to set ``method='subpixel'``
+    For such small sizes, it is recommended to set ``method='subpixel'``
     with a larger ``subpixels`` size.
 
     If the input ``data`` is a `~astropy.nddata.NDData` instance,
@@ -157,7 +157,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
         for key, value in nddata_attr.items():
             if value is not None:
-                warnings.warn(f'The {key!r} keyword is be ignored. Its value '
+                warnings.warn(f'The {key!r} keyword is ignored. Its value '
                               'is obtained from the input NDData object.',
                               AstropyUserWarning)
 

@@ -207,7 +207,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     w = PositiveScalar('The full width in pixels.')
     h = PositiveScalar('The full height in pixels.')
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
-                               'angular Quantity or value in radians from '
+                               'angular Quantity or a value in radians from '
                                'the positive x axis.')
 
     def __init__(self, positions, w, h, theta=0.0):
@@ -368,7 +368,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     h_in = PositiveScalar('The inner full height in pixels.')
     h_out = PositiveScalar('The outer full height in pixels.')
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
-                               'angular Quantity or value in radians from '
+                               'angular Quantity or a value in radians from '
                                'the positive x axis.')
 
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):
@@ -493,7 +493,7 @@ class SkyRectangularAperture(SkyAperture):
         The full width of the rectangle in angular units. For
         ``theta=0`` the width side is along the North-South axis.
 
-    h :  scalar `~astropy.units.Quantity`
+    h : scalar `~astropy.units.Quantity`
         The full height of the rectangle in angular units. For
         ``theta=0`` the height side is along the East-West axis.
 

@@ -184,7 +184,7 @@ def test_mask_multiply_fill_value():
 
 def test_mask_nonfinite_in_bbox():
     """
-    Regression test that non-finite data values outside of the mask but
+    Regression test that non-finite data values outside the mask but
     within the bounding box are set to zero.
     """
     data = np.ones((101, 101))
