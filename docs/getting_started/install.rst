@@ -30,17 +30,17 @@ Photutils also optionally depends on other packages for some features:
   Required in `~photutils.datasets.make_gwcs` to create a simple celestial
   gwcs object.
 
-* `Bottleneck <https://github.com/pydata/bottleneck>`_: 1.4 or later:
+* `Bottleneck <https://github.com/pydata/bottleneck>`_ 1.4 or later:
   Improves the performance of sigma clipping and other functionality that
   may require computing statistics on arrays with NaN values.
 
-* `tqdm <https://tqdm.github.io/>`_: 4.66 or later: Required to display
+* `tqdm <https://tqdm.github.io/>`_ 4.66 or later: Required to display
   optional progress bars.
 
-* `Rasterio <https://rasterio.readthedocs.io/en/stable/>`_: 1.4 or
+* `Rasterio <https://rasterio.readthedocs.io/en/stable/>`_ 1.4 or
   later: Required to convert source segments into polygon objects.
 
-* `Shapely <https://shapely.readthedocs.io/en/stable/>`_: 2.0 or
+* `Shapely <https://shapely.readthedocs.io/en/stable/>`_ 2.0 or
   later: Required to convert source segments into polygon objects.
 
 
