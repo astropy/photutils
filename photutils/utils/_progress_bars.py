@@ -31,7 +31,7 @@ def add_progress_bar(iterable=None, desc=None, total=None, text=False):
     -------
     result : tqdm iterable
         A tqdm progress bar. If in a notebook and ipywidgets is
-        installed, it will return a ipywidgets-based progress bar.
+        installed, it will return an ipywidgets-based progress bar.
         Otherwise it will return a text-based progress bar.
     """
     if HAS_TQDM:

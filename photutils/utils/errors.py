@@ -172,7 +172,7 @@ def calc_total_error(data, bkg_error, effective_gain):
                    'the same shape as the input data.')
             raise ValueError(msg)
     if np.any(effective_gain < 0):
-        msg = 'effective_gain must be non-zero everywhere'
+        msg = 'effective_gain must be non-negative everywhere'
         raise ValueError(msg)
 
     if use_units:

@@ -21,8 +21,8 @@ class ShepardIDWInterpolator:
     ----------
     coordinates : float, 1D array_like, or NxM array_like
         Coordinates of the known data points. In general, it is expected
-        that these coordinates are in a form of a NxM-like array where N
-        is the number of points and M is dimension of the coordinate
+        that these coordinates are in a form of an NxM-like array where
+        N is the number of points and M is dimension of the coordinate
         space. When M=1 (1D space), then the ``coordinates`` parameter
         may be entered as a 1D array or, if only one data point is
         available, ``coordinates`` can be a scalar number representing
@@ -165,12 +165,12 @@ class ShepardIDWInterpolator:
         positions : float, 1D array_like, or NxM array_like
             Coordinates of the position(s) at which the interpolator
             should be evaluated. In general, it is expected that these
-            coordinates are in a form of a NxM-like array where N is the
-            number of points and M is dimension of the coordinate space.
-            When M=1 (1D space), then the ``positions`` parameter may be
-            input as a 1D-like array or, if only one data point is
-            available, ``positions`` can be a scalar number representing
-            the 1D coordinate of the data point.
+            coordinates are in a form of an NxM-like array where N is
+            the number of points and M is dimension of the coordinate
+            space. When M=1 (1D space), then the ``positions`` parameter
+            may be input as a 1D-like array or, if only one data
+            point is available, ``positions`` can be a scalar number
+            representing the 1D coordinate of the data point.
 
             .. note::
                 If the dimensionality of the ``positions`` argument is

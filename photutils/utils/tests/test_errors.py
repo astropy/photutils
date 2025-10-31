@@ -33,7 +33,7 @@ def test_gain_shape():
 
 @pytest.mark.parametrize('effective_gain', [-1, -100])
 def test_gain_negative(effective_gain):
-    match = 'effective_gain must be non-zero everywhere'
+    match = 'effective_gain must be non-negative everywhere'
     with pytest.raises(ValueError, match=match):
         calc_total_error(DATA, BKG_ERROR, effective_gain)
 
