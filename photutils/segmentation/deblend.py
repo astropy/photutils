@@ -589,8 +589,8 @@ class _SingleSourceDeblender:
         ----------
         markers : list of `~photutils.segmentation.SegmentationImage`
             A list of segmentation images that contain possible sources
-            as markers. The last list element contains all of the
-            potential source markers.
+            as markers. The last list element contains all the potential
+            source markers.
 
         Returns
         -------

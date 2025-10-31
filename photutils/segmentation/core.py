@@ -419,8 +419,8 @@ class SegmentationImage:
     @lazyproperty
     def is_consecutive(self):
         """
-        Boolean value indicating whether or not the non-zero labels in
-        the segmentation array are consecutive and start from 1.
+        Boolean value indicating whether the non-zero labels in the
+        segmentation array are consecutive and start from 1.
         """
         if self.nlabels == 0:
             return False
@@ -600,7 +600,8 @@ class SegmentationImage:
 
     def _update_deblend_label_map(self, relabel_map):
         """
-        Update the deblended label map based on a relabel map.
+        Update the deblended label map based on the input
+        ``relabel_map``.
 
         Parameters
         ----------
@@ -1753,9 +1754,9 @@ class SegmentationImage:
         Display the segmentation image in a matplotlib
         `~matplotlib.axes.Axes` instance with a colorbar.
 
-        This method is useful for displaying segmentation images that
-        have a small number of labels (e.g., from a cutout) that are
-        not consecutive. It maps the labels to be consecutive integers
+        This method is useful for displaying segmentation images
+        that have a few labels (e.g., from a cutout) that are not
+        consecutive. It maps the labels to be consecutive integers
         starting from 1 before plotting. The plotted image values are
         not the label values, but the colorbar tick labels are used to
         show the original labels.
@@ -1931,9 +1932,9 @@ class Segment:
     def data(self):
         """
         A cutout array of the segment using the minimal bounding box,
-        where pixels outside of the labeled region are set to zero
-        (i.e., neighboring segments within the rectangular cutout array
-        are not shown).
+        where pixels outside the labeled region are set to zero (i.e.,
+        neighboring segments within the rectangular cutout array are not
+        shown).
         """
         cutout = np.copy(self._segment_data[self.slices])
         cutout[cutout != self.label] = 0
@@ -1946,9 +1947,9 @@ class Segment:
         A `~numpy.ma.MaskedArray` cutout array of the segment using the
         minimal bounding box.
 
-        The mask is `True` for pixels outside of the source segment
-        (i.e., neighboring segments within the rectangular cutout array
-        are masked).
+        The mask is `True` for pixels outside the source segment (i.e.,
+        neighboring segments within the rectangular cutout array are
+        masked).
         """
         mask = (self._segment_data[self.slices] != self.label)
         return np.ma.masked_array(self._segment_data[self.slices], mask=mask)
@@ -1965,7 +1966,7 @@ class Segment:
 
         If ``masked_array`` is `True`, then the returned cutout array is
         a `~numpy.ma.MaskedArray`, where the mask is `True` for pixels
-        outside of the segment (labeled region). The data part of the
+        outside the segment (labeled region). The data part of the
         masked array is a view (not a copy) of the input ``data``.
 
         Parameters
@@ -1976,7 +1977,7 @@ class Segment:
 
         masked_array : bool, optional
             If `True` then a `~numpy.ma.MaskedArray` will be created
-            where the mask is `True` for pixels outside of the segment
+            where the mask is `True` for pixels outside the segment
             (labeled region). If `False`, then a `~numpy.ndarray` will
             be generated.
 
