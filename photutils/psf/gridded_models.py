@@ -84,8 +84,8 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         coordinate grid on which the model is evaluated.
 
     fill_value : float, optional
-        The value to use for points outside of the input pixel grid.
-        The default is 0.0.
+        The value to use for points outside the input pixel grid. The
+        default is 0.0.
 
     Methods
     -------
@@ -331,7 +331,7 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         the model parameters in a model copy. It is used in the PSF
         photometry classes during model fitting.
 
-        Use the `deepcopy` method if you want to copy all of the model
+        Use the `deepcopy` method if you want to copy all the model
         attributes, including the ePSF grid data.
 
         Returns

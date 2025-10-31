@@ -47,10 +47,10 @@ class GaussianPSF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     x_fwhm : float, optional
         The full width at half maximum (FWHM) of the Gaussian along the
@@ -86,10 +86,10 @@ class GaussianPSF(Fittable2DModel):
                   - b \left(x - x_{0}\right) \left(y - y_{0}\right)
                   - c \left(y - y_{0}\right)^{2} \right)
 
-    where :math:`F` is the total integrated flux, :math:`(x_{0},
-    y_{0})` is the position of the peak, and :math:`\sigma_{x}` and
-    :math:`\sigma_{y}` are the standard deviations along the x and y
-    axes, respectively.
+    where :math:`F` denotes the total integrated flux, :math:`(x_{0},
+    y_{0})` denotes the position of the peak, and :math:`\sigma_{x}` and
+    :math:`\sigma_{y}` denote are the standard deviations along the x
+    and y axes, respectively.
 
     .. math::
 
@@ -188,14 +188,14 @@ class GaussianPSF(Fittable2DModel):
     @property
     def x_sigma(self):
         """
-        Gaussian sigma (standard deviation) along the x axis.
+        Gaussian sigma (standard deviation) along the x-axis.
         """
         return self.x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
 
     @property
     def y_sigma(self):
         """
-        Gaussian sigma (standard deviation) along the y axis.
+        Gaussian sigma (standard deviation) along the y-axis.
         """
         return self.y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
 
@@ -445,10 +445,10 @@ class CircularGaussianPSF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     fwhm : float, optional
         The full width at half maximum (FWHM) of the Gaussian.
@@ -702,10 +702,10 @@ class GaussianPRF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     x_fwhm : float, optional
         The full width at half maximum (FWHM) of the Gaussian along the
@@ -849,14 +849,14 @@ class GaussianPRF(Fittable2DModel):
     @property
     def x_sigma(self):
         """
-        Gaussian sigma (standard deviation) along the x axis.
+        Gaussian sigma (standard deviation) along the x-axis.
         """
         return self.x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
 
     @property
     def y_sigma(self):
         """
-        Gaussian sigma (standard deviation) along the y axis.
+        Gaussian sigma (standard deviation) along the y-axis.
         """
         return self.y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
 
@@ -1010,10 +1010,10 @@ class CircularGaussianPRF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     fwhm : float, optional
         The full width at half maximum (FWHM) of the Gaussian.
@@ -1495,10 +1495,10 @@ class MoffatPSF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     alpha : float, optional
         The characteristic radius of the Moffat profile.
@@ -1742,10 +1742,10 @@ class AiryDiskPSF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     radius : float, optional
         The radius of the Airy disk at the first zero.

@@ -290,19 +290,18 @@ class EPSFBuilder:
         The pixel radius over which the ePSF is normalized.
 
     recentering_boxsize : float or tuple of two floats, optional
-            The size (in pixels) of the box used to calculate the
-            centroid of the ePSF during each build iteration. If a
-            single integer number is provided, then a square box will
-            be used. If two values are provided, then they must be in
-            ``(ny, nx)`` order. ``recentering_boxsize`` must have odd
-            must have odd values and be greater than or equal to 3 for
-            both axes.
+        The size (in pixels) of the box used to calculate the centroid
+        of the ePSF during each build iteration. If a single integer
+        number is provided, then a square box will be used. If two
+        values are provided, then they must be in ``(ny, nx)`` order.
+        ``recentering_boxsize`` must have odd values and be greater than
+        or equal to 3 for both axes.
 
     center_accuracy : float, optional
-            The desired accuracy for the centers of stars. The building
-            iterations will stop if the centers of all the stars change
-            by less than ``center_accuracy`` pixels between iterations.
-            All stars must meet this condition for the loop to exit.
+        The desired accuracy for the centers of stars. The building
+        iterations will stop if the centers of all the stars change by
+        less than ``center_accuracy`` pixels between iterations. All
+        stars must meet this condition for the loop to exit.
 
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma

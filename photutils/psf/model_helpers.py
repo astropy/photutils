@@ -341,7 +341,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     'oversampling', or 'fill_value', they will be overridden.
 
     Note: If set on the input ImagePSF (x_0, y_0), then ``origin``
-    must be the same for each input EPSF. Additionally data units and
+    must be the same for each input EPSF. Additionally, data units and
     dimensions must be for each input EPSF, and values for ``flux`` and
     ``oversampling``, and ``fill_value`` must match as well.
 

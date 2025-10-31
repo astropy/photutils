@@ -278,7 +278,7 @@ class TestGriddedPSFModel:
     @pytest.mark.parametrize('detector_id', [1, 2])
     def test_read_stdpsf_multi_detector(self, filename, detector_id):
         """
-        Test STDPSF read for a multiple detectors.
+        Test STDPSF read for multiple detectors.
         """
         filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
         psfmodel = GriddedPSFModel.read(filename, detector_id=detector_id,

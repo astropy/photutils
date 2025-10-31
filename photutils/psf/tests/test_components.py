@@ -188,7 +188,7 @@ class TestPSFDataProcessor:
     def test_normalize_init_units_init_has_units_data_does_not(
             self, param_mapper):
         """
-        Test normalize_init_units when init has units but data doesn't.
+        Test normalize_init_units when init has units, but data doesn't.
         """
         processor = PSFDataProcessor(param_mapper, (7, 7))
         processor.data_unit = None

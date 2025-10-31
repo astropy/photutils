@@ -77,7 +77,7 @@ class IterativePSFPhotometry(ModelImageMixin):
         are those that overlap with their neighbors. Sources that are
         grouped are fit simultaneously. The ``grouper`` must accept
         the x and y coordinates of the sources and return an integer
-        array of the group id numbers (starting from 1) indicating
+        array of the group ID numbers (starting from 1) indicating
         the group in which a given source belongs. If `None`, then no
         grouping is performed, i.e. each source is fit independently.
         The ``group_id`` values in ``init_params`` override this keyword
@@ -478,7 +478,7 @@ class IterativePSFPhotometry(ModelImageMixin):
                                      init_params=init_params)
             self.fit_results.append(deepcopy(self._psfphot))
 
-        # this needs to be run outside of the context manager to be able
+        # this needs to be run outside the context manager to be able
         # to reemit any warnings
         if phot_tbl is None:
             self._emit_warnings(rwarn0)
