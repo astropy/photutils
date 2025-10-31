@@ -60,7 +60,7 @@ test = [
 ]
 docs = [
     'photutils[all]',
-    'sphinx',
+    'sphinx >= 8.2',  # keep in sync with docs/conf.py
     'sphinx_design',
     'sphinx-astropy[confv2] >= 1.9.1',
 ]
