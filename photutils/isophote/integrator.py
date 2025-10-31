@@ -62,7 +62,7 @@ class _Integrator:
         with one sample point taken from the image by a chosen
         integration method.
 
-        Sub classes should implement the actual integration method.
+        Subclasses should implement the actual integration method.
 
         Parameters
         ----------
@@ -126,8 +126,8 @@ class _Integrator:
         """
         Return the type of the integrator.
 
-        An area integrator gets it's value from operating over a (generally
-        variable) number of pixels that define a finite area that  lays
+        An area integrator gets its value from operating over a (generally
+        variable) number of pixels that define a finite area that lies
         around the elliptical path, at a certain point on the image defined
         by a polar angle and radius values. A pixel integrator, by contrast,
         integrates over a fixed and normally small area related to a single
@@ -244,7 +244,7 @@ class _AreaIntegrator(_Integrator):
         phi1, phi2 = self._geometry.polar_angle_sector_limits()
 
         # ignore data point if the elliptical sector lies
-        # partially, ou totally, outside image boundaries
+        # partially, or totally, outside image boundaries
         if (i1 in self._i_range) and (j1 in self._j_range) and \
            (i2 in self._i_range) and (j2 in self._j_range):
 

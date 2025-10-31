@@ -90,7 +90,7 @@ class Ellipse:
     2. a user-specified maximum number of iterations is reached.
 
     3. more than a given fraction of the elliptical sample points have no
-       valid data in then, either because they lie outside the image
+       valid data in them, either because they lie outside the image
        boundaries or because they were flagged out from the fit by
        sigma-clipping.
 
@@ -173,7 +173,7 @@ class Ellipse:
 
     A note of caution: the ellipse fitting algorithm was designed
     explicitly with an elliptical galaxy brightness distribution in
-    mind. In particular, a well defined negative radial intensity
+    mind. In particular, a well-defined negative radial intensity
     gradient across the region being fitted is paramount for the
     achievement of stable solutions. Use of the algorithm in other
     types of images (e.g., planetary nebulae) may lead to inability to
@@ -518,11 +518,12 @@ class Ellipse:
         """
         Fit a single isophote with a given semimajor axis length.
 
-        The ``step`` and ``linear`` parameters are not used to actually
-        grow or shrink the current fitting semimajor axis length. They
-        are necessary so the sampling algorithm can know where to start
-        the gradient computation and also how to compute the elliptical
-        sector areas (when area integration mode is selected).
+        The ``step`` and ``linear`` parameters do not directly control
+        the growth or reduction of the current fitting semimajor axis
+        length. Instead, they are used by the sampling algorithm to
+        determine the starting point for gradient computation and
+        to calculate the areas of the elliptical sectors (when area
+        integration mode is enabled).
 
         Parameters
         ----------
