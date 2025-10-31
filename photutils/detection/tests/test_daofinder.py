@@ -44,7 +44,7 @@ class TestDAOStarFinder:
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=3.0, fwhm=-10)
 
-        match = 'ratio must be positive and less or equal than 1'
+        match = 'ratio must be positive and less than or equal to 1'
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=3.0, fwhm=2, ratio=-10)
 
@@ -61,7 +61,7 @@ class TestDAOStarFinder:
             DAOStarFinder(threshold=10, fwhm=1.5, brightest=3.1)
 
         xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
-        match = 'xycoords must be shaped as a Nx2 array'
+        match = 'xycoords must be shaped as an Nx2 array'
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=10, fwhm=1.5, xycoords=xycoords)
 

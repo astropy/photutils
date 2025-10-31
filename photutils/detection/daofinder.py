@@ -199,7 +199,7 @@ class DAOStarFinder(StarFinderBase):
         if xycoords is not None:
             xycoords = np.asarray(xycoords)
             if xycoords.ndim != 2 or xycoords.shape[1] != 2:
-                msg = 'xycoords must be shaped as a Nx2 array'
+                msg = 'xycoords must be shaped as an Nx2 array'
                 raise ValueError(msg)
         self.xycoords = xycoords
 
@@ -313,7 +313,7 @@ class _DAOStarFinderCatalog:
         have the same units.
 
     xypos : Nx2 `~numpy.ndarray`
-        A Nx2 array of (x, y) pixel coordinates denoting the central
+        An Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
     threshold : float
@@ -704,7 +704,7 @@ class _DAOStarFinderCatalog:
 
     @lazyproperty
     def mag(self):
-        # ignore RunTimeWarning if flux is <= 0
+        # ignore RuntimeWarning if flux is <= 0
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             flux = self.flux
@@ -721,7 +721,7 @@ class _DAOStarFinderCatalog:
         best fitting Gaussian function at the object position to the
         detection threshold.
         """
-        # ignore RunTimeWarning if flux is <= 0
+        # ignore RuntimeWarning if flux is <= 0
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             return -2.5 * np.log10(self.convdata_peak / self.threshold_eff)

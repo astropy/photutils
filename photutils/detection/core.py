@@ -69,7 +69,7 @@ class StarFinderBase(metaclass=abc.ABCMeta):
         Returns
         -------
         result : Nx2 `~numpy.ndarray`
-            A Nx2 array containing the (x, y) pixel coordinates.
+            An Nx2 array containing the (x, y) pixel coordinates.
         """
         # define a local footprint for the peak finder
         if min_separation == 0.0:  # DAOStarFinder
@@ -192,7 +192,7 @@ class _StarFinderKernel:
             raise ValueError(msg)
 
         if ratio <= 0 or ratio > 1:
-            msg = 'ratio must be positive and less or equal than 1'
+            msg = 'ratio must be positive and less than or equal to 1'
             raise ValueError(msg)
 
         if sigma_radius <= 0:

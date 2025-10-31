@@ -43,7 +43,7 @@ class TestIRAFStarFinder:
             IRAFStarFinder(10, 1.5, brightest=3.1)
 
         xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
-        match = 'xycoords must be shaped as a Nx2 array'
+        match = 'xycoords must be shaped as an Nx2 array'
         with pytest.raises(ValueError, match=match):
             IRAFStarFinder(threshold=10, fwhm=1.5, xycoords=xycoords)
 
