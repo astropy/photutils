@@ -246,7 +246,7 @@ class TestDetectSources:
 
     def test_npixels_nonint(self):
         """
-        Test if error raises if npixel is non-integer.
+        Test if an error is raised when npixel is noninteger.
         """
         match = 'npixels must be a positive integer'
         with pytest.raises(ValueError, match=match):
@@ -254,7 +254,7 @@ class TestDetectSources:
 
     def test_npixels_negative(self):
         """
-        Test if error raises if npixel is negative.
+        Test if an error is raised when npixel is negative.
         """
         match = 'npixels must be a positive integer'
         with pytest.raises(ValueError, match=match):
@@ -262,7 +262,7 @@ class TestDetectSources:
 
     def test_connectivity_invalid(self):
         """
-        Test if error raises if connectivity is invalid.
+        Test if an error is raised when connectivity is invalid.
         """
         match = 'Invalid connectivity=10 -- options are 4 or 8'
         with pytest.raises(ValueError, match=match):

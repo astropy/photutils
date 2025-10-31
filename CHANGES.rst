@@ -420,7 +420,7 @@ Bug Fixes
     value. [#1934]
 
   - Fixed an issue in ``Background2D`` where if the ``box_size`` equals
-    the input array shape the input data array could be modified. [#1935]
+    the input array shape, the input data array could be modified. [#1935]
 
 
 2.0.0 (2024-10-14)

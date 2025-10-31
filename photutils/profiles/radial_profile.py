@@ -25,7 +25,7 @@ class RadialProfile(ProfileBase):
     circular annuli apertures as a function of radius.
 
     For this class, the input radii represent the edges of the radial
-    bins. This differs from the `RadialProfile` class, where the inputs
+    bins. This differs from the `CurveOfGrowth` class, where the inputs
     represent the centers of the radial bins.
 
     The output `radius` attribute represents the bin centers.

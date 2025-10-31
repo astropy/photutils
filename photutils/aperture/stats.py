@@ -95,7 +95,7 @@ class ApertureStats:
         The total error array corresponding to the input ``data``
         array. ``error`` is assumed to include *all* sources of
         error, including the Poisson error of the sources (see
-        `~photutils.utils.calc_total_error`) . ``error`` must have
+        `~photutils.utils.calc_total_error`). ``error`` must have
         the same shape as the input ``data``. If ``data`` is a
         `~astropy.units.Quantity` array then ``error`` must be a
         `~astropy.units.Quantity` array (and vice versa) with identical
@@ -158,7 +158,7 @@ class ApertureStats:
         ``subpixels**2`` subpixels. This keyword is ignored unless
         ``sum_method='subpixel'``.
 
-    local_bkg : float, `~numpy.ndarray`,  `~astropy.units.Quantity`, or `None`
+    local_bkg : float, `~numpy.ndarray`, `~astropy.units.Quantity`, or `None`
         The per-pixel local background values to subtract from the data
         before performing measurements. If input as an array, the order
         of ``local_bkg`` values corresponds to the order of the input
@@ -367,7 +367,7 @@ class ApertureStats:
     @property
     def properties(self):
         """
-        A sorted list of built-in source properties.
+        A sorted list of the built-in source properties.
         """
         lazyproperties = [name for name in self._lazyproperties if not
                           name.startswith('_')]
@@ -587,7 +587,7 @@ class ApertureStats:
     @lazyproperty
     def n_apertures(self):
         """
-        The number of positions in the input aperture.
+        The number of positions for the input aperture.
         """
         if self.isscalar:
             return 1
@@ -644,7 +644,7 @@ class ApertureStats:
     def _data_cutouts(self):
         """
         The local-background-subtracted unmasked data cutouts using the
-        aperture bounding box, always as a iterable.
+        aperture bounding box, always as an iterable.
         """
         cutouts = []
         for (slices, local_bkg) in zip(self._overlap_slices,
@@ -912,9 +912,9 @@ class ApertureStats:
 
         The aperture mask weights are for the "center" method.
 
-        The mask is `True` for pixels outside of the aperture mask,
-        pixels from the input ``mask``, non-finite ``data`` values (NaN
-        and inf), and sigma-clipped pixels.
+        The mask is `True` for pixels outside the aperture mask, pixels
+        from the input ``mask``, non-finite ``data`` values (NaN and
+        inf), and sigma-clipped pixels.
         """
         return self._make_masked_array_center(
             list(zip(*self._aperture_cutouts_center, strict=True))[3])
@@ -927,9 +927,9 @@ class ApertureStats:
 
         The aperture mask weights are for the ``sum_method`` method.
 
-        The mask is `True` for pixels outside of the aperture mask,
-        pixels from the input ``mask``, non-finite ``data`` values (NaN
-        and inf), and sigma-clipped pixels.
+        The mask is `True` for pixels outside the aperture mask, pixels
+        from the input ``mask``, non-finite ``data`` values (NaN and
+        inf), and sigma-clipped pixels.
         """
         return self._make_masked_array(list(zip(*self._aperture_cutouts,
                                                 strict=True))[3])
@@ -1156,7 +1156,7 @@ class ApertureStats:
     @as_scalar
     def _bbox_bounds(self):
         """
-        The bounding box x/y minimum and maximum bounds.
+        The bounding box x and y minimum and maximum bounds.
         """
         bbox = self.bbox
         if self.isscalar:
@@ -1169,7 +1169,7 @@ class ApertureStats:
     @as_scalar
     def bbox_xmin(self):
         """
-        The minimum ``x`` pixel index of the bounding box.
+        The minimum ``x``-pixel index of the bounding box.
         """
         return np.transpose(self._bbox_bounds)[0]
 
@@ -1177,7 +1177,7 @@ class ApertureStats:
     @as_scalar
     def bbox_xmax(self):
         """
-        The maximum ``x`` pixel index of the bounding box.
+        The maximum ``x``-pixel index of the bounding box.
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
@@ -1187,7 +1187,7 @@ class ApertureStats:
     @as_scalar
     def bbox_ymin(self):
         """
-        The minimum ``y`` pixel index of the bounding box.
+        The minimum ``y``-pixel index of the bounding box.
         """
         return np.transpose(self._bbox_bounds)[2]
 
@@ -1195,7 +1195,7 @@ class ApertureStats:
     @as_scalar
     def bbox_ymax(self):
         """
-        The maximum ``y`` pixel index of the bounding box.
+        The maximum ``y``-pixel index of the bounding box.
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
@@ -1280,7 +1280,7 @@ class ApertureStats:
     @as_scalar
     def sum_err(self):
         r"""
-        The uncertainty of `sum` , propagated from the input ``error``
+        The uncertainty of `sum`, propagated from the input ``error``
         array.
 
         ``sum_err`` is the quadrature sum of the total errors over the

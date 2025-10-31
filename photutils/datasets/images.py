@@ -100,8 +100,8 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         bounding box will be used. This keyword is ignored if
         ``model_shape`` is specified or if the ``params_table`` contains
         a ``'model_shape'`` column. Note that some Photutils PSF models
-        have a ``bbox_factor`` keyword that is be used to define the
-        model bounding box. In that case, this keyword is ignored.
+        have a ``bbox_factor`` keyword that is used to define the model
+        bounding box. In that case, this keyword is ignored.
 
     x_name : str, optional
         The name of the ``model`` parameter that corresponds to the x

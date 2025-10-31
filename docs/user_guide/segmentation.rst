@@ -137,7 +137,7 @@ In the example above, overlapping sources are detected as single
 sources. Separating those sources requires a deblending procedure,
 such as a multi-thresholding technique used by `SourceExtractor`_.
 Photutils provides a :func:`~photutils.segmentation.deblend_sources`
-function that deblends sources uses a combination
+function that deblends sources using a combination
 of multi-thresholding and `watershed segmentation
 <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. Note
 that in order to deblend sources, they must be separated enough such

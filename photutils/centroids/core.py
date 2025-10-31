@@ -113,7 +113,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     A second degree 2D polynomial is fit within a small region of the
     data defined by ``fit_boxsize`` to calculate the centroid position.
-    The initial center of the fitting box can specified using the
+    The initial center of the fitting box can be specified using the
     ``xpeak`` and ``ypeak`` keywords. If both ``xpeak`` and ``ypeak``
     are `None`, then the box will be centered at the position of the
     maximum value in the input ``data``.
@@ -226,10 +226,10 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         raise ValueError(msg)
 
     if xpeak is not None and ((xpeak < 0) or (xpeak > data.shape[1] - 1)):
-        msg = 'xpeak is outside of the input data'
+        msg = 'xpeak is outside the input data'
         raise ValueError(msg)
     if ypeak is not None and ((ypeak < 0) or (ypeak > data.shape[0] - 1)):
-        msg = 'ypeak is outside of the input data'
+        msg = 'ypeak is outside the input data'
         raise ValueError(msg)
 
     # preserve input data - which should be a small cutout image
@@ -369,8 +369,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
 
     xpos, ypos : float or array_like of float
         The initial ``x`` and ``y`` pixel position(s) of the center
-        position. A cutout image centered on this position be used to
-        calculate the centroid.
+        position. A cutout image centered on this position will be used
+        to calculate the centroid.
 
     box_size : int or array_like of int, optional
         The size of the cutout image along each axis. If ``box_size`` is
@@ -465,7 +465,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
     if (np.any(np.min(xpos) < 0) or np.any(np.min(ypos) < 0)
             or np.any(np.max(xpos) > data.shape[1] - 1)
             or np.any(np.max(ypos) > data.shape[0] - 1)):
-        msg = 'xpos, ypos values contains points outside of input data'
+        msg = 'xpos, ypos values contain points outside the input data'
         raise ValueError(msg)
 
     if footprint is None:

@@ -174,7 +174,7 @@ class _StarFinderCatalog:
         The 2D image. The image should be background-subtracted.
 
     xypos : Nx2 `~numpy.ndarray`
-        A Nx2 array of (x, y) pixel coordinates denoting the central
+        An Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
     shape :  tuple of int
@@ -443,7 +443,7 @@ class _StarFinderCatalog:
     def apply_all_filters(self):
         """
         Apply all filters, select the brightest, and reset the source
-        ids.
+        IDs.
         """
         cat = self.apply_filters()
         if cat is None:

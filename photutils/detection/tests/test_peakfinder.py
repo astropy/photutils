@@ -62,7 +62,7 @@ class TestFindPeaks:
 
     def test_maskshape(self, data):
         """
-        Test if make shape doesn't match data shape.
+        Test if mask shape doesn't match data shape.
         """
         match = 'data and mask must have the same shape'
         with pytest.raises(ValueError, match=match):
@@ -112,7 +112,7 @@ class TestFindPeaks:
 
     def test_box_size_int(self, data):
         """
-        Test non-integer box_size.
+        Test noninteger box_size.
         """
         tbl1 = find_peaks(data, 0.1, box_size=5.0)
         tbl2 = find_peaks(data, 0.1, box_size=5.5)

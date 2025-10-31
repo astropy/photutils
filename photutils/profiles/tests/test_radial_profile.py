@@ -173,7 +173,7 @@ def test_radial_profile_error(profile_data):
 
 def test_radial_profile_normalize_nan(profile_data):
     """
-    If the profile has NaNs (e.g., aperture outside of the image), make
+    If the profile has NaNs (e.g., aperture outside the image), make
     sure the normalization ignores them.
     """
     xycen, data, _, _ = profile_data

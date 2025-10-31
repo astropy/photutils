@@ -109,8 +109,8 @@ def _mask_to_mirrored_value(data, replace_mask, xycenter, mask=None):
     Replace masked pixels with the value of the pixel mirrored across a
     given center position.
 
-    If the mirror pixel is unavailable (i.e., it is outside of the image
-    or masked), then the masked pixel value is set to zero.
+    If the mirror pixel is unavailable (i.e., it is outside the image or
+    masked), then the masked pixel value is set to zero.
 
     Parameters
     ----------
@@ -145,7 +145,7 @@ def _mask_to_mirrored_value(data, replace_mask, xycenter, mask=None):
     xmirror = 2 * int(xycenter[0] + 0.5) - xmasked
     ymirror = 2 * int(xycenter[1] + 0.5) - ymasked
 
-    # Find mirrored pixels that are outside of the image
+    # Find mirrored pixels that are outside the image
     badmask = ((xmirror < 0) | (ymirror < 0) | (xmirror >= data.shape[1])
                | (ymirror >= data.shape[0]))
 

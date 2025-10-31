@@ -75,8 +75,8 @@ class ImagePSF(Fittable2DModel):
         order.
 
     fill_value : float, optional
-        The value to use for points outside of the input pixel grid.
-        The default is 0.0.
+        The value to use for points outside the input pixel grid. The
+        default is 0.0.
 
     **kwargs : dict, optional
         Additional optional keyword arguments to be passed to the
@@ -187,7 +187,7 @@ class ImagePSF(Fittable2DModel):
         the model parameters in a model copy. It is used in the PSF
         photometry classes during model fitting.
 
-        Use the `deepcopy` method if you want to copy all of the model
+        Use the `deepcopy` method if you want to copy all the model
         attributes, including the PSF image data.
 
         Returns
@@ -418,8 +418,8 @@ class FittableImageModel(Fittable2DModel):
         an aperture-corrected flux of the target star. In the case of
         aperture correction, ``normalization_correction`` should be a
         value larger than one, as the total flux, including regions
-        outside of the aperture, should be larger than the flux inside
-        the aperture, and thus the correction is applied as an inversely
+        outside the aperture, should be larger than the flux inside the
+        aperture, and thus the correction is applied as an inversely
         multiplied factor.
 
     origin : tuple, None, optional
@@ -714,11 +714,11 @@ class FittableImageModel(Fittable2DModel):
     @property
     def fill_value(self):
         """
-        Fill value to be returned for coordinates outside of the domain
-        of definition of the interpolator.
+        Fill value to be returned for coordinates outside the domain of
+        definition of the interpolator.
 
-        If ``fill_value`` is `None`, then values outside of the domain
-        of definition are the ones returned by the interpolator.
+        If ``fill_value`` is `None`, then values outside the domain of
+        definition are the ones returned by the interpolator.
         """
         return self._fill_value
 
@@ -770,7 +770,7 @@ class FittableImageModel(Fittable2DModel):
         -----
         * When subclassing :py:class:`FittableImageModel` for the
           purpose of overriding :py:func:`compute_interpolator`, the
-          :py:func:`evaluate` may need to overridden as well depending
+          :py:func:`evaluate` may need be to overridden depending
           on the behavior of the new interpolator. In addition, for
           improved future compatibility, make sure that the overriding
           method stores keyword arguments ``kwargs`` by calling
@@ -1164,11 +1164,11 @@ class _LegacyEPSFModel(Fittable2DModel):
     @property
     def fill_value(self):
         """
-        Fill value to be returned for coordinates outside of the domain
-        of definition of the interpolator.
+        Fill value to be returned for coordinates outside the domain of
+        definition of the interpolator.
 
-        If ``fill_value`` is `None`, then values outside of the domain
-        of definition are the ones returned by the interpolator.
+        If ``fill_value`` is `None`, then values outside the domain of
+        definition are the ones returned by the interpolator.
         """
         return self._fill_value
 
@@ -1220,7 +1220,7 @@ class _LegacyEPSFModel(Fittable2DModel):
         -----
         * When subclassing :py:class:`FittableImageModel` for the
           purpose of overriding :py:func:`compute_interpolator`, the
-          :py:func:`evaluate` may need to overridden as well depending
+          :py:func:`evaluate` may need to be overridden depending
           on the behavior of the new interpolator. In addition, for
           improved future compatibility, make sure that the overriding
           method stores keyword arguments ``kwargs`` by calling

@@ -67,7 +67,7 @@ def test_mask_to_mirrored_value():
 
 def test_mask_to_mirrored_value_range():
     """
-    Test mask_to_mirrored_value when mirrored pixels are outside of the
+    Test mask_to_mirrored_value when mirrored pixels are outside the
     image.
     """
     center = (3.0, 3.0)
@@ -87,7 +87,7 @@ def test_mask_to_mirrored_value_range():
 def test_mask_to_mirrored_value_masked():
     """
     Test mask_to_mirrored_value when mirrored pixels are also in the
-    replace_mask.
+    ``replace_mask``.
     """
     center = (2.0, 2.0)
     data = np.arange(25).reshape(5, 5)

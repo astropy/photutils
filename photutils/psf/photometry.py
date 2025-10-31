@@ -262,7 +262,7 @@ class PSFPhotometry(ModelImageMixin):
         are those that overlap with their neighbors. Sources that are
         grouped are fit simultaneously. The ``grouper`` must accept
         the x and y coordinates of the sources and return an integer
-        array of the group id numbers (starting from 1) indicating
+        array of the group ID numbers (starting from 1) indicating
         the group in which a given source belongs. If `None`, then no
         grouping is performed, i.e. each source is fit independently.
         The ``group_id`` values in ``init_params`` override this
@@ -1569,7 +1569,7 @@ class PSFPhotometry(ModelImageMixin):
             If `True`, the 'id' column will be reset to a sequential
             numbering starting from 1. If `False`, the 'id' column will
             be copied as is from `results_tbl`. This is useful only in
-            the the case where there are non-finite fitted values in the
+            the case where there are non-finite fitted values in the
             table, which would otherwise result in a non-sequential 'id'
             column.
 
@@ -1622,7 +1622,7 @@ class PSFPhotometry(ModelImageMixin):
             If `True`, the 'id' column will be reset to a sequential
             numbering starting from 1. If `False`, the 'id' column will
             be copied as is from `results_tbl`. This is useful only in
-            the the case where there are non-finite fitted values in the
+            the case where there are non-finite fitted values in the
             table, which would otherwise result in a non-sequential 'id'
             column.
 

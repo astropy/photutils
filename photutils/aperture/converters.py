@@ -50,11 +50,11 @@ def region_to_aperture(region):
 
     Notes
     -----
-    The ellipse ``width`` and ``height`` region parameters represent the
-    full extent of the shapes and thus are divided by 2 when converting
-    to elliptical aperture objects, which are defined using the
-    semi-major (``a``) and semi-minor (``b``) axes. The ``width`` and
-    ``height`` parameters are mapped to the the semi-major (``a``) and
+    The ellipse ``width`` and ``height`` region parameters represent
+    the full extent of the shapes and thus are divided by 2 when
+    converting to elliptical aperture objects, which are defined using
+    the semi-major (``a``) and semi-minor (``b``) axes. The ``width``
+    and ``height`` parameters are mapped to the semi-major (``a``) and
     semi-minor (``b``) axes parameters, respectively, of the elliptical
     apertures.
 

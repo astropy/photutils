@@ -40,7 +40,7 @@ class ModelImageMixin:
         shape : 2 tuple of int
             The shape of the output array.
 
-        psf_shape : 2 tuple of int, optional
+        psf_shape : 2-tuple of int, optional
             The shape of the region around the center of the fit model
             to render in the output image. If ``psf_shape`` is a scalar
             integer, then a square shape of size ``psf_shape`` will be
@@ -127,7 +127,7 @@ class ModelImageMixin:
             be the same array input when calling the PSF-photometry
             class.
 
-        psf_shape : 2 tuple of int, optional
+        psf_shape : 2-tuple of int, optional
             The shape of the region around the center of the fit model
             to subtract. If ``psf_shape`` is a scalar integer, then
             a square shape of size ``psf_shape`` will be used. If
@@ -256,7 +256,7 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
         The pixel-wise Gaussian 1-sigma errors of the input
         ``data``. ``error`` is assumed to include *all* sources
         of error, including the Poisson error of the sources (see
-        `~photutils.utils.calc_total_error`) . ``error`` must have the
+        `~photutils.utils.calc_total_error`). ``error`` must have the
         same shape as the input ``data``. If a `~astropy.units.Quantity`
         array, then ``data`` must also be a `~astropy.units.Quantity`
         array with the same units.
@@ -280,8 +280,8 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
 
     Examples
     --------
-    Fit a 2D Gaussian model to a image containing only one source (e.g.,
-    a cutout image):
+    Fit a 2D Gaussian model to an image containing only one source
+    (e.g., a cutout image):
 
     >>> import numpy as np
     >>> from photutils.psf import CircularGaussianPRF, fit_2dgaussian
@@ -419,7 +419,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
         The pixel-wise Gaussian 1-sigma errors of the input
         ``data``. ``error`` is assumed to include *all* sources
         of error, including the Poisson error of the sources (see
-        `~photutils.utils.calc_total_error`) . ``error`` must have the
+        `~photutils.utils.calc_total_error`). ``error`` must have the
         same shape as the input ``data``. If a `~astropy.units.Quantity`
         array, then ``data`` must also be a `~astropy.units.Quantity`
         array with the same units.
@@ -551,9 +551,9 @@ def _validate_psf_model(psf_model):
     """
     Validate the PSF model.
 
-    The PSF model must be a subclass of `astropy
-    .modeling.Fittable2DModel`. It must also be two-dimensional and
-    have a single output.
+    The PSF model must be a subclass of
+    `astropy.modeling.Fittable2DModel`. It must also be two-dimensional
+    and have a single output.
 
     Parameters
     ----------
@@ -748,7 +748,7 @@ def _create_call_docstring(iterative=False):
               fit, and error of the source flux
             * ``npixfit`` : the number of unmasked pixels used to fit
               the source
-            * ``qfit`` : a quality-of-fit metric defined as the the sum
+            * ``qfit`` : a quality-of-fit metric defined as the sum
               of the absolute value of the fit residuals divided by the
               fit flux. ``qfit`` is zero for sources that are perfectly
               fit by the PSF model.

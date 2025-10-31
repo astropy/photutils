@@ -138,7 +138,7 @@ class SourceCatalog:
         The total error array corresponding to the input ``data``
         array. ``error`` is assumed to include *all* sources of
         error, including the Poisson error of the sources (see
-        `~photutils.utils.calc_total_error`) . ``error`` must have
+        `~photutils.utils.calc_total_error`). ``error`` must have
         the same shape as the input ``data``. If ``data`` is a
         `~astropy.units.Quantity` array then ``error`` must be a
         `~astropy.units.Quantity` array (and vice versa) with identical
@@ -298,8 +298,8 @@ class SourceCatalog:
     `~photutils.segmentation.SourceCatalog.background_ma` properties,
     which are 2D `~numpy.ma.MaskedArray` cutout versions of the input
     ``error`` and ``background`` arrays. The mask is `True` for pixels
-    outside of the source segment, masked pixels from the ``mask``
-    input, or any non-finite ``data`` values (NaN and inf).
+    outside the source segment, masked pixels from the ``mask`` input,
+    or any non-finite ``data`` values (NaN and inf).
 
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
@@ -850,7 +850,7 @@ class SourceCatalog:
         Cutout boolean mask for source segment.
 
         The mask is `True` for all pixels (background and from other
-        source segments) outside of the source segment.
+        source segments) outside the source segment.
         """
         return [segm != label
                 for label, segm in zip(self.labels,
@@ -890,7 +890,7 @@ class SourceCatalog:
 
         The following pixels are set to zero in these arrays:
 
-        * pixels outside of the source segment
+        * pixels outside the source segment
         * any masked pixels from the input ``mask``
         * invalid convolved data values (NaN and inf)
         * negative convolved data values; negative pixels (especially
@@ -1083,7 +1083,7 @@ class SourceCatalog:
         A 2D `~numpy.ma.MaskedArray` cutout of the segmentation image
         using the minimal bounding box of the source.
 
-        The mask is `True` for pixels outside of the source segment
+        The mask is `True` for pixels outside the source segment
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
@@ -1107,7 +1107,7 @@ class SourceCatalog:
         A 2D `~numpy.ma.MaskedArray` cutout from the data using the
         minimal bounding box of the source.
 
-        The mask is `True` for pixels outside of the source segment
+        The mask is `True` for pixels outside the source segment
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
@@ -1131,7 +1131,7 @@ class SourceCatalog:
         A 2D `~numpy.ma.MaskedArray` cutout from the convolved data
         using the minimal bounding box of the source.
 
-        The mask is `True` for pixels outside of the source segment
+        The mask is `True` for pixels outside the source segment
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
@@ -1157,7 +1157,7 @@ class SourceCatalog:
         A 2D `~numpy.ma.MaskedArray` cutout from the error array using
         the minimal bounding box of the source.
 
-        The mask is `True` for pixels outside of the source segment
+        The mask is `True` for pixels outside the source segment
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
@@ -1185,7 +1185,7 @@ class SourceCatalog:
         A 2D `~numpy.ma.MaskedArray` cutout from the background array.
         using the minimal bounding box of the source.
 
-        The mask is `True` for pixels outside of the source segment
+        The mask is `True` for pixels outside the source segment
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
         """
@@ -1384,9 +1384,9 @@ class SourceCatalog:
         when the change in centroid position falls below a pre-defined
         threshold or a maximum number of iterations is reached.
 
-        If the windowed centroid falls outside of the 1-sigma ellipse
-        shape based on the image moments, then the isophotal `centroid`
-        will be used instead.
+        If the windowed centroid falls outside the 1-sigma ellipse shape
+        based on the image moments, then the isophotal `centroid` will
+        be used instead.
         """
         radius_hl = self.fluxfrac_radius(0.5).value
         if self.isscalar:
@@ -1469,7 +1469,7 @@ class SourceCatalog:
         ycen_win = np.array(ycen_win)
 
         # reset to the isophotal centroid if the windowed centroid is
-        # outside of the 1-sigma ellipse
+        # outside the 1-sigma ellipse
         dx = self._xcentroid - xcen_win
         dy = self._ycentroid - ycen_win
         cxx = self.cxx.value
@@ -1837,9 +1837,9 @@ class SourceCatalog:
         minimal bounding box of the source segment, returned as a
         `~astropy.coordinates.SkyCoord` object.
 
-        The bounding box encloses all of the source segment pixels in
-        their entirety, thus the vertices are at the pixel *corners*,
-        not their centers.
+        The bounding box encloses all the source segment pixels in their
+        entirety, thus the vertices are at the pixel *corners*, not
+        their centers.
 
         `None` if ``wcs`` is not input.
         """
@@ -1856,9 +1856,9 @@ class SourceCatalog:
         minimal bounding box of the source segment, returned as a
         `~astropy.coordinates.SkyCoord` object.
 
-        The bounding box encloses all of the source segment pixels in
-        their entirety, thus the vertices are at the pixel *corners*,
-        not their centers.
+        The bounding box encloses all the source segment pixels in their
+        entirety, thus the vertices are at the pixel *corners*, not
+        their centers.
 
         `None` if ``wcs`` is not input.
         """
@@ -1875,9 +1875,9 @@ class SourceCatalog:
         minimal bounding box of the source segment, returned as a
         `~astropy.coordinates.SkyCoord` object.
 
-        The bounding box encloses all of the source segment pixels in
-        their entirety, thus the vertices are at the pixel *corners*,
-        not their centers.
+        The bounding box encloses all the source segment pixels in their
+        entirety, thus the vertices are at the pixel *corners*, not
+        their centers.
 
         `None` if ``wcs`` is not input.
         """
@@ -1894,9 +1894,9 @@ class SourceCatalog:
         minimal bounding box of the source segment, returned as a
         `~astropy.coordinates.SkyCoord` object.
 
-        The bounding box encloses all of the source segment pixels in
-        their entirety, thus the vertices are at the pixel *corners*,
-        not their centers.
+        The bounding box encloses all the source segment pixels in their
+        entirety, thus the vertices are at the pixel *corners*, not
+        their centers.
 
         `None` if ``wcs`` is not input.
         """
@@ -2103,7 +2103,7 @@ class SourceCatalog:
     @as_scalar
     def segment_fluxerr(self):
         r"""
-        The uncertainty of `segment_flux` , propagated from the input
+        The uncertainty of `segment_flux`, propagated from the input
         ``error`` array.
 
         ``segment_fluxerr`` is the quadrature sum of the total errors
@@ -2181,7 +2181,7 @@ class SourceCatalog:
 
         If ``detection_cat`` is input, then its `centroid` will be used.
 
-        The background value at fractional position values are
+        The background values at fractional position values are
         determined using bilinear interpolation.
         """
         if self._background is None:

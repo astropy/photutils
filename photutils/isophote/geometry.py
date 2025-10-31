@@ -96,8 +96,8 @@ class EllipseGeometry:
         axes, respectively.
     pa : float
         The position angle (in radians) of the semimajor axis in
-        relation to the positive x axis of the image array (rotating
-        towards the positive y axis). Position angles are defined in the
+        relation to the positive x-axis of the image array (rotating
+        towards the positive y-axis). Position angles are defined in the
         range :math:`0 < PA <= \pi`. Avoid using as starting position
         angle of 0., since the fit algorithm may not work properly.
         When the ellipses are such that position angles are near either
@@ -164,9 +164,8 @@ class EllipseGeometry:
         The isophote fit algorithm requires an initial guess for the
         galaxy center (x, y) coordinates and these coordinates must be
         close to the actual galaxy center for the isophote fit to work.
-        This method provides can provide an initial guess for the galaxy
-        center coordinates. See the **Notes** section below for more
-        details.
+        This method can provide an initial guess for the galaxy center
+        coordinates. See the **Notes** section below for more details.
 
         Parameters
         ----------

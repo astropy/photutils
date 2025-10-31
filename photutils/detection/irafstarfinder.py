@@ -171,7 +171,7 @@ class IRAFStarFinder(StarFinderBase):
         if xycoords is not None:
             xycoords = np.asarray(xycoords)
             if xycoords.ndim != 2 or xycoords.shape[1] != 2:
-                msg = 'xycoords must be shaped as a Nx2 array'
+                msg = 'xycoords must be shaped as an Nx2 array'
                 raise ValueError(msg)
         self.xycoords = xycoords
 
@@ -283,7 +283,7 @@ class _IRAFStarFinderCatalog:
         have the same units.
 
     xypos : Nx2 `~numpy.ndarray`
-        A Nx2 array of (x, y) pixel coordinates denoting the central
+        An Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
     kernel : `_StarFinderKernel`
