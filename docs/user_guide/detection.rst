@@ -269,5 +269,5 @@ API Reference
 :doc:`../reference/detection_api`
 
 
-.. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
-.. _starfind: https://iraf.net/irafhelp.php?val=starfind
+.. _DAOFIND: https://iraf.readthedocs.io/en/latest/tasks/noao/digiphot/apphot/daofind.html
+.. _starfind: https://iraf.readthedocs.io/en/latest/tasks/images/imcoords/starfind.html

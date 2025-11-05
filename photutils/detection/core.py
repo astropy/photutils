@@ -63,8 +63,10 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             Set to `True` to exclude sources found within half the
             size of the convolution kernel from the image borders.
             The default is `False`, which is the mode used by IRAF's
-            `DAOFIND <https://iraf.net/irafhelp.php?val=daofind>`_ and
-            `starfind <https://iraf.net/irafhelp.php?val=starfind>`_.
+            `DAOFIND
+            <https://iraf.readthedocs.io/en/latest/tasks/noao/digiphot/apphot/daofind.html>`_
+            and `STARFIND
+            <https://iraf.readthedocs.io/en/latest/tasks/images/imcoords/starfind.html>`_.
 
         Returns
         -------
