@@ -137,3 +137,19 @@ def test_model_harmonics():
 
     mask = model_image > 0
     assert np.std(residual[mask]) < 0.4
+
+
+def test_model_integration():
+    """
+    Test that model integration does not stop as soon as the angle reaches
+    the edge of the image.
+    """
+    data = make_test_image(nx=80, ny=110, i0=100.0, sma=60.0, eps=0.5,
+                           pa=np.pi / 3.0, noise=0.05, seed=0)
+    g = EllipseGeometry(40, 55, 5.0, 0.5, np.pi / 3.0)
+    ellipse = Ellipse(data, geometry=g, threshold=1.0e5)
+    isophote_list = ellipse.fit_image()
+    model = build_ellipse_model(data.shape, isophote_list,
+                                fill=np.nanmean(data[105:, :5]),
+                                sma_interval=0.05)
+    assert np.nanmean(np.abs(model[100:, 60:] - data[100:, 60:])) < 2

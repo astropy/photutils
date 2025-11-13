@@ -44,6 +44,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.isophote``
+
+  - ``build_ellipse_model`` now integrates over all angles instead of
+    stopping once it hits the edge of the output image.
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now handle
