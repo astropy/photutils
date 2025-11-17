@@ -16,6 +16,19 @@ smaller improvements and bug fixes, which are described in the full
    :depth: 2
 
 
+Dependency Version Updates
+==========================
+
+Photutils 3.0 bumps the minimum required versions of several key
+dependencies to provide users with access to the latest features and
+performance improvements:
+
+- NumPy minimum version is now 2.0
+- SciPy minimum version is now 1.13
+- Matplotlib minimum version is now 3.9
+- scikit-image minimum version is now 0.23
+
+
 New SourceGroups class
 ======================
 
@@ -71,7 +84,8 @@ Relatedly, the ``BkgIDWInterpolator`` and ``BkgZoomInterpolator``
 classes are now deprecated. The ``BkgIDWInterpolator`` is not
 well-suited for resizing images on a regular grid to larger sizes. It
 is also significantly slower than the default interpolator based on
-``scipy.ndimage.zoom``.
+``scipy.ndimage.zoom``. The ``BkgZoomInterpolator`` functionality will
+be preserved in the default resizing behavior of ``Background2D``.
 
 The ``grid_from_epsfs`` helper function is now deprecated. This function
 creates a ``GriddedPSFModel`` from a list of ePSFs. Instead, use the
