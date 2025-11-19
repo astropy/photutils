@@ -8,9 +8,8 @@ import abc
 import warnings
 
 import numpy as np
-from astropy.stats import SigmaClip, mad_std
+from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
 
-from photutils.extern.biweight import biweight_location, biweight_scale
 from photutils.utils._parameters import (SigmaClipSentinelDefault,
                                          create_default_sigmaclip)
 from photutils.utils._repr import make_repr

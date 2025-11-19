@@ -12,6 +12,8 @@ General
 
 - The minimum required scikit-image is now 0.23. [#2115]
 
+- The minimum required astropy is now 6.1.4. [#2130]
+
 New Features
 ^^^^^^^^^^^^
 
