@@ -352,6 +352,56 @@ class TestSpecificEstimators:
                     - mean_factor * np.mean(data))
         assert_allclose(result, expected)
 
+    def test_biweight_location_constant_data(self):
+        """
+        Test BiweightLocationBackground with constant data.
+
+        Regression test for
+        https://github.com/astropy/astropy/pull/16964.
+        """
+        data = np.full((5, 1, 10), 7.5)
+        bkg = BiweightLocationBackground(sigma_clip=None)
+        result = bkg.calc_background(data, axis=-1)
+        assert result.shape == (5, 1)
+
+        data = np.full((5, 1, 4, 10), 1.4)
+        bkg = BiweightLocationBackground(sigma_clip=None)
+        result = bkg.calc_background(data, axis=-1)
+        assert result.shape == (5, 1, 4)
+
+        data = np.full((5, 1, 10), 1.4)
+        bkg = BiweightLocationBackground(sigma_clip=None)
+        result1 = bkg.calc_background(data, axis=None)
+        result2 = bkg.calc_background(data, axis=(0, 1, 2))
+        assert result1.shape == ()
+        assert result2.shape == ()
+        assert result1 == result2
+
+    def test_biweight_scale_constant_data(self):
+        """
+        Test BiweightScaleBackgroundRMS with constant data.
+
+        Regression test for
+        https://github.com/astropy/astropy/pull/16964.
+        """
+        data = np.full((5, 1, 10), 7.5)
+        bkg = BiweightScaleBackgroundRMS(sigma_clip=None)
+        result = bkg.calc_background_rms(data, axis=-1)
+        assert result.shape == (5, 1)
+
+        data = np.full((5, 1, 4, 10), 1.4)
+        bkg = BiweightScaleBackgroundRMS(sigma_clip=None)
+        result = bkg.calc_background_rms(data, axis=-1)
+        assert result.shape == (5, 1, 4)
+
+        data = np.full((5, 1, 10), 1.4)
+        bkg = BiweightScaleBackgroundRMS(sigma_clip=None)
+        result1 = bkg.calc_background_rms(data, axis=None)
+        result2 = bkg.calc_background_rms(data, axis=(0, 1, 2))
+        assert result1.shape == ()
+        assert result2.shape == ()
+        assert result1 == result2
+
 
 class TestBackgroundRMSEstimators:
     """
