@@ -916,14 +916,14 @@ def test_local_bkg_nonfinite(test_data):
     assert np.isinf(phot['local_bkg'][1])
     assert np.isinf(phot['local_bkg'][2])
 
-    # Check that flags are set correctly (bit 512 for non-finite local_bkg)
-    assert phot['flags'][0] & 512
-    assert phot['flags'][1] & 512
-    assert phot['flags'][2] & 512
+    # Check that flags are set correctly (bit 2048 for non-finite local_bkg)
+    assert phot['flags'][0] & 2048
+    assert phot['flags'][1] & 2048
+    assert phot['flags'][2] & 2048
 
     # Check that sources with finite local_bkg don't have this flag
     if len(phot) > 3:
-        assert not (phot['flags'][3] & 512)
+        assert not (phot['flags'][3] & 2048)
 
 
 def test_local_bkg_nonfinite_measured(test_data):
@@ -935,7 +935,7 @@ def test_local_bkg_nonfinite_measured(test_data):
     masked region), the code should:
     1. Report the NaN local_bkg value in the output table
     2. Not subtract it from the data before fitting
-    3. Set a flag (bit 512) indicating non-finite local background
+    3. Set a flag (bit 2048) indicating non-finite local background
     """
     data, error, _ = test_data
 
@@ -956,7 +956,7 @@ def test_local_bkg_nonfinite_measured(test_data):
                             localbkg_estimator=localbkg_estimator)
     phot = psfphot(data, error=error, mask=mask)
 
-    assert_equal(phot['flags'], [512, 0, 0])
+    assert_equal(phot['flags'], [2048, 0, 0])
     assert np.isnan(phot['local_bkg'][0])
     assert np.all(np.isfinite(phot['local_bkg'][1:]))
     assert np.all(phot['flux_fit'] > 0)
@@ -1487,6 +1487,43 @@ def test_flag32_parameter_at_bounds():
     phot = psfphot(data, init_params=init_params)
     assert len(phot) == 1
     assert (phot['flags'][0] & 32) == 32
+
+
+def test_flag512_non_finite_position():
+    """
+    Test flag=512 for non-finite fitted position.
+
+    When a source has non-finite initial position or when the fit fails
+    to converge properly, the fitted x or y position can be non-finite.
+    """
+    shape = (25, 25)
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    data = np.zeros(shape)
+
+    # Create init_params with non-finite initial position
+    init_params = QTable()
+    init_params['x_init'] = [12.0, np.nan, 12.0]
+    init_params['y_init'] = [12.0, 12.0, np.inf]
+    init_params['flux_init'] = [500.0, 500.0, 500.0]
+
+    fit_shape = (5, 5)
+    psfphot = PSFPhotometry(psf_model, fit_shape, aperture_radius=3)
+    phot = psfphot(data, init_params=init_params)
+
+    assert len(phot) == 3
+
+    # First source should be valid (no flag 512)
+    assert np.isfinite(phot['x_fit'][0])
+    assert np.isfinite(phot['y_fit'][0])
+    assert (phot['flags'][0] & 512) == 0
+
+    # Second source should have non-finite x_fit (flag 512 set)
+    assert not np.isfinite(phot['x_fit'][1])
+    assert (phot['flags'][1] & 512) == 512
+
+    # Third source should have non-finite y_fit (flag 512 set)
+    assert not np.isfinite(phot['y_fit'][2])
+    assert (phot['flags'][2] & 512) == 512
 
 
 def test_psf_photometry_methods(test_data):

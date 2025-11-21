@@ -1449,7 +1449,15 @@ class PSFResultsAssembler:
             flags[reasons == 'fully_masked'] |= PSF_FLAGS.FULLY_MASKED
             flags[reasons == 'too_few_pixels'] |= PSF_FLAGS.TOO_FEW_PIXELS
 
-        # Flag=512: non-finite local background
+        # Flag=512: non-finite fitted position
+        x_col = self.param_mapper.fit_colnames['x']
+        y_col = self.param_mapper.fit_colnames['y']
+        x_fit = results_tbl[x_col]
+        y_fit = results_tbl[y_col]
+        non_finite_pos_mask = ~np.isfinite(x_fit) | ~np.isfinite(y_fit)
+        flags[non_finite_pos_mask] |= PSF_FLAGS.NON_FINITE_POSITION
+
+        # Flag=2048: non-finite local background
         local_bkg_vals = init_params['local_bkg']
         if hasattr(local_bkg_vals, 'value'):
             # Handle Quantity
