@@ -13,15 +13,14 @@ import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable
-from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.background import LocalBackground
 from photutils.psf._components import (PSFDataProcessor, PSFFitter,
-                                       PSFResultsAssembler)
+                                       PSFResultsAssembler, _ModelImageMaker)
 from photutils.psf.flags import decode_psf_flags
-from photutils.psf.utils import (ModelImageMixin, _create_call_docstring,
+from photutils.psf.utils import (_create_call_docstring,
                                  _get_psf_model_main_params, _make_mask,
                                  _validate_psf_model)
 from photutils.utils._parameters import as_pair
@@ -210,7 +209,7 @@ class _PSFParameterMapper:
         return table
 
 
-class PSFPhotometry(ModelImageMixin):
+class PSFPhotometry:
     """
     Class to perform PSF photometry.
 
@@ -446,9 +445,6 @@ class PSFPhotometry(ModelImageMixin):
             'cen_residuals': None,
             'reduced_chi2': None,
         }
-
-        # remove cached properties
-        self.__dict__.pop('_model_image_params', None)
 
     def _initialize_source_state_storage(self, n_sources):
         """
@@ -1790,12 +1786,7 @@ class PSFPhotometry(ModelImageMixin):
 
         return decode_psf_flags(self.results['flags'])
 
-    @lazyproperty
-    def _model_image_params(self):
-        """
-        A helper property that provides the necessary parameters to
-        ModelImageMixin.
-        """
+    def _get_model_image_params(self):
         # Convert fitted parameters to model parameter names without
         # filtering, so the row indices align with self.results
         model_params = self.results_to_model_params(remove_invalid=False)
@@ -1808,11 +1799,7 @@ class PSFPhotometry(ModelImageMixin):
         # Extract local_bkg for the same valid sources
         local_bkg = self.results['local_bkg'][keep]
 
-        return {'psf_model': self.psf_model,
-                'model_params': model_params,
-                'local_bkg': local_bkg,
-                'progress_bar': self.progress_bar,
-                }
+        return model_params, local_bkg
 
     def make_model_image(self, shape, *, psf_shape=None,
                          include_localbkg=False):
@@ -1821,9 +1808,12 @@ class PSFPhotometry(ModelImageMixin):
                    'instance first.')
             raise ValueError(msg)
 
-        return ModelImageMixin.make_model_image(
-            self, shape, psf_shape=psf_shape,
-            include_localbkg=include_localbkg)
+        model_params, local_bkg = self._get_model_image_params()
+        maker = _ModelImageMaker(self.psf_model, model_params,
+                                 local_bkg=local_bkg,
+                                 progress_bar=self.progress_bar)
+        return maker.make_model_image(shape, psf_shape=psf_shape,
+                                      include_localbkg=include_localbkg)
 
     def make_residual_image(self, data, *, psf_shape=None,
                             include_localbkg=False):
@@ -1832,5 +1822,9 @@ class PSFPhotometry(ModelImageMixin):
                    'instance first.')
             raise ValueError(msg)
 
-        return ModelImageMixin.make_residual_image(
-            self, data, psf_shape=psf_shape, include_localbkg=include_localbkg)
+        model_params, local_bkg = self._get_model_image_params()
+        maker = _ModelImageMaker(self.psf_model, model_params,
+                                 local_bkg=local_bkg,
+                                 progress_bar=self.progress_bar)
+        return maker.make_residual_image(data, psf_shape=psf_shape,
+                                         include_localbkg=include_localbkg)

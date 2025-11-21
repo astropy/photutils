@@ -50,6 +50,10 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Removed the ``ModelImageMixin`` class. [#2133]
+
 - ``photutils.background``
 
   - Removed the deprecated ``edge_method`` keyword from ``Background2D``.

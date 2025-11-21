@@ -9,18 +9,20 @@ of the PSFPhotometry class and are not intended for direct public use.
 import contextlib
 import warnings
 import weakref
+from copy import deepcopy
 
 import astropy
 import astropy.units as u
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.fitting import TRFLSQFitter
-from astropy.nddata import NoOverlapError
+from astropy.nddata import NDData, NoOverlapError
 from astropy.table import QTable, Table, hstack, join
 from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
+from photutils.datasets import make_model_image as _make_model_image
 from photutils.utils._misc import _get_meta
 from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
@@ -1589,3 +1591,144 @@ class PSFResultsAssembler:
 
         # Convert to QTable and set metadata
         return QTable(results_tbl, meta=meta)
+
+
+class _ModelImageMaker:
+    """
+    Class to render model images and residuals.
+
+    Parameters
+    ----------
+    psf_model : `astropy.modeling.Model`
+        The PSF model.
+
+    model_params : `~astropy.table.Table`
+        The model parameters.
+
+    local_bkg : `~numpy.ndarray`, optional
+        The local background values.
+
+    progress_bar : bool, optional
+        Whether to display a progress bar.
+    """
+
+    def __init__(self, psf_model, model_params, local_bkg=None,
+                 progress_bar=False):
+        self.psf_model = psf_model
+        self.model_params = model_params
+        self.local_bkg = local_bkg
+        self.progress_bar = progress_bar
+
+    def make_model_image(self, shape, *, psf_shape=None,
+                         include_localbkg=False):
+        """
+        Create a 2D image from the fit PSF models and optional local
+        background.
+
+        Parameters
+        ----------
+        shape : 2 tuple of int
+            The shape of the output array.
+
+        psf_shape : 2-tuple of int, optional
+            The shape of the region around the center of the fit model
+            to render in the output image. If ``psf_shape`` is a scalar
+            integer, then a square shape of size ``psf_shape`` will be
+            used. If `None`, then the bounding box of the model will be
+            used. This keyword must be specified if the model does not
+            have a ``bounding_box`` attribute.
+
+        include_localbkg : bool, optional
+            Whether to include the local background in the rendered
+            output image. Note that the local background level is
+            included around each source over the region defined by
+            ``psf_shape``. Thus, regions where the ``psf_shape`` of
+            sources overlap will have the local background added
+            multiple times. Non-finite local background values (NaN or
+            inf) are treated as zero and not included in the output
+            image.
+
+        Returns
+        -------
+        array : 2D `~numpy.ndarray`
+            The rendered image from the fit PSF models. This image will
+            not have any units.
+        """
+        psf_model = self.psf_model
+        model_params = self.model_params
+        local_bkgs = self.local_bkg
+        progress_bar = self.progress_bar
+
+        if include_localbkg:
+            # add local_bkg, but set non-finite values to 0 to avoid
+            # corrupting the model image
+            model_params = model_params.copy()
+            local_bkgs_clean = local_bkgs.copy()
+            # Replace non-finite values with 0
+            nonfinite_mask = ~np.isfinite(local_bkgs_clean)
+            if np.any(nonfinite_mask):
+                local_bkgs_clean[nonfinite_mask] = 0
+            model_params['local_bkg'] = local_bkgs_clean
+
+        try:
+            x_name = psf_model.x_name
+            y_name = psf_model.y_name
+        except AttributeError:
+            x_name = 'x_0'
+            y_name = 'y_0'
+
+        return _make_model_image(shape, psf_model, model_params,
+                                 model_shape=psf_shape,
+                                 x_name=x_name, y_name=y_name,
+                                 progress_bar=progress_bar)
+
+    def make_residual_image(self, data, *, psf_shape=None,
+                            include_localbkg=False):
+        """
+        Create a 2D residual image from the fit PSF models and local
+        background.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D array on which photometry was performed. This should
+            be the same array input when calling the PSF-photometry
+            class.
+
+        psf_shape : 2-tuple of int, optional
+            The shape of the region around the center of the fit model
+            to subtract. If ``psf_shape`` is a scalar integer, then
+            a square shape of size ``psf_shape`` will be used. If
+            `None`, then the bounding box of the model will be used.
+            This keyword must be specified if the model does not have a
+            ``bounding_box`` attribute.
+
+        include_localbkg : bool, optional
+            Whether to include the local background in the subtracted
+            model. Note that the local background level is subtracted
+            around each source over the region defined by ``psf_shape``.
+            Thus, regions where the ``psf_shape`` of sources overlap
+            will have the local background subtracted multiple times.
+            Non-finite local background values (NaN or inf) are not
+            subtracted from the residual image.
+
+        Returns
+        -------
+        array : 2D `~numpy.ndarray`
+            The residual image of the ``data`` minus the fit PSF models
+            minus the optional``local_bkg``.
+        """
+        if isinstance(data, NDData):
+            residual = deepcopy(data)
+            data_arr = data.data
+            if data.unit is not None:
+                data_arr <<= data.unit
+            residual.data[:] = self.make_residual_image(
+                data_arr, psf_shape=psf_shape,
+                include_localbkg=include_localbkg)
+        else:
+            residual = self.make_model_image(data.shape, psf_shape=psf_shape,
+                                             include_localbkg=include_localbkg)
+            np.subtract(data, residual, out=residual)
+
+        return residual

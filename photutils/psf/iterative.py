@@ -9,18 +9,18 @@ from copy import deepcopy
 import numpy as np
 from astropy.nddata import NDData
 from astropy.table import QTable, vstack
-from astropy.utils import lazyproperty
 
+from photutils.psf._components import _ModelImageMaker
 from photutils.psf.flags import decode_psf_flags
 from photutils.psf.photometry import PSFPhotometry
-from photutils.psf.utils import ModelImageMixin, _create_call_docstring
+from photutils.psf.utils import _create_call_docstring
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['IterativePSFPhotometry']
 
 
-class IterativePSFPhotometry(ModelImageMixin):
+class IterativePSFPhotometry:
     """
     Class to iteratively perform PSF photometry.
 
@@ -271,7 +271,6 @@ class IterativePSFPhotometry(ModelImageMixin):
         """
         self.fit_results = []
         self.results = None
-        self.__dict__.pop('_model_image_params', None)  # lazyproperty
 
     def __repr__(self):
         params = ('psf_model', 'fit_shape', 'finder', 'grouper', 'fitter',
@@ -675,12 +674,7 @@ class IterativePSFPhotometry(ModelImageMixin):
 
         return decode_psf_flags(self.results['flags'])
 
-    @lazyproperty
-    def _model_image_params(self):
-        """
-        A helper property that provides the necessary parameters to
-        ModelImageMixin.
-        """
+    def _get_model_image_params(self):
         # Convert fitted parameters to model parameter names without
         # filtering, so the row indices align with self.results
         model_params = self.results_to_model_params(remove_invalid=False)
@@ -693,11 +687,7 @@ class IterativePSFPhotometry(ModelImageMixin):
         # Extract local_bkg for the same valid sources
         local_bkg = self.results['local_bkg'][keep]
 
-        return {'psf_model': self._psfphot.psf_model,
-                'model_params': model_params,
-                'local_bkg': local_bkg,
-                'progress_bar': self._psfphot.progress_bar,
-                }
+        return model_params, local_bkg
 
     def make_model_image(self, shape, *, psf_shape=None,
                          include_localbkg=False):
@@ -707,9 +697,12 @@ class IterativePSFPhotometry(ModelImageMixin):
                    'IterativePSFPhotometry instance first.')
             raise ValueError(msg)
 
-        return ModelImageMixin.make_model_image(
-            self, shape, psf_shape=psf_shape,
-            include_localbkg=include_localbkg)
+        model_params, local_bkg = self._get_model_image_params()
+        maker = _ModelImageMaker(self._psfphot.psf_model, model_params,
+                                 local_bkg=local_bkg,
+                                 progress_bar=self._psfphot.progress_bar)
+        return maker.make_model_image(shape, psf_shape=psf_shape,
+                                      include_localbkg=include_localbkg)
 
     def make_residual_image(self, data, *, psf_shape=None,
                             include_localbkg=False):
@@ -719,5 +712,9 @@ class IterativePSFPhotometry(ModelImageMixin):
                    'IterativePSFPhotometry instance first.')
             raise ValueError(msg)
 
-        return ModelImageMixin.make_residual_image(
-            self, data, psf_shape=psf_shape, include_localbkg=include_localbkg)
+        model_params, local_bkg = self._get_model_image_params()
+        maker = _ModelImageMaker(self._psfphot.psf_model, model_params,
+                                 local_bkg=local_bkg,
+                                 progress_bar=self._psfphot.progress_bar)
+        return maker.make_residual_image(data, psf_shape=psf_shape,
+                                         include_localbkg=include_localbkg)
