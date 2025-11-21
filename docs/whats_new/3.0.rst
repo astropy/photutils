@@ -60,6 +60,49 @@ IDs::
     >>> groups = SourceGroups(x, y, group_ids)
 
 
+Improved Handling of Non-Finite Local Background Values in PSF Photometry
+=========================================================================
+
+:class:`~photutils.psf.PSFPhotometry` and
+:class:`~photutils.psf.IterativePSFPhotometry` now gracefully handle
+non-finite (NaN or inf) local background values instead of raising an
+error. This situation can occur when the local background estimator
+encounters fully masked regions within the background annulus.
+
+When a non-finite local background value is encountered:
+
+1. The actual non-finite value is preserved and reported in the output
+   table's ``local_bkg`` column
+2. The value is not subtracted from the data before PSF fitting
+3. A new flag (bit 2048, ``NON_FINITE_LOCALBKG``) is set in the
+   ``flags`` column to indicate the issue
+
+This allows users to identify and handle problematic sources
+appropriately while still obtaining PSF fitting results where possible.
+
+
+Enhanced PSF Photometry Result Conversion Methods
+==================================================
+
+The :meth:`~photutils.psf.PSFPhotometry.results_to_init_params` and
+:meth:`~photutils.psf.PSFPhotometry.results_to_model_params` methods
+(and their :class:`~photutils.psf.IterativePSFPhotometry` equivalents)
+now support two new optional keyword arguments:
+
+* ``remove_invalid``: When ``True``, removes sources with non-finite
+  fitted parameters (positions or flux) or invalid flags from the
+  output table. This is useful for iterative PSF photometry workflows
+  where you want to exclude failed fits from subsequent iterations.
+
+* ``reset_ids``: When ``True``, renumbers the source IDs sequentially
+  starting from 1. This is particularly useful in combination with
+  ``remove_invalid=True`` to maintain consecutive IDs after removing
+  sources.
+
+These options provide more flexibility when converting PSF photometry
+results for use in subsequent fitting iterations or other analyses.
+
+
 Removed Deprecations
 ====================
 

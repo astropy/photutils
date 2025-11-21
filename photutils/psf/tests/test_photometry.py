@@ -170,15 +170,6 @@ def test_invalid_inputs():
     with pytest.warns(AstropyUserWarning, match=match):
         _ = psfphot2(data, mask=mask, init_params=init_params)
 
-    match = 'init_params local_bkg column contains non-finite values'
-    tbl = Table()
-    init_params['x_init'] = [1, 2]
-    init_params['y_init'] = [1, 2]
-    init_params['local_bkg'] = [0.1, np.inf]
-    data = np.ones((11, 11))
-    with pytest.raises(ValueError, match=match):
-        _ = psfphot(data, init_params=init_params)
-
     data = np.ones((11, 11))
     tbl = Table()
     tbl['x'] = [1, 2]
@@ -373,6 +364,91 @@ def test_model_residual_image(test_data):
     assert model2[y, x] > 18
     assert resid1[y, x] > 9
     assert resid2[y, x] < -9
+
+
+def test_model_residual_image_nonfinite_localbkg(test_data):
+    """
+    Test that make_model_image and make_residual_image handle non-finite
+    local background values correctly.
+
+    When include_localbkg=True and the local_bkg is non-finite (NaN or
+    inf), the non-finite value should be treated as 0 and not included
+    in the model or residual images.
+    """
+    data, error, _ = test_data
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(10.0, 2.0)
+
+    # Find sources and manually set some local_bkg values to non-finite
+    sources = finder(data)
+    sources['local_bkg'] = np.zeros(len(sources))
+    sources['local_bkg'][0] = np.nan
+    sources['local_bkg'][1] = np.inf
+    if len(sources) > 2:
+        sources['local_bkg'][2] = -np.inf
+
+    # Perform PSF photometry with non-finite local_bkg
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    phot = psfphot(data, error=error, init_params=sources)
+
+    # Test make_model_image with include_localbkg=True
+    psf_shape = (15, 15)
+    model_with_bkg = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
+                                              include_localbkg=True)
+    model_without_bkg = psfphot.make_model_image(
+        data.shape, psf_shape=psf_shape, include_localbkg=False)
+
+    # The model images should be finite everywhere
+    assert np.all(np.isfinite(model_with_bkg))
+    assert np.all(np.isfinite(model_without_bkg))
+
+    # For sources with non-finite local_bkg, the model with and without
+    # local_bkg should be identical (since non-finite is treated as 0)
+    # Check this by comparing the models at source positions
+    for i in range(min(3, len(phot))):
+        if not np.isfinite(phot['local_bkg'][i]):
+            x_fit = int(phot['x_fit'][i])
+            y_fit = int(phot['y_fit'][i])
+            # At the source center, both models should be similar
+            assert_allclose(model_with_bkg[y_fit, x_fit],
+                            model_without_bkg[y_fit, x_fit], atol=1e-6)
+
+
+def test_residual_image_localbkg_invalid_sources(test_data):
+    """
+    Test that make_residual_image handles sources with non-finite
+    local_bkg values and sources outside the image (invalid sources)
+    correctly.
+    """
+    data, error, _ = test_data
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(10.0, 2.0)
+
+    sources = finder(data)
+
+    # Add non-finite local_bkg values to init_params
+    sources['local_bkg'] = np.zeros(len(sources))
+    sources['local_bkg'][0] = np.nan
+    sources['local_bkg'][1] = np.inf
+    sources['local_bkg'][2] = -np.inf
+    # Add an invalid source outside the image
+    sources['xcentroid'][-3] = 1000
+    sources['ycentroid'][-3] = 1000
+
+    # Perform PSF photometry with init_params containing non-finite local_bkg
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    psfphot(data, error=error, init_params=sources)
+
+    residual_img = psfphot.make_residual_image(data, include_localbkg=True)
+
+    assert residual_img.shape == data.shape
+    assert np.all(np.isfinite(residual_img))
 
 
 @pytest.mark.parametrize('fit_stddev', [False, True])
@@ -804,6 +880,87 @@ def test_local_bkg(test_data):
                             localbkg_estimator=localbkg_estimator)
     phot = psfphot(data, error=error)
     assert np.count_nonzero(phot['local_bkg']) == len(sources)
+
+
+def test_local_bkg_nonfinite(test_data):
+    """
+    Test that non-finite local background values are handled correctly.
+
+    When local_bkg is NaN or inf, the code should:
+    1. Report the actual local_bkg value in the output table
+    2. Not subtract it from the data before fitting
+    3. Set a flag indicating non-finite local background
+    """
+    data, error, _ = test_data
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(10.0, 2.0)
+
+    # Find sources using the finder
+    sources = finder(data)
+
+    # Add non-finite local_bkg values to init_params
+    sources['local_bkg'] = np.zeros(len(sources))
+    sources['local_bkg'][0] = np.nan
+    sources['local_bkg'][1] = np.inf
+    sources['local_bkg'][2] = -np.inf
+
+    # Perform PSF photometry with init_params containing non-finite local_bkg
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4)
+    phot = psfphot(data, error=error, init_params=sources)
+
+    # Check that non-finite local_bkg values are preserved in output
+    assert np.isnan(phot['local_bkg'][0])
+    assert np.isinf(phot['local_bkg'][1])
+    assert np.isinf(phot['local_bkg'][2])
+
+    # Check that flags are set correctly (bit 2048 for non-finite local_bkg)
+    assert phot['flags'][0] & 2048
+    assert phot['flags'][1] & 2048
+    assert phot['flags'][2] & 2048
+
+    # Check that sources with finite local_bkg don't have this flag
+    if len(phot) > 3:
+        assert not (phot['flags'][3] & 2048)
+
+
+def test_local_bkg_nonfinite_measured(test_data):
+    """
+    Test that non-finite local background values measured from the image
+    are handled correctly.
+
+    When the LocalBackground estimator returns NaN (e.g., due to a fully
+    masked region), the code should:
+    1. Report the NaN local_bkg value in the output table
+    2. Not subtract it from the data before fitting
+    3. Set a flag (bit 2048) indicating non-finite local background
+    """
+    data, error, _ = test_data
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(10.0, 2.0)
+
+    # Create a mask that will cause LocalBackground to return NaN for
+    # some sources (mask out a large region around a source)
+    mask = np.ones(data.shape, dtype=bool)
+    mask[44:54, 58:68] = False  # around source at ~(63, 49)
+    mask[70:, :20] = False  # two sources
+
+    bkgstat = MMMBackground()
+    localbkg_estimator = LocalBackground(10, 25, bkgstat)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4,
+                            localbkg_estimator=localbkg_estimator)
+    phot = psfphot(data, error=error, mask=mask)
+
+    assert_equal(phot['flags'], [2048, 0, 0])
+    assert np.isnan(phot['local_bkg'][0])
+    assert np.all(np.isfinite(phot['local_bkg'][1:]))
+    assert np.all(phot['flux_fit'] > 0)
+    assert np.all(phot['flux_err'] > 0)
 
 
 def test_fixed_params(test_data):
@@ -1332,6 +1489,79 @@ def test_flag32_parameter_at_bounds():
     assert (phot['flags'][0] & 32) == 32
 
 
+def test_flag512_non_finite_position():
+    """
+    Test flag=512 for non-finite fitted position.
+
+    When a source has non-finite initial position or when the fit fails
+    to converge properly, the fitted x or y position can be non-finite.
+    """
+    shape = (25, 25)
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    data = np.zeros(shape)
+
+    # Create init_params with non-finite initial position
+    init_params = QTable()
+    init_params['x_init'] = [12.0, np.nan, 12.0]
+    init_params['y_init'] = [12.0, 12.0, np.inf]
+    init_params['flux_init'] = [500.0, 500.0, 500.0]
+
+    fit_shape = (5, 5)
+    psfphot = PSFPhotometry(psf_model, fit_shape, aperture_radius=3)
+    phot = psfphot(data, init_params=init_params)
+
+    assert len(phot) == 3
+
+    # First source should be valid (no flag 512)
+    assert np.isfinite(phot['x_fit'][0])
+    assert np.isfinite(phot['y_fit'][0])
+    assert (phot['flags'][0] & 512) == 0
+
+    # Second source should have non-finite x_fit (flag 512 set)
+    assert not np.isfinite(phot['x_fit'][1])
+    assert (phot['flags'][1] & 512) == 512
+
+    # Third source should have non-finite y_fit (flag 512 set)
+    assert not np.isfinite(phot['y_fit'][2])
+    assert (phot['flags'][2] & 512) == 512
+
+
+def test_flag1024_non_finite_flux():
+    """
+    Test flag=1024 for non-finite flux in init_params.
+
+    When a source has non-finite initial flux (NaN or inf), the code
+    should handle it gracefully and set flag 1024.
+    """
+    shape = (25, 25)
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    data = np.zeros(shape)
+
+    # Create init_params with non-finite initial flux
+    init_params = QTable()
+    init_params['x_init'] = [12.0, 12.0, 12.0]
+    init_params['y_init'] = [12.0, 12.0, 12.0]
+    init_params['flux_init'] = [500.0, np.nan, np.inf]
+
+    fit_shape = (5, 5)
+    psfphot = PSFPhotometry(psf_model, fit_shape, aperture_radius=3)
+    phot = psfphot(data, init_params=init_params)
+
+    assert len(phot) == 3
+
+    # First source should be valid (no flag 1024)
+    assert np.isfinite(phot['flux_fit'][0])
+    assert (phot['flags'][0] & 1024) == 0
+
+    # Second source should have non-finite flux_fit (flag 1024 set)
+    assert not np.isfinite(phot['flux_fit'][1])
+    assert (phot['flags'][1] & 1024) == 1024
+
+    # Third source should have non-finite flux_fit (flag 1024 set)
+    assert not np.isfinite(phot['flux_fit'][2])
+    assert (phot['flags'][2] & 1024) == 1024
+
+
 def test_psf_photometry_methods(test_data):
     data, error, _ = test_data
 
@@ -1540,6 +1770,7 @@ def test_should_skip_source_coverage():
     row_data = {
         psfphot._param_mapper.init_colnames['x']: -5.0,
         psfphot._param_mapper.init_colnames['y']: 25.0,
+        psfphot._param_mapper.init_colnames['flux']: 100.0,
     }
     row = Table([row_data])[0]  # Create a table row
     should_skip, reason = should_skip_source(row, data_shape)
@@ -1550,6 +1781,7 @@ def test_should_skip_source_coverage():
     row_data = {
         psfphot._param_mapper.init_colnames['x']: 25.0,
         psfphot._param_mapper.init_colnames['y']: 60.0,
+        psfphot._param_mapper.init_colnames['flux']: 100.0,
     }
     row = Table([row_data])[0]
     should_skip, reason = should_skip_source(row, data_shape)
@@ -1560,6 +1792,7 @@ def test_should_skip_source_coverage():
     row_data = {
         psfphot._param_mapper.init_colnames['x']: np.nan,
         psfphot._param_mapper.init_colnames['y']: 25.0,
+        psfphot._param_mapper.init_colnames['flux']: 100.0,
     }
     row = Table([row_data])[0]
     should_skip, reason = should_skip_source(row, data_shape)
@@ -1570,16 +1803,29 @@ def test_should_skip_source_coverage():
     row_data = {
         psfphot._param_mapper.init_colnames['x']: 25.0,
         psfphot._param_mapper.init_colnames['y']: np.nan,
+        psfphot._param_mapper.init_colnames['flux']: 100.0,
     }
     row = Table([row_data])[0]
     should_skip, reason = should_skip_source(row, data_shape)
     assert should_skip is True
     assert reason == 'invalid_position'
 
+    # Test non-finite flux
+    row_data = {
+        psfphot._param_mapper.init_colnames['x']: 25.0,
+        psfphot._param_mapper.init_colnames['y']: 25.0,
+        psfphot._param_mapper.init_colnames['flux']: np.nan,
+    }
+    row = Table([row_data])[0]
+    should_skip, reason = should_skip_source(row, data_shape)
+    assert should_skip is True
+    assert reason == 'non_finite_flux'
+
     # Test valid coordinates
     row_data = {
         psfphot._param_mapper.init_colnames['x']: 25.0,
         psfphot._param_mapper.init_colnames['y']: 25.0,
+        psfphot._param_mapper.init_colnames['flux']: 100.0,
     }
     row = Table([row_data])[0]
     should_skip, reason = should_skip_source(row, data_shape)

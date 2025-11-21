@@ -54,7 +54,9 @@ class ModelImageMixin:
             included around each source over the region defined by
             ``psf_shape``. Thus, regions where the ``psf_shape`` of
             sources overlap will have the local background added
-            multiple times.
+            multiple times. Non-finite local background values (NaN or
+            inf) are treated as zero and not included in the output
+            image.
 
         Returns
         -------
@@ -98,9 +100,15 @@ class ModelImageMixin:
         progress_bar = image_params.get('progress_bar', False)
 
         if include_localbkg:
-            # add local_bkg
+            # add local_bkg, but set non-finite values to 0 to avoid
+            # corrupting the model image
             model_params = model_params.copy()
-            model_params['local_bkg'] = local_bkgs
+            local_bkgs_clean = local_bkgs.copy()
+            # Replace non-finite values with 0
+            nonfinite_mask = ~np.isfinite(local_bkgs_clean)
+            if np.any(nonfinite_mask):
+                local_bkgs_clean[nonfinite_mask] = 0
+            model_params['local_bkg'] = local_bkgs_clean
 
         try:
             x_name = psf_model.x_name
@@ -141,6 +149,8 @@ class ModelImageMixin:
             around each source over the region defined by ``psf_shape``.
             Thus, regions where the ``psf_shape`` of sources overlap
             will have the local background subtracted multiple times.
+            Non-finite local background values (NaN or inf) are not
+            subtracted from the residual image.
 
         Returns
         -------

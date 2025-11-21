@@ -125,6 +125,28 @@ class _PSFFlags:
             detailed_description=('Insufficient unmasked pixels available '
                                   'for reliable PSF fitting'),
         ),
+        _PSFFlagDefinition(
+            bit_value=512,
+            name='non_finite_position',
+            description='non-finite fitted position',
+            detailed_description=('The fitted x or y position is NaN or inf, '
+                                  'indicating an invalid or failed fit'),
+        ),
+        _PSFFlagDefinition(
+            bit_value=1024,
+            name='non_finite_flux',
+            description='non-finite fitted flux',
+            detailed_description=('The fitted flux value is NaN or inf, '
+                                  'indicating an invalid or failed fit'),
+        ),
+        _PSFFlagDefinition(
+            bit_value=2048,
+            name='non_finite_localbkg',
+            description='non-finite local background',
+            detailed_description=('The local background value is NaN or '
+                                  'inf, so it was not subtracted before '
+                                  'fitting'),
+        ),
     ]
 
     def __init__(self):
@@ -400,7 +422,8 @@ def decode_psf_flags(flags):
     ...     if issues:
     ...         print(f"Source {i+1}: {', '.join(issues)}")
     Source 1: negative_flux
-    Source 3: npixfit_partial, no_covariance, too_few_pixels
+    Source 3: npixfit_partial, no_covariance, too_few_pixels, \
+non_finite_position, non_finite_flux
     """
     # Get flag definitions from centralized source
     flag_definitions = PSF_FLAGS.flag_dict

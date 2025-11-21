@@ -5,7 +5,6 @@ Define tools to perform iterative PSF-fitting photometry.
 
 import warnings
 from copy import deepcopy
-from itertools import chain
 
 import numpy as np
 from astropy.nddata import NDData
@@ -566,7 +565,7 @@ class IterativePSFPhotometry(ModelImageMixin):
 
         return phot_tbl
 
-    def results_to_init_params(self):
+    def results_to_init_params(self, *, remove_invalid=True, reset_ids=True):
         """
         Create a table of the fitted model parameters from the results.
 
@@ -574,12 +573,22 @@ class IterativePSFPhotometry(ModelImageMixin):
         initial parameters table. It can be used as the ``init_params``
         for subsequent `PSFPhotometry` fits.
 
-        Rows that contain non-finite fitted values are removed.
-        """
-        return self._psfphot._results_to_init_params(self.results,
-                                                     reset_id=True)
+        Parameters
+        ----------
+        remove_invalid : bool, optional
+            If `True`, rows that contain non-finite fitted values are
+            removed.
 
-    def results_to_model_params(self):
+        reset_ids : bool, optional
+            If `True`, the 'id' column will be reset to a sequential
+            numbering starting from 1. If `False`, the 'id' column will
+            remain unchanged from the results table. This option is
+            ignored if ``remove_invalid`` is `False`.
+        """
+        return self._psfphot._results_to_init_params(
+            self.results, remove_invalid=remove_invalid, reset_ids=reset_ids)
+
+    def results_to_model_params(self, *, remove_invalid=True, reset_ids=True):
         """
         Create a table of the fitted model parameters from the results.
 
@@ -587,10 +596,21 @@ class IterativePSFPhotometry(ModelImageMixin):
         names. It can also be used to reconstruct the fitted PSF models
         for visualization or further analysis.
 
-        Rows that contain non-finite fitted values are removed.
+        Parameters
+        ----------
+        remove_invalid : bool, optional
+            If `True`, rows that contain non-finite fitted values are
+            removed.
+
+        reset_ids : bool, optional
+            If `True`, the 'id' column will be reset to a sequential
+            numbering starting from 1. If `False`, the 'id' column will
+            remain unchanged from the results table. This option is
+            ignored if ``remove_invalid`` is `False`.
         """
         return self._psfphot._results_to_model_params(
-            self.results, self._psfphot._param_mapper, reset_id=True)
+            self.results, self._psfphot._param_mapper,
+            remove_invalid=remove_invalid, reset_ids=reset_ids)
 
     @lazyproperty
     def _model_image_params(self):
@@ -598,37 +618,22 @@ class IterativePSFPhotometry(ModelImageMixin):
         A helper property that provides the necessary parameters to
         ModelImageMixin.
         """
-        psf_model = self._psfphot.psf_model
-        progress_bar = self._psfphot.progress_bar
+        # Convert fitted parameters to model parameter names without
+        # filtering, so the row indices align with self.results
+        model_params = self.results_to_model_params(remove_invalid=False)
 
-        if self.mode == 'new':
-            # in 'new' mode: we stack the results from all iterations
-            all_fit_params = []
-            all_local_bkgs = []
-            for result_obj in self.fit_results:
-                fm_tbl = result_obj.results_to_model_params()
-                if fm_tbl is not None:
-                    all_fit_params.append(fm_tbl)
-                    all_local_bkgs.append(result_obj.init_params['local_bkg'])
+        # Filter out invalid sources (those with NaN fitted values)
+        keep = np.all([np.isfinite(model_params[col])
+                       for col in model_params.colnames], axis=0)
+        model_params = model_params[keep]
 
-            fit_params = vstack(all_fit_params) if all_fit_params else None
-            local_bkgs = list(chain.from_iterable(all_local_bkgs))
+        # Extract local_bkg for the same valid sources
+        local_bkg = self.results['local_bkg'][keep]
 
-        elif self.mode == 'all':
-            # in 'all' mode: only the final iteration contains all sources
-            final_result = self.fit_results[-1]
-            fit_params = final_result.results_to_model_params()
-            local_bkgs = final_result.init_params['local_bkg']
-
-        else:  # pragma: no cover
-            # should never happen due to the mode validation in __init__
-            msg = f'Invalid mode "{self.mode}"'
-            raise ValueError(msg)
-
-        return {'psf_model': psf_model,
-                'model_params': fit_params,
-                'local_bkg': local_bkgs,
-                'progress_bar': progress_bar,
+        return {'psf_model': self._psfphot.psf_model,
+                'model_params': model_params,
+                'local_bkg': local_bkg,
+                'progress_bar': self._psfphot.progress_bar,
                 }
 
     def make_model_image(self, shape, *, psf_shape=None,
