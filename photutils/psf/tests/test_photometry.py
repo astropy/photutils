@@ -1526,6 +1526,42 @@ def test_flag512_non_finite_position():
     assert (phot['flags'][2] & 512) == 512
 
 
+def test_flag1024_non_finite_flux():
+    """
+    Test flag=1024 for non-finite flux in init_params.
+
+    When a source has non-finite initial flux (NaN or inf), the code
+    should handle it gracefully and set flag 1024.
+    """
+    shape = (25, 25)
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    data = np.zeros(shape)
+
+    # Create init_params with non-finite initial flux
+    init_params = QTable()
+    init_params['x_init'] = [12.0, 12.0, 12.0]
+    init_params['y_init'] = [12.0, 12.0, 12.0]
+    init_params['flux_init'] = [500.0, np.nan, np.inf]
+
+    fit_shape = (5, 5)
+    psfphot = PSFPhotometry(psf_model, fit_shape, aperture_radius=3)
+    phot = psfphot(data, init_params=init_params)
+
+    assert len(phot) == 3
+
+    # First source should be valid (no flag 1024)
+    assert np.isfinite(phot['flux_fit'][0])
+    assert (phot['flags'][0] & 1024) == 0
+
+    # Second source should have non-finite flux_fit (flag 1024 set)
+    assert not np.isfinite(phot['flux_fit'][1])
+    assert (phot['flags'][1] & 1024) == 1024
+
+    # Third source should have non-finite flux_fit (flag 1024 set)
+    assert not np.isfinite(phot['flux_fit'][2])
+    assert (phot['flags'][2] & 1024) == 1024
+
+
 def test_psf_photometry_methods(test_data):
     data, error, _ = test_data
 
@@ -1734,6 +1770,7 @@ def test_should_skip_source_coverage():
     row_data = {
         psfphot._param_mapper.init_colnames['x']: -5.0,
         psfphot._param_mapper.init_colnames['y']: 25.0,
+        psfphot._param_mapper.init_colnames['flux']: 100.0,
     }
     row = Table([row_data])[0]  # Create a table row
     should_skip, reason = should_skip_source(row, data_shape)
@@ -1744,6 +1781,7 @@ def test_should_skip_source_coverage():
     row_data = {
         psfphot._param_mapper.init_colnames['x']: 25.0,
         psfphot._param_mapper.init_colnames['y']: 60.0,
+        psfphot._param_mapper.init_colnames['flux']: 100.0,
     }
     row = Table([row_data])[0]
     should_skip, reason = should_skip_source(row, data_shape)
@@ -1754,6 +1792,7 @@ def test_should_skip_source_coverage():
     row_data = {
         psfphot._param_mapper.init_colnames['x']: np.nan,
         psfphot._param_mapper.init_colnames['y']: 25.0,
+        psfphot._param_mapper.init_colnames['flux']: 100.0,
     }
     row = Table([row_data])[0]
     should_skip, reason = should_skip_source(row, data_shape)
@@ -1764,16 +1803,29 @@ def test_should_skip_source_coverage():
     row_data = {
         psfphot._param_mapper.init_colnames['x']: 25.0,
         psfphot._param_mapper.init_colnames['y']: np.nan,
+        psfphot._param_mapper.init_colnames['flux']: 100.0,
     }
     row = Table([row_data])[0]
     should_skip, reason = should_skip_source(row, data_shape)
     assert should_skip is True
     assert reason == 'invalid_position'
 
+    # Test non-finite flux
+    row_data = {
+        psfphot._param_mapper.init_colnames['x']: 25.0,
+        psfphot._param_mapper.init_colnames['y']: 25.0,
+        psfphot._param_mapper.init_colnames['flux']: np.nan,
+    }
+    row = Table([row_data])[0]
+    should_skip, reason = should_skip_source(row, data_shape)
+    assert should_skip is True
+    assert reason == 'non_finite_flux'
+
     # Test valid coordinates
     row_data = {
         psfphot._param_mapper.init_colnames['x']: 25.0,
         psfphot._param_mapper.init_colnames['y']: 25.0,
+        psfphot._param_mapper.init_colnames['flux']: 100.0,
     }
     row = Table([row_data])[0]
     should_skip, reason = should_skip_source(row, data_shape)

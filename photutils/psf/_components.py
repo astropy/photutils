@@ -684,15 +684,20 @@ class PSFDataProcessor:
             True if the source should be skipped, False otherwise.
 
         reason : str or None
-            Reason for skipping ('invalid_position', 'no_overlap')
-            or None if not skipping.
+            Reason for skipping ('invalid_position', 'non_finite_flux',
+            'no_overlap') or None if not skipping.
         """
         x_cen = row[self.param_mapper.init_colnames['x']]
         y_cen = row[self.param_mapper.init_colnames['y']]
+        flux_init = row[self.param_mapper.init_colnames['flux']]
 
         # check for non-finite positions
         if not (np.isfinite(x_cen) and np.isfinite(y_cen)):
             return True, 'invalid_position'
+
+        # check for non-finite flux
+        if not np.isfinite(flux_init):
+            return True, 'non_finite_flux'
 
         # source that are clearly beyond any possible overlap
         half_fit = max(self.fit_shape) // 2
@@ -1448,6 +1453,7 @@ class PSFResultsAssembler:
             flags[reasons == 'no_overlap'] |= PSF_FLAGS.NO_OVERLAP
             flags[reasons == 'fully_masked'] |= PSF_FLAGS.FULLY_MASKED
             flags[reasons == 'too_few_pixels'] |= PSF_FLAGS.TOO_FEW_PIXELS
+            flags[reasons == 'non_finite_flux'] |= PSF_FLAGS.NON_FINITE_FLUX
 
         # Flag=512: non-finite fitted position
         x_col = self.param_mapper.fit_colnames['x']
@@ -1456,6 +1462,12 @@ class PSFResultsAssembler:
         y_fit = results_tbl[y_col]
         non_finite_pos_mask = ~np.isfinite(x_fit) | ~np.isfinite(y_fit)
         flags[non_finite_pos_mask] |= PSF_FLAGS.NON_FINITE_POSITION
+
+        # Flag=1024: non-finite fitted flux (also check fitted values)
+        flux_col = self.param_mapper.fit_colnames['flux']
+        flux_fit = results_tbl[flux_col]
+        non_finite_flux_mask = ~np.isfinite(flux_fit)
+        flags[non_finite_flux_mask] |= PSF_FLAGS.NON_FINITE_FLUX
 
         # Flag=2048: non-finite local background
         local_bkg_vals = init_params['local_bkg']

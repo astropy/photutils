@@ -133,6 +133,13 @@ class _PSFFlags:
                                   'indicating an invalid or failed fit'),
         ),
         _PSFFlagDefinition(
+            bit_value=1024,
+            name='non_finite_flux',
+            description='non-finite fitted flux',
+            detailed_description=('The fitted flux value is NaN or inf, '
+                                  'indicating an invalid or failed fit'),
+        ),
+        _PSFFlagDefinition(
             bit_value=2048,
             name='non_finite_localbkg',
             description='non-finite local background',
