@@ -103,6 +103,18 @@ These options provide more flexibility when converting PSF photometry
 results for use in subsequent fitting iterations or other analyses.
 
 
+New decode_flags convenience method
+===================================
+
+The :class:`~photutils.psf.PSFPhotometry` and
+:class:`~photutils.psf.IterativePSFPhotometry` classes now have a
+convenient ``decode_flags()`` method that decodes the bitwise flags from
+the ``'flags'`` column in the results table. The method returns a list
+of lists, where each inner list contains the active flag names for the
+corresponding source. This makes it easy to interpret which conditions
+were encountered during PSF fitting for each source.
+
+
 Removed Deprecations
 ====================
 

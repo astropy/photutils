@@ -31,6 +31,10 @@ New Features
     ``results_to_init_params`` and ``results_to_model_params`` methods of
     ``PSFPhotometry`` and ``IterativePSFPhotometry``. [#2131]
 
+  - Added a ``decode_flags`` convenience method to ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` classes to decode the bitwise flags from
+    the results table. [#2132]
+
 Bug Fixes
 ^^^^^^^^^
 

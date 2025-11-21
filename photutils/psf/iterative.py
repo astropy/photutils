@@ -11,6 +11,7 @@ from astropy.nddata import NDData
 from astropy.table import QTable, vstack
 from astropy.utils import lazyproperty
 
+from photutils.psf.flags import decode_psf_flags
 from photutils.psf.photometry import PSFPhotometry
 from photutils.psf.utils import ModelImageMixin, _create_call_docstring
 from photutils.utils._repr import make_repr
@@ -611,6 +612,68 @@ class IterativePSFPhotometry(ModelImageMixin):
         return self._psfphot._results_to_model_params(
             self.results, self._psfphot._param_mapper,
             remove_invalid=remove_invalid, reset_ids=reset_ids)
+
+    def decode_flags(self):
+        """
+        Decode the PSF photometry flags from the results table.
+
+        This is a convenience method that calls
+        `~photutils.psf.decode_psf_flags` with the 'flags' column
+        from the results table.
+
+        Returns
+        -------
+        decoded : list of list of str
+            List of lists where each inner list contains the active
+            flag names for the corresponding source in the results
+            table. If no flags are set for a source, an empty list
+            is returned for that source.
+
+        Raises
+        ------
+        ValueError
+            If no results are available. Please run the
+            IterativePSFPhotometry instance first.
+
+        See Also
+        --------
+        photutils.psf.decode_psf_flags
+
+        Examples
+        --------
+        Decode flags from iterative PSF photometry results:
+
+        >>> import numpy as np
+        >>> from astropy.table import Table
+        >>> from photutils.detection import DAOStarFinder
+        >>> from photutils.psf import (CircularGaussianPRF,
+        ...                            IterativePSFPhotometry)
+        >>> yy, xx = np.mgrid[:21, :21]
+        >>> psf_model = CircularGaussianPRF(flux=1, x_0=10, y_0=10, fwhm=2)
+        >>> # Create sources with one having negative flux
+        >>> m1 = CircularGaussianPRF(flux=100, x_0=10, y_0=10, fwhm=2)
+        >>> m2 = CircularGaussianPRF(flux=-50, x_0=5, y_0=5, fwhm=2)
+        >>> data = m1(xx, yy) + m2(xx, yy)
+        >>> init_params = Table({'x': [10, 5], 'y': [10, 5],
+        ...                      'flux': [100, 100]})
+        >>> finder = DAOStarFinder(6.0, 2.0)
+        >>> photometry = IterativePSFPhotometry(psf_model, (3, 3),
+        ...                                     finder=finder,
+        ...                                     aperture_radius=4,
+        ...                                     maxiters=1)
+        >>> results = photometry(data, init_params=init_params)
+        >>> decoded_flags = photometry.decode_flags()
+        >>> for i, flags in enumerate(decoded_flags):
+        ...     print(f'Source {i+1}: {flags}')  # doctest: +SKIP
+        Source 1: []
+        Source 2: ['negative_flux']
+        """
+        if self.results is None:
+            msg = ('No results available. Please run the '
+                   'IterativePSFPhotometry instance first.')
+            raise ValueError(msg)
+
+        return decode_psf_flags(self.results['flags'])
 
     @lazyproperty
     def _model_image_params(self):

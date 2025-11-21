@@ -2102,3 +2102,68 @@ def test_qfit_cfit_with_different_errors(test_data):
     assert_allclose(phot_small_error['cfit'], phot_no_error['cfit'])
     assert_allclose(phot_large_error['qfit'], phot_no_error['qfit'])
     assert_allclose(phot_large_error['cfit'], phot_no_error['cfit'])
+
+
+def test_decode_flags():
+    """
+    Test the decode_flags convenience method.
+    """
+    # Create test data with some sources that will have flags
+    yy, xx = np.mgrid[:21, :21]
+    psf_model = CircularGaussianPRF(flux=1, x_0=10, y_0=10, fwhm=2)
+
+    # Source 1: normal source (no flags expected)
+    m1 = CircularGaussianPRF(flux=100, x_0=10, y_0=10, fwhm=2)
+    # Source 2: negative flux (will have negative_flux flag)
+    m2 = CircularGaussianPRF(flux=-50, x_0=5, y_0=5, fwhm=2)
+    # Source 3: outside bounds (will have outside_bounds flag)
+    m3 = CircularGaussianPRF(flux=100, x_0=25, y_0=25, fwhm=2)
+
+    data = m1(xx, yy) + m2(xx, yy) + m3(xx, yy)
+
+    init_params = Table({
+        'x': [10, 5, 25],
+        'y': [10, 5, 25],
+        'flux': [100, 100, 100],
+    })
+
+    psfphot = PSFPhotometry(psf_model, (3, 3))
+
+    # Test that decode_flags raises ValueError before running photometry
+    match = 'No results available'
+    with pytest.raises(ValueError, match=match):
+        psfphot.decode_flags()
+
+    # Run photometry
+    results = psfphot(data, init_params=init_params)
+
+    # Test decode_flags method
+    decoded_flags = psfphot.decode_flags()
+
+    # Check that we get a list of lists
+    assert isinstance(decoded_flags, list)
+    assert len(decoded_flags) == len(results)
+
+    # Each element should be a list of strings
+    for decoded in decoded_flags:
+        assert isinstance(decoded, list)
+        for flag_name in decoded:
+            assert isinstance(flag_name, str)
+
+    # Check that the first source has no flags or minimal flags
+    # (depending on fitting success)
+    assert isinstance(decoded_flags[0], list)
+
+    # Check that the second source has the negative_flux flag
+    assert 'negative_flux' in decoded_flags[1]
+
+    # Check that the third source has flags (it's outside the image bounds)
+    # It should have 'no_overlap' since it's completely outside
+    assert len(decoded_flags[2]) > 0
+    assert 'no_overlap' in decoded_flags[2]
+
+    # Verify that decode_flags gives the same result as calling
+    # decode_psf_flags directly
+    from photutils.psf.flags import decode_psf_flags
+    direct_decoded = decode_psf_flags(results['flags'])
+    assert decoded_flags == direct_decoded
