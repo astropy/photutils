@@ -1388,7 +1388,9 @@ class PSFResultsAssembler:
             - 64: no overlap with data
             - 128: fully masked source
             - 256: too few pixels for fitting
-            - 512: non-finite local background
+            - 512: non-finite fitted position
+            - 1024: non-finite fitted flux
+            - 2048: non-finite local background
         """
         flags = np.zeros(len(results_tbl), dtype=int)
         x_col = self.param_mapper.fit_colnames['x']
