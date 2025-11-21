@@ -27,8 +27,21 @@ New Features
     sources and provides methods to analyze and plot the groupings.
     [#2116]
 
+  - Added ``remove_invalid`` and ``reset_ids`` keywords to the
+    ``results_to_init_params`` and ``results_to_model_params`` methods of
+    ``PSFPhotometry`` and ``IterativePSFPhotometry``. [#2131]
+
 Bug Fixes
 ^^^^^^^^^
+
+- ``photutils.psf``
+
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now handle
+    non-finite (NaN or inf) local background values instead of raising
+    an error. Three new flags have been added to identify sources with
+    non-finite values: flag 512 for non-finite fitted positions, flag
+    1024 for non-finite fitted flux, and flag 2048 for non-finite local
+    background. [#2131]
 
 API Changes
 ^^^^^^^^^^^
