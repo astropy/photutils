@@ -250,7 +250,10 @@ class TestPSFDataProcessor:
 
     def test_validate_init_params_nonfinite_local_bkg(self, param_mapper):
         """
-        Test validate_init_params with non-finite local_bkg values.
+        Test validate_init_params allows non-finite local_bkg values.
+
+        Non-finite local_bkg values should be allowed and will be
+        flagged later during processing.
         """
         processor = PSFDataProcessor(param_mapper, (7, 7))
         processor.data_unit = None
@@ -261,9 +264,11 @@ class TestPSFDataProcessor:
             'local_bkg': [np.nan],
         })
 
-        match_str = 'local_bkg column contains non-finite values'
-        with pytest.raises(ValueError, match=match_str):
-            processor.validate_init_params(init_params)
+        # Should not raise an error - non-finite local_bkg is allowed
+        result = processor.validate_init_params(init_params)
+        assert result is not None
+        assert 'local_bkg' in result.colnames
+        assert np.isnan(result['local_bkg'][0])
 
     def test_get_aper_fluxes(self, param_mapper, basic_data, init_params):
         """
