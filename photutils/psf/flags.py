@@ -422,7 +422,8 @@ def decode_psf_flags(flags):
     ...     if issues:
     ...         print(f"Source {i+1}: {', '.join(issues)}")
     Source 1: negative_flux
-    Source 3: npixfit_partial, no_covariance, too_few_pixels
+    Source 3: npixfit_partial, no_covariance, too_few_pixels, \
+non_finite_position, non_finite_flux
     """
     # Get flag definitions from centralized source
     flag_definitions = PSF_FLAGS.flag_dict
