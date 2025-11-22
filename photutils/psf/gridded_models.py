@@ -278,23 +278,29 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
         idx = np.lexsort((grid_xypos[:, 0], grid_xypos[:, 1]))
         return nddata.data[idx], grid_xypos[idx]
 
-    def _cls_info(self):
-        cls_info = []
+    def __str__(self):
+        keywords = []
 
-        keys = ('STDPSF', 'instrument', 'detector', 'filter', 'grid_shape')
+        keys = ('STDPSF', 'instrument', 'detector', 'filter')
         for key in keys:
             if key in self.meta:
                 name = key.capitalize() if key != 'STDPSF' else key
-                cls_info.append((name, self.meta[key]))
+                keywords.append((name, self.meta[key]))
 
-        cls_info.extend([('Number of PSFs', len(self.grid_xypos)),
+        keywords.extend([('Number of PSFs', len(self.grid_xypos)),
+                         ('Grid shape', self.meta['grid_shape']),
+                         ('Grid positions', self.grid_xypos.tolist()),
                          ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
-                         ('Oversampling', tuple(self.oversampling))])
-        return cls_info
+                         ('Oversampling', self.oversampling.tolist()),
+                         ('Fill Value', self.fill_value)])
 
-    def __str__(self):
-        return self._format_str(keywords=self._cls_info())
+        return self._format_str(keywords=keywords)
+
+    def __repr__(self):
+        kwargs = {'oversampling': self.oversampling.tolist(),
+                  'fill_value': self.fill_value}
+        return self._format_repr(args=[], kwargs=kwargs)
 
     @property
     def data(self):

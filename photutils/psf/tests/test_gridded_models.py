@@ -76,6 +76,22 @@ class TestGriddedPSFModel:
         with pytest.raises(AttributeError, match=match):
             psfmodel.grid_xypos = [[0, 0], [1, 1]]
 
+    def test_repr_str(self, psfmodel):
+        repr_str = repr(psfmodel)
+        assert 'GriddedPSFModel' in repr_str
+        assert 'flux=1.' in repr_str
+        assert 'x_0=0.' in repr_str
+        assert 'y_0=0.' in repr_str
+        assert 'oversampling=' in repr_str
+        assert 'fill_value=0.0' in repr_str
+
+        str_str = str(psfmodel)
+        assert 'GriddedPSFModel' in str_str
+        assert 'Number of PSFs: 16' in str_str
+        assert 'PSF shape (oversampled pixels): (101, 101)' in str_str
+        assert 'Oversampling: [4, 4]' in str_str
+        assert 'Fill Value: 0.0' in str_str
+
     def test_gridded_psf_model_basic_eval(self, psfmodel):
         assert psfmodel(0, 0) == 1
         assert psfmodel(100, 100) == 0
@@ -241,7 +257,7 @@ class TestGriddedPSFModel:
 
     def test_str(self, psfmodel):
         model_str = str(psfmodel)
-        keys = ('Grid_shape', 'Number of PSFs', 'PSF shape', 'Oversampling')
+        keys = ('Grid shape', 'Number of PSFs', 'PSF shape', 'Oversampling')
         for key in keys:
             assert key in model_str
         for param in psfmodel.param_names:

@@ -167,12 +167,19 @@ class ImagePSF(Fittable2DModel):
             msg = 'The length of the x and y axes must both be at least 4'
             raise ValueError(msg)
 
-    def _cls_info(self):
-        return [('PSF shape (oversampled pixels)', self.data.shape),
-                ('Oversampling', tuple(self.oversampling))]
-
     def __str__(self):
-        return self._format_str(keywords=self._cls_info())
+        keywords = [('PSF shape (oversampled pixels)', self.data.shape),
+                    ('Origin', self.origin.tolist()),
+                    ('Oversampling', self.oversampling.tolist()),
+                    ('Fill Value', self.fill_value),
+                    ]
+        return self._format_str(keywords=keywords)
+
+    def __repr__(self):
+        kwargs = {'origin': self.origin.tolist(),
+                  'oversampling': self.oversampling.tolist(),
+                  'fill_value': self.fill_value}
+        return self._format_repr(kwargs=kwargs)
 
     def copy(self):
         """
