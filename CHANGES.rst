@@ -35,6 +35,9 @@ New Features
     ``IterativePSFPhotometry`` classes to decode the bitwise flags from
     the results table. [#2132]
 
+  - Added ``__repr__`` methods to ``ImagePSF`` and ``GriddedPSFModel``.
+    [#2134]
+
 Bug Fixes
 ^^^^^^^^^
 
