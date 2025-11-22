@@ -171,7 +171,7 @@ class ImagePSF(Fittable2DModel):
         keywords = [('PSF shape (oversampled pixels)', self.data.shape),
                     ('Origin', self.origin.tolist()),
                     ('Oversampling', self.oversampling.tolist()),
-                    ('Fill value', self.fill_value),
+                    ('Fill Value', self.fill_value),
                     ]
         return self._format_str(keywords=keywords)
 
