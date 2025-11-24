@@ -16,7 +16,8 @@ from scipy.interpolate import RectBivariateSpline
 from photutils.psf.model_io import (GriddedPSFModelRead, _get_metadata,
                                     _read_stdpsf, is_stdpsf, is_webbpsf,
                                     stdpsf_reader, webbpsf_reader)
-from photutils.psf.model_plotting import _ModelGridPlotter
+from photutils.psf.model_plotting import (_ModelGridPlotter,
+                                          _plot_grid_docstring)
 from photutils.utils._parameters import as_pair
 
 __all__ = ['GriddedPSFModel', 'STDPSFGrid']
@@ -28,7 +29,6 @@ class GriddedPSFModel(Fittable2DModel):
     A model for a grid of 2D ePSF models.
 
     The ePSF models are defined at fiducial detector locations and are
-    bilinearly interpolated to calculate an ePSF model at an arbitrary
     (x, y) detector position. The fiducial detector locations are must
     form a rectangular grid.
 
@@ -666,23 +666,16 @@ class GriddedPSFModel(Fittable2DModel):
 
         return evaluated_model
 
-    def plot_grid(self, **kwargs):
-        """
-        Plot the grid of ePSF models.
-
-        Parameters
-        ----------
-        **kwargs : dict
-            Keyword arguments passed to
-            `~photutils.psf.model_plotting._ModelGridPlotter.plot_grid`.
-
-        Returns
-        -------
-        fig : `matplotlib.figure.Figure`
-            The matplotlib figure object.
-        """
+    @_plot_grid_docstring
+    def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
+                  deltas=False, cmap='viridis', dividers=True,
+                  divider_color='darkgray', divider_ls='-', figsize=None):
         plotter = _ModelGridPlotter(self)
-        return plotter.plot_grid(**kwargs)
+        return plotter.plot_grid(ax=ax, vmax_scale=vmax_scale,
+                                 peak_norm=peak_norm, deltas=deltas,
+                                 cmap=cmap, dividers=dividers,
+                                 divider_color=divider_color,
+                                 divider_ls=divider_ls, figsize=figsize)
 
 
 class STDPSFGrid:
@@ -731,23 +724,16 @@ class STDPSFGrid:
 
         self.meta = meta
 
-    def plot_grid(self, **kwargs):
-        """
-        Plot the grid of ePSF models.
-
-        Parameters
-        ----------
-        **kwargs : dict
-            Keyword arguments passed to
-            `~photutils.psf.model_plotting._ModelGridPlotter.plot_grid`.
-
-        Returns
-        -------
-        fig : `matplotlib.figure.Figure`
-            The matplotlib figure object.
-        """
+    @_plot_grid_docstring
+    def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
+                  deltas=False, cmap='viridis', dividers=True,
+                  divider_color='darkgray', divider_ls='-', figsize=None):
         plotter = _ModelGridPlotter(self)
-        return plotter.plot_grid(**kwargs)
+        return plotter.plot_grid(ax=ax, vmax_scale=vmax_scale,
+                                 peak_norm=peak_norm, deltas=deltas,
+                                 cmap=cmap, dividers=dividers,
+                                 divider_color=divider_color,
+                                 divider_ls=divider_ls, figsize=figsize)
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'

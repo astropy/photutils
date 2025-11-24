@@ -240,19 +240,18 @@ exclude = [
     'BackgroundRMS$',
     'RadialProfile$',
 
+    # GL08: docstrings defined by a decorator
+    '\.plot_grid$',
+
     # GL08: docstrings inherited from base classes
     '\.to_mask$',
     '\.calc_background$',
     '\.calc_background_rms$',
-    '\.make_model_image$',
-    '\.make_residual_image$',
 
     # GL08: property setters
     '\.normalization_correction$',
     '\.origin$',
     '\.fill_value$',
-    '\.make_model_image$',
-    '\.make_residual_image$',
     '\.cutout_center$',
     '\.data',
 

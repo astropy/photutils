@@ -11,40 +11,8 @@ from astropy.visualization import simple_norm
 __all__ = []
 
 
-class _ModelGridPlotter:
-    """
-    Class to plot a grid of ePSF models.
-    """
-
-    def __init__(self, model):
-        self.model = model
-
-    def _reshape_grid(self, data):
-        """
-        Reshape the 3D ePSF grid as a 2D array of horizontally and
-        vertically stacked ePSFs.
-
-        Parameters
-        ----------
-        data : `numpy.ndarray`
-            The 3D array of ePSF data.
-
-        Returns
-        -------
-        reshaped_data : `numpy.ndarray`
-            The 2D array of ePSF data.
-        """
-        nypsfs = self.model._ygrid.shape[0]
-        nxpsfs = self.model._xgrid.shape[0]
-        ny, nx = self.model.data.shape[1:]
-        data.shape = (nypsfs, nxpsfs, ny, nx)
-
-        return data.transpose([0, 2, 1, 3]).reshape(nypsfs * ny, nxpsfs * nx)
-
-    def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
-                  deltas=False, cmap='viridis', dividers=True,
-                  divider_color='darkgray', divider_ls='-', figsize=None):
-        """
+def _plot_grid_docstring(func):
+    func.__doc__ = """
         Plot the grid of ePSF models.
 
         Parameters
@@ -104,6 +72,43 @@ class _ModelGridPlotter:
         call. Alternatively, you can append a semicolon to the end of
         the function call to suppress the display of the return value.
         """
+    return func
+
+
+class _ModelGridPlotter:
+    """
+    Class to plot a grid of ePSF models.
+    """
+
+    def __init__(self, model):
+        self.model = model
+
+    def _reshape_grid(self, data):
+        """
+        Reshape the 3D ePSF grid as a 2D array of horizontally and
+        vertically stacked ePSFs.
+
+        Parameters
+        ----------
+        data : `numpy.ndarray`
+            The 3D array of ePSF data.
+
+        Returns
+        -------
+        reshaped_data : `numpy.ndarray`
+            The 2D array of ePSF data.
+        """
+        nypsfs = self.model._ygrid.shape[0]
+        nxpsfs = self.model._xgrid.shape[0]
+        ny, nx = self.model.data.shape[1:]
+        data.shape = (nypsfs, nxpsfs, ny, nx)
+
+        return data.transpose([0, 2, 1, 3]).reshape(nypsfs * ny, nxpsfs * nx)
+
+    @_plot_grid_docstring
+    def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
+                  deltas=False, cmap='viridis', dividers=True,
+                  divider_color='darkgray', divider_ls='-', figsize=None):
         import matplotlib.pyplot as plt
         from mpl_toolkits.axes_grid1 import make_axes_locatable
 
