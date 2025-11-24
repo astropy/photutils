@@ -18,7 +18,10 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.background import LocalBackground
 from photutils.psf._components import (PSFDataProcessor, PSFFitter,
-                                       PSFResultsAssembler, _ModelImageMaker)
+                                       PSFResultsAssembler,
+                                       _make_model_image_docstring,
+                                       _make_residual_image_docstring,
+                                       _ModelImageMaker)
 from photutils.psf.flags import decode_psf_flags
 from photutils.psf.utils import (_create_call_docstring,
                                  _get_psf_model_main_params, _make_mask,
@@ -1808,36 +1811,9 @@ class PSFPhotometry:
 
         return model_params, local_bkg
 
+    @_make_model_image_docstring
     def make_model_image(self, shape, *, psf_shape=None,
                          include_localbkg=False):
-        """
-        Create a model image from the fit results.
-
-        Parameters
-        ----------
-        shape : 2-tuple of int
-            The shape (ny, nx) of the output image.
-
-        psf_shape : 2-tuple of int, optional
-            The shape (ny, nx) of the PSF model to be rendered. If
-            `None`, the shape of the PSF model is determined by the
-            ``fit_shape`` parameter.
-
-        include_localbkg : bool, optional
-            Whether to include the local background in the model image.
-            Default is `False`.
-
-        Returns
-        -------
-        image : `~numpy.ndarray`
-            The model image.
-
-        Raises
-        ------
-        ValueError
-            If no results are available. Please run the `PSFPhotometry`
-            instance first.
-        """
         if self.results is None:
             msg = ('No results available. Please run the PSFPhotometry '
                    'instance first.')
@@ -1850,36 +1826,9 @@ class PSFPhotometry:
         return maker.make_model_image(shape, psf_shape=psf_shape,
                                       include_localbkg=include_localbkg)
 
+    @_make_residual_image_docstring
     def make_residual_image(self, data, *, psf_shape=None,
                             include_localbkg=False):
-        """
-        Create a residual image from the fit results.
-
-        Parameters
-        ----------
-        data : 2D `~numpy.ndarray`
-            The data image.
-
-        psf_shape : 2-tuple of int, optional
-            The shape (ny, nx) of the PSF model to be rendered. If
-            `None`, the shape of the PSF model is determined by the
-            ``fit_shape`` parameter.
-
-        include_localbkg : bool, optional
-            Whether to include the local background in the model image
-            that is subtracted from the data. Default is `False`.
-
-        Returns
-        -------
-        image : `~numpy.ndarray`
-            The residual image.
-
-        Raises
-        ------
-        ValueError
-            If no results are available. Please run the `PSFPhotometry`
-            instance first.
-        """
         if self.results is None:
             msg = ('No results available. Please run the PSFPhotometry '
                    'instance first.')

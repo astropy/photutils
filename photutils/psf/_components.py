@@ -1593,35 +1593,8 @@ class PSFResultsAssembler:
         return QTable(results_tbl, meta=meta)
 
 
-class _ModelImageMaker:
-    """
-    Class to render model images and residuals.
-
-    Parameters
-    ----------
-    psf_model : `astropy.modeling.Model`
-        The PSF model.
-
-    model_params : `~astropy.table.Table`
-        The model parameters.
-
-    local_bkg : `~numpy.ndarray`, optional
-        The local background values.
-
-    progress_bar : bool, optional
-        Whether to display a progress bar.
-    """
-
-    def __init__(self, psf_model, model_params, local_bkg=None,
-                 progress_bar=False):
-        self.psf_model = psf_model
-        self.model_params = model_params
-        self.local_bkg = local_bkg
-        self.progress_bar = progress_bar
-
-    def make_model_image(self, shape, *, psf_shape=None,
-                         include_localbkg=False):
-        """
+def _make_model_image_docstring(func):
+    func.__doc__ = """
         Create a 2D image from the fit PSF models and optional local
         background.
 
@@ -1654,37 +1627,11 @@ class _ModelImageMaker:
             The rendered image from the fit PSF models. This image will
             not have any units.
         """
-        psf_model = self.psf_model
-        model_params = self.model_params
-        local_bkgs = self.local_bkg
-        progress_bar = self.progress_bar
+    return func
 
-        if include_localbkg:
-            # add local_bkg, but set non-finite values to 0 to avoid
-            # corrupting the model image
-            model_params = model_params.copy()
-            local_bkgs_clean = local_bkgs.copy()
-            # Replace non-finite values with 0
-            nonfinite_mask = ~np.isfinite(local_bkgs_clean)
-            if np.any(nonfinite_mask):
-                local_bkgs_clean[nonfinite_mask] = 0
-            model_params['local_bkg'] = local_bkgs_clean
 
-        try:
-            x_name = psf_model.x_name
-            y_name = psf_model.y_name
-        except AttributeError:
-            x_name = 'x_0'
-            y_name = 'y_0'
-
-        return _make_model_image(shape, psf_model, model_params,
-                                 model_shape=psf_shape,
-                                 x_name=x_name, y_name=y_name,
-                                 progress_bar=progress_bar)
-
-    def make_residual_image(self, data, *, psf_shape=None,
-                            include_localbkg=False):
-        """
+def _make_residual_image_docstring(func):
+    func.__doc__ = """
         Create a 2D residual image from the fit PSF models and local
         background.
 
@@ -1718,6 +1665,69 @@ class _ModelImageMaker:
             The residual image of the ``data`` minus the fit PSF models
             minus the optional``local_bkg``.
         """
+    return func
+
+
+class _ModelImageMaker:
+    """
+    Class to create model and residual images from fit PSF models.
+
+    Parameters
+    ----------
+    psf_model : `astropy.modeling.Model`
+        The PSF model.
+
+    model_params : `~astropy.table.Table`
+        The model parameters.
+
+    local_bkg : `~numpy.ndarray`, optional
+        The local background values.
+
+    progress_bar : bool, optional
+        Whether to display a progress bar.
+    """
+
+    def __init__(self, psf_model, model_params, local_bkg=None,
+                 progress_bar=False):
+        self.psf_model = psf_model
+        self.model_params = model_params
+        self.local_bkg = local_bkg
+        self.progress_bar = progress_bar
+
+    @_make_model_image_docstring
+    def make_model_image(self, shape, *, psf_shape=None,
+                         include_localbkg=False):
+        psf_model = self.psf_model
+        model_params = self.model_params
+        local_bkgs = self.local_bkg
+        progress_bar = self.progress_bar
+
+        if include_localbkg:
+            # add local_bkg, but set non-finite values to 0 to avoid
+            # corrupting the model image
+            model_params = model_params.copy()
+            local_bkgs_clean = local_bkgs.copy()
+            # Replace non-finite values with 0
+            nonfinite_mask = ~np.isfinite(local_bkgs_clean)
+            if np.any(nonfinite_mask):
+                local_bkgs_clean[nonfinite_mask] = 0
+            model_params['local_bkg'] = local_bkgs_clean
+
+        try:
+            x_name = psf_model.x_name
+            y_name = psf_model.y_name
+        except AttributeError:
+            x_name = 'x_0'
+            y_name = 'y_0'
+
+        return _make_model_image(shape, psf_model, model_params,
+                                 model_shape=psf_shape,
+                                 x_name=x_name, y_name=y_name,
+                                 progress_bar=progress_bar)
+
+    @_make_residual_image_docstring
+    def make_residual_image(self, data, *, psf_shape=None,
+                            include_localbkg=False):
         if isinstance(data, NDData):
             residual = deepcopy(data)
             data_arr = data.data
