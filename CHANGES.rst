@@ -33,7 +33,10 @@ New Features
 
   - Added a ``decode_flags`` convenience method to ``PSFPhotometry`` and
     ``IterativePSFPhotometry`` classes to decode the bitwise flags from
-    the results table. [#2132]
+    the results table. [#2132, #2136]
+
+  - Added a ``return_bit_flags`` keyword to the ``decode_psf_flags``
+    function. [#2136]
 
   - Added ``__repr__`` methods to ``ImagePSF`` and ``GriddedPSFModel``.
     [#2134]

@@ -336,7 +336,7 @@ def _update_decode_docstring(func):
 
 
 @_update_decode_docstring
-def decode_psf_flags(flags):
+def decode_psf_flags(flags, return_bit_values=False):
     # numpydoc ignore: RT05
     """
     Decode PSF photometry bit flags into individual components.
@@ -354,13 +354,19 @@ def decode_psf_flags(flags):
         represents a specific condition that occurred during
         PSF fitting.
 
+    return_bit_values : bool, optional
+        If `True`, return the decoded bit flags (integers) instead of
+        the flag descriptions (strings). Default is `False`.
+
     Returns
     -------
-    decoded : list of str or list of list of str
-        List of active flag names, or list of lists if input is an
-        array. Each string represents a specific condition that was
-        detected during PSF fitting. If no flags are set, an empty list
-        is returned. Possible flag names are:
+    decoded : list of str, list of int, list of list of str, or \
+            list of list of int
+        List of active flag names (or bit values), or list of lists
+        if input is an array. Each string (or integer) represents a
+        specific condition that was detected during PSF fitting. If no
+        flags are set, an empty list is returned. Possible flag names
+        are:
         <flag descriptions>
 
     Examples
@@ -443,7 +449,10 @@ non_finite_position, non_finite_flux
         active_flags = []
         for bit_value, description in flag_definitions.items():
             if flag_value & bit_value:
-                active_flags.append(description)
+                if return_bit_values:
+                    active_flags.append(bit_value)
+                else:
+                    active_flags.append(description)
         return active_flags
 
     # Handle both single values and arrays
