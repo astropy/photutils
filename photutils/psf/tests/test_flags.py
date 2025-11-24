@@ -532,3 +532,57 @@ def test_update_decode_docstring_noop():
 
     docstring = test_func.__doc__
     assert docstring is None
+
+
+def test_decode_psf_flags_return_bit_values():
+    """
+    Test the decode_psf_flags function with return_bit_values=True.
+    """
+    # Test single flag value with no flags set
+    decoded = decode_psf_flags(0, return_bit_values=True)
+    assert decoded == []
+    assert isinstance(decoded, list)
+
+    # Test single flag value with one bit set
+    decoded = decode_psf_flags(1, return_bit_values=True)
+    assert decoded == [1]
+
+    decoded = decode_psf_flags(2, return_bit_values=True)
+    assert decoded == [2]
+
+    # Test combination of flags
+    decoded = decode_psf_flags(5, return_bit_values=True)  # bits 1 and 4
+    assert set(decoded) == {1, 4}
+    assert len(decoded) == 2
+
+    decoded = decode_psf_flags(136, return_bit_values=True)  # bits 8 and 128
+    assert set(decoded) == {8, 128}
+    assert len(decoded) == 2
+
+    # Test with all flags set
+    all_flags = (1 + 2 + 4 + 8 + 16 + 32 + 64 + 128 + 256 + 512 + 1024
+                 + 2048)  # 4095
+    decoded = decode_psf_flags(all_flags, return_bit_values=True)
+    expected_all = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
+    assert set(decoded) == set(expected_all)
+    assert len(decoded) == 12
+
+    # Test with array input
+    flags_array = [0, 1, 2, 5]
+    decoded_list = decode_psf_flags(flags_array, return_bit_values=True)
+    assert len(decoded_list) == 4
+    assert isinstance(decoded_list, list)
+
+    # Check individual results
+    assert decoded_list[0] == []
+    assert decoded_list[1] == [1]
+    assert decoded_list[2] == [2]
+    assert set(decoded_list[3]) == {1, 4}
+
+    # Test with numpy array
+    flags_np = np.array([8, 16, 32])
+    decoded_list = decode_psf_flags(flags_np, return_bit_values=True)
+    assert len(decoded_list) == 3
+    assert decoded_list[0] == [8]
+    assert decoded_list[1] == [16]
+    assert decoded_list[2] == [32]
