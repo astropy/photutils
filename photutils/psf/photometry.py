@@ -1730,7 +1730,7 @@ class PSFPhotometry:
                                              remove_invalid=remove_invalid,
                                              reset_ids=reset_ids)
 
-    def decode_flags(self):
+    def decode_flags(self, return_bit_values=False):
         """
         Decode the PSF photometry flags from the results table.
 
@@ -1738,13 +1738,19 @@ class PSFPhotometry:
         `~photutils.psf.decode_psf_flags` with the 'flags' column
         from the results table.
 
+        Parameters
+        ----------
+        return_bit_values : bool, optional
+            If `True`, return the decoded bit flags (integers) instead
+            of the flag descriptions (strings). Default is `False`.
+
         Returns
         -------
-        decoded : list of list of str
-            List of lists where each inner list contains the active
-            flag names for the corresponding source in the results
-            table. If no flags are set for a source, an empty list
-            is returned for that source.
+        decoded : list of list of str or list of list of int
+            List of lists where each inner list contains the active flag
+            names (or bit values) for the corresponding source in the
+            results table. If no flags are set for a source, an empty
+            list is returned for that source.
 
         Raises
         ------
@@ -1784,7 +1790,8 @@ class PSFPhotometry:
                    'instance first.')
             raise ValueError(msg)
 
-        return decode_psf_flags(self.results['flags'])
+        return decode_psf_flags(self.results['flags'],
+                                return_bit_values=return_bit_values)
 
     def _get_model_image_params(self):
         # Convert fitted parameters to model parameter names without
