@@ -369,7 +369,7 @@ class PSFPhotometry:
     """
 
     # Default value for parameter initialization (invalid sources)
-    DEFAULT_PARAM_VALUE = np.nan
+    _DEFAULT_PARAM_VALUE = np.nan
 
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
                  fitter=None, fitter_maxiters=100, xy_bounds=None,
@@ -489,7 +489,7 @@ class PSFPhotometry:
         for model_param in model_params:
             # initialize all parameters with np.nan (for invalid sources)
             param_data[model_param] = np.full(n_sources,
-                                              self.DEFAULT_PARAM_VALUE)
+                                              self._DEFAULT_PARAM_VALUE)
             param_data[f'{model_param}_fixed'] = [None] * n_sources
             param_data[f'{model_param}_bounds'] = [None] * n_sources
 
@@ -523,7 +523,7 @@ class PSFPhotometry:
             template_model = self.psf_model
             for param_name in template_model.param_names:
                 # Set all parameters to np.nan for invalid sources
-                param_data[param_name][row_index] = self.DEFAULT_PARAM_VALUE
+                param_data[param_name][row_index] = self._DEFAULT_PARAM_VALUE
 
                 template_param = getattr(template_model, param_name)
                 param_data[f'{param_name}_fixed'][row_index] = (
@@ -1803,6 +1803,34 @@ class PSFPhotometry:
 
     def make_model_image(self, shape, *, psf_shape=None,
                          include_localbkg=False):
+        """
+        Create a model image from the fit results.
+
+        Parameters
+        ----------
+        shape : 2-tuple of int
+            The shape (ny, nx) of the output image.
+
+        psf_shape : 2-tuple of int, optional
+            The shape (ny, nx) of the PSF model to be rendered. If
+            `None`, the shape of the PSF model is determined by the
+            ``fit_shape`` parameter.
+
+        include_localbkg : bool, optional
+            Whether to include the local background in the model image.
+            Default is `False`.
+
+        Returns
+        -------
+        image : `~numpy.ndarray`
+            The model image.
+
+        Raises
+        ------
+        ValueError
+            If no results are available. Please run the `PSFPhotometry`
+            instance first.
+        """
         if self.results is None:
             msg = ('No results available. Please run the PSFPhotometry '
                    'instance first.')
@@ -1817,6 +1845,34 @@ class PSFPhotometry:
 
     def make_residual_image(self, data, *, psf_shape=None,
                             include_localbkg=False):
+        """
+        Create a residual image from the fit results.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The data image.
+
+        psf_shape : 2-tuple of int, optional
+            The shape (ny, nx) of the PSF model to be rendered. If
+            `None`, the shape of the PSF model is determined by the
+            ``fit_shape`` parameter.
+
+        include_localbkg : bool, optional
+            Whether to include the local background in the model image
+            that is subtracted from the data. Default is `False`.
+
+        Returns
+        -------
+        image : `~numpy.ndarray`
+            The residual image.
+
+        Raises
+        ------
+        ValueError
+            If no results are available. Please run the `PSFPhotometry`
+            instance first.
+        """
         if self.results is None:
             msg = ('No results available. Please run the PSFPhotometry '
                    'instance first.')
