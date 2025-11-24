@@ -16,14 +16,14 @@ from scipy.interpolate import RectBivariateSpline
 from photutils.psf.model_io import (GriddedPSFModelRead, _get_metadata,
                                     _read_stdpsf, is_stdpsf, is_webbpsf,
                                     stdpsf_reader, webbpsf_reader)
-from photutils.psf.model_plotting import ModelGridPlotMixin
+from photutils.psf.model_plotting import _ModelGridPlotter
 from photutils.utils._parameters import as_pair
 
 __all__ = ['GriddedPSFModel', 'STDPSFGrid']
 __doctest_skip__ = ['STDPSFGrid']
 
 
-class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
+class GriddedPSFModel(Fittable2DModel):
     """
     A model for a grid of 2D ePSF models.
 
@@ -666,8 +666,26 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         return evaluated_model
 
+    def plot_grid(self, **kwargs):
+        """
+        Plot the grid of ePSF models.
 
-class STDPSFGrid(ModelGridPlotMixin):
+        Parameters
+        ----------
+        **kwargs : dict
+            Keyword arguments passed to
+            `~photutils.psf.model_plotting._ModelGridPlotter.plot_grid`.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            The matplotlib figure object.
+        """
+        plotter = _ModelGridPlotter(self)
+        return plotter.plot_grid(**kwargs)
+
+
+class STDPSFGrid:
     """
     Class to read and plot "STDPSF" format ePSF model grids.
 
@@ -712,6 +730,24 @@ class STDPSFGrid(ModelGridPlotMixin):
             meta.update(file_meta)
 
         self.meta = meta
+
+    def plot_grid(self, **kwargs):
+        """
+        Plot the grid of ePSF models.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Keyword arguments passed to
+            `~photutils.psf.model_plotting._ModelGridPlotter.plot_grid`.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            The matplotlib figure object.
+        """
+        plotter = _ModelGridPlotter(self)
+        return plotter.plot_grid(**kwargs)
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
