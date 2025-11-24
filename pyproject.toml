@@ -73,7 +73,7 @@ dev = [
 requires = [
     'setuptools >= 77.0',
     'setuptools_scm >= 8.1',
-    'cython >= 3.1, < 4',
+    'cython >= 3.1.2, < 4',
     'numpy >= 2.0',
     'extension-helpers >= 1.3, < 2',
 ]
@@ -305,3 +305,6 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = 'numpy'
+
+[tool.distutils.bdist_wheel]
+py-limited-api = "cp311"
