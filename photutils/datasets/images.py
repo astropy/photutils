@@ -166,6 +166,16 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     array : 2D `~numpy.ndarray`
         The rendered image containing the model sources.
 
+    Notes
+    -----
+    The local background value around each source is optionally included
+    using the ``local_bkg`` column in the input ``params_table``. This
+    local background added to each source over its ``model_shape``
+    region. In regions where the ``model_shape`` of source overlap, the
+    local background will be added multiple times. This is not an issue
+    if the sources are well-separated, but for crowded fields, this
+    option should be used with care.
+
     Examples
     --------
     .. plot::
@@ -213,16 +223,6 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
         plt.imshow(data, origin='lower')
         plt.tight_layout()
-
-    Notes
-    -----
-    The local background value around each source is optionally included
-    using the ``local_bkg`` column in the input ``params_table``. This
-    local background added to each source over its ``model_shape``
-    region. In regions where the ``model_shape`` of source overlap, the
-    local background will be added multiple times. This is not an issue
-    if the sources are well-separated, but for crowded fields, this
-    option should be used with care.
     """
     if not isinstance(shape, tuple) or len(shape) != 2:
         msg = 'shape must be a 2-tuple'

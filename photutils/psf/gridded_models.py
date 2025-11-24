@@ -16,19 +16,19 @@ from scipy.interpolate import RectBivariateSpline
 from photutils.psf.model_io import (GriddedPSFModelRead, _get_metadata,
                                     _read_stdpsf, is_stdpsf, is_webbpsf,
                                     stdpsf_reader, webbpsf_reader)
-from photutils.psf.model_plotting import ModelGridPlotMixin
+from photutils.psf.model_plotting import (_ModelGridPlotter,
+                                          _plot_grid_docstring)
 from photutils.utils._parameters import as_pair
 
 __all__ = ['GriddedPSFModel', 'STDPSFGrid']
 __doctest_skip__ = ['STDPSFGrid']
 
 
-class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
+class GriddedPSFModel(Fittable2DModel):
     """
     A model for a grid of 2D ePSF models.
 
     The ePSF models are defined at fiducial detector locations and are
-    bilinearly interpolated to calculate an ePSF model at an arbitrary
     (x, y) detector position. The fiducial detector locations are must
     form a rectangular grid.
 
@@ -666,8 +666,19 @@ class GriddedPSFModel(ModelGridPlotMixin, Fittable2DModel):
 
         return evaluated_model
 
+    @_plot_grid_docstring
+    def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
+                  deltas=False, cmap='viridis', dividers=True,
+                  divider_color='darkgray', divider_ls='-', figsize=None):
+        plotter = _ModelGridPlotter(self)
+        return plotter.plot_grid(ax=ax, vmax_scale=vmax_scale,
+                                 peak_norm=peak_norm, deltas=deltas,
+                                 cmap=cmap, dividers=dividers,
+                                 divider_color=divider_color,
+                                 divider_ls=divider_ls, figsize=figsize)
 
-class STDPSFGrid(ModelGridPlotMixin):
+
+class STDPSFGrid:
     """
     Class to read and plot "STDPSF" format ePSF model grids.
 
@@ -712,6 +723,17 @@ class STDPSFGrid(ModelGridPlotMixin):
             meta.update(file_meta)
 
         self.meta = meta
+
+    @_plot_grid_docstring
+    def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
+                  deltas=False, cmap='viridis', dividers=True,
+                  divider_color='darkgray', divider_ls='-', figsize=None):
+        plotter = _ModelGridPlotter(self)
+        return plotter.plot_grid(ax=ax, vmax_scale=vmax_scale,
+                                 peak_norm=peak_norm, deltas=deltas,
+                                 cmap=cmap, dividers=dividers,
+                                 divider_color=divider_color,
+                                 divider_ls=divider_ls, figsize=figsize)
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'

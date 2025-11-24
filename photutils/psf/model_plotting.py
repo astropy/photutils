@@ -8,40 +8,11 @@ import numpy as np
 from astropy.utils import minversion
 from astropy.visualization import simple_norm
 
-__all__ = ['ModelGridPlotMixin']
+__all__ = []
 
 
-class ModelGridPlotMixin:
-    """
-    Mixin class to plot a grid of ePSF models.
-    """
-
-    def _reshape_grid(self, data):
-        """
-        Reshape the 3D ePSF grid as a 2D array of horizontally and
-        vertically stacked ePSFs.
-
-        Parameters
-        ----------
-        data : `numpy.ndarray`
-            The 3D array of ePSF data.
-
-        Returns
-        -------
-        reshaped_data : `numpy.ndarray`
-            The 2D array of ePSF data.
-        """
-        nypsfs = self._ygrid.shape[0]
-        nxpsfs = self._xgrid.shape[0]
-        ny, nx = self.data.shape[1:]
-        data.shape = (nypsfs, nxpsfs, ny, nx)
-
-        return data.transpose([0, 2, 1, 3]).reshape(nypsfs * ny, nxpsfs * nx)
-
-    def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
-                  deltas=False, cmap='viridis', dividers=True,
-                  divider_color='darkgray', divider_ls='-', figsize=None):
-        """
+def _plot_grid_docstring(func):
+    func.__doc__ = """
         Plot the grid of ePSF models.
 
         Parameters
@@ -101,10 +72,47 @@ class ModelGridPlotMixin:
         call. Alternatively, you can append a semicolon to the end of
         the function call to suppress the display of the return value.
         """
+    return func
+
+
+class _ModelGridPlotter:
+    """
+    Class to plot a grid of ePSF models.
+    """
+
+    def __init__(self, model):
+        self.model = model
+
+    def _reshape_grid(self, data):
+        """
+        Reshape the 3D ePSF grid as a 2D array of horizontally and
+        vertically stacked ePSFs.
+
+        Parameters
+        ----------
+        data : `numpy.ndarray`
+            The 3D array of ePSF data.
+
+        Returns
+        -------
+        reshaped_data : `numpy.ndarray`
+            The 2D array of ePSF data.
+        """
+        nypsfs = self.model._ygrid.shape[0]
+        nxpsfs = self.model._xgrid.shape[0]
+        ny, nx = self.model.data.shape[1:]
+        data.shape = (nypsfs, nxpsfs, ny, nx)
+
+        return data.transpose([0, 2, 1, 3]).reshape(nypsfs * ny, nxpsfs * nx)
+
+    @_plot_grid_docstring
+    def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
+                  deltas=False, cmap='viridis', dividers=True,
+                  divider_color='darkgray', divider_ls='-', figsize=None):
         import matplotlib.pyplot as plt
         from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-        data = self.data.copy()
+        data = self.model.data.copy()
         if deltas:
             # Compute mean ignoring any blank (all zeros) ePSFs.
             # This is the case for MIRI with its non-square FOV.
@@ -118,7 +126,8 @@ class ModelGridPlotMixin:
         data = self._reshape_grid(data)
 
         if ax is None:
-            if figsize is None and self.meta.get('detector', '') == 'NRCSW':
+            if (figsize is None
+                    and self.model.meta.get('detector', '') == 'NRCSW'):
                 figsize = (20, 8)
             fig, ax = plt.subplots(figsize=figsize)
         else:
@@ -153,17 +162,17 @@ class ModelGridPlotMixin:
         # detector ePSF coordinates. This sets up axes to have, behind the
         # scenes, the ePSFs centered at integer coords 0, 1, 2, 3 etc.
         # extent order: left, right, bottom, top
-        nypsfs = self._ygrid.shape[0]
-        nxpsfs = self._xgrid.shape[0]
+        nypsfs = self.model._ygrid.shape[0]
+        nxpsfs = self.model._xgrid.shape[0]
         extent = [-0.5, nxpsfs - 0.5, -0.5, nypsfs - 0.5]
 
         axim = ax.imshow(data, extent=extent, norm=norm, cmap=cmap,
                          origin='lower')
 
         # Use the axes set up above to set appropriate tick labels
-        xticklabels = self._xgrid.astype(int)
-        yticklabels = self._ygrid.astype(int)
-        if self.meta.get('detector', '') == 'NRCSW':
+        xticklabels = self.model._xgrid.astype(int)
+        yticklabels = self.model._ygrid.astype(int)
+        if self.model.meta.get('detector', '') == 'NRCSW':
             xticklabels = list(xticklabels[0:5]) * 4
             yticklabels = list(yticklabels[0:5]) * 2
         ax.set_xticks(np.arange(nxpsfs))
@@ -179,12 +188,12 @@ class ModelGridPlotMixin:
             for iy in range(nypsfs - 1):
                 ax.axhline(iy + 0.5, color=divider_color, ls=divider_ls)
 
-        instrument = self.meta.get('instrument', '')
+        instrument = self.model.meta.get('instrument', '')
         if not instrument:
             # WebbPSF output
-            instrument = self.meta.get('instrume', '')
-        detector = self.meta.get('detector', '')
-        filtername = self.meta.get('filter', '')
+            instrument = self.model.meta.get('instrume', '')
+        detector = self.model.meta.get('detector', '')
+        filtername = self.model.meta.get('filter', '')
 
         # WebbPSF outputs a tuple with the comment in the second element
         if isinstance(instrument, (tuple, list, np.ndarray)):
@@ -220,11 +229,11 @@ class ModelGridPlotMixin:
         if not deltas:
             cbar.ax.set_yscale('log')
 
-        if self.meta.get('detector', '') == 'NRCSW':
+        if self.model.meta.get('detector', '') == 'NRCSW':
             # NIRCam NRCSW STDPSF files contain all detectors.
             # The plot gets extra divider lines and SCA name labels.
-            nxpsfs = len(self._xgrid)
-            nypsfs = len(self._ygrid)
+            nxpsfs = len(self.model._xgrid)
+            nypsfs = len(self.model._ygrid)
             plt.axhline(nypsfs / 2 - 0.5, color='orange')
             for i in range(1, 4):
                 ax.axvline(nxpsfs / 4 * i - 0.5, color='orange')

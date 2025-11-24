@@ -56,10 +56,6 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
-- ``photutils.psf``
-
-  - Removed the ``ModelImageMixin`` class. [#2133]
-
 - ``photutils.background``
 
   - Removed the deprecated ``edge_method`` keyword from ``Background2D``.
@@ -88,6 +84,10 @@ API Changes
 
   - The ``grid_from_epsfs`` helper function is now deprecated. Instead,
     use ``GriddedPSFModel`` directly. [#2111]
+
+  - Removed the ``ModelImageMixin`` class. [#2133]
+
+  - Removed the ``ModelGridPlotMixin`` class. [#2137]
 
 
 2.3.0 (2025-09-15)
