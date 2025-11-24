@@ -3,9 +3,7 @@
 Define tools to plot Gridded PSF models.
 """
 
-import astropy
 import numpy as np
-from astropy.utils import minversion
 from astropy.visualization import simple_norm
 
 __all__ = []
@@ -142,21 +140,13 @@ class _ModelGridPlotter:
                 vmax_scale = 0.03
             vmax = data.max() * vmax_scale
             vmin = -vmax
-            if minversion(astropy, '6.1'):
-                norm = simple_norm(data, 'linear', vmin=vmin, vmax=vmax)
-            else:
-                norm = simple_norm(data, 'linear', min_cut=vmin, max_cut=vmax)
+            norm = simple_norm(data, 'linear', vmin=vmin, vmax=vmax)
         else:
             if vmax_scale is None:
                 vmax_scale = 1.0
             vmax = data.max() * vmax_scale
             vmin = vmax / 1.0e4
-            if minversion(astropy, '6.1'):
-                norm = simple_norm(data, 'log', vmin=vmin, vmax=vmax,
-                                   log_a=1.0e4)
-            else:
-                norm = simple_norm(data, 'log', min_cut=vmin, max_cut=vmax,
-                                   log_a=1.0e4)
+            norm = simple_norm(data, 'log', vmin=vmin, vmax=vmax, log_a=1.0e4)
 
         # Set up the coordinate axes to later set tick labels based on
         # detector ePSF coordinates. This sets up axes to have, behind the
