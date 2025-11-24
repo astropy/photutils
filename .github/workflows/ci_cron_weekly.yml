@@ -37,9 +37,15 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: '3.14'
-            tox_env: 'py314-test-alldeps-devinfra'
+            python: '3.13'
+            tox_env: 'py313-test-alldeps-devinfra'
             allow_failure: false
+
+          # no rasterio wheel for 3.14 yet
+          # - os: ubuntu-latest
+          #   python: '3.14'
+          #   tox_env: 'py314-test-alldeps-devinfra'
+          #   allow_failure: false
 
     steps:
       - name: Check out repository
