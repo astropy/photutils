@@ -6,7 +6,6 @@ Tests for the mask module.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.utils import minversion
 from numpy.testing import assert_allclose, assert_almost_equal
 
 from photutils.aperture.bounding_box import BoundingBox
@@ -14,8 +13,6 @@ from photutils.aperture.circle import CircularAnnulus, CircularAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.rectangle import RectangularAnnulus
 
-NUMPY_LT_2_0 = not minversion(np, '2.0')
-COPY_IF_NEEDED = False if NUMPY_LT_2_0 else None
 POSITIONS = [(-20, -20), (-20, 20), (20, -20), (60, 60)]
 
 
@@ -51,7 +48,7 @@ def test_mask_copy():
     # no copy; copy=None returns a copy only if __array__ returns a copy
     # copy=None was introduced in NumPy 2.0
     mask = ApertureMask(np.ones((10, 10)), bbox)
-    mask_copy = np.array(mask, copy=COPY_IF_NEEDED)
+    mask_copy = np.array(mask, copy=None)
     mask_copy[0, 0] = 100.0
     assert mask.data[0, 0] == 100.0
 

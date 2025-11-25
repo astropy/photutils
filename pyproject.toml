@@ -242,6 +242,10 @@ exclude = [
 
     # GL08: docstrings defined by a decorator
     '\.plot_grid$',
+    'PSFPhotometry\.make_model_image$',
+    'PSFPhotometry\.make_residual_image$',
+    'IterativePSFPhotometry\.make_model_image$',
+    'IterativePSFPhotometry\.make_residual_image$',
 
     # GL08: docstrings inherited from base classes
     '\.to_mask$',
