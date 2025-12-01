@@ -129,6 +129,7 @@ addopts = [
     '--strict-config',
     '--strict-markers',
 ]
+log_level = 'INFO'
 log_cli_level = 'INFO'
 xfail_strict = true
 remote_data_strict = true
@@ -195,6 +196,8 @@ ignore = [
     'PC140',  # ignore using mypy in pre-commit
     'PC180',  # ignore using prettier in pre-commit
     'PC901',  # ignore using custom pre-commit update message
+    'PC902',  # ignore custom pre-commit CI autofix message
+    'PP006',  # ignore missing dependency-groups in pyproject.toml
     'PY005',  # ignore having a tests/ folder
 ]
 
