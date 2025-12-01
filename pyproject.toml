@@ -129,6 +129,7 @@ addopts = [
     '--strict-config',
     '--strict-markers',
 ]
+log_level = 'INFO'
 log_cli_level = 'INFO'
 xfail_strict = true
 remote_data_strict = true
