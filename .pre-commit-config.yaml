@@ -96,13 +96,15 @@ repos:
       - id: numpydoc-validation
         exclude: "extern/"
 
+  # TMP: disabled until new release (Python 3.14 support and without
+  #      requiring untokenize) and various regressions are fixed
   # Formats docstrings to follow PEP 257
-  - repo: https://github.com/PyCQA/docformatter
-    rev: v1.7.7
-    hooks:
-      - id: docformatter
-        args: [--in-place, --config, ./pyproject.toml]
-        exclude: "extern/"
+  # - repo: https://github.com/PyCQA/docformatter
+  #   rev: v1.7.7
+  #   hooks:
+  #     - id: docformatter
+  #       args: [--in-place, --config, ./pyproject.toml]
+  #       exclude: "extern/"
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
     rev: v1.18.0
