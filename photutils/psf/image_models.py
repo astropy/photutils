@@ -224,6 +224,18 @@ class ImagePSF(Fittable2DModel):
         return copy.deepcopy(self)
 
     @property
+    def shape(self):
+        """
+        The shape of the (oversampled) PSF data array.
+
+        Returns
+        -------
+        shape : tuple
+            The shape of the (oversampled) PSF data array.
+        """
+        return self.data.shape
+
+    @property
     def origin(self):
         """
         A 1D `~numpy.ndarray` (x, y) pixel coordinates within the
