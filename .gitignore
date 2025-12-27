@@ -38,6 +38,19 @@ develop-eggs
 distribute-*.tar.gz
 pip-wheel-metadata
 
+# Virtual environments
+.venv
+
+# uv (Python package manager)
+uv.lock
+
+# pipenv
+Pipfile.lock
+Pipfile
+
+# poetry
+poetry.lock
+
 # Other
 .cache
 .tox
