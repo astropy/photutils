@@ -55,7 +55,7 @@ repos:
         # Enforce that all noqa annotations always occur with specific codes.
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.14.7"
+    rev: "v0.14.10"
     hooks:
       - id: ruff-check
         args: ["--fix", "--show-fixes"]
@@ -91,7 +91,7 @@ repos:
           - tomli
 
   - repo: https://github.com/numpy/numpydoc
-    rev: v1.9.0
+    rev: v1.10.0
     hooks:
       - id: numpydoc-validation
         exclude: "extern/"
@@ -107,7 +107,7 @@ repos:
   #       exclude: "extern/"
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.18.0
+    rev: v1.19.0
     hooks:
     - id: zizmor
 
