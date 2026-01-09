@@ -13,8 +13,8 @@ These instructions assume the name of the git remote for the main
 repository is called ``upstream``.
 
 #. Check out the branch that you are going to release. This will usually
-   be the ``main`` branch, unless you are making a release
-   from a bugfix branch.
+   be the ``main`` branch, unless you are making a release from a bugfix
+   branch.
 
    To release from a bugfix branch, check out the ``A.B.x`` branch.
    Use ``git cherry-pick <hash>`` (or ``git cherry-pick -m1 <hash>``
@@ -53,9 +53,9 @@ repository is called ``upstream``.
         git show <X.Y.Z>  # show the tag
         git tag  # show all tags
 
-#. Optionally, :ref:`even more manual tests <manual_tests>` can be run.
-
    .. _resume_release:
+
+#. Optionally, :ref:`even more manual tests <manual_tests>` can be run.
 
 #. Push this new tag to the upstream repo::
 
