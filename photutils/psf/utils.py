@@ -363,7 +363,9 @@ def _interpolate_missing_data(data, mask, method='cubic'):
         The method of used to interpolate the missing data:
 
         * ``'cubic'``:  Masked data are interpolated using 2D cubic
-          splines. This is the default.
+          splines. If any masked pixels cannot be interpolated using
+          cubic interpolation (e.g., at the edges), they will be filled
+          using nearest-neighbor interpolation as a fallback.
 
         * ``'nearest'``:  Masked data are interpolated using
           nearest-neighbor interpolation.
@@ -371,7 +373,9 @@ def _interpolate_missing_data(data, mask, method='cubic'):
     Returns
     -------
     data_interp : 2D `~numpy.ndarray`
-        The interpolated 2D image.
+        The interpolated 2D image. All masked pixels are guaranteed
+        to be filled if there are any valid (unmasked) pixels. If all
+        pixels are masked, the returned array will contain NaN values.
     """
     data_interp = np.copy(data)
 
@@ -382,6 +386,14 @@ def _interpolate_missing_data(data, mask, method='cubic'):
     if mask.shape != data.shape:
         msg = 'mask and data must have the same shape'
         raise ValueError(msg)
+
+    if not np.any(mask):
+        return data_interp
+
+    # Check if all pixels are masked - cannot interpolate
+    if np.all(mask):
+        data_interp[:] = np.nan
+        return data_interp
 
     # initialize the interpolator
     y, x = np.indices(data_interp.shape)
@@ -399,6 +411,19 @@ def _interpolate_missing_data(data, mask, method='cubic'):
 
     xy_missing = np.dstack((x[mask].ravel(), y[mask].ravel()))[0]
     data_interp[mask] = interpol(xy_missing)
+
+    # For cubic interpolation, some edge pixels may not be interpolated
+    # (NaN values). Use nearest-neighbor interpolation as a fallback.
+    if method == 'cubic':
+        remaining_mask = ~np.isfinite(data_interp)
+        if np.any(remaining_mask):
+            xy_valid = np.dstack((x[~remaining_mask].ravel(),
+                                  y[~remaining_mask].ravel()))[0]
+            z_valid = data_interp[~remaining_mask].ravel()
+            interpol_nn = interpolate.NearestNDInterpolator(xy_valid, z_valid)
+            xy_remaining = np.dstack((x[remaining_mask].ravel(),
+                                      y[remaining_mask].ravel()))[0]
+            data_interp[remaining_mask] = interpol_nn(xy_remaining)
 
     return data_interp
 
