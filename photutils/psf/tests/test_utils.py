@@ -150,6 +150,55 @@ def test_interpolate_missing_data():
         _interpolate_missing_data(data, mask, method='invalid')
 
 
+def test_interpolate_missing_data_edge_pixels():
+    """
+    Test that edge pixels are always filled with cubic interpolation.
+    """
+    data = np.arange(100, dtype=float).reshape(10, 10)
+    mask = np.zeros_like(data, dtype=bool)
+
+    # Mask corner and edge pixels where cubic interpolation typically
+    # fails
+    mask[0, 0] = True  # corner
+    mask[0, 5] = True  # top edge
+    mask[9, 9] = True  # corner
+    mask[5, 9] = True  # right edge
+
+    data_int = _interpolate_missing_data(data, mask, method='cubic')
+
+    # All masked pixels should be filled (no NaN values)
+    assert np.all(np.isfinite(data_int))
+    assert not np.any(np.isnan(data_int[mask]))
+
+
+def test_interpolate_missing_data_no_mask():
+    """
+    Test that data is returned unchanged when no pixels are masked.
+    """
+    data = np.arange(100, dtype=float).reshape(10, 10)
+    mask = np.zeros_like(data, dtype=bool)
+
+    data_int = _interpolate_missing_data(data, mask, method='cubic')
+    assert np.array_equal(data, data_int)
+
+
+def test_interpolate_missing_data_all_masked():
+    """
+    Test that all-masked data returns NaN array.
+    """
+    data = np.arange(100, dtype=float).reshape(10, 10)
+    mask = np.ones_like(data, dtype=bool)  # All pixels masked
+
+    data_int = _interpolate_missing_data(data, mask, method='cubic')
+
+    # All values should be NaN when all data is masked
+    assert np.all(np.isnan(data_int))
+
+    # Same for nearest-neighbor method
+    data_int = _interpolate_missing_data(data, mask, method='nearest')
+    assert np.all(np.isnan(data_int))
+
+
 def test_validate_psf_model():
     model = np.arange(10)
 
