@@ -276,41 +276,44 @@ max-statements = 130
 select = ['ALL']
 exclude = ["photutils/extern/*"]
 ignore = [
-    'ANN',
-    'B028',
-    'BLE001',
-    'C901',
-    'D102',
-    'D105',
-    'D200',
-    'D205',
+    'ANN',  # type annotations
+    'B028',  # no-explicit-stacklevel (warnings)
+    'BLE001',  # blind-except
+    'C901',  # complex-structure
+    'D102',  # undocumented-public-method
+    'D105',  # undocumented-magic-method
+    'D200',  # unnecessary-multiline-docstring
+    'D205',  # missing-blank-line-after-summary
     'D301',  # backslashes in docstrings (need line continuation)
-    'D401',
-    'FBT002',
-    'I001',
-    'N803',
+    'D401',  # non-imperative-mood
+    'FBT002',  # boolean-default-value-positional-argument
+    'I001',  # import-order (conflicts with isort)
+    'N803',  # invalid-argument-name
     'PLC0415',  # import-outside-top-level
-    'PLR0912',
-    'PLR0913',
-    'PLR2004',
+    'PLR0912',  # too-many-branches
+    'PLR0913',  # too-many-arguments
+    'PLR2004',  # magic-value-comparison
     'PLW1641',  # eq-without-hash
-    'PLW2901',
-    'PTH',
-    'Q000',
-    'RUF015',
-    'RUF100',
-    'SLF001',
+    'PLW2901',  # redefined-loop-name
+    'PTH',  # Pathlib usage
+    'RUF015',  # unnecessary-iterable-allocation-for-first-element
+    'RUF100',  # unused-noqa
+    'SLF001',  # private-member-access
 ]
 
 [tool.ruff.lint.per-file-ignores]
-'__init__.py' = ['D104', 'I']
+'__init__.py' = ['D104', 'I']  # undocumented-public-package, isort
+# commented-out-code, implicit-namespace-package, error-instead-of-exception
 'docs/conf.py' = ['ERA001', 'INP001', 'TRY400']
-'model_io.py' = ['ARG001']
-'test_*.py' = ['D', 'S101']
-'conftest.py' = ['D', 'S101']
+'model_io.py' = ['ARG001']  # unused-function-argument
+'test_*.py' = ['D', 'S101']  # pydocstyle, assert
+'conftest.py' = ['D103']  # undocumented-public-function
 
 [tool.ruff.lint.pydocstyle]
 convention = 'numpy'
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = 'single'
 
 [tool.distutils.bdist_wheel]
 py-limited-api = "cp311"

@@ -207,7 +207,7 @@ class _PSFFlags:
         """
         if isinstance(identifier, int):
             if identifier not in self._bit_to_def:
-                msg = f"No flag with bit value {identifier}"
+                msg = f'No flag with bit value {identifier}'
                 raise KeyError(msg)
             return self._bit_to_def[identifier]
 

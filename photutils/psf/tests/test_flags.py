@@ -473,7 +473,7 @@ def test_psf_classes_docstrings():
         ]
 
         for flag_desc in dynamic_flags:
-            msg = f"Missing flag description in {cls.__name__}: {flag_desc}"
+            msg = f'Missing flag description in {cls.__name__}: {flag_desc}'
             assert flag_desc in docstring, msg
 
 
@@ -501,7 +501,7 @@ def test_decode_psf_flags_docstring():
     ]
 
     for flag_desc in expected_flags:
-        msg = f"Missing flag in docstring: {flag_desc}"
+        msg = f'Missing flag in docstring: {flag_desc}'
         assert flag_desc in docstring, msg
 
     # Should have flag descriptions
@@ -518,7 +518,7 @@ def test_decode_psf_flags_docstring():
     ]
 
     for desc in expected_descriptions:
-        assert desc in docstring, f"Missing description: {desc}"
+        assert desc in docstring, f'Missing description: {desc}'
 
 
 def test_update_decode_docstring_noop():

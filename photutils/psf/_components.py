@@ -256,7 +256,7 @@ def _get_flat_model(sources, psf_model, param_mapper, xy_bounds=None):
     # Create robust cache key to avoid model type collisions
     # Use number of sources and the PSF model class name
     model_class = psf_model.__class__
-    model_type = f"{model_class.__module__}.{model_class.__name__}"
+    model_type = f'{model_class.__module__}.{model_class.__name__}'
     cache_key = (n_sources, model_type)
 
     # Get cached model class or create new one
@@ -1086,7 +1086,7 @@ class PSFFitter:
 
             # Extract parameters for this source from the flat model
             for param_name in param_names:
-                flat_param_name = f"{param_name}_{i}"
+                flat_param_name = f'{param_name}_{i}'
                 if hasattr(flat_model, flat_param_name):
                     param_value = getattr(flat_model, flat_param_name).value
                     setattr(source_model, param_name, param_value)
