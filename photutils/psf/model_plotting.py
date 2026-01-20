@@ -99,9 +99,9 @@ class _ModelGridPlotter:
         nypsfs = self.model._ygrid.shape[0]
         nxpsfs = self.model._xgrid.shape[0]
         ny, nx = self.model.data.shape[1:]
-        data.shape = (nypsfs, nxpsfs, ny, nx)
-
-        return data.transpose([0, 2, 1, 3]).reshape(nypsfs * ny, nxpsfs * nx)
+        return (data.reshape(nypsfs, nxpsfs, ny, nx)
+                .transpose([0, 2, 1, 3])
+                .reshape(nypsfs * ny, nxpsfs * nx))
 
     @_plot_grid_docstring
     def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
