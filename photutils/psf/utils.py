@@ -629,7 +629,7 @@ def _create_call_docstring(iterative=False):
         <https://www.stsci.edu/files/live/sites/www/files/home/hst/instr
         umentation/acs/documentation/instrument-science-reports-isrs/_do
         cuments/isr2202.pdf>`_ software.  They are also similar to the
-        ``chi`` (``qfit``) and ``sharp`` (``cfit```) metrics used by
+        ``chi`` (``qfit``) and ``sharp`` (``cfit``) metrics used by
         `DAOPHOT
         <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_.
         """
