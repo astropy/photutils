@@ -302,12 +302,25 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-'__init__.py' = ['D104', 'I']  # undocumented-public-package, isort
-# commented-out-code, implicit-namespace-package, error-instead-of-exception
-'docs/conf.py' = ['ERA001', 'INP001', 'TRY400']
-'model_io.py' = ['ARG001']  # unused-function-argument
-'test_*.py' = ['D', 'S101']  # pydocstyle, assert
-'conftest.py' = ['D103']  # undocumented-public-function
+'__init__.py' = [
+    'D104',  # undocumented-public-package
+    'I',  # isort
+]
+'conftest.py' = [
+    'D103',  # undocumented-public-function
+]
+'docs/conf.py' = [
+    'ERA001',  # commented-out-code
+    'INP001',  # implicit-namespace-package
+    'TRY400',  # error-instead-of-exception
+]
+'test_*.py' = [
+    'D',  # pydocstyle
+    'S101',  # assert
+]
+'model_io.py' = [
+    'ARG001',  # unused-function-argument
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = 'numpy'
