@@ -8,16 +8,22 @@ that finds stars in an image.
 """
 
 import abc
+import inspect
 import math
 import warnings
 
+import astropy.units as u
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
+from astropy.table import QTable
+from astropy.utils import lazyproperty
 
 from photutils.detection.peakfinder import find_peaks
+from photutils.utils._misc import _get_meta
+from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.exceptions import NoDetectionsWarning
 
-__all__ = ['StarFinderBase']
+__all__ = ['StarFinderBase', 'StarFinderCatalogBase']
 
 
 class StarFinderBase(metaclass=abc.ABCMeta):
@@ -282,3 +288,226 @@ def _validate_brightest(brightest):
             raise ValueError(msg)
         brightest = bright_int
     return brightest
+
+
+class StarFinderCatalogBase:
+    """
+    Abstract base class for star finder catalogs.
+
+    This class provides common functionality for catalog classes that
+    calculate properties of detected stars.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The 2D image. The image should be background-subtracted.
+
+    xypos : Nx2 `~numpy.ndarray`
+        An Nx2 array of (x, y) pixel coordinates denoting the central
+        positions of the stars.
+
+    brightest : int, None, optional
+        The number of brightest objects to keep after sorting the source
+        list by flux. If ``brightest`` is set to `None`, all objects
+        will be selected.
+
+    peakmax : float, None, optional
+        The maximum allowed peak pixel value in an object. Objects with
+        peak pixel values greater than ``peakmax`` will be rejected.
+        This keyword may be used, for example, to exclude saturated
+        sources. If the star finder is run on an image that is a
+        `~astropy.units.Quantity` array, then ``peakmax`` must have the
+        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        value filtering will be performed.
+    """
+
+    def __init__(self, data, xypos, *, brightest=None, peakmax=None):
+        # here we validate the units, but do not strip them
+        inputs = (data, peakmax)
+        names = ('data', 'peakmax')
+        _ = process_quantities(inputs, names)
+
+        self.data = data
+        unit = data.unit if isinstance(data, u.Quantity) else None
+        self.unit = unit
+
+        self.xypos = np.atleast_2d(xypos)
+        self.brightest = brightest
+        self.peakmax = peakmax
+
+        self.id = np.arange(len(self)) + 1
+
+    def __len__(self):
+        return len(self.xypos)
+
+    def __getitem__(self, index):
+        """
+        Index or slice the catalog.
+
+        This method should be overridden in subclasses to handle
+        class-specific attributes.
+        """
+        # NOTE: we allow indexing/slicing of scalar (self.isscalar = True)
+        #       instances in order to perform catalog filtering even for
+        #       a single source
+
+        newcls = object.__new__(self.__class__)
+
+        # Get attributes to copy from subclass
+        init_attr = self._get_init_attributes()
+        for attr in init_attr:
+            setattr(newcls, attr, getattr(self, attr))
+
+        # xypos determines ordering and isscalar
+        # NOTE: always keep as 2D array, even for a single source
+        attr = 'xypos'
+        value = getattr(self, attr)[index]
+        setattr(newcls, attr, np.atleast_2d(value))
+
+        # index/slice the remaining attributes
+        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        keys.add('id')
+        scalar_index = np.isscalar(index)
+        for key in keys:
+            value = self.__dict__[key]
+
+            # do not insert lazy attributes that are always scalar (e.g.,
+            # isscalar), i.e., not an array/list for each source
+            if np.isscalar(value):
+                continue
+
+            if key in self._get_list_attributes():
+                # apply fancy indices to list properties
+                value = np.array([*value, None], dtype=object)[:-1][index]
+                value = [value] if scalar_index else value.tolist()
+            else:
+                # value is always at least a 1D array, even for a single
+                # source
+                value = np.atleast_1d(value[index])
+
+            newcls.__dict__[key] = value
+
+        return newcls
+
+    def _get_init_attributes(self):
+        """
+        Return a tuple of attribute names to copy during slicing.
+
+        This method should be overridden in subclasses.
+        """
+        return ('data', 'unit', 'brightest', 'peakmax', 'default_columns')
+
+    def _get_list_attributes(self):
+        """
+        Return a tuple of attribute names that are lists instead of arrays.
+
+        This method should be overridden in subclasses if they have
+        list attributes.
+        """
+        return ()
+
+    @lazyproperty
+    def isscalar(self):
+        """
+        Whether the instance is scalar (e.g., a single source).
+        """
+        return self.xypos.shape == (1, 2)
+
+    @property
+    def _lazyproperties(self):
+        """
+        Return all lazyproperties (even in superclasses).
+        """
+
+        def islazyproperty(obj):
+            return isinstance(obj, lazyproperty)
+
+        return [i[0] for i in inspect.getmembers(self.__class__,
+                                                 predicate=islazyproperty)]
+
+    def reset_ids(self):
+        """
+        Reset the ID column to be consecutive integers.
+        """
+        self.id = np.arange(len(self)) + 1
+
+    @lazyproperty
+    def flux(self):
+        """
+        The source instrumental flux.
+
+        This property should be overridden in subclasses if a different
+        calculation is needed.
+        """
+        fluxes = [np.sum(arr) for arr in self.cutout_data]
+        if self.unit is not None:
+            fluxes = u.Quantity(fluxes)
+        else:
+            fluxes = np.array(fluxes)
+        return fluxes
+
+    @lazyproperty
+    def mag(self):
+        """
+        The source instrumental magnitude calculated as -2.5 * log10(flux).
+        """
+        flux = self.flux
+        if isinstance(flux, u.Quantity):
+            flux = flux.value
+        return -2.5 * np.log10(flux)
+
+    def apply_filters(self):
+        """
+        Filter the catalog.
+
+        This method should be overridden in subclasses to implement
+        algorithm-specific filtering criteria.
+        """
+        msg = 'Needs to be implemented in a subclass'
+        raise NotImplementedError(msg)
+
+    def select_brightest(self):
+        """
+        Sort the catalog by the brightest fluxes and select the top
+        brightest sources.
+        """
+        newcat = self
+        if self.brightest is not None:
+            idx = np.argsort(self.flux)[::-1][:self.brightest]
+            newcat = self[idx]
+        return newcat
+
+    def apply_all_filters(self):
+        """
+        Apply all filters, select the brightest, and reset the source
+        IDs.
+        """
+        cat = self.apply_filters()
+        if cat is None:
+            return None
+        cat = cat.select_brightest()
+        cat.reset_ids()
+        return cat
+
+    def to_table(self, columns=None):
+        """
+        Create a QTable of catalog properties.
+
+        Parameters
+        ----------
+        columns : list of str, optional
+            List of column names to include in the table. If `None`,
+            uses ``self.default_columns``.
+
+        Returns
+        -------
+        table : `~astropy.table.QTable`
+            A table of the catalog properties.
+        """
+        table = QTable()
+        table.meta.update(_get_meta())  # keep table.meta type
+        if columns is None:
+            columns = self.default_columns
+        for column in columns:
+            table[column] = getattr(self, column)
+        return table
