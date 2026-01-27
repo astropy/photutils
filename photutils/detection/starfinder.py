@@ -203,14 +203,14 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'roundness', 'pa', 'max_value', 'flux', 'mag')
 
-    def _get_init_attributes(self):
+    def _get_init_attributes(self) -> tuple:
         """
         Return a tuple of attribute names to copy during slicing.
         """
         return ('data', 'unit', 'shape', 'brightest', 'peakmax',
                 'default_columns')
 
-    def _get_list_attributes(self):
+    def _get_list_attributes(self) -> tuple:
         """
         Return a tuple of attribute names that are lists instead of arrays.
         """

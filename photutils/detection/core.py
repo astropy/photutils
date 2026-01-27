@@ -374,6 +374,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
         keys.add('id')
         scalar_index = np.isscalar(index)
+        list_attrs = self._get_list_attributes()  # cache to avoid repeated calls
         for key in keys:
             value = self.__dict__[key]
 
@@ -382,7 +383,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             if np.isscalar(value):
                 continue
 
-            if key in self._get_list_attributes():
+            if key in list_attrs:
                 # apply fancy indices to list properties
                 value = np.array([*value, None], dtype=object)[:-1][index]
                 value = [value] if scalar_index else value.tolist()
@@ -395,7 +396,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         return newcls
 
-    def _get_init_attributes(self):
+    def _get_init_attributes(self) -> tuple:
         """
         Return a tuple of attribute names to copy during slicing.
 
@@ -403,7 +404,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         """
         return ('data', 'unit', 'brightest', 'peakmax', 'default_columns')
 
-    def _get_list_attributes(self):
+    def _get_list_attributes(self) -> tuple:
         """
         Return a tuple of attribute names that are lists instead of arrays.
 

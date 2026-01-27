@@ -344,7 +344,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
                                 'sharpness', 'roundness', 'pa', 'npix',
                                 'peak', 'flux', 'mag')
 
-    def _get_init_attributes(self):
+    def _get_init_attributes(self) -> tuple:
         """
         Return a tuple of attribute names to copy during slicing.
         """

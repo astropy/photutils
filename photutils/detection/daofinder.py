@@ -382,7 +382,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
                                 'roundness1', 'roundness2', 'npix', 'peak',
                                 'flux', 'mag', 'daofind_mag')
 
-    def _get_init_attributes(self):
+    def _get_init_attributes(self) -> tuple:
         """
         Return a tuple of attribute names to copy during slicing.
         """
