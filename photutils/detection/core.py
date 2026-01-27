@@ -290,12 +290,18 @@ def _validate_brightest(brightest):
     return brightest
 
 
-class StarFinderCatalogBase:
+class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     """
     Abstract base class for star finder catalogs.
 
     This class provides common functionality for catalog classes that
     calculate properties of detected stars.
+
+    Subclasses must implement the following:
+
+    * ``flux`` property: The source instrumental flux.
+    * ``apply_filters`` method: Filter the catalog using algorithm-specific
+      criteria.
 
     Parameters
     ----------
@@ -435,6 +441,9 @@ class StarFinderCatalogBase:
     def mag(self):
         """
         The source instrumental magnitude calculated as -2.5 * log10(flux).
+
+        Note: This property depends on the ``flux`` property, which must
+        be implemented in subclasses.
         """
         # ignore RuntimeWarning if flux is <= 0
         with warnings.catch_warnings():
@@ -444,11 +453,12 @@ class StarFinderCatalogBase:
                 flux = flux.value
             return -2.5 * np.log10(flux)
 
+    @abc.abstractmethod
     def apply_filters(self):
         """
         Filter the catalog.
 
-        This method should be overridden in subclasses to implement
+        This method must be implemented in subclasses to apply
         algorithm-specific filtering criteria.
         """
         msg = 'Needs to be implemented in a subclass'
