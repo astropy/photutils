@@ -452,6 +452,15 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
 
     @lazyproperty
+    def flux(self):
+        fluxes = [np.sum(arr) for arr in self.cutout_data]
+        if self.unit is not None:
+            fluxes = u.Quantity(fluxes)
+        else:
+            fluxes = np.array(fluxes)
+        return fluxes
+
+    @lazyproperty
     def moments_central(self):
         moments = np.array([_moments_central(arr, center=(xcen_, ycen_),
                                              order=2)

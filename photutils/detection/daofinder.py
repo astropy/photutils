@@ -631,6 +631,15 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         return self.data_peak
 
     @lazyproperty
+    def flux(self):
+        fluxes = [np.sum(arr) for arr in self.cutout_data]
+        if self.unit is not None:
+            fluxes = u.Quantity(fluxes)
+        else:
+            fluxes = np.array(fluxes)
+        return fluxes
+
+    @lazyproperty
     def daofind_mag(self):
         """
         The "mag" parameter returned by the original DAOFIND algorithm.

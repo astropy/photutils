@@ -243,6 +243,20 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         return cutout
 
     @lazyproperty
+    def max_value(self):
+        peaks = [np.max(arr) for arr in self.cutout_data]
+        return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
+
+    @lazyproperty
+    def flux(self):
+        fluxes = [np.sum(arr) for arr in self.cutout_data]
+        if self.unit is not None:
+            fluxes = u.Quantity(fluxes)
+        else:
+            fluxes = np.array(fluxes)
+        return fluxes
+
+    @lazyproperty
     def moments(self):
         return np.array([_moments(arr, order=1) for arr in self.cutout_data])
 
@@ -272,11 +286,6 @@ class _StarFinderCatalog(StarFinderCatalogBase):
     @lazyproperty
     def ycentroid(self):
         return self.cutout_ycentroid + self.bbox_ymin
-
-    @lazyproperty
-    def max_value(self):
-        peaks = [np.max(arr) for arr in self.cutout_data]
-        return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
 
     @lazyproperty
     def moments_central(self):

@@ -432,29 +432,17 @@ class StarFinderCatalogBase:
         self.id = np.arange(len(self)) + 1
 
     @lazyproperty
-    def flux(self):
-        """
-        The source instrumental flux.
-
-        This property should be overridden in subclasses if a different
-        calculation is needed.
-        """
-        fluxes = [np.sum(arr) for arr in self.cutout_data]
-        if self.unit is not None:
-            fluxes = u.Quantity(fluxes)
-        else:
-            fluxes = np.array(fluxes)
-        return fluxes
-
-    @lazyproperty
     def mag(self):
         """
         The source instrumental magnitude calculated as -2.5 * log10(flux).
         """
-        flux = self.flux
-        if isinstance(flux, u.Quantity):
-            flux = flux.value
-        return -2.5 * np.log10(flux)
+        # ignore RuntimeWarning if flux is <= 0
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            flux = self.flux
+            if isinstance(flux, u.Quantity):
+                flux = flux.value
+            return -2.5 * np.log10(flux)
 
     def apply_filters(self):
         """
