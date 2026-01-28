@@ -1525,7 +1525,7 @@ class PSFResultsAssembler:
         Returns
         -------
         results_tbl : `~astropy.table.QTable`
-            Comprehensive results table containing:
+            Results table containing:
 
             - Source ID and group ID
             - Initial parameter estimates

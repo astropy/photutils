@@ -14,7 +14,6 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
-from photutils.psf.image_models import _LegacyEPSFModel
 from photutils.psf.utils import _interpolate_missing_data
 from photutils.utils._parameters import as_pair
 
@@ -39,6 +38,10 @@ class EPSFStar:
         input cutout ``data`` array. If `None`, then the center of the
         input cutout ``data`` array will be used.
 
+    flux : float or `None`, optional
+        The flux of the star. If `None`, then the flux will be estimated
+        from the input ``data``.
+
     origin : tuple of two int, optional
         The ``(x, y)`` index of the origin (bottom-left corner) pixel
         of the input cutout array with respect to the original array
@@ -61,43 +64,83 @@ class EPSFStar:
         An optional identification number or label for the star.
     """
 
-    def __init__(self, data, *, weights=None, cutout_center=None,
+    def __init__(self, data, *, weights=None, cutout_center=None, flux=None,
                  origin=(0, 0), wcs_large=None, id_label=None):
 
         self._data = np.asanyarray(data)
+
+        # Validate data dimensionality and shape
+        if self._data.ndim != 2:
+            msg = f'Input data must be 2-dimensional, got {self._data.ndim}D'
+            raise ValueError(msg)
+        if self._data.size == 0:
+            msg = 'Input data cannot be empty'
+            raise ValueError(msg)
+
         self.shape = self._data.shape
 
+        # Validate and process weights
         if weights is not None:
-            if weights.shape != data.shape:
-                msg = ('weights must have the same shape as the input '
-                       'data array')
+            weights = np.asanyarray(weights)
+            if weights.shape != self._data.shape:
+                msg = (f'Weights shape {weights.shape} must match data shape '
+                       f'{self._data.shape}')
                 raise ValueError(msg)
-            self.weights = np.asanyarray(weights, dtype=float).copy()
+
+            # Check for valid weight values
+            if not np.all(np.isfinite(weights)):
+                warnings.warn('Non-finite weight values detected. These will '
+                              'be set to zero.', AstropyUserWarning)
+                weights = np.where(np.isfinite(weights), weights, 0.0)
+
+            # Copy to avoid modifying the input weights
+            self.weights = weights.astype(float, copy=True)
         else:
             self.weights = np.ones_like(self._data, dtype=float)
 
+        # Create initial mask from weights
         self.mask = (self.weights <= 0.0)
 
-        # mask out invalid image data
-        invalid_data = np.logical_not(np.isfinite(self._data))
+        # Mask out invalid image data and provide informative warning
+        invalid_data = ~np.isfinite(self._data)
         if np.any(invalid_data):
             self.weights[invalid_data] = 0.0
             self.mask[invalid_data] = True
+            warnings.warn('Input data array contains invalid data that '
+                          'will be masked.', AstropyUserWarning)
 
-        self._cutout_center = cutout_center
-        self.origin = np.asarray(origin)
+        # Validate origin
+        origin = np.asarray(origin)
+        if origin.shape != (2,):
+            msg = f'Origin must have exactly 2 elements, got {len(origin)}'
+            raise ValueError(msg)
+        if not np.all(np.isfinite(origin)):
+            msg = 'Origin coordinates must be finite'
+            raise ValueError(msg)
+        self.origin = origin.astype(int)
+
         self.wcs_large = wcs_large
         self.id_label = id_label
 
-        self.flux = self.estimate_flux()
+        # Set cutout_center (triggers validation via setter)
+        self.cutout_center = cutout_center
+
+        if flux is not None:
+            self.flux = float(flux)
+        else:
+            # Estimate flux
+            self.flux = self.estimate_flux()
+            if np.isnan(self.flux) or self.flux <= 0.0:
+                msg = 'Estimated flux is non-finite or non-positive'
+                raise ValueError(msg)
 
         self._excluded_from_fit = False
+        self._fit_error_status = 0  # 0: no error, >0: error during fitting
         self._fitinfo = None
 
     def __array__(self):
         """
-        Array representation of the mask data array (e.g., for
-        matplotlib).
+        Array representation of the data array (e.g., for matplotlib).
         """
         return self._data
 
@@ -113,6 +156,10 @@ class EPSFStar:
         """
         A `~numpy.ndarray` of the ``(x, y)`` position of the star's
         center with respect to the input cutout ``data`` array.
+
+        Initially set to the geometric center of the cutout, this value
+        is updated during ePSF building iterations to reflect the fitted
+        center position as the star is aligned with the ePSF model.
         """
         return self._cutout_center
 
@@ -120,10 +167,31 @@ class EPSFStar:
     def cutout_center(self, value):
         if value is None:
             value = ((self.shape[1] - 1) / 2.0, (self.shape[0] - 1) / 2.0)
-        elif len(value) != 2:
-            msg = ('The "cutout_center" attribute must have two elements '
-                   'in (x, y) form.')
-            raise ValueError(msg)
+        else:
+            # Convert to array-like for validation
+            value = np.asarray(value)
+
+            # Validate shape
+            if value.shape != (2,):
+                msg = ('cutout_center must have exactly two elements in '
+                       f'(x, y) form, got shape {value.shape}')
+                raise ValueError(msg)
+
+            # Validate finite values
+            if not np.all(np.isfinite(value)):
+                msg = 'All cutout_center coordinates must be finite'
+                raise ValueError(msg)
+
+            # Validate bounds (should be within the cutout image)
+            x, y = value
+            if not (0 <= x < self.shape[1]):
+                warnings.warn(f'cutout_center x-coordinate {x} is outside '
+                              f'the cutout bounds [0, {self.shape[1]})',
+                              AstropyUserWarning)
+            if not (0 <= y < self.shape[0]):
+                warnings.warn(f'cutout_center y-coordinate {y} is outside '
+                              f'the cutout bounds [0, {self.shape[0]})',
+                              AstropyUserWarning)
 
         self._cutout_center = np.asarray(value)
 
@@ -164,20 +232,16 @@ class EPSFStar:
         Returns
         -------
         flux : float
-            The estimated star's flux.
+            The estimated star's flux. If there is no valid data in the
+            cutout, `numpy.nan` will be returned.
         """
-        if np.any(self.mask):
-            data_interp = _interpolate_missing_data(self.data, method='cubic',
-                                                    mask=self.mask)
-            data_interp = _interpolate_missing_data(data_interp,
-                                                    method='nearest',
-                                                    mask=self.mask)
-            flux = np.sum(data_interp, dtype=float)
+        if not np.any(self.mask):
+            return float(np.sum(self.data))
 
-        else:
-            flux = np.sum(self.data, dtype=float)
-
-        return flux
+        # Interpolate missing data to estimate total flux
+        data_interp = _interpolate_missing_data(self.data, mask=self.mask,
+                                                method='cubic')
+        return float(np.sum(data_interp))
 
     def register_epsf(self, epsf):
         """
@@ -193,17 +257,11 @@ class EPSFStar:
         data : `~numpy.ndarray`
             A 2D array of the registered/scaled ePSF.
         """
-        legacy_epsf = _LegacyEPSFModel(epsf.data, flux=epsf.flux, x_0=epsf.x_0,
-                                       y_0=epsf.y_0,
-                                       oversampling=epsf.oversampling,
-                                       fill_value=epsf.fill_value)
-
+        # evaluate the input ePSF on the star cutout grid
         yy, xx = np.indices(self.shape, dtype=float)
-        xx = xx - self.cutout_center[0]
-        yy = yy - self.cutout_center[1]
-
-        return self.flux * legacy_epsf.evaluate(xx, yy, flux=1.0, x_0=0.0,
-                                                y_0=0.0)
+        return epsf.evaluate(xx, yy, flux=self.flux,
+                             x_0=self.cutout_center[0],
+                             y_0=self.cutout_center[1])
 
     def compute_residual_image(self, epsf):
         """
@@ -222,53 +280,21 @@ class EPSFStar:
         """
         return self.data - self.register_epsf(epsf)
 
-    @lazyproperty
-    def _xy_idx(self):
+    @property
+    def _xyidx_centered(self):
         """
-        1D arrays of x and y indices of unmasked pixels in the cutout
-        reference frame.
+        1D arrays of x and y indices of unmasked pixels, with respect
+        to the star center, in the cutout reference frame.
+
+        Returns
+        -------
+        x_centered, y_centered : tuple of `~numpy.ndarray`
+            The x and y indices centered on the star position.
         """
         yidx, xidx = np.indices(self._data.shape)
-        return xidx[~self.mask].ravel(), yidx[~self.mask].ravel()
-
-    @lazyproperty
-    def _xidx(self):
-        """
-        1D arrays of x indices of unmasked pixels in the cutout
-        reference frame.
-        """
-        return self._xy_idx[0]
-
-    @lazyproperty
-    def _yidx(self):
-        """
-        1D arrays of y indices of unmasked pixels in the cutout
-        reference frame.
-        """
-        return self._xy_idx[1]
-
-    @property
-    def _xidx_centered(self):
-        """
-        1D array of x indices of unmasked pixels, with respect to the
-        star center, in the cutout reference frame.
-        """
-        return self._xy_idx[0] - self.cutout_center[0]
-
-    @property
-    def _yidx_centered(self):
-        """
-        1D array of y indices of unmasked pixels, with respect to the
-        star center, in the cutout reference frame.
-        """
-        return self._xy_idx[1] - self.cutout_center[1]
-
-    @lazyproperty
-    def _data_values(self):
-        """
-        1D array of unmasked cutout data values.
-        """
-        return self.data[~self.mask].ravel()
+        x_centered = xidx[~self.mask].ravel() - self.cutout_center[0]
+        y_centered = yidx[~self.mask].ravel() - self.cutout_center[1]
+        return x_centered, y_centered
 
     @lazyproperty
     def _data_values_normalized(self):
@@ -276,14 +302,7 @@ class EPSFStar:
         1D array of unmasked cutout data values, normalized by the
         star's total flux.
         """
-        return self._data_values / self.flux
-
-    @lazyproperty
-    def _weight_values(self):
-        """
-        1D array of unmasked weight values.
-        """
-        return self.weights[~self.mask].ravel()
+        return self.data[~self.mask].ravel() / self.flux
 
 
 class EPSFStars:
@@ -307,44 +326,55 @@ class EPSFStars:
             raise TypeError(msg)
 
     def __len__(self):
+        """
+        Return the number of stars in this container.
+        """
         return len(self._data)
 
     def __getitem__(self, index):
+        """
+        Return a new EPSFStars instance containing the indexed star(s).
+        """
         return self.__class__(self._data[index])
 
     def __delitem__(self, index):
+        """
+        Delete the star at the given index.
+        """
         del self._data[index]
 
     def __iter__(self):
+        """
+        Iterate over the stars in this container.
+        """
         yield from self._data
 
-    # explicit set/getstate to avoid infinite recursion
-    # from pickler using __getattr__
     def __getstate__(self):
+        """
+        Return state for pickling (avoids __getattr__ recursion).
+        """
         return self.__dict__
 
     def __setstate__(self, d):
+        """
+        Restore state from pickling.
+        """
         self.__dict__ = d
 
     def __getattr__(self, attr):
-        if attr in ['cutout_center', 'center', 'flux',
-                    '_excluded_from_fit']:
-            result = np.array([getattr(star, attr) for star in self._data])
-        else:
-            result = [getattr(star, attr) for star in self._data]
+        """
+        Delegate attribute access to the underlying star list.
+
+        This allows accessing star attributes (like ``cutout_center``,
+        ``center``, ``flux``) directly on the EPSFStars container,
+        returning an array of values from all contained stars.
+        """
+        result = [getattr(star, attr) for star in self._data]
+        if attr in ['cutout_center', 'center', 'flux', '_excluded_from_fit']:
+            result = np.array(result)
         if len(self._data) == 1:
             result = result[0]
         return result
-
-    def _getattr_flat(self, attr):
-        values = []
-        for item in self._data:
-            if isinstance(item, LinkedEPSFStar):
-                values.extend(getattr(item, attr))
-            else:
-                values.append(getattr(item, attr))
-
-        return np.array(values)
 
     @property
     def cutout_center_flat(self):
@@ -356,7 +386,7 @@ class EPSFStars:
         Note that when `EPSFStars` contains any `LinkedEPSFStar`, the
         ``cutout_center`` attribute will be a nested 3D array.
         """
-        return self._getattr_flat('cutout_center')
+        return np.array([star.cutout_center for star in self.all_stars])
 
     @property
     def center_flat(self):
@@ -369,7 +399,7 @@ class EPSFStars:
         Note that when `EPSFStars` contains any `LinkedEPSFStar`, the
         ``center`` attribute will be a nested 3D array.
         """
-        return self._getattr_flat('center')
+        return np.array([star.center for star in self.all_stars])
 
     @lazyproperty
     def all_stars(self):
@@ -384,7 +414,6 @@ class EPSFStars:
                 stars.extend(item.all_stars)
             else:
                 stars.append(item)
-
         return stars
 
     @property
@@ -399,7 +428,6 @@ class EPSFStars:
             if star._excluded_from_fit:
                 continue
             stars.append(star)
-
         return stars
 
     @lazyproperty
@@ -431,15 +459,6 @@ class EPSFStars:
         Each non-excluded linked star is included in the count.
         """
         return len(self.all_good_stars)
-
-    @lazyproperty
-    def _max_shape(self):
-        """
-        The maximum x and y shapes of all the `EPSFStar` objects
-        (including linked stars).
-        """
-        return np.max([star.shape for star in self.all_stars],
-                      axis=0)
 
 
 class LinkedEPSFStar(EPSFStars):
