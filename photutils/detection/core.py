@@ -420,11 +420,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         return ()
     
     def make_cutouts(self, data):
-        # Check that self.cutout_shape exists
-        if not hasattr(self, 'cutout_shape'):
-            msg = 'To make cutouts, the cutout_shape attribute must be defined'
-            raise NotImplementedError(msg)
-        
         cutouts = []
         for xpos, ypos in self.xypos:
             cutouts.append(extract_array(data, self.cutout_shape, (ypos, xpos),
