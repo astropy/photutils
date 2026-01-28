@@ -14,6 +14,7 @@ import warnings
 
 import astropy.units as u
 import numpy as np
+from astropy.nddata import extract_array
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
@@ -427,10 +428,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     @lazyproperty
     def cutout_data(self):
         return self.make_cutouts(self.data)
-    
-    @lazyproperty
-    def npix(self):
-        return np.full(len(self), fill_value=self.kernel.data.size)
     
     @lazyproperty
     def moments(self):

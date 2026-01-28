@@ -629,6 +629,10 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             warnings.simplefilter('ignore', category=RuntimeWarning)
             return -2.5 * np.log10(self.convdata_peak / self.threshold_eff)
 
+    @lazyproperty
+    def npix(self):
+        return np.full(len(self), fill_value=self.kernel.data.size)
+
     def apply_filters(self):
         """
         Filter the catalog.
