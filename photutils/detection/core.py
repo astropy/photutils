@@ -527,12 +527,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     @lazyproperty
     def mag(self):
-        """
-        The source instrumental magnitude calculated as -2.5 * log10(flux).
-
-        Note: This property depends on the ``flux`` property, which must
-        be implemented in subclasses.
-        """
         # ignore RuntimeWarning if flux is <= 0
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -540,17 +534,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             if isinstance(flux, u.Quantity):
                 flux = flux.value
             return -2.5 * np.log10(flux)
-
-    @abc.abstractmethod
-    def apply_filters(self):
-        """
-        Filter the catalog.
-
-        This method must be implemented in subclasses to apply
-        algorithm-specific filtering criteria.
-        """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     @abc.abstractmethod
     def xcentroid(self):
@@ -584,6 +567,17 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             idx = np.argsort(self.flux)[::-1][:self.brightest]
             newcat = self[idx]
         return newcat
+
+    @abc.abstractmethod
+    def apply_filters(self):
+        """
+        Filter the catalog.
+
+        This method must be implemented in subclasses to apply
+        algorithm-specific filtering criteria.
+        """
+        msg = 'Needs to be implemented in a subclass'
+        raise NotImplementedError(msg)
 
     def apply_all_filters(self):
         """
