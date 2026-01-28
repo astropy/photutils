@@ -410,7 +410,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         This method should be overridden in subclasses.
         """
-        return ('data', 'unit', 'brightest', 'peakmax', 'default_columns')
+        return ('data', 'unit', 'kernel', 'brightest', 'peakmax', 'cutout_shape', 'default_columns')
 
     def _get_list_attributes(self) -> tuple:
         """
