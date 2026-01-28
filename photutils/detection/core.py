@@ -349,6 +349,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         self.id = np.arange(len(self)) + 1
 
+        self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm', 'flux', 'mag')
+
     def __len__(self):
         return len(self.xypos)
 
