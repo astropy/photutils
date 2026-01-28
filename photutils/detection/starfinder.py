@@ -198,6 +198,7 @@ class _StarFinderCatalog(StarFinderCatalogBase):
 
     def __init__(self, data, xypos, kernel, *, brightest=None, peakmax=None):
         super().__init__(data, xypos, kernel, brightest=brightest, peakmax=peakmax)
+        self.shape = kernel.shape  # For compatibility with slices property
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'roundness', 'pa', 'max_value', 'flux', 'mag')
 
@@ -205,7 +206,7 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         """
         Return a tuple of attribute names to copy during slicing.
         """
-        return ('data', 'unit', 'shape', 'brightest', 'peakmax',
+        return ('data', 'unit', 'kernel', 'shape', 'brightest', 'peakmax',
                 'default_columns')
 
     def _get_list_attributes(self) -> tuple:
