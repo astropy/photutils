@@ -626,43 +626,243 @@ class LinkedEPSFStar:
         if len(self._data) < 2:  # no linked stars
             return
 
-        idx = np.logical_not(self._excluded_from_fit).nonzero()[0]
-        if idx.shape == (0,):  # pylint: disable=no-member
+        if self.all_excluded:
             warnings.warn('Cannot constrain centers of linked stars because '
-                          'all the stars have been excluded during the ePSF '
+                          'they have all been excluded during the ePSF '
                           'build process.', AstropyUserWarning)
             return
 
-        good_stars = [self._data[i]
-                      for i in idx]  # pylint: disable=not-an-iterable
+        # Convert pixel coordinates to sky coordinates
+        # Note: each star may have a different WCS, so we cannot
+        # vectorize
+        good_stars = self.all_good_stars
+        sky_coords = np.array([
+            star.wcs_large.pixel_to_world_values(*star.center)
+            for star in good_stars])
 
-        coords = []
+        # Compute mean sky coordinate using spherical averaging
+        mean_lon, mean_lat = _compute_mean_sky_coordinate(sky_coords)
+
+        # Convert mean sky coordinate back to pixel coordinates for each
+        # star
         for star in good_stars:
-            wcs = star.wcs_large
-            xposition = star.center[0]
-            yposition = star.center[1]
-            coords.append(wcs.pixel_to_world_values(xposition, yposition))
+            pixel_center = star.wcs_large.world_to_pixel_values(
+                mean_lon, mean_lat)
+            star.cutout_center = np.asarray(pixel_center) - star.origin
 
-        # compute mean cartesian coordinates
-        lon, lat = np.transpose(coords)
-        lon *= np.pi / 180.0
-        lat *= np.pi / 180.0
-        x_mean = np.mean(np.cos(lat) * np.cos(lon))
-        y_mean = np.mean(np.cos(lat) * np.sin(lon))
-        z_mean = np.mean(np.sin(lat))
 
-        # convert mean cartesian coordinates back to spherical
-        hypot = np.hypot(x_mean, y_mean)
-        mean_lon = np.arctan2(y_mean, x_mean)
-        mean_lat = np.arctan2(z_mean, hypot)
-        mean_lon *= 180.0 / np.pi
-        mean_lat *= 180.0 / np.pi
+def _compute_mean_sky_coordinate(sky_coords):
+    """
+    Compute the mean sky coordinate using spherical trigonometry.
 
-        # convert mean sky coordinates back to center pixel coordinates
-        # for each star
-        for star in good_stars:
-            center = star.wcs_large.world_to_pixel_values(mean_lon, mean_lat)
-            star.cutout_center = np.array(center) - star.origin
+    This method properly handles coordinate system singularities by
+    converting to Cartesian coordinates for averaging, then converting
+    back to spherical coordinates.
+
+    Parameters
+    ----------
+    sky_coords : array-like, shape (N, 2)
+        Array of sky coordinates in degrees, where each row contains
+        (longitude, latitude).
+
+    Returns
+    -------
+    mean_lon, mean_lat : float
+        Mean longitude and latitude in degrees.
+    """
+    lon, lat = sky_coords.T
+    lon_rad = np.deg2rad(lon)
+    lat_rad = np.deg2rad(lat)
+
+    # Convert to Cartesian coordinates for averaging
+    x_cart = np.cos(lat_rad) * np.cos(lon_rad)
+    y_cart = np.cos(lat_rad) * np.sin(lon_rad)
+    z_cart = np.sin(lat_rad)
+
+    # Compute mean Cartesian coordinates
+    mean_x = np.mean(x_cart)
+    mean_y = np.mean(y_cart)
+    mean_z = np.mean(z_cart)
+
+    # Convert mean Cartesian coordinates back to spherical
+    hypot = np.hypot(mean_x, mean_y)
+    mean_lon = np.rad2deg(np.arctan2(mean_y, mean_x))
+    mean_lat = np.rad2deg(np.arctan2(mean_z, hypot))
+
+    return mean_lon, mean_lat
+
+
+def _normalize_data_input(data):
+    """
+    Normalize the input data to a list of NDData objects.
+
+    Parameters
+    ----------
+    data : `~astropy.nddata.NDData` or list of `~astropy.nddata.NDData`
+        The input data to normalize.
+
+    Returns
+    -------
+    data : list of `~astropy.nddata.NDData`
+        The normalized list of NDData objects.
+
+    Raises
+    ------
+    TypeError
+        If the input data is not an NDData object or list of NDData
+        objects.
+    """
+    if isinstance(data, NDData):
+        return [data]
+    if isinstance(data, list):
+        return data
+    msg = 'data must be a single NDData object or list of NDData objects'
+    raise TypeError(msg)
+
+
+def _normalize_catalog_input(catalogs):
+    """
+    Normalize the input catalogs to a list of Table objects.
+
+    Parameters
+    ----------
+    catalogs : `~astropy.table.Table` or list of `~astropy.table.Table`
+        The input catalogs to normalize.
+
+    Returns
+    -------
+    catalogs : list of `~astropy.table.Table`
+        The normalized list of Table objects.
+
+    Raises
+    ------
+    TypeError
+        If the input catalogs is not a Table object or list of Table
+        objects.
+    """
+    if isinstance(catalogs, Table):
+        return [catalogs]
+    if isinstance(catalogs, list):
+        return catalogs
+    msg = 'catalogs must be a single Table object or list of Table objects'
+    raise TypeError(msg)
+
+
+def _validate_nddata_list(data):
+    """
+    Validate that a list contains only valid NDData objects.
+
+    Parameters
+    ----------
+    data : list of `~astropy.nddata.NDData`
+        The list of NDData objects to validate.
+
+    Raises
+    ------
+    TypeError
+        If any element is not an NDData object.
+    ValueError
+        If any NDData object has no data array or non-2D data.
+    """
+    for i, img in enumerate(data):
+        if not isinstance(img, NDData):
+            msg = (f'All data elements must be NDData objects. '
+                   f'Element {i} is {type(img)}')
+            raise TypeError(msg)
+        if img.data.ndim != 2:
+            msg = (f'All NDData objects must contain 2D data. '
+                   f'Object at index {i} has {img.data.ndim}D data')
+            raise ValueError(msg)
+
+
+def _validate_catalog_list(catalogs):
+    """
+    Validate that a list contains only valid Table objects.
+
+    Parameters
+    ----------
+    catalogs : list of `~astropy.table.Table`
+        The list of Table objects to validate.
+
+    Raises
+    ------
+    TypeError
+        If any element is not a Table object.
+    """
+    for i, cat in enumerate(catalogs):
+        if not isinstance(cat, Table):
+            msg = (f'All catalog elements must be Table objects. '
+                   f'Element {i} is {type(cat)}')
+            raise TypeError(msg)
+        if len(cat) == 0:
+            warnings.warn(f'Catalog at index {i} is empty. No stars will '
+                          'be extracted from this catalog.',
+                          AstropyUserWarning)
+
+
+def _validate_coordinate_consistency(data, catalogs):
+    """
+    Validate coordinate system consistency between data and catalogs.
+
+    This function ensures that the necessary coordinate information
+    (either pixel coordinates or WCS for sky coordinates) is available
+    to extract stars.
+
+    Parameters
+    ----------
+    data : list of `~astropy.nddata.NDData`
+        The list of NDData objects.
+
+    catalogs : list of `~astropy.table.Table`
+        The list of Table catalogs.
+
+    Raises
+    ------
+    ValueError
+        If the coordinate information is inconsistent or missing.
+    """
+    if len(catalogs) == 1 and len(data) > 1:
+        # Single catalog with multiple images requires skycoord and WCS
+        if 'skycoord' not in catalogs[0].colnames:
+            msg = ('When inputting a single catalog with multiple NDData '
+                   'objects, the catalog must have a "skycoord" column.')
+            raise ValueError(msg)
+
+        if any(img.wcs is None for img in data):
+            msg = ('When inputting a single catalog with multiple NDData '
+                   'objects, each NDData object must have a wcs attribute.')
+            raise ValueError(msg)
+    else:
+        # Multiple catalogs (or single catalog with single image)
+        for i, cat in enumerate(catalogs):
+            has_xy = 'x' in cat.colnames and 'y' in cat.colnames
+            has_skycoord = 'skycoord' in cat.colnames
+
+            if not has_xy and not has_skycoord:
+                msg = (f'Catalog at index {i} must have either '
+                       '"x" and "y" columns or a "skycoord" column.')
+                raise ValueError(msg)
+
+            # If only skycoord is available, ensure WCS is present
+            if has_skycoord and not has_xy:
+                data_idx = i if len(data) == len(catalogs) else 0
+                if (data_idx < len(data)
+                        and data[data_idx].wcs is None):
+                    msg = (f'When catalog at index {i} contains only skycoord '
+                           f'positions, the corresponding NDData object must '
+                           'have a wcs attribute.')
+                    raise ValueError(msg)
+
+                if any(img.wcs is None for img in data):
+                    msg = ('When inputting catalog(s) with only skycoord '
+                           'positions, each NDData object must have a '
+                           'wcs attribute.')
+                    raise ValueError(msg)
+
+        if len(data) != len(catalogs):
+            msg = ('When inputting multiple catalogs, the number of '
+                   'catalogs must match the number of input images.')
+            raise ValueError(msg)
 
 
 def extract_stars(data, catalogs, *, size=(11, 11)):
@@ -725,99 +925,78 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
     stars : `EPSFStars` instance
         A `EPSFStars` instance containing the extracted stars.
     """
-    if isinstance(data, NDData):
-        data = [data]
-
-    if isinstance(catalogs, Table):
-        catalogs = [catalogs]
-
-    for img in data:
-        if not isinstance(img, NDData):
-            msg = 'data must be a single NDData or list of NDData objects'
-            raise TypeError(msg)
-
-    for cat in catalogs:
-        if not isinstance(cat, Table):
-            msg = 'catalogs must be a single Table or list of Table objects'
-            raise TypeError(msg)
-
-    if len(catalogs) == 1 and len(data) > 1:
-        if 'skycoord' not in catalogs[0].colnames:
-            msg = ('When inputting a single catalog with multiple NDData '
-                   'objects, the catalog must have a "skycoord" column.')
-            raise ValueError(msg)
-
-        if any(img.wcs is None for img in data):
-            msg = ('When inputting a single catalog with multiple NDData '
-                   'objects, each NDData object must have a wcs attribute.')
-            raise ValueError(msg)
-    else:
-        for cat in catalogs:
-            if 'x' not in cat.colnames or 'y' not in cat.colnames:
-                if 'skycoord' not in cat.colnames:
-                    msg = ('When inputting multiple catalogs, each one '
-                           'must have a "x" and "y" column or a '
-                           '"skycoord" column.')
-                    raise ValueError(msg)
-
-                if any(img.wcs is None for img in data):
-                    msg = ('When inputting catalog(s) with only skycoord '
-                           'positions, each NDData object must have a '
-                           'wcs attribute.')
-                    raise ValueError(msg)
-
-        if len(data) != len(catalogs):
-            msg = ('When inputting multiple catalogs, the number of '
-                   'catalogs must match the number of input images.')
-            raise ValueError(msg)
-
+    data = _normalize_data_input(data)
+    catalogs = _normalize_catalog_input(catalogs)
+    _validate_nddata_list(data)
+    _validate_catalog_list(catalogs)
+    _validate_coordinate_consistency(data, catalogs)
     size = as_pair('size', size, lower_bound=(3, 0), check_odd=True)
 
-    if len(catalogs) == 1:  # may included linked stars
-        use_xy = True
-        if len(data) > 1:
-            use_xy = False  # linked stars require skycoord positions
-
-        # stars is a list of lists, one list of stars in each image
-        stars = [_extract_stars(img, catalogs[0], size=size, use_xy=use_xy)
-                 for img in data]
-
-        # transpose the list of lists, to associate linked stars
-        stars = list(map(list, zip(*stars, strict=True)))
-
-        # remove 'None' stars (i.e., no or partial overlap in one or
-        # more images) and handle the case of only one "linked" star
-        stars_out = []
+    if len(catalogs) == 1:  # may include linked stars
+        stars_out = _extract_linked_stars(data, catalogs[0], size)
         n_input = len(catalogs[0]) * len(data)
-        n_extracted = 0
-        for star in stars:
-            good_stars = [i for i in star if i is not None]
-            n_extracted += len(good_stars)
-            if not good_stars:
-                continue  # no overlap in any image
-
-            if len(good_stars) == 1:
-                good_stars = good_stars[0]  # only one star, cannot be linked
-            else:
-                good_stars = LinkedEPSFStar(good_stars)
-
-            stars_out.append(good_stars)
     else:  # no linked stars
-        stars_out = []
-        for img, cat in zip(data, catalogs, strict=True):
-            stars_out.extend(_extract_stars(img, cat, size=size, use_xy=True))
+        stars_out = _extract_unlinked_stars(data, catalogs, size)
+        n_input = sum(len(cat) for cat in catalogs)
 
-        n_input = len(stars_out)
-        stars_out = [star for star in stars_out if star is not None]
-        n_extracted = len(stars_out)
-
+    n_extracted = sum(1 for star in stars_out if star is not None)
     n_excluded = n_input - n_extracted
+
     if n_excluded > 0:
         warnings.warn(f'{n_excluded} star(s) were not extracted because '
                       'their cutout region extended beyond the input image.',
                       AstropyUserWarning)
 
     return EPSFStars(stars_out)
+
+
+def _extract_linked_stars(data, catalog, size):
+    """
+    Extract stars that may be linked across multiple images.
+
+    Returns a list of EPSFStar or LinkedEPSFStar objects.
+    """
+    # Use pixel coords only for single image
+    use_xy = len(data) == 1
+
+    # Extract stars from each image
+    stars = [_extract_stars(img, catalog, size=size, use_xy=use_xy)
+             for img in data]
+
+    # Transpose to associate linked stars across images
+    stars = list(map(list, zip(*stars, strict=True)))
+
+    # Process each potential linked star group
+    stars_out = []
+    for star_group in stars:
+        good_stars = [star for star in star_group if star is not None]
+
+        if not good_stars:
+            continue  # No valid stars in any image
+
+        if len(good_stars) == 1:
+            # Single star, not linked
+            stars_out.append(good_stars[0])
+        else:
+            # Multiple stars - create linked star
+            stars_out.append(LinkedEPSFStar(good_stars))
+
+    return stars_out
+
+
+def _extract_unlinked_stars(data, catalogs, size):
+    """
+    Extract stars from individual catalogs (no linking).
+
+    Returns a flat list of EPSFStar objects.
+    """
+    stars_out = []
+    for img, cat in zip(data, catalogs, strict=True):
+        extracted = _extract_stars(img, cat, size=size, use_xy=True)
+        stars_out.extend(extracted)
+
+    # Filter out None values
+    return [star for star in stars_out if star is not None]
 
 
 def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
@@ -860,56 +1039,174 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     stars : list of `EPSFStar` objects
         A list of `EPSFStar` instances containing the extracted stars.
     """
-    size = as_pair('size', size, lower_bound=(3, 0), check_odd=True)
-
     colnames = catalog.colnames
     if ('x' not in colnames or 'y' not in colnames) or not use_xy:
         xcenters, ycenters = data.wcs.world_to_pixel(catalog['skycoord'])
+        # Convert to numpy arrays if not already
+        xcenters = np.asarray(xcenters, dtype=float)
+        ycenters = np.asarray(ycenters, dtype=float)
     else:
-        xcenters = catalog['x'].data.astype(float)
-        ycenters = catalog['y'].data.astype(float)
+        # Avoid unnecessary copying by getting data directly
+        xcenters = np.asarray(catalog['x'], dtype=float)
+        ycenters = np.asarray(catalog['y'], dtype=float)
 
     if 'id' in colnames:
         ids = catalog['id']
     else:
         ids = np.arange(len(catalog), dtype=int) + 1
 
-    if data.uncertainty is None:
-        weights = np.ones_like(data.data)
-    elif data.uncertainty.uncertainty_type == 'weights':
-        weights = np.asanyarray(data.uncertainty.array, dtype=float)
-    else:
-        # other uncertainties are converted to the inverse standard
-        # deviation as the weight; ignore divide-by-zero RuntimeWarning
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            weights = data.uncertainty.represent_as(StdDevUncertainty)
-            weights = 1.0 / weights.array
-        if np.any(~np.isfinite(weights)):
-            warnings.warn('One or more weight values is not finite. Please '
-                          'check the input uncertainty values in the input '
-                          'NDData object.', AstropyUserWarning)
+    fluxes = catalog['flux'] if 'flux' in colnames else None
 
-    if data.mask is not None:
-        weights[data.mask] = 0.0
+    # Prepare uncertainty handling - defer weight array creation
+    # until we know which cutouts we need
+    uncertainty_info = _prepare_uncertainty_info(data)
+    data_mask = data.mask  # Cache mask reference
 
     stars = []
-    for xcenter, ycenter, obj_id in zip(xcenters, ycenters, ids, strict=True):
+    nonfinite_weights_count = 0
+    for i, (xcenter, ycenter) in enumerate(zip(xcenters, ycenters,
+                                               strict=True)):
         try:
             large_slc, _ = overlap_slices(data.data.shape, size,
                                           (ycenter, xcenter), mode='strict')
-            data_cutout = data.data[large_slc]
-            weights_cutout = weights[large_slc]
         except (PartialOverlapError, NoOverlapError):
             stars.append(None)
             continue
 
+        # Extract data cutout
+        data_cutout = data.data[large_slc].copy()  # Explicit copy for safety
+
+        # Create weights cutout only for this specific region
+        weights_cutout, has_nonfinite = _create_weights_cutout(
+            uncertainty_info, data_mask, large_slc)
+        if has_nonfinite:
+            nonfinite_weights_count += 1
+
         origin = (large_slc[1].start, large_slc[0].start)
         cutout_center = (xcenter - origin[0], ycenter - origin[1])
-        star = EPSFStar(data_cutout, weights=weights_cutout,
-                        cutout_center=cutout_center, origin=origin,
-                        wcs_large=data.wcs, id_label=obj_id)
+        flux = fluxes[i] if fluxes is not None else None
 
-        stars.append(star)
+        try:
+            star = EPSFStar(data_cutout, weights=weights_cutout,
+                            cutout_center=cutout_center, origin=origin,
+                            wcs_large=data.wcs, id_label=ids[i], flux=flux)
+            stars.append(star)
+        except ValueError as exc:
+            # This can occur if flux estimation fails (e.g., cutout has
+            # all invalid/zero/negative data)
+            warnings.warn(f'Failed to create EPSFStar for object at '
+                          f'({xcenter:.1f}, {ycenter:.1f}): {exc}',
+                          AstropyUserWarning)
+            stars.append(None)
+
+    # Emit consolidated warning for non-finite weights
+    if nonfinite_weights_count > 0:
+        warnings.warn(f'{nonfinite_weights_count} star cutout(s) had '
+                      'non-finite weight values which were set to zero. '
+                      'Please check the input uncertainty values in the '
+                      'NDData object.', AstropyUserWarning)
 
     return stars
+
+
+def _prepare_uncertainty_info(data):
+    """
+    Prepare uncertainty information for efficient weight computation.
+
+    This function analyzes the input NDData's uncertainty and returns
+    a dictionary with information needed to compute weights for cutout
+    regions without creating the full weight array.
+
+    Parameters
+    ----------
+    data : `~astropy.nddata.NDData`
+        The NDData object containing the data and possibly uncertainty.
+
+    Returns
+    -------
+    info : dict
+        A dictionary with keys:
+        - 'type' : str
+            One of 'none', 'weights', or 'uncertainty'.
+        - 'array' : `~numpy.ndarray` (only if type='weights')
+            The weight array from the input data.
+        - 'uncertainty' : `~astropy.nddata.NDUncertainty` (only if
+            type='uncertainty')
+            The uncertainty object for on-the-fly conversion to weights.
+    """
+    if data.uncertainty is None:
+        return {'type': 'none'}
+
+    if data.uncertainty.uncertainty_type == 'weights':
+        return {
+            'type': 'weights',
+            'array': data.uncertainty.array,
+        }
+
+    # For other uncertainties, prepare the conversion
+    return {
+        'type': 'uncertainty',
+        'uncertainty': data.uncertainty,
+    }
+
+
+def _create_weights_cutout(uncertainty_info, data_mask, slices):
+    """
+    Create a weights cutout for a specific region.
+
+    This avoids creating the full weights array when only a small cutout
+    is needed, improving memory efficiency.
+
+    Parameters
+    ----------
+    uncertainty_info : dict
+        Dictionary containing uncertainty information.
+
+    data_mask : `~numpy.ndarray` or None
+        Mask array for the data.
+
+    slices : tuple of slice
+        Slices defining the cutout region.
+
+    Returns
+    -------
+    weights_cutout : `~numpy.ndarray`
+        The weights array for the cutout region.
+
+    has_nonfinite : bool
+        True if non-finite weights were found and set to zero.
+    """
+    cutout_shape = (slices[0].stop - slices[0].start,
+                    slices[1].stop - slices[1].start)
+
+    if uncertainty_info['type'] == 'none':
+        weights_cutout = np.ones(cutout_shape, dtype=float)
+    elif uncertainty_info['type'] == 'weights':
+        weights_cutout = np.asarray(
+            uncertainty_info['array'][slices], dtype=float)
+    else:
+        # Convert uncertainty to weights for this cutout only
+        uncertainty_cutout = uncertainty_info['uncertainty'].array[slices]
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            # Convert to standard deviation representation if needed
+            if hasattr(uncertainty_info['uncertainty'], 'represent_as'):
+                uncertainty_cutout = (
+                    uncertainty_info['uncertainty']
+                    .represent_as(StdDevUncertainty).array[slices])
+            # First compute weights, then check for non-finite values
+            weights_cutout = 1.0 / uncertainty_cutout
+
+    # Check for non-finite weights and track if found
+    has_nonfinite = not np.all(np.isfinite(weights_cutout))
+    if has_nonfinite:
+        # Set non-finite weights to 0
+        weights_cutout = np.where(np.isfinite(weights_cutout),
+                                  weights_cutout, 0.0)
+
+    # Apply mask if present
+    if data_mask is not None:
+        mask_cutout = data_mask[slices]
+        weights_cutout[mask_cutout] = 0.0
+
+    return weights_cutout, has_nonfinite
