@@ -434,6 +434,54 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         return np.array([_moments(arr, order=1) for arr in self.cutout_data])
     
     @lazyproperty
+    def cutout_centroid(self):
+        moments = self.moments
+
+        # ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
+            xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
+        return np.transpose((ycentroid, xcentroid))
+
+    @lazyproperty
+    def cutout_xcentroid(self):
+        return np.transpose(self.cutout_centroid)[1]
+
+    @lazyproperty
+    def cutout_ycentroid(self):
+        return np.transpose(self.cutout_centroid)[0]
+
+    @lazyproperty
+    def moments_central(self):
+        moments = np.array([_moments_central(arr, center=(xcen_, ycen_),
+                                             order=2)
+                            for arr, xcen_, ycen_ in
+                            zip(self.cutout_data, self.cutout_xcentroid,
+                                self.cutout_ycentroid, strict=True)])
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
+
+    @lazyproperty
+    def mu_sum(self):
+        return self.moments_central[:, 0, 2] + self.moments_central[:, 2, 0]
+
+    @lazyproperty
+    def mu_diff(self):
+        return self.moments_central[:, 0, 2] - self.moments_central[:, 2, 0]
+
+    @lazyproperty
+    def fwhm(self):
+        return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
+
+    @lazyproperty
+    def pa(self):
+        pa = np.rad2deg(0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
+                                         self.mu_diff))
+        return np.where(pa < 0, pa + 180, pa)
+    
+    @lazyproperty
     def peak(self):
         peaks = [np.max(arr) for arr in self.cutout_data]
         return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
