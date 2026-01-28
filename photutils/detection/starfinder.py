@@ -205,7 +205,7 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         """
         Return a tuple of attribute names to copy during slicing.
         """
-        return ('data', 'unit', 'kernel', 'shape', 'brightest', 'peakmax',
+        return ('data', 'unit', 'kernel', 'brightest', 'peakmax',
                 'default_columns')
 
     def _get_list_attributes(self) -> tuple:
