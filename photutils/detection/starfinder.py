@@ -198,7 +198,6 @@ class _StarFinderCatalog(StarFinderCatalogBase):
 
     def __init__(self, data, xypos, kernel, *, brightest=None, peakmax=None):
         super().__init__(data, xypos, kernel, brightest=brightest, peakmax=peakmax)
-        self.shape = kernel.shape  # For compatibility with slices property
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'roundness', 'pa', 'max_value', 'flux', 'mag')
 
@@ -219,7 +218,7 @@ class _StarFinderCatalog(StarFinderCatalogBase):
     def slices(self):
         slices = []
         for xpos, ypos in self.xypos:
-            slc, _ = overlap_slices(self.data.shape, self.shape, (ypos, xpos),
+            slc, _ = overlap_slices(self.data.shape, self.cutout_shape, (ypos, xpos),
                                     mode='trim')
             slices.append(slc)
         return slices
