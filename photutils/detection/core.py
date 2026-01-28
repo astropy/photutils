@@ -415,6 +415,11 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         return ()
     
     def make_cutouts(self, data):
+        # Check that self.cutout_shape exists
+        if not hasattr(self, 'cutout_shape'):
+            msg = 'To make cutouts, the cutout_shape attribute must be defined'
+            raise NotImplementedError(msg)
+        
         cutouts = []
         for xpos, ypos in self.xypos:
             cutouts.append(extract_array(data, self.cutout_shape, (ypos, xpos),
@@ -540,6 +545,28 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     def apply_filters(self):
         """
         Filter the catalog.
+
+        This method must be implemented in subclasses to apply
+        algorithm-specific filtering criteria.
+        """
+        msg = 'Needs to be implemented in a subclass'
+        raise NotImplementedError(msg)
+
+    @abc.abstractmethod
+    def xcentroid(self):
+        """
+        Object centroid in the x direction.
+
+        This method must be implemented in subclasses to apply
+        algorithm-specific filtering criteria.
+        """
+        msg = 'Needs to be implemented in a subclass'
+        raise NotImplementedError(msg)
+    
+    @abc.abstractmethod
+    def ycentroid(self):
+        """
+        Object centroid in the y direction.
 
         This method must be implemented in subclasses to apply
         algorithm-specific filtering criteria.
