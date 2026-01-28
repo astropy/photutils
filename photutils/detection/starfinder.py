@@ -113,7 +113,7 @@ class StarFinder(StarFinderBase):
             warnings.warn('No sources were found.', NoDetectionsWarning)
             return None
 
-        return _StarFinderCatalog(data, xypos, self.kernel.shape,
+        return _StarFinderCatalog(data, xypos, self.kernel,
                                   brightest=self.brightest,
                                   peakmax=self.peakmax)
 
@@ -178,9 +178,8 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         An Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
-    shape :  tuple of int
-        The shape of the stars cutouts. The shape in both dimensions
-        must be odd and match the shape of the smoothing kernel.
+    kernel: 2D `~numpy.ndarray`
+        A 2D array of the PSF kernel.
 
     brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
@@ -197,9 +196,8 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         value filtering will be performed.
     """
 
-    def __init__(self, data, xypos, shape, *, brightest=None, peakmax=None):
-        super().__init__(data, xypos, brightest=brightest, peakmax=peakmax)
-        self.shape = shape
+    def __init__(self, data, xypos, kernel, *, brightest=None, peakmax=None):
+        super().__init__(data, xypos, kernel, brightest=brightest, peakmax=peakmax)
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'roundness', 'pa', 'max_value', 'flux', 'mag')
 

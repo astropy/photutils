@@ -313,6 +313,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         An Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
+    kernel: 2D `~numpy.ndarray` or `_StarFinderKernel`
+        A 2D array of the PSF kernel or a `_StarFinderKernel` object.
+
     brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
         list by flux. If ``brightest`` is set to `None`, all objects
@@ -328,7 +331,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         value filtering will be performed.
     """
 
-    def __init__(self, data, xypos, *, brightest=None, peakmax=None):
+    def __init__(self, data, xypos, kernel, *, brightest=None, peakmax=None):
         # here we validate the units, but do not strip them
         inputs = (data, peakmax)
         names = ('data', 'peakmax')
@@ -337,6 +340,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         self.data = data
         unit = data.unit if isinstance(data, u.Quantity) else None
         self.unit = unit
+        self.kernel = kernel
+        self.cutout_shape = kernel.shape
 
         self.xypos = np.atleast_2d(xypos)
         self.brightest = brightest

@@ -330,16 +330,14 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         names = ('data', 'convolved_data', 'peakmax')
         _ = process_quantities(inputs, names)
 
-        super().__init__(data, xypos, brightest=brightest, peakmax=peakmax)
+        super().__init__(data, xypos, kernel, brightest=brightest, peakmax=peakmax)
 
         self.convolved_data = convolved_data
-        self.kernel = kernel
         self.sharplo = sharplo
         self.sharphi = sharphi
         self.roundlo = roundlo
         self.roundhi = roundhi
 
-        self.cutout_shape = kernel.shape
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'sharpness', 'roundness', 'pa', 'npix',
                                 'peak', 'flux', 'mag')

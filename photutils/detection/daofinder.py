@@ -365,10 +365,9 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         names = ('data', 'convolved_data', 'threshold', 'peakmax')
         _ = process_quantities(inputs, names)
 
-        super().__init__(data, xypos, brightest=brightest, peakmax=peakmax)
+        super().__init__(data, xypos, kernel, brightest=brightest, peakmax=peakmax)
 
         self.convolved_data = convolved_data
-        self.kernel = kernel
         self.threshold = threshold
         self.sharplo = sharplo
         self.sharphi = sharphi
@@ -376,7 +375,6 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         self.roundhi = roundhi
 
         self.threshold_eff = threshold * kernel.relerr
-        self.cutout_shape = kernel.shape
         self.cutout_center = tuple((size - 1) // 2 for size in kernel.shape)
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'sharpness',
                                 'roundness1', 'roundness2', 'npix', 'peak',
