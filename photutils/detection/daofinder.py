@@ -391,21 +391,6 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
                 'peakmax', 'threshold_eff', 'cutout_shape',
                 'cutout_center', 'default_columns')
 
-    def make_cutouts(self, data):
-        cutouts = []
-        for xpos, ypos in self.xypos:
-            cutouts.append(extract_array(data, self.cutout_shape, (ypos, xpos),
-                                         fill_value=0.0))
-        value = np.array(cutouts)
-        if self.unit is not None:
-            value <<= self.unit
-
-        return value
-
-    @lazyproperty
-    def cutout_data(self):
-        return self.make_cutouts(self.data)
-
     @lazyproperty
     def cutout_convdata(self):
         return self.make_cutouts(self.convolved_data)
@@ -414,6 +399,10 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
     def data_peak(self):
         return self.cutout_data[:, self.cutout_center[0],
                                 self.cutout_center[1]]
+    
+    @lazyproperty
+    def peak(self):
+        return self.data_peak
 
     @lazyproperty
     def convdata_peak(self):
@@ -627,19 +616,6 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
 
     @lazyproperty
-    def peak(self):
-        return self.data_peak
-
-    @lazyproperty
-    def flux(self):
-        fluxes = [np.sum(arr) for arr in self.cutout_data]
-        if self.unit is not None:
-            fluxes = u.Quantity(fluxes)
-        else:
-            fluxes = np.array(fluxes)
-        return fluxes
-
-    @lazyproperty
     def daofind_mag(self):
         """
         The "mag" parameter returned by the original DAOFIND algorithm.
@@ -652,10 +628,6 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             return -2.5 * np.log10(self.convdata_peak / self.threshold_eff)
-
-    @lazyproperty
-    def npix(self):
-        return np.full(len(self), fill_value=self.kernel.data.size)
 
     def apply_filters(self):
         """

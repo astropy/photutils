@@ -376,17 +376,6 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
 
         return sky
 
-    def make_cutouts(self, data):
-        cutouts = []
-        for xpos, ypos in self.xypos:
-            cutouts.append(extract_array(data, self.cutout_shape, (ypos, xpos),
-                                         fill_value=0.0))
-        value = np.array(cutouts)
-        if self.unit is not None:
-            value <<= self.unit
-
-        return value
-
     @lazyproperty
     def cutout_data_nosub(self):
         return self.make_cutouts(self.data)
@@ -406,10 +395,6 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
     @lazyproperty
     def npix(self):
         return np.count_nonzero(self.cutout_data, axis=(1, 2))
-
-    @lazyproperty
-    def moments(self):
-        return np.array([_moments(arr, order=1) for arr in self.cutout_data])
 
     @lazyproperty
     def cutout_centroid(self):
@@ -445,20 +430,6 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
     @lazyproperty
     def ycentroid(self):
         return self.cutout_ycentroid + self.cutout_yorigin
-
-    @lazyproperty
-    def peak(self):
-        peaks = [np.max(arr) for arr in self.cutout_data]
-        return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
-
-    @lazyproperty
-    def flux(self):
-        fluxes = [np.sum(arr) for arr in self.cutout_data]
-        if self.unit is not None:
-            fluxes = u.Quantity(fluxes)
-        else:
-            fluxes = np.array(fluxes)
-        return fluxes
 
     @lazyproperty
     def moments_central(self):

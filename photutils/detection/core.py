@@ -20,6 +20,7 @@ from astropy.utils import lazyproperty
 
 from photutils.detection.peakfinder import find_peaks
 from photutils.utils._misc import _get_meta
+from photutils.utils._moments import _moments, _moments_central
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -299,7 +300,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     Subclasses must implement the following:
 
-    * ``flux`` property: The source instrumental flux.
     * ``apply_filters`` method: Filter the catalog using algorithm-specific
       criteria.
 
@@ -412,6 +412,34 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         list attributes.
         """
         return ()
+    
+    def make_cutouts(self, data):
+        cutouts = []
+        for xpos, ypos in self.xypos:
+            cutouts.append(extract_array(data, self.cutout_shape, (ypos, xpos),
+                                         fill_value=0.0))
+        value = np.array(cutouts)
+        if self.unit is not None:
+            value <<= self.unit
+
+        return value
+
+    @lazyproperty
+    def cutout_data(self):
+        return self.make_cutouts(self.data)
+    
+    @lazyproperty
+    def npix(self):
+        return np.full(len(self), fill_value=self.kernel.data.size)
+    
+    @lazyproperty
+    def moments(self):
+        return np.array([_moments(arr, order=1) for arr in self.cutout_data])
+    
+    @lazyproperty
+    def peak(self):
+        peaks = [np.max(arr) for arr in self.cutout_data]
+        return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
 
     @lazyproperty
     def isscalar(self):
@@ -437,6 +465,15 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         Reset the ID column to be consecutive integers.
         """
         self.id = np.arange(len(self)) + 1
+
+    @lazyproperty
+    def flux(self):
+        fluxes = [np.sum(arr) for arr in self.cutout_data]
+        if self.unit is not None:
+            fluxes = u.Quantity(fluxes)
+        else:
+            fluxes = np.array(fluxes)
+        return fluxes
 
     @lazyproperty
     def mag(self):
