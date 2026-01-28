@@ -3,19 +3,14 @@
 Define the StarFinder class.
 """
 
-import inspect
 import warnings
 
-import astropy.units as u
 import numpy as np
-from astropy.table import QTable
 from astropy.utils import lazyproperty
 
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _validate_brightest)
 from photutils.utils._convolution import _filter_data
-from photutils.utils._misc import _get_meta
-from photutils.utils._moments import _moments, _moments_central
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import _overlap_slices as overlap_slices
 from photutils.utils.exceptions import NoDetectionsWarning
