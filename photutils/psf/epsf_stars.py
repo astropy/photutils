@@ -461,13 +461,17 @@ class EPSFStars:
         return len(self.all_good_stars)
 
 
-class LinkedEPSFStar(EPSFStars):
+class LinkedEPSFStar:
     """
     A class to hold a list of `EPSFStar` objects for linked stars.
 
     Linked stars are `EPSFStar` cutouts from different images that
     represent the same physical star. When building the ePSF, linked
     stars are constrained to have the same sky coordinates.
+
+    Note that unlike `EPSFStars` (which is a collection of potentially
+    unrelated stars), `LinkedEPSFStar` represents a single logical star
+    observed in multiple images.
 
     Parameters
     ----------
@@ -487,7 +491,126 @@ class LinkedEPSFStar(EPSFStars):
                        'attribute')
                 raise ValueError(msg)
 
-        super().__init__(stars_list)
+        self._data = list(stars_list)
+
+    def __len__(self):
+        """
+        Return the number of EPSFStar objects in this linked star.
+        """
+        return len(self._data)
+
+    def __getitem__(self, index):
+        """
+        Return the EPSFStar at the given index.
+        """
+        return self._data[index]
+
+    def __iter__(self):
+        """
+        Iterate over the EPSFStar objects in this linked star.
+        """
+        yield from self._data
+
+    def __getattr__(self, attr):
+        """
+        Delegate attribute access to the underlying star list.
+
+        This provides access to common star attributes like cutout_center,
+        center, flux, etc. as arrays when accessed on the LinkedEPSFStar.
+        """
+        if attr.startswith('_'):
+            msg = f"'{type(self).__name__}' object has no attribute '{attr}'"
+            raise AttributeError(msg)
+        result = [getattr(star, attr) for star in self._data]
+        if attr in ('cutout_center', 'center', 'flux', '_excluded_from_fit'):
+            result = np.array(result)
+        if len(self._data) == 1:
+            result = result[0]
+        return result
+
+    def __getstate__(self):
+        """
+        Return state for pickling (avoids __getattr__ recursion).
+        """
+        return self.__dict__
+
+    def __setstate__(self, d):
+        """
+        Restore state from pickling.
+        """
+        self.__dict__ = d
+
+    @property
+    def all_stars(self):
+        """
+        A flat list of all `EPSFStar` objects in this linked star.
+
+        Since LinkedEPSFStar only contains EPSFStar objects (not nested
+        LinkedEPSFStar), this is simply the internal list.
+        """
+        return self._data
+
+    @property
+    def cutout_center_flat(self):
+        """
+        A `~numpy.ndarray` of the ``(x, y)`` position of all the stars'
+        centers with respect to the input cutout ``data`` array, as a
+        2D array (``n_all_stars`` x 2).
+        """
+        return np.array([star.cutout_center for star in self._data])
+
+    @property
+    def center_flat(self):
+        """
+        A `~numpy.ndarray` of the ``(x, y)`` position of all the stars'
+        centers with respect to the original (large) image (not the
+        cutout image) as a 2D array (``n_all_stars`` x 2).
+        """
+        return np.array([star.center for star in self._data])
+
+    @property
+    def n_stars(self):
+        """
+        The number of `EPSFStar` objects in this linked star.
+
+        For LinkedEPSFStar this is the same as n_all_stars since there
+        is no nesting.
+        """
+        return len(self._data)
+
+    @property
+    def n_all_stars(self):
+        """
+        The total number of `EPSFStar` objects in this linked star.
+
+        For LinkedEPSFStar this is the same as n_stars since there
+        is no nesting.
+        """
+        return len(self._data)
+
+    @property
+    def n_good_stars(self):
+        """
+        The number of `EPSFStar` objects that have not been excluded
+        from fitting.
+        """
+        return len(self.all_good_stars)
+
+    @property
+    def all_good_stars(self):
+        """
+        A list of all `EPSFStar` objects that have not been excluded
+        from fitting.
+        """
+        return [star for star in self._data if not star._excluded_from_fit]
+
+    @property
+    def all_excluded(self):
+        """
+        Whether all `EPSFStar` objects in this linked star have been
+        excluded from fitting during the ePSF build process.
+        """
+        return all(star._excluded_from_fit for star in self._data)
 
     def constrain_centers(self):
         """
