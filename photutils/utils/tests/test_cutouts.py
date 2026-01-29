@@ -5,7 +5,7 @@ Tests for the cutouts module.
 
 import numpy as np
 import pytest
-from astropy.nddata.utils import PartialOverlapError
+from astropy.nddata import PartialOverlapError
 from numpy.testing import assert_equal
 
 from photutils.aperture import BoundingBox

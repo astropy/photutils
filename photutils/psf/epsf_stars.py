@@ -7,9 +7,8 @@ cutouts for fitting and building ePSFs.
 import warnings
 
 import numpy as np
-from astropy.nddata import NDData, StdDevUncertainty
-from astropy.nddata.utils import (NoOverlapError, PartialOverlapError,
-                                  overlap_slices)
+from astropy.nddata import (NDData, NoOverlapError, PartialOverlapError,
+                            StdDevUncertainty, overlap_slices)
 from astropy.table import Table
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning

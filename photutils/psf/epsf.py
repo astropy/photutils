@@ -9,8 +9,7 @@ import warnings
 
 import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
-from astropy.nddata.utils import (NoOverlapError, PartialOverlapError,
-                                  overlap_slices)
+from astropy.nddata import NoOverlapError, PartialOverlapError, overlap_slices
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import convolve
