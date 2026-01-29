@@ -67,7 +67,7 @@ def test_centroid_comquad(test_simple_data, x_std, y_std, theta, units):
 
     # test with mask
     mask = np.zeros(data.shape, dtype=bool)
-    data[10, 10] = 1.0e5
+    data[10, 10] = 1.0e5 * u.nJy if units else 1.0e5
     mask[10, 10] = True
     xc, yc = centroid_com(data, mask=mask)
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
@@ -141,7 +141,6 @@ def test_centroid_com_invalid_inputs():
     match = 'data and mask must have the same shape'
     with pytest.raises(ValueError, match=match):
         centroid_com(data, mask=mask)
-
 
 def test_centroid_quadratic_xypeak():
     data = np.zeros((11, 11))
