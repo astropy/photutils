@@ -4,6 +4,7 @@ Tests for the core module.
 """
 
 from contextlib import nullcontext
+from unittest.mock import patch
 
 import astropy.units as u
 import numpy as np
@@ -310,7 +311,83 @@ def test_centroid_quadratic_edge():
     assert_allclose(xycen, (0, 0))
 
 
+def test_centroid_quadratic_fit_failed():
+    """
+    Test centroid_quadratic when the quadratic fit fails.
+
+    This tests the LinAlgError exception handling. Since lstsq is
+    very robust (uses SVD internally), we use mocking to trigger this
+    condition.
+    """
+    data = np.zeros((11, 11))
+    data[5, 5] = 10.0
+    data[4, 5] = 8.0
+    data[6, 5] = 8.0
+    data[5, 4] = 8.0
+    data[5, 6] = 8.0
+
+    with patch('numpy.linalg.lstsq', side_effect=np.linalg.LinAlgError):
+        match = 'quadratic fit failed'
+        with pytest.warns(AstropyUserWarning, match=match):
+            xycen = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=5)
+        assert np.isnan(xycen[0])
+        assert np.isnan(xycen[1])
+
+
+def test_centroid_quadratic_no_maximum():
+    """
+    Test centroid_quadratic when the quadratic fit does not have a
+    maximum.
+
+    This tests the case where the fitted polynomial has a saddle point
+    or minimum instead of a maximum (det <= 0 or positive curvature).
+    """
+    # Create data with a saddle-like pattern that will result in a
+    # quadratic fit without a proper maximum
+    data = np.zeros((11, 11))
+    y, x = np.mgrid[0:11, 0:11]
+
+    # Create a saddle: z = x^2 - y^2 (positive curvature in x, negative
+    # in y)
+    data = (x - 5.0)**2 - (y - 5.0)**2 + 10
+    # Add a peak so the fit box centers there
+    data[5, 5] = 20.0
+
+    match = 'quadratic fit does not have a maximum'
+    with pytest.warns(AstropyUserWarning, match=match):
+        xycen = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=5)
+    assert np.isnan(xycen[0])
+    assert np.isnan(xycen[1])
+
+
+def test_centroid_quadratic_max_outside_image():
+    """
+    Test centroid_quadratic when the polynomial maximum falls outside
+    the image.
+
+    This tests the case where the quadratic fit has a valid maximum but
+    it lies outside the image boundaries.
+    """
+    # Create data where values increase toward the origin (0, 0) but
+    # with a local peak at (3, 3). This causes the quadratic fit to
+    # extrapolate the maximum outside the image boundaries.
+    data = np.zeros((7, 7))
+    y, x = np.mgrid[0:7, 0:7]
+    data = 10 - x.astype(float) - y.astype(float)
+    data = np.maximum(data, 0.1)
+    data[3, 3] = 6.0  # local peak to center the fit
+
+    match = 'quadratic polynomial maximum value falls outside'
+    with pytest.warns(AstropyUserWarning, match=match):
+        xycen = centroid_quadratic(data, xpeak=3, ypeak=3, fit_boxsize=5)
+    assert np.isnan(xycen[0])
+    assert np.isnan(xycen[1])
+
+
 class TestCentroidSources:
+    """
+    Test the centroid_sources function.
+    """
 
     @staticmethod
     def test_centroid_sources():
