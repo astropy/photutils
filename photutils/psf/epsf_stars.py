@@ -8,7 +8,8 @@ import warnings
 
 import numpy as np
 from astropy.nddata import NDData, StdDevUncertainty
-from astropy.nddata.utils import NoOverlapError, PartialOverlapError
+from astropy.nddata.utils import (NoOverlapError, PartialOverlapError,
+                                  overlap_slices)
 from astropy.table import Table
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
@@ -17,7 +18,6 @@ from photutils.aperture import BoundingBox
 from photutils.psf.image_models import _LegacyEPSFModel
 from photutils.psf.utils import _interpolate_missing_data
 from photutils.utils._parameters import as_pair
-from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars']
 
