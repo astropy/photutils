@@ -16,7 +16,7 @@ import astropy.units as u
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.fitting import TRFLSQFitter
-from astropy.nddata import NDData, NoOverlapError
+from astropy.nddata import NDData, NoOverlapError, overlap_slices
 from astropy.table import QTable, Table, hstack, join
 from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
@@ -24,7 +24,6 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.aperture import CircularAperture
 from photutils.datasets import make_model_image as _make_model_image
 from photutils.utils._misc import _get_meta
-from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 from .flags import PSF_FLAGS
 
