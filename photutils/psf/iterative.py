@@ -48,12 +48,12 @@ class IterativePSFPhotometry:
     fit_shape : int or length-2 array_like
         The rectangular shape around the initial center of a source that
         will be used to define the PSF-fitting data. If ``fit_shape``
-        is a scalar then a square shape of size ``fit_shape`` will
-        be used. If ``fit_shape`` has two elements, they must be in
-        ``(ny, nx)`` order. Each element of ``fit_shape`` must be an odd
-        number. In general, ``fit_shape`` should be set to a small size
-        (e.g., ``(5, 5)``) that covers the region with the highest flux
-        signal-to-noise.
+        is a scalar then a square shape of size ``fit_shape`` will be
+        used. If ``fit_shape`` has two elements, they must be in ``(ny,
+        nx)`` order. Each element of ``fit_shape`` must be an odd number
+        greater than or equal to 3. In general, ``fit_shape`` should be
+        set to a small size (e.g., ``(5, 5)``) that covers the region
+        with the highest flux signal-to-noise.
 
     finder : callable or `~photutils.detection.StarFinderBase`
         A callable used to identify sources in an image. This is a
