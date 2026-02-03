@@ -9,7 +9,7 @@ import warnings
 
 import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
-from astropy.nddata.utils import NoOverlapError, PartialOverlapError
+from astropy.nddata import NoOverlapError, PartialOverlapError, overlap_slices
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import convolve
@@ -23,7 +23,6 @@ from photutils.utils._parameters import (SigmaClipSentinelDefault, as_pair,
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._round import py2intround
 from photutils.utils._stats import nanmedian
-from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['EPSFBuilder', 'EPSFFitter']
 

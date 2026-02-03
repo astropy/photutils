@@ -52,12 +52,12 @@ Using pip
 
 To install Photutils with `pip`_, run::
 
-    pip install photutils
+    python -m pip install photutils
 
 If you want to install Photutils along with all of its optional
 dependencies, you can instead run::
 
-    pip install "photutils[all]"
+    python -m pip install "photutils[all]"
 
 In most cases, this will install a pre-compiled version (called a wheel)
 of Photutils, but if you are using a very recent version of Python
@@ -121,12 +121,12 @@ Then to build and install Photutils (with all of its optional
 dependencies), run::
 
     cd photutils
-    pip install ".[all]"
+    python -m pip install ".[all]"
 
 Alternatively, `pip`_ can be used to retrieve and install the latest
 development wheel (with all optional dependencies)::
 
-    pip install --upgrade --extra-index-url https://pypi.anaconda.org/astropy/simple "photutils[all]" --pre
+    python -m pip install --upgrade --extra-index-url https://pypi.anaconda.org/astropy/simple "photutils[all]" --pre
 
 
 Testing an installed Photutils

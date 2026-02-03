@@ -4,6 +4,7 @@ Tests for the core module.
 """
 
 from contextlib import nullcontext
+from unittest.mock import patch
 
 import astropy.units as u
 import numpy as np
@@ -18,19 +19,11 @@ from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
 from photutils.datasets import make_4gaussians_image, make_noise_image
 
 
-@pytest.fixture(name='test_simple_data')
-def fixture_test_simple_data():
-    xcen = 25.7
-    ycen = 26.2
-    data = np.zeros((3, 3))
-    data[0:2, 1] = 1.0
-    data[1, 0:2] = 1.0
-    data[1, 1] = 2.0
-    return data, xcen, ycen
-
-
 @pytest.fixture(name='test_data')
 def fixture_test_data():
+    """
+    Create test data with multiple Gaussian sources.
+    """
     ysize = 50
     xsize = 47
     yy, xx = np.mgrid[0:ysize, 0:xsize]
@@ -44,63 +37,63 @@ def fixture_test_data():
     return data, xpos, ypos
 
 
-# NOTE: the fitting routines in astropy use scipy.optimize
-@pytest.mark.parametrize('x_std', [3.2, 4.0])
-@pytest.mark.parametrize('y_std', [5.7, 4.1])
-@pytest.mark.parametrize('theta', np.deg2rad([30.0, 45.0]))
-@pytest.mark.parametrize('units', [True, False])
-def test_centroid_comquad(test_simple_data, x_std, y_std, theta, units):
-    data, xcen, ycen = test_simple_data
-
-    if units:
-        data = data * u.nJy
-
-    model = Gaussian2D(2.4, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
-                       theta=theta)
-    y, x = np.mgrid[0:50, 0:47]
-    data = model(x, y)
-    xc, yc = centroid_com(data)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
-
-    xc, yc = centroid_quadratic(data)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
-
-    # test with mask
-    mask = np.zeros(data.shape, dtype=bool)
-    data[10, 10] = 1.0e5
-    mask[10, 10] = True
-    xc, yc = centroid_com(data, mask=mask)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
-
-    xc, yc = centroid_quadratic(data, mask=mask)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
-
-
-@pytest.mark.parametrize('ndim', [1, 2, 3, 4, 5])
-def test_centroid_com_zero_sum(ndim):
-    data = np.zeros([10] * ndim)
-    cen = centroid_com(data)
-    assert cen.shape == (ndim,)
-    for cen_ in cen:
-        assert np.isnan(cen_)
-
-
-@pytest.mark.parametrize('use_mask', [True, False])
-def test_centroid_comquad_nan_withmask(use_mask):
+@pytest.fixture(name='nan_data')
+def fixture_nan_data():
+    """
+    Create Gaussian test data with NaN values in row 20.
+    """
     xc_ref = 24.7
     yc_ref = 25.2
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
     data[20, :] = np.nan
+    return data, xc_ref, yc_ref
+
+
+@pytest.mark.parametrize('x_std', [3.2, 4.0])
+@pytest.mark.parametrize('y_std', [5.7, 4.1])
+@pytest.mark.parametrize('theta', np.deg2rad([30.0, 45.0]))
+@pytest.mark.parametrize('units', [True, False])
+def test_centroid_com(x_std, y_std, theta, units):
+    """
+    Test centroid_com with Gaussian data.
+    """
+    xcen = 25.7
+    ycen = 26.2
+    model = Gaussian2D(2.4, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
+                       theta=theta)
+    y, x = np.mgrid[0:50, 0:47]
+    data = model(x, y)
+
+    if units:
+        data = data * u.nJy
+
+    xc, yc = centroid_com(data)
+    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
+
+    # test with mask
+    x0 = 11
+    y0 = 15
+    data[y0, x0] = 1.0e5 * u.nJy if units else 1.0e5
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[y0, x0] = True
+    xc, yc = centroid_com(data, mask=mask)
+    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
+
+
+@pytest.mark.parametrize('use_mask', [True, False])
+def test_centroid_com_nan_withmask(nan_data, use_mask):
+    """
+    Test centroid_com with NaN values and optional mask.
+    """
+    data, xc_ref, yc_ref = nan_data
     if use_mask:
         mask = np.zeros(data.shape, dtype=bool)
         mask[20, :] = True
-        nwarn = 0
         ctx = nullcontext()
     else:
         mask = None
-        nwarn = 1
         match = 'Input data contains non-finite values'
         ctx = pytest.warns(AstropyUserWarning, match=match)
 
@@ -108,17 +101,14 @@ def test_centroid_comquad_nan_withmask(use_mask):
         xc, yc = centroid_com(data, mask=mask)
         assert_allclose(xc, xc_ref, rtol=0, atol=1.0e-3)
         assert yc > yc_ref
-        if nwarn == 1:
-            assert len(warnlist) == nwarn
-
-    with ctx as warnlist:
-        xc, yc = centroid_quadratic(data, mask=mask)
-        assert_allclose(xc, xc_ref, rtol=0, atol=0.15)
-        if nwarn == 1:
-            assert len(warnlist) == nwarn
+        if not use_mask:
+            assert len(warnlist) == 1
 
 
 def test_centroid_com_allmask():
+    """
+    Test centroid_com when all data are masked or zero.
+    """
     xc_ref = 24.7
     yc_ref = 25.2
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
@@ -143,7 +133,51 @@ def test_centroid_com_invalid_inputs():
         centroid_com(data, mask=mask)
 
 
+@pytest.mark.parametrize('ndim', [1, 2, 3, 4, 5])
+def test_centroid_com_zero_sum(ndim):
+    data = np.zeros([10] * ndim)
+    cen = centroid_com(data)
+    assert cen.shape == (ndim,)
+    for cen_ in cen:
+        assert np.isnan(cen_)
+    assert_allclose(cen, [np.nan] * ndim)
+
+
+@pytest.mark.parametrize('x_std', [3.2, 4.0])
+@pytest.mark.parametrize('y_std', [5.7, 4.1])
+@pytest.mark.parametrize('theta', np.deg2rad([30.0, 45.0]))
+@pytest.mark.parametrize('units', [True, False])
+def test_centroid_quadratic(x_std, y_std, theta, units):
+    """
+    Test centroid_quadratic with Gaussian data.
+    """
+    xcen = 25.7
+    ycen = 26.2
+    model = Gaussian2D(2.4, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
+                       theta=theta)
+    y, x = np.mgrid[0:50, 0:47]
+    data = model(x, y)
+    if units:
+        data = data * u.nJy
+
+    xc, yc = centroid_quadratic(data)
+    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
+
+    # test with mask
+    x0 = 11
+    y0 = 15
+    data[y0, x0] = 1.0e5 * u.nJy if units else 1.0e5
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[y0, x0] = True
+    data[y0, x0] = 1.0e5 * u.nJy if units else 1.0e5
+    xc, yc = centroid_quadratic(data, mask=mask)
+    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
+
+
 def test_centroid_quadratic_xypeak():
+    """
+    Test centroid_quadratic with xpeak and ypeak inputs.
+    """
     data = np.zeros((11, 11))
     data[5, 5] = 100
     data[7, 7] = 110
@@ -171,6 +205,9 @@ def test_centroid_quadratic_xypeak():
 
 
 def test_centroid_quadratic_nan():
+    """
+    Test centroid_quadratic with NaN values.
+    """
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
@@ -183,7 +220,33 @@ def test_centroid_quadratic_nan():
     assert_allclose(xycen, [47.58324, 51.827182])
 
 
+@pytest.mark.parametrize('use_mask', [True, False])
+def test_centroid_quadratic_nan_withmask(nan_data, use_mask):
+    """
+    Test centroid_quadratic with NaN values and optional mask.
+    """
+    data, xc_ref, yc_ref = nan_data
+    if use_mask:
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[20, :] = True
+        ctx = nullcontext()
+    else:
+        mask = None
+        match = 'Input data contains non-finite values'
+        ctx = pytest.warns(AstropyUserWarning, match=match)
+
+    with ctx as warnlist:
+        xc, yc = centroid_quadratic(data, mask=mask)
+        assert_allclose(xc, xc_ref, rtol=0, atol=0.15)
+        assert_allclose(yc, yc_ref, rtol=0, atol=0.15)
+        if not use_mask:
+            assert len(warnlist) == 1
+
+
 def test_centroid_quadratic_npts():
+    """
+    Test centroid_quadratic with insufficient unmasked data points.
+    """
     data = np.zeros((3, 3))
     data[1, 1] = 1
     mask = np.zeros(data.shape, dtype=bool)
@@ -195,6 +258,9 @@ def test_centroid_quadratic_npts():
 
 
 def test_centroid_quadratic_invalid_inputs():
+    """
+    Test centroid_quadratic with invalid inputs.
+    """
     data = np.zeros((4, 4, 4))
     match = 'data must be a 2D array'
     with pytest.raises(ValueError, match=match):
@@ -224,6 +290,9 @@ def test_centroid_quadratic_invalid_inputs():
 
 
 def test_centroid_quadratic_edge():
+    """
+    Test centroid_quadratic when the maximum is at the edge.
+    """
     data = np.zeros((11, 11))
     data[1, 1] = 100
     data[9, 9] = 100
@@ -242,10 +311,89 @@ def test_centroid_quadratic_edge():
     assert_allclose(xycen, (0, 0))
 
 
+def test_centroid_quadratic_fit_failed():
+    """
+    Test centroid_quadratic when the quadratic fit fails.
+
+    This tests the LinAlgError exception handling. Since lstsq is
+    very robust (uses SVD internally), we use mocking to trigger this
+    condition.
+    """
+    data = np.zeros((11, 11))
+    data[5, 5] = 10.0
+    data[4, 5] = 8.0
+    data[6, 5] = 8.0
+    data[5, 4] = 8.0
+    data[5, 6] = 8.0
+
+    with patch('numpy.linalg.lstsq', side_effect=np.linalg.LinAlgError):
+        match = 'quadratic fit failed'
+        with pytest.warns(AstropyUserWarning, match=match):
+            xycen = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=5)
+        assert np.isnan(xycen[0])
+        assert np.isnan(xycen[1])
+
+
+def test_centroid_quadratic_no_maximum():
+    """
+    Test centroid_quadratic when the quadratic fit does not have a
+    maximum.
+
+    This tests the case where the fitted polynomial has a saddle point
+    or minimum instead of a maximum (det <= 0 or positive curvature).
+    """
+    # Create data with a saddle-like pattern that will result in a
+    # quadratic fit without a proper maximum
+    data = np.zeros((11, 11))
+    y, x = np.mgrid[0:11, 0:11]
+
+    # Create a saddle: z = x^2 - y^2 (positive curvature in x, negative
+    # in y)
+    data = (x - 5.0)**2 - (y - 5.0)**2 + 10
+    # Add a peak so the fit box centers there
+    data[5, 5] = 20.0
+
+    match = 'quadratic fit does not have a maximum'
+    with pytest.warns(AstropyUserWarning, match=match):
+        xycen = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=5)
+    assert np.isnan(xycen[0])
+    assert np.isnan(xycen[1])
+
+
+def test_centroid_quadratic_max_outside_image():
+    """
+    Test centroid_quadratic when the polynomial maximum falls outside
+    the image.
+
+    This tests the case where the quadratic fit has a valid maximum but
+    it lies outside the image boundaries.
+    """
+    # Create data where values increase toward the origin (0, 0) but
+    # with a local peak at (3, 3). This causes the quadratic fit to
+    # extrapolate the maximum outside the image boundaries.
+    data = np.zeros((7, 7))
+    y, x = np.mgrid[0:7, 0:7]
+    data = 10 - x.astype(float) - y.astype(float)
+    data = np.maximum(data, 0.1)
+    data[3, 3] = 6.0  # local peak to center the fit
+
+    match = 'quadratic polynomial maximum value falls outside'
+    with pytest.warns(AstropyUserWarning, match=match):
+        xycen = centroid_quadratic(data, xpeak=3, ypeak=3, fit_boxsize=5)
+    assert np.isnan(xycen[0])
+    assert np.isnan(xycen[1])
+
+
 class TestCentroidSources:
+    """
+    Test the centroid_sources function.
+    """
 
     @staticmethod
     def test_centroid_sources():
+        """
+        Test centroid_sources with Gaussian data.
+        """
         theta = np.pi / 6.0
         model = Gaussian2D(2.4, 25.7, 26.2, x_stddev=3.2, y_stddev=5.7,
                            theta=theta)
@@ -292,6 +440,9 @@ class TestCentroidSources:
                                                centroid_quadratic,
                                                centroid_1dg, centroid_2dg])
     def test_xypos(self, test_data, centroid_func):
+        """
+        Test centroid_sources with xpos/ypos outside data range.
+        """
         data = test_data[0]
         match = 'xpos, ypos values contain points outside the input data'
         with pytest.raises(ValueError, match=match):
@@ -299,6 +450,10 @@ class TestCentroidSources:
                              centroid_func=centroid_func)
 
     def test_gaussian_fits_npts(self, test_data):
+        """
+        Test centroid_sources with Gaussian fits with insufficient
+        points.
+        """
         data, xpos, ypos = test_data
         xcen, ycen = centroid_sources(data, xpos, ypos, box_size=3,
                                       centroid_func=centroid_1dg)
@@ -329,6 +484,10 @@ class TestCentroidSources:
 
     @pytest.mark.filterwarnings(r'ignore:.*no quadratic fit was performed')
     def test_centroid_quadratic_kwargs(self):
+        """
+        Test centroid_sources with centroid_quadratic and various
+        keyword arguments.
+        """
         data = np.zeros((11, 11))
         data[5, 5] = 100
         data[7, 7] = 110
@@ -375,6 +534,9 @@ class TestCentroidSources:
         assert_allclose(xycen, (xc_ref, yc_ref), atol=0.01)
 
     def test_mask(self, test_data):
+        """
+        Test centroid_sources with mask input.
+        """
         data = test_data[0]
         xcen1, ycen1 = centroid_sources(data, 25, 23, box_size=(55, 55))
 
@@ -388,6 +550,9 @@ class TestCentroidSources:
         assert not np.allclose(ycen1, ycen2)
 
     def test_error_none(self, test_data):
+        """
+        Test centroid_sources with error=None for Gaussian centroids.
+        """
         data = test_data[0]
         xycen1 = centroid_sources(data, xpos=25, ypos=25, error=None,
                                   centroid_func=centroid_1dg)
@@ -397,6 +562,10 @@ class TestCentroidSources:
         assert_allclose(xycen2, ([25], [25]), atol=1.0e-3)
 
     def test_xypeaks_none(self, test_data):
+        """
+        Test centroid_sources with xpeak and ypeak as None for
+        centroid_quadratic.
+        """
         data = test_data[0]
         xycen1 = centroid_sources(data, xpos=25, ypos=25, error=None,
                                   xpeak=None, ypeak=25,

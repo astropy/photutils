@@ -8,12 +8,11 @@ import astropy.units as u
 import numpy as np
 from astropy.convolution import discretize_model
 from astropy.modeling import Model
-from astropy.nddata.utils import NoOverlapError
+from astropy.nddata import NoOverlapError, overlap_slices
 from astropy.table import Table
 
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
-from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['make_model_image']
 

@@ -7,11 +7,11 @@ import inspect
 import warnings
 
 import numpy as np
+from astropy.nddata import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._parameters import as_pair
 from photutils.utils._round import py2intround
-from photutils.utils.cutouts import _overlap_slices as overlap_slices
 
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
@@ -327,7 +327,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
 
     try:
         c = np.linalg.lstsq(coeff_matrix, cutout, rcond=None)[0]
-    except np.linalg.LinAlgError:  # pragma: no cover
+    except np.linalg.LinAlgError:
         warnings.warn('quadratic fit failed', AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
@@ -335,7 +335,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     _, c10, c01, c11, c20, c02 = c
     det = 4 * c20 * c02 - c11**2
     if det <= 0 or ((c20 > 0.0 and c02 >= 0.0)
-                    or (c20 >= 0.0 and c02 > 0.0)):  # pragma: no cover
+                    or (c20 >= 0.0 and c02 > 0.0)):
         warnings.warn('quadratic fit does not have a maximum',
                       AstropyUserWarning)
         return np.array((np.nan, np.nan))
@@ -344,7 +344,7 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     ym = (c10 * c11 - 2.0 * c20 * c01) / det
     if 0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0):
         xycen = np.array((xm, ym), dtype=float)
-    else:  # pragma: no cover
+    else:
         warnings.warn('quadratic polynomial maximum value falls outside '
                       'of the image', AstropyUserWarning)
         return np.array((np.nan, np.nan))
