@@ -6,13 +6,13 @@ Define the StarFinder class.
 import warnings
 
 import numpy as np
+from astropy.nddata import overlap_slices
 from astropy.utils import lazyproperty
 
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _validate_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._quantity_helpers import process_quantities
-from photutils.utils.cutouts import _overlap_slices as overlap_slices
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinder']
