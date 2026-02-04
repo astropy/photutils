@@ -93,8 +93,10 @@ class IterativePSFPhotometry:
 
     fitter_maxiters : int, optional
         The maximum number of iterations in which the ``fitter`` is
-        called for each source. The value can be increased if the fit is
-        not converging for sources.
+        called for each source. The value can be increased if the fit
+        is not converging for sources. This parameter is passed to the
+        ``fitter`` if it supports the ``maxiter`` parameter and ignored
+        otherwise.
 
     xy_bounds : `None`, float, or 2-tuple of float, optional
         The maximum distance in pixels that a fitted source can be from
