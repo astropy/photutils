@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for computing and fitting harmonic functions.
+Tools for computing and fitting harmonic functions.
 """
 
 import numpy as np

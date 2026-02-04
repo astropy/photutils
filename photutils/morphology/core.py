@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for measuring morphological properties of sources.
+Tools for measuring morphological properties of sources.
 """
 
 import numpy as np

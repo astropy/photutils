@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for building a model elliptical galaxy image from a list of
+Tools for building a model elliptical galaxy image from a list of
 isophotes.
 """
 

@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for convolving images with a kernel.
+Tools for convolving images with a kernel.
 """
 
 import warnings

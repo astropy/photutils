@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define nan-ignoring statistical functions, using bottleneck for
-performance if available.
+Nan-ignoring statistical functions, using bottleneck for performance if
+available.
 """
 
 from functools import partial

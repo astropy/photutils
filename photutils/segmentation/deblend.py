@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for deblending overlapping sources labeled in a
-segmentation image.
+Tools for deblending overlapping sources labeled in a segmentation
+image.
 """
 
 import warnings

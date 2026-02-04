@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for centroiding sources using Gaussians.
+Tools for centroiding sources using Gaussians.
 """
 
 import warnings

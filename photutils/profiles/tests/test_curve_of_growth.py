@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for the core module.
+Tests for the curve_of_growth module.
 """
 
 import astropy.units as u

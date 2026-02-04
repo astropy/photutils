@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for progress bars.
+Tools for progress bars.
 """
 
 # pylint: disable-next=E0611

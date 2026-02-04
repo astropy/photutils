@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Provide tools for matching PSFs using Fourier methods.
+Tools for matching PSFs using Fourier methods.
 """
 
 import numpy as np

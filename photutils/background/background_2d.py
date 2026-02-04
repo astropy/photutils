@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define classes to estimate the 2D background and background RMS in an
-image.
+Tools for estimating the 2D background and background RMS in an image.
 """
 
 import warnings

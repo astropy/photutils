@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for calculating limiting fluxes.
+Tools for calculating limiting fluxes.
 """
 
 import warnings

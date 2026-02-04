@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Subpackage providing general-purpose utility functions that do not fit
+Subpackage containing general-purpose utility functions that do not fit
 into any of the other subpackages.
 """
 

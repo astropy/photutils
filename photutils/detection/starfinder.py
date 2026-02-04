@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define the StarFinder class.
+StarFinder class.
 """
 
 import inspect

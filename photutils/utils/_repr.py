@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for class __repr__ and __str__ strings.
+Tools for class __repr__ and __str__ strings.
 """
 
 

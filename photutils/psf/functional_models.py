@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define functional PSF models.
+Functional PSF models.
 """
 
 import astropy.units as u

@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define utilities for PSF-fitting photometry.
+Tools for PSF-fitting photometry.
 """
 
 import warnings

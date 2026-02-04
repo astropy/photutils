@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Provide tools for making example WCS objects.
+Tools for making example WCS objects.
 """
 
 import astropy.units as u

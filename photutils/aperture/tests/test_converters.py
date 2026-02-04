@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for converting regions.Region to Aperture.
+Tests for the converters module.
 """
 
 import numpy as np

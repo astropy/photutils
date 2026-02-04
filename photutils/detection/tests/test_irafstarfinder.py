@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for IRAFStarFinder.
+Tests for the irafstarfinder module.
 """
 
 import astropy.units as u

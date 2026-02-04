@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Subpackage containing tools to perform point-spread-function (PSF)
+Subpackage containing tools for performing point-spread-function (PSF)
 photometry.
 """
 
