@@ -5,7 +5,6 @@ King 2000 (PASP 112, 1360) and Anderson 2016 (WFC3 ISR 2016-12).
 """
 
 import copy
-import inspect
 import warnings
 from dataclasses import dataclass
 
@@ -13,8 +12,7 @@ import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NoOverlapError, PartialOverlapError, overlap_slices
 from astropy.stats import SigmaClip
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import convolve
 
 from photutils.centroids import centroid_com
@@ -721,11 +719,6 @@ class EPSFFitter:
     """
     Class to fit an ePSF model to one or more stars.
 
-    .. deprecated:: 2.0
-        The EPSFFitter class will be deprecated in a future version.
-        EPSFBuilder now accepts regular astropy fitters directly via
-        the ``fitter``, ``fit_shape``, and ``fitter_maxiters`` parameters.
-
     Parameters
     ----------
     fitter : `astropy.modeling.fitting.Fitter`, optional
@@ -749,11 +742,6 @@ class EPSFFitter:
     """
 
     def __init__(self, *, fitter=None, fit_boxsize=5, **fitter_kwargs):
-
-        warnings.warn(
-            'EPSFFitter is deprecated and will be removed in a future '
-            'version. Use EPSFBuilder with regular astropy fitters instead.',
-            AstropyDeprecationWarning)
 
         if fitter is None:
             fitter = TRFLSQFitter()
@@ -965,33 +953,11 @@ class EPSFBuilder:
         The maximum number of recentering iterations to perform during
         each ePSF build iteration.
 
-    fitter : `~astropy.modeling.fitting.Fitter` or `EPSFFitter`, optional
-        The fitter object used to perform the fitting of the ePSF
-        to stars. This can be either a regular astropy fitter
-        (e.g., `~astropy.modeling.fitting.TRFLSQFitter`), which
-        will be passed to an internally created `EPSFFitter`,
-        or an existing `EPSFFitter` object (deprecated, for
-        backward compatibility). If `None`, then the default
-        `~astropy.modeling.fitting.TRFLSQFitter` will be used with an
-        internally created `EPSFFitter`.
-
-    fit_shape : int, tuple of int, or `None`, optional
-        The rectangular shape centered on the star that will be used
-        to define data for ePSF fitting. If ``fit_shape`` is a scalar
-        then a square shape of size ``fit_shape`` will be used. If
-        ``fit_shape`` has two elements, they must be in ``(ny, nx)``
-        order. Each element of ``fit_shape`` must be an odd number
-        greater than or equal to 3. If `None`, the fitter will use the
-        entire star image. In general, ``fit_shape`` should be set to a
-        small size (e.g., ``(5, 5)``) that covers the region with the
-        highest flux signal-to-noise.
-
-    fitter_maxiters : int, optional
-        The maximum number of iterations in which the ``fitter`` is
-        called for each source. The value can be increased if the fit
-        is not converging for sources. This parameter is passed to the
-        ``fitter`` if it supports the ``maxiter`` parameter and ignored
-        otherwise.
+    fitter : `EPSFFitter` object, optional
+        A `EPSFFitter` object use to fit the ePSF to stars. If `None`,
+        then the default `EPSFFitter` will be used. To set custom fitter
+        options, input a new `EPSFFitter` object. See the `EPSFFitter`
+        documentation for options.
 
     maxiters : int, optional
         The maximum number of ePSF building iterations to perform.
@@ -1032,10 +998,9 @@ class EPSFBuilder:
 
     def __init__(self, *, oversampling=4, shape=None,
                  smoothing_kernel='quartic', recentering_func=centroid_com,
-                 recentering_maxiters=20, fitter=None, fit_shape=5,
-                 fitter_maxiters=100, maxiters=10, progress_bar=True,
-                 recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
-                 sigma_clip=SIGMA_CLIP):
+                 recentering_maxiters=20, fitter=None, maxiters=10,
+                 progress_bar=True, recentering_boxsize=(5, 5),
+                 center_accuracy=1.0e-3, sigma_clip=SIGMA_CLIP):
 
         # Validate and store oversampling using the validator
         self.oversampling = _EPSFValidator.validate_oversampling(
@@ -1056,68 +1021,12 @@ class EPSFBuilder:
                                            lower_bound=(3, 0), check_odd=True)
         self.smoothing_kernel = smoothing_kernel
 
-        # Handle fitter parameter - can be astropy fitter or EPSFFitter
-        self.fit_shape = fit_shape
-        self.fitter_maxiters = fitter_maxiters
-
         if fitter is None:
-            # Default case: use TRFLSQFitter with EPSFFitter wrapper
-            astropy_fitter = TRFLSQFitter()
-            fitter_kwargs = {}
-            if fitter_maxiters is not None:
-                # TRFLSQFitter supports maxiter parameter
-                fitter_kwargs['maxiter'] = fitter_maxiters
-
-            with warnings.catch_warnings():
-                # Suppress deprecation warning from EPSFFitter
-                warnings.simplefilter('ignore', AstropyUserWarning)
-                self.fitter = EPSFFitter(fitter=astropy_fitter,
-                                         fit_boxsize=fit_shape,
-                                         **fitter_kwargs)
-
-        elif isinstance(fitter, EPSFFitter):
-            # Backward compatibility: EPSFFitter instance provided directly
-            warnings.warn(
-                'Passing an EPSFFitter instance to EPSFBuilder.fitter is '
-                'deprecated. Pass a regular astropy fitter instead, along '
-                'with fit_shape and fitter_maxiters parameters as needed. '
-                'EPSFFitter will be used internally.',
-                AstropyUserWarning)
-            self.fitter = fitter
-
-        else:
-            # New case: astropy fitter provided
-            # Validate that it's actually a fitter object
-            if not callable(fitter):
-                msg = ('fitter must be an astropy fitter instance or '
-                       'EPSFFitter instance')
-                raise TypeError(msg)
-
-            fitter_kwargs = {}
-            if fitter_maxiters is not None:
-                # Check if the fitter supports maxiter parameter
-                try:
-                    sig = inspect.signature(fitter.__call__)
-                    if 'maxiter' in sig.parameters:
-                        fitter_kwargs['maxiter'] = fitter_maxiters
-                    else:
-                        warnings.warn(
-                            f'The fitter {type(fitter).__name__} does not '
-                            'support the maxiter parameter. fitter_maxiters '
-                            'will be ignored.', AstropyUserWarning)
-                except (ValueError, TypeError):
-                    # If we can't inspect the fitter, skip maxiter
-                    warnings.warn(
-                        f'Could not inspect fitter {type(fitter).__name__}. '
-                        'fitter_maxiters will be ignored.', AstropyUserWarning)
-
-            with warnings.catch_warnings():
-                # suppress deprecation warning from EPSFFitter when
-                # using it as a wrapper for a regular astropy fitter
-                warnings.simplefilter('ignore', AstropyUserWarning)
-                self.fitter = EPSFFitter(fitter=fitter,
-                                         fit_boxsize=fit_shape,
-                                         **fitter_kwargs)
+            fitter = EPSFFitter()
+        if not isinstance(fitter, EPSFFitter):
+            msg = 'fitter must be an EPSFFitter instance'
+            raise TypeError(msg)
+        self.fitter = fitter
 
         # Validate center accuracy using the validator
         _EPSFValidator.validate_center_accuracy(center_accuracy)
