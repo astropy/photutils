@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define a class to fit elliptical isophotes.
+Tools for fitting elliptical isophotes.
 """
 
 import warnings

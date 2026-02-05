@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define descriptor classes for aperture attribute validation.
+Descriptor classes for aperture attribute validation.
 """
 
 import astropy.units as u

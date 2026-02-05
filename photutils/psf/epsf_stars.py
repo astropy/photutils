@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools to extract cutouts of stars and data structures to hold the
+Tools for extracting cutouts of stars and data structures to hold the
 cutouts for fitting and building ePSFs.
 """
 

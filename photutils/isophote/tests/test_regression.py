@@ -24,19 +24,19 @@ compared this way are:
 For the M51 image we have mostly good agreement with the SPP code
 in most of the parameters (mean isophotal intensity agrees within a
 fraction of 1% mostly), but every now and then the ellipticity and
-position angle of the semi-major axis may differ by a large amount
-from what the SPP code measures. The code also stops prematurely wrt
-the larger sma values measured by the SPP code. This is caused by a
+position angle of the semi-major axis may differ by a large amount from
+what the SPP code measures. The code also stops prematurely with respect
+to the larger sma values measured by the SPP code. This is caused by a
 difference in the way the gradient relative error is measured in each
 case, and suggests that the SPP code may have a bug.
 
 The not-so-good behavior observed in the case of the M51 image is to
 be expected though. This image is exactly the type of galaxy image for
-which the algorithm *wasn't* designed for. It has an almost negligible
-smooth ellipsoidal component, and a lot of lumpy spiral structure that
-causes the radial gradient computation to go berserk. On top of that,
-the ellipticity is small (roundish isophotes) throughout the image,
-causing large relative errors and instability in the fitting algorithm.
+which the algorithm was not designed. It has an almost negligible smooth
+ellipsoidal component, and a lot of lumpy spiral structure that causes
+the radial gradient computation to go berserk. On top of that, the
+ellipticity is small (roundish isophotes) throughout the image, causing
+large relative errors and instability in the fitting algorithm.
 
 For now, we can only check the bilinear integration mode. The mean and
 median modes cannot be checked since the original 'ellipse' task has

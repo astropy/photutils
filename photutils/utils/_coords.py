@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for generating random (x, y) coordinates.
+Tools for generating random (x, y) coordinates.
 """
 
 import warnings

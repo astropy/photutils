@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for the moments module.
+Tests for the _moments module.
 """
 
 import numpy as np

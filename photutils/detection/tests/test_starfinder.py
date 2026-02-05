@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for StarFinder.
+Tests for the starfinder module.
 """
 
 import astropy.units as u

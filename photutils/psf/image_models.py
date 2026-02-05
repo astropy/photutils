@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define image-based PSF models.
+Image-based PSF models.
 """
 
 import copy

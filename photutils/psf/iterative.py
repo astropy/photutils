@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools to perform iterative PSF-fitting photometry.
+Tools for performing iterative PSF-fitting photometry.
 """
 
 import warnings

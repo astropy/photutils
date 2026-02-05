@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Provide tools for including noise in simulated data.
+Tools for including noise in simulated data.
 """
 
 import numpy as np

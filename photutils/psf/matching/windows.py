@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Provide window (or tapering) functions for matching PSFs using Fourier
-methods.
+Window (or tapering) functions for matching PSFs using Fourier methods.
 """
 
 import numpy as np

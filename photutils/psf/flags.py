@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for working with PSF photometry flags, including
-centralized flag definitions and decoding utilities.
+Tools for working with PSF photometry flags, including centralized flag
+definitions and decoding utilities.
 """
 
 from dataclasses import dataclass

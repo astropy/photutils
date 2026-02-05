@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for parameter validation.
+Tools for parameter validation.
 """
 
 import numpy as np

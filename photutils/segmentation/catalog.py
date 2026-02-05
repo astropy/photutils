@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for calculating the properties of sources defined by a
+Tools for calculating the properties of sources defined by a
 segmentation image.
 """
 

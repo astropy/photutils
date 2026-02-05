@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define a base class for profiles.
+Base class for profiles.
 """
 
 import abc

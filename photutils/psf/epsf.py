@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools to build and fit an effective PSF (ePSF) based on Anderson
+Tools for building and fitting an effective PSF (ePSF) based on Anderson
 and King (2000; PASP 112, 1360) and Anderson (2016; WFC3 ISR 2016-12).
 """
 

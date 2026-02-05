@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define classes for a segmentation image and a single segment within a
+Classes for a segmentation image and a single segment within a
 segmentation image.
 """
 
