@@ -571,7 +571,7 @@ class _ProgressReporter:
 
         desc = f'EPSFBuilder ({self.maxiters} maxiters)'
         self._pbar = add_progress_bar(total=self.maxiters,
-                                      desc=desc)  # pragma: no cover
+                                      desc=desc)
         return self
 
     def update(self):
