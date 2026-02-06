@@ -441,15 +441,45 @@ class TestEPSFStar:
         Test flux estimation behavior with all masked data.
         """
         # Create data with all masked pixels - this should raise
-        # ValueError because estimated flux will be NaN
+        # ValueError because the star cutout is completely masked
         data = np.ones((5, 5))
         weights = np.zeros((5, 5))  # All masked data
 
-        # This should raise ValueError because flux estimation returns
-        # NaN
-        match = 'Estimated flux is non-finite or non-positive'
+        # This should raise ValueError because all data is masked
+        match = 'Star cutout is completely masked; no valid data available'
         with pytest.raises(ValueError, match=match):
             EPSFStar(data, weights=weights)
+
+    def test_completely_masked_star(self):
+        """
+        Test that completely masked stars are properly rejected.
+        """
+        # Create star data with all weights zero (completely masked)
+        data = np.ones((7, 7)) * 100.0
+        weights = np.zeros((7, 7))
+
+        # Should raise ValueError with appropriate message
+        match = 'Star cutout is completely masked; no valid data available'
+        with pytest.raises(ValueError, match=match):
+            EPSFStar(data, weights=weights)
+
+    def test_negative_flux_allowed(self):
+        """
+        Test that negative flux is allowed for valid sources.
+
+        Negative flux can occur legitimately with background
+        oversubtraction or similar effects.
+        """
+        # Create data with negative net flux
+        data = np.ones((5, 5)) * -10.0
+        star = EPSFStar(data, flux=-50.0)
+
+        # Should not raise an error
+        assert star.flux == -50.0
+
+        # Also test with estimated flux
+        star2 = EPSFStar(data)
+        assert star2.flux == -250.0  # sum of 25 pixels * -10
 
     def test_array_method(self):
         """
@@ -554,13 +584,20 @@ class TestEPSFStar:
         Test flux estimation exception handling when estimate_flux returns
         invalid values.
         """
-        # Test with data that results in zero flux (non-positive)
+        # Test with data that results in zero flux - this is now ALLOWED
+        # since zero flux is a valid (though not useful) value
         data = np.zeros((3, 3))
+        star = EPSFStar(data)
+        assert star.flux == 0.0  # Zero flux is allowed
 
-        # This should raise ValueError because flux is non-positive
-        match = 'Estimated flux is non-finite or non-positive'
-        with pytest.raises(ValueError, match=match):
-            EPSFStar(data)
+        # Test that completely invalid (NaN) data is rejected
+        # (NaN data gets masked, then completely masked raises error)
+        data_nan = np.full((3, 3), np.nan)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyUserWarning)
+            match = 'Star cutout is completely masked'
+            with pytest.raises(ValueError, match=match):
+                EPSFStar(data_nan)
 
     def test_cutout_center_out_of_bounds_y(self):
         """
@@ -1376,12 +1413,16 @@ class TestExtractStars:
 
     def test_extract_stars_flux_estimation_failure(self):
         """
-        Test that EPSFStar creation failure emits warning.
+        Test that EPSFStar creation failure emits warning for completely
+        masked stars.
         """
-        # Create data where star cutout will have all zeros (fails flux
-        # estimation)
-        data = np.zeros((50, 50))
+        # Create data with explicit zero weights (completely masked)
+        data = np.ones((50, 50)) * 100.0
         nddata = NDData(data)
+        # Use zero uncertainty which causes infinite weights,
+        # which are then set to zero (completely masked)
+        uncertainty = StdDevUncertainty(np.zeros((50, 50)))
+        nddata.uncertainty = uncertainty
 
         table = Table({'x': [25], 'y': [25]})
 
@@ -1392,6 +1433,46 @@ class TestExtractStars:
             warning_messages = [str(warning.message) for warning in w]
             assert any('Failed to create EPSFStar' in msg
                        for msg in warning_messages)
+            # Should NOT have duplicate warnings about completely masked
+            masked_warnings = [msg for msg in warning_messages
+                               if 'completely masked' in msg]
+            # Should only have one warning per failed star
+            assert len(masked_warnings) == 1
+
+        # No valid stars should be extracted
+        assert len(stars) == 0
+
+    def test_extract_stars_completely_masked(self):
+        """
+        Test extract_stars with completely masked cutouts.
+        """
+        # Create data with zeros and zero weights
+        data = np.zeros((50, 50))
+        uncertainty = StdDevUncertainty(np.zeros((50, 50)))
+        nddata = NDData(data, uncertainty=uncertainty)
+
+        table = Table({'x': [25, 30, 35], 'y': [25, 30, 35]})
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            stars = extract_stars(nddata, table, size=11)
+
+            # Check warnings
+            warning_messages = [str(warning.message) for warning in w]
+
+            # Should have one warning about non-finite weights
+            nonfinite_warnings = [msg for msg in warning_messages
+                                  if 'non-finite weight values' in msg]
+            assert len(nonfinite_warnings) == 1
+
+            # Should have warnings about failed EPSFStar creation
+            failed_warnings = [msg for msg in warning_messages
+                               if 'Failed to create EPSFStar' in msg]
+            assert len(failed_warnings) == 3  # One per star
+
+            # Each warning should mention completely masked
+            for msg in failed_warnings:
+                assert 'completely masked' in msg
 
         # No valid stars should be extracted
         assert len(stars) == 0
@@ -1510,15 +1591,66 @@ class TestExtractStars:
         assert_allclose(outputs[0].weights, outputs[1].weights)
         assert_allclose(outputs[0].weights, outputs[2].weights)
 
+    def test_extract_stars_nonfinite_weights(self, epsf_test_data):
+        """
+        Test extract_stars with sparse zero uncertainty values that create
+        non-finite weights at specific locations. The stars should still
+        be extracted successfully, with only the expected warning about
+        non-finite weights being set to zero.
+        """
+        shape = epsf_test_data['nddata'].data.shape
+        init = epsf_test_data['init_stars']
+
+        # Create an uncertainty array with mostly valid (non-zero) values,
+        # but include some zero uncertainty values at specific locations
+        # within the star cutout regions to trigger non-finite weights
+        uncertainty_data = np.ones(shape)
+        for i in range(min(3, len(init))):
+            x_pix = int(init['x'][i])
+            y_pix = int(init['y'][i])
+            # Set a small region around the star center to zero uncertainty
+            uncertainty_data[y_pix - 2:y_pix + 3, x_pix - 2:x_pix + 3] = 0.0
+
+        uncertainty = StdDevUncertainty(uncertainty_data)
+        ndd = NDData(epsf_test_data['nddata'].data, uncertainty=uncertainty)
+        size = 25
+
+        # Should only get the non-finite weights warning; stars should
+        # still be extracted successfully
+        match = 'non-finite weight values'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(ndd, init[0:3], size=size)
+
+        # All 3 stars should be successfully extracted
+        assert len(stars) == 3
+        for i in range(3):
+            assert stars[i] is not None
+            assert stars[i].data.shape == (size, size)
+
+    def test_extract_stars_all_zero_uncertainty(self, epsf_test_data):
+        """
+        Test extract_stars with all-zero uncertainty values.
+
+        When all uncertainty values are zero, all weights become infinite
+        and are then set to zero, resulting in fully-masked cutouts. This
+        causes flux estimation to fail because there is no valid data.
+        """
+        shape = epsf_test_data['nddata'].data.shape
+
         uncertainty = StdDevUncertainty(np.zeros(shape))
         ndd = NDData(epsf_test_data['nddata'].data, uncertainty=uncertainty)
+        size = 25
 
-        # With zero uncertainty (infinite weights), stars near the edge
-        # may fail to be created due to flux estimation issues
-        match1 = 'Estimated flux is non-finite or non-positive'
+        # With all-zero uncertainty, stars will fail with completely
+        # masked errors because all weights are set to zero (fully
+        # masked data).
+        match1 = 'Star cutout is completely masked'
         match2 = 'non-finite weight values'
-        match3 = 'cutout region extended beyond the input image'
-        with (pytest.warns(match=match1),
-              pytest.warns(match=match2),
-              pytest.warns(match=match3)):
-            extract_stars(ndd, epsf_test_data['init_stars'][0:3], size=size)
+        with (pytest.warns(AstropyUserWarning, match=match1),
+              pytest.warns(AstropyUserWarning, match=match2)):
+            stars = extract_stars(ndd,
+                                  epsf_test_data['init_stars'][0:3],
+                                  size=size)
+
+        # All stars should fail (None) because they are completely masked
+        assert len(stars) == 0

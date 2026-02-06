@@ -128,11 +128,21 @@ class EPSFStar:
         if flux is not None:
             self.flux = float(flux)
         else:
+            # Check if completely masked before attempting flux estimation
+            if np.all(self.mask):
+                msg = ('Star cutout is completely masked; no valid data '
+                       'available')
+                raise ValueError(msg)
+
             # Estimate flux
             self.flux = self.estimate_flux()
-            if np.isnan(self.flux) or self.flux <= 0.0:
-                msg = 'Estimated flux is non-finite or non-positive'
+            if np.isnan(self.flux):
+                msg = 'Estimated flux is non-finite'
                 raise ValueError(msg)
+
+            # Note: We allow flux <= 0 for real sources that may have
+            # negative net flux due to background subtraction or similar
+            # effects
 
         self._excluded_from_fit = False
         self._fit_error_status = 0  # 0: no error, >0: error during fitting
@@ -933,19 +943,16 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
     size = as_pair('size', size, lower_bound=(3, 0), check_odd=True)
 
     if len(catalogs) == 1:  # may include linked stars
-        stars_out = _extract_linked_stars(data, catalogs[0], size)
-        n_input = len(catalogs[0]) * len(data)
+        stars_out, overlap_fail_count = _extract_linked_stars(
+            data, catalogs[0], size)
     else:  # no linked stars
-        stars_out = _extract_unlinked_stars(data, catalogs, size)
-        n_input = sum(len(cat) for cat in catalogs)
+        stars_out, overlap_fail_count = _extract_unlinked_stars(
+            data, catalogs, size)
 
-    n_extracted = sum(1 for star in stars_out if star is not None)
-    n_excluded = n_input - n_extracted
-
-    if n_excluded > 0:
-        warnings.warn(f'{n_excluded} star(s) were not extracted because '
-                      'their cutout region extended beyond the input image.',
-                      AstropyUserWarning)
+    if overlap_fail_count > 0:
+        warnings.warn(f'{overlap_fail_count} star(s) were not extracted '
+                      'because their cutout region extended beyond the '
+                      'input image.', AstropyUserWarning)
 
     return EPSFStars(stars_out)
 
@@ -954,14 +961,46 @@ def _extract_linked_stars(data, catalog, size):
     """
     Extract stars that may be linked across multiple images.
 
-    Returns a list of EPSFStar or LinkedEPSFStar objects.
+    Parameters
+    ----------
+    data : list of `~astropy.nddata.NDData`
+        A list of `~astropy.nddata.NDData` objects containing
+        the 2D images from which to extract the stars. Each
+        `~astropy.nddata.NDData` object must have a valid ``wcs``
+        attribute.
+
+    catalog : `~astropy.table.Table`
+        A single catalog of sources to be extracted from the input
+        ``data``. The center of each source must be defined in
+        sky coordinates (in a ``skycoord`` column containing a
+        `~astropy.coordinates.SkyCoord` object).
+
+    size : int or array_like (int)
+        The extraction box size along each axis. If ``size`` is a scalar
+        then a square box of size ``size`` will be used. If ``size`` has
+        two elements, they must be in ``(ny, nx)`` order.
+
+    Returns
+    -------
+    stars : list of `EPSFStar` or `LinkedEPSFStar` objects
+        A list of `EPSFStar` and/or `LinkedEPSFStar` instances
+        containing the extracted stars. Stars that are linked across
+        multiple images will be represented as a single `LinkedEPSFStar`
+        instance containing the corresponding `EPSFStar` instances from
+        each image. Failed extractions are represented as `None`.
+
+    overlap_fail_count : int
+        The number of stars that failed extraction because their cutout
+        region extended beyond the input image.
     """
     # Use pixel coords only for single image
     use_xy = len(data) == 1
 
     # Extract stars from each image
-    stars = [_extract_stars(img, catalog, size=size, use_xy=use_xy)
-             for img in data]
+    results = [_extract_stars(img, catalog, size=size, use_xy=use_xy)
+               for img in data]
+    stars = [r[0] for r in results]
+    overlap_fail_count = sum(r[1] for r in results)
 
     # Transpose to associate linked stars across images
     stars = list(map(list, zip(*stars, strict=True)))
@@ -981,22 +1020,54 @@ def _extract_linked_stars(data, catalog, size):
             # Multiple stars - create linked star
             stars_out.append(LinkedEPSFStar(good_stars))
 
-    return stars_out
+    return stars_out, overlap_fail_count
 
 
 def _extract_unlinked_stars(data, catalogs, size):
     """
     Extract stars from individual catalogs (no linking).
 
-    Returns a flat list of EPSFStar objects.
+    Parameters
+    ----------
+    data : list of `~astropy.nddata.NDData`
+        A list of `~astropy.nddata.NDData` objects containing
+        the 2D images from which to extract the stars.
+
+    catalogs : list of `~astropy.table.Table`
+        A list of catalogs of sources to be extracted from the
+        input ``data``. Each catalog corresponds to the list of
+        `~astropy.nddata.NDData` objects input in ``data`` (i.e., a
+        separate source catalog for each 2D image). The center of each
+        source can be defined either in pixel coordinates (in ``x`` and
+        ``y`` columns) or sky coordinates (in a ``skycoord`` column
+        containing a `~astropy.coordinates.SkyCoord`.
+
+    size : int or array_like (int)
+        The extraction box size along each axis. If ``size`` is a scalar
+        then a square box of size ``size`` will be used. If ``size`` has
+        two elements, they must be in ``(ny, nx)`` order.
+
+    Returns
+    -------
+    stars : list of `EPSFStar` objects
+        A list of `EPSFStar` instances containing the extracted stars.
+        Failed extractions are represented as `None`.
+
+    overlap_fail_count : int
+        The number of stars that failed extraction because their cutout
+        region extended beyond the input image.
     """
     stars_out = []
+    total_overlap_fail_count = 0
     for img, cat in zip(data, catalogs, strict=True):
-        extracted = _extract_stars(img, cat, size=size, use_xy=True)
+        extracted, overlap_fail_count = _extract_stars(
+            img, cat, size=size, use_xy=True)
         stars_out.extend(extracted)
+        total_overlap_fail_count += overlap_fail_count
 
     # Filter out None values
-    return [star for star in stars_out if star is not None]
+    return ([star for star in stars_out if star is not None],
+            total_overlap_fail_count)
 
 
 def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
@@ -1038,6 +1109,11 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     -------
     stars : list of `EPSFStar` objects
         A list of `EPSFStar` instances containing the extracted stars.
+        Failed extractions are represented as `None`.
+
+    overlap_fail_count : int
+        The number of stars that failed extraction because their cutout
+        region extended beyond the input image.
     """
     colnames = catalog.colnames
     if ('x' not in colnames or 'y' not in colnames) or not use_xy:
@@ -1064,6 +1140,8 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
 
     stars = []
     nonfinite_weights_count = 0
+    overlap_fail_count = 0
+    flux_failures = []  # Collect flux estimation failures
     for i, (xcenter, ycenter) in enumerate(zip(xcenters, ycenters,
                                                strict=True)):
         try:
@@ -1071,6 +1149,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
                                           (ycenter, xcenter), mode='strict')
         except (PartialOverlapError, NoOverlapError):
             stars.append(None)
+            overlap_fail_count += 1
             continue
 
         # Extract data cutout
@@ -1092,11 +1171,8 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
                             wcs_large=data.wcs, id_label=ids[i], flux=flux)
             stars.append(star)
         except ValueError as exc:
-            # This can occur if flux estimation fails (e.g., cutout has
-            # all invalid/zero/negative data)
-            warnings.warn(f'Failed to create EPSFStar for object at '
-                          f'({xcenter:.1f}, {ycenter:.1f}): {exc}',
-                          AstropyUserWarning)
+            # Collect flux estimation failures; emit warnings later
+            flux_failures.append((xcenter, ycenter, exc))
             stars.append(None)
 
     # Emit consolidated warning for non-finite weights
@@ -1106,7 +1182,16 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
                       'Please check the input uncertainty values in the '
                       'NDData object.', AstropyUserWarning)
 
-    return stars
+    # Emit individual flux estimation failure warnings. These may be a
+    # consequence of having all non-finite weights (data then becomes
+    # completely masked), so we emit them after the non-finite weights
+    # warning.
+    for xcenter, ycenter, exc in flux_failures:
+        warnings.warn(f'Failed to create EPSFStar for object at '
+                      f'({xcenter:.1f}, {ycenter:.1f}): {exc}',
+                      AstropyUserWarning)
+
+    return stars, overlap_fail_count
 
 
 def _prepare_uncertainty_info(data):
