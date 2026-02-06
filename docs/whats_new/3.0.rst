@@ -115,15 +115,64 @@ corresponding source. This makes it easy to interpret which conditions
 were encountered during PSF fitting for each source.
 
 
+Refactored ePSF Building
+=========================
+
+The ePSF building tools have been significantly refactored for improved
+robustness, better diagnostics, and a cleaner API.
+
+New EPSFBuildResult class
+-------------------------
+
+:class:`~photutils.psf.EPSFBuilder` now returns an
+:class:`~photutils.psf.EPSFBuildResult` dataclass instead of a plain
+tuple. The result object provides structured access to detailed build
+diagnostics::
+
+    >>> from photutils.psf import EPSFBuilder
+    >>> builder = EPSFBuilder(oversampling=4)
+    >>> result = builder(stars)
+    >>> result.epsf  # the constructed ePSF (ImagePSF)
+    >>> result.fitted_stars  # stars with updated centers/fluxes
+    >>> result.iterations  # number of iterations performed
+    >>> result.converged  # whether the build converged
+    >>> result.final_center_accuracy  # max center shift in last iteration
+
+Backward compatibility is maintained. Existing code using tuple
+unpacking will continue to work::
+
+    >>> epsf, stars = builder(stars)
+
+Improved star exclusion handling
+--------------------------------
+
+Stars that repeatedly fail fitting are now automatically excluded from
+subsequent iterations, with informative warnings indicating the reason
+for exclusion (e.g., fit region extends beyond the cutout, or the fit
+did not converge). The number of excluded stars and their indices are
+reported in the :class:`~photutils.psf.EPSFBuildResult`.
+
+New ImagePSF shape property
+---------------------------
+
+:class:`~photutils.psf.ImagePSF` now has a ``shape`` property that
+returns the shape of the (oversampled) PSF data array.
+
+
 Removed Deprecations
 ====================
 
-The following previously deprecated features have been removed:
+The following previously deprecated features from the
+``background`` package have been removed:
 
 * The ``Background2D`` ``edge_method`` keyword argument.
 * The ``Background2D`` ``background_mesh_masked``,
   ``background_rms_mesh_masked``, and ``mesh_nmasked`` properties.
 * The ``BkgZoomInterpolator`` ``grid_mode`` keyword argument.
+
+For the ``psf`` package, the previously deprecated
+``FittableImageModel`` and ``EPSFModel`` classes have been removed. Use
+:class:`~photutils.psf.ImagePSF` instead.
 
 
 New Deprecations
@@ -145,3 +194,16 @@ be preserved in the default resizing behavior of ``Background2D``.
 The ``grid_from_epsfs`` helper function is now deprecated. This function
 creates a ``GriddedPSFModel`` from a list of ePSFs. Instead, use the
 ``GriddedPSFModel`` class directly.
+
+
+Breaking Changes
+================
+
+The ``EPSFBuilder.build_epsf()`` method has been removed. Use the
+``EPSFBuilder`` callable interface instead (i.e., ``builder(stars)``).
+
+The ``norm_radius`` keyword has been removed from
+:class:`~photutils.psf.EPSFBuilder`. This keyword is no
+longer relevant because the ePSF is now built directly as an
+:class:`~photutils.psf.ImagePSF`, which does not use a normalization
+radius.
