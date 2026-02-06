@@ -13,7 +13,7 @@ from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NDData
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.testing import assert_allclose, assert_equal
+from numpy.testing import assert_allclose
 
 from photutils.centroids import (centroid_1dg, centroid_2dg, centroid_com,
                                  centroid_quadratic)
@@ -1373,45 +1373,84 @@ class TestEPSFBuilder:
     def test_process_iteration_with_fit_failures(self, epsf_test_data):
         """
         Test _process_iteration marks stars excluded after iter > 3.
-        """
-        stars = extract_stars(epsf_test_data['nddata'],
-                              epsf_test_data['init_stars'][:5], size=11)
 
-        # Create an initial ePSF that will work
+        This test covers both types of fit failures:
+        1. Fitting region extends beyond cutout (status=1)
+        2. Fit did not converge due to invalid ierr (status=2)
+        """
+        # Create stars with one positioned near corner to cause overlap
+        # error
+        tbl = epsf_test_data['init_stars'][:5].copy()
+        tbl['x'][0] = 465  # Position near corner to cause overlap error
+        tbl['y'][0] = 30
+        stars = extract_stars(epsf_test_data['nddata'], tbl, size=11)
+
+        # Build initial ePSF. This will fit the stars and move their
+        # centers. Star 0 will have its center moved near the edge of
+        # the cutout, which will cause overlap errors in subsequent
+        # iterations.
         builder_init = EPSFBuilder(oversampling=1, maxiters=2,
                                    progress_bar=False)
-        epsf, _ = builder_init(stars)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            epsf, fitted_stars = builder_init(stars)
 
-        # Create a fitter that returns invalid ierr for first N stars
-        class PartialFailingFitter:
+        # Create a fitter that returns invalid ierr for the first call
+        # only.
+        # Star 0 will fail due to overlap error (status=1) before the
+        #   fitter is called (because its center moved near edge).
+        # Star 1 is the first to reach the fitter, and will fail with
+        #   invalid ierr (status=2).
+        # Subsequent stars will get valid ierr.
+        class FirstCallFailingFitter:
             def __init__(self):
                 self.call_count = 0
-                self.fit_info = {'ierr': 1}  # Valid ierr initially
+                self.fit_info = {'ierr': 1}  # Valid by default
 
             def __call__(self, model, *_args, **_kwargs):
                 self.call_count += 1
-                # Fail first 3 stars
-                if self.call_count <= 3:
+                # Fail only on the first fitter call (which is star 1,
+                # since star 0 fails with overlap error before reaching
+                # fitter)
+                if self.call_count == 1:
                     self.fit_info = {'ierr': 0}  # Invalid ierr
                 else:
                     self.fit_info = {'ierr': 1}  # Valid ierr
                 return model
 
-        failing_fitter = PartialFailingFitter()
+        failing_fitter = FirstCallFailingFitter()
         epsf_fitter = EPSFFitter(fitter=failing_fitter)
         builder = EPSFBuilder(oversampling=1, maxiters=1, progress_bar=False,
                               fitter=epsf_fitter)
 
-        # Process iteration with iter_num > 3
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
+        # Process iteration with iter_num > 3 to trigger exclusion. Use
+        # fitted_stars (which has moved centers) to trigger overlap error.
+        # Capture warnings to verify both types are emitted.
+        with warnings.catch_warnings(record=True) as warning_list:
+            warnings.simplefilter('always')
             _, stars_new, fit_failed = builder._process_iteration(
-                stars, epsf, iter_num=4)
+                fitted_stars, epsf, iter_num=4)
 
-        # Check that failed stars were marked for exclusion
-        assert_equal(fit_failed, [True, True, True, False, False])
-        for i in fit_failed.nonzero()[0]:
-            assert stars_new.all_stars[i]._excluded_from_fit
+        # Check that stars 0 and 1 failed
+        assert fit_failed[0]  # Overlap error (status=1)
+        assert fit_failed[1]  # Invalid ierr (status=2)
+
+        # Verify both stars are marked for exclusion
+        assert stars_new.all_stars[0]._excluded_from_fit
+        assert stars_new.all_stars[1]._excluded_from_fit
+
+        # Verify correct error status for each failure type
+        assert stars_new.all_stars[0]._fit_error_status == 1  # Overlap error
+        assert stars_new.all_stars[1]._fit_error_status == 2  # Fit failure
+
+        # Verify both warning types were emitted
+        warning_messages = [str(w.message) for w in warning_list]
+        overlap_warnings = [m for m in warning_messages
+                            if 'fitting region extends beyond' in m]
+        converge_warnings = [m for m in warning_messages
+                             if 'fit did not converge' in m]
+        assert len(overlap_warnings) == 1
+        assert len(converge_warnings) == 1
 
     def test_star_exclusion_fit_failure(self, epsf_test_data):
         """
