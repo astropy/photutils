@@ -30,7 +30,8 @@ repository is called ``upstream``.
 #. Ensure that `CI tests <https://github.com/astropy/photutils/actions>`_
    are passing for the branch you are going to
    release. Also, ensure that `Read the Docs builds
-   <https://readthedocs.org/projects/photutils/builds/>`_ are passing.
+   <https://app.readthedocs.org/projects/photutils/builds/>`_ are
+   passing.
 
 #. As an extra check, run the tests locally using ``tox`` to thoroughly
    test the code in isolated environments::
@@ -89,9 +90,9 @@ repository is called ``upstream``.
    version then close its GitHub Milestone.
 
 #. Go to `Read the Docs
-   <https://readthedocs.org/projects/photutils/versions/>`_ and check
-   that the "stable" docs correspond to the new released version. Hide
-   any older released versions (i.e., check "Hidden").
+   <https://app.readthedocs.org/projects/photutils/versions/>`_ and
+   check that the "stable" docs correspond to the new released version.
+   Hide any older released versions (i.e., check "Hidden").
 
 #. Update ``CHANGES.rst``, adding new sections for the next ``x.y.z``
    version, e.g.,::
