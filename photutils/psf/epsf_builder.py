@@ -798,19 +798,29 @@ class EPSFFitter:
         fitted_stars = []
         for star in stars:
             if isinstance(star, EPSFStar):
-                fitted_star = self._fit_star(epsf, star, self.fitter,
-                                             self.fitter_kwargs,
-                                             self.fitter_has_fit_info,
-                                             self.fit_boxsize)
+                # Skip fitting stars that have been excluded; return
+                # directly since no modification is needed
+                if star._excluded_from_fit:
+                    fitted_star = star
+                else:
+                    fitted_star = self._fit_star(epsf, star, self.fitter,
+                                                 self.fitter_kwargs,
+                                                 self.fitter_has_fit_info,
+                                                 self.fit_boxsize)
 
             elif isinstance(star, LinkedEPSFStar):
                 fitted_star = []
                 for linked_star in star:
-                    fitted_star.append(
-                        self._fit_star(epsf, linked_star, self.fitter,
-                                       self.fitter_kwargs,
-                                       self.fitter_has_fit_info,
-                                       self.fit_boxsize))
+                    # Skip fitting stars that have been excluded; return
+                    # directly since no modification is needed
+                    if linked_star._excluded_from_fit:
+                        fitted_star.append(linked_star)
+                    else:
+                        fitted_star.append(
+                            self._fit_star(epsf, linked_star, self.fitter,
+                                           self.fitter_kwargs,
+                                           self.fitter_has_fit_info,
+                                           self.fit_boxsize))
 
                 fitted_star = LinkedEPSFStar(fitted_star)
                 fitted_star.constrain_centers()
@@ -840,13 +850,6 @@ class EPSFFitter:
                                               (ycenter, xcenter),
                                               mode='strict')
             except (PartialOverlapError, NoOverlapError):
-                # TODO: only warn once per star per EPSFBuilder
-                # iteration
-                warnings.warn(f'The star at ({star.center[0]}, '
-                              f'{star.center[1]}) cannot be fit because '
-                              'its fitting region extends beyond the star '
-                              'cutout image.', AstropyUserWarning)
-
                 star = copy.deepcopy(star)
                 star._fit_error_status = 1
 
@@ -1597,7 +1600,19 @@ class EPSFBuilder:
         # after 3 iterations
         if iter_num > 3 and np.any(fit_failed):
             for i in fit_failed.nonzero()[0]:
-                stars.all_stars[i]._excluded_from_fit = True
+                star = stars.all_stars[i]
+                # Only warn for stars being newly excluded
+                if not star._excluded_from_fit:
+                    if star._fit_error_status == 1:
+                        reason = ('its fitting region extends beyond the '
+                                  'star cutout image')
+                    else:  # _fit_error_status == 2
+                        reason = 'the fit did not converge'
+                    warnings.warn(f'The star at ({star.center[0]}, '
+                                  f'{star.center[1]}) has been excluded '
+                                  f'from ePSF fitting because {reason}.',
+                                  AstropyUserWarning)
+                star._excluded_from_fit = True
 
         # Store the ePSF from this iteration
         self._epsf.append(epsf)

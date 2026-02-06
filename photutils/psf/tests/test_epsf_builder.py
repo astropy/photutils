@@ -1095,11 +1095,10 @@ class TestEPSFBuilder:
                                    smoothing_kernel='quadratic')
 
         # With a boxsize larger than the cutout we expect the fitting to
-        # fail for all stars
-        match1 = r'The star at .* cannot be fit because its fitting region '
-        match2 = 'The ePSF fitting failed for all stars'
-        with (pytest.warns(AstropyUserWarning, match=match1),
-              pytest.raises(ValueError, match=match2)):
+        # fail for all stars. The ValueError is raised before any star
+        # can be excluded (exclusion only happens after iter > 3).
+        match = 'The ePSF fitting failed for all stars'
+        with pytest.raises(ValueError, match=match):
             epsf_builder(stars)
 
     @pytest.mark.parametrize(('oversamp', 'star_size', 'expected_shape'), [
@@ -1305,7 +1304,8 @@ class TestEPSFBuilder:
         stars = extract_stars(epsf_test_data['nddata'], tbl, size=11)
 
         builder = EPSFBuilder(oversampling=1, maxiters=5, progress_bar=False)
-        match = 'cannot be fit because its fitting region extends'
+        match = ('has been excluded from ePSF fitting because its fitting '
+                 'region extends')
         with pytest.warns(AstropyUserWarning, match=match):
             result = builder(stars)
 
@@ -1315,6 +1315,60 @@ class TestEPSFBuilder:
         assert result.epsf.data.shape == (11, 11)
         assert result.fitted_stars.n_good_stars == 4
         assert result.fitted_stars.n_all_stars == 5
+
+    def test_star_exclusion_single_warning(self, epsf_test_data):
+        """
+        Test that only a single warning is emitted per excluded star.
+
+        When a star repeatedly fails fitting across iterations, the
+        warning should only be emitted when the star is actually
+        excluded (after more than 3 iterations of failure).
+        """
+        tbl = epsf_test_data['init_stars'][:5].copy()
+        tbl['x'][0] = 465
+        tbl['y'][0] = 30
+        stars = extract_stars(epsf_test_data['nddata'], tbl, size=11)
+
+        builder = EPSFBuilder(oversampling=1, maxiters=6, progress_bar=False)
+
+        # Capture all warnings
+        with warnings.catch_warnings(record=True) as warning_list:
+            warnings.simplefilter('always')
+            builder(stars)
+
+        # Filter for the specific warning about exclusion
+        fit_warnings = [w for w in warning_list
+                        if 'has been excluded from ePSF fitting' in
+                        str(w.message)]
+
+        # Should only have 1 warning despite multiple iterations
+        assert len(fit_warnings) == 1
+
+    def test_excluded_star_no_copy(self, epsf_test_data):
+        """
+        Test that excluded stars are returned without copying.
+
+        When a star is excluded from fitting, the fitter should return
+        the same star object directly, not a copy. This is more
+        efficient than creating unnecessary copies.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:3], size=11)
+
+        # Mark one star as excluded
+        original_star = stars.all_stars[0]
+        original_star._excluded_from_fit = True
+
+        # Create an ePSF for fitting
+        builder = EPSFBuilder(oversampling=1, maxiters=1, progress_bar=False)
+        epsf = builder._create_initial_epsf(stars)
+
+        # Fit the stars
+        fitter = EPSFFitter()
+        fitted_stars = fitter(epsf, stars)
+
+        # The excluded star should be the exact same object (identity)
+        assert fitted_stars.all_stars[0] is original_star
 
     def test_process_iteration_with_fit_failures(self, epsf_test_data):
         """
@@ -1358,6 +1412,59 @@ class TestEPSFBuilder:
         assert_equal(fit_failed, [True, True, True, False, False])
         for i in fit_failed.nonzero()[0]:
             assert stars_new.all_stars[i]._excluded_from_fit
+
+    def test_star_exclusion_fit_failure(self, epsf_test_data):
+        """
+        Test that stars are excluded with appropriate message when fit
+        does not converge (ierr error).
+
+        This tests exclusion due to fit failure (status=2), as opposed
+        to the fitting region extending beyond the cutout (status=1).
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:5], size=11)
+        n_stars = len(stars.all_stars)
+
+        # Create a fitter that fails for the first star (invalid ierr)
+        # but succeeds for others. Add small offsets to x_0/y_0 to
+        # prevent early convergence, ensuring we reach iteration > 3.
+        class PartialFailingFitter:
+            def __init__(self):
+                self.call_count = 0
+                self.fit_info = {'ierr': 1}  # Valid by default
+
+            def __call__(self, model, *_args, **_kwargs):
+                self.call_count += 1
+                star_idx = (self.call_count - 1) % n_stars
+                # Fail only the first star
+                if star_idx == 0:
+                    self.fit_info = {'ierr': 0}  # Invalid ierr
+                else:
+                    self.fit_info = {'ierr': 1}  # Valid ierr
+                # Add small offset to prevent early convergence
+                model.x_0 = model.x_0 + 0.01
+                model.y_0 = model.y_0 + 0.01
+                return model
+
+        failing_fitter = PartialFailingFitter()
+        epsf_fitter = EPSFFitter(fitter=failing_fitter)
+
+        # Use maxiters=5 so we reach iter > 3 to trigger exclusion
+        builder = EPSFBuilder(oversampling=1, maxiters=5, progress_bar=False,
+                              fitter=epsf_fitter)
+
+        # Should warn about fit not converging
+        match = ('has been excluded from ePSF fitting because the fit did '
+                 'not converge')
+        with pytest.warns(AstropyUserWarning, match=match):
+            result = builder(stars)
+
+        # At least the first star (with ierr=0) should be excluded
+        assert result.n_excluded_stars >= 1
+        assert 0 in result.excluded_star_indices
+        # Check that the first star has fit_error_status=2 (fit failure)
+        assert result.fitted_stars.all_stars[0]._fit_error_status == 2
+        assert result.fitted_stars.all_stars[0]._excluded_from_fit
 
     def test_build_tracks_excluded_indices(self, epsf_test_data):
         """
