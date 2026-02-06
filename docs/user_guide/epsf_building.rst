@@ -279,7 +279,7 @@ The `~photutils.psf.EPSFBuildResult` object provides useful diagnostic
 information about the build process::
 
     >>> result.converged  # doctest: +REMOTE_DATA
-    False
+    np.False_
     >>> result.iterations  # doctest: +REMOTE_DATA
     3
     >>> result.n_excluded_stars  # doctest: +REMOTE_DATA
