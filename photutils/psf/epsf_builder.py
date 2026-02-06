@@ -840,6 +840,8 @@ class EPSFFitter:
                                               (ycenter, xcenter),
                                               mode='strict')
             except (PartialOverlapError, NoOverlapError):
+                # TODO: only warn once per star per EPSFBuilder
+                # iteration
                 warnings.warn(f'The star at ({star.center[0]}, '
                               f'{star.center[1]}) cannot be fit because '
                               'its fitting region extends beyond the star '
@@ -1422,11 +1424,6 @@ class EPSFBuilder:
         epsf : `ImagePSF` object
             The updated ePSF.
         """
-        if len(stars) < 1:
-            msg = ('stars must contain at least one EPSFStar or '
-                   'LinkedEPSFStar object')
-            raise ValueError(msg)
-
         if epsf is None:
             # Create an initial ePSF (array of zeros)
             epsf = self._create_initial_epsf(stars)

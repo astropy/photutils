@@ -9,18 +9,49 @@ from multiprocessing.reduction import ForkingPickler
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
-from astropy.nddata import NDData, StdDevUncertainty
+from astropy.nddata import (InverseVariance, NDData, StdDevUncertainty,
+                            VarianceUncertainty)
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_array_equal
 
+from photutils.psf import make_psf_model_image
 from photutils.psf.epsf_stars import (EPSFStar, EPSFStars, LinkedEPSFStar,
                                       _compute_mean_sky_coordinate,
                                       _create_weights_cutout,
                                       _prepare_uncertainty_info, extract_stars)
 from photutils.psf.functional_models import CircularGaussianPRF
 from photutils.psf.image_models import ImagePSF
+
+
+@pytest.fixture
+def epsf_test_data():
+    """
+    Create a simulated image for testing.
+    """
+    fwhm = 2.7
+    psf_model = CircularGaussianPRF(flux=1, fwhm=fwhm)
+    model_shape = (9, 9)
+    n_sources = 100
+    shape = (750, 750)
+    data, true_params = make_psf_model_image(shape, psf_model, n_sources,
+                                             model_shape=model_shape,
+                                             flux=(500, 700),
+                                             min_separation=25,
+                                             border_size=25, seed=0)
+
+    nddata = NDData(data)
+    init_stars = Table()
+    init_stars['x'] = true_params['x_0'].astype(int)
+    init_stars['y'] = true_params['y_0'].astype(int)
+
+    return {
+        'fwhm': fwhm,
+        'data': data,
+        'nddata': nddata,
+        'init_stars': init_stars,
+    }
 
 
 @pytest.fixture
@@ -1448,3 +1479,46 @@ class TestExtractStars:
         with pytest.raises(ValueError,
                            match='each NDData object must have a wcs'):
             extract_stars([nddata1, nddata2], [table1, table2], size=11)
+
+    def test_extract_stars_uncertainties(self, epsf_test_data):
+        """
+        Test extract_stars with various uncertainty types.
+        """
+        rng = np.random.default_rng(seed=0)
+        shape = epsf_test_data['nddata'].data.shape
+        error = np.abs(rng.normal(loc=0, scale=1, size=shape))
+        uncertainty1 = StdDevUncertainty(error)
+        uncertainty2 = uncertainty1.represent_as(VarianceUncertainty)
+        uncertainty3 = uncertainty1.represent_as(InverseVariance)
+        ndd1 = NDData(epsf_test_data['nddata'].data, uncertainty=uncertainty1)
+        ndd2 = NDData(epsf_test_data['nddata'].data, uncertainty=uncertainty2)
+        ndd3 = NDData(epsf_test_data['nddata'].data, uncertainty=uncertainty3)
+
+        size = 25
+        ndd_inputs = (ndd1, ndd2, ndd3)
+
+        outputs = [extract_stars(ndd_input, epsf_test_data['init_stars'],
+                                 size=size) for ndd_input in ndd_inputs]
+
+        for stars in outputs:
+            assert len(stars) == len(epsf_test_data['init_stars'])
+            assert isinstance(stars, EPSFStars)
+            assert isinstance(stars[0], EPSFStars)
+            assert stars[0].data.shape == (size, size)
+            assert stars[0].weights.shape == (size, size)
+
+        assert_allclose(outputs[0].weights, outputs[1].weights)
+        assert_allclose(outputs[0].weights, outputs[2].weights)
+
+        uncertainty = StdDevUncertainty(np.zeros(shape))
+        ndd = NDData(epsf_test_data['nddata'].data, uncertainty=uncertainty)
+
+        # With zero uncertainty (infinite weights), stars near the edge
+        # may fail to be created due to flux estimation issues
+        match1 = 'Estimated flux is non-finite or non-positive'
+        match2 = 'non-finite weight values'
+        match3 = 'cutout region extended beyond the input image'
+        with (pytest.warns(match=match1),
+              pytest.warns(match=match2),
+              pytest.warns(match=match3)):
+            extract_stars(ndd, epsf_test_data['init_stars'][0:3], size=size)
