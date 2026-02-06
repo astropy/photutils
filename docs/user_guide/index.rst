@@ -58,7 +58,7 @@ PSF Photometry
     :maxdepth: 1
 
     psf.rst
-    epsf.rst
+    epsf_building.rst
     grouping.rst
 
 PSF Matching
