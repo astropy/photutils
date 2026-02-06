@@ -790,10 +790,6 @@ class EPSFFitter:
             msg = 'The input epsf must be an ImagePSF'
             raise TypeError(msg)
 
-        # Make a copy of the input ePSF
-        # (copy only parameters, not the data)
-        epsf = epsf.copy()
-
         # Perform the fit
         fitted_stars = []
         for star in stars:
@@ -838,10 +834,6 @@ class EPSFFitter:
                   fitter_has_fit_info, fit_boxsize):
         """
         Fit an ePSF model to a single star.
-
-        The input ``epsf`` will usually be modified by the fitting
-        routine in this function. Make a copy before calling this
-        function if the original is needed.
         """
         if fit_boxsize is not None:
             try:
@@ -850,7 +842,7 @@ class EPSFFitter:
                                               (ycenter, xcenter),
                                               mode='strict')
             except (PartialOverlapError, NoOverlapError):
-                star = copy.deepcopy(star)
+                star = copy.copy(star)
                 star._fit_error_status = 1
 
                 return star
@@ -903,7 +895,7 @@ class EPSFFitter:
         x_center = star.cutout_center[0] + fitted_epsf.x_0.value
         y_center = star.cutout_center[1] + fitted_epsf.y_0.value
 
-        star = copy.deepcopy(star)
+        star = copy.copy(star)
         star.cutout_center = (x_center, y_center)
 
         # Set the star's flux to the ePSF-fitted flux
@@ -1345,15 +1337,13 @@ class EPSFBuilder:
         if center_accuracy is None:
             center_accuracy = 1.0e-4
 
-        epsf_data = epsf.data.copy()
-
         # The center of the ePSF in oversampled pixel coordinates.
         # This is where we want the PSF center to be.
         xcenter, ycenter = self.coord_transformer.compute_epsf_origin(
-            epsf_data.shape)
+            epsf.data.shape)
 
         # Create coordinate grids in undersampled units for evaluate()
-        y, x = np.indices(epsf_data.shape, dtype=float)
+        y, x = np.indices(epsf.data.shape, dtype=float)
         x, y = self.coord_transformer.oversampled_to_undersampled(x, y)
 
         # The origin in undersampled units (for use with evaluate)
@@ -1367,6 +1357,7 @@ class EPSFBuilder:
         center_dist_sq = center_accuracy_sq + 1.0e6
         center_dist_sq_prev = center_dist_sq + 1
 
+        epsf_data = epsf.data
         while (iter_num < maxiters and center_dist_sq >= center_accuracy_sq):
             iter_num += 1
 
@@ -1430,10 +1421,6 @@ class EPSFBuilder:
         if epsf is None:
             # Create an initial ePSF (array of zeros)
             epsf = self._create_initial_epsf(stars)
-        else:
-            # Improve the input ePSF (shallow copy suffices for data
-            # replacement)
-            epsf = copy.copy(epsf)
 
         # Compute a 3D stack of 2D residual images
         residuals = self._resample_residuals(stars, epsf)
