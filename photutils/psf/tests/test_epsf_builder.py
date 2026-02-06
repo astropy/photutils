@@ -985,6 +985,12 @@ class TestEPSFBuilder:
                                    recentering_maxiters=5)
         epsf, fitted_stars = epsf_builder(stars)
 
+        # Verify EPSF properties with default settings
+        assert isinstance(epsf, ImagePSF)
+        assert epsf.x_0 == 0.0
+        assert epsf.y_0 == 0.0
+        assert epsf.flux == 1.0
+
         # Shape is star_shape * oversampling, then ensure odd
         ref_size = np.array(extract_shape) * oversampling
         ref_size = np.where(ref_size % 2 == 0, ref_size + 1, ref_size)
@@ -1700,6 +1706,12 @@ class TestEPSFBuilder:
         epsf_builder = EPSFBuilder(oversampling=oversamp, maxiters=15,
                                    progress_bar=False, recentering_maxiters=20)
         epsf, results = epsf_builder(stars)
+
+        # Verify EPSF properties with default settings
+        assert isinstance(epsf, ImagePSF)
+        assert epsf.x_0 == 0.0
+        assert epsf.y_0 == 0.0
+        assert epsf.flux == 1.0
 
         # Check expected shape of ePSF data
         # The shape should be star_size * oversamp, then ensure odd

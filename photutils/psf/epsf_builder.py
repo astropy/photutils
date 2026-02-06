@@ -1265,6 +1265,42 @@ class EPSFBuilder:
         return _SmoothingKernel.apply_smoothing(epsf_data,
                                                 self.smoothing_kernel)
 
+    def _normalize_epsf(self, epsf_data):
+        """
+        Normalize the ePSF data so that the sum of the array values
+        equals the product of the oversampling factors.
+
+        The normalization accounts for oversampling. For proper
+        normalization with flux=1.0, the sum of the ePSF data array
+        should equal the product of the oversampling factors.
+
+        Parameters
+        ----------
+        epsf_data : 2D `~numpy.ndarray`
+            A 2D array containing the ePSF image.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The normalized ePSF data.
+
+        Notes
+        -----
+        For an oversampled PSF image, the sum of array values should
+        equal the product of the oversampling factors (e.g., for
+        oversampling=(4, 4), sum should be 16.0). This ensures that the
+        ImagePSF model with flux=1.0 represents a properly normalized
+        PSF.
+        """
+        oversampling_product = np.prod(self.oversampling)
+        current_sum = np.sum(epsf_data)
+
+        if current_sum == 0:
+            msg = 'Cannot normalize ePSF: data sum is zero'
+            raise ValueError(msg)
+
+        return epsf_data * (oversampling_product / current_sum)
+
     def _recenter_epsf(self, epsf, centroid_func=None, box_size=None,
                        maxiters=None, center_accuracy=None):
         """
@@ -1458,13 +1494,10 @@ class EPSFBuilder:
         # Apply recentering to the smoothed data
         recentered_data = self._recenter_epsf(temp_epsf)
 
-        # Create the final ePSF with recentered data using the
-        # coordinate transformer
-        final_origin = self.coord_transformer.compute_epsf_origin(
-            recentered_data.shape)
+        # Normalize the ePSF data
+        normalized_data = self._normalize_epsf(recentered_data)
 
-        return ImagePSF(data=recentered_data,
-                        origin=final_origin,
+        return ImagePSF(data=normalized_data,
                         oversampling=self.oversampling,
                         fill_value=0.0)
 
@@ -1574,6 +1607,10 @@ class EPSFBuilder:
                                     category=AstropyUserWarning)
 
             stars = self.fitter(epsf, stars)
+
+        # Reset ePSF flux to 1.0 after fitting (fitting modifies the
+        # flux)
+        epsf.flux = 1.0
 
         # Find all stars where the fit failed
         fit_failed = np.array([star._fit_error_status > 0
