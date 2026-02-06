@@ -481,6 +481,30 @@ class TestEPSFStar:
         star2 = EPSFStar(data)
         assert star2.flux == -250.0  # sum of 25 pixels * -10
 
+    def test_all_zero_data_warning(self):
+        """
+        Test that all-zero data emits a warning when EPSFStar is called
+        directly, but flag is set for extract_stars to handle.
+
+        All-zero unmasked data is unusual and likely indicates a problem,
+        but it's not technically invalid, so we allow star creation.
+        """
+        data = np.zeros((5, 5))
+
+        # EPSFStar should emit warning when called directly
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            star = EPSFStar(data)
+            # Should have warning about all-zero data
+            warning_messages = [str(warning.message) for warning in w]
+            assert any('All unmasked data values' in msg and 'zero' in msg
+                       for msg in warning_messages)
+
+        # Star should be created with flux=0 and flag set
+        assert star.flux == 0.0
+        assert hasattr(star, '_has_all_zero_data')
+        assert star._has_all_zero_data is True
+
     def test_array_method(self):
         """
         Test the __array__ method.
@@ -587,7 +611,9 @@ class TestEPSFStar:
         # Test with data that results in zero flux - this is now ALLOWED
         # since zero flux is a valid (though not useful) value
         data = np.zeros((3, 3))
-        star = EPSFStar(data)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyUserWarning)
+            star = EPSFStar(data)
         assert star.flux == 0.0  # Zero flux is allowed
 
         # Test that completely invalid (NaN) data is rejected
@@ -1501,6 +1527,42 @@ class TestExtractStars:
 
         # Star should still be extracted (non-finite weights set to 0)
         assert len(stars) == 1
+
+    def test_extract_stars_all_zero_data_warnings(self):
+        """
+        Test that extract_stars emits individual warnings for stars with
+        all-zero data, including their positions.
+        """
+        # Create an all-zero image
+        data = np.zeros((50, 50))
+        nddata = NDData(data)
+
+        # Create a table with 3 stars
+        table = Table({'x': [10.5, 25.0, 40.8], 'y': [15.2, 30.0, 35.6]})
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            stars = extract_stars(nddata, table, size=11)
+
+            # Should have 3 warnings about all-zero data
+            warning_messages = [str(warning.message) for warning in w]
+            zero_warnings = [
+                msg for msg in warning_messages
+                if 'all unmasked data values equal to zero' in msg]
+            assert len(zero_warnings) == 3
+
+            # Check that each warning includes the star position
+            assert any('10.5' in msg and '15.2' in msg
+                       for msg in zero_warnings)
+            assert any('25.0' in msg and '30.0' in msg
+                       for msg in zero_warnings)
+            assert any('40.8' in msg and '35.6' in msg
+                       for msg in zero_warnings)
+
+        # All stars should still be extracted with flux=0
+        assert len(stars) == 3
+        for star in stars:
+            assert star.flux == 0.0
 
     def test_validate_single_catalog_multiple_images_no_wcs(self):
         """

@@ -127,6 +127,7 @@ class EPSFStar:
 
         if flux is not None:
             self.flux = float(flux)
+            self._has_all_zero_data = False  # Unknown for explicit flux
         else:
             # Check if completely masked before attempting flux estimation
             if np.all(self.mask):
@@ -134,11 +135,18 @@ class EPSFStar:
                        'available')
                 raise ValueError(msg)
 
+            # Check if all unmasked data values are exactly zero
+            # Store flag for later warning (to avoid duplicate warnings)
+            unmasked_data = self._data[~self.mask]
+            self._has_all_zero_data = bool(np.all(unmasked_data == 0.0))
+
+            # Warn if all data is zero
+            if self._has_all_zero_data:
+                warnings.warn('All unmasked data values in star cutout '
+                              'are zero', AstropyUserWarning)
+
             # Estimate flux
             self.flux = self.estimate_flux()
-            if np.isnan(self.flux):
-                msg = 'Estimated flux is non-finite'
-                raise ValueError(msg)
 
             # Note: We allow flux <= 0 for real sources that may have
             # negative net flux due to background subtraction or similar
@@ -1142,6 +1150,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     nonfinite_weights_count = 0
     overlap_fail_count = 0
     flux_failures = []  # Collect flux estimation failures
+    all_zero_stars = []  # Collect stars with all-zero data
     for i, (xcenter, ycenter) in enumerate(zip(xcenters, ycenters,
                                                strict=True)):
         try:
@@ -1166,10 +1175,19 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
         flux = fluxes[i] if fluxes is not None else None
 
         try:
-            star = EPSFStar(data_cutout, weights=weights_cutout,
-                            cutout_center=cutout_center, origin=origin,
-                            wcs_large=data.wcs, id_label=ids[i], flux=flux)
+            # Suppress all-zero warning in EPSFStar (we emit our own below)
+            with warnings.catch_warnings():
+                msg = 'All unmasked data values in star cutout are zero'
+                warnings.filterwarnings('ignore', message=msg,
+                                        category=AstropyUserWarning)
+                star = EPSFStar(data_cutout, weights=weights_cutout,
+                                cutout_center=cutout_center, origin=origin,
+                                wcs_large=data.wcs, id_label=ids[i], flux=flux)
             stars.append(star)
+
+            # Track stars with all-zero data
+            if hasattr(star, '_has_all_zero_data') and star._has_all_zero_data:
+                all_zero_stars.append((xcenter, ycenter))
         except ValueError as exc:
             # Collect flux estimation failures; emit warnings later
             flux_failures.append((xcenter, ycenter, exc))
@@ -1189,6 +1207,12 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     for xcenter, ycenter, exc in flux_failures:
         warnings.warn(f'Failed to create EPSFStar for object at '
                       f'({xcenter:.1f}, {ycenter:.1f}): {exc}',
+                      AstropyUserWarning)
+
+    # Emit warnings for stars with all-zero data
+    for xcenter, ycenter in all_zero_stars:
+        warnings.warn(f'Star at ({xcenter:.1f}, {ycenter:.1f}) has all '
+                      'unmasked data values equal to zero',
                       AstropyUserWarning)
 
     return stars, overlap_fail_count
