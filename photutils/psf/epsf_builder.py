@@ -940,15 +940,36 @@ class EPSFBuilder:
         respectively. Alternatively, a custom 2D array can be input. If
         `None` then no smoothing will be performed.
 
+    sigma_clip : `astropy.stats.SigmaClip` instance, optional
+        A `~astropy.stats.SigmaClip` object that defines the sigma
+        clipping parameters used to determine which pixels are ignored
+        when stacking the ePSF residuals in each iteration step. If
+        `None` then no sigma clipping will be performed.
+
     recentering_func : callable, optional
         A callable object that is used to calculate the centroid of a
         2D array. The callable must accept a 2D `~numpy.ndarray`, have
         a ``mask`` keyword and optionally an ``error`` keyword. The
         callable object must return a tuple of (x, y) centroids.
 
+    recentering_boxsize : float or tuple of two floats, optional
+        The size (in pixels) of the box used to calculate the centroid
+        of the ePSF during each build iteration. If a single integer
+        number is provided, then a square box will be used. If two
+        values are provided, then they must be in ``(ny, nx)`` order.
+        ``recentering_boxsize`` must have odd values and be greater than
+        or equal to 3 for both axes.
+
     recentering_maxiters : int, optional
         The maximum number of recentering iterations to perform during
         each ePSF build iteration.
+
+    center_accuracy : float, optional
+        The desired accuracy for the centers of stars. The building
+        iterations will stop if the centers of all the stars change by
+        less than ``center_accuracy`` pixels between iterations. All
+        stars must meet this condition for the building iterations to
+        stop.
 
     fitter : `EPSFFitter` object, optional
         A `EPSFFitter` object use to fit the ePSF to stars. If `None`,
@@ -964,27 +985,6 @@ class EPSFBuilder:
         iterations. The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
 
-    recentering_boxsize : float or tuple of two floats, optional
-        The size (in pixels) of the box used to calculate the centroid
-        of the ePSF during each build iteration. If a single integer
-        number is provided, then a square box will be used. If two
-        values are provided, then they must be in ``(ny, nx)`` order.
-        ``recentering_boxsize`` must have odd values and be greater than
-        or equal to 3 for both axes.
-
-    center_accuracy : float, optional
-        The desired accuracy for the centers of stars. The building
-        iterations will stop if the centers of all the stars change by
-        less than ``center_accuracy`` pixels between iterations. All
-        stars must meet this condition for the building iterations to
-        stop.
-
-    sigma_clip : `astropy.stats.SigmaClip` instance, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters used to determine which pixels are ignored
-        when stacking the ePSF residuals in each iteration step. If
-        `None` then no sigma clipping will be performed.
-
     Notes
     -----
     If your image contains NaN values, you may see better performance if
@@ -994,10 +994,10 @@ class EPSFBuilder:
     """
 
     def __init__(self, *, oversampling=4, shape=None,
-                 smoothing_kernel='quartic', recentering_func=centroid_com,
-                 recentering_maxiters=20, fitter=None, maxiters=10,
-                 progress_bar=True, recentering_boxsize=(5, 5),
-                 center_accuracy=1.0e-3, sigma_clip=SIGMA_CLIP):
+                 smoothing_kernel='quartic', sigma_clip=SIGMA_CLIP,
+                 recentering_func=centroid_com, recentering_boxsize=(5, 5),
+                 recentering_maxiters=20, center_accuracy=1.0e-3,
+                 fitter=None, maxiters=10, progress_bar=True):
 
         # Validate and store oversampling using the validator
         self.oversampling = _EPSFValidator.validate_oversampling(
