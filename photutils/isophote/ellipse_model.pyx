@@ -83,6 +83,7 @@ def build_ellipse_model_c(
     cdef double r, sma, q, pa, x0, y0, intens0, intens
     cdef int i, j, i_max, j_max
     cdef cython.Py_ssize_t index
+    cdef bool i_ge_zero, i_p1_le_max
 
     # Define output array
     cdef double[:, :] result = np.zeros([n_rows, n_cols], dtype=DTYPE)
@@ -112,10 +113,11 @@ def build_ellipse_model_c(
             # get image coordinates of (r, phi) pixel
             x = r * cos(phi + pa) + x0
             y = r * sin(phi + pa) + y0
-            i = int(x)
-            j = int(y)
+            # round down (this is equivalent to int(floor(x)))
+            i = int(x) - (x < 0)
+            j = int(y) - (y < 0)
 
-            if (0 < i < i_max) and (0 < j < j_max):
+            if (-1 <= i <= i_max) and (-1 <= j <= j_max):
                 # get fractional deviations relative to target array
                 fx = x - float(i)
                 fy = y - float(j)
@@ -124,33 +126,38 @@ def build_ellipse_model_c(
 
                 one_m_fx = (1.0 - fx)
                 one_m_fy = (1.0 - fy)
-                one_m_fx_t_one_m_fy = one_m_fx*one_m_fy
-                one_m_fy_t_fx = one_m_fy*fx
-                one_m_fx_t_fy = one_m_fx*fy
-                fy_t_fx = fy*fx
+
+                i_ge_zero = i >= 0
+                i_p1_le_max = (i + 1) <= i_max
 
                 with cython.boundscheck(False):
-                    # add up the isophote contribution to the overlapping pixels
-                    result[j, i] += intens*one_m_fx_t_one_m_fy
-                    result[j, i + 1] += intens*one_m_fy_t_fx
-                    result[j + 1, i] += intens*one_m_fx_t_fy
-                    result[j + 1, i + 1] += intens*fy_t_fx
+                    if j >= 0:
+                        if i_ge_zero:
+                            weight_pix = one_m_fx * one_m_fy
+                            # add up the isophote contribution to the overlapping pixels
+                            result[j, i] += intens * weight_pix
+                            # add up the fractional area contribution to the
+                            # overlapping pixels
+                            weight[j, i] += weight_pix
+                        if i_p1_le_max:
+                            weight_pix = one_m_fy * fx
+                            result[j, i + 1] += intens * weight_pix
+                            weight[j, i + 1] += weight_pix
+                    if (j + 1) <= j_max:
+                        if i_ge_zero:
+                            weight_pix = one_m_fx * fy
+                            result[j + 1, i] += intens * weight_pix
+                            weight[j + 1, i] += weight_pix
+                        if i_p1_le_max:
+                            weight_pix = fy * fx
+                            result[j + 1, i + 1] += intens * weight_pix
+                            weight[j + 1, i + 1] += weight_pix
 
-                    # add up the fractional area contribution to the
-                    # overlapping pixels
-                    weight[j, i] += one_m_fx_t_one_m_fy
-                    weight[j, i + 1] += one_m_fy_t_fx
-                    weight[j + 1, i] += one_m_fx_t_fy
-                    weight[j + 1, i + 1] += fy_t_fx
-
-                # step towards next pixel on ellipse
-                phi = max((phi + 0.75 / r), phi_min)
-                r = sma * q / sqrt((q * cos(phi))**2 + sin(phi)**2)
-                # max(r, 0.5) could return nan - this is safer
-                if not (r >= 0.5):
-                    r = 0.5
-            # if outside image boundaries, ignore.
-            else:
-                break
+            # step towards next pixel on ellipse
+            phi = max((phi + 0.75 / r), phi_min)
+            r = sma * q / sqrt((q * cos(phi))**2 + sin(phi)**2)
+            # max(r, 0.5) could return nan - this is safer
+            if not (r >= 0.5):
+                r = 0.5
 
     return np.asarray(result), np.asarray(weight)
