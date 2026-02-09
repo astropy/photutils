@@ -57,7 +57,7 @@ First, we'll use the `~photutils.centroids.centroid_quadratic` function
 to find the source centroid from the simulated image defined above::
 
     >>> from photutils.centroids import centroid_quadratic
-    >>> xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+    >>> xycen = centroid_quadratic(data)
     >>> print(xycen)  # doctest: +FLOAT_CMP
     [47.61226319 52.04668132]
 
@@ -141,7 +141,7 @@ error bars:
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+    xycen = centroid_quadratic(data)
 
     # create the radial profile
     edge_radii = np.arange(26)
@@ -202,7 +202,7 @@ to set the plot label.
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    xycen = centroid_quadratic(data)
 
     # create the radial profile
     edge_radii = np.arange(26)
@@ -239,7 +239,7 @@ instance on the data:
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    xycen = centroid_quadratic(data)
 
     # create the radial profile
     edge_radii = np.arange(26)
@@ -303,7 +303,7 @@ Finally, let's plot the fitted 1D Gaussian model for the
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+    xycen = centroid_quadratic(data)
 
     # create the radial profile
     edge_radii = np.arange(26)
@@ -409,7 +409,7 @@ to set the plot label.
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    xycen = centroid_quadratic(data)
 
     # create the radial profile
     radii = np.arange(1, 26)
@@ -445,7 +445,7 @@ list of the apertures. Let's plot a few of the circular apertures (the
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    xycen = centroid_quadratic(data)
 
     # create the radial profile
     radii = np.arange(1, 26)
@@ -522,7 +522,7 @@ Here we plot the encircled energy values.
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    xycen = centroid_quadratic(data)
 
     # create the radial profile
     radii = np.arange(1, 26)
