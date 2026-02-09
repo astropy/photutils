@@ -120,7 +120,7 @@ class RadialProfile(ProfileBase):
 
     Create the radial profile.
 
-    >>> xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+    >>> xycen = centroid_quadratic(data)
     >>> edge_radii = np.arange(26)
     >>> rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
@@ -166,7 +166,7 @@ class RadialProfile(ProfileBase):
         error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+        xycen = centroid_quadratic(data)
 
         # create the radial profile
         edge_radii = np.arange(26)
@@ -199,7 +199,7 @@ class RadialProfile(ProfileBase):
         error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+        xycen = centroid_quadratic(data)
 
         # create the radial profile
         edge_radii = np.arange(26)
@@ -233,7 +233,7 @@ class RadialProfile(ProfileBase):
         error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+        xycen = centroid_quadratic(data)
 
         # create the radial profile
         edge_radii = np.arange(26)
@@ -268,7 +268,7 @@ class RadialProfile(ProfileBase):
         error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+        xycen = centroid_quadratic(data)
 
         # create the radial profile
         edge_radii = np.arange(26)
@@ -312,7 +312,7 @@ class RadialProfile(ProfileBase):
         error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+        xycen = centroid_quadratic(data)
 
         # create the radial profile
         edge_radii = np.arange(26)

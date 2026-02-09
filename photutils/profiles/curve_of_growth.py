@@ -99,7 +99,7 @@ class CurveOfGrowth(ProfileBase):
 
     Create the curve of growth.
 
-    >>> xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+    >>> xycen = centroid_quadratic(data)
     >>> radii = np.arange(1, 26)
     >>> cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
 
@@ -143,7 +143,7 @@ class CurveOfGrowth(ProfileBase):
         error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+        xycen = centroid_quadratic(data)
 
         # create the curve of growth
         radii = np.arange(1, 26)
@@ -176,7 +176,7 @@ class CurveOfGrowth(ProfileBase):
         error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+        xycen = centroid_quadratic(data)
 
         # create the curve of growth
         radii = np.arange(1, 26)
@@ -211,7 +211,7 @@ class CurveOfGrowth(ProfileBase):
         error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
-        xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+        xycen = centroid_quadratic(data)
 
         # create the curve of growth
         radii = np.arange(1, 26)
