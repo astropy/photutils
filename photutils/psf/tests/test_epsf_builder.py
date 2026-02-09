@@ -12,8 +12,9 @@ import pytest
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NDData
 from astropy.table import Table
-from astropy.utils.exceptions import AstropyUserWarning
-from numpy.testing import assert_allclose
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.centroids import (centroid_1dg, centroid_2dg, centroid_com,
                                  centroid_quadratic)
@@ -66,6 +67,15 @@ def epsf_fitter_data(epsf_test_data):
     builder = EPSFBuilder(oversampling=1, maxiters=2, progress_bar=False)
     epsf, _ = builder(stars)
     return {'stars': stars, 'epsf': epsf}
+
+
+def _make_epsf_fitter(**kwargs):
+    """
+    Helper to create EPSFFitter suppressing the deprecation warning.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', AstropyDeprecationWarning)
+        return EPSFFitter(**kwargs)
 
 
 class TestSmoothingKernel:
@@ -744,7 +754,18 @@ class TestEPSFBuildResult:
 class TestEPSFFitter:
     """
     Tests for the EPSFFitter class.
+
+    EPSFFitter is deprecated since 3.0.0. These tests verify that
+    it still functions correctly while emitting a deprecation warning.
     """
+
+    def test_deprecation_warning(self):
+        """
+        Test that EPSFFitter emits a deprecation warning.
+        """
+        match = 'EPSFFitter is deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            EPSFFitter()
 
     def test_fit_stars(self, epsf_fitter_data):
         """
@@ -753,7 +774,7 @@ class TestEPSFFitter:
         stars = epsf_fitter_data['stars']
         epsf = epsf_fitter_data['epsf']
 
-        fitter = EPSFFitter()
+        fitter = _make_epsf_fitter()
         fitted_stars = fitter(epsf, stars)
         assert fitted_stars is not None
         assert len(fitted_stars) == len(stars)
@@ -764,7 +785,7 @@ class TestEPSFFitter:
         """
         data = np.ones((11, 11))
         epsf = ImagePSF(data)
-        fitter = EPSFFitter()
+        fitter = _make_epsf_fitter()
 
         empty_stars = EPSFStars([])
         result = fitter(epsf, empty_stars)
@@ -777,7 +798,7 @@ class TestEPSFFitter:
         data = np.ones((5, 5))
         star = EPSFStar(data, cutout_center=(2, 2))
         stars = EPSFStars([star])
-        fitter = EPSFFitter()
+        fitter = _make_epsf_fitter()
 
         match = 'The input epsf must be an ImagePSF'
         with pytest.raises(TypeError, match=match):
@@ -791,7 +812,7 @@ class TestEPSFFitter:
         epsf = epsf_fitter_data['epsf']
 
         # Test fitter with fit_boxsize=None (use entire star image)
-        fitter = EPSFFitter(fit_boxsize=None)
+        fitter = _make_epsf_fitter(fit_boxsize=None)
         fitted_stars = fitter(epsf, stars)
         assert len(fitted_stars) == len(stars)
 
@@ -808,7 +829,7 @@ class TestEPSFFitter:
         # Create an EPSFStars-like object with invalid star
         invalid_stars = [InvalidStar()]
 
-        fitter = EPSFFitter()
+        fitter = _make_epsf_fitter()
         match = 'stars must contain only EPSFStar'
         with pytest.raises(TypeError, match=match):
             fitter(epsf, invalid_stars)
@@ -821,7 +842,7 @@ class TestEPSFFitter:
         epsf = epsf_fitter_data['epsf']
 
         # Test fitter - the fit_info handling is automatic
-        fitter = EPSFFitter()
+        fitter = _make_epsf_fitter()
         assert fitter.fitter_has_fit_info is True
 
         fitted_stars = fitter(epsf, stars)
@@ -844,7 +865,7 @@ class TestEPSFFitter:
                 return model
 
         mock_fitter = MockFitter()
-        fitter = EPSFFitter(fitter=mock_fitter)
+        fitter = _make_epsf_fitter(fitter=mock_fitter)
 
         # Verify that fitter_has_fit_info is False
         assert fitter.fitter_has_fit_info is False
@@ -876,7 +897,7 @@ class TestEPSFFitter:
                 return model
 
         no_weights_fitter = NoWeightsFitter()
-        fitter = EPSFFitter(fitter=no_weights_fitter)
+        fitter = _make_epsf_fitter(fitter=no_weights_fitter)
 
         # Fit the stars - should handle TypeError gracefully
         fitted_stars = fitter(epsf, stars)
@@ -898,7 +919,7 @@ class TestEPSFFitter:
                 return model
 
         bad_ierr_fitter = BadIerrFitter()
-        fitter = EPSFFitter(fitter=bad_ierr_fitter)
+        fitter = _make_epsf_fitter(fitter=bad_ierr_fitter)
 
         # Fit the stars - should set fit_error_status = 2
         fitted_stars = fitter(epsf, stars)
@@ -913,7 +934,8 @@ class TestEPSFFitter:
         Test that EPSFFitter removes reserved kwargs.
         """
         # Pass kwargs that should be removed
-        fitter = EPSFFitter(x=1, y=2, z=3, weights=4, calc_uncertainties=False)
+        fitter = _make_epsf_fitter(x=1, y=2, z=3, weights=4,
+                                   calc_uncertainties=False)
 
         # These should be removed from fitter_kwargs
         assert 'x' not in fitter.fitter_kwargs
@@ -958,7 +980,7 @@ class TestEPSFFitter:
         stars_with_linked = EPSFStars([linked_star])
 
         # Fit the linked stars
-        fitter = EPSFFitter()
+        fitter = _make_epsf_fitter()
         fitted_stars = fitter(epsf, stars_with_linked)
 
         assert len(fitted_stars) == 1
@@ -1042,48 +1064,77 @@ class TestEPSFBuilder:
 
     def test_fitter_options(self):
         """
-        Test EPSFBuilder with different EPSFFitter options.
+        Test EPSFBuilder with different fitter options.
         """
-        # Test with default EPSFFitter
+        # Test with default fitter (TRFLSQFitter)
         builder1 = EPSFBuilder(maxiters=3)
-        assert isinstance(builder1.fitter, EPSFFitter)
-        # Default fit_boxsize is 5
-        np.testing.assert_array_equal(builder1.fitter.fit_boxsize, (5, 5))
+        assert isinstance(builder1.fitter, TRFLSQFitter)
+        # Default fit_shape is 5
+        assert_array_equal(builder1.fit_shape, (5, 5))
+        assert builder1.fitter_maxiters == 100
 
-        # Test with EPSFFitter instance
-        epsf_fitter = EPSFFitter()
-        builder2 = EPSFBuilder(fitter=epsf_fitter, maxiters=3)
-        assert isinstance(builder2.fitter, EPSFFitter)
+        # Test with explicit astropy fitter
+        fitter = TRFLSQFitter()
+        builder2 = EPSFBuilder(fitter=fitter, maxiters=3)
+        assert builder2.fitter is fitter
 
-        # Test with custom fit_boxsize
-        epsf_fitter = EPSFFitter(fit_boxsize=7)
-        builder2 = EPSFBuilder(fitter=epsf_fitter, maxiters=3)
-        np.testing.assert_array_equal(builder2.fitter.fit_boxsize, (7, 7))
+        # Test with custom fit_shape (scalar)
+        builder3 = EPSFBuilder(fit_shape=7, maxiters=3)
+        assert_array_equal(builder3.fit_shape, (7, 7))
 
-        # Test with tuple fit_boxsize
-        epsf_fitter = EPSFFitter(fit_boxsize=(5, 7))
-        builder3 = EPSFBuilder(fitter=epsf_fitter, maxiters=3)
-        np.testing.assert_array_equal(builder3.fitter.fit_boxsize, (5, 7))
+        # Test with tuple fit_shape
+        builder4 = EPSFBuilder(fit_shape=(5, 7), maxiters=3)
+        assert_array_equal(builder4.fit_shape, (5, 7))
 
-        # Test with None fit_boxsize
-        epsf_fitter = EPSFFitter(fit_boxsize=None)
-        builder4 = EPSFBuilder(fitter=epsf_fitter, maxiters=3)
-        assert builder4.fitter.fit_boxsize is None
+        # Test with None fit_shape (use entire star image)
+        builder5 = EPSFBuilder(fit_shape=None, maxiters=3)
+        assert builder5.fit_shape is None
+
+        # Test with custom fitter_maxiters
+        builder6 = EPSFBuilder(fitter_maxiters=200, maxiters=3)
+        assert builder6.fitter_maxiters == 200
 
         # Test with invalid fitter type (should fail)
         with pytest.raises(TypeError,
-                           match='fitter must be an EPSFFitter instance'):
+                           match='fitter must be a callable'):
             EPSFBuilder(fitter='invalid_fitter', maxiters=3)
 
-        # Test with astropy fitter directly (should fail)
-        with pytest.raises(TypeError,
-                           match='fitter must be an EPSFFitter instance'):
-            EPSFBuilder(fitter=TRFLSQFitter(), maxiters=3)
+    def test_fitter_options_deprecated_epsf_fitter(self):
+        """
+        Test that passing an EPSFFitter to EPSFBuilder works but
+        emits a deprecation warning.
+        """
+        epsf_fitter = _make_epsf_fitter(fit_boxsize=7)
+
+        match = 'Passing an EPSFFitter instance'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            builder = EPSFBuilder(fitter=epsf_fitter, maxiters=3)
+
+        # The astropy fitter should be extracted
+        assert isinstance(builder.fitter, TRFLSQFitter)
+        # The fit_shape should be extracted from EPSFFitter
+        assert_array_equal(builder.fit_shape, (7, 7))
+
+    def test_fitter_maxiters_ignored(self):
+        """
+        Test that fitter_maxiters is ignored if fitter doesn't
+        support maxiter.
+        """
+        # Create a mock fitter without maxiter support
+        class SimpleFitter:
+            def __call__(self, model, x, y, z, **kwargs):  # noqa: ARG002
+                return model
+
+        match = 'fitter_maxiters.*will be ignored'
+        with pytest.warns(AstropyUserWarning, match=match):
+            builder = EPSFBuilder(fitter=SimpleFitter(),
+                                  fitter_maxiters=200,
+                                  maxiters=3)
+        assert builder.fitter_maxiters is None
 
     def test_fitting_bounds(self, epsf_test_data):
         """
-        Test EPSFBuilder with EPSFFitter that has fit_boxsize larger
-        than star cutouts.
+        Test EPSFBuilder with fit_shape larger than star cutouts.
         """
         size = 25
         oversampling = 4
@@ -1091,18 +1142,16 @@ class TestEPSFBuilder:
                               epsf_test_data['init_stars'],
                               size=size)
 
-        # Create EPSFFitter with fit_boxsize larger than cutout
-        epsf_fitter = EPSFFitter(fit_boxsize=31)
-
+        # Use fit_shape larger than cutout
         epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=8,
                                    progress_bar=True,
                                    recentering_maxiters=5,
-                                   fitter=epsf_fitter,
+                                   fit_shape=31,
                                    smoothing_kernel='quadratic')
 
-        # With a boxsize larger than the cutout we expect the fitting to
-        # fail for all stars. The ValueError is raised before any star
-        # can be excluded (exclusion only happens after iter > 3).
+        # With a fit_shape larger than the cutout we expect the fitting
+        # to fail for all stars. The ValueError is raised before any
+        # star can be excluded (exclusion only happens after iter > 3).
         match = 'The ePSF fitting failed for all stars'
         with pytest.raises(ValueError, match=match):
             epsf_builder(stars)
@@ -1370,7 +1419,7 @@ class TestEPSFBuilder:
         epsf = builder._create_initial_epsf(stars)
 
         # Fit the stars
-        fitter = EPSFFitter()
+        fitter = _make_epsf_fitter()
         fitted_stars = fitter(epsf, stars)
 
         # The excluded star should be the exact same object (identity)
@@ -1425,9 +1474,12 @@ class TestEPSFBuilder:
                 return model
 
         failing_fitter = FirstCallFailingFitter()
-        epsf_fitter = EPSFFitter(fitter=failing_fitter)
-        builder = EPSFBuilder(oversampling=1, maxiters=1, progress_bar=False,
-                              fitter=epsf_fitter)
+        epsf_fitter = _make_epsf_fitter(fitter=failing_fitter)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyDeprecationWarning)
+            builder = EPSFBuilder(oversampling=1, maxiters=1,
+                                  progress_bar=False,
+                                  fitter=epsf_fitter)
 
         # Process iteration with iter_num > 3 to trigger exclusion. Use
         # fitted_stars (which has moved centers) to trigger overlap error.
@@ -1492,11 +1544,14 @@ class TestEPSFBuilder:
                 return model
 
         failing_fitter = PartialFailingFitter()
-        epsf_fitter = EPSFFitter(fitter=failing_fitter)
+        epsf_fitter = _make_epsf_fitter(fitter=failing_fitter)
 
         # Use maxiters=5 so we reach iter > 3 to trigger exclusion
-        builder = EPSFBuilder(oversampling=1, maxiters=5, progress_bar=False,
-                              fitter=epsf_fitter)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyDeprecationWarning)
+            builder = EPSFBuilder(oversampling=1, maxiters=5,
+                                  progress_bar=False,
+                                  fitter=epsf_fitter)
 
         # Should warn about fit not converging
         match = ('has been excluded from ePSF fitting because the fit did '
@@ -1544,9 +1599,13 @@ class TestEPSFBuilder:
                 return model
 
         fitter_obj = NoConvergeFitter()
-        epsf_fitter = EPSFFitter(fitter=fitter_obj)
-        builder = EPSFBuilder(oversampling=1, maxiters=7, progress_bar=False,
-                              fitter=epsf_fitter, center_accuracy=1e-6)
+        epsf_fitter = _make_epsf_fitter(fitter=fitter_obj)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyDeprecationWarning)
+            builder = EPSFBuilder(oversampling=1, maxiters=7,
+                                  progress_bar=False,
+                                  fitter=epsf_fitter,
+                                  center_accuracy=1e-6)
 
         # Build - this should trigger exclusion tracking
         with warnings.catch_warnings():
@@ -1579,8 +1638,7 @@ class TestEPSFBuilder:
         # This line calculates origin from shape
         expected_origin_y = (epsf.data.shape[0] - 1) / 2.0
         expected_origin_x = (epsf.data.shape[1] - 1) / 2.0
-        np.testing.assert_allclose(epsf.origin,
-                                   (expected_origin_x, expected_origin_y))
+        assert_allclose(epsf.origin, (expected_origin_x, expected_origin_y))
 
     @pytest.mark.skipif(not HAS_TQDM, reason='tqdm is required')
     def test_with_progress_bar(self, epsf_test_data):
