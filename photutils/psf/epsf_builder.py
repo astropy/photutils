@@ -987,9 +987,11 @@ class EPSFBuilder:
         A `~astropy.modeling.fitting.Fitter` object used to fit the
         ePSF to stars. If `None`, then the default
         `~astropy.modeling.fitting.TRFLSQFitter` will be used.
-        Passing an `EPSFFitter` instance is deprecated; use the
-        ``fitter``, ``fit_shape``, and ``fitter_maxiters`` parameters
-        instead.
+
+        .. deprecated:: 3.0.0
+            Passing an `EPSFFitter` instance is deprecated; use
+            the ``fitter``, ``fit_shape``, and ``fitter_maxiters``
+            parameters instead.
 
     fit_shape : int, tuple of int, or `None`, optional
         The size (in pixels) of the box centered on the star to be
