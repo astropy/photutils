@@ -1058,10 +1058,10 @@ class EPSFBuilder:
                           'fit_shape, and fitter_maxiters parameters '
                           'instead.',
                           AstropyDeprecationWarning)
-            self._epsf_fitter = fitter
             self.fitter = fitter.fitter
             self.fit_shape = fitter.fit_boxsize
             self.fitter_maxiters = None
+            self._fitter_kwargs = fitter.fitter_kwargs
         else:
             if fitter is None:
                 fitter = TRFLSQFitter()
@@ -1082,19 +1082,12 @@ class EPSFBuilder:
             self.fitter_maxiters = self._validate_fitter_maxiters(
                 fitter_maxiters)
 
-            # Create internal EPSFFitter
-            fitter_kwargs = {}
+            # Build fitter keyword arguments
+            self._fitter_kwargs = {}
             if self.fitter_maxiters is not None:
-                fitter_kwargs['maxiter'] = self.fitter_maxiters
+                self._fitter_kwargs['maxiter'] = self.fitter_maxiters
 
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore',
-                                      AstropyDeprecationWarning)
-                self._epsf_fitter = EPSFFitter(
-                    fitter=self.fitter,
-                    fit_boxsize=self.fit_shape,
-                    **fitter_kwargs,
-                )
+        self._fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
 
         # Validate center accuracy using the validator
         _EPSFValidator.validate_center_accuracy(center_accuracy)
@@ -1149,7 +1142,10 @@ class EPSFBuilder:
             support the ``maxiter`` parameter.
         """
         spec = inspect.signature(self.fitter.__call__)
-        if 'maxiter' not in spec.parameters:
+        has_maxiter = ('maxiter' in spec.parameters
+                       or any(p.kind == inspect.Parameter.VAR_KEYWORD
+                              for p in spec.parameters.values()))
+        if not has_maxiter:
             warnings.warn('"fitter_maxiters" will be ignored because '
                           'it is not accepted by the input fitter',
                           AstropyUserWarning)
@@ -1665,6 +1661,155 @@ class EPSFBuilder:
 
         return converged, center_dist_sq, new_centers
 
+    def _fit_stars(self, epsf, stars):
+        """
+        Fit an ePSF model to stars.
+
+        Parameters
+        ----------
+        epsf : `ImagePSF`
+            An ePSF model to be fitted to the stars.
+
+        stars : `EPSFStars` object
+            The stars to be fit. The center coordinates for each star
+            should be as close as possible to actual centers. For stars
+            that contain weights, a weighted fit of the ePSF to the
+            star will be performed.
+
+        Returns
+        -------
+        fitted_stars : `EPSFStars` object
+            The fitted stars. The ePSF-fitted center position and flux
+            are stored in the ``center`` (and ``cutout_center``) and
+            ``flux`` attributes.
+        """
+        if len(stars) == 0:
+            return stars
+
+        if not isinstance(epsf, ImagePSF):
+            msg = 'The input epsf must be an ImagePSF'
+            raise TypeError(msg)
+
+        fitted_stars = []
+        for star in stars:
+            if isinstance(star, EPSFStar):
+                if star._excluded_from_fit:
+                    fitted_star = star
+                else:
+                    fitted_star = self._fit_star(epsf, star)
+
+            elif isinstance(star, LinkedEPSFStar):
+                fitted_star = []
+                for linked_star in star:
+                    if linked_star._excluded_from_fit:
+                        fitted_star.append(linked_star)
+                    else:
+                        fitted_star.append(self._fit_star(epsf,
+                                                          linked_star))
+
+                fitted_star = LinkedEPSFStar(fitted_star)
+                fitted_star.constrain_centers()
+
+            else:
+                msg = ('stars must contain only EPSFStar and/or '
+                       'LinkedEPSFStar objects')
+                raise TypeError(msg)
+
+            fitted_stars.append(fitted_star)
+
+        return EPSFStars(fitted_stars)
+
+    def _fit_star(self, epsf, star):
+        """
+        Fit an ePSF model to a single star.
+
+        Parameters
+        ----------
+        epsf : `ImagePSF`
+            An ePSF model to be fitted to the star.
+
+        star : `EPSFStar`
+            The star to be fit.
+
+        Returns
+        -------
+        star : `EPSFStar`
+            The fitted star with updated cutout center and flux.
+        """
+        fit_shape = self.fit_shape
+        fitter = self.fitter
+        fitter_kwargs = self._fitter_kwargs
+        fitter_has_fit_info = self._fitter_has_fit_info
+
+        if fit_shape is not None:
+            try:
+                xcenter, ycenter = star.cutout_center
+                large_slc, _ = overlap_slices(star.shape, fit_shape,
+                                              (ycenter, xcenter),
+                                              mode='strict')
+            except (PartialOverlapError, NoOverlapError):
+                star = copy.copy(star)
+                star._fit_error_status = 1
+                return star
+
+            data = star.data[large_slc]
+            weights = star.weights[large_slc]
+
+            # Define the origin of the fitting region
+            x0 = large_slc[1].start
+            y0 = large_slc[0].start
+        else:
+            # Use the entire cutout image
+            data = star.data
+            weights = star.weights
+
+            # Define the origin of the fitting region
+            x0 = 0
+            y0 = 0
+
+        # Define positions in the undersampled grid. The fitter will
+        # evaluate on the defined interpolation grid, currently in the
+        # range [0, len(undersampled grid)].
+        yy, xx = np.indices(data.shape, dtype=float)
+        xx = xx + x0 - star.cutout_center[0]
+        yy = yy + y0 - star.cutout_center[1]
+
+        # Define the initial guesses for fitted flux and shifts
+        epsf.flux = star.flux
+        epsf.x_0 = 0.0
+        epsf.y_0 = 0.0
+
+        try:
+            fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=data,
+                                 weights=weights, **fitter_kwargs)
+        except TypeError:
+            # Handle case where the fitter does not support weights
+            fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=data,
+                                 **fitter_kwargs)
+
+        fit_error_status = 0
+        if fitter_has_fit_info:
+            fit_info = copy.copy(fitter.fit_info)
+            if 'ierr' in fit_info and fit_info['ierr'] not in [1, 2, 3, 4]:
+                fit_error_status = 2  # fit solution was not found
+        else:
+            fit_info = None
+
+        # Compute the star's fitted position
+        x_center = star.cutout_center[0] + fitted_epsf.x_0.value
+        y_center = star.cutout_center[1] + fitted_epsf.y_0.value
+
+        star = copy.copy(star)
+        star.cutout_center = (x_center, y_center)
+
+        # Set the star's flux to the ePSF-fitted flux
+        star.flux = fitted_epsf.flux.value
+
+        star._fit_info = fit_info
+        star._fit_error_status = fit_error_status
+
+        return star
+
     def _process_iteration(self, stars, epsf, iter_num):
         """
         Process a single iteration of ePSF building.
@@ -1700,7 +1845,7 @@ class EPSFBuilder:
             warnings.filterwarnings('ignore', message=message,
                                     category=AstropyUserWarning)
 
-            stars = self._epsf_fitter(epsf, stars)
+            stars = self._fit_stars(epsf, stars)
 
         # Reset ePSF flux to 1.0 after fitting (fitting modifies the
         # flux)
