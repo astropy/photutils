@@ -83,6 +83,13 @@ API Changes
   - The ``BkgIDWInterpolator`` and ``BkgZoomInterpolator`` classes are
     now deprecated. [#2108]
 
+- ``photutils.centroids``
+
+  - The ``xpeak``, ``ypeak``, and ``search_boxsize`` keyword arguments
+    for ``centroid_quadratic`` are now deprecated. Use
+    ``centroid_sources`` to centroid sources at specific positions.
+    [#2160]
+
 - ``photutils.psf``
 
   - Removed the deprecated ``IntegratedGaussianPRF`` and ``PRFAdapter``
