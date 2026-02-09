@@ -29,6 +29,44 @@ performance improvements:
 - scikit-image minimum version is now 0.23
 
 
+Refactored ePSF Building
+=========================
+
+The ePSF building tools have been significantly refactored for improved
+robustness, better diagnostics, and a cleaner API.
+
+New EPSFBuildResult class
+-------------------------
+
+:class:`~photutils.psf.EPSFBuilder` now returns an
+:class:`~photutils.psf.EPSFBuildResult` dataclass instead of a plain
+tuple. The result object provides structured access to detailed build
+diagnostics::
+
+    >>> from photutils.psf import EPSFBuilder
+    >>> builder = EPSFBuilder(oversampling=4)
+    >>> result = builder(stars)
+    >>> result.epsf  # the constructed ePSF (ImagePSF)
+    >>> result.fitted_stars  # stars with updated centers/fluxes
+    >>> result.iterations  # number of iterations performed
+    >>> result.converged  # whether the build converged
+    >>> result.final_center_accuracy  # max center shift in last iteration
+
+Backward compatibility is maintained. Existing code using tuple
+unpacking will continue to work::
+
+    >>> epsf, stars = builder(stars)
+
+Improved star exclusion handling
+--------------------------------
+
+Stars that repeatedly fail fitting are now automatically excluded from
+subsequent iterations, with informative warnings indicating the reason
+for exclusion (e.g., fit region extends beyond the cutout, or the fit
+did not converge). The number of excluded stars and their indices are
+reported in the :class:`~photutils.psf.EPSFBuildResult`.
+
+
 New SourceGroups class
 ======================
 
@@ -103,8 +141,8 @@ These options provide more flexibility when converting PSF photometry
 results for use in subsequent fitting iterations or other analyses.
 
 
-New decode_flags convenience method
-===================================
+New PSF decode_flags convenience method
+=======================================
 
 The :class:`~photutils.psf.PSFPhotometry` and
 :class:`~photutils.psf.IterativePSFPhotometry` classes now have a
@@ -115,45 +153,8 @@ corresponding source. This makes it easy to interpret which conditions
 were encountered during PSF fitting for each source.
 
 
-Refactored ePSF Building
-=========================
-
-The ePSF building tools have been significantly refactored for improved
-robustness, better diagnostics, and a cleaner API.
-
-New EPSFBuildResult class
--------------------------
-
-:class:`~photutils.psf.EPSFBuilder` now returns an
-:class:`~photutils.psf.EPSFBuildResult` dataclass instead of a plain
-tuple. The result object provides structured access to detailed build
-diagnostics::
-
-    >>> from photutils.psf import EPSFBuilder
-    >>> builder = EPSFBuilder(oversampling=4)
-    >>> result = builder(stars)
-    >>> result.epsf  # the constructed ePSF (ImagePSF)
-    >>> result.fitted_stars  # stars with updated centers/fluxes
-    >>> result.iterations  # number of iterations performed
-    >>> result.converged  # whether the build converged
-    >>> result.final_center_accuracy  # max center shift in last iteration
-
-Backward compatibility is maintained. Existing code using tuple
-unpacking will continue to work::
-
-    >>> epsf, stars = builder(stars)
-
-Improved star exclusion handling
---------------------------------
-
-Stars that repeatedly fail fitting are now automatically excluded from
-subsequent iterations, with informative warnings indicating the reason
-for exclusion (e.g., fit region extends beyond the cutout, or the fit
-did not converge). The number of excluded stars and their indices are
-reported in the :class:`~photutils.psf.EPSFBuildResult`.
-
 New ImagePSF shape property
----------------------------
+===========================
 
 :class:`~photutils.psf.ImagePSF` now has a ``shape`` property that
 returns the shape of the (oversampled) PSF data array.
@@ -178,6 +179,9 @@ For the ``psf`` package, the previously deprecated
 New Deprecations
 ================
 
+Background Package
+------------------
+
 The ``interpolator`` keyword argument for ``Background2D`` is
 now deprecated. When ``interpolator`` is eventually removed, the
 ``scipy.ndimage.zoom`` cubic spline interpolator will always be used to
@@ -191,9 +195,18 @@ is also significantly slower than the default interpolator based on
 ``scipy.ndimage.zoom``. The ``BkgZoomInterpolator`` functionality will
 be preserved in the default resizing behavior of ``Background2D``.
 
+PSF Package
+-----------
+
 The ``grid_from_epsfs`` helper function is now deprecated. This function
 creates a ``GriddedPSFModel`` from a list of ePSFs. Instead, use the
 ``GriddedPSFModel`` class directly.
+
+The :class:`~photutils.psf.EPSFFitter` class is now deprecated.
+To customize the ePSF fitting process, use the ``fitter``,
+``fit_shape``, and ``fitter_maxiters`` parameters of
+:class:`~photutils.psf.EPSFBuilder` directly instead of creating an
+``EPSFFitter`` instance.
 
 
 Breaking Changes

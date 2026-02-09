@@ -374,23 +374,27 @@ provide a custom 2D array, or set it to `None` for no smoothing::
     ...                            smoothing_kernel='quadratic',
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
-Using Custom ePSF Fitters
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Customizing the ePSF Fitting
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The :class:`~photutils.psf.EPSFBuilder` uses an
-`~photutils.psf.EPSFFitter` object to fit the ePSF to the stars during
-each iteration. You can customize the fitting process by providing your
-own `~photutils.psf.EPSFFitter` instance::
+The :class:`~photutils.psf.EPSFBuilder` class allows you to customize
+the fitting process using the ``fit_shape`` parameter. This parameter
+specifies the size of the box (in pixels) centered on each star used
+for fitting. Using a smaller box can speed up the fitting process while
+still capturing the core of the PSF::
 
-    >>> from photutils.psf import EPSFFitter
-    >>> fitter = EPSFFitter(fit_boxsize=7)  # doctest: +REMOTE_DATA
     >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
-    ...                            fitter=fitter,
+    ...                            fit_shape=7,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
-The ``fit_boxsize`` parameter specifies the size of the box centered on
-each star used for fitting. Using a smaller box can speed up the fitting
-process while still capturing the core of the PSF.
+You can also customize the fitter itself by passing a
+`~astropy.modeling.fitting.Fitter` instance::
+
+    >>> from astropy.modeling.fitting import LMLSQFitter
+    >>> fitter = LMLSQFitter()  # doctest: +REMOTE_DATA
+    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    ...                            fitter=fitter, fit_shape=7,
+    ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
 Sigma Clipping
 ^^^^^^^^^^^^^^

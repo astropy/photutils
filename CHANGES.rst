@@ -91,6 +91,10 @@ API Changes
   - The ``grid_from_epsfs`` helper function is now deprecated. Instead,
     use ``GriddedPSFModel`` directly. [#2111]
 
+  - The ``EPSFFitter`` class is now deprecated. Use the ``fitter``,
+    ``fit_shape``, and ``fitter_maxiters`` parameters of ``EPSFBuilder``
+    instead. [#2159]
+
   - Removed the ``ModelImageMixin`` class. [#2133]
 
   - Removed the ``ModelGridPlotMixin`` class. [#2137]
