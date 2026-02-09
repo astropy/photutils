@@ -17,7 +17,7 @@ from photutils.utils._round import py2intround
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
 
-def centroid_com(data, mask=None):
+def centroid_com(data, *, mask=None):
     """
     Calculate the centroid of an n-dimensional array as
     its "center of mass" determined from `image moments
@@ -109,7 +109,7 @@ def centroid_com(data, mask=None):
 @deprecated_renamed_argument('xpeak', None, '3.0')
 @deprecated_renamed_argument('ypeak', None, '3.0')
 @deprecated_renamed_argument('search_boxsize', None, '3.0')
-def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
+def centroid_quadratic(data, *, xpeak=None, ypeak=None, fit_boxsize=5,
                        search_boxsize=None, mask=None):
     """
     Calculate the centroid of an n-dimensional array by fitting a 2D
@@ -368,8 +368,8 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     return xycen
 
 
-def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
-                     centroid_func=centroid_com, **kwargs):
+def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
+                     mask=None, centroid_func=centroid_com, **kwargs):
     """
     Calculate the centroid of sources at the defined positions.
 
