@@ -8,6 +8,7 @@ import warnings
 
 import numpy as np
 from astropy.nddata import overlap_slices
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._parameters import as_pair
@@ -105,6 +106,9 @@ def centroid_com(data, mask=None):
                      for axis in range(data.ndim)])[::-1]
 
 
+@deprecated_renamed_argument('xpeak', None, '3.0')
+@deprecated_renamed_argument('ypeak', None, '3.0')
+@deprecated_renamed_argument('search_boxsize', None, '3.0')
 def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
                        search_boxsize=None, mask=None):
     """
@@ -141,6 +145,12 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         maximum value in the input ``data`` will be used as the initial
         guess.
 
+        .. deprecated:: 3.0
+           The ``xpeak`` and ``ypeak`` keywords are deprecated
+           and will be removed in a future version. Use
+           `~photutils.centroids.centroid_sources` to centroid sources
+           at specific positions.
+
     fit_boxsize : int or tuple of int, optional
         The size (in pixels) of the box used to define the fitting
         region. If ``fit_boxsize`` has two elements, they must be in
@@ -157,6 +167,12 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         must have odd values for both axes. This parameter is ignored
         if either ``xpeak`` or ``ypeak`` is `None`. In that case, the
         entire array is searched for the maximum value.
+
+        .. deprecated:: 3.0
+           The ``search_boxsize`` keyword is deprecated
+           and will be removed in a future version. Use
+           `~photutils.centroids.centroid_sources` to centroid sources
+           at specific positions.
 
     mask : bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -520,6 +536,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         if error is not None:
             centroid_kwargs['error'] = error[slices_large]
 
+        # Remove this block once xpeak and ypeak are fully deprecated
         # remove xpeak and ypeak from the dict and add back only if both
         # are specified and not None
         xpeak = centroid_kwargs.pop('xpeak', None)
