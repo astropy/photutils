@@ -236,18 +236,6 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
-    if ((xpeak is None and ypeak is not None)
-            or (xpeak is not None and ypeak is None)):
-        msg = 'xpeak and ypeak must both be input or "None"'
-        raise ValueError(msg)
-
-    if xpeak is not None and ((xpeak < 0) or (xpeak > data.shape[1] - 1)):
-        msg = 'xpeak is outside the input data'
-        raise ValueError(msg)
-    if ypeak is not None and ((ypeak < 0) or (ypeak > data.shape[0] - 1)):
-        msg = 'ypeak is outside the input data'
-        raise ValueError(msg)
-
     # preserve input data - which should be a small cutout image
     data = np.asanyarray(data, dtype=float).copy()
     if data.ndim != 2:
@@ -275,6 +263,18 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     if np.prod(fit_boxsize) < 6:
         msg = ('fit_boxsize is too small. 6 values are required to fit a '
                '2D quadratic polynomial.')
+        raise ValueError(msg)
+
+    if ((xpeak is None and ypeak is not None)
+            or (xpeak is not None and ypeak is None)):
+        msg = 'xpeak and ypeak must both be input or "None"'
+        raise ValueError(msg)
+
+    if xpeak is not None and ((xpeak < 0) or (xpeak > data.shape[1] - 1)):
+        msg = 'xpeak is outside the input data'
+        raise ValueError(msg)
+    if ypeak is not None and ((ypeak < 0) or (ypeak > data.shape[0] - 1)):
+        msg = 'ypeak is outside the input data'
         raise ValueError(msg)
 
     if xpeak is None or ypeak is None:
