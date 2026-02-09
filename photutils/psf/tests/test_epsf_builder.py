@@ -72,6 +72,9 @@ def epsf_fitter_data(epsf_test_data):
 def _make_epsf_fitter(**kwargs):
     """
     Helper to create EPSFFitter suppressing the deprecation warning.
+
+    Remove this helper and the catch_warnings block when EPSFFitter is
+    removed.
     """
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', AstropyDeprecationWarning)
@@ -1122,7 +1125,7 @@ class TestEPSFBuilder:
         """
         # Create a mock fitter without maxiter support
         class SimpleFitter:
-            def __call__(self, model, x, y, z, **kwargs):  # noqa: ARG002
+            def __call__(self, model, x, y, z):  # noqa: ARG002
                 return model
 
         match = 'fitter_maxiters.*will be ignored'
@@ -1418,9 +1421,8 @@ class TestEPSFBuilder:
         builder = EPSFBuilder(oversampling=1, maxiters=1, progress_bar=False)
         epsf = builder._create_initial_epsf(stars)
 
-        # Fit the stars
-        fitter = _make_epsf_fitter()
-        fitted_stars = fitter(epsf, stars)
+        # Fit the stars using the builder's internal method
+        fitted_stars = builder._fit_stars(epsf, stars)
 
         # The excluded star should be the exact same object (identity)
         assert fitted_stars.all_stars[0] is original_star
@@ -1474,12 +1476,9 @@ class TestEPSFBuilder:
                 return model
 
         failing_fitter = FirstCallFailingFitter()
-        epsf_fitter = _make_epsf_fitter(fitter=failing_fitter)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', AstropyDeprecationWarning)
-            builder = EPSFBuilder(oversampling=1, maxiters=1,
-                                  progress_bar=False,
-                                  fitter=epsf_fitter)
+        builder = EPSFBuilder(oversampling=1, maxiters=1,
+                              progress_bar=False,
+                              fitter=failing_fitter)
 
         # Process iteration with iter_num > 3 to trigger exclusion. Use
         # fitted_stars (which has moved centers) to trigger overlap error.
@@ -1544,14 +1543,11 @@ class TestEPSFBuilder:
                 return model
 
         failing_fitter = PartialFailingFitter()
-        epsf_fitter = _make_epsf_fitter(fitter=failing_fitter)
 
         # Use maxiters=5 so we reach iter > 3 to trigger exclusion
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', AstropyDeprecationWarning)
-            builder = EPSFBuilder(oversampling=1, maxiters=5,
-                                  progress_bar=False,
-                                  fitter=epsf_fitter)
+        builder = EPSFBuilder(oversampling=1, maxiters=5,
+                              progress_bar=False,
+                              fitter=failing_fitter)
 
         # Should warn about fit not converging
         match = ('has been excluded from ePSF fitting because the fit did '
@@ -1599,13 +1595,10 @@ class TestEPSFBuilder:
                 return model
 
         fitter_obj = NoConvergeFitter()
-        epsf_fitter = _make_epsf_fitter(fitter=fitter_obj)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', AstropyDeprecationWarning)
-            builder = EPSFBuilder(oversampling=1, maxiters=7,
-                                  progress_bar=False,
-                                  fitter=epsf_fitter,
-                                  center_accuracy=1e-6)
+        builder = EPSFBuilder(oversampling=1, maxiters=7,
+                              progress_bar=False,
+                              fitter=fitter_obj,
+                              center_accuracy=1e-6)
 
         # Build - this should trigger exclusion tracking
         with warnings.catch_warnings():
