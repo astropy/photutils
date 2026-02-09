@@ -10,7 +10,8 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose
 
 from photutils.centroids.core import (centroid_com, centroid_quadratic,
@@ -186,22 +187,27 @@ def test_centroid_quadratic_xypeak():
     xycen1 = centroid_quadratic(data, fit_boxsize=3)
     assert_allclose(xycen1, (9, 9))
 
-    xycen2 = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=3)
+    with pytest.warns(AstropyDeprecationWarning):
+        xycen2 = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=3)
     assert_allclose(xycen2, (5, 5))
 
-    xycen3 = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=3,
-                                search_boxsize=5)
+    with pytest.warns(AstropyDeprecationWarning):
+        xycen3 = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=3,
+                                    search_boxsize=5)
     assert_allclose(xycen3, (7, 7))
 
     match = 'xpeak is outside the input data'
-    with pytest.raises(ValueError, match=match):
+    with (pytest.warns(AstropyDeprecationWarning),
+          pytest.raises(ValueError, match=match)):
         centroid_quadratic(data, xpeak=15, ypeak=5)
-    match = 'ypeak is outside the input data'
-    with pytest.raises(ValueError, match=match):
-        centroid_quadratic(data, xpeak=5, ypeak=15)
-    match = 'xpeak is outside the input data'
-    with pytest.raises(ValueError, match=match):
+    with (pytest.warns(AstropyDeprecationWarning),
+          pytest.raises(ValueError, match=match)):
         centroid_quadratic(data, xpeak=15, ypeak=15)
+
+    match = 'ypeak is outside the input data'
+    with (pytest.warns(AstropyDeprecationWarning),
+          pytest.raises(ValueError, match=match)):
+        centroid_quadratic(data, xpeak=5, ypeak=15)
 
 
 def test_centroid_quadratic_nan():
@@ -216,7 +222,7 @@ def test_centroid_quadratic_nan():
 
     data[50, 50] = np.nan
     mask = ~np.isfinite(data)
-    xycen = centroid_quadratic(data, xpeak=47, ypeak=52, mask=mask)
+    xycen = centroid_quadratic(data, mask=mask)
     assert_allclose(xycen, [47.58324, 51.827182])
 
 
@@ -269,9 +275,11 @@ def test_centroid_quadratic_invalid_inputs():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
     match = 'xpeak and ypeak must both be input or "None"'
-    with pytest.raises(ValueError, match=match):
+    with (pytest.warns(AstropyDeprecationWarning),
+          pytest.raises(ValueError, match=match)):
         centroid_quadratic(data, xpeak=3, ypeak=None)
-    with pytest.raises(ValueError, match=match):
+    with (pytest.warns(AstropyDeprecationWarning),
+          pytest.raises(ValueError, match=match)):
         centroid_quadratic(data, xpeak=None, ypeak=3)
 
     match = 'fit_boxsize must have 1 or 2 elements'
@@ -297,10 +305,12 @@ def test_centroid_quadratic_edge():
     data[1, 1] = 100
     data[9, 9] = 100
 
-    xycen = centroid_quadratic(data, xpeak=1, ypeak=1, fit_boxsize=5)
+    with pytest.warns(AstropyDeprecationWarning):
+        xycen = centroid_quadratic(data, xpeak=1, ypeak=1, fit_boxsize=5)
     assert_allclose(xycen, (0.923077, 0.923077))
 
-    xycen = centroid_quadratic(data, xpeak=9, ypeak=9, fit_boxsize=5)
+    with pytest.warns(AstropyDeprecationWarning):
+        xycen = centroid_quadratic(data, xpeak=9, ypeak=9, fit_boxsize=5)
     assert_allclose(xycen, (9.076923, 9.076923))
 
     data = np.zeros((5, 5))
@@ -328,7 +338,8 @@ def test_centroid_quadratic_fit_failed():
 
     with patch('numpy.linalg.lstsq', side_effect=np.linalg.LinAlgError):
         match = 'quadratic fit failed'
-        with pytest.warns(AstropyUserWarning, match=match):
+        with (pytest.warns(AstropyDeprecationWarning),
+              pytest.warns(AstropyUserWarning, match=match)):
             xycen = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=5)
         assert np.isnan(xycen[0])
         assert np.isnan(xycen[1])
@@ -354,7 +365,8 @@ def test_centroid_quadratic_no_maximum():
     data[5, 5] = 20.0
 
     match = 'quadratic fit does not have a maximum'
-    with pytest.warns(AstropyUserWarning, match=match):
+    with (pytest.warns(AstropyDeprecationWarning),
+          pytest.warns(AstropyUserWarning, match=match)):
         xycen = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=5)
     assert np.isnan(xycen[0])
     assert np.isnan(xycen[1])
@@ -378,7 +390,8 @@ def test_centroid_quadratic_max_outside_image():
     data[3, 3] = 6.0  # local peak to center the fit
 
     match = 'quadratic polynomial maximum value falls outside'
-    with pytest.warns(AstropyUserWarning, match=match):
+    with (pytest.warns(AstropyDeprecationWarning),
+          pytest.warns(AstropyUserWarning, match=match)):
         xycen = centroid_quadratic(data, xpeak=3, ypeak=3, fit_boxsize=5)
     assert np.isnan(xycen[0])
     assert np.isnan(xycen[1])
@@ -482,42 +495,6 @@ class TestCentroidSources:
         assert_allclose(xcen, xres)
         assert_allclose(ycen, yres)
 
-    @pytest.mark.filterwarnings(r'ignore:.*no quadratic fit was performed')
-    def test_centroid_quadratic_kwargs(self):
-        """
-        Test centroid_sources with centroid_quadratic and various
-        keyword arguments.
-        """
-        data = np.zeros((11, 11))
-        data[5, 5] = 100
-        data[7, 7] = 110
-        data[9, 9] = 120
-
-        xycen1 = centroid_sources(data, xpos=5, ypos=5, box_size=9,
-                                  centroid_func=centroid_quadratic,
-                                  fit_boxsize=3)
-        assert_allclose(xycen1, ([9], [9]))
-
-        xycen2 = centroid_sources(data, xpos=7, ypos=7, box_size=5,
-                                  centroid_func=centroid_quadratic,
-                                  fit_boxsize=3)
-        assert_allclose(xycen2, ([9], [9]))
-
-        xycen3 = centroid_sources(data, xpos=7, ypos=7, box_size=5,
-                                  centroid_func=centroid_quadratic,
-                                  xpeak=7, ypeak=7, fit_boxsize=3)
-        assert_allclose(xycen3, ([7], [7]))
-
-        xycen4 = centroid_sources(data, xpos=5, ypos=5, box_size=5,
-                                  centroid_func=centroid_quadratic,
-                                  xpeak=5, ypeak=5, fit_boxsize=3)
-        assert_allclose(xycen4, ([5], [5]))
-
-        xycen5 = centroid_sources(data, xpos=5, ypos=5, box_size=5,
-                                  centroid_func=centroid_quadratic,
-                                  fit_boxsize=5)
-        assert_allclose(xycen5, ([7], [7]))
-
     def test_centroid_quadratic_mask(self):
         """
         Regression test to check that when a mask is input the original
@@ -561,6 +538,7 @@ class TestCentroidSources:
         assert_allclose(xycen1, ([25], [25]), atol=1.0e-3)
         assert_allclose(xycen2, ([25], [25]), atol=1.0e-3)
 
+    @pytest.mark.filterwarnings(r'ignore:.*was deprecated')
     def test_xypeaks_none(self, test_data):
         """
         Test centroid_sources with xpeak and ypeak as None for
@@ -579,6 +557,22 @@ class TestCentroidSources:
         assert_allclose(xycen1, ([25], [25]), atol=1.0e-3)
         assert_allclose(xycen2, ([25], [25]), atol=1.0e-3)
         assert_allclose(xycen3, ([25], [25]), atol=1.0e-3)
+
+    def test_centroid_quadratic_kwargs(self):
+        """
+        Test centroid_sources with centroid_quadratic and various
+        keyword arguments.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 100
+        data[7, 7] = 110
+        data[9, 9] = 120
+
+        with pytest.warns(AstropyDeprecationWarning):
+            xycen3 = centroid_sources(data, xpos=7, ypos=7, box_size=5,
+                                      centroid_func=centroid_quadratic,
+                                      xpeak=7, ypeak=7, fit_boxsize=3)
+        assert_allclose(xycen3, ([7], [7]))
 
 
 def test_cutout_mask():
