@@ -761,12 +761,11 @@ class EPSFFitter:
             self.fit_boxsize = None
 
         # Remove any fitter keyword arguments that we need to set
-        remove_kwargs = ['x', 'y', 'z', 'weights']
-        fitter_kwargs = copy.deepcopy(fitter_kwargs)
-        for kwarg in remove_kwargs:
-            if kwarg in fitter_kwargs:
-                del fitter_kwargs[kwarg]
-        self.fitter_kwargs = fitter_kwargs
+        remove_kwargs = {'x', 'y', 'z', 'weights'}
+        self.fitter_kwargs = {
+            k: v for k, v in fitter_kwargs.items()
+            if k not in remove_kwargs
+        }
 
     def __call__(self, epsf, stars):
         """
