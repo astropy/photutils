@@ -15,7 +15,7 @@ from photutils.utils._quantity_helpers import process_quantities
 __all__ = ['centroid_1dg', 'centroid_2dg']
 
 
-def centroid_1dg(data, error=None, mask=None):
+def centroid_1dg(data, *, error=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting 1D Gaussians to the
     marginal ``x`` and ``y`` distributions of the array.
@@ -124,7 +124,7 @@ def centroid_1dg(data, error=None, mask=None):
     return np.array(centroid)
 
 
-def _gaussian1d_moments(data, mask=None):
+def _gaussian1d_moments(data, *, mask=None):
     """
     Estimate 1D Gaussian parameters from the moments of 1D data.
 
@@ -171,7 +171,7 @@ def _gaussian1d_moments(data, mask=None):
     return amplitude, x_mean, x_stddev
 
 
-def centroid_2dg(data, error=None, mask=None):
+def centroid_2dg(data, *, error=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
     array.

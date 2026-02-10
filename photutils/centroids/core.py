@@ -17,7 +17,7 @@ from photutils.utils._round import py2intround
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
 
 
-def centroid_com(data, mask=None):
+def centroid_com(data, *, mask=None):
     """
     Calculate the centroid of an n-dimensional array as
     its "center of mass" determined from `image moments
@@ -109,8 +109,8 @@ def centroid_com(data, mask=None):
 @deprecated_renamed_argument('xpeak', None, '3.0')
 @deprecated_renamed_argument('ypeak', None, '3.0')
 @deprecated_renamed_argument('search_boxsize', None, '3.0')
-def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
-                       search_boxsize=None, mask=None):
+def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
+                       ypeak=None, search_boxsize=None):
     """
     Calculate the centroid of an n-dimensional array by fitting a 2D
     quadratic polynomial.
@@ -139,6 +139,18 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         The 2D image data. The image should be a background-subtracted
         cutout image containing a single source.
 
+    mask : bool `~numpy.ndarray`, optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from calculations.
+
+    fit_boxsize : int or tuple of int, optional
+        The size (in pixels) of the box used to define the fitting
+        region. If ``fit_boxsize`` has two elements, they must be in
+        ``(ny, nx)`` order. If ``fit_boxsize`` is a scalar then a square
+        box of size ``fit_boxsize`` will be used. ``fit_boxsize`` must
+        have odd values for both axes.
+
     xpeak, ypeak : float or `None`, optional
         The initial guess of the position of the centroid. If either
         ``xpeak`` or ``ypeak`` is `None` then the position of the
@@ -150,13 +162,6 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
            and will be removed in a future version. Use
            `~photutils.centroids.centroid_sources` to centroid sources
            at specific positions.
-
-    fit_boxsize : int or tuple of int, optional
-        The size (in pixels) of the box used to define the fitting
-        region. If ``fit_boxsize`` has two elements, they must be in
-        ``(ny, nx)`` order. If ``fit_boxsize`` is a scalar then a square
-        box of size ``fit_boxsize`` will be used. ``fit_boxsize`` must
-        have odd values for both axes.
 
     search_boxsize : int or tuple of int, optional
         The size (in pixels) of the box used to search for the maximum
@@ -173,11 +178,6 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
            and will be removed in a future version. Use
            `~photutils.centroids.centroid_sources` to centroid sources
            at specific positions.
-
-    mask : bool `~numpy.ndarray`, optional
-        A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-        Masked data are excluded from calculations.
 
     Returns
     -------
@@ -368,8 +368,8 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     return xycen
 
 
-def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
-                     centroid_func=centroid_com, **kwargs):
+def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
+                     mask=None, centroid_func=centroid_com, **kwargs):
     """
     Calculate the centroid of sources at the defined positions.
 

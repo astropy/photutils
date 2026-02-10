@@ -90,6 +90,11 @@ API Changes
     ``centroid_sources`` to centroid sources at specific positions.
     [#2160]
 
+- ``photutils.profiles``
+
+  - All functions in the ``profiles`` package now require keyword-only
+    arguments. [#2162]
+
 - ``photutils.psf``
 
   - Removed the deprecated ``IntegratedGaussianPRF`` and ``PRFAdapter``
