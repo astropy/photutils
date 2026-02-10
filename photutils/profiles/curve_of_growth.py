@@ -82,7 +82,7 @@ class CurveOfGrowth(ProfileBase):
     >>> import numpy as np
     >>> from astropy.modeling.models import Gaussian2D
     >>> from astropy.visualization import simple_norm
-    >>> from photutils.centroids import centroid_quadratic
+    >>> from photutils.centroids import centroid_2dg
     >>> from photutils.datasets import make_noise_image
     >>> from photutils.profiles import CurveOfGrowth
 
@@ -92,14 +92,14 @@ class CurveOfGrowth(ProfileBase):
     >>> gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     >>> yy, xx = np.mgrid[0:100, 0:100]
     >>> data = gmodel(xx, yy)
-    >>> bkg_sig = 2.4
-    >>> noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    >>> bkg_sig = 2.1
+    >>> noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
     >>> data += noise
     >>> error = np.zeros_like(data) + bkg_sig
 
     Create the curve of growth.
 
-    >>> xycen = centroid_quadratic(data)
+    >>> xycen = centroid_2dg(data)
     >>> radii = np.arange(1, 26)
     >>> cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
 
@@ -108,18 +108,18 @@ class CurveOfGrowth(ProfileBase):
      25]
 
     >>> print(cog.profile)  # doctest: +FLOAT_CMP
-    [ 130.57472018  501.34744442 1066.59182074 1760.50163608 2502.13955554
-     3218.50667597 3892.81448231 4455.36403436 4869.66609313 5201.99745378
-     5429.02043984 5567.28370644 5659.24831854 5695.06577065 5783.46217755
-     5824.01080702 5825.59003768 5818.22316662 5866.52307412 5896.96917375
-     5948.92254787 5968.30540534 5931.15611704 5941.94457249 5942.06535486]
+    [ 135.14750208  514.49674293 1076.4617132  1771.53866121 2510.94382666
+     3238.51695898 3907.08459943 4456.90125492 4891.00892262 5236.59326527
+     5473.66400376 5643.72239573 5738.24972738 5803.31693644 5842.00525018
+     5850.45854739 5855.76123671 5844.9631235  5847.72359025 5843.23189459
+     5852.05251106 5875.32009699 5869.86235184 5880.64741302 5872.16333953]
 
     >>> print(cog.profile_error)  # doctest: +FLOAT_CMP
-    [  4.25388924   8.50777848  12.76166773  17.01555697  21.26944621
-      25.52333545  29.7772247   34.03111394  38.28500318  42.53889242
-      46.79278166  51.04667091  55.30056015  59.55444939  63.80833863
-      68.06222787  72.31611712  76.57000636  80.8238956   85.07778484
-      89.33167409  93.58556333  97.83945257 102.09334181 106.34723105]
+    [ 3.72215309  7.44430617 11.16645926 14.88861235 18.61076543 22.33291852
+     26.05507161 29.7772247  33.49937778 37.22153087 40.94368396 44.66583704
+     48.38799013 52.11014322 55.8322963  59.55444939 63.27660248 66.99875556
+     70.72090865 74.44306174 78.16521482 81.88736791 85.609521   89.33167409
+     93.05382717]
 
     Plot the curve of growth.
 
@@ -129,7 +129,7 @@ class CurveOfGrowth(ProfileBase):
         import numpy as np
         from astropy.modeling.models import Gaussian2D
 
-        from photutils.centroids import centroid_quadratic
+        from photutils.centroids import centroid_2dg
         from photutils.datasets import make_noise_image
         from photutils.profiles import CurveOfGrowth
 
@@ -137,13 +137,13 @@ class CurveOfGrowth(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        bkg_sig = 2.4
-        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        bkg_sig = 2.1
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
         data += noise
         error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
-        xycen = centroid_quadratic(data)
+        xycen = centroid_2dg(data)
 
         # create the curve of growth
         radii = np.arange(1, 26)
@@ -162,7 +162,7 @@ class CurveOfGrowth(ProfileBase):
         import numpy as np
         from astropy.modeling.models import Gaussian2D
 
-        from photutils.centroids import centroid_quadratic
+        from photutils.centroids import centroid_2dg
         from photutils.datasets import make_noise_image
         from photutils.profiles import CurveOfGrowth
 
@@ -170,13 +170,13 @@ class CurveOfGrowth(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        bkg_sig = 2.4
-        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        bkg_sig = 2.1
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
         data += noise
         error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
-        xycen = centroid_quadratic(data)
+        xycen = centroid_2dg(data)
 
         # create the curve of growth
         radii = np.arange(1, 26)
@@ -197,7 +197,7 @@ class CurveOfGrowth(ProfileBase):
         from astropy.modeling.models import Gaussian2D
         from astropy.visualization import simple_norm
 
-        from photutils.centroids import centroid_quadratic
+        from photutils.centroids import centroid_2dg
         from photutils.datasets import make_noise_image
         from photutils.profiles import CurveOfGrowth
 
@@ -205,13 +205,13 @@ class CurveOfGrowth(ProfileBase):
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
-        bkg_sig = 2.4
-        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+        bkg_sig = 2.1
+        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
         data += noise
         error = np.zeros_like(data) + bkg_sig
 
         # find the source centroid
-        xycen = centroid_quadratic(data)
+        xycen = centroid_2dg(data)
 
         # create the curve of growth
         radii = np.arange(1, 26)
