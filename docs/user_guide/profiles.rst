@@ -23,8 +23,8 @@ data before creating a radial profile or curve of growth.
     >>> gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     >>> yy, xx = np.mgrid[0:100, 0:100]
     >>> data = gmodel(xx, yy)
-    >>> bkg_sig = 2.4
-    >>> noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    >>> bkg_sig = 2.1
+    >>> noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
     >>> data += noise
     >>> error = np.zeros_like(data) + bkg_sig
 
@@ -40,8 +40,8 @@ data before creating a radial profile or curve of growth.
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    bkg_sig = 2.4
-    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    bkg_sig = 2.1
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
     data += noise
     error = np.zeros_like(data) + bkg_sig
 
@@ -53,13 +53,13 @@ data before creating a radial profile or curve of growth.
 Creating a Radial Profile
 -------------------------
 
-First, we'll use the `~photutils.centroids.centroid_quadratic` function
+First, we'll use the `~photutils.centroids.centroid_2dg` function
 to find the source centroid from the simulated image defined above::
 
-    >>> from photutils.centroids import centroid_quadratic
-    >>> xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+    >>> from photutils.centroids import centroid_2dg
+    >>> xycen = centroid_2dg(data)
     >>> print(xycen)  # doctest: +FLOAT_CMP
-    [47.61226319 52.04668132]
+    [47.76934534 52.3884076 ]
 
 We'll use this centroid position as the center of our radial profile.
 
@@ -94,18 +94,18 @@ output 1D `~numpy.ndarray` objects containing the radial profile and
 propagated errors::
 
     >>> print(rp.profile)  # doctest: +FLOAT_CMP
-    [ 4.15632243e+01  3.93402079e+01  3.59845746e+01  3.15540506e+01
-      2.62300757e+01  2.07297033e+01  1.65106801e+01  1.19376723e+01
-      7.75743772e+00  5.56759777e+00  3.44112671e+00  1.91350281e+00
-      1.17092981e+00  4.22261078e-01  9.70256904e-01  4.16355795e-01
-      1.52328707e-02 -6.69985111e-02  4.15522650e-01  2.48494731e-01
-      4.03348112e-01  1.43482678e-01 -2.62777461e-01  7.30653622e-02]
+    [ 4.30187860e+01  4.02502046e+01  3.57758011e+01  3.16071235e+01
+      2.61511082e+01  2.10539746e+01  1.63701300e+01  1.16674718e+01
+      8.12828014e+00  5.78962699e+00  3.59342666e+00  2.35353336e+00
+      1.20355937e+00  7.67093923e-01  4.24650784e-01  8.67989701e-02
+      5.11484374e-02 -9.82041768e-02  2.37482124e-02 -3.66602855e-02
+      6.84802299e-02  1.72239596e-01 -3.86056497e-02  7.30423743e-02]
 
     >>> print(rp.profile_error)  # doctest: +FLOAT_CMP
-    [1.354055   0.78176402 0.60555181 0.51178468 0.45135167 0.40826294
-     0.37554729 0.3496155  0.32840658 0.31064152 0.29547903 0.28233999
-     0.270811   0.26058801 0.2514417  0.24319546 0.23571072 0.22887707
-     0.22260527 0.21682233 0.21146786 0.20649145 0.2018506  0.19750922]
+    [1.18479813 0.68404352 0.52985783 0.4478116  0.39493271 0.35723008
+     0.32860388 0.30591356 0.28735575 0.27181133 0.25854415 0.24704749
+     0.23695963 0.22801451 0.22001149 0.21279603 0.20624688 0.20026744
+     0.19477961 0.18971954 0.18503438 0.18068002 0.17661928 0.17282057]
 
 
 Raw Data Profile
@@ -127,7 +127,7 @@ error bars:
     import numpy as np
     from astropy.modeling.models import Gaussian2D
 
-    from photutils.centroids import centroid_quadratic
+    from photutils.centroids import centroid_2dg
     from photutils.datasets import make_noise_image
     from photutils.profiles import RadialProfile
 
@@ -135,13 +135,13 @@ error bars:
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    bkg_sig = 2.4
-    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    bkg_sig = 2.1
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
     data += noise
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+    xycen = centroid_2dg(data)
 
     # create the radial profile
     edge_radii = np.arange(26)
@@ -188,7 +188,7 @@ to set the plot label.
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.centroids import centroid_quadratic
+    from photutils.centroids import centroid_2dg
     from photutils.datasets import make_noise_image
     from photutils.profiles import RadialProfile
 
@@ -196,13 +196,13 @@ to set the plot label.
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    bkg_sig = 2.4
-    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    bkg_sig = 2.1
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
     data += noise
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    xycen = centroid_2dg(data)
 
     # create the radial profile
     edge_radii = np.arange(26)
@@ -225,7 +225,7 @@ instance on the data:
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from astropy.visualization import simple_norm
-    from photutils.centroids import centroid_quadratic
+    from photutils.centroids import centroid_2dg
     from photutils.datasets import make_noise_image
     from photutils.profiles import RadialProfile
 
@@ -233,13 +233,13 @@ instance on the data:
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    bkg_sig = 2.4
-    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    bkg_sig = 2.1
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
     data += noise
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    xycen = centroid_2dg(data)
 
     # create the radial profile
     edge_radii = np.arange(26)
@@ -261,24 +261,24 @@ Now let's fit a 1D Gaussian to the radial profile and return the
 value is a 1D Gaussian model fit to the radial profile::
 
     >>> rp.gaussian_fit  # doctest: +FLOAT_CMP
-    <Gaussian1D(amplitude=41.54880743, mean=0., stddev=4.71059406)>
+    <Gaussian1D(amplitude=42.25782121, mean=0., stddev=4.67512787)>
 
 The FWHM of the fitted 1D Gaussian model is stored in the
 `~photutils.profiles.RadialProfile.gaussian_fwhm` attribute::
 
     >>> print(rp.gaussian_fwhm)  # doctest: +FLOAT_CMP
-    11.09260130738712
+    11.009084813327846
 
 The 1D Gaussian model evaluated at the profile radius values is stored
 in the `~photutils.profiles.RadialProfile.gaussian_profile` attribute::
 
     >>> print(rp.gaussian_profile)  # doctest: +FLOAT_CMP
-    [4.13154108e+01 3.94948235e+01 3.60907893e+01 3.15268576e+01
-     2.63264980e+01 2.10152035e+01 1.60362275e+01 1.16976580e+01
-     8.15687363e+00 5.43721678e+00 3.46463641e+00 2.11040974e+00
-     1.22886451e+00 6.84020824e-01 3.63967618e-01 1.85133184e-01
-     9.00189404e-02 4.18419219e-02 1.85916294e-02 7.89680446e-03
-     3.20636838e-03 1.24452479e-03 4.61765823e-04 1.63782737e-04]
+    [4.20168369e+01 4.01377829e+01 3.66280188e+01 3.19303371e+01
+     2.65903224e+01 2.11530856e+01 1.60751071e+01 1.16698171e+01
+     8.09290139e+00 5.36135385e+00 3.39292860e+00 2.05118576e+00
+     1.18458244e+00 6.53515081e-01 3.44410166e-01 1.73390913e-01
+     8.33886095e-02 3.83104412e-02 1.68134796e-02 7.04900913e-03
+     2.82311500e-03 1.08008788e-03 3.94747727e-04 1.37819354e-04]
 
 Finally, let's plot the fitted 1D Gaussian model for the
 :class:`~photutils.profiles.RadialProfile` radial profile:
@@ -289,7 +289,7 @@ Finally, let's plot the fitted 1D Gaussian model for the
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.centroids import centroid_quadratic
+    from photutils.centroids import centroid_2dg
     from photutils.datasets import make_noise_image
     from photutils.profiles import RadialProfile
 
@@ -297,13 +297,13 @@ Finally, let's plot the fitted 1D Gaussian model for the
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    bkg_sig = 2.4
-    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    bkg_sig = 2.1
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
     data += noise
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=48, ypeak=52)
+    xycen = centroid_2dg(data)
 
     # create the radial profile
     edge_radii = np.arange(26)
@@ -347,18 +347,18 @@ output 1D `~numpy.ndarray` objects containing the curve-of-growth
 profile and propagated errors::
 
     >>> print(cog.profile)  # doctest: +FLOAT_CMP
-    [ 130.57472018  501.34744442 1066.59182074 1760.50163608 2502.13955554
-     3218.50667597 3892.81448231 4455.36403436 4869.66609313 5201.99745378
-     5429.02043984 5567.28370644 5659.24831854 5695.06577065 5783.46217755
-     5824.01080702 5825.59003768 5818.22316662 5866.52307412 5896.96917375
-     5948.92254787 5968.30540534 5931.15611704 5941.94457249 5942.06535486]
+    [ 135.14750208  514.49674293 1076.4617132  1771.53866121 2510.94382666
+     3238.51695898 3907.08459943 4456.90125492 4891.00892262 5236.59326527
+     5473.66400376 5643.72239573 5738.24972738 5803.31693644 5842.00525018
+     5850.45854739 5855.76123671 5844.9631235  5847.72359025 5843.23189459
+     5852.05251106 5875.32009699 5869.86235184 5880.64741302 5872.16333953]
 
     >>> print(cog.profile_error)  # doctest: +FLOAT_CMP
-    [  4.25388924   8.50777848  12.76166773  17.01555697  21.26944621
-      25.52333545  29.7772247   34.03111394  38.28500318  42.53889242
-      46.79278166  51.04667091  55.30056015  59.55444939  63.80833863
-      68.06222787  72.31611712  76.57000636  80.8238956   85.07778484
-      89.33167409  93.58556333  97.83945257 102.09334181 106.34723105]
+    [ 3.72215309  7.44430617 11.16645926 14.88861235 18.61076543 22.33291852
+     26.05507161 29.7772247  33.49937778 37.22153087 40.94368396 44.66583704
+     48.38799013 52.11014322 55.8322963  59.55444939 63.27660248 66.99875556
+     70.72090865 74.44306174 78.16521482 81.88736791 85.609521   89.33167409
+     93.05382717]
 
 Normalization
 ^^^^^^^^^^^^^
@@ -395,7 +395,7 @@ to set the plot label.
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.centroids import centroid_quadratic
+    from photutils.centroids import centroid_2dg
     from photutils.datasets import make_noise_image
     from photutils.profiles import CurveOfGrowth
 
@@ -403,13 +403,13 @@ to set the plot label.
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    bkg_sig = 2.4
-    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    bkg_sig = 2.1
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
     data += noise
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    xycen = centroid_2dg(data)
 
     # create the radial profile
     radii = np.arange(1, 26)
@@ -431,7 +431,7 @@ list of the apertures. Let's plot a few of the circular apertures (the
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from astropy.visualization import simple_norm
-    from photutils.centroids import centroid_quadratic
+    from photutils.centroids import centroid_2dg
     from photutils.datasets import make_noise_image
     from photutils.profiles import CurveOfGrowth
 
@@ -439,13 +439,13 @@ list of the apertures. Let's plot a few of the circular apertures (the
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    bkg_sig = 2.4
-    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    bkg_sig = 2.1
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
     data += noise
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    xycen = centroid_2dg(data)
 
     # create the radial profile
     radii = np.arange(1, 26)
@@ -496,7 +496,7 @@ of growth we created above::
     >>> ee_rads = np.array([5, 10, 15])
     >>> ee_vals = cog.calc_ee_at_radius(ee_rads)  # doctest: +FLOAT_CMP
     >>> ee_vals
-    array([0.41923785, 0.87160376, 0.96902919])
+    array([0.42698425, 0.89047904, 0.99342893])
 
     >>> cog.calc_radius_at_ee(ee_vals)  # doctest: +FLOAT_CMP
     array([ 5., 10., 15.])
@@ -508,7 +508,7 @@ Here we plot the encircled energy values.
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.centroids import centroid_quadratic
+    from photutils.centroids import centroid_2dg
     from photutils.datasets import make_noise_image
     from photutils.profiles import CurveOfGrowth
 
@@ -516,13 +516,13 @@ Here we plot the encircled energy values.
     gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
     yy, xx = np.mgrid[0:100, 0:100]
     data = gmodel(xx, yy)
-    bkg_sig = 2.4
-    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=123)
+    bkg_sig = 2.1
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
     data += noise
     error = np.zeros_like(data) + bkg_sig
 
     # find the source centroid
-    xycen = centroid_quadratic(data, xpeak=47, ypeak=52)
+    xycen = centroid_2dg(data)
 
     # create the radial profile
     radii = np.arange(1, 26)
