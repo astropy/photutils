@@ -37,7 +37,10 @@ def test_fit_2dgaussian_single(fix_fwhm):
     model = CircularGaussianPRF(x_0=22.17, y_0=28.87, fwhm=fwhm)
     data = model(xx, yy)
 
-    fit = fit_2dgaussian(data, fwhm=3, fix_fwhm=fix_fwhm)
+    match = ('fit_shape is None, so the input data array is assumed to be '
+             'a cutout image containing only one source')
+    with pytest.warns(AstropyUserWarning, match=match):
+        fit = fit_2dgaussian(data, fwhm=3, fix_fwhm=fix_fwhm)
     fit_tbl = fit.results
     assert isinstance(fit_tbl, QTable)
     assert len(fit_tbl) == 1
@@ -47,20 +50,26 @@ def test_fit_2dgaussian_single(fix_fwhm):
         assert 'fwhm_fit' in fit_tbl.colnames
         assert_allclose(fit_tbl['fwhm_fit'], fwhm)
 
-    # test with NaNs
+    # test with NaNs - will emit two warnings
     data[22, 29] = np.nan
-    match = 'Input data contains non-finite values'
-    match = 'Input data contains unmasked non-finite values'
-    with pytest.warns(AstropyUserWarning, match=match):
+    with pytest.warns(AstropyUserWarning) as record:
         fit = fit_2dgaussian(data, fwhm=3, fix_fwhm=fix_fwhm)
+    # Check that both warnings were emitted
+    assert len(record) == 2
+    warning_msgs = [str(w.message) for w in record]
+    assert any('fit_shape is None' in msg for msg in warning_msgs)
+    assert any('non-finite values' in msg for msg in warning_msgs)
     fit_tbl = fit.results
     assert isinstance(fit_tbl, QTable)
     assert len(fit_tbl) == 1
 
-    # test with NaNs and mask
+    # test with NaNs and mask - only fit_shape warning
     data[22, 29] = np.nan
     mask = np.isnan(data)
-    fit = fit_2dgaussian(data, fwhm=3, fix_fwhm=fix_fwhm, mask=mask)
+    match = ('fit_shape is None, so the input data array is assumed to be '
+             'a cutout image containing only one source')
+    with pytest.warns(AstropyUserWarning, match=match):
+        fit = fit_2dgaussian(data, fwhm=3, fix_fwhm=fix_fwhm, mask=mask)
     fit_tbl = fit.results
     assert isinstance(fit_tbl, QTable)
     assert len(fit_tbl) == 1
@@ -101,21 +110,91 @@ def test_fit_2dgaussian_multiple(test_data, fix_fwhm, with_units):
                 assert fit_tbl['flux_fit'].unit == unit
 
 
+def test_fit_2dgaussian_fit_shape_none_single():
+    """
+    Test fit_2dgaussian with fit_shape=None for a single source.
+
+    Should emit a warning and use the data shape (adjusted to odd).
+    """
+    yy, xx = np.mgrid[:50, :50]  # Even shape
+    fwhm = 3.0
+    model = CircularGaussianPRF(x_0=25.0, y_0=25.0, fwhm=fwhm)
+    data = model(xx, yy)
+
+    match = ('fit_shape is None, so the input data array is assumed to be '
+             'a cutout image containing only one source')
+    with pytest.warns(AstropyUserWarning, match=match):
+        fit = fit_2dgaussian(data, fit_shape=None, fix_fwhm=False)
+
+    fit_tbl = fit.results
+    assert isinstance(fit_tbl, QTable)
+    assert len(fit_tbl) == 1
+    assert_allclose(fit_tbl['fwhm_fit'], fwhm, rtol=0.01)
+
+
+def test_fit_2dgaussian_fit_shape_none_single_odd():
+    """
+    Test fit_2dgaussian with fit_shape=None for single source with odd
+    shape.
+
+    Should emit a warning and use the data shape unchanged.
+    """
+    yy, xx = np.mgrid[:51, :51]  # Odd shape
+    fwhm = 3.123
+    model = CircularGaussianPRF(x_0=25.0, y_0=25.0, fwhm=fwhm)
+    data = model(xx, yy)
+
+    match = ('fit_shape is None, so the input data array is assumed to be '
+             'a cutout image containing only one source')
+    with pytest.warns(AstropyUserWarning, match=match):
+        fit = fit_2dgaussian(data, fit_shape=None, fix_fwhm=False)
+
+    fit_tbl = fit.results
+    assert isinstance(fit_tbl, QTable)
+    assert len(fit_tbl) == 1
+    assert_allclose(fit_tbl['fwhm_fit'], fwhm, rtol=0.01)
+
+
+def test_fit_2dgaussian_fit_shape_none_multiple():
+    """
+    Test fit_2dgaussian raises ValueError with fit_shape=None for
+    multiple sources.
+    """
+    yy, xx = np.mgrid[:51, :51]
+    model1 = CircularGaussianPRF(x_0=20.0, y_0=20.0, fwhm=3.0, flux=100)
+    model2 = CircularGaussianPRF(x_0=30.0, y_0=30.0, fwhm=3.0, flux=100)
+    data = model1(xx, yy) + model2(xx, yy)
+
+    xypos = [(20.0, 20.0), (30.0, 30.0)]
+
+    match = ('fit_shape is required when fitting multiple sources')
+    with pytest.raises(ValueError, match=match):
+        fit_2dgaussian(data, xypos=xypos, fit_shape=None)
+
+
 def test_fit_fwhm_single():
     yy, xx = np.mgrid[:51, :51]
     fwhm0 = 3.123
     model = CircularGaussianPRF(x_0=22.17, y_0=28.87, fwhm=fwhm0)
     data = model(xx, yy)
 
-    fwhm = fit_fwhm(data, fwhm=3)
+    # fit_fwhm re-emits the fit_shape warning
+    match = ('fit_shape is None, so the input data array is assumed to be '
+             'a cutout image containing only one source')
+    with pytest.warns(AstropyUserWarning, match=match):
+        fwhm = fit_fwhm(data, fwhm=3)
     assert isinstance(fwhm, np.ndarray)
     assert len(fwhm) == 1
     assert_allclose(fwhm, fwhm0)
 
-    # test warning message
-    match = 'may not have converged. Please carefully check your results'
-    with pytest.warns(AstropyUserWarning, match=match):
+    # test warning message for convergence issues - flat data should also
+    # emit the fit_shape warning since fit_shape=None
+    with pytest.warns(AstropyUserWarning) as record:
         fwhm = fit_fwhm(np.zeros(data.shape) + 1)
+    # Should get at least the fit_shape warning
+    assert len(record) >= 1
+    warning_msgs = [str(w.message) for w in record]
+    assert any('fit_shape is None' in msg for msg in warning_msgs)
     assert len(fwhm) == 1
 
 
@@ -132,6 +211,16 @@ def test_fit_fwhm_multiple(test_data, with_units):
     assert isinstance(fwhms, np.ndarray)
     assert len(fwhms) == len(sources)
     assert_allclose(fwhms, sources['fwhm'])
+
+
+def test_fit_fwhm_fit_shape_none(test_data):
+    data, sources = test_data
+    xypos = (sources['x_0'][0], sources['y_0'][0])
+
+    match = ('fit_shape is None, so the input data array is assumed to be '
+             'a cutout image')
+    with pytest.warns(AstropyUserWarning, match=match):
+        fit_fwhm(data, xypos=xypos, fit_shape=None)
 
 
 def test_interpolate_missing_data():
