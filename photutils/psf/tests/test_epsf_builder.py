@@ -2232,3 +2232,173 @@ class TestEPSFBuilder:
         match = 'stars must contain only EPSFStar and/or LinkedEPSFStar'
         with pytest.raises(TypeError, match=match):
             builder._fit_stars(epsf, invalid_stars)
+
+    def test_fit_star_position_outside_cutout(self, epsf_test_data):
+        """
+        Test that _fit_star sets fit_error_status=3 and does not update
+        the star's cutout_center when the fitted position falls outside
+        the data cutout.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:2], size=11)
+
+        builder = EPSFBuilder(oversampling=1, maxiters=2, fit_shape=5,
+                              progress_bar=False)
+        epsf, _ = builder(stars)
+
+        star = stars.all_stars[0]
+        original_center = star.cutout_center.copy()
+        original_flux = star.flux
+
+        # Create a fitter that returns a large shift pushing the
+        # fitted position outside the cutout
+        class ShiftingFitter:
+            def __init__(self):
+                self.fit_info = {'ierr': 1}
+
+            def __call__(
+                self, model, x, y, z, weights=None, **kwargs,  # noqa: ARG002
+            ):
+                # Set a large shift that will push the center outside
+                model.x_0 = 100.0  # Way outside an 11x11 cutout
+                model.y_0 = 0.0
+                return model
+
+        builder_shift = EPSFBuilder(oversampling=1, maxiters=1,
+                                    fit_shape=5, progress_bar=False,
+                                    fitter=ShiftingFitter())
+
+        fitted_star = builder_shift._fit_star(epsf, star)
+
+        # fit_error_status should be 3
+        assert fitted_star._fit_error_status == 3
+
+        # cutout_center should NOT have been updated
+        assert_array_equal(fitted_star.cutout_center, original_center)
+
+        # flux should NOT have been updated
+        assert fitted_star.flux == original_flux
+
+    def test_fit_star_position_negative_outside_cutout(self, epsf_test_data):
+        """
+        Test that _fit_star sets fit_error_status=3 when the fitted
+        position is negative (outside cutout on the other side).
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:2], size=11)
+
+        builder = EPSFBuilder(oversampling=1, maxiters=2, fit_shape=5,
+                              progress_bar=False)
+        epsf, _ = builder(stars)
+
+        star = stars.all_stars[0]
+        original_center = star.cutout_center.copy()
+
+        # Create a fitter that shifts the center to a negative position
+        class NegativeShiftFitter:
+            def __init__(self):
+                self.fit_info = {'ierr': 1}
+
+            def __call__(
+                self, model, x, y, z, weights=None, **kwargs,  # noqa: ARG002
+            ):
+                model.x_0 = -100.0
+                model.y_0 = 0.0
+                return model
+
+        builder_shift = EPSFBuilder(oversampling=1, maxiters=1,
+                                    fit_shape=5, progress_bar=False,
+                                    fitter=NegativeShiftFitter())
+
+        fitted_star = builder_shift._fit_star(epsf, star)
+
+        assert fitted_star._fit_error_status == 3
+        assert_array_equal(fitted_star.cutout_center, original_center)
+
+    def test_fit_star_position_inside_cutout(self, epsf_test_data):
+        """
+        Test that _fit_star updates the center when the fitted position
+        is inside the data cutout (normal case).
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:2], size=11)
+
+        builder = EPSFBuilder(oversampling=1, maxiters=2, fit_shape=5,
+                              progress_bar=False)
+        epsf, _ = builder(stars)
+
+        star = stars.all_stars[0]
+        original_center = star.cutout_center.copy()
+
+        # Create a fitter that applies a small valid shift
+        class SmallShiftFitter:
+            def __init__(self):
+                self.fit_info = {'ierr': 1}
+
+            def __call__(
+                self, model, x, y, z, weights=None, **kwargs,  # noqa: ARG002
+            ):
+                model.x_0 = 0.1
+                model.y_0 = -0.1
+                return model
+
+        builder_shift = EPSFBuilder(oversampling=1, maxiters=1,
+                                    fit_shape=5, progress_bar=False,
+                                    fitter=SmallShiftFitter())
+
+        fitted_star = builder_shift._fit_star(epsf, star)
+
+        # fit_error_status should be 0 (success)
+        assert fitted_star._fit_error_status == 0
+
+        # cutout_center should have been updated
+        expected_x = original_center[0] + 0.1
+        expected_y = original_center[1] - 0.1
+        assert_allclose(fitted_star.cutout_center[0], expected_x)
+        assert_allclose(fitted_star.cutout_center[1], expected_y)
+
+    def test_process_iteration_excludes_outside_cutout(self, epsf_test_data):
+        """
+        Test that _process_iteration excludes stars with
+        fit_error_status=3 and emits the correct warning message.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:3], size=11)
+
+        builder = EPSFBuilder(oversampling=1, maxiters=2, fit_shape=5,
+                              progress_bar=False)
+        epsf, fitted_stars = builder(stars)
+
+        # Create a fitter that makes the first star's fitted position
+        # outside cutout
+        class OutsideFitter:
+            def __init__(self):
+                self.fit_info = {'ierr': 1}
+                self.call_count = 0
+
+            def __call__(
+                self, model, x, y, z, weights=None, **kwargs,  # noqa: ARG002
+            ):
+                self.call_count += 1
+                if self.call_count == 1:
+                    model.x_0 = 100.0  # Outside cutout
+                    model.y_0 = 0.0
+                else:
+                    model.x_0 = 0.01
+                    model.y_0 = 0.01
+                    self.fit_info = {'ierr': 1}
+                return model
+
+        builder_outside = EPSFBuilder(oversampling=1, maxiters=1,
+                                      fit_shape=5, progress_bar=False,
+                                      fitter=OutsideFitter())
+
+        match = 'fitted position is outside the data cutout'
+        with pytest.warns(AstropyUserWarning, match=match):
+            _, stars_new, fit_failed = builder_outside._process_iteration(
+                fitted_stars, epsf, iter_num=4)
+
+        # First star should have failed
+        assert fit_failed[0]
+        assert stars_new.all_stars[0]._fit_error_status == 3
+        assert stars_new.all_stars[0]._excluded_from_fit
