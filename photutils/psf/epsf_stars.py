@@ -1131,13 +1131,9 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     colnames = catalog.colnames
     if ('x' not in colnames or 'y' not in colnames) or not use_xy:
         xcenters, ycenters = data.wcs.world_to_pixel(catalog['skycoord'])
-        # Convert to numpy arrays if not already
-        xcenters = np.asarray(xcenters, dtype=float)
-        ycenters = np.asarray(ycenters, dtype=float)
     else:
-        # Avoid unnecessary copying by getting data directly
-        xcenters = np.asarray(catalog['x'], dtype=float)
-        ycenters = np.asarray(catalog['y'], dtype=float)
+        xcenters = np.asarray(catalog['x'])
+        ycenters = np.asarray(catalog['y'])
 
     if 'id' in colnames:
         ids = catalog['id']
@@ -1167,7 +1163,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
             continue
 
         # Extract data cutout
-        data_cutout = data.data[large_slc].copy()  # Explicit copy for safety
+        data_cutout = data.data[large_slc]
 
         # Create weights cutout only for this specific region
         weights_cutout, has_nonfinite = _create_weights_cutout(
