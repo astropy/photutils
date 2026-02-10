@@ -87,6 +87,14 @@ def test_fit_2dgaussian_multiple(test_data, fix_fwhm, with_units):
         assert 'fwhm_fit' in fit_tbl.colnames
         assert_allclose(fit_tbl['fwhm_fit'], sources['fwhm'])
 
+    # test with zip instead of list
+    xypos = zip(sources['x_0'], sources['y_0'], strict=True)
+    fit2 = fit_2dgaussian(data, xypos=xypos, fit_shape=(5, 5),
+                          fix_fwhm=fix_fwhm)
+    fit_tbl2 = fit2.results
+    assert isinstance(fit_tbl2, QTable)
+    assert fit_tbl2.values_equal(fit_tbl)
+
     if with_units:
         for column in fit_tbl.colnames:
             if 'flux' in column:

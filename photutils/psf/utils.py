@@ -85,9 +85,10 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
         subtracted.
 
     xypos : array-like, optional
-        The initial (x, y) pixel coordinates of the sources. If `None`,
-        then one source will be fit with an initial position using the
-        center-of-mass centroid of the ``data`` array.
+        The initial (x, y) pixel coordinates of the sources as a list
+        of tuples or a 2D array. If `None`, then one source will be fit
+        with an initial position using the center-of-mass centroid of
+        the ``data`` array.
 
     fwhm : float, optional
         The initial guess for the FWHM of the Gaussian PSF model. If
@@ -167,7 +168,7 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     ...                                      flux=(100, 200), fwhm=[3, 8])
     >>> finder = DAOStarFinder(0.1, 5)
     >>> finder_tbl = finder(data)
-    >>> xypos = list(zip(sources['x_0'], sources['y_0']))
+    >>> xypos = zip(sources['x_0'], sources['y_0'])
     >>> psfphot = fit_2dgaussian(data, xypos=xypos, fit_shape=7,
     ...                          fix_fwhm=False)
     >>> phot_tbl = psfphot.results
@@ -196,6 +197,8 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
 
     if xypos is None:
         xypos = centroid_com(data, mask=mask)
+    if isinstance(xypos, zip):
+        xypos = np.array(list(xypos))
     xypos = np.atleast_2d(xypos)
 
     if fit_shape is None:
@@ -252,9 +255,10 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
         subtracted.
 
     xypos : array-like, optional
-        The initial (x, y) pixel coordinates of the sources. If `None`,
-        then one source will be fit with an initial position using the
-        center-of-mass centroid of the ``data`` array.
+        The initial (x, y) pixel coordinates of the sources as a list
+        of tuples or a 2D array. If `None`, then one source will be fit
+        with an initial position using the center-of-mass centroid of
+        the ``data`` array.
 
     fwhm : float, optional
         The initial guess for the FWHM of the Gaussian PSF model. If
@@ -326,7 +330,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     ...                                      flux=(100, 200), fwhm=[3, 8])
     >>> finder = DAOStarFinder(0.1, 5)
     >>> finder_tbl = finder(data)
-    >>> xypos = list(zip(sources['x_0'], sources['y_0']))
+    >>> xypos = zip(sources['x_0'], sources['y_0'])
     >>> fwhms = fit_fwhm(data, xypos=xypos, fit_shape=7)
     >>> fwhms  # doctest: +FLOAT_CMP
     array([5.69467204, 5.21376414, 7.65508658, 3.20255356, 6.66003098])
