@@ -50,7 +50,7 @@ New Features
 
   - ``EPSFBuilder`` now automatically excludes stars that repeatedly
     fail fitting and emits warnings with specific failure reasons.
-    [#2158]
+    [#2158, #2165]
 
   - Added validation and automatic shape handling for ``fit_shape=None``
     in ``fit_2dgaussian`` and ``fit_fwhm``. The functions now require
