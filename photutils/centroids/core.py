@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for centroiding sources.
+Tools for centroiding sources.
 """
 
 import inspect
@@ -8,15 +8,17 @@ import warnings
 
 import numpy as np
 from astropy.nddata import overlap_slices
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._parameters import as_pair
 from photutils.utils._round import py2intround
 
-__all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
+__all__ = ['CentroidQuadratic', 'centroid_com', 'centroid_quadratic',
+           'centroid_sources']
 
 
-def centroid_com(data, mask=None):
+def centroid_com(data, *, mask=None):
     """
     Calculate the centroid of an n-dimensional array as
     its "center of mass" determined from `image moments
@@ -105,8 +107,11 @@ def centroid_com(data, mask=None):
                      for axis in range(data.ndim)])[::-1]
 
 
-def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
-                       search_boxsize=None, mask=None):
+@deprecated_renamed_argument('xpeak', None, '3.0')
+@deprecated_renamed_argument('ypeak', None, '3.0')
+@deprecated_renamed_argument('search_boxsize', None, '3.0')
+def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
+                       ypeak=None, search_boxsize=None):
     """
     Calculate the centroid of an n-dimensional array by fitting a 2D
     quadratic polynomial.
@@ -135,11 +140,10 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         The 2D image data. The image should be a background-subtracted
         cutout image containing a single source.
 
-    xpeak, ypeak : float or `None`, optional
-        The initial guess of the position of the centroid. If either
-        ``xpeak`` or ``ypeak`` is `None` then the position of the
-        maximum value in the input ``data`` will be used as the initial
-        guess.
+    mask : bool `~numpy.ndarray`, optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from calculations.
 
     fit_boxsize : int or tuple of int, optional
         The size (in pixels) of the box used to define the fitting
@@ -147,6 +151,18 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         ``(ny, nx)`` order. If ``fit_boxsize`` is a scalar then a square
         box of size ``fit_boxsize`` will be used. ``fit_boxsize`` must
         have odd values for both axes.
+
+    xpeak, ypeak : float or `None`, optional
+        The initial guess of the position of the centroid. If either
+        ``xpeak`` or ``ypeak`` is `None` then the position of the
+        maximum value in the input ``data`` will be used as the initial
+        guess.
+
+        .. deprecated:: 3.0
+           The ``xpeak`` and ``ypeak`` keywords are deprecated
+           and will be removed in a future version. Use
+           `~photutils.centroids.centroid_sources` to centroid sources
+           at specific positions.
 
     search_boxsize : int or tuple of int, optional
         The size (in pixels) of the box used to search for the maximum
@@ -158,10 +174,11 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         if either ``xpeak`` or ``ypeak`` is `None`. In that case, the
         entire array is searched for the maximum value.
 
-    mask : bool `~numpy.ndarray`, optional
-        A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-        Masked data are excluded from calculations.
+        .. deprecated:: 3.0
+           The ``search_boxsize`` keyword is deprecated
+           and will be removed in a future version. Use
+           `~photutils.centroids.centroid_sources` to centroid sources
+           at specific positions.
 
     Returns
     -------
@@ -220,18 +237,6 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
-    if ((xpeak is None and ypeak is not None)
-            or (xpeak is not None and ypeak is None)):
-        msg = 'xpeak and ypeak must both be input or "None"'
-        raise ValueError(msg)
-
-    if xpeak is not None and ((xpeak < 0) or (xpeak > data.shape[1] - 1)):
-        msg = 'xpeak is outside the input data'
-        raise ValueError(msg)
-    if ypeak is not None and ((ypeak < 0) or (ypeak > data.shape[0] - 1)):
-        msg = 'ypeak is outside the input data'
-        raise ValueError(msg)
-
     # preserve input data - which should be a small cutout image
     data = np.asanyarray(data, dtype=float).copy()
     if data.ndim != 2:
@@ -259,6 +264,18 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     if np.prod(fit_boxsize) < 6:
         msg = ('fit_boxsize is too small. 6 values are required to fit a '
                '2D quadratic polynomial.')
+        raise ValueError(msg)
+
+    if ((xpeak is None and ypeak is not None)
+            or (xpeak is not None and ypeak is None)):
+        msg = 'xpeak and ypeak must both be input or "None"'
+        raise ValueError(msg)
+
+    if xpeak is not None and ((xpeak < 0) or (xpeak > data.shape[1] - 1)):
+        msg = 'xpeak is outside the input data'
+        raise ValueError(msg)
+    if ypeak is not None and ((ypeak < 0) or (ypeak > data.shape[0] - 1)):
+        msg = 'ypeak is outside the input data'
         raise ValueError(msg)
 
     if xpeak is None or ypeak is None:
@@ -352,8 +369,83 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     return xycen
 
 
-def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
-                     centroid_func=centroid_com, **kwargs):
+class CentroidQuadratic:
+    """
+    Class to calculate the centroid of a 2D array by fitting a 2D
+    quadratic polynomial.
+
+    This class provides a callable interface to the
+    `~photutils.centroids.centroid_quadratic` function, allowing a
+    centroid function with specific fit parameters to be defined and
+    reused. This is useful, for example, when using a customized
+    centroid function with `~photutils.centroids.centroid_sources`.
+
+    Parameters
+    ----------
+    fit_boxsize : int or tuple of int, optional
+        The size (in pixels) of the box used to define the fitting
+        region. If ``fit_boxsize`` has two elements, they must be in
+        ``(ny, nx)`` order. If ``fit_boxsize`` is a scalar then a square
+        box of size ``fit_boxsize`` will be used. ``fit_boxsize`` must
+        have odd values for both axes.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> from photutils.centroids import CentroidQuadratic
+    >>> data = make_4gaussians_image()
+    >>> data -= np.median(data[0:30, 0:125])
+    >>> data = data[40:80, 70:110]
+    >>> centroid_func = CentroidQuadratic(fit_boxsize=5)
+    >>> x1, y1 = centroid_func(data)
+    >>> print(np.array((x1, y1)))  # doctest: +FLOAT_CMP
+    [19.94009505 20.06884997]
+
+    Using with `~photutils.centroids.centroid_sources`::
+
+        >>> from photutils.centroids import centroid_sources
+        >>> data = make_4gaussians_image()
+        >>> data -= np.median(data[0:30, 0:125])
+        >>> x_init = (25, 91, 151, 160)
+        >>> y_init = (40, 61, 24, 71)
+        >>> centroid_func = CentroidQuadratic(fit_boxsize=3)
+        >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
+        ...                         centroid_func=centroid_func)
+    """
+
+    def __init__(self, *, fit_boxsize=5):
+        self.fit_boxsize = fit_boxsize
+
+    def __call__(self, data, *, mask=None):
+        """
+        Calculate the centroid.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D image data. The image should be a
+            background-subtracted cutout image containing a single
+            source.
+
+        mask : bool `~numpy.ndarray`, optional
+            A boolean mask, with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked. Masked data are excluded from calculations.
+
+        Returns
+        -------
+        centroid : `~numpy.ndarray`
+            The ``x, y`` coordinates of the centroid.
+        """
+        kwargs = {'mask': mask,
+                  'fit_boxsize': self.fit_boxsize,
+                  }
+        return centroid_quadratic(data, **kwargs)
+
+
+def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
+                     mask=None, centroid_func=centroid_com, **kwargs):
     """
     Calculate the centroid of sources at the defined positions.
 
@@ -520,6 +612,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None, mask=None,
         if error is not None:
             centroid_kwargs['error'] = error[slices_large]
 
+        # Remove this block once xpeak and ypeak are fully deprecated
         # remove xpeak and ypeak from the dict and add back only if both
         # are specified and not None
         xpeak = centroid_kwargs.pop('xpeak', None)

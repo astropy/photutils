@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools to plot Gridded PSF models.
+Tools for plotting Gridded PSF models.
 """
 
 import numpy as np

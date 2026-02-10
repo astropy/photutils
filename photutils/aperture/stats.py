@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for calculating the properties of sources defined by an
-Aperture.
+Tools for calculating properties of sources defined by an Aperture.
 """
 
 import functools

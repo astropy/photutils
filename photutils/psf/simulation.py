@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define simulation utilities for creating images from PSF models.
+Tools for creating images from PSF models.
 """
 
 import numpy as np

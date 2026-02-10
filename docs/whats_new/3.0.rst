@@ -29,6 +29,44 @@ performance improvements:
 - scikit-image minimum version is now 0.23
 
 
+Refactored ePSF Building
+=========================
+
+The ePSF building tools have been significantly refactored for improved
+robustness, better diagnostics, and a cleaner API.
+
+New EPSFBuildResult class
+-------------------------
+
+:class:`~photutils.psf.EPSFBuilder` now returns an
+:class:`~photutils.psf.EPSFBuildResult` dataclass instead of a plain
+tuple. The result object provides structured access to detailed build
+diagnostics::
+
+    >>> from photutils.psf import EPSFBuilder
+    >>> builder = EPSFBuilder(oversampling=4)
+    >>> result = builder(stars)
+    >>> result.epsf  # the constructed ePSF (ImagePSF)
+    >>> result.fitted_stars  # stars with updated centers/fluxes
+    >>> result.iterations  # number of iterations performed
+    >>> result.converged  # whether the build converged
+    >>> result.final_center_accuracy  # max center shift in last iteration
+
+Backward compatibility is maintained. Existing code using tuple
+unpacking will continue to work::
+
+    >>> epsf, stars = builder(stars)
+
+Improved star exclusion handling
+--------------------------------
+
+Stars that repeatedly fail fitting are now automatically excluded from
+subsequent iterations, with informative warnings indicating the reason
+for exclusion (e.g., fit region extends beyond the cutout, or the fit
+did not converge). The number of excluded stars and their indices are
+reported in the :class:`~photutils.psf.EPSFBuildResult`.
+
+
 New SourceGroups class
 ======================
 
@@ -58,6 +96,35 @@ IDs::
 
     >>> from photutils.psf import SourceGroups
     >>> groups = SourceGroups(x, y, group_ids)
+
+
+New CentroidQuadratic class
+============================
+
+A new :class:`~photutils.centroids.CentroidQuadratic`
+class provides a callable object interface to the
+:func:`~photutils.centroids.centroid_quadratic` function. This
+class allows users to create a centroid function with specific
+fit parameters that can be reused multiple times. This is
+particularly useful when passing customized centroid functions to
+:func:`~photutils.centroids.centroid_sources` or other functions that
+accept a centroid function as an argument.
+
+The class is initialized with the desired ``fit_boxsize`` parameter,
+and then can be called with ``data`` and optional ``mask`` parameter::
+
+    >>> from photutils.centroids import CentroidQuadratic
+    >>> centroid_func = CentroidQuadratic(fit_boxsize=7)
+    >>> x, y = centroid_func(data, mask=mask)
+
+This is especially beneficial when using
+:func:`~photutils.centroids.centroid_sources` with fine-tuned centroid
+parameters::
+
+    >>> from photutils.centroids import centroid_sources
+    >>> centroid_func = CentroidQuadratic(fit_boxsize=11)
+    >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
+    ...                         centroid_func=centroid_func)
 
 
 Improved Handling of Non-Finite Local Background Values in PSF Photometry
@@ -103,8 +170,8 @@ These options provide more flexibility when converting PSF photometry
 results for use in subsequent fitting iterations or other analyses.
 
 
-New decode_flags convenience method
-===================================
+New PSF decode_flags convenience method
+=======================================
 
 The :class:`~photutils.psf.PSFPhotometry` and
 :class:`~photutils.psf.IterativePSFPhotometry` classes now have a
@@ -115,19 +182,34 @@ corresponding source. This makes it easy to interpret which conditions
 were encountered during PSF fitting for each source.
 
 
+New ImagePSF shape property
+===========================
+
+:class:`~photutils.psf.ImagePSF` now has a ``shape`` property that
+returns the shape of the (oversampled) PSF data array.
+
+
 Removed Deprecations
 ====================
 
-The following previously deprecated features have been removed:
+The following previously deprecated features from the
+``background`` package have been removed:
 
 * The ``Background2D`` ``edge_method`` keyword argument.
 * The ``Background2D`` ``background_mesh_masked``,
   ``background_rms_mesh_masked``, and ``mesh_nmasked`` properties.
 * The ``BkgZoomInterpolator`` ``grid_mode`` keyword argument.
 
+For the ``psf`` package, the previously deprecated
+``FittableImageModel`` and ``EPSFModel`` classes have been removed. Use
+:class:`~photutils.psf.ImagePSF` instead.
+
 
 New Deprecations
 ================
+
+Background Package
+------------------
 
 The ``interpolator`` keyword argument for ``Background2D`` is
 now deprecated. When ``interpolator`` is eventually removed, the
@@ -142,6 +224,39 @@ is also significantly slower than the default interpolator based on
 ``scipy.ndimage.zoom``. The ``BkgZoomInterpolator`` functionality will
 be preserved in the default resizing behavior of ``Background2D``.
 
+Centroids Package
+-----------------
+
+The ``xpeak``, ``ypeak``, and ``search_boxsize`` keyword arguments
+for :func:`~photutils.centroids.centroid_quadratic` function are now
+deprecated. Use the :func:`~photutils.centroids.centroid_sources`
+function to centroid sources at specific positions.
+
+PSF Package
+-----------
+
 The ``grid_from_epsfs`` helper function is now deprecated. This function
 creates a ``GriddedPSFModel`` from a list of ePSFs. Instead, use the
 ``GriddedPSFModel`` class directly.
+
+The :class:`~photutils.psf.EPSFFitter` class is now deprecated.
+To customize the ePSF fitting process, use the ``fitter``,
+``fit_shape``, and ``fitter_maxiters`` parameters of
+:class:`~photutils.psf.EPSFBuilder` directly instead of creating an
+``EPSFFitter`` instance.
+
+
+Breaking Changes
+================
+
+The ``EPSFBuilder.build_epsf()`` method has been removed. Use the
+``EPSFBuilder`` callable interface instead (i.e., ``builder(stars)``).
+
+The ``norm_radius`` keyword has been removed from
+:class:`~photutils.psf.EPSFBuilder`. This keyword is no
+longer relevant because the ePSF is now built directly as an
+:class:`~photutils.psf.ImagePSF`, which does not use a normalization
+radius.
+
+All functions in the `~photutils.centroids` package now require
+keyword-only arguments.

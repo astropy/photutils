@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define private implementation classes for PSF photometry components.
+Private implementation classes for PSF photometry components.
 
 This is a private module. The classes within are implementation details
 of the PSFPhotometry class and are not intended for direct public use.
@@ -1525,7 +1525,7 @@ class PSFResultsAssembler:
         Returns
         -------
         results_tbl : `~astropy.table.QTable`
-            Comprehensive results table containing:
+            Results table containing:
 
             - Source ID and group ID
             - Initial parameter estimates

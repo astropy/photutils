@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define interpolator classes for Background2D.
+Tools for upsampling images for Background2D using interpolation.
 """
 
 import numpy as np

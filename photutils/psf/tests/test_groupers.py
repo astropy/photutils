@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for the grouper module.
+Tests for the groupers module.
 """
 
 import numpy as np

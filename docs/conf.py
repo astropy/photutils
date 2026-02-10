@@ -74,7 +74,12 @@ del intersphinx_mapping['h5py']  # noqa: F405
 
 extensions += [
     'sphinx_design',
+    'sphinx_reredirects',
 ]
+
+redirects = {
+    'user_guide/epsf': 'epsf_building.html',
+}
 
 # This is added to the end of RST files - a good place to put
 # substitutions to be used globally.

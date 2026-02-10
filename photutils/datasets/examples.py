@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Provide tools for making simulated example images for documentation
-examples and tests.
+Tools for making simulated example images for documentation examples and
+tests.
 """
 
 import pathlib

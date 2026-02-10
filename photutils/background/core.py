@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define classes to estimate the background and background RMS in an array
-of any dimension.
+Tools for estimating the background and background RMS in an array of
+any dimension.
 """
 
 import abc

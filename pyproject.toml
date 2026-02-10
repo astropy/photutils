@@ -62,7 +62,8 @@ docs = [
     'photutils[all]',
     'sphinx >= 8.2',  # keep in sync with docs/conf.py
     'sphinx-astropy[confv2] >= 1.9.1',
-    'sphinx_design',
+    'sphinx_design >= 0.6',
+    'sphinx-reredirects >= 1.1',
 ]
 dev = [
     'photutils[docs,test]',

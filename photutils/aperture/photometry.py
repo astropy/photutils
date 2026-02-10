@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools to perform aperture photometry.
+Tools for performing aperture photometry.
 """
 
 import warnings

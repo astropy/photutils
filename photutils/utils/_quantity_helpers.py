@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define Quantity helper tools.
+Tools for Quantity helpers.
 """
 
 import astropy.units as u

@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define a container class to store parameters for the geometry of an
-ellipse.
+Tools for storing parameters for the geometry of an ellipse.
 """
 
 import math

@@ -21,6 +21,11 @@ New Features
 
   - Added a ``to_aperture`` method to ``LocalBackground``. [#2118]
 
+- ``photutils.centroids``
+
+  - Added a ``CentroidQuadratic`` class to provide an object-oriented
+    interface to the ``centroid_quadratic`` function. [#2163]
+
 - ``photutils.psf``
 
   - Added a ``SourceGroups`` class that stores the results of grouping
@@ -40,6 +45,20 @@ New Features
 
   - Added ``__repr__`` methods to ``ImagePSF`` and ``GriddedPSFModel``.
     [#2134]
+
+  - Added a ``shape`` property to ``ImagePSF``. [#2158]
+
+  - ``EPSFBuilder`` now automatically excludes stars that repeatedly
+    fail fitting and emits warnings with specific failure reasons.
+    [#2158]
+
+  - Added validation and automatic shape handling for ``fit_shape=None``
+    in ``fit_2dgaussian`` and ``fit_fwhm``. The functions now require
+    explicit ``fit_shape`` for multiple sources and emit an informative
+    warning for single-source fitting. [#2164]
+
+  - The ``fit_fwhm`` and ``fit_2dgaussian`` ``xypos`` value can now be
+    input as a ``zip`` object. [#2164]
 
 Bug Fixes
 ^^^^^^^^^
@@ -77,6 +96,18 @@ API Changes
   - The ``BkgIDWInterpolator`` and ``BkgZoomInterpolator`` classes are
     now deprecated. [#2108]
 
+- ``photutils.centroids``
+
+  - The ``xpeak``, ``ypeak``, and ``search_boxsize`` keyword arguments
+    for ``centroid_quadratic`` are now deprecated. Use
+    ``centroid_sources`` to centroid sources at specific positions.
+    [#2160]
+
+- ``photutils.profiles``
+
+  - All functions in the ``profiles`` package now require keyword-only
+    arguments. [#2162]
+
 - ``photutils.psf``
 
   - Removed the deprecated ``IntegratedGaussianPRF`` and ``PRFAdapter``
@@ -85,9 +116,28 @@ API Changes
   - The ``grid_from_epsfs`` helper function is now deprecated. Instead,
     use ``GriddedPSFModel`` directly. [#2111]
 
+  - The ``EPSFFitter`` class is now deprecated. Use the ``fitter``,
+    ``fit_shape``, and ``fitter_maxiters`` parameters of ``EPSFBuilder``
+    instead. [#2159]
+
   - Removed the ``ModelImageMixin`` class. [#2133]
 
   - Removed the ``ModelGridPlotMixin`` class. [#2137]
+
+  - Removed the ``norm_radius`` keyword from ``EPSFBuilder``. [#2158]
+
+  - Removed the ``build_epsf`` method from ``EPSFBuilder``. Use the
+    callable interface (``builder(stars)``) instead. [#2158]
+
+  - Removed the deprecated ``FittableImageModel`` and ``EPSFModel``
+    classes. Use ``ImagePSF`` instead. [#2158]
+
+  - ``EPSFBuilder`` now returns an ``EPSFBuildResult`` dataclass
+    containing the ePSF, fitted stars, iteration count, convergence
+    status, and excluded star diagnostics. Tuple unpacking is still
+    supported for backward compatibility. [#2158]
+
+  - ``LinkedEPSFStar`` no longer inherits from ``EPSFStars``. [#2158]
 
 
 2.3.0 (2025-09-15)

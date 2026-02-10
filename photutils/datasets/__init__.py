@@ -3,8 +3,8 @@
 Subpackage containing tools for loading datasets or making simulated
 data.
 
-These tools are typically used in examples, tutorials, and tests but can
-also be used for general data analysis or exploration.
+These tools are typically used in examples, tutorials, and tests, but
+can also be used for general data analysis or exploration.
 """
 
 from .images import *  # noqa: F401, F403

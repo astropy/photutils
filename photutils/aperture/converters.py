@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools to convert between `regions.Region` and Aperture objects
+Tools for converting between `regions.Region` and Aperture objects
 and between `shapely.geometry.Polygon` and `regions.PolygonRegion`
 objects.
 """

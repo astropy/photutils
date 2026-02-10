@@ -1,10 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Subpackage containing tools to perform point-spread-function (PSF)
+Subpackage containing tools for performing point-spread-function (PSF)
 photometry.
 """
 
-from .epsf import *  # noqa: F401, F403
+from .epsf_builder import *  # noqa: F401, F403
 from .epsf_stars import *  # noqa: F401, F403
 from .flags import *  # noqa: F401, F403
 from .functional_models import *  # noqa: F401, F403

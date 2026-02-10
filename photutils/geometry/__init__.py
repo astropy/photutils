@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Subpackage providing low-level geometry functions used by aperture
+Subpackage containing low-level geometry functions used by aperture
 photometry to calculate the overlap of aperture shapes with a pixel
 grid.
 

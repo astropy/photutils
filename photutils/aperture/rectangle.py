@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define rectangular and rectangular-annulus apertures in both pixel and
-sky coordinates.
+Rectangular and rectangular-annulus apertures in both pixel and sky
+coordinates.
 """
 
 import math

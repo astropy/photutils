@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for DAOStarFinder.
+Tests for the daofinder module.
 """
 
 import astropy.units as u

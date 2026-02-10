@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define tools for reading and writing PSF models.
+Tools for reading and writing PSF models.
 """
 
 import io

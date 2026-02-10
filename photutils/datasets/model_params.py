@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Provide tools for making tables of model parameters or making models
-from a table of model parameters.
+Tools for making tables of model parameters or making models from a
+table of model parameters.
 """
 
 import numpy as np

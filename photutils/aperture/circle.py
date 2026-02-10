@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Define circular and circular-annulus apertures in both pixel and sky
+Circular and circular-annulus apertures in both pixel and sky
 coordinates.
 """
 

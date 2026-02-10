@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Subpackage containing tools to perform aperture photometry.
+Subpackage containing tools for performing aperture photometry.
 """
 
 from .bounding_box import *  # noqa: F401, F403
