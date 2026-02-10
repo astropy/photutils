@@ -718,18 +718,13 @@ class EPSFBuildResult:
         raise IndexError(msg)
 
 
-@deprecated(since='3.0.0',
+@deprecated(since='3.0',
             message=('EPSFFitter is deprecated and will be removed in a '
                      'future version. Use EPSFBuilder with the fitter, '
                      'fit_shape, and fitter_maxiters parameters instead.'))
 class EPSFFitter:
     """
     Class to fit an ePSF model to one or more stars.
-
-    .. deprecated:: 3.0.0
-        `EPSFFitter` is deprecated. Use `EPSFBuilder` with the
-        ``fitter``, ``fit_shape``, and ``fitter_maxiters`` parameters
-        instead.
 
     Parameters
     ----------
@@ -988,7 +983,7 @@ class EPSFBuilder:
         ePSF to stars. If `None`, then the default
         `~astropy.modeling.fitting.TRFLSQFitter` will be used.
 
-        .. deprecated:: 3.0.0
+        .. deprecated:: 3.0
             Passing an `EPSFFitter` instance is deprecated; use
             the ``fitter``, ``fit_shape``, and ``fitter_maxiters``
             parameters instead.
