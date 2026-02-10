@@ -841,6 +841,12 @@ class EPSFFitter:
         """
         Fit an ePSF model to a single star.
         """
+        # Create a shallow copy to avoid mutating the input star. This
+        # is a shallow copy, so the large numpy arrays (_data, weights,
+        # mask) are shared and not duplicated; only the object wrapper
+        # and small scalar attributes are new.
+        star = copy.copy(star)
+
         if fit_boxsize is not None:
             try:
                 xcenter, ycenter = star.cutout_center
@@ -848,7 +854,6 @@ class EPSFFitter:
                                               (ycenter, xcenter),
                                               mode='strict')
             except (PartialOverlapError, NoOverlapError):
-                star = copy.copy(star)
                 star._fit_error_status = 1
 
                 return star
@@ -906,7 +911,6 @@ class EPSFFitter:
                 or y_center < 0 or y_center >= star.shape[0]):
             fit_error_status = 3  # pragma: no cover
 
-        star = copy.copy(star)
         if fit_error_status != 3:
             star.cutout_center = (x_center, y_center)
             # Set the star's flux to the ePSF-fitted flux
@@ -1742,6 +1746,12 @@ class EPSFBuilder:
         fitter_kwargs = self._fitter_kwargs
         fitter_has_fit_info = self._fitter_has_fit_info
 
+        # Create a shallow copy to avoid mutating the input star. This
+        # is a shallow copy, so the large numpy arrays (_data, weights,
+        # mask) are shared and not duplicated; only the object wrapper
+        # and small scalar attributes are new.
+        star = copy.copy(star)
+
         if fit_shape is not None:
             try:
                 xcenter, ycenter = star.cutout_center
@@ -1749,7 +1759,6 @@ class EPSFBuilder:
                                               (ycenter, xcenter),
                                               mode='strict')
             except (PartialOverlapError, NoOverlapError):
-                star = copy.copy(star)
                 star._fit_error_status = 1
                 return star
 
@@ -1805,7 +1814,6 @@ class EPSFBuilder:
                 or y_center < 0 or y_center >= star.shape[0]):
             fit_error_status = 3  # fitted position outside cutout
 
-        star = copy.copy(star)
         if fit_error_status != 3:
             star.cutout_center = (x_center, y_center)
             # Set the star's flux to the ePSF-fitted flux
