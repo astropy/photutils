@@ -195,6 +195,14 @@ is also significantly slower than the default interpolator based on
 ``scipy.ndimage.zoom``. The ``BkgZoomInterpolator`` functionality will
 be preserved in the default resizing behavior of ``Background2D``.
 
+Centroids Package
+-----------------
+
+The ``xpeak``, ``ypeak``, and ``search_boxsize`` keyword arguments
+for :func:`~photutils.centroids.centroid_quadratic` function are now
+deprecated. Use the :func:`~photutils.centroids.centroid_sources`
+function to centroid sources at specific positions.
+
 PSF Package
 -----------
 
@@ -220,3 +228,6 @@ The ``norm_radius`` keyword has been removed from
 longer relevant because the ePSF is now built directly as an
 :class:`~photutils.psf.ImagePSF`, which does not use a normalization
 radius.
+
+All functions in the `~photutils.centroids` package now require
+keyword-only arguments.
