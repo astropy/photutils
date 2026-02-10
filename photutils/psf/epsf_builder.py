@@ -1868,10 +1868,12 @@ class EPSFBuilder:
                                   'star cutout image')
                     else:  # _fit_error_status == 2
                         reason = 'the fit did not converge'
-                    warnings.warn(f'The star at ({star.center[0]}, '
-                                  f'{star.center[1]}) has been excluded '
-                                  f'from ePSF fitting because {reason}.',
-                                  AstropyUserWarning)
+
+                    msg = (f'The star at ({star._center_original[0]:.2f}, '
+                           f'{star._center_original[1]:.2f}) (index='
+                           f'{star.id_label - 1}) has been excluded from '
+                           f'ePSF fitting because {reason}.')
+                    warnings.warn(msg, AstropyUserWarning)
                 star._excluded_from_fit = True
 
         # Store the ePSF from this iteration
