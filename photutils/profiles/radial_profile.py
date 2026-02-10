@@ -91,7 +91,7 @@ class RadialProfile(ProfileBase):
 
     See Also
     --------
-    RadialProfile
+    CurveOfGrowth
 
     Notes
     -----

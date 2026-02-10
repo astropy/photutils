@@ -493,13 +493,13 @@ Let's compute the encircled energy values at a few radii for the curve
 of growth we created above::
 
     >>> cog.normalize(method='max')
-    >>> ee_rads = np.array([5, 10, 15])
+    >>> ee_rads = np.array([5, 7, 10, 15])
     >>> ee_vals = cog.calc_ee_at_radius(ee_rads)  # doctest: +FLOAT_CMP
     >>> ee_vals
-    array([0.42698425, 0.89047904, 0.99342893])
+    array([0.42698425, 0.66439702, 0.89047904, 0.99342893])
 
     >>> cog.calc_radius_at_ee(ee_vals)  # doctest: +FLOAT_CMP
-    array([ 5., 10., 15.])
+    array([ 5., 7., 10., 15.])
 
 Here we plot the encircled energy values.
 
@@ -528,7 +528,7 @@ Here we plot the encircled energy values.
     radii = np.arange(1, 26)
     cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
     cog.normalize(method='max')
-    ee_rads = np.array([5, 10, 15])
+    ee_rads = np.array([5, 7, 10, 15])
     ee_vals = cog.calc_ee_at_radius(ee_rads)
 
     # plot the radial profile

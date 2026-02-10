@@ -77,6 +77,10 @@ class CurveOfGrowth(ProfileBase):
         ``subpixels**2`` subpixels. This keyword is ignored unless
         ``method='subpixel'``.
 
+    See Also
+    --------
+    RadialProfile
+
     Examples
     --------
     >>> import numpy as np
