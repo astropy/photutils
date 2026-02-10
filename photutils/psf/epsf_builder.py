@@ -901,11 +901,16 @@ class EPSFFitter:
         x_center = star.cutout_center[0] + fitted_epsf.x_0.value
         y_center = star.cutout_center[1] + fitted_epsf.y_0.value
 
-        star = copy.copy(star)
-        star.cutout_center = (x_center, y_center)
+        # Check if fitted position is outside the data cutout
+        if (x_center < 0 or x_center >= star.shape[1]
+                or y_center < 0 or y_center >= star.shape[0]):
+            fit_error_status = 3  # pragma: no cover
 
-        # Set the star's flux to the ePSF-fitted flux
-        star.flux = fitted_epsf.flux.value
+        star = copy.copy(star)
+        if fit_error_status != 3:
+            star.cutout_center = (x_center, y_center)
+            # Set the star's flux to the ePSF-fitted flux
+            star.flux = fitted_epsf.flux.value
 
         star._fit_info = fit_info
         star._fit_error_status = fit_error_status
@@ -1795,11 +1800,16 @@ class EPSFBuilder:
         x_center = star.cutout_center[0] + fitted_epsf.x_0.value
         y_center = star.cutout_center[1] + fitted_epsf.y_0.value
 
-        star = copy.copy(star)
-        star.cutout_center = (x_center, y_center)
+        # Check if fitted position is outside the data cutout
+        if (x_center < 0 or x_center >= star.shape[1]
+                or y_center < 0 or y_center >= star.shape[0]):
+            fit_error_status = 3  # fitted position outside cutout
 
-        # Set the star's flux to the ePSF-fitted flux
-        star.flux = fitted_epsf.flux.value
+        star = copy.copy(star)
+        if fit_error_status != 3:
+            star.cutout_center = (x_center, y_center)
+            # Set the star's flux to the ePSF-fitted flux
+            star.flux = fitted_epsf.flux.value
 
         star._fit_info = fit_info
         star._fit_error_status = fit_error_status
@@ -1865,6 +1875,9 @@ class EPSFBuilder:
                     if star._fit_error_status == 1:
                         reason = ('its fitting region extends beyond the '
                                   'star cutout image')
+                    elif star._fit_error_status == 3:
+                        reason = ('its fitted position is outside the '
+                                  'data cutout')
                     else:  # _fit_error_status == 2
                         reason = 'the fit did not converge'
 
