@@ -895,7 +895,7 @@ class EPSFFitter:
 
         fit_error_status = 0
         if fitter_has_fit_info:
-            fit_info = copy.copy(fitter.fit_info)
+            fit_info = fitter.fit_info
 
             if 'ierr' in fit_info and fit_info['ierr'] not in [1, 2, 3, 4]:
                 fit_error_status = 2  # fit solution was not found
@@ -1799,7 +1799,7 @@ class EPSFBuilder:
 
         fit_error_status = 0
         if fitter_has_fit_info:
-            fit_info = copy.copy(fitter.fit_info)
+            fit_info = fitter.fit_info
             if 'ierr' in fit_info and fit_info['ierr'] not in [1, 2, 3, 4]:
                 fit_error_status = 2  # fit solution was not found
         else:
