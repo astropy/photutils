@@ -14,8 +14,8 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose
 
-from photutils.centroids.core import (centroid_com, centroid_quadratic,
-                                      centroid_sources)
+from photutils.centroids.core import (CentroidQuadratic, centroid_com,
+                                      centroid_quadratic, centroid_sources)
 from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
 from photutils.datasets import make_4gaussians_image, make_noise_image
 
@@ -596,3 +596,78 @@ def test_cutout_mask():
     mask = np.ones(data.shape, dtype=bool)
     with pytest.raises(ValueError, match=match):
         _ = centroid_sources(data, x_init, y_init, box_size=11, mask=mask)
+
+
+class TestCentroidQuadraticClass:
+    """
+    Test the CentroidQuadratic class.
+    """
+
+    @pytest.mark.parametrize('x_std', [3.2, 4.0])
+    @pytest.mark.parametrize('y_std', [5.7, 4.1])
+    @pytest.mark.parametrize('theta', np.deg2rad([30.0, 45.0]))
+    def test_basic(self, x_std, y_std, theta):
+        """
+        Test basic CentroidQuadratic functionality.
+        """
+        xcen = 25.7
+        ycen = 26.2
+        model = Gaussian2D(2.4, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
+                           theta=theta)
+        y, x = np.mgrid[0:50, 0:47]
+        data = model(x, y)
+
+        # test with default parameters
+        centroid_func = CentroidQuadratic()
+        xc, yc = centroid_func(data)
+        assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
+
+    def test_mask(self):
+        """
+        Test CentroidQuadratic with mask input.
+        """
+        xcen = 25.7
+        ycen = 26.2
+        model = Gaussian2D(2.4, xcen, ycen, x_stddev=3.2, y_stddev=5.7,
+                           theta=0)
+        y, x = np.mgrid[0:50, 0:47]
+        data = model(x, y)
+
+        # add outlier
+        x0 = 11
+        y0 = 15
+        data[y0, x0] = 1.0e5
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[y0, x0] = True
+
+        centroid_func = CentroidQuadratic()
+        xc, yc = centroid_func(data, mask=mask)
+        assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
+
+    def test_fit_boxsize(self):
+        """
+        Test CentroidQuadratic with custom fit_boxsize.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 100
+        data[7, 7] = 110
+        data[9, 9] = 120
+
+        centroid_func = CentroidQuadratic(fit_boxsize=3)
+        xycen = centroid_func(data)
+        assert_allclose(xycen, (9, 9))
+
+    def test_with_centroid_sources(self):
+        """
+        Test CentroidQuadratic with centroid_sources function.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 100
+        data[7, 7] = 110
+        data[9, 9] = 120
+
+        # test with custom fit_boxsize
+        centroid_func = CentroidQuadratic(fit_boxsize=3)
+        xycen = centroid_sources(data, xpos=5, ypos=5, box_size=7,
+                                 centroid_func=centroid_func)
+        assert_allclose(xycen, ([7], [7]))

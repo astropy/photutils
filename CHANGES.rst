@@ -21,6 +21,11 @@ New Features
 
   - Added a ``to_aperture`` method to ``LocalBackground``. [#2118]
 
+- ``photutils.centroids``
+
+  - Added a ``CentroidQuadratic`` class to provide an object-oriented
+    interface to the ``centroid_quadratic`` function. [#2163]
+
 - ``photutils.psf``
 
   - Added a ``SourceGroups`` class that stores the results of grouping

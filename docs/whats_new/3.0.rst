@@ -98,6 +98,35 @@ IDs::
     >>> groups = SourceGroups(x, y, group_ids)
 
 
+New CentroidQuadratic class
+============================
+
+A new :class:`~photutils.centroids.CentroidQuadratic`
+class provides a callable object interface to the
+:func:`~photutils.centroids.centroid_quadratic` function. This
+class allows users to create a centroid function with specific
+fit parameters that can be reused multiple times. This is
+particularly useful when passing customized centroid functions to
+:func:`~photutils.centroids.centroid_sources` or other functions that
+accept a centroid function as an argument.
+
+The class is initialized with the desired ``fit_boxsize`` parameter,
+and then can be called with ``data`` and optional ``mask`` parameter::
+
+    >>> from photutils.centroids import CentroidQuadratic
+    >>> centroid_func = CentroidQuadratic(fit_boxsize=7)
+    >>> x, y = centroid_func(data, mask=mask)
+
+This is especially beneficial when using
+:func:`~photutils.centroids.centroid_sources` with fine-tuned centroid
+parameters::
+
+    >>> from photutils.centroids import centroid_sources
+    >>> centroid_func = CentroidQuadratic(fit_boxsize=11)
+    >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
+    ...                         centroid_func=centroid_func)
+
+
 Improved Handling of Non-Finite Local Background Values in PSF Photometry
 =========================================================================
 

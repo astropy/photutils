@@ -14,7 +14,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.utils._parameters import as_pair
 from photutils.utils._round import py2intround
 
-__all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources']
+__all__ = ['CentroidQuadratic', 'centroid_com', 'centroid_quadratic',
+           'centroid_sources']
 
 
 def centroid_com(data, *, mask=None):
@@ -366,6 +367,81 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
         return np.array((np.nan, np.nan))
 
     return xycen
+
+
+class CentroidQuadratic:
+    """
+    Class to calculate the centroid of a 2D array by fitting a 2D
+    quadratic polynomial.
+
+    This class provides a callable interface to the
+    `~photutils.centroids.centroid_quadratic` function, allowing a
+    centroid function with specific fit parameters to be defined and
+    reused. This is useful, for example, when using a customized
+    centroid function with `~photutils.centroids.centroid_sources`.
+
+    Parameters
+    ----------
+    fit_boxsize : int or tuple of int, optional
+        The size (in pixels) of the box used to define the fitting
+        region. If ``fit_boxsize`` has two elements, they must be in
+        ``(ny, nx)`` order. If ``fit_boxsize`` is a scalar then a square
+        box of size ``fit_boxsize`` will be used. ``fit_boxsize`` must
+        have odd values for both axes.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> from photutils.centroids import CentroidQuadratic
+    >>> data = make_4gaussians_image()
+    >>> data -= np.median(data[0:30, 0:125])
+    >>> data = data[40:80, 70:110]
+    >>> centroid_func = CentroidQuadratic(fit_boxsize=5)
+    >>> x1, y1 = centroid_func(data)
+    >>> print(np.array((x1, y1)))  # doctest: +FLOAT_CMP
+    [19.94009505 20.06884997]
+
+    Using with `~photutils.centroids.centroid_sources`::
+
+        >>> from photutils.centroids import centroid_sources
+        >>> data = make_4gaussians_image()
+        >>> data -= np.median(data[0:30, 0:125])
+        >>> x_init = (25, 91, 151, 160)
+        >>> y_init = (40, 61, 24, 71)
+        >>> centroid_func = CentroidQuadratic(fit_boxsize=3)
+        >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
+        ...                         centroid_func=centroid_func)
+    """
+
+    def __init__(self, *, fit_boxsize=5):
+        self.fit_boxsize = fit_boxsize
+
+    def __call__(self, data, *, mask=None):
+        """
+        Calculate the centroid.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D image data. The image should be a
+            background-subtracted cutout image containing a single
+            source.
+
+        mask : bool `~numpy.ndarray`, optional
+            A boolean mask, with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked. Masked data are excluded from calculations.
+
+        Returns
+        -------
+        centroid : `~numpy.ndarray`
+            The ``x, y`` coordinates of the centroid.
+        """
+        kwargs = {'mask': mask,
+                  'fit_boxsize': self.fit_boxsize,
+                  }
+        return centroid_quadratic(data, **kwargs)
 
 
 def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
