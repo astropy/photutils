@@ -85,9 +85,10 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
         subtracted.
 
     xypos : array-like, optional
-        The initial (x, y) pixel coordinates of the sources. If `None`,
-        then one source will be fit with an initial position using the
-        center-of-mass centroid of the ``data`` array.
+        The initial (x, y) pixel coordinates of the sources as a list
+        of tuples or a 2D array. If `None`, then one source will be fit
+        with an initial position using the center-of-mass centroid of
+        the ``data`` array.
 
     fwhm : float, optional
         The initial guess for the FWHM of the Gaussian PSF model. If
@@ -144,7 +145,7 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     >>> yy, xx = np.mgrid[:51, :51]
     >>> model = CircularGaussianPRF(x_0=22.17, y_0=28.87, fwhm=3.123, flux=9.7)
     >>> data = model(xx, yy)
-    >>> fit = fit_2dgaussian(data, fix_fwhm=False)
+    >>> fit = fit_2dgaussian(data, fix_fwhm=False, fit_shape=7)
     >>> phot_tbl = fit.results  # doctest: +FLOAT_CMP
     >>> cols = ['x_fit', 'y_fit', 'fwhm_fit', 'flux_fit']
     >>> for col in cols:
@@ -167,7 +168,7 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     ...                                      flux=(100, 200), fwhm=[3, 8])
     >>> finder = DAOStarFinder(0.1, 5)
     >>> finder_tbl = finder(data)
-    >>> xypos = list(zip(sources['x_0'], sources['y_0']))
+    >>> xypos = zip(sources['x_0'], sources['y_0'])
     >>> psfphot = fit_2dgaussian(data, xypos=xypos, fit_shape=7,
     ...                          fix_fwhm=False)
     >>> phot_tbl = psfphot.results
@@ -196,10 +197,32 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
 
     if xypos is None:
         xypos = centroid_com(data, mask=mask)
+    if isinstance(xypos, zip):
+        xypos = np.array(list(xypos))
     xypos = np.atleast_2d(xypos)
 
     if fit_shape is None:
+        if len(xypos) > 1:
+            msg = ('fit_shape is required when fitting multiple sources. If '
+                   'fit_shape is not provided, then the fit may not converge '
+                   'or may give poor results. For multiple sources, you '
+                   'should provide a fit_shape value that is appropriate for '
+                   'the size of the sources in your image.')
+            raise ValueError(msg)
+
         fit_shape = data.shape
+        # Ensure odd shape required by the PSF photometry fitting
+        # Here we trim the even edges by 1 pixel
+        fit_shape = tuple(s - 1 if s % 2 == 0 else s for s in fit_shape)
+
+        msg = ('fit_shape is None, so the input data array is assumed to be '
+               'a cutout image containing only one source. If your input '
+               'data is not a cutout image, then the fit may not converge '
+               'or may give poor results. For non-cutout input data, you '
+               'should provide a fit_shape value that is appropriate for '
+               'the size of the sources in your image. '
+               f'Using fit_shape={fit_shape}.')
+        warnings.warn(msg, AstropyUserWarning)
     else:
         fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 0),
                             check_odd=True)
@@ -252,9 +275,10 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
         subtracted.
 
     xypos : array-like, optional
-        The initial (x, y) pixel coordinates of the sources. If `None`,
-        then one source will be fit with an initial position using the
-        center-of-mass centroid of the ``data`` array.
+        The initial (x, y) pixel coordinates of the sources as a list
+        of tuples or a 2D array. If `None`, then one source will be fit
+        with an initial position using the center-of-mass centroid of
+        the ``data`` array.
 
     fwhm : float, optional
         The initial guess for the FWHM of the Gaussian PSF model. If
@@ -309,7 +333,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     >>> yy, xx = np.mgrid[:51, :51]
     >>> model = CircularGaussianPRF(x_0=22.17, y_0=28.87, fwhm=3.123, flux=9.7)
     >>> data = model(xx, yy)
-    >>> fwhm = fit_fwhm(data)
+    >>> fwhm = fit_fwhm(data, fit_shape=7)
     >>> fwhm  # doctest: +FLOAT_CMP
     array([3.123])
 
@@ -326,7 +350,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     ...                                      flux=(100, 200), fwhm=[3, 8])
     >>> finder = DAOStarFinder(0.1, 5)
     >>> finder_tbl = finder(data)
-    >>> xypos = list(zip(sources['x_0'], sources['y_0']))
+    >>> xypos = zip(sources['x_0'], sources['y_0'])
     >>> fwhms = fit_fwhm(data, xypos=xypos, fit_shape=7)
     >>> fwhms  # doctest: +FLOAT_CMP
     array([5.69467204, 5.21376414, 7.65508658, 3.20255356, 6.66003098])
@@ -335,7 +359,17 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
         phot = fit_2dgaussian(data, xypos=xypos, fwhm=fwhm, fix_fwhm=False,
                               fit_shape=fit_shape, mask=mask, error=error)
 
-    if len(fit_warnings) > 0:
+    # Re-emit fit_shape warnings and check for other warnings
+    fit_shape_warning = False
+    other_warnings = False
+    for warning in fit_warnings:
+        if 'fit_shape is None' in str(warning.message):
+            warnings.warn(str(warning.message), warning.category)
+            fit_shape_warning = True
+        else:
+            other_warnings = True
+
+    if other_warnings and not fit_shape_warning:
         warnings.warn('One or more fit(s) may not have converged. Please '
                       'carefully check your results. You may need to change '
                       'the input "xypos" and "fit_shape" parameters.',

@@ -52,6 +52,14 @@ New Features
     fail fitting and emits warnings with specific failure reasons.
     [#2158]
 
+  - Added validation and automatic shape handling for ``fit_shape=None``
+    in ``fit_2dgaussian`` and ``fit_fwhm``. The functions now require
+    explicit ``fit_shape`` for multiple sources and emit an informative
+    warning for single-source fitting. [#2164]
+
+  - The ``fit_fwhm`` and ``fit_2dgaussian`` ``xypos`` value can now be
+    input as a ``zip`` object. [#2164]
+
 Bug Fixes
 ^^^^^^^^^
 
