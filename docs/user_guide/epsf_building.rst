@@ -63,7 +63,7 @@ add those to the image::
 
     >>> from photutils.datasets import make_noise_image
     >>> data += make_noise_image(data.shape, distribution='gaussian',
-    ...                          mean=10.0, stddev=5.0, seed=123)  # doctest: +REMOTE_DATA
+    ...                          mean=10.0, stddev=5.0, seed=0)  # doctest: +REMOTE_DATA
 
 Let's show the image:
 
@@ -78,35 +78,61 @@ Let's show the image:
     hdu = load_simulated_hst_star_image()
     data = hdu.data
     data += make_noise_image(data.shape, distribution='gaussian', mean=10.0,
-                             stddev=5.0, seed=123)
+                             stddev=5.0, seed=0)
+
+    fig, ax = plt.subplots(figsize=(8, 8))
     norm = simple_norm(data, 'sqrt', percent=99.0)
-    plt.imshow(data, norm=norm, origin='lower', cmap='viridis')
+    ax.imshow(data, norm=norm, origin='lower', cmap='viridis')
 
-For this example we'll use the :func:`~photutils.detection.find_peaks`
-function to identify the stars and their initial positions. We will not
-use the centroiding option in :func:`~photutils.detection.find_peaks`
-to simulate the effect of having imperfect initial guesses for the
-positions of the stars. Here we set the detection threshold value to
-500.0 to select only the brightest stars::
+For this example we'll use the
+:class:`~photutils.detection.DAOStarFinder` class to identify the
+brighter stars and their initial positions::
 
-    >>> from photutils.detection import find_peaks
-    >>> peaks_tbl = find_peaks(data, threshold=500.0)  # doctest: +REMOTE_DATA
-    >>> peaks_tbl['peak_value'].info.format = '%.8g'  # for consistent table output  # doctest: +REMOTE_DATA
-    >>> print(peaks_tbl)  # doctest: +REMOTE_DATA
-     id x_peak y_peak peak_value
-    --- ------ ------ ----------
-      1    849      2  1076.7026
-      2    182      4  1709.5671
-      3    324      4  3006.0086
-      4    100      9  1142.9915
-      5    824      9  1302.8604
-    ...    ...    ...        ...
-    427    751    992  801.23834
-    428    114    994  1595.2804
-    429    299    994  648.18539
-    430    207    998  2810.6503
-    431    691    999  2611.0464
-    Length = 431 rows
+    >>> from photutils.detection import DAOStarFinder
+    >>> finder = DAOStarFinder(threshold=100.0, fwhm=1.5)  # doctest: +REMOTE_DATA
+    >>> sources = finder(data)  # doctest: +REMOTE_DATA
+    >>> for col in sources.colnames:  # doctest: +REMOTE_DATA
+    ...     if col not in ('id', 'npix'):
+    ...         sources[col].info.format = '%.2f'  # for consistent table output
+    >>> sources.pprint(max_width=76)  # doctest: +REMOTE_DATA
+     id xcentroid ycentroid sharpness ...   peak    flux    mag   daofind_mag
+    --- --------- --------- --------- ... ------- -------- ------ -----------
+      1    848.53      2.15      0.87 ... 1062.18  4258.95  -9.07       -2.41
+      2    181.85      3.74      0.91 ... 1722.27  5828.71  -9.41       -2.93
+      3    323.87      3.69      0.91 ... 3016.37 10252.06 -10.03       -3.55
+      4     99.89      8.95      0.96 ... 1144.52  3496.04  -8.86       -2.47
+      5    824.12      9.36      0.90 ... 1311.20  4685.32  -9.18       -2.64
+    ...       ...       ...       ... ...     ...      ...    ...         ...
+    478    888.44    991.86      0.85 ...  194.27  1005.88  -7.51       -0.52
+    479    114.16    993.40      0.84 ... 1588.31  6810.15  -9.58       -2.84
+    480    298.36    993.87      0.84 ...  655.37  2979.57  -8.69       -1.88
+    481    207.21    998.17      0.91 ... 2811.02  8614.10  -9.84       -3.48
+    482    691.02    998.77      0.98 ... 2611.22  5768.68  -9.40       -3.39
+    Length = 482 rows
+
+Let's show the detected stars overlaid on the image:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    from astropy.visualization import simple_norm
+    from photutils.datasets import (load_simulated_hst_star_image,
+                                    make_noise_image)
+    from photutils.detection import DAOStarFinder
+
+    hdu = load_simulated_hst_star_image()
+    data = hdu.data
+    data += make_noise_image(data.shape, distribution='gaussian', mean=10.0,
+                             stddev=5.0, seed=0)
+
+    finder = DAOStarFinder(threshold=100.0, fwhm=1.5)
+    sources = finder(data)
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    norm = simple_norm(data, 'sqrt', percent=99.0)
+    ax.imshow(data, norm=norm, origin='lower', cmap='viridis')
+    ax.scatter(sources['xcentroid'], sources['ycentroid'],
+               s=80, edgecolor='red', facecolor='none', lw=1.5)
 
 Note that the stars are sufficiently separated in the simulated image
 that we do not need to exclude any stars due to crowding. In practice
@@ -128,8 +154,8 @@ explicitly exclude stars that are too close to the image boundaries
 
     >>> size = 25
     >>> hsize = (size - 1) / 2
-    >>> x = peaks_tbl['x_peak']  # doctest: +REMOTE_DATA
-    >>> y = peaks_tbl['y_peak']  # doctest: +REMOTE_DATA
+    >>> x = sources['xcentroid']  # doctest: +REMOTE_DATA
+    >>> y = sources['ycentroid']  # doctest: +REMOTE_DATA
     >>> mask = ((x > hsize) & (x < (data.shape[1] - 1 - hsize)) &
     ...         (y > hsize) & (y < (data.shape[0] - 1 - hsize)))  # doctest: +REMOTE_DATA
 
@@ -178,8 +204,8 @@ Let's extract the 25 x 25 pixel cutouts of our selected stars::
     >>> stars = extract_stars(nddata, stars_tbl, size=25)  # doctest: +REMOTE_DATA
 
 The function returns an `~photutils.psf.EPSFStars` object containing the
-cutouts of our selected stars. The function extracted 403 stars, from
-which we'll build our ePSF. Let's show the first 25 of them:
+cutouts of our selected stars that will be used to build the ePSF. Let's
+show the first 25 of them:
 
 .. doctest-skip::
 
@@ -203,23 +229,22 @@ which we'll build our ePSF. Let's show the first 25 of them:
     from astropy.visualization import simple_norm
     from photutils.datasets import (load_simulated_hst_star_image,
                                     make_noise_image)
-    from photutils.detection import find_peaks
+    from photutils.detection import DAOStarFinder
     from photutils.psf import extract_stars
 
     hdu = load_simulated_hst_star_image()
     data = hdu.data
     data += make_noise_image(data.shape, distribution='gaussian', mean=10.0,
-                             stddev=5.0, seed=123)
-
-    peaks_tbl = find_peaks(data, threshold=500.0)
+                             stddev=5.0, seed=0)
+    finder = DAOStarFinder(threshold=100.0, fwhm=1.5)
+    sources = finder(data)
 
     size = 25
     hsize = (size - 1) / 2
-    x = peaks_tbl['x_peak']
-    y = peaks_tbl['y_peak']
+    x = sources['xcentroid']
+    y = sources['ycentroid']
     mask = ((x > hsize) & (x < (data.shape[1] - 1 - hsize))
             & (y > hsize) & (y < (data.shape[0] - 1 - hsize)))
-
     stars_tbl = Table()
     stars_tbl['x'] = x[mask]
     stars_tbl['y'] = y[mask]
@@ -295,9 +320,10 @@ Finally, let's show the constructed ePSF:
 
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import simple_norm
+    >>> fig, ax = plt.subplots(figsize=(8, 8))
     >>> norm = simple_norm(epsf.data, 'log', percent=99.0)
-    >>> plt.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
-    >>> plt.colorbar()
+    >>> axim = ax.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
+    >>> plt.colorbar(axim)
 
 .. plot::
 
@@ -308,23 +334,23 @@ Finally, let's show the constructed ePSF:
     from astropy.visualization import simple_norm
     from photutils.datasets import (load_simulated_hst_star_image,
                                     make_noise_image)
-    from photutils.detection import find_peaks
+    from photutils.detection import DAOStarFinder
     from photutils.psf import EPSFBuilder, extract_stars
 
     hdu = load_simulated_hst_star_image()
     data = hdu.data
     data += make_noise_image(data.shape, distribution='gaussian', mean=10.0,
-                             stddev=5.0, seed=123)
+                             stddev=5.0, seed=0)
 
-    peaks_tbl = find_peaks(data, threshold=500.0)
+    finder = DAOStarFinder(threshold=100.0, fwhm=1.5)
+    sources = finder(data)
 
     size = 25
     hsize = (size - 1) / 2
-    x = peaks_tbl['x_peak']
-    y = peaks_tbl['y_peak']
+    x = sources['xcentroid']
+    y = sources['ycentroid']
     mask = ((x > hsize) & (x < (data.shape[1] - 1 - hsize))
             & (y > hsize) & (y < (data.shape[0] - 1 - hsize)))
-
     stars_tbl = Table()
     stars_tbl['x'] = x[mask]
     stars_tbl['y'] = y[mask]
@@ -340,12 +366,13 @@ Finally, let's show the constructed ePSF:
                                progress_bar=False)
     epsf, fitted_stars = epsf_builder(stars)
 
+    fig, ax = plt.subplots(figsize=(8, 8))
     norm = simple_norm(epsf.data, 'log', percent=99.0)
-    plt.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
-    plt.colorbar()
+    axim = ax.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
+    plt.colorbar(axim)
 
-The `~photutils.psf.ImagePSF` object can be used as a PSF model for
-the :ref:`PSF-fitting machinery in Photutils
+The `~photutils.psf.ImagePSF` object can be
+used as a PSF model for :ref:`PSF Photometry
 <psf-photometry>` (i.e., `~photutils.psf.PSFPhotometry` or
 `~photutils.psf.IterativePSFPhotometry`).
 

@@ -122,8 +122,16 @@ class EPSFStar:
         self.wcs_large = wcs_large
         self.id_label = id_label
 
+        if cutout_center is None:
+            cutout_center = ((self.shape[1] - 1) / 2.0,
+                             (self.shape[0] - 1) / 2.0)
+
         # Set cutout_center (triggers validation via setter)
         self.cutout_center = cutout_center
+
+        # Keep track of the original center position (before fitting)
+        # for reference
+        self._center_original = cutout_center + self.origin
 
         if flux is not None:
             self.flux = float(flux)
@@ -183,33 +191,30 @@ class EPSFStar:
 
     @cutout_center.setter
     def cutout_center(self, value):
-        if value is None:
-            value = ((self.shape[1] - 1) / 2.0, (self.shape[0] - 1) / 2.0)
-        else:
-            # Convert to array-like for validation
-            value = np.asarray(value)
+        # Convert to array-like for validation
+        value = np.asarray(value)
 
-            # Validate shape
-            if value.shape != (2,):
-                msg = ('cutout_center must have exactly two elements in '
-                       f'(x, y) form, got shape {value.shape}')
-                raise ValueError(msg)
+        # Validate shape
+        if value.shape != (2,):
+            msg = ('cutout_center must have exactly two elements in '
+                   f'(x, y) form, got shape {value.shape}')
+            raise ValueError(msg)
 
-            # Validate finite values
-            if not np.all(np.isfinite(value)):
-                msg = 'All cutout_center coordinates must be finite'
-                raise ValueError(msg)
+        # Validate finite values
+        if not np.all(np.isfinite(value)):
+            msg = 'All cutout_center coordinates must be finite'
+            raise ValueError(msg)
 
-            # Validate bounds (should be within the cutout image)
-            x, y = value
-            if not (0 <= x < self.shape[1]):
-                warnings.warn(f'cutout_center x-coordinate {x} is outside '
-                              f'the cutout bounds [0, {self.shape[1]})',
-                              AstropyUserWarning)
-            if not (0 <= y < self.shape[0]):
-                warnings.warn(f'cutout_center y-coordinate {y} is outside '
-                              f'the cutout bounds [0, {self.shape[0]})',
-                              AstropyUserWarning)
+        # Validate bounds (should be within the cutout image)
+        x, y = value
+        if not (0 <= x < self.shape[1]):
+            warnings.warn(f'cutout_center x-coordinate {x} is outside '
+                          f'the cutout bounds [0, {self.shape[1]})',
+                          AstropyUserWarning)
+        if not (0 <= y < self.shape[0]):
+            warnings.warn(f'cutout_center y-coordinate {y} is outside '
+                          f'the cutout bounds [0, {self.shape[0]})',
+                          AstropyUserWarning)
 
         self._cutout_center = np.asarray(value)
 
@@ -1126,13 +1131,9 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     colnames = catalog.colnames
     if ('x' not in colnames or 'y' not in colnames) or not use_xy:
         xcenters, ycenters = data.wcs.world_to_pixel(catalog['skycoord'])
-        # Convert to numpy arrays if not already
-        xcenters = np.asarray(xcenters, dtype=float)
-        ycenters = np.asarray(ycenters, dtype=float)
     else:
-        # Avoid unnecessary copying by getting data directly
-        xcenters = np.asarray(catalog['x'], dtype=float)
-        ycenters = np.asarray(catalog['y'], dtype=float)
+        xcenters = np.asarray(catalog['x'])
+        ycenters = np.asarray(catalog['y'])
 
     if 'id' in colnames:
         ids = catalog['id']
@@ -1162,7 +1163,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
             continue
 
         # Extract data cutout
-        data_cutout = data.data[large_slc].copy()  # Explicit copy for safety
+        data_cutout = data.data[large_slc]
 
         # Create weights cutout only for this specific region
         weights_cutout, has_nonfinite = _create_weights_cutout(
@@ -1206,7 +1207,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     # warning.
     for xcenter, ycenter, exc in flux_failures:
         warnings.warn(f'Failed to create EPSFStar for object at '
-                      f'({xcenter:.1f}, {ycenter:.1f}): {exc}',
+                      f'({xcenter:.2f}, {ycenter:.2f}): {exc}',
                       AstropyUserWarning)
 
     # Emit warnings for stars with all-zero data

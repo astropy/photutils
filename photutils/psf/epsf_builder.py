@@ -761,12 +761,11 @@ class EPSFFitter:
             self.fit_boxsize = None
 
         # Remove any fitter keyword arguments that we need to set
-        remove_kwargs = ['x', 'y', 'z', 'weights']
-        fitter_kwargs = copy.deepcopy(fitter_kwargs)
-        for kwarg in remove_kwargs:
-            if kwarg in fitter_kwargs:
-                del fitter_kwargs[kwarg]
-        self.fitter_kwargs = fitter_kwargs
+        remove_kwargs = {'x', 'y', 'z', 'weights'}
+        self.fitter_kwargs = {
+            k: v for k, v in fitter_kwargs.items()
+            if k not in remove_kwargs
+        }
 
     def __call__(self, epsf, stars):
         """
@@ -842,6 +841,12 @@ class EPSFFitter:
         """
         Fit an ePSF model to a single star.
         """
+        # Create a shallow copy to avoid mutating the input star. This
+        # is a shallow copy, so the large numpy arrays (_data, weights,
+        # mask) are shared and not duplicated; only the object wrapper
+        # and small scalar attributes are new.
+        star = copy.copy(star)
+
         if fit_boxsize is not None:
             try:
                 xcenter, ycenter = star.cutout_center
@@ -849,7 +854,6 @@ class EPSFFitter:
                                               (ycenter, xcenter),
                                               mode='strict')
             except (PartialOverlapError, NoOverlapError):
-                star = copy.copy(star)
                 star._fit_error_status = 1
 
                 return star
@@ -891,7 +895,7 @@ class EPSFFitter:
 
         fit_error_status = 0
         if fitter_has_fit_info:
-            fit_info = copy.copy(fitter.fit_info)
+            fit_info = fitter.fit_info
 
             if 'ierr' in fit_info and fit_info['ierr'] not in [1, 2, 3, 4]:
                 fit_error_status = 2  # fit solution was not found
@@ -902,11 +906,15 @@ class EPSFFitter:
         x_center = star.cutout_center[0] + fitted_epsf.x_0.value
         y_center = star.cutout_center[1] + fitted_epsf.y_0.value
 
-        star = copy.copy(star)
-        star.cutout_center = (x_center, y_center)
+        # Check if fitted position is outside the data cutout
+        if (x_center < 0 or x_center >= star.shape[1]
+                or y_center < 0 or y_center >= star.shape[0]):
+            fit_error_status = 3  # pragma: no cover
 
-        # Set the star's flux to the ePSF-fitted flux
-        star.flux = fitted_epsf.flux.value
+        if fit_error_status != 3:
+            star.cutout_center = (x_center, y_center)
+            # Set the star's flux to the ePSF-fitted flux
+            star.flux = fitted_epsf.flux.value
 
         star._fit_info = fit_info
         star._fit_error_status = fit_error_status
@@ -1738,6 +1746,12 @@ class EPSFBuilder:
         fitter_kwargs = self._fitter_kwargs
         fitter_has_fit_info = self._fitter_has_fit_info
 
+        # Create a shallow copy to avoid mutating the input star. This
+        # is a shallow copy, so the large numpy arrays (_data, weights,
+        # mask) are shared and not duplicated; only the object wrapper
+        # and small scalar attributes are new.
+        star = copy.copy(star)
+
         if fit_shape is not None:
             try:
                 xcenter, ycenter = star.cutout_center
@@ -1745,7 +1759,6 @@ class EPSFBuilder:
                                               (ycenter, xcenter),
                                               mode='strict')
             except (PartialOverlapError, NoOverlapError):
-                star = copy.copy(star)
                 star._fit_error_status = 1
                 return star
 
@@ -1786,7 +1799,7 @@ class EPSFBuilder:
 
         fit_error_status = 0
         if fitter_has_fit_info:
-            fit_info = copy.copy(fitter.fit_info)
+            fit_info = fitter.fit_info
             if 'ierr' in fit_info and fit_info['ierr'] not in [1, 2, 3, 4]:
                 fit_error_status = 2  # fit solution was not found
         else:
@@ -1796,11 +1809,15 @@ class EPSFBuilder:
         x_center = star.cutout_center[0] + fitted_epsf.x_0.value
         y_center = star.cutout_center[1] + fitted_epsf.y_0.value
 
-        star = copy.copy(star)
-        star.cutout_center = (x_center, y_center)
+        # Check if fitted position is outside the data cutout
+        if (x_center < 0 or x_center >= star.shape[1]
+                or y_center < 0 or y_center >= star.shape[0]):
+            fit_error_status = 3  # fitted position outside cutout
 
-        # Set the star's flux to the ePSF-fitted flux
-        star.flux = fitted_epsf.flux.value
+        if fit_error_status != 3:
+            star.cutout_center = (x_center, y_center)
+            # Set the star's flux to the ePSF-fitted flux
+            star.flux = fitted_epsf.flux.value
 
         star._fit_info = fit_info
         star._fit_error_status = fit_error_status
@@ -1866,12 +1883,17 @@ class EPSFBuilder:
                     if star._fit_error_status == 1:
                         reason = ('its fitting region extends beyond the '
                                   'star cutout image')
+                    elif star._fit_error_status == 3:
+                        reason = ('its fitted position is outside the '
+                                  'data cutout')
                     else:  # _fit_error_status == 2
                         reason = 'the fit did not converge'
-                    warnings.warn(f'The star at ({star.center[0]}, '
-                                  f'{star.center[1]}) has been excluded '
-                                  f'from ePSF fitting because {reason}.',
-                                  AstropyUserWarning)
+
+                    msg = (f'The star at ({star._center_original[0]:.2f}, '
+                           f'{star._center_original[1]:.2f}) (index='
+                           f'{star.id_label - 1}) has been excluded from '
+                           f'ePSF fitting because {reason}.')
+                    warnings.warn(msg, AstropyUserWarning)
                 star._excluded_from_fit = True
 
         # Store the ePSF from this iteration
