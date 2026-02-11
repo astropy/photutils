@@ -232,6 +232,26 @@ for :func:`~photutils.centroids.centroid_quadratic` function are now
 deprecated. Use the :func:`~photutils.centroids.centroid_sources`
 function to centroid sources at specific positions.
 
+PSF Matching Package
+--------------------
+
+The ``photutils.psf.matching`` subpackage has been moved to be a
+top-level package at ``photutils.psf_matching``. This change improves
+consistency with photutils' other top-level subpackages (``aperture``,
+``background``, ``centroids``, ``detection``, etc.), as PSF matching
+is a functionally independent tool for generating convolution kernels
+rather than part of the core PSF photometry workflow.
+
+Importing from the old location (``photutils.psf.matching``) is
+deprecated and will be removed in a future version. Update your
+imports::
+
+    # Old (deprecated)
+    from photutils.psf.matching import create_matching_kernel
+
+    # New
+    from photutils.psf_matching import create_matching_kernel
+
 PSF Package
 -----------
 
