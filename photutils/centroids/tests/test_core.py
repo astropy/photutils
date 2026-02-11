@@ -671,3 +671,34 @@ class TestCentroidQuadraticClass:
         xycen = centroid_sources(data, xpos=5, ypos=5, box_size=7,
                                  centroid_func=centroid_func)
         assert_allclose(xycen, ([7], [7]))
+
+    def test_repr(self):
+        """
+        Test CentroidQuadratic __repr__ method.
+        """
+        centroid_func = CentroidQuadratic()
+        cls_repr = repr(centroid_func)
+        assert cls_repr == 'CentroidQuadratic(fit_boxsize=5)'
+
+        centroid_func = CentroidQuadratic(fit_boxsize=3)
+        cls_repr = repr(centroid_func)
+        assert cls_repr == 'CentroidQuadratic(fit_boxsize=3)'
+
+        centroid_func = CentroidQuadratic(fit_boxsize=(3, 5))
+        cls_repr = repr(centroid_func)
+        assert cls_repr == 'CentroidQuadratic(fit_boxsize=(3, 5))'
+
+    def test_str(self):
+        """
+        Test CentroidQuadratic __str__ method.
+        """
+        centroid_func = CentroidQuadratic()
+        cls_str = str(centroid_func)
+        cls_name = 'photutils.centroids.core.CentroidQuadratic'
+        expected = f'<{cls_name}>\nfit_boxsize: 5'
+        assert cls_str == expected
+
+        centroid_func = CentroidQuadratic(fit_boxsize=3)
+        cls_str = str(centroid_func)
+        expected = f'<{cls_name}>\nfit_boxsize: 3'
+        assert cls_str == expected

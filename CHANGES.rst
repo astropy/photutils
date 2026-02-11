@@ -24,7 +24,7 @@ New Features
 - ``photutils.centroids``
 
   - Added a ``CentroidQuadratic`` class to provide an object-oriented
-    interface to the ``centroid_quadratic`` function. [#2163]
+    interface to the ``centroid_quadratic`` function. [#2163, #2169]
 
 - ``photutils.psf``
 
