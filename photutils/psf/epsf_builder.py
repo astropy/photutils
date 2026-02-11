@@ -969,9 +969,12 @@ class EPSFBuilder:
 
     recentering_boxsize : float or tuple of two floats, optional
         The size (in pixels) of the box used to calculate the centroid
-        of the ePSF during each build iteration. If a single integer
-        number is provided, then a square box will be used. If two
-        values are provided, then they must be in ``(ny, nx)`` order.
+        of the ePSF during each build iteration. The size is in
+        the input star (i.e., undersampled) pixel space; it is
+        automatically scaled by the oversampling factor when applied
+        to the oversampled ePSF grid. If a single integer number
+        is provided, then a square box will be used. If two values
+        are provided, then they must be in ``(ny, nx)`` order.
         ``recentering_boxsize`` must have odd values and be greater than
         or equal to 3 for both axes.
 
@@ -1429,12 +1432,15 @@ class EPSFBuilder:
 
         box_size : float or tuple of two floats, optional
             The size (in pixels) of the box used to calculate the
-            centroid of the ePSF during each iteration. If a single
-            integer number is provided, then a square box will be used.
-            If two values are provided, then they must be in ``(ny,
-            nx)`` order. ``box_size`` must have odd values and be
-            greater than or equal to 3 for both axes. If `None`, uses
-            the builder's configured recentering_boxsize.
+            centroid of the ePSF during each iteration. The size is
+            in the input star (i.e., undersampled) pixel space; it is
+            automatically scaled by the oversampling factor when applied
+            to the oversampled ePSF grid. If a single integer number
+            is provided, then a square box will be used. If two values
+            are provided, then they must be in ``(ny, nx)`` order.
+            ``box_size`` must have odd values and be greater than or
+            equal to 3 for both axes. If `None`, uses the builder's
+            configured recentering_boxsize.
 
         maxiters : int, optional
             The maximum number of recentering iterations to perform. If
@@ -1468,6 +1474,15 @@ class EPSFBuilder:
         if center_accuracy is None:
             center_accuracy = 1.0e-4
 
+        # Scale box_size from undersampled (input star) space to
+        # oversampled ePSF space, ensuring odd dimensions.
+        box_size = np.asarray(box_size)
+        oversampled_box = box_size * self.oversampling
+        # Ensure odd dimensions so the box is centered on a pixel
+        oversampled_box = tuple(s + 1 if s % 2 == 0 else s
+                                for s in oversampled_box)
+        oversampled_box = np.array(oversampled_box, dtype=int)
+
         # The center of the ePSF in oversampled pixel coordinates.
         # This is where we want the PSF center to be.
         xcenter, ycenter = self.coord_transformer.compute_epsf_origin(
@@ -1494,7 +1509,7 @@ class EPSFBuilder:
 
             # Get a cutout around the expected center for centroiding
             slices_large, _ = overlap_slices(
-                epsf_data.shape, box_size,
+                epsf_data.shape, oversampled_box,
                 (ycenter, xcenter))
             epsf_cutout = epsf_data[slices_large]
             mask = ~np.isfinite(epsf_cutout)
