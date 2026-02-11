@@ -1771,6 +1771,91 @@ class TestEPSFBuilder:
         # The mock should have been called at least twice
         assert call_count[0] >= 2
 
+    @pytest.mark.parametrize(('oversampling', 'box_size', 'expected_box'),
+                             [(1, (5, 5), (5, 5)),
+                              (2, (5, 5), (11, 11)),
+                              (3, (5, 5), (15, 15)),
+                              (4, (5, 5), (21, 21)),
+                              (4, (7, 7), (29, 29)),
+                              (4, (3, 3), (13, 13)),
+                              ((2, 4), (5, 5), (11, 21)),
+                              ((3, 2), (5, 7), (15, 15)),
+                              ])
+    def test_recentering_boxsize_oversampling_scaling(
+        self, epsf_test_data, oversampling, box_size, expected_box,
+    ):
+        """
+        Test that recentering_boxsize is in the input star pixel space
+        and is correctly scaled to the oversampled ePSF grid.
+
+        The recentering_boxsize parameter should be specified in the
+        input star (undersampled) pixel space. When used internally, it
+        must be multiplied by the oversampling factor and made odd so
+        that the centroid cutout on the oversampled ePSF grid has the
+        correct size.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:5], size=11)
+
+        builder = EPSFBuilder(oversampling=oversampling, maxiters=2,
+                              progress_bar=False,
+                              recentering_boxsize=box_size)
+        epsf, _ = builder(stars)
+
+        # Use a mock centroid function to capture the actual cutout
+        # shape passed to the centroid function
+        cutout_shapes = []
+
+        def recording_centroid(data, mask=None):  # noqa: ARG001
+            cutout_shapes.append(data.shape)
+            cy, cx = np.array(data.shape) / 2.0
+            return (cx, cy)
+
+        recentered = builder._recenter_epsf(
+            epsf, centroid_func=recording_centroid,
+            box_size=box_size, maxiters=1)
+
+        assert recentered is not None
+        # The cutout passed to the centroid function should have the
+        # expected oversampled box size
+        assert len(cutout_shapes) >= 1
+        assert cutout_shapes[0] == expected_box
+
+    def test_recentering_boxsize_is_in_star_space(self, epsf_test_data):
+        """
+        Test that recentering_boxsize operates in the input star pixel
+        space, not the oversampled ePSF space.
+
+        With oversampling=4 and recentering_boxsize=(5, 5), the centroid
+        cutout on the oversampled ePSF grid should be approximately
+        5 * 4=20 -> 21 pixels (made odd), NOT 5 pixels.
+        """
+        oversampling = 4
+
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:5], size=11)
+
+        builder = EPSFBuilder(oversampling=oversampling, maxiters=2,
+                              progress_bar=False,
+                              recentering_boxsize=(5, 5))
+        epsf, _ = builder(stars)
+
+        cutout_shapes = []
+
+        def recording_centroid(data, mask=None):  # noqa: ARG001
+            cutout_shapes.append(data.shape)
+            cy, cx = np.array(data.shape) / 2.0
+            return (cx, cy)
+
+        builder._recenter_epsf(
+            epsf, centroid_func=recording_centroid, maxiters=1)
+
+        assert len(cutout_shapes) >= 1
+        # 5 * 4 = 20 -> 21 (made odd)
+        assert cutout_shapes[0] == (21, 21)
+        # It should NOT be (5, 5) which would be wrong
+        assert cutout_shapes[0] != (5, 5)
+
     def test_very_small_sources(self):
         """
         Test EPSFBuilder with very small sources that may cause
