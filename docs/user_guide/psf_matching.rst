@@ -1,6 +1,6 @@
 .. _psf_matching:
 
-PSF Matching (`photutils.psf.matching`)
+PSF Matching (`photutils.psf_matching`)
 =======================================
 
 Introduction
@@ -14,7 +14,7 @@ Matching PSFs
 -------------
 
 Photutils provides a function called
-:func:`~photutils.psf.matching.create_matching_kernel` that generates
+:func:`~photutils.psf_matching.create_matching_kernel` that generates
 a matching kernel between two PSFs using the ratio of Fourier
 transforms (see e.g., `Gordon et al. 2008`_; `Aniano et al. 2011`_).
 
@@ -38,7 +38,7 @@ with :math:`\sigma=4` (``sqrt(5**2 - 3**2)``).  Let's create the
 matching kernel using a Fourier ratio method.  Note that the input
 source and target PSFs must have the same shape and pixel scale::
 
-    >>> from photutils.psf.matching import create_matching_kernel
+    >>> from photutils.psf_matching import create_matching_kernel
     >>> kernel = create_matching_kernel(g1, g2)
 
 Let's plot the result:
@@ -48,7 +48,7 @@ Let's plot the result:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.psf.matching import create_matching_kernel
+    from photutils.psf_matching import create_matching_kernel
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -74,11 +74,11 @@ information, please see `Aniano et al. 2011`_.
 
 Photutils provides the following window classes:
 
-* `~photutils.psf.matching.HanningWindow`
-* `~photutils.psf.matching.TukeyWindow`
-* `~photutils.psf.matching.CosineBellWindow`
-* `~photutils.psf.matching.SplitCosineBellWindow`
-* `~photutils.psf.matching.TopHatWindow`
+* `~photutils.psf_matching.HanningWindow`
+* `~photutils.psf_matching.TukeyWindow`
+* `~photutils.psf_matching.CosineBellWindow`
+* `~photutils.psf_matching.SplitCosineBellWindow`
+* `~photutils.psf_matching.TopHatWindow`
 
 Here are plots of 1D cuts across the center of the 2D window
 functions:
@@ -86,7 +86,7 @@ functions:
 .. plot::
 
     import matplotlib.pyplot as plt
-    from photutils.psf.matching import (CosineBellWindow, HanningWindow,
+    from photutils.psf_matching import (CosineBellWindow, HanningWindow,
                                         SplitCosineBellWindow, TopHatWindow,
                                         TukeyWindow)
 
@@ -136,14 +136,14 @@ However, the user may input any function or callable object to
 generate a custom window function.
 
 In this example, because these are noiseless PSFs, we will use a
-`~photutils.psf.matching.TopHatWindow` object as the low-pass filter::
+`~photutils.psf_matching.TopHatWindow` object as the low-pass filter::
 
-    >>> from photutils.psf.matching import TopHatWindow
+    >>> from photutils.psf_matching import TopHatWindow
     >>> window = TopHatWindow(0.35)
     >>> kernel = create_matching_kernel(g1, g2, window=window)
 
 Note that the output matching kernel from
-:func:`~photutils.psf.matching.create_matching_kernel` is always
+:func:`~photutils.psf_matching.create_matching_kernel` is always
 normalized such that the kernel array sums to 1::
 
     >>> print(kernel.sum())  # doctest: +FLOAT_CMP
@@ -156,7 +156,7 @@ Let's display the new matching kernel:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.psf.matching import TopHatWindow, create_matching_kernel
+    from photutils.psf_matching import TopHatWindow, create_matching_kernel
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -180,7 +180,7 @@ kernel images:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-    from photutils.psf.matching import TopHatWindow, create_matching_kernel
+    from photutils.psf_matching import TopHatWindow, create_matching_kernel
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -244,16 +244,16 @@ Let's display the images:
     plt.title('IRAC channel 4 PSF')
 
 For this example, we will use the
-:class:`~photutils.psf.matching.CosineBellWindow` for the low-pass
+:class:`~photutils.psf_matching.CosineBellWindow` for the low-pass
 window.  Note that these Spitzer/IRAC channel 1 and 4 PSFs have the
 same shape and pixel scale.  If that is not the case, one can use the
-:func:`~photutils.psf.matching.resize_psf` convenience function to
+:func:`~photutils.psf_matching.resize_psf` convenience function to
 resize a PSF image.  Typically, one would interpolate the
 lower-resolution PSF to the same size as the higher-resolution PSF.
 
 .. doctest-skip::
 
-    >>> from photutils.psf.matching import (CosineBellWindow,
+    >>> from photutils.psf_matching import (CosineBellWindow,
     ...                                     create_matching_kernel)
     >>> window = CosineBellWindow(alpha=0.35)
     >>> kernel = create_matching_kernel(ch1, ch4, window=window)
@@ -266,7 +266,7 @@ Let's display the matching kernel result:
     from astropy.visualization import LogStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import load_irac_psf
-    from photutils.psf.matching import CosineBellWindow, create_matching_kernel
+    from photutils.psf_matching import CosineBellWindow, create_matching_kernel
 
     ch1_hdu = load_irac_psf(channel=1)
     ch4_hdu = load_irac_psf(channel=4)
