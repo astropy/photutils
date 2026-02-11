@@ -46,6 +46,14 @@ class SplitCosineBellWindow:
     """
     Class to define a 2D split cosine bell taper function.
 
+    This is the base class for window functions, providing full control
+    over both the inner flat region (``beta``) and the taper width
+    (``alpha``). The window equals 1.0 in the inner region, smoothly
+    transitions to 0.0 using a cosine taper, and remains 0.0 outside.
+
+    This window is useful when you need precise control over both the
+    preserved central region and the taper characteristics.
+
     Parameters
     ----------
     alpha : float, optional
@@ -136,7 +144,21 @@ class HanningWindow(SplitCosineBellWindow):
     <https://en.wikipedia.org/wiki/Hann_function>`_ function.
 
     The Hann window is a taper formed by using a raised cosine with ends
-    that touch zero.
+    that touch zero. The taper begins at the center and smoothly
+    decreases to zero at the edges. This window equals 1.0 only at the
+    exact center point.
+
+    This is a classic general-purpose window function widely used in
+    signal processing. It provides good sidelobe suppression in Fourier
+    space, reducing ringing artifacts at the cost of tapering the entire
+    image. For PSF matching, use this window when edge effects and
+    ringing artifacts are a primary concern and you can accept tapering
+    most of the data. If you want to preserve more of the central
+    region, consider using `TukeyWindow` instead.
+
+    Notes
+    -----
+    Equivalent to ``SplitCosineBellWindow(alpha=1.0, beta=0.0)``.
 
     Examples
     --------
@@ -175,13 +197,31 @@ class TukeyWindow(SplitCosineBellWindow):
     <https://en.wikipedia.org/wiki/Window_function#Tukey_window>`_
     function.
 
-    The Tukey window is a taper formed by using a split cosine bell
-    function with ends that touch zero.
+    The Tukey window features a flat inner plateau equal to 1.0,
+    surrounded by a smooth cosine taper that transitions to 0.0 at the
+    edges. This provides an excellent balance between preserving data in
+    the central region and suppressing edge artifacts.
+
+    The ``alpha`` parameter controls the trade-off: smaller values
+    preserve more data but create stronger edge effects, while larger
+    values reduce artifacts but taper more of the image.
+
+    Compared to `HanningWindow`, Tukey preserves a larger central
+    region. Compared to `TopHatWindow`, it provides much better artifact
+    suppression at the cost of tapering the outer regions.
 
     Parameters
     ----------
     alpha : float, optional
-        The percentage of array values that are tapered.
+        The percentage of array values that are tapered. Must be
+        between 0.0 and 1.0, inclusive. When ``alpha=0``, this
+        becomes a `TopHatWindow`. When ``alpha=1``, this becomes a
+        `HanningWindow`.
+
+    Notes
+    -----
+    Equivalent to ``SplitCosineBellWindow(alpha=alpha, beta=1.0 -
+    alpha)``.
 
     Examples
     --------
@@ -217,10 +257,28 @@ class CosineBellWindow(SplitCosineBellWindow):
     """
     Class to define a 2D cosine bell window function.
 
+    This window equals 1.0 at the center, maintains this value for some
+    radius, then smoothly tapers to 0.0 at a distance determined by
+    ``alpha`` from the center. The taper begins immediately (no inner
+    plateau) and extends inward by a fraction ``alpha`` of the maximum
+    radius.
+
+    Use this window when you want to preserve the very center of an
+    image while applying a gentle taper that starts relatively far from
+    the edges. It provides less artifact suppression than `TukeyWindow`
+    for the same ``alpha`` value because the taper region is positioned
+    differently.
+
     Parameters
     ----------
     alpha : float, optional
-        The percentage of array values that are tapered.
+        The percentage of array values that are tapered. Must be between
+        0.0 and 1.0, inclusive. When ``alpha=1``, this becomes a
+        `HanningWindow`.
+
+    Notes
+    -----
+    Equivalent to ``SplitCosineBellWindow(alpha=alpha, beta=0.0)``.
 
     Examples
     --------
@@ -256,11 +314,31 @@ class TopHatWindow(SplitCosineBellWindow):
     """
     Class to define a 2D top hat window function.
 
+    This window equals 1.0 inside a circular region defined by ``beta``
+    and drops sharply to 0.0 outside, with no smooth transition. It is
+    also known as a rectangular or boxcar window.
+
+    This window preserves the most data (everything inside the cutoff
+    radius is untouched), but the sharp edge creates strong ringing
+    artifacts in Fourier space. Use this only when you need to strictly
+    preserve data within a specific region and can tolerate significant
+    artifacts, or when the sharp cutoff is explicitly desired.
+
+    For most PSF matching applications, `TukeyWindow` is preferred as
+    it provides much better artifact suppression while still preserving
+    a large central region. Use `TopHatWindow` primarily for masking or
+    when studying the effects of abrupt truncation.
+
     Parameters
     ----------
     beta : float, optional
-        The inner diameter as a fraction of the array size beyond which
-        the taper begins. ``beta`` must be less or equal to 1.0.
+        The inner diameter as a fraction of the array size beyond
+        which the window drops to zero. Must be between 0.0 and 1.0,
+        inclusive.
+
+    Notes
+    -----
+    Equivalent to ``SplitCosineBellWindow(alpha=0.0, beta=beta)``.
 
     Examples
     --------
