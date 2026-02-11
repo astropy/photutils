@@ -7,7 +7,6 @@ import warnings
 
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.fft import fft2, fftshift, ifft2, ifftshift
 from scipy.ndimage import zoom
 
 __all__ = ['create_matching_kernel', 'resize_psf']
@@ -95,7 +94,8 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     return zoom(psf, ratio, order=order) / ratio**2
 
 
-def create_matching_kernel(source_psf, target_psf, *, window=None):
+def create_matching_kernel(source_psf, target_psf, *, window=None,
+                           fourier_cutoff=1e-4):
     """
     Create a kernel to match 2D point spread functions (PSF) using the
     ratio of Fourier transforms.
@@ -113,9 +113,9 @@ def create_matching_kernel(source_psf, target_psf, *, window=None):
         ``target_psf`` must have the same shape and pixel scale.
 
     window : callable, optional
-        The window (or taper) function or callable class instance used
-        to remove high frequency noise from the PSF matching kernel.
-        Some examples include:
+        The window (taper) function or callable class instance used to
+        remove high frequency noise from the PSF matching kernel. Some
+        examples include:
 
         * `~photutils.psf_matching.HanningWindow`
         * `~photutils.psf_matching.TukeyWindow`
@@ -126,32 +126,60 @@ def create_matching_kernel(source_psf, target_psf, *, window=None):
         For more information on window functions and example usage, see
         :ref:`psf_matching`.
 
+    fourier_cutoff : float, optional
+        The fractional cutoff threshold for the Fourier transform of the
+        source PSF. Frequencies where the source OTF (Optical Transfer
+        Function, the Fourier transform of the PSF) amplitude is below
+        ``fourier_cutoff`` times the peak amplitude are set to zero to
+        avoid division by near-zero values. The default is 1e-4.
+
     Returns
     -------
     kernel : 2D `~numpy.ndarray`
         The matching kernel to go from ``source_psf`` to ``target_psf``.
         The output matching kernel is normalized such that it sums to 1.
+
+    Raises
+    ------
+    ValueError
+        If the PSFs are not 2D arrays, have even dimensions, or do not
+        have the same shape.
+
+    TypeError
+        If the input ``window`` is not callable.
     """
-    # inputs are copied so that they are not changed when normalizing
-    source_psf = np.copy(np.asanyarray(source_psf))
-    target_psf = np.copy(np.asanyarray(target_psf))
+    # copy as float so in-place normalization doesn't modify inputs
+    source_psf = np.array(source_psf, dtype=float)
+    target_psf = np.array(target_psf, dtype=float)
+
+    _validate_psf(source_psf, 'source_psf')
+    _validate_psf(target_psf, 'target_psf')
 
     if source_psf.shape != target_psf.shape:
         msg = ('source_psf and target_psf must have the same shape '
                '(i.e., registered with the same pixel scale).')
         raise ValueError(msg)
 
+    if window is not None and not callable(window):
+        msg = 'window must be a callable.'
+        raise TypeError(msg)
+
     # ensure input PSFs are normalized
     source_psf /= source_psf.sum()
     target_psf /= target_psf.sum()
 
-    source_otf = fftshift(fft2(source_psf))
-    target_otf = fftshift(fft2(target_psf))
-    ratio = target_otf / source_otf
+    source_otf = np.fft.fftshift(np.fft.fft2(source_psf))
+    target_otf = np.fft.fftshift(np.fft.fft2(target_psf))
+
+    # regularized division to avoid dividing by near-zero values
+    max_otf = np.max(np.abs(source_otf))
+    mask = np.abs(source_otf) > fourier_cutoff * max_otf
+    ratio = np.zeros_like(source_otf, dtype=complex)
+    ratio[mask] = target_otf[mask] / source_otf[mask]
 
     # apply a window function in frequency space
     if window is not None:
         ratio *= window(target_psf.shape)
 
-    kernel = np.real(fftshift(ifft2(ifftshift(ratio))))
+    kernel = np.real(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(ratio))))
     return kernel / kernel.sum()
