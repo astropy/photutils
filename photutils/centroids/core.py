@@ -12,6 +12,7 @@ from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._parameters import as_pair
+from photutils.utils._repr import make_repr
 from photutils.utils._round import py2intround
 
 __all__ = ['CentroidQuadratic', 'centroid_com', 'centroid_quadratic',
@@ -416,6 +417,12 @@ class CentroidQuadratic:
 
     def __init__(self, *, fit_boxsize=5):
         self.fit_boxsize = fit_boxsize
+
+    def __repr__(self):
+        return make_repr(self, ['fit_boxsize'])
+
+    def __str__(self):
+        return make_repr(self, ['fit_boxsize'], long=True)
 
     def __call__(self, data, *, mask=None):
         """
