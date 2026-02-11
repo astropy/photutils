@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Window (or tapering) functions for matching PSFs using Fourier methods.
+Window (tapering) functions for matching PSFs using Fourier methods.
 """
 
 import numpy as np
@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 
-def _radial_distance(shape):
+def _distance_grid(shape):
     """
     Return an array where each value is the Euclidean distance from the
     array center.
@@ -22,7 +22,9 @@ def _radial_distance(shape):
     Parameters
     ----------
     shape : tuple of int
-        The size of the output array along each axis.
+        The size of the output array along each axis. Must have only 2
+        elements. To have a well defined array center, the size along
+        each axis should be an odd integer, but this is not enforced.
 
     Returns
     -------
@@ -33,11 +35,11 @@ def _radial_distance(shape):
     if len(shape) != 2:
         msg = 'shape must have only 2 elements'
         raise ValueError(msg)
-    position = (np.asarray(shape) - 1) / 2.0
-    x = np.arange(shape[1]) - position[1]
-    y = np.arange(shape[0]) - position[0]
-    xx, yy = np.meshgrid(x, y)
-    return np.sqrt(xx**2 + yy**2)
+
+    y_cen, x_cen = (shape[0] - 1) / 2, (shape[1] - 1) / 2
+    y_vals, x_vals = np.ogrid[:shape[0], :shape[1]]
+
+    return np.hypot(x_vals - x_cen, y_vals - y_cen)
 
 
 class SplitCosineBellWindow:
@@ -47,11 +49,13 @@ class SplitCosineBellWindow:
     Parameters
     ----------
     alpha : float, optional
-        The percentage of array values that are tapered.
+        The percentage of array values that are tapered. ``alpha`` must
+        be between 0.0 and 1.0, inclusive.
 
     beta : float, optional
-        The inner diameter as a fraction of the array size beyond which
-        the taper begins. ``beta`` must be less or equal to 1.0.
+        The inner diameter as a fraction of the array size beyond
+        which the taper begins. ``beta`` must be between 0.0 and 1.0,
+        inclusive.
 
     Examples
     --------
@@ -80,13 +84,21 @@ class SplitCosineBellWindow:
     """
 
     def __init__(self, alpha, beta):
-        self.alpha = alpha
-        self.beta = beta
+        if not (0.0 <= alpha <= 1.0):
+            msg = ('alpha must be between 0.0 and 1.0, inclusive. '
+                   'Got: {alpha}')
+            raise ValueError(msg)
+        if not (0.0 <= beta <= 1.0):
+            msg = ('beta must be between 0.0 and 1.0, inclusive. '
+                   'Got: {beta}')
+            raise ValueError(msg)
+
+        self.alpha = float(alpha)
+        self.beta = float(beta)
 
     def __call__(self, shape):
         """
-        Call self as a function to return a 2D window function of the
-        given shape.
+        Generate the window function for the given shape.
 
         Parameters
         ----------
@@ -98,22 +110,24 @@ class SplitCosineBellWindow:
         result : 2D `~numpy.ndarray`
             The window function as a 2D array.
         """
-        radial_dist = _radial_distance(shape)
-        npts = (np.array(shape).min() - 1.0) / 2.0
-        r_inner = self.beta * npts
-        r = radial_dist - r_inner
-        r_taper = int(np.floor(self.alpha * npts))
+        dist = _distance_grid(shape)
 
-        if r_taper != 0:
-            f = 0.5 * (1.0 + np.cos(np.pi * r / r_taper))
+        # Define geometry based on the smallest shape dimension
+        max_r = (min(shape) - 1.0) / 2.0
+        r_inner = self.beta * max_r
+        taper_width = self.alpha * max_r
+        r_outer = r_inner + taper_width
+
+        if taper_width > 0:
+            r = dist - r_inner
+            result = 0.5 * (1.0 + np.cos(np.pi * r / taper_width))
         else:
-            f = np.ones(shape)
+            result = np.ones(shape, dtype=float)
 
-        f[radial_dist < r_inner] = 1.0
-        r_cut = r_inner + r_taper
-        f[radial_dist > r_cut] = 0.0
+        result[dist < r_inner] = 1.0
+        result[dist > r_outer] = 0.0
 
-        return f
+        return result
 
 
 class HanningWindow(SplitCosineBellWindow):
@@ -151,6 +165,7 @@ class HanningWindow(SplitCosineBellWindow):
     """
 
     def __init__(self):
+        # alpha=1.0 (full taper), beta=0.0 (taper starts at center)
         super().__init__(alpha=1.0, beta=0.0)
 
 
