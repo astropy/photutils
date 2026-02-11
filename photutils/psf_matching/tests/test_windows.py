@@ -8,7 +8,7 @@ import pytest
 from numpy.testing import assert_allclose
 from scipy.signal.windows import tukey
 
-from photutils.psf.matching.windows import (CosineBellWindow, HanningWindow,
+from photutils.psf_matching.windows import (CosineBellWindow, HanningWindow,
                                             SplitCosineBellWindow,
                                             TopHatWindow, TukeyWindow)
 

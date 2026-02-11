@@ -61,11 +61,11 @@ def create_matching_kernel(source_psf, target_psf, *, window=None):
         to remove high frequency noise from the PSF matching kernel.
         Some examples include:
 
-        * `~photutils.psf.matching.HanningWindow`
-        * `~photutils.psf.matching.TukeyWindow`
-        * `~photutils.psf.matching.CosineBellWindow`
-        * `~photutils.psf.matching.SplitCosineBellWindow`
-        * `~photutils.psf.matching.TopHatWindow`
+        * `~photutils.psf_matching.HanningWindow`
+        * `~photutils.psf_matching.TukeyWindow`
+        * `~photutils.psf_matching.CosineBellWindow`
+        * `~photutils.psf_matching.SplitCosineBellWindow`
+        * `~photutils.psf_matching.TopHatWindow`
 
         For more information on window functions and example usage, see
         :ref:`psf_matching`.

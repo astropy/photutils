@@ -115,6 +115,10 @@ API Changes
 
 - ``photutils.psf``
 
+  - The ``photutils.psf.matching`` subpackage has been moved to
+    ``photutils.psf_matching``. Importing from the old location is
+    deprecated. [#2167]
+
   - Removed the deprecated ``IntegratedGaussianPRF`` and ``PRFAdapter``
     classes. [#2103]
 

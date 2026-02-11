@@ -30,7 +30,7 @@ how to import these tools.
 
 * :doc:`photutils.psf <psf_api>`
 
-* :doc:`photutils.psf.matching <psf_matching_api>`
+* :doc:`photutils.psf_matching <psf_matching_api>`
 
 * :doc:`photutils.segmentation <segmentation_api>`
 
