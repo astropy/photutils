@@ -54,13 +54,12 @@ jobs:
             allow_failure: false
             prefix: ''
 
-          # no rasterio wheel for 3.14 yet
-          # - os: ubuntu-latest
-          #   python: '3.14'
-          #   tox_env: 'py314-test-alldeps-cov'
-          #   toxposargs: --remote-data=any
-          #   allow_failure: false
-          #   prefix: ''
+          - os: ubuntu-latest
+            python: '3.14'
+            tox_env: 'py314-test-alldeps-cov'
+            toxposargs: --remote-data=any
+            allow_failure: false
+            prefix: ''
 
           # test without all dependencies
           - os: ubuntu-latest
