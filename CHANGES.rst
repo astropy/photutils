@@ -77,6 +77,10 @@ Bug Fixes
     1024 for non-finite fitted flux, and flag 2048 for non-finite local
     background. [#2131]
 
+  - Fixed a bug in ``EPSFBuilder`` where the ``recentering_boxsize`` was
+    being applied in oversampled space instead of the original star pixel
+    space. [#2168]
+
 API Changes
 ^^^^^^^^^^^
 
