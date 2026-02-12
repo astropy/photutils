@@ -148,3 +148,30 @@ class TestCreateMatchingKernel:
                                    fourier_cutoff=0.5)
         assert k.shape == (self.size, self.size)
         assert_allclose(k.sum(), 1.0)
+
+    def test_fourier_cutoff_zero(self):
+        """
+        Test with fourier_cutoff=0 (minimum filtering).
+        """
+        k = create_matching_kernel(self.g1, self.g2,
+                                   fourier_cutoff=0)
+        assert k.shape == (self.size, self.size)
+        assert_allclose(k.sum(), 1.0)
+
+    def test_fourier_cutoff_negative(self):
+        """
+        Test that negative fourier_cutoff raises an error.
+        """
+        match = 'fourier_cutoff must be in the range'
+        with pytest.raises(ValueError, match=match):
+            create_matching_kernel(self.g1, self.g2,
+                                   fourier_cutoff=-0.1)
+
+    def test_fourier_cutoff_greater_than_one(self):
+        """
+        Test that fourier_cutoff > 1 raises an error.
+        """
+        match = 'fourier_cutoff must be in the range'
+        with pytest.raises(ValueError, match=match):
+            create_matching_kernel(self.g1, self.g2,
+                                   fourier_cutoff=1.5)

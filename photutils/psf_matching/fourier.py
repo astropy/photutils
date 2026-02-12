@@ -131,7 +131,10 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
         source PSF. Frequencies where the source OTF (Optical Transfer
         Function, the Fourier transform of the PSF) amplitude is below
         ``fourier_cutoff`` times the peak amplitude are set to zero to
-        avoid division by near-zero values. The default is 1e-4.
+        avoid division by near-zero values. Must be in the range [0,
+        1], where 0 provides minimum filtering (only exact zeros in the
+        OTF) and values closer to 1 apply more aggressive filtering. The
+        default is 1e-4.
 
     Returns
     -------
@@ -143,7 +146,8 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
     ------
     ValueError
         If the PSFs are not 2D arrays, have even dimensions, or do not
-        have the same shape.
+        have the same shape, or if ``fourier_cutoff`` is not in the
+        range [0, 1].
 
     TypeError
         If the input ``window`` is not callable.
@@ -163,6 +167,11 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
     if window is not None and not callable(window):
         msg = 'window must be a callable.'
         raise TypeError(msg)
+
+    if not 0 <= fourier_cutoff <= 1:
+        msg = (f'fourier_cutoff must be in the range [0, 1], '
+               f'got {fourier_cutoff}.')
+        raise ValueError(msg)
 
     # ensure input PSFs are normalized
     source_psf /= source_psf.sum()
