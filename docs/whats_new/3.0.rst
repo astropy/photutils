@@ -189,6 +189,40 @@ New ImagePSF shape property
 returns the shape of the (oversampled) PSF data array.
 
 
+Improved PSF Matching Tools
+===========================
+
+The PSF matching module has been significantly improved with better
+validation, regularization, and documentation.
+
+New fourier_cutoff parameter
+-----------------------------
+
+The :func:`~photutils.psf_matching.create_matching_kernel` function now
+includes a ``fourier_cutoff`` parameter to regularize division by
+near-zero values in the Fourier domain. This prevents numerical
+instabilities when the source PSF has very small Fourier coefficients::
+
+    >>> from photutils.psf_matching import create_matching_kernel
+    >>> kernel = create_matching_kernel(source_psf, target_psf,
+    ...                                 fourier_cutoff=1e-4)
+
+The default value of ``1e-4`` provides good regularization for most
+cases, but can be adjusted based on the noise characteristics of your
+PSFs.
+
+Improved validation
+-------------------
+
+Both :func:`~photutils.psf_matching.create_matching_kernel` and
+:func:`~photutils.psf_matching.resize_psf` now validate their inputs:
+
+* PSFs must be 2D arrays with odd dimensions
+* PSFs should be centered (a warning is issued if not)
+* Window functions must return valid 2D arrays with values between [0, 1]
+* Pixel scales must be positive
+
+
 Removed Deprecations
 ====================
 
