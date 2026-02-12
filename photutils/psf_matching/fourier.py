@@ -6,10 +6,15 @@ Tools for matching PSFs using Fourier methods.
 import warnings
 
 import numpy as np
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import zoom
 
-__all__ = ['create_matching_kernel', 'resize_psf']
+__all__ = [
+    'create_matching_kernel',
+    'make_kernel',
+    'resize_psf',
+]
 
 
 def _validate_psf(psf, name):
@@ -130,10 +135,9 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     return zoom(psf, ratio, order=order) / ratio**2
 
 
-def create_matching_kernel(source_psf, target_psf, *, window=None,
-                           otf_threshold=1e-4):
+def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
     """
-    Create a kernel to match 2D point spread functions (PSF) using the
+    Make a kernel to match 2D point spread functions (PSF) using the
     ratio of Fourier transforms.
 
     Parameters
@@ -236,3 +240,19 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
 
     kernel = np.real(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(ratio))))
     return kernel / kernel.sum()
+
+
+@deprecated('3.0', alternative='make_kernel')
+def create_matching_kernel(source_psf, target_psf, *, window=None,
+                           otf_threshold=1e-4):
+    """
+    Create a kernel to match 2D point spread functions (PSF).
+
+    .. deprecated:: 3.0
+        ``create_matching_kernel`` is deprecated as of Photutils 3.0 and
+        will be removed in a future version. Use `make_kernel` instead.
+    """
+    return make_kernel(source_psf,  # pragma: no cover
+                       target_psf,
+                       window=window,
+                       otf_threshold=otf_threshold)
