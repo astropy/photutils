@@ -62,11 +62,15 @@ New Features
 
 - ``photutils.psf_matching``
 
-  - Added a ``fourier_cutoff`` keyword to ``create_matching_kernel`` to
-    regularize division by near-zero values in the source OTF. [#2170]
+  - Added ``make_wiener_kernel`` function that uses Wiener (Tikhonov)
+    regularization to make a PSF matching kernel. [#2171]
 
-  - ``create_matching_kernel`` now validates input PSFs (2D, odd
-    dimensions, centered) and the window function output. [#2170]
+  - Added a ``otf_threshold`` keyword to ``make_kernel`` to regularize
+    division by near-zero values in the source Optical Transfer Function.
+    [#2170, #2171]
+
+  - ``make_kernel`` now validates input PSFs (2D, odd dimensions,
+    centered) and the window function output. [#2170]
 
   - ``resize_psf`` now validates input PSFs and pixel scales. [#2170]
 
@@ -162,13 +166,16 @@ API Changes
 
 - ``photutils.psf_matching``
 
-  - ``create_matching_kernel`` now raises ``ValueError`` if PSFs are not
+  - Renamed ``create_matching_kernel`` to ``make_kernel``. The old name
+    is deprecated. [#2171]
+
+  - ``make_kernel`` now raises ``ValueError`` if PSFs are not
     2D, have even dimensions, or do not have the same shape. [#2170]
 
   - ``resize_psf`` now raises ``ValueError`` if the PSF is not 2D, has
     even dimensions, or if pixel scales are not positive. [#2170]
 
-  - ``create_matching_kernel`` now raises ``TypeError`` if the
+  - ``make_kernel`` now raises ``TypeError`` if the
     ``window`` parameter is not callable. [#2170]
 
 
