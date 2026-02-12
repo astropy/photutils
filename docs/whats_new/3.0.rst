@@ -195,17 +195,17 @@ Improved PSF Matching Tools
 The PSF matching module has been significantly improved with better
 validation, regularization, and documentation.
 
-New fourier_cutoff parameter
+New otf_threshold parameter
 -----------------------------
 
-The :func:`~photutils.psf_matching.create_matching_kernel` function now
-includes a ``fourier_cutoff`` parameter to regularize division by
+The :func:`~photutils.psf_matching.make_kernel` function now
+includes a ``otf_threshold`` parameter to regularize division by
 near-zero values in the Fourier domain. This prevents numerical
 instabilities when the source PSF has very small Fourier coefficients::
 
-    >>> from photutils.psf_matching import create_matching_kernel
-    >>> kernel = create_matching_kernel(source_psf, target_psf,
-    ...                                 fourier_cutoff=1e-4)
+    >>> from photutils.psf_matching import make_kernel
+    >>> kernel = make_kernel(source_psf, target_psf,
+    ...                                 otf_threshold=1e-4)
 
 The default value of ``1e-4`` provides good regularization for most
 cases, but can be adjusted based on the noise characteristics of your
@@ -214,13 +214,38 @@ PSFs.
 Improved validation
 -------------------
 
-Both :func:`~photutils.psf_matching.create_matching_kernel` and
+Both :func:`~photutils.psf_matching.make_kernel` and
 :func:`~photutils.psf_matching.resize_psf` now validate their inputs:
 
 * PSFs must be 2D arrays with odd dimensions
-* PSFs should be centered (a warning is issued if not)
 * Window functions must return valid 2D arrays with values between [0, 1]
 * Pixel scales must be positive
+* PSFs should be centered (a warning is issued if not)
+
+New PSF Matching Function with Wiener Regularization
+----------------------------------------------------
+
+A new :func:`~photutils.psf_matching.make_wiener_kernel`
+function has been added to the ``psf_matching`` subpackage. This
+function creates PSF matching kernels using Wiener (Tikhonov)
+regularization, which provides an alternative to the traditional
+Fourier-ratio approach with hard amplitude thresholding used by
+:func:`~photutils.psf_matching.make_kernel`. The Wiener regularization
+approach suppresses noise amplification at spatial frequencies where
+the source response is weak by adding a regularization term to the
+denominator.
+
+This method is particularly useful when working with PSFs
+that have near-zero power at high spatial frequencies (e.g.,
+diffraction-limited PSFs), where the hard amplitude thresholding
+used by :func:`~photutils.psf_matching.make_kernel` can introduce
+discontinuities in Fourier space. Wiener regularization instead smoothly
+down-weights those frequencies, producing matching kernels with less
+ringing and often eliminating the need to carefully tune a window
+function::
+
+    >>> from photutils.psf_matching import make_wiener_kernel
+    >>> kernel = make_wiener_kernel(source_psf, target_psf)
 
 
 Removed Deprecations
@@ -281,10 +306,22 @@ deprecated and will be removed in a future version. Update your
 imports::
 
     # Old (deprecated)
-    from photutils.psf.matching import create_matching_kernel
+    from photutils.psf.matching import make_kernel
 
     # New
+    from photutils.psf_matching import make_kernel
+
+The PSF matching function ``create_matching_kernel`` has been renamed
+to ``make_kernel`` for brevity and consistency with Python naming
+conventions. The old function name is deprecated and will be removed in
+a future version. Update your code to use the new name::
+
+    # Old (deprecated)
+    from photutils.psf.matching import create_matching_kernel
     from photutils.psf_matching import create_matching_kernel
+
+    # New
+    from photutils.psf_matching import make_kernel
 
 PSF Package
 -----------
