@@ -46,6 +46,42 @@ def _validate_psf(psf, name):
         warnings.warn(msg, AstropyUserWarning)
 
 
+def _validate_window_array(window_array, expected_shape):
+    """
+    Validate window function output.
+
+    Parameters
+    ----------
+    window_array : any
+        The array returned by the window function.
+
+    expected_shape : tuple
+        The expected shape of the window array.
+
+    Raises
+    ------
+    ValueError
+        If the window array is not a 2D array, has the wrong shape,
+        or contains values outside the range [0, 1].
+    """
+    if not isinstance(window_array, np.ndarray) or window_array.ndim != 2:
+        msg = ('window function must return a 2D array, got '
+               f'{type(window_array).__name__} with '
+               f'ndim={getattr(window_array, "ndim", "undefined")}.')
+        raise ValueError(msg)
+
+    if window_array.shape != expected_shape:
+        msg = (f'window function must return an array with shape '
+               f'{expected_shape}, got {window_array.shape}.')
+        raise ValueError(msg)
+
+    if np.any(window_array < 0) or np.any(window_array > 1):
+        msg = ('window function values must be in the range [0, 1], '
+               f'got range [{np.min(window_array)}, '
+               f'{np.max(window_array)}].')
+        raise ValueError(msg)
+
+
 def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     """
     Resize a PSF using spline interpolation of the requested order.
@@ -195,25 +231,7 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
     # apply a window function in frequency space
     if window is not None:
         window_array = window(target_psf.shape)
-
-        # validate window function output
-        if not isinstance(window_array, np.ndarray) or window_array.ndim != 2:
-            msg = ('window function must return a 2D array, got '
-                   f'{type(window_array).__name__} with '
-                   f'ndim={getattr(window_array, "ndim", "undefined")}.')
-            raise ValueError(msg)
-
-        if window_array.shape != target_psf.shape:
-            msg = (f'window function must return an array with shape '
-                   f'{target_psf.shape}, got {window_array.shape}.')
-            raise ValueError(msg)
-
-        if np.any(window_array < 0) or np.any(window_array > 1):
-            msg = ('window function values must be in the range [0, 1], '
-                   f'got range [{np.min(window_array)}, '
-                   f'{np.max(window_array)}].')
-            raise ValueError(msg)
-
+        _validate_window_array(window_array, target_psf.shape)
         ratio *= window_array
 
     kernel = np.real(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(ratio))))
