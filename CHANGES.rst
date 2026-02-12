@@ -122,9 +122,7 @@ API Changes
     ``centroid_sources`` to centroid sources at specific positions.
     [#2160]
 
-- ``photutils.profiles``
-
-  - All functions in the ``profiles`` package now require keyword-only
+  - All functions in the ``centroids`` package now require keyword-only
     arguments. [#2162]
 
 - ``photutils.psf``
