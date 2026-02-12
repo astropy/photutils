@@ -14,8 +14,11 @@ from photutils.psf_matching.windows import (CosineBellWindow, HanningWindow,
 
 
 def test_hanning():
-    win = HanningWindow()
-    data = win((5, 5))
+    """
+    Test Hanning window with basic array values.
+    """
+    window = HanningWindow()
+    data = window((5, 5))
     ref = [0.0, 0.19715007, 0.5, 0.19715007, 0.0]
     assert_allclose(data[1, :], ref)
 
@@ -27,15 +30,18 @@ def test_hanning_numpy():
     size = 101
     cen = (size - 1) // 2
     shape = (size, size)
-    win = HanningWindow()
-    data = win(shape)
+    window = HanningWindow()
+    data = window(shape)
     ref1d = np.hanning(shape[0])
     assert_allclose(data[cen, :], ref1d)
 
 
 def test_tukey():
-    win = TukeyWindow(0.5)
-    data = win((5, 5))
+    """
+    Test Tukey window with basic array values.
+    """
+    window = TukeyWindow(0.5)
+    data = window((5, 5))
     ref = [0.0, 0.63312767, 1.0, 0.63312767, 0.0]
     assert_allclose(data[1, :], ref)
 
@@ -48,15 +54,18 @@ def test_tukey_scipy():
     cen = (size - 1) // 2
     shape = (size, size)
     alpha = 0.4
-    win = TukeyWindow(alpha=alpha)
-    data = win(shape)
+    window = TukeyWindow(alpha=alpha)
+    data = window(shape)
     ref1d = tukey(shape[0], alpha=alpha)
     assert_allclose(data[cen, :], ref1d)
 
 
 def test_cosine_bell():
-    win = CosineBellWindow(alpha=0.8)
-    data = win((7, 7))
+    """
+    Test cosine bell window with basic array values.
+    """
+    window = CosineBellWindow(alpha=0.8)
+    data = window((7, 7))
     ref = [0.0, 0.011467736745367552, 0.36162762260757253,
            0.6294095225512605, 0.36162762260757253,
            0.011467736745367552, 0.0]
@@ -64,13 +73,19 @@ def test_cosine_bell():
 
 
 def test_split_cosine_bell():
-    win = SplitCosineBellWindow(alpha=0.8, beta=0.2)
-    data = win((5, 5))
+    """
+    Test split cosine bell window with basic array values.
+    """
+    window = SplitCosineBellWindow(alpha=0.8, beta=0.2)
+    data = window((5, 5))
     ref = [0.0, 0.6913417161825449, 1.0, 0.6913417161825449, 0.0]
     assert_allclose(data[2, :], ref)
 
 
 def test_split_cosine_bell_invalid_inputs():
+    """
+    Test that invalid alpha and beta values raise ValueError.
+    """
     match = 'alpha must be between 0.0 and 1.0'
     with pytest.raises(ValueError, match=match):
         SplitCosineBellWindow(alpha=-0.1, beta=0.2)
@@ -85,14 +100,20 @@ def test_split_cosine_bell_invalid_inputs():
 
 
 def test_tophat():
-    win = TopHatWindow(beta=0.5)
-    data = win((5, 5))
+    """
+    Test top hat window with basic array values.
+    """
+    window = TopHatWindow(beta=0.5)
+    data = window((5, 5))
     ref = [0.0, 1.0, 1.0, 1.0, 0.0]
     assert_allclose(data[2, :], ref)
 
 
 def test_invalid_shape():
-    win = HanningWindow()
+    """
+    Test that invalid shape raises ValueError.
+    """
+    window = HanningWindow()
     match = 'shape must have only 2 elements'
     with pytest.raises(ValueError, match=match):
-        win((5,))
+        window((5,))
