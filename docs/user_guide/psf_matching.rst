@@ -6,43 +6,109 @@ PSF Matching (`photutils.psf_matching`)
 Introduction
 ------------
 
-This subpackage contains tools to generate kernels for matching point
-spread functions (PSFs).
+The `photutils.psf_matching` subpackage contains tools to generate
+kernels for matching point spread functions (PSFs). It provides two
+functions for computing PSF-matching kernels in the Fourier domain:
+
+* :func:`~photutils.psf_matching.make_kernel` — Uses the ratio of
+  Fourier transforms with a hard amplitude threshold to regularize
+  the division (see e.g., `Gordon et al. 2008`_; `Aniano et al.
+  2011`_).
+
+* :func:`~photutils.psf_matching.make_wiener_kernel` — Uses Wiener
+  (Tikhonov) regularization, which smoothly suppresses noise
+  amplification at spatial frequencies where the source response is
+  weak.
+
+Both functions take a source PSF and a target PSF and return a
+matching kernel that, when convolved with the source PSF, produces the
+target PSF. They both support an optional ``window`` function to
+further suppress high-frequency noise.
 
 
-Matching PSFs
--------------
+How It Works
+^^^^^^^^^^^^
 
-Photutils provides a function called
-:func:`~photutils.psf_matching.create_matching_kernel` that generates a
-matching kernel between two PSFs using the ratio of Fourier transforms
-(see e.g., `Gordon et al. 2008`_; `Aniano et al. 2011`_).
-
-The key idea behind this method is that convolution in the image domain
-corresponds to multiplication in the Fourier domain. If the source PSF
-has Fourier transform :math:`S` and the target PSF has Fourier transform
-:math:`T`, then the matching kernel :math:`K` satisfies :math:`T = S
-\cdot K`, so :math:`K = T / S`.
+The key idea behind both methods is that convolution in the image
+domain corresponds to multiplication in the Fourier domain. If the
+source PSF has Fourier transform :math:`S` and the target PSF has
+Fourier transform :math:`T`, then the matching kernel :math:`K`
+satisfies :math:`T = S \cdot K`, so :math:`K = T / S`.
 
 The Fourier transform of a PSF is called the Optical Transfer Function
 (OTF). It describes how different spatial frequencies are transmitted
 through the optical system. Low frequencies (coarse image features)
 are typically strong in the OTF, while high frequencies (fine details)
 are weaker. In practice, dividing by near-zero OTF values amplifies
-noise. The ``fourier_cutoff`` parameter (default ``1e-4``) handles this
-by zeroing out frequencies where the source OTF amplitude is below
-a fraction of the peak, preventing division by near-zero values and
-producing a clean result in most cases.
+noise. The two functions handle this differently:
+
+`~photutils.psf_matching.make_kernel` sets the Fourier ratio to zero at
+frequencies where the source OTF amplitude is below a fraction of the
+peak (controlled by the ``otf_threshold`` parameter, default ``1e-4``):
+
+.. math::
+
+    R = \begin{cases}
+        T / S & \text{if } |S| > \epsilon \cdot \max(|S|) \\
+        0     & \text{otherwise}
+    \end{cases}
+
+.. math::
+
+    K = \mathcal{F}^{-1}[W \cdot R]
+
+`~photutils.psf_matching.make_wiener_kernel` instead adds a
+regularization term to the denominator, providing continuous, smooth
+regularization:
+
+.. math::
+
+    K = \mathcal{F}^{-1} \left[ W \cdot
+        \frac{T \cdot S^{*}}
+              {|S|^{2} + \epsilon \cdot \max(|S|^{2})} \right]
+
+where :math:`\mathcal{F}^{-1}` is the inverse Fourier transform,
+:math:`S^{*}` is the complex conjugate of :math:`S`, :math:`\epsilon` is
+the ``regularization`` parameter (default ``1e-4``), and :math:`W` is
+the optional ``window`` function (defaulting to 1 if not provided).
+
+The Wiener approach smoothly down-weights frequencies where the source
+response is weak, rather than zeroing them out with a hard threshold.
+This typically produces matching kernels with less ringing, especially
+for PSFs that have near-zero power at high spatial frequencies.
 
 For additional control, an optional ``window`` function can be applied
-to further suppress high-frequency noise in the Fourier ratios. This
-is especially useful for real-world PSFs that may contain noise,
-diffraction artifacts, or other features that can amplify through the
-division. For more information, please see `Aniano et al. 2011`_.
+to both methods to further suppress high-frequency noise in the
+Fourier ratios. This is especially useful for real-world PSFs that
+may contain noise, diffraction artifacts, or other features that can
+amplify through the division. A window is generally less critical for
+`~photutils.psf_matching.make_wiener_kernel` because the regularization
+itself suppresses high-frequency noise. For more information about
+window functions, please see :ref:`psf_matching_window_functions`.
+
+
+Choosing a Method
+^^^^^^^^^^^^^^^^^
+
+Use `~photutils.psf_matching.make_kernel` when:
+
+- The traditional Fourier-ratio approach with a window function is
+  preferred (e.g., see `Aniano et al. 2011`_).
+- You want fine-grained control over the spatial frequency-space
+  filtering via a window function.
+
+Use `~photutils.psf_matching.make_wiener_kernel` when:
+
+- Working with PSFs that have near-zero power at high spatial
+  frequencies (e.g., diffraction-limited PSFs).
+- You want to avoid ringing artifacts without needing to carefully
+  tune a window function.
+- A single regularization parameter is preferred over choosing an OTF
+  amplitude threshold plus a window function.
 
 
 PSF Requirements and Preparation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The input source and target PSFs must satisfy these requirements:
 
@@ -58,18 +124,18 @@ The input source and target PSFs must satisfy these requirements:
 * **Normalized**: PSF arrays should be normalized so that the sum of all
   pixels equals 1.
 
-* **Centered** (recommended but not required): The peak of the PSF should
-  be at the center of the array. A warning will be issued if the peak is
-  off-center, but the function will still work.
+* **Centered** (recommended but not required): The peak of the PSF
+  should be at the center of the array. A warning will be issued if
+  the peak is off-center, but the function will still work.
 
 
 Noiseless Gaussian Example
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------
 
 For this first simple example, let's assume our source and target PSFs
-are noiseless 2D Gaussians. The "high-resolution" PSF will be a Gaussian
-with :math:`\sigma=3`. The "low-resolution" PSF will be a Gaussian with
-:math:`\sigma=5`::
+are noiseless 2D Gaussians. The "high-resolution" PSF will be a
+Gaussian with :math:`\sigma=3`. The "low-resolution" PSF will be a
+Gaussian with :math:`\sigma=5`::
 
     >>> import numpy as np
     >>> from photutils.psf import CircularGaussianSigmaPRF
@@ -79,31 +145,38 @@ with :math:`\sigma=3`. The "low-resolution" PSF will be a Gaussian with
     >>> psf1 = gm1(xx, yy)
     >>> psf2 = gm2(xx, yy)
 
-For these 2D Gaussians, the matching kernel should be a 2D Gaussian with
-:math:`\sigma=4` (:math:`\sqrt{5^2 - 3^2}`). Let's create the matching
-kernel::
+For these 2D Gaussians, the matching kernel should be a 2D Gaussian
+with :math:`\sigma=4` (:math:`\sqrt{5^2 - 3^2}`). Let's create the
+matching kernel using both methods.
 
-    >>> from photutils.psf_matching import create_matching_kernel
-    >>> kernel = create_matching_kernel(psf1, psf2, fourier_cutoff=1e-3)
+Using ``make_kernel``::
 
-The output ``kernel`` is a 2D array representing the matching kernel
-that, when convolved with the source PSF, produces the target PSF. The
-``fourier_cutoff`` parameter ensures a clean result by regularizing the
-Fourier division.
+    >>> from photutils.psf_matching import make_kernel
+    >>> kernel1 = make_kernel(psf1, psf2)
 
-The output matching kernel is normalized such that it sums to 1::
+Using ``make_wiener_kernel``::
 
-    >>> print(kernel.sum())  # doctest: +FLOAT_CMP
+    >>> from photutils.psf_matching import make_wiener_kernel
+    >>> kernel2 = make_wiener_kernel(psf1, psf2)
+
+Both output kernels are 2D arrays representing the matching kernel
+that, when convolved with the source PSF, produces the target PSF.
+The output matching kernels are normalized such that they sum to 1::
+
+    >>> print(kernel1.sum())  # doctest: +FLOAT_CMP
     1.0
 
-Let's plot the result:
+    >>> print(kernel2.sum())  # doctest: +FLOAT_CMP
+    1.0
+
+Let's plot both results side by side:
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
     from photutils.psf import CircularGaussianSigmaPRF
-    from photutils.psf_matching import create_matching_kernel
+    from photutils.psf_matching import make_kernel, make_wiener_kernel
 
     yy, xx = np.mgrid[0:51, 0:51]
     gm1 = CircularGaussianSigmaPRF(flux=1, x_0=25, y_0=25, sigma=3)
@@ -111,21 +184,29 @@ Let's plot the result:
     psf1 = gm1(xx, yy)
     psf2 = gm2(xx, yy)
 
-    kernel = create_matching_kernel(psf1, psf2, fourier_cutoff=1e-3)
-    fig, ax = plt.subplots()
-    axim = ax.imshow(kernel, origin='lower')
-    plt.colorbar(axim, ax=ax)
-    ax.set_title('Matching kernel')
+    kernel1 = make_kernel(psf1, psf2)
+    kernel2 = make_wiener_kernel(psf1, psf2)
 
-As expected, the result is a 2D Gaussian with :math:`\sigma=4`. Here we
-show 1D cuts across the center of the kernel images to confirm:
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    axim1 = axes[0].imshow(kernel1, origin='lower')
+    plt.colorbar(axim1, ax=axes[0])
+    axes[0].set_title('make_kernel')
+
+    axim2 = axes[1].imshow(kernel2, origin='lower')
+    plt.colorbar(axim2, ax=axes[1])
+    axes[1].set_title('make_wiener_kernel')
+
+    fig.tight_layout()
+
+As expected, both results are 2D Gaussians with :math:`\sigma=4`. Here
+we show 1D cuts across the center of the kernel images to confirm:
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
     from photutils.psf import CircularGaussianSigmaPRF
-    from photutils.psf_matching import create_matching_kernel
+    from photutils.psf_matching import make_kernel, make_wiener_kernel
 
     yy, xx = np.mgrid[0:51, 0:51]
     gm1 = CircularGaussianSigmaPRF(flux=1, x_0=25, y_0=25, sigma=3)
@@ -135,15 +216,21 @@ show 1D cuts across the center of the kernel images to confirm:
     psf2 = gm2(xx, yy)
     psf3 = gm3(xx, yy)
 
-    kernel = create_matching_kernel(psf1, psf2)
+    kernel1 = make_kernel(psf1, psf2)
+    kernel2 = make_wiener_kernel(psf1, psf2)
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(kernel[25, :], label='Matching kernel', lw=4)
-    ax.plot(psf3[25, :], label='$\\sigma=4$ Gaussian')
+    ax.plot(kernel1[25, :], label='make_kernel', lw=4)
+    ax.plot(kernel2[25, :], label='make_wiener_kernel', lw=2, ls='--')
+    ax.plot(psf3[25, :], label='$\\sigma=4$ Gaussian', ls=':')
     ax.set_xlabel('x')
     ax.set_ylabel('Flux along y=25')
     plt.legend()
     ax.set_ylim((0.0, 0.011))
+
+For these noiseless Gaussians, both methods produce nearly identical
+results. The key differences emerge when working with real-world PSFs
+that have significant structure in their power spectra.
 
 
 .. _psf_matching_window_functions:
@@ -151,12 +238,15 @@ show 1D cuts across the center of the kernel images to confirm:
 Window Functions
 ----------------
 
-When working with real-world PSFs (e.g., from observations or optical
-models), the Fourier ratio can still contain residual high-frequency
-noise even after the ``fourier_cutoff`` regularization. An optional
-`window function <https://en.wikipedia.org/wiki/Window_function>`_
-(also called a taper function) can be applied to further suppress
-these artifacts.
+When working with real-world PSFs (e.g., from observations
+or optical models), the Fourier ratio can still contain
+residual high-frequency spatial noise even after regularization.
+An optional `window function
+<https://en.wikipedia.org/wiki/Window_function>`_ (also called a taper
+function) can be applied to further suppress these artifacts. Both
+:func:`~photutils.psf_matching.make_kernel` and
+:func:`~photutils.psf_matching.make_wiener_kernel` accept an optional
+``window`` parameter.
 
 A window function multiplies the Fourier ratio by a smooth,
 radially-symmetric 2D filter that equals 1.0 in the central
@@ -164,7 +254,9 @@ low-frequency region and falls to 0.0 at the edges. This filters out
 high spatial frequencies where the signal-to-noise ratio is poorest.
 The trade-off is that tapering removes some real information along
 with the noise, so the choice of window involves balancing artifact
-suppression against fidelity.
+suppression against fidelity. A window is generally less critical for
+`~photutils.psf_matching.make_wiener_kernel` because the
+regularization itself suppresses high-frequency noise.
 
 ``photutils.psf_matching`` provides five built-in window classes. They
 are all subclasses of `~photutils.psf_matching.SplitCosineBellWindow`,
@@ -237,12 +329,14 @@ Custom Window Functions
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 Users may also define their own custom window function and pass it to
-:func:`~photutils.psf_matching.create_matching_kernel`. The window
+:func:`~photutils.psf_matching.make_kernel` or
+:func:`~photutils.psf_matching.make_wiener_kernel`. The window
 function should be a callable that takes a single ``shape`` argument
 (a tuple defining the 2D array shape) and returns a 2D array of the
-same shape containing the window values. The window values should range
-from 0.0 to 1.0, where 1.0 indicates full preservation of that spatial
-frequency and 0.0 indicates complete suppression.
+same shape containing the window values. The window values should
+range from 0.0 to 1.0, where 1.0 indicates full preservation of that
+spatial frequency and 0.0 indicates complete suppression. The window
+should be radially symmetric and centered on the array.
 
 Example Window Function Plots
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -336,31 +430,42 @@ Let's display the images:
 
     fig.tight_layout()
 
-For real-world PSFs like these, applying a window function
-is recommended to suppress residual high-frequency
-artifacts in the matching kernel. Here we use the
-:class:`~photutils.psf_matching.CosineBellWindow`. Note that
-these Spitzer/IRAC channel 1 and 4 PSFs have the same shape
-and pixel scale. If that is not the case, one can use the
+Note that these Spitzer/IRAC channel 1 and 4 PSFs have the same
+shape and pixel scale. If that is not the case, one can use the
 :func:`~photutils.psf_matching.resize_psf` convenience function
 to resize a PSF image. Typically, one would interpolate the
 lower-resolution PSF to the same size as the higher-resolution PSF.
 
+For real-world PSFs like these, applying a window function is
+recommended for :func:`~photutils.psf_matching.make_kernel` to
+suppress residual high-frequency artifacts. Here we use the
+:class:`~photutils.psf_matching.CosineBellWindow`:
+
 .. doctest-skip::
 
     >>> from photutils.psf_matching import (CosineBellWindow,
-    ...                                     create_matching_kernel)
+    ...                                     make_kernel)
     >>> window = CosineBellWindow(alpha=0.35)
-    >>> kernel = create_matching_kernel(ch1_psf, ch4_psf, window=window)
+    >>> kernel1 = make_kernel(ch1_psf, ch4_psf, window=window)
 
-Let's display the matching kernel result:
+With :func:`~photutils.psf_matching.make_wiener_kernel`, the Wiener
+regularization itself suppresses high-frequency noise, so a window
+function is generally not needed:
+
+.. doctest-skip::
+
+    >>> from photutils.psf_matching import make_wiener_kernel
+    >>> kernel2 = make_wiener_kernel(ch1_psf, ch4_psf, regularization=0.1)
+
+Let's display the matching kernel results from both methods:
 
 .. plot::
 
     import matplotlib.pyplot as plt
     from astropy.visualization import SimpleNorm
     from photutils.datasets import load_irac_psf
-    from photutils.psf_matching import CosineBellWindow, create_matching_kernel
+    from photutils.psf_matching import (CosineBellWindow, make_kernel,
+                                        make_wiener_kernel)
 
     ch1_hdu = load_irac_psf(channel=1)
     ch4_hdu = load_irac_psf(channel=4)
@@ -368,17 +473,24 @@ Let's display the matching kernel result:
     ch4_psf = ch4_hdu.data
 
     window = CosineBellWindow(alpha=0.35)
-    kernel = create_matching_kernel(ch1_psf, ch4_psf, window=window)
+    kernel1 = make_kernel(ch1_psf, ch4_psf, window=window)
+    kernel2 = make_wiener_kernel(ch1_psf, ch4_psf, regularization=0.1)
 
-    fig, ax = plt.subplots()
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 
     snorm = SimpleNorm('log', log_a=10)
-    axim = snorm.imshow(kernel, ax=ax, origin='lower')
-    plt.colorbar(axim, ax=ax)
-    ax.set_title('Matching kernel')
+    axim1 = snorm.imshow(kernel1, ax=axes[0], origin='lower')
+    plt.colorbar(axim1, ax=axes[0])
+    axes[0].set_title('make_kernel')
 
-The Spitzer/IRAC channel 1 image could then be convolved with this
-matching kernel to produce an image with the same resolution as the
+    axim2 = snorm.imshow(kernel2, ax=axes[1], origin='lower')
+    plt.colorbar(axim2, ax=axes[1])
+    axes[1].set_title('make_wiener_kernel')
+
+    fig.tight_layout()
+
+Either matching kernel could then be convolved with the Spitzer/IRAC
+channel 1 image to produce an image with the same resolution as the
 channel-4 image.
 
 
@@ -391,3 +503,5 @@ API Reference
 .. _Gordon et al. 2008:  https://ui.adsabs.harvard.edu/abs/2008ApJ...682..336G/abstract
 
 .. _Aniano et al. 2011:  https://ui.adsabs.harvard.edu/abs/2011PASP..123.1218A/abstract
+
+.. _Boucaud et al. 2016:  https://ui.adsabs.harvard.edu/abs/2016A%26A...596A..63B/abstract
