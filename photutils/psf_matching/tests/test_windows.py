@@ -57,15 +57,31 @@ def test_tukey_scipy():
 def test_cosine_bell():
     win = CosineBellWindow(alpha=0.8)
     data = win((7, 7))
-    ref = [0.0, 0.0, 0.19715007, 0.5, 0.19715007, 0.0, 0.0]
+    ref = [0.0, 0.011467736745367552, 0.36162762260757253,
+           0.6294095225512605, 0.36162762260757253,
+           0.011467736745367552, 0.0]
     assert_allclose(data[2, :], ref)
 
 
 def test_split_cosine_bell():
     win = SplitCosineBellWindow(alpha=0.8, beta=0.2)
     data = win((5, 5))
-    ref = [0.0, 0.3454915, 1.0, 0.3454915, 0.0]
+    ref = [0.0, 0.6913417161825449, 1.0, 0.6913417161825449, 0.0]
     assert_allclose(data[2, :], ref)
+
+
+def test_split_cosine_bell_invalid_inputs():
+    match = 'alpha must be between 0.0 and 1.0'
+    with pytest.raises(ValueError, match=match):
+        SplitCosineBellWindow(alpha=-0.1, beta=0.2)
+    with pytest.raises(ValueError, match=match):
+        SplitCosineBellWindow(alpha=1.1, beta=0.2)
+
+    match = 'beta must be between 0.0 and 1.0'
+    with pytest.raises(ValueError, match=match):
+        SplitCosineBellWindow(alpha=0.8, beta=-0.1)
+    with pytest.raises(ValueError, match=match):
+        SplitCosineBellWindow(alpha=0.8, beta=1.1)
 
 
 def test_tophat():
