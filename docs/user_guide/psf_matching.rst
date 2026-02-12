@@ -72,14 +72,12 @@ with :math:`\sigma=3`. The "low-resolution" PSF will be a Gaussian with
 :math:`\sigma=5`::
 
     >>> import numpy as np
-    >>> from astropy.modeling.models import Gaussian2D
+    >>> from photutils.psf import CircularGaussianSigmaPRF
     >>> yy, xx = np.mgrid[0:51, 0:51]
-    >>> gm1 = Gaussian2D(100, 25, 25, 3, 3)
-    >>> gm2 = Gaussian2D(100, 25, 25, 5, 5)
-    >>> psf1 = gm1(x, y)
-    >>> psf2 = gm2(x, y)
-    >>> psf1 /= psf1.sum()  # normalize the PSF
-    >>> psf2 /= psf2.sum()
+    >>> gm1 = CircularGaussianSigmaPRF(flux=1, x_0=25, y_0=25, sigma=3)
+    >>> gm2 = CircularGaussianSigmaPRF(flux=1, x_0=25, y_0=25, sigma=5)
+    >>> psf1 = gm1(xx, yy)
+    >>> psf2 = gm2(xx, yy)
 
 For these 2D Gaussians, the matching kernel should be a 2D Gaussian with
 :math:`\sigma=4` (:math:`\sqrt{5^2 - 3^2}`). Let's create the matching
@@ -93,7 +91,7 @@ that, when convolved with the source PSF, produces the target PSF. The
 ``fourier_cutoff`` parameter ensures a clean result by regularizing the
 Fourier division.
 
-The output matching kernel is always normalized such that it sums to 1::
+The output matching kernel is normalized such that it sums to 1::
 
     >>> print(kernel.sum())  # doctest: +FLOAT_CMP
     1.0
@@ -104,16 +102,14 @@ Let's plot the result:
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.modeling.models import Gaussian2D
+    from photutils.psf import CircularGaussianSigmaPRF
     from photutils.psf_matching import create_matching_kernel
 
-    y, x = np.mgrid[0:51, 0:51]
-    gm1 = Gaussian2D(100, 25, 25, 3, 3)
-    gm2 = Gaussian2D(100, 25, 25, 5, 5)
-    psf1 = gm1(x, y)
-    psf2 = gm2(x, y)
-    psf1 /= psf1.sum()
-    psf2 /= psf2.sum()
+    yy, xx = np.mgrid[0:51, 0:51]
+    gm1 = CircularGaussianSigmaPRF(flux=1, x_0=25, y_0=25, sigma=3)
+    gm2 = CircularGaussianSigmaPRF(flux=1, x_0=25, y_0=25, sigma=5)
+    psf1 = gm1(xx, yy)
+    psf2 = gm2(xx, yy)
 
     kernel = create_matching_kernel(psf1, psf2, fourier_cutoff=1e-3)
     fig, ax = plt.subplots()
@@ -128,22 +124,18 @@ show 1D cuts across the center of the kernel images to confirm:
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.modeling.models import Gaussian2D
+    from photutils.psf import CircularGaussianSigmaPRF
     from photutils.psf_matching import create_matching_kernel
 
-    y, x = np.mgrid[0:51, 0:51]
-    gm1 = Gaussian2D(100, 25, 25, 3, 3)
-    gm2 = Gaussian2D(100, 25, 25, 5, 5)
-    gm3 = Gaussian2D(100, 25, 25, 4, 4)
-    psf1 = gm1(x, y)
-    psf2 = gm2(x, y)
-    psf3 = gm3(x, y)
-    psf1 /= psf1.sum()
-    psf2 /= psf2.sum()
-    psf3 /= psf3.sum()
+    yy, xx = np.mgrid[0:51, 0:51]
+    gm1 = CircularGaussianSigmaPRF(flux=1, x_0=25, y_0=25, sigma=3)
+    gm2 = CircularGaussianSigmaPRF(flux=1, x_0=25, y_0=25, sigma=5)
+    gm3 = CircularGaussianSigmaPRF(flux=1, x_0=25, y_0=25, sigma=4)
+    psf1 = gm1(xx, yy)
+    psf2 = gm2(xx, yy)
+    psf3 = gm3(xx, yy)
 
     kernel = create_matching_kernel(psf1, psf2)
-    kernel /= kernel.sum()
 
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(kernel[25, :], label='Matching kernel', lw=4)
