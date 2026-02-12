@@ -60,6 +60,16 @@ New Features
   - The ``fit_fwhm`` and ``fit_2dgaussian`` ``xypos`` value can now be
     input as a ``zip`` object. [#2164]
 
+- ``photutils.psf_matching``
+
+  - Added a ``fourier_cutoff`` keyword to ``create_matching_kernel`` to
+    regularize division by near-zero values in the source OTF. [#2170]
+
+  - ``create_matching_kernel`` now validates input PSFs (2D, odd
+    dimensions, centered) and the window function output. [#2170]
+
+  - ``resize_psf`` now validates input PSFs and pixel scales. [#2170]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -151,6 +161,17 @@ API Changes
     supported for backward compatibility. [#2158]
 
   - ``LinkedEPSFStar`` no longer inherits from ``EPSFStars``. [#2158]
+
+- ``photutils.psf_matching``
+
+  - ``create_matching_kernel`` now raises ``ValueError`` if PSFs are not
+    2D, have even dimensions, or do not have the same shape. [#2170]
+
+  - ``resize_psf`` now raises ``ValueError`` if the PSF is not 2D, has
+    even dimensions, or if pixel scales are not positive. [#2170]
+
+  - ``create_matching_kernel`` now raises ``TypeError`` if the
+    ``window`` parameter is not callable. [#2170]
 
 
 2.3.0 (2025-09-15)
