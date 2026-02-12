@@ -175,3 +175,51 @@ class TestCreateMatchingKernel:
         with pytest.raises(ValueError, match=match):
             create_matching_kernel(self.g1, self.g2,
                                    fourier_cutoff=1.5)
+
+    def test_window_not_2d(self):
+        """
+        Test that window function returning non-2D array raises error.
+        """
+        def bad_window(shape):
+            return np.ones(shape[0])  # 1D array
+
+        match = 'window function must return a 2D array'
+        with pytest.raises(ValueError, match=match):
+            create_matching_kernel(self.g1, self.g2, window=bad_window)
+
+    def test_window_wrong_shape(self):
+        """
+        Test that window function returning wrong shape raises error.
+        """
+        def bad_window(shape):  # noqa: ARG001
+            return np.ones((10, 10))  # wrong shape
+
+        match = 'window function must return an array with shape'
+        with pytest.raises(ValueError, match=match):
+            create_matching_kernel(self.g1, self.g2, window=bad_window)
+
+    def test_window_values_below_zero(self):
+        """
+        Test that window function with values < 0 raises error.
+        """
+        def bad_window(shape):
+            arr = np.ones(shape)
+            arr[0, 0] = -0.1
+            return arr
+
+        match = 'window function values must be in the range'
+        with pytest.raises(ValueError, match=match):
+            create_matching_kernel(self.g1, self.g2, window=bad_window)
+
+    def test_window_values_above_one(self):
+        """
+        Test that window function with values > 1 raises error.
+        """
+        def bad_window(shape):
+            arr = np.ones(shape)
+            arr[0, 0] = 1.5
+            return arr
+
+        match = 'window function values must be in the range'
+        with pytest.raises(ValueError, match=match):
+            create_matching_kernel(self.g1, self.g2, window=bad_window)

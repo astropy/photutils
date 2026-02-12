@@ -113,9 +113,14 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
         ``target_psf`` must have the same shape and pixel scale.
 
     window : callable, optional
-        The window (taper) function or callable class instance used to
-        remove high frequency noise from the PSF matching kernel. Some
-        examples include:
+        The window (taper) function or callable class instance used
+        to remove high frequency noise from the PSF matching kernel.
+        The window function should be a callable that accepts a single
+        ``shape`` parameter (a tuple defining the 2D array shape) and
+        returns a 2D array of the same shape. The returned window
+        values must be in the range [0, 1], where 1.0 indicates full
+        preservation of that spatial frequency and 0.0 indicates
+        complete suppression. Built-in window classes include:
 
         * `~photutils.psf_matching.HanningWindow`
         * `~photutils.psf_matching.TukeyWindow`
@@ -123,8 +128,8 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
         * `~photutils.psf_matching.SplitCosineBellWindow`
         * `~photutils.psf_matching.TopHatWindow`
 
-        For more information on window functions and example usage, see
-        :ref:`psf_matching`.
+        For more information on window functions, custom windows, and
+        example usage, see :ref:`psf_matching`.
 
     fourier_cutoff : float, optional
         The fractional cutoff threshold for the Fourier transform of the
@@ -146,8 +151,9 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
     ------
     ValueError
         If the PSFs are not 2D arrays, have even dimensions, or do not
-        have the same shape, or if ``fourier_cutoff`` is not in the
-        range [0, 1].
+        have the same shape, if ``fourier_cutoff`` is not in the range
+        [0, 1], or if the window function output is invalid (not a 2D
+        array, wrong shape, or values outside [0, 1]).
 
     TypeError
         If the input ``window`` is not callable.
@@ -188,7 +194,27 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
 
     # apply a window function in frequency space
     if window is not None:
-        ratio *= window(target_psf.shape)
+        window_array = window(target_psf.shape)
+
+        # validate window function output
+        if not isinstance(window_array, np.ndarray) or window_array.ndim != 2:
+            msg = ('window function must return a 2D array, got '
+                   f'{type(window_array).__name__} with '
+                   f'ndim={getattr(window_array, "ndim", "undefined")}.')
+            raise ValueError(msg)
+
+        if window_array.shape != target_psf.shape:
+            msg = (f'window function must return an array with shape '
+                   f'{target_psf.shape}, got {window_array.shape}.')
+            raise ValueError(msg)
+
+        if np.any(window_array < 0) or np.any(window_array > 1):
+            msg = ('window function values must be in the range [0, 1], '
+                   f'got range [{np.min(window_array)}, '
+                   f'{np.max(window_array)}].')
+            raise ValueError(msg)
+
+        ratio *= window_array
 
     kernel = np.real(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(ratio))))
     return kernel / kernel.sum()
