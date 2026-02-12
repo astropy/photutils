@@ -240,6 +240,7 @@ exclude = [
     # PR01: private classes/functions
     'SigmaClipSentinelDefault$',
     'create_default_sigmaclip$',
+    'create_matching_kernel$',
 
     # PR02: subclasses without __init__
     'Background$',
