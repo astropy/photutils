@@ -131,7 +131,7 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
 
 
 def create_matching_kernel(source_psf, target_psf, *, window=None,
-                           fourier_cutoff=1e-4):
+                           otf_threshold=1e-4):
     """
     Create a kernel to match 2D point spread functions (PSF) using the
     ratio of Fourier transforms.
@@ -167,11 +167,11 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
         For more information on window functions, custom windows, and
         example usage, see :ref:`psf_matching`.
 
-    fourier_cutoff : float, optional
+    otf_threshold : float, optional
         The fractional cutoff threshold for the Fourier transform of the
         source PSF. Frequencies where the source OTF (Optical Transfer
         Function, the Fourier transform of the PSF) amplitude is below
-        ``fourier_cutoff`` times the peak amplitude are set to zero to
+        ``otf_threshold`` times the peak amplitude are set to zero to
         avoid division by near-zero values. Must be in the range [0,
         1], where 0 provides minimum filtering (only exact zeros in the
         OTF) and values closer to 1 apply more aggressive filtering. The
@@ -187,7 +187,7 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
     ------
     ValueError
         If the PSFs are not 2D arrays, have even dimensions, or do not
-        have the same shape, if ``fourier_cutoff`` is not in the range
+        have the same shape, if ``otf_threshold`` is not in the range
         [0, 1], or if the window function output is invalid (not a 2D
         array, wrong shape, or values outside [0, 1]).
 
@@ -210,9 +210,9 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
         msg = 'window must be a callable.'
         raise TypeError(msg)
 
-    if not 0 <= fourier_cutoff <= 1:
-        msg = (f'fourier_cutoff must be in the range [0, 1], '
-               f'got {fourier_cutoff}.')
+    if not 0 <= otf_threshold <= 1:
+        msg = (f'otf_threshold must be in the range [0, 1], '
+               f'got {otf_threshold}.')
         raise ValueError(msg)
 
     # ensure input PSFs are normalized
@@ -224,7 +224,7 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
 
     # regularized division to avoid dividing by near-zero values
     max_otf = np.max(np.abs(source_otf))
-    mask = np.abs(source_otf) > fourier_cutoff * max_otf
+    mask = np.abs(source_otf) > otf_threshold * max_otf
     ratio = np.zeros_like(source_otf, dtype=complex)
     ratio[mask] = target_otf[mask] / source_otf[mask]
 
