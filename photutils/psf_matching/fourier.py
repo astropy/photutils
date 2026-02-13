@@ -134,8 +134,12 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
                f'got {otf_threshold}.')
         raise ValueError(msg)
 
-    source_otf = np.fft.fftshift(np.fft.fft2(source_psf))
-    target_otf = np.fft.fftshift(np.fft.fft2(target_psf))
+    source_otf = np.fft.fft2(source_psf)
+    target_otf = np.fft.fft2(target_psf)
+
+    # Note: the following calculations are performed in the Fourier
+    # domain with the DC component at the corner of the array (standard
+    # FFT layout).
 
     # regularized division to avoid dividing by near-zero values
     max_otf = np.max(np.abs(source_otf))
@@ -145,11 +149,18 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
 
     # apply a window function in frequency space
     if window is not None:
+        # The window function is defined in the Fourier domain with the
+        # DC component at the center of the array. The ratio array is
+        # computed with the DC component at the corner of the array,
+        # so we need to shift it to the center to apply the window
+        # function.
         window_array = window(target_psf.shape)
         _validate_window_array(window_array, target_psf.shape)
+        ratio = np.fft.fftshift(ratio)
         ratio *= window_array
+        ratio = np.fft.ifftshift(ratio)
 
-    kernel = np.real(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(ratio))))
+    kernel = np.real(np.fft.fftshift(np.fft.ifft2(ratio)))
     return kernel / kernel.sum()
 
 
@@ -380,6 +391,11 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
 
     # Apply a window function in frequency space
     if window is not None:
+        # The window function is defined in the Fourier domain with the
+        # DC component at the center of the array. The kernel OTF is
+        # computed with the DC component at the corner of the array,
+        # so we need to shift it to the center to apply the window
+        # function.
         kernel_otf = np.fft.fftshift(kernel_otf)
         kernel_otf *= window(target_psf.shape)
         kernel_otf = np.fft.ifftshift(kernel_otf)
