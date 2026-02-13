@@ -60,6 +60,30 @@ class TestValidatePSF:
         with pytest.warns(AstropyUserWarning, match=match):
             _validate_psf(psf, 'psf')
 
+    def test_nan_inf_values(self):
+        """
+        Test that NaN or Inf values raise ValueError.
+        """
+        psf = np.zeros((25, 25))
+        psf[12, 12] = np.nan
+        match = 'contains NaN or Inf values'
+        with pytest.raises(ValueError, match=match):
+            _validate_psf(psf, 'psf')
+
+        psf[12, 12] = np.inf
+        with pytest.raises(ValueError, match=match):
+            _validate_psf(psf, 'psf')
+
+    def test_negative_values(self):
+        """
+        Test that negative values produce a warning.
+        """
+        psf = _make_gaussian_psf(25, 3.0)
+        psf[0, 0] = -0.1
+        match = 'contains negative values'
+        with pytest.warns(AstropyUserWarning, match=match):
+            _validate_psf(psf, 'psf')
+
 
 class TestValidateWindowArray:
     def test_valid_window(self):

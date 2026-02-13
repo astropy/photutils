@@ -6,7 +6,8 @@ Tools for matching PSFs using Fourier methods.
 import numpy as np
 from astropy.utils.decorators import deprecated
 
-from photutils.psf_matching.utils import (_convert_psf_to_otf, _validate_psf,
+from photutils.psf_matching.utils import (_convert_psf_to_otf,
+                                          _validate_kernel_inputs,
                                           _validate_window_array, resize_psf)
 
 __all__ = ['create_matching_kernel', 'make_kernel', 'make_wiener_kernel',
@@ -125,30 +126,13 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
     >>> print(f'{kernel.sum():.1f}')
     1.0
     """
-    # copy as float so in-place normalization doesn't modify inputs
-    source_psf = np.array(source_psf, dtype=float)
-    target_psf = np.array(target_psf, dtype=float)
-
-    _validate_psf(source_psf, 'source_psf')
-    _validate_psf(target_psf, 'target_psf')
-
-    if source_psf.shape != target_psf.shape:
-        msg = ('source_psf and target_psf must have the same shape '
-               '(i.e., registered with the same pixel scale).')
-        raise ValueError(msg)
-
-    if window is not None and not callable(window):
-        msg = 'window must be a callable.'
-        raise TypeError(msg)
+    source_psf, target_psf = _validate_kernel_inputs(
+        source_psf, target_psf, window)
 
     if not 0 <= otf_threshold <= 1:
         msg = (f'otf_threshold must be in the range [0, 1], '
                f'got {otf_threshold}.')
         raise ValueError(msg)
-
-    # ensure input PSFs are normalized
-    source_psf /= source_psf.sum()
-    target_psf /= target_psf.sum()
 
     source_otf = np.fft.fftshift(np.fft.fft2(source_psf))
     target_otf = np.fft.fftshift(np.fft.fft2(target_psf))
@@ -344,25 +328,12 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
     >>> print(f'{kernel.sum():.1f}')
     1.0
     """
-    # copy as float so in-place normalization doesn't modify inputs
-    source_psf = np.array(source_psf, dtype=float)
-    target_psf = np.array(target_psf, dtype=float)
-
-    _validate_psf(source_psf, 'source_psf')
-    _validate_psf(target_psf, 'target_psf')
-
-    if source_psf.shape != target_psf.shape:
-        msg = ('source_psf and target_psf must have the same shape '
-               '(i.e., registered with the same pixel scale).')
-        raise ValueError(msg)
+    source_psf, target_psf = _validate_kernel_inputs(
+        source_psf, target_psf, window)
 
     if regularization <= 0:
         msg = 'regularization must be a positive number.'
         raise ValueError(msg)
-
-    if window is not None and not callable(window):
-        msg = 'window must be a callable.'
-        raise TypeError(msg)
 
     # Validate and build the penalty term
     if penalty is None:

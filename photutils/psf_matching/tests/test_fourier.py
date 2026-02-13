@@ -209,6 +209,21 @@ class TestMakeKernel:
         with pytest.raises(ValueError, match=match):
             make_kernel(psf1, psf2, window=bad_window)
 
+    def test_asymmetric_shape(self):
+        """
+        Test with asymmetric PSF shapes.
+        """
+        # Create 51x25 PSFs
+        y, x = np.mgrid[0:51, 0:25]
+        psf1 = Gaussian2D(100, 12, 25, 3, 3)(x, y)
+        psf2 = Gaussian2D(100, 12, 25, 5, 5)(x, y)
+        psf1 /= psf1.sum()
+        psf2 /= psf2.sum()
+
+        kernel = make_kernel(psf1, psf2)
+        assert kernel.shape == (51, 25)
+        assert_allclose(kernel.sum(), 1.0)
+
 
 class TestMakeKernelWiener:
     def test_basic(self, psf1, psf2):
@@ -429,3 +444,18 @@ class TestMakeKernelWiener:
                                               regularization=reg,
                                               penalty='laplacian')
         assert not np.allclose(kernel_scalar, kernel_laplacian)
+
+    def test_asymmetric_shape(self):
+        """
+        Test with asymmetric PSF shapes.
+        """
+        # Create 51x25 PSFs
+        y, x = np.mgrid[0:51, 0:25]
+        psf1 = Gaussian2D(100, 12, 25, 3, 3)(x, y)
+        psf2 = Gaussian2D(100, 12, 25, 5, 5)(x, y)
+        psf1 /= psf1.sum()
+        psf2 /= psf2.sum()
+
+        kernel = make_wiener_kernel(psf1, psf2)
+        assert kernel.shape == (51, 25)
+        assert_allclose(kernel.sum(), 1.0)

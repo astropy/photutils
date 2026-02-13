@@ -12,6 +12,61 @@ from scipy.ndimage import zoom
 __all__ = ['resize_psf']
 
 
+def _validate_kernel_inputs(source_psf, target_psf, window):
+    """
+    Validate and prepare common inputs for kernel-making functions.
+
+    Parameters
+    ----------
+    source_psf : array-like
+        The source PSF array.
+
+    target_psf : array-like
+        The target PSF array.
+
+    window : callable or None
+        The window function or None.
+
+    Returns
+    -------
+    source_psf : `~numpy.ndarray`
+        The validated and normalized source PSF as a float array.
+
+    target_psf : `~numpy.ndarray`
+        The validated and normalized target PSF as a float array.
+
+    Raises
+    ------
+    ValueError
+        If the PSFs are not 2D arrays, have even dimensions, do not have
+        the same shape, or contain NaN or Inf values.
+
+    TypeError
+        If the input ``window`` is not callable.
+    """
+    # Copy as float so in-place normalization doesn't modify inputs
+    source_psf = np.array(source_psf, dtype=float)
+    target_psf = np.array(target_psf, dtype=float)
+
+    _validate_psf(source_psf, 'source_psf')
+    _validate_psf(target_psf, 'target_psf')
+
+    if source_psf.shape != target_psf.shape:
+        msg = ('source_psf and target_psf must have the same shape '
+               '(i.e., registered with the same pixel scale).')
+        raise ValueError(msg)
+
+    if window is not None and not callable(window):
+        msg = 'window must be a callable.'
+        raise TypeError(msg)
+
+    # Ensure input PSFs are normalized
+    source_psf /= source_psf.sum()
+    target_psf /= target_psf.sum()
+
+    return source_psf, target_psf
+
+
 def _validate_psf(psf, name):
     """
     Validate that a PSF is 2D with odd dimensions and centered.
@@ -27,7 +82,8 @@ def _validate_psf(psf, name):
     Raises
     ------
     ValueError
-        If the PSF is not 2D or has even dimensions.
+        If the PSF is not 2D, has even dimensions, or contains NaN or
+        Inf values.
     """
     if psf.ndim != 2:
         msg = f'{name} must be a 2D array.'
@@ -37,6 +93,14 @@ def _validate_psf(psf, name):
         msg = (f'{name} must have odd dimensions, got '
                f'shape {psf.shape}.')
         raise ValueError(msg)
+
+    if not np.all(np.isfinite(psf)):
+        msg = f'{name} contains NaN or Inf values.'
+        raise ValueError(msg)
+
+    if np.any(psf < 0):
+        msg = f'{name} contains negative values.'
+        warnings.warn(msg, AstropyUserWarning)
 
     center = ((psf.shape[0] - 1) / 2, (psf.shape[1] - 1) / 2)
     peak = np.unravel_index(np.argmax(psf), psf.shape)
@@ -125,7 +189,7 @@ def _convert_psf_to_otf(psf, shape):
 
     # Circularly shift so that the center of the PSF is at [0, 0]
     for axis, axis_size in enumerate(inshape):
-        padded = np.roll(padded, -int(axis_size / 2), axis=axis)
+        padded = np.roll(padded, -axis_size // 2, axis=axis)
 
     return np.fft.fft2(padded)
 
