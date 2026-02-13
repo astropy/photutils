@@ -12,6 +12,10 @@ from photutils.datasets import get_path, load
 
 
 def test_get_path():
+    """
+    Test get_path with a valid filename and location, and with an
+    invalid location.
+    """
     fn = '4gaussians_params.ecsv'
     path = get_path(fn, location='local')
     assert fn in path
@@ -23,7 +27,11 @@ def test_get_path():
 
 class TestGetPathCache:
     """
-    Regression tests for the get_path caching behavior.
+    Tests for the caching behavior of get_path.
+
+    Tests that it correctly checks the cache for both the primary and
+    fallback URLs, and that it falls back to downloading from the
+    datasets URL if the primary URL is not cached and fails to download.
     """
 
     def setup_method(self):
@@ -99,8 +107,24 @@ class TestGetPathCache:
             assert mock_dl.call_count == 2
 
 
+def test_load_irac_psf_invalid_channel():
+    """
+    Test that load_irac_psf raises a ValueError when an invalid channel
+    number is provided.
+    """
+    match = 'channel must be 1, 2, 3, or 4'
+    with pytest.raises(ValueError, match=match):
+        load.load_irac_psf(0)
+    with pytest.raises(ValueError, match=match):
+        load.load_irac_psf(5)
+
+
 @pytest.mark.remote_data
 def test_load_star_image():
+    """
+    Test that load_star_image returns an HDU with the expected header
+    and data shape.
+    """
     hdu = load.load_star_image()
     assert len(hdu.header) == 106
     assert hdu.data.shape == (1059, 1059)
