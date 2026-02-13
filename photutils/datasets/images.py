@@ -284,7 +284,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     # Copy the input model to leave it unchanged
     model = model.copy()
 
-    if progress_bar:  # pragma: no cover
+    if progress_bar:
         desc = 'Add model sources'
         params_table = add_progress_bar(params_table, desc=desc)
 
