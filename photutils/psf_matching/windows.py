@@ -94,11 +94,11 @@ class SplitCosineBellWindow:
     def __init__(self, alpha, beta):
         if not (0.0 <= alpha <= 1.0):
             msg = ('alpha must be between 0.0 and 1.0, inclusive. '
-                   'Got: {alpha}')
+                   f'Got: {alpha}')
             raise ValueError(msg)
         if not (0.0 <= beta <= 1.0):
             msg = ('beta must be between 0.0 and 1.0, inclusive. '
-                   'Got: {beta}')
+                   f'Got: {beta}')
             raise ValueError(msg)
 
         self.alpha = float(alpha)

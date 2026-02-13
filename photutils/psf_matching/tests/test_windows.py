@@ -117,3 +117,14 @@ def test_invalid_shape():
     match = 'shape must have only 2 elements'
     with pytest.raises(ValueError, match=match):
         window((5,))
+
+
+def test_asymmetric_shape():
+    """
+    Test window with asymmetric shape.
+    """
+    shape = (51, 25)
+    window = HanningWindow()
+    data = window(shape)
+    assert data.shape == shape
+    assert_allclose(data[25, 12], 1.0)

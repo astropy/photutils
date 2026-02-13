@@ -10,8 +10,7 @@ from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
-from photutils.psf_matching.fourier import (make_kernel, make_wiener_kernel,
-                                            resize_psf)
+from photutils.psf_matching.fourier import make_kernel, make_wiener_kernel
 from photutils.psf_matching.windows import SplitCosineBellWindow
 
 
@@ -40,71 +39,6 @@ def psf2():
     Broad Gaussian PSF (target).
     """
     return _make_gaussian_psf(25, 5.0)
-
-
-class TestResizePSF:
-    def test_resize(self):
-        """
-        Test basic PSF resizing from one pixel scale to another.
-        """
-        psf = _make_gaussian_psf(5, 1.5)
-        result = resize_psf(psf, 0.1, 0.05)
-        assert result.shape == (10, 10)
-
-    def test_non_2d(self):
-        """
-        Test that non-2D PSF raises ValueError.
-        """
-        match = 'psf must be a 2D array'
-        with pytest.raises(ValueError, match=match):
-            resize_psf(np.ones(5), 0.1, 0.05)
-
-    def test_even_shape(self):
-        """
-        Test that even-shaped PSF raises ValueError.
-        """
-        psf = np.zeros((4, 4))
-        psf[2, 2] = 1.0
-        match = 'must have odd dimensions'
-        with pytest.raises(ValueError, match=match):
-            resize_psf(psf, 0.1, 0.05)
-
-    def test_not_centered(self):
-        """
-        Test that non-centered PSF produces a warning.
-        """
-        psf = np.zeros((5, 5))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            resize_psf(psf, 0.1, 0.05)
-
-    def test_non_positive_input_scale(self):
-        """
-        Test that negative input_pixel_scale raises ValueError.
-        """
-        psf = _make_gaussian_psf(5, 1.5)
-        match = 'must be positive'
-        with pytest.raises(ValueError, match=match):
-            resize_psf(psf, -0.1, 0.05)
-
-    def test_non_positive_output_scale(self):
-        """
-        Test that negative output_pixel_scale raises ValueError.
-        """
-        psf = _make_gaussian_psf(5, 1.5)
-        match = 'must be positive'
-        with pytest.raises(ValueError, match=match):
-            resize_psf(psf, 0.1, -0.05)
-
-    def test_zero_scale(self):
-        """
-        Test that zero input_pixel_scale raises ValueError.
-        """
-        psf = _make_gaussian_psf(5, 1.5)
-        match = 'must be positive'
-        with pytest.raises(ValueError, match=match):
-            resize_psf(psf, 0.0, 0.05)
 
 
 class TestMakeKernel:
@@ -275,6 +209,21 @@ class TestMakeKernel:
         with pytest.raises(ValueError, match=match):
             make_kernel(psf1, psf2, window=bad_window)
 
+    def test_asymmetric_shape(self):
+        """
+        Test with asymmetric PSF shapes.
+        """
+        # Create 51x25 PSFs
+        y, x = np.mgrid[0:51, 0:25]
+        psf1 = Gaussian2D(100, 12, 25, 3, 3)(x, y)
+        psf2 = Gaussian2D(100, 12, 25, 5, 5)(x, y)
+        psf1 /= psf1.sum()
+        psf2 /= psf2.sum()
+
+        kernel = make_kernel(psf1, psf2)
+        assert kernel.shape == (51, 25)
+        assert_allclose(kernel.sum(), 1.0)
+
 
 class TestMakeKernelWiener:
     def test_basic(self, psf1, psf2):
@@ -405,3 +354,108 @@ class TestMakeKernelWiener:
         match = 'regularization must be a positive number'
         with pytest.raises(ValueError, match=match):
             make_wiener_kernel(psf1, psf2, regularization=0.0)
+
+    def test_penalty_string_equals_array(self, psf1, psf2):
+        """
+        Test that 'laplacian' string gives the same result as the
+        explicit Laplacian array.
+        """
+        laplacian = np.array([[0, -1, 0],
+                              [-1, 4, -1],
+                              [0, -1, 0]])
+        kernel_str = make_wiener_kernel(psf1, psf2,
+                                        penalty='laplacian')
+        kernel_arr = make_wiener_kernel(psf1, psf2,
+                                        penalty=laplacian)
+        assert_allclose(kernel_str, kernel_arr)
+
+    def test_penalty_laplacian_kernel_shape(self, psf1, psf2):
+        """
+        Test that Laplacian penalty kernel has the expected Gaussian
+        shape.
+        """
+        size = psf1.shape[0]
+        cen = (size - 1) / 2.0
+        yy, xx = np.mgrid[0:size, 0:size]
+        kernel = make_wiener_kernel(psf1, psf2, penalty='laplacian')
+
+        fitter = TRFLSQFitter()
+        gm1 = Gaussian2D(1.0, cen, cen, 3.0, 3.0)
+        gfit = fitter(gm1, xx, yy, kernel)
+        assert_allclose(gfit.x_stddev, gfit.y_stddev)
+        assert_allclose(gfit.x_stddev, np.sqrt(25 - 9), atol=0.06)
+
+    def test_penalty_invalid_string(self, psf1, psf2):
+        """
+        Test that an invalid penalty string raises ValueError.
+        """
+        match = 'Invalid penalty string'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty='invalid')
+
+    def test_penalty_invalid_type(self, psf1, psf2):
+        """
+        Test that an invalid penalty type raises ValueError.
+        """
+        match = 'penalty must be None'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty=42)
+
+    def test_penalty_non_2d_array(self, psf1, psf2):
+        """
+        Test that a non-2D penalty array raises ValueError.
+        """
+        match = 'penalty array must be 2D'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty=np.ones(5))
+
+    def test_penalty_custom_array(self, psf1, psf2):
+        """
+        Test with a custom 2D penalty array.
+        """
+        # Use a simple high-pass operator
+        penalty = np.array([[0, 0, 0],
+                            [0, 1, 0],
+                            [0, 0, 0]])
+        kernel = make_wiener_kernel(psf1, psf2, penalty=penalty)
+        assert kernel.shape == psf1.shape
+        assert_allclose(kernel.sum(), 1.0)
+
+    def test_penalty_with_window(self, psf1, psf2):
+        """
+        Test that penalty and window can be used together.
+        """
+        window = SplitCosineBellWindow(0.0, 0.2)
+        kernel = make_wiener_kernel(psf1, psf2,
+                                    penalty='laplacian',
+                                    window=window)
+        assert kernel.shape == psf1.shape
+        assert_allclose(kernel.sum(), 1.0)
+
+    def test_penalty_differs_from_scalar(self, psf1, psf2):
+        """
+        Test that Laplacian penalty gives a different result than scalar
+        Tikhonov with the same regularization parameter.
+        """
+        reg = 1e-4
+        kernel_scalar = make_wiener_kernel(psf1, psf2,
+                                           regularization=reg)
+        kernel_laplacian = make_wiener_kernel(psf1, psf2,
+                                              regularization=reg,
+                                              penalty='laplacian')
+        assert not np.allclose(kernel_scalar, kernel_laplacian)
+
+    def test_asymmetric_shape(self):
+        """
+        Test with asymmetric PSF shapes.
+        """
+        # Create 51x25 PSFs
+        y, x = np.mgrid[0:51, 0:25]
+        psf1 = Gaussian2D(100, 12, 25, 3, 3)(x, y)
+        psf2 = Gaussian2D(100, 12, 25, 5, 5)(x, y)
+        psf1 /= psf1.sum()
+        psf2 /= psf2.sum()
+
+        kernel = make_wiener_kernel(psf1, psf2)
+        assert kernel.shape == (51, 25)
+        assert_allclose(kernel.sum(), 1.0)

@@ -62,8 +62,8 @@ New Features
 
 - ``photutils.psf_matching``
 
-  - Added ``make_wiener_kernel`` function that uses Wiener (Tikhonov)
-    regularization to make a PSF matching kernel. [#2171]
+  - Added ``make_wiener_kernel`` function that uses Wiener
+    regularization to make a PSF matching kernel. [#2171, #2172]
 
   - Added a ``otf_threshold`` keyword to ``make_kernel`` to regularize
     division by near-zero values in the source Optical Transfer Function.

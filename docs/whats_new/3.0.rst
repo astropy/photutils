@@ -204,8 +204,7 @@ near-zero values in the Fourier domain. This prevents numerical
 instabilities when the source PSF has very small Fourier coefficients::
 
     >>> from photutils.psf_matching import make_kernel
-    >>> kernel = make_kernel(source_psf, target_psf,
-    ...                                 otf_threshold=1e-4)
+    >>> kernel = make_kernel(source_psf, target_psf, otf_threshold=1e-4)
 
 The default value of ``1e-4`` provides good regularization for most
 cases, but can be adjusted based on the noise characteristics of your
@@ -226,14 +225,14 @@ New PSF Matching Function with Wiener Regularization
 ----------------------------------------------------
 
 A new :func:`~photutils.psf_matching.make_wiener_kernel`
-function has been added to the ``psf_matching`` subpackage. This
-function creates PSF matching kernels using Wiener (Tikhonov)
-regularization, which provides an alternative to the traditional
-Fourier-ratio approach with hard amplitude thresholding used by
-:func:`~photutils.psf_matching.make_kernel`. The Wiener regularization
-approach suppresses noise amplification at spatial frequencies where
-the source response is weak by adding a regularization term to the
-denominator.
+function has been added to the ``psf_matching`` subpackage.
+
+This function computes a Wiener-regularized PSF-matching kernel in the
+Fourier domain. The denominator includes a regularization term that
+stabilizes inversion of the source OTF (Optical Transfer Function, the
+Fourier transform of the PSF) by preventing division by small values,
+thereby suppressing noise amplification at spatial frequencies where the
+source response is weak.
 
 This method is particularly useful when working with PSFs
 that have near-zero power at high spatial frequencies (e.g.,
@@ -242,10 +241,26 @@ used by :func:`~photutils.psf_matching.make_kernel` can introduce
 discontinuities in Fourier space. Wiener regularization instead smoothly
 down-weights those frequencies, producing matching kernels with less
 ringing and often eliminating the need to carefully tune a window
-function::
+function.
+
+When no ``penalty`` is provided (default), the regularization is a
+frequency-independent (zero-order scalar) Tikhonov term expressed as a
+fraction of the peak power in the source OTF::
 
     >>> from photutils.psf_matching import make_wiener_kernel
     >>> kernel = make_wiener_kernel(source_psf, target_psf)
+
+The function also supports a ``penalty`` parameter for
+frequency-dependent regularization. Setting ``penalty='laplacian'`` uses
+a discrete Laplacian operator that penalizes high spatial frequencies
+more heavily, reproducing the regularization approach used by the
+``pypher`` package (`Boucaud et al. 2016`_)::
+
+    >>> kernel = make_wiener_kernel(source_psf, target_psf,
+    ...                             penalty='laplacian')
+
+.. _Boucaud et al. 2016:
+    https://ui.adsabs.harvard.edu/abs/2016A%26A...596A..63B/abstract
 
 
 Removed Deprecations

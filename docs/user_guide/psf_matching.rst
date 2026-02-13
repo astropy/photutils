@@ -16,9 +16,8 @@ functions for computing PSF-matching kernels in the Fourier domain:
   2011`_).
 
 * :func:`~photutils.psf_matching.make_wiener_kernel` — Uses Wiener
-  (Tikhonov) regularization, which smoothly suppresses noise
-  amplification at spatial frequencies where the source response is
-  weak.
+  regularization, which smoothly suppresses noise amplification at spatial
+  frequencies where the source response is weak.
 
 Both functions take a source PSF and a target PSF and return a
 matching kernel that, when convolved with the source PSF, produces the
@@ -59,23 +58,43 @@ peak (controlled by the ``otf_threshold`` parameter, default ``1e-4``):
 
 `~photutils.psf_matching.make_wiener_kernel` instead adds a
 regularization term to the denominator, providing continuous, smooth
-regularization:
+regularization. Wiener regularization smoothly down-weights frequencies
+where the source response is weak, rather than zeroing them out with
+a hard threshold. This typically produces matching kernels with less
+ringing, especially for PSFs that have near-zero power at high spatial
+frequencies.
+
+By default, `~photutils.psf_matching.make_wiener_kernel` uses a
+frequency-independent scalar Tikhonov regularization term expressed as a
+fraction of the peak power in the source OTF:
 
 .. math::
 
     K = \mathcal{F}^{-1} \left[ W \cdot
         \frac{T \cdot S^{*}}
-              {|S|^{2} + \epsilon \cdot \max(|S|^{2})} \right]
+             {|S|^{2} + \epsilon \cdot \max(|S|^{2})} \right]
 
 where :math:`\mathcal{F}^{-1}` is the inverse Fourier transform,
 :math:`S^{*}` is the complex conjugate of :math:`S`, :math:`\epsilon` is
 the ``regularization`` parameter (default ``1e-4``), and :math:`W` is
 the optional ``window`` function (defaulting to 1 if not provided).
 
-The Wiener approach smoothly down-weights frequencies where the source
-response is weak, rather than zeroing them out with a hard threshold.
-This typically produces matching kernels with less ringing, especially
-for PSFs that have near-zero power at high spatial frequencies.
+When a ``penalty`` operator is provided (e.g., ``penalty='laplacian'``),
+the regularization becomes frequency-dependent:
+
+.. math::
+
+    K = \mathcal{F}^{-1} \left[ W \cdot
+        \frac{T \cdot S^{*}}
+              {|S|^{2} + \epsilon \cdot |P|^{2}} \right]
+
+where :math:`P` is the OTF of the penalty operator.
+
+A Laplacian penalty operator suppresses high spatial frequencies
+more heavily, which is particularly effective at suppressing noise
+amplification. Setting ``penalty='laplacian'`` reproduces the
+regularization approach used by the ``pypher`` package (`Boucaud et al.
+2016`_).
 
 For additional control, an optional ``window`` function can be applied
 to both methods to further suppress high-frequency noise in the
@@ -105,6 +124,8 @@ Use `~photutils.psf_matching.make_wiener_kernel` when:
   tune a window function.
 - A single regularization parameter is preferred over choosing an OTF
   amplitude threshold plus a window function.
+- You want frequency-dependent regularization using a penalty operator
+  (e.g., ``penalty='laplacian'`` for ``pypher``-style regularization).
 
 
 PSF Requirements and Preparation
@@ -187,14 +208,14 @@ Let's plot both results side by side:
     kernel1 = make_kernel(psf1, psf2)
     kernel2 = make_wiener_kernel(psf1, psf2)
 
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    axim1 = axes[0].imshow(kernel1, origin='lower')
-    plt.colorbar(axim1, ax=axes[0])
-    axes[0].set_title('make_kernel')
+    fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+    axim1 = ax[0].imshow(kernel1, origin='lower')
+    plt.colorbar(axim1, ax=ax[0])
+    ax[0].set_title('make_kernel')
 
-    axim2 = axes[1].imshow(kernel2, origin='lower')
-    plt.colorbar(axim2, ax=axes[1])
-    axes[1].set_title('make_wiener_kernel')
+    axim2 = ax[1].imshow(kernel2, origin='lower')
+    plt.colorbar(axim2, ax=ax[1])
+    ax[1].set_title('make_wiener_kernel')
 
     fig.tight_layout()
 
@@ -457,6 +478,14 @@ function is generally not needed:
     >>> from photutils.psf_matching import make_wiener_kernel
     >>> kernel2 = make_wiener_kernel(ch1_psf, ch4_psf, regularization=0.1)
 
+For ``pypher``-style frequency-dependent regularization using a
+Laplacian penalty operator:
+
+.. doctest-skip::
+
+    >>> kernel3 = make_wiener_kernel(ch1_psf, ch4_psf, regularization=0.5,
+    ...                              penalty='laplacian')
+
 Let's display the matching kernel results from both methods:
 
 .. plot::
@@ -475,21 +504,27 @@ Let's display the matching kernel results from both methods:
     window = CosineBellWindow(alpha=0.35)
     kernel1 = make_kernel(ch1_psf, ch4_psf, window=window)
     kernel2 = make_wiener_kernel(ch1_psf, ch4_psf, regularization=0.1)
+    kernel3 = make_wiener_kernel(ch1_psf, ch4_psf, regularization=0.5,
+                                 penalty='laplacian')
 
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    fig, ax = plt.subplots(1, 3, figsize=(10, 3))
 
     snorm = SimpleNorm('log', log_a=10)
-    axim1 = snorm.imshow(kernel1, ax=axes[0], origin='lower')
-    plt.colorbar(axim1, ax=axes[0])
-    axes[0].set_title('make_kernel')
+    axim1 = snorm.imshow(kernel1, ax=ax[0], origin='lower')
+    plt.colorbar(axim1, ax=ax[0])
+    ax[0].set_title('make_kernel')
 
-    axim2 = snorm.imshow(kernel2, ax=axes[1], origin='lower')
-    plt.colorbar(axim2, ax=axes[1])
-    axes[1].set_title('make_wiener_kernel')
+    axim2 = snorm.imshow(kernel2, ax=ax[1], origin='lower')
+    plt.colorbar(axim2, ax=ax[1])
+    ax[1].set_title('make_wiener_kernel')
+
+    axim3 = snorm.imshow(kernel3, ax=ax[2], origin='lower')
+    plt.colorbar(axim3, ax=ax[2])
+    ax[2].set_title('make_wiener_kernel\nwith Laplacian penalty')
 
     fig.tight_layout()
 
-Either matching kernel could then be convolved with the Spitzer/IRAC
+The matching kernel could then be convolved with the Spitzer/IRAC
 channel 1 image to produce an image with the same resolution as the
 channel-4 image.
 
