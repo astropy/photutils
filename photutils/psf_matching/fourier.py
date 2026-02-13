@@ -197,7 +197,7 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
         * `~photutils.psf_matching.TopHatWindow`
 
         For more information on window functions, custom windows, and
-        example usage, see :ref:`psf_matching`.
+        example usage, see :ref:`PSF Matching <psf_matching>`.
 
     otf_threshold : float, optional
         The fractional amplitude threshold for the source OTF
@@ -292,21 +292,60 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
     return kernel / kernel.sum()
 
 
+def _psf2otf(psf, shape):
+    """
+    Convert a point-spread function to an optical transfer function.
+
+    This computes the FFT of a PSF array, handling the centering by
+    circularly shifting the PSF so that the center is at [0, 0].
+    If needed, the PSF is zero-padded to the output shape.
+
+    Parameters
+    ----------
+    psf : 2D `~numpy.ndarray`
+        The PSF array.
+
+    shape : tuple of int
+        The desired output shape.
+
+    Returns
+    -------
+    otf : 2D `~numpy.ndarray`
+        The optical transfer function (complex array).
+    """
+    if np.all(psf == 0):
+        return np.zeros_like(psf, dtype=complex)
+
+    inshape = psf.shape
+
+    # Zero-pad to the output shape (corner position)
+    padded = np.zeros(shape, dtype=psf.dtype)
+    padded[:inshape[0], :inshape[1]] = psf
+
+    # Circularly shift so that the center of the PSF is at [0, 0]
+    for axis, axis_size in enumerate(inshape):
+        padded = np.roll(padded, -int(axis_size / 2), axis=axis)
+
+    return np.fft.fft2(padded)
+
+
 def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
-                       window=None):
+                       penalty=None, window=None):
     """
     Make a convolution kernel that matches an input PSF to a target PSF
-    using Wiener (Tikhonov) regularization in Fourier space.
+    using Wiener regularization in Fourier space.
 
     This function computes a Wiener-regularized PSF-matching kernel
-    in the Fourier domain. The denominator includes a scalar Tikhonov
-    regularization term that stabilizes inversion of the source OTF
-    (Optical Transfer Function, the Fourier transform of the PSF) by
-    preventing division by small values, thereby suppressing noise
-    amplification at spatial frequencies where the source response is
-    weak.
+    in the Fourier domain. The denominator includes a regularization
+    term that stabilizes inversion of the source OTF (Optical Transfer
+    Function, the Fourier transform of the PSF) by preventing division
+    by small values, thereby suppressing noise amplification at spatial
+    frequencies where the source response is weak.
 
-    The kernel is computed as:
+    When no ``penalty`` is provided, the regularization is a
+    frequency-independent (zero-order scalar) Tikhonov term expressed as
+    a fraction of the peak power in the source OTF. In this case, the
+    kernel is computed as:
 
     .. math::
 
@@ -314,16 +353,33 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
             \\frac{T \\cdot S^{*}}
                   {|S|^{2} + \\epsilon \\cdot \\max(|S|^{2})} \\right]
 
-    where :math:`\\mathcal{F}^{-1}` is the inverse Fourier transform,
-    :math:`S` and :math:`T` are the Fourier transforms of the source and
-    target PSFs (the OTFs), :math:`S^{*}` is the complex conjugate of
-    :math:`S`, :math:`\\epsilon` is the ``regularization`` parameter,
-    and :math:`W` is the optional ``window`` function (defaulting to
-    1 if not provided). :math:`|S|^{2}` is the power spectrum of the
-    source OTF.
+    When a ``penalty`` array is provided (e.g., a Laplacian operator),
+    the regularization becomes frequency-dependent:
 
-    This regularization approach is similar to that described in
-    `Boucaud et al. 2016`_.
+    .. math::
+
+        K = \\mathcal{F}^{-1} \\left[ W \\cdot
+            \\frac{T \\cdot S^{*}}
+                  {|S|^{2} + \\epsilon \\cdot |P|^{2}} \\right]
+
+    where :math:`P` is the OTF of the ``penalty`` operator. This
+    penalizes high spatial frequencies more heavily, which is
+    particularly effective at suppressing noise amplification.
+
+    In both equations, :math:`\\mathcal{F}^{-1}` is the inverse Fourier
+    transform, :math:`S` and :math:`T` are the Fourier transforms of
+    the source and target PSFs (the OTFs), :math:`S^{*}` is the complex
+    conjugate of :math:`S`, :math:`\\epsilon` is the ``regularization``
+    parameter, and :math:`W` is the optional ``window`` function
+    (defaulting to 1 if not provided). :math:`|S|^{2}` is the power
+    spectrum of the source OTF.
+
+    When the ``penalty`` is set to ``'laplacian'``, the regularization
+    reproduces the approach used by the ``pypher`` package (`Boucaud
+    et al. 2016`_), which applies a discrete Laplacian operator as
+    the penalty. This provides stronger suppression of high spatial
+    frequencies, which can be beneficial when working with noisy or
+    undersampled PSFs.
 
     Compared to `~photutils.psf_matching.make_kernel`, which uses a hard
     threshold on Fourier amplitude, this approach provides continuous,
@@ -350,11 +406,36 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         ``target_psf`` must have the same shape and pixel scale.
 
     regularization : float, optional
-        The regularization parameter that controls the strength of the
-        Wiener (Tikhonov) regularization. It is expressed as a fraction
-        of the peak power in the source PSF's Fourier transform. Larger
-        values produce smoother but less accurate matching kernels;
-        smaller values preserve more detail but may amplify noise.
+        The regularization parameter that controls the strength
+        of the Wiener (Tikhonov) regularization. When ``penalty``
+        is `None`, this is expressed as a fraction of the peak
+        power in the source PSF's Fourier transform. When
+        ``penalty`` is provided, this scales the penalty operator's
+        power spectrum directly. Larger values produce smoother but
+        less accurate matching kernels; smaller values preserve more
+        detail but may amplify noise.
+
+    penalty : `None`, ``'laplacian'``, or 2D `~numpy.ndarray`, optional
+        The regularization penalty operator. This controls the
+        structure of the regularization term in the denominator:
+
+        * `None` (default): Scalar Tikhonov regularization. The
+          denominator is :math:`|S|^2 + \\epsilon \\cdot
+          \\max(|S|^2)`, providing uniform regularization across
+          all spatial frequencies.
+
+        * ``'laplacian'``: Uses a discrete Laplacian operator as
+          the penalty, producing frequency-dependent regularization
+          that penalizes high spatial frequencies more heavily. The
+          denominator becomes :math:`|S|^2 + \\epsilon \\cdot
+          |L|^2` where :math:`L` is the OTF of the Laplacian
+          kernel ``[[0, -1, 0], [-1, 4, -1], [0, -1, 0]]``. This
+          reproduces the regularization used by the ``pypher``
+          package (`Boucaud et al. 2016`_).
+
+        * 2D `~numpy.ndarray`: A custom penalty operator array.
+          Its OTF will be computed and used in the denominator as
+          :math:`|S|^2 + \\epsilon \\cdot |P|^2`.
 
     window : callable, optional
         The window (taper) function or callable class instance used
@@ -374,11 +455,11 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
 
         A window function is generally not needed when using Wiener
         regularization because the regularization itself suppresses
-        high-frequency noise. However, a window may still be useful when
-        working with noisy or undersampled PSFs.
+        high-frequency noise. However, a window may still be useful
+        when working with noisy or undersampled PSFs.
 
         For more information on window functions, custom windows, and
-        example usage, see :ref:`psf_matching`.
+        example usage, see :ref:`PSF Matching <psf_matching>`.
 
     Returns
     -------
@@ -389,8 +470,9 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
     Raises
     ------
     ValueError
-        If the PSFs are not 2D arrays, have even dimensions, do not have
-        the same shape, or if ``regularization`` is not positive.
+        If the PSFs are not 2D arrays, have even dimensions, do not
+        have the same shape, if ``regularization`` is not positive,
+        or if ``penalty`` is not a valid value.
 
     TypeError
         If the input ``window`` is not callable.
@@ -415,6 +497,12 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
     >>> kernel = make_wiener_kernel(psf1, psf2)
     >>> print(f'{kernel.sum():.1f}')
     1.0
+
+    Use the Laplacian penalty for frequency-dependent regularization:
+
+    >>> kernel = make_wiener_kernel(psf1, psf2, penalty='laplacian')
+    >>> print(f'{kernel.sum():.1f}')
+    1.0
     """
     # copy as float so in-place normalization doesn't modify inputs
     source_psf = np.array(source_psf, dtype=float)
@@ -436,6 +524,26 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         msg = 'window must be a callable.'
         raise TypeError(msg)
 
+    # Validate and build the penalty term
+    if penalty is None:
+        penalty_array = None
+    elif isinstance(penalty, str):
+        if penalty == 'laplacian':
+            penalty_array = np.array([[0, -1, 0],
+                                      [-1, 4, -1],
+                                      [0, -1, 0]])
+        else:
+            msg = f'Invalid penalty string {penalty!r}. Must be "laplacian"'
+            raise ValueError(msg)
+    elif isinstance(penalty, np.ndarray):
+        if penalty.ndim != 2:
+            msg = 'penalty array must be 2D.'
+            raise ValueError(msg)
+        penalty_array = penalty
+    else:
+        msg = 'penalty must be None, "laplacian", or a 2D numpy array'
+        raise ValueError(msg)
+
     # ensure input PSFs are normalized
     source_psf /= source_psf.sum()
     target_psf /= target_psf.sum()
@@ -443,13 +551,23 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
     source_otf = np.fft.fft2(source_psf)
     target_otf = np.fft.fft2(target_psf)
 
-    # Wiener (Tikhonov) regularized division
     source_power = np.abs(source_otf) ** 2
-    max_power = np.max(source_power)
-    kernel_otf = (target_otf * np.conj(source_otf)
-                  / (source_power + regularization * max_power))
 
-    # apply a window function in frequency space
+    if penalty_array is not None:
+        # Frequency-dependent regularization
+        penalty_otf = _psf2otf(penalty_array, source_psf.shape)
+        reg_term = regularization * np.abs(penalty_otf) ** 2
+    else:
+        # Wiener (Tikhonov; scalar/zero-order) regularization.
+        # This is frequency-independent and expressed as a fraction of
+        # the peak power in the source OTF
+        reg_term = regularization * np.max(source_power)
+
+    # Compute the Wiener-regularized kernel in Fourier space
+    kernel_otf = (target_otf * np.conj(source_otf)
+                  / (source_power + reg_term))
+
+    # Apply a window function in frequency space
     if window is not None:
         kernel_otf = np.fft.fftshift(kernel_otf)
         kernel_otf *= window(target_psf.shape)
