@@ -405,3 +405,93 @@ class TestMakeKernelWiener:
         match = 'regularization must be a positive number'
         with pytest.raises(ValueError, match=match):
             make_wiener_kernel(psf1, psf2, regularization=0.0)
+
+    def test_penalty_string_equals_array(self, psf1, psf2):
+        """
+        Test that 'laplacian' string gives the same result as the
+        explicit Laplacian array.
+        """
+        laplacian = np.array([[0, -1, 0],
+                              [-1, 4, -1],
+                              [0, -1, 0]])
+        kernel_str = make_wiener_kernel(psf1, psf2,
+                                        penalty='laplacian')
+        kernel_arr = make_wiener_kernel(psf1, psf2,
+                                        penalty=laplacian)
+        assert_allclose(kernel_str, kernel_arr)
+
+    def test_penalty_laplacian_kernel_shape(self, psf1, psf2):
+        """
+        Test that Laplacian penalty kernel has the expected Gaussian
+        shape.
+        """
+        size = psf1.shape[0]
+        cen = (size - 1) / 2.0
+        yy, xx = np.mgrid[0:size, 0:size]
+        kernel = make_wiener_kernel(psf1, psf2, penalty='laplacian')
+
+        fitter = TRFLSQFitter()
+        gm1 = Gaussian2D(1.0, cen, cen, 3.0, 3.0)
+        gfit = fitter(gm1, xx, yy, kernel)
+        assert_allclose(gfit.x_stddev, gfit.y_stddev)
+        assert_allclose(gfit.x_stddev, np.sqrt(25 - 9), atol=0.06)
+
+    def test_penalty_invalid_string(self, psf1, psf2):
+        """
+        Test that an invalid penalty string raises ValueError.
+        """
+        match = 'Invalid penalty string'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty='invalid')
+
+    def test_penalty_invalid_type(self, psf1, psf2):
+        """
+        Test that an invalid penalty type raises ValueError.
+        """
+        match = 'penalty must be None'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty=42)
+
+    def test_penalty_non_2d_array(self, psf1, psf2):
+        """
+        Test that a non-2D penalty array raises ValueError.
+        """
+        match = 'penalty array must be 2D'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty=np.ones(5))
+
+    def test_penalty_custom_array(self, psf1, psf2):
+        """
+        Test with a custom 2D penalty array.
+        """
+        # Use a simple high-pass operator
+        penalty = np.array([[0, 0, 0],
+                            [0, 1, 0],
+                            [0, 0, 0]])
+        kernel = make_wiener_kernel(psf1, psf2, penalty=penalty)
+        assert kernel.shape == psf1.shape
+        assert_allclose(kernel.sum(), 1.0)
+
+    def test_penalty_with_window(self, psf1, psf2):
+        """
+        Test that penalty and window can be used together.
+        """
+        window = SplitCosineBellWindow(0.0, 0.2)
+        kernel = make_wiener_kernel(psf1, psf2,
+                                    penalty='laplacian',
+                                    window=window)
+        assert kernel.shape == psf1.shape
+        assert_allclose(kernel.sum(), 1.0)
+
+    def test_penalty_differs_from_scalar(self, psf1, psf2):
+        """
+        Test that Laplacian penalty gives a different result than scalar
+        Tikhonov with the same regularization parameter.
+        """
+        reg = 1e-4
+        kernel_scalar = make_wiener_kernel(psf1, psf2,
+                                           regularization=reg)
+        kernel_laplacian = make_wiener_kernel(psf1, psf2,
+                                              regularization=reg,
+                                              penalty='laplacian')
+        assert not np.allclose(kernel_scalar, kernel_laplacian)
