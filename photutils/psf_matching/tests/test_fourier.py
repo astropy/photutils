@@ -10,8 +10,7 @@ from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
-from photutils.psf_matching.fourier import (make_kernel, make_wiener_kernel,
-                                            resize_psf)
+from photutils.psf_matching.fourier import make_kernel, make_wiener_kernel
 from photutils.psf_matching.windows import SplitCosineBellWindow
 
 
@@ -40,71 +39,6 @@ def psf2():
     Broad Gaussian PSF (target).
     """
     return _make_gaussian_psf(25, 5.0)
-
-
-class TestResizePSF:
-    def test_resize(self):
-        """
-        Test basic PSF resizing from one pixel scale to another.
-        """
-        psf = _make_gaussian_psf(5, 1.5)
-        result = resize_psf(psf, 0.1, 0.05)
-        assert result.shape == (10, 10)
-
-    def test_non_2d(self):
-        """
-        Test that non-2D PSF raises ValueError.
-        """
-        match = 'psf must be a 2D array'
-        with pytest.raises(ValueError, match=match):
-            resize_psf(np.ones(5), 0.1, 0.05)
-
-    def test_even_shape(self):
-        """
-        Test that even-shaped PSF raises ValueError.
-        """
-        psf = np.zeros((4, 4))
-        psf[2, 2] = 1.0
-        match = 'must have odd dimensions'
-        with pytest.raises(ValueError, match=match):
-            resize_psf(psf, 0.1, 0.05)
-
-    def test_not_centered(self):
-        """
-        Test that non-centered PSF produces a warning.
-        """
-        psf = np.zeros((5, 5))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            resize_psf(psf, 0.1, 0.05)
-
-    def test_non_positive_input_scale(self):
-        """
-        Test that negative input_pixel_scale raises ValueError.
-        """
-        psf = _make_gaussian_psf(5, 1.5)
-        match = 'must be positive'
-        with pytest.raises(ValueError, match=match):
-            resize_psf(psf, -0.1, 0.05)
-
-    def test_non_positive_output_scale(self):
-        """
-        Test that negative output_pixel_scale raises ValueError.
-        """
-        psf = _make_gaussian_psf(5, 1.5)
-        match = 'must be positive'
-        with pytest.raises(ValueError, match=match):
-            resize_psf(psf, 0.1, -0.05)
-
-    def test_zero_scale(self):
-        """
-        Test that zero input_pixel_scale raises ValueError.
-        """
-        psf = _make_gaussian_psf(5, 1.5)
-        match = 'must be positive'
-        with pytest.raises(ValueError, match=match):
-            resize_psf(psf, 0.0, 0.05)
 
 
 class TestMakeKernel:
