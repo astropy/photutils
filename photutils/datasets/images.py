@@ -385,7 +385,7 @@ def _model_shape_from_bbox(model, bbox_factor=None):
         If the model does not have a bounding_box attribute.
     """
     try:
-        hasattr(model, 'bounding_box')
+        _ = model.bounding_box
     except NotImplementedError as exc:
         msg = 'model does not have a bounding_box attribute'
         raise ValueError(msg) from exc

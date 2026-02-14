@@ -30,7 +30,8 @@ def apply_poisson_noise(data, seed=None):
     Returns
     -------
     result : `~numpy.ndarray`
-        The data array after applying Poisson noise.
+        The data array after applying Poisson noise. The output array
+        will have the same dtype as the input ``data``.
 
     See Also
     --------
@@ -62,7 +63,7 @@ def apply_poisson_noise(data, seed=None):
 
     rng = np.random.default_rng(seed)
 
-    return rng.poisson(data)
+    return rng.poisson(data).astype(data.dtype)
 
 
 def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,

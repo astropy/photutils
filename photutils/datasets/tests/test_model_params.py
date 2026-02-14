@@ -14,6 +14,9 @@ from photutils.psf import CircularGaussianPSF
 
 
 def test_make_model_params():
+    """
+    Test the basic functionality of ``make_model_params``.
+    """
     shape = (100, 100)
     n_sources = 10
     flux = (100, 1000)
@@ -27,7 +30,7 @@ def test_make_model_params():
     assert np.min(params['flux']) >= flux[0]
     assert np.max(params['flux']) <= flux[1]
 
-    # test extra parameters
+    # Test extra parameters
     sigma = (1, 2)
     alpha = (0, 1)
     params = make_model_params((120, 100), 5, flux=flux, sigma=sigma,
@@ -69,6 +72,9 @@ def test_make_model_params_nsources():
 
 
 def test_make_model_params_border_size():
+    """
+    Test case when the border size is too large for the given shape.
+    """
     shape = (10, 10)
     n_sources = 10
     flux = (100, 1000)
@@ -78,6 +84,9 @@ def test_make_model_params_border_size():
 
 
 def test_make_random_models_table():
+    """
+    Test the basic functionality of ``make_random_models_table``.
+    """
     param_ranges = {'x_0': (0, 300), 'y_0': (0, 500),
                     'gamma': (1, 3), 'alpha': (1.5, 3)}
     source_table = make_random_models_table(10, param_ranges)
@@ -91,6 +100,9 @@ def test_make_random_models_table():
 
 
 def test_params_table_to_models():
+    """
+    Test the basic functionality of ``params_table_to_models``.
+    """
     tbl = QTable()
     tbl['x_0'] = [1, 2, 3]
     tbl['y_0'] = [4, 5, 6]
