@@ -79,7 +79,8 @@ def make_wcs(shape, galactic=False):
 
 def make_gwcs(shape, galactic=False):
     """
-    Create a simple celestial gWCS object in the ICRS coordinate frame.
+    Create a simple celestial gWCS object in either the ICRS or Galactic
+    coordinate frame.
 
     This function requires the `gwcs
     <https://github.com/spacetelescope/gwcs>`_ package.

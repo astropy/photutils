@@ -87,7 +87,28 @@ def get_path(filename, location='local', cache=True, show_progress=False):
     return path
 
 
-def load_spitzer_image(show_progress=False):  # pragma: no cover
+def _load_fits_as_imagehdu(path):
+    """
+    Load a FITS file and return its primary HDU data and header wrapped
+    in an `~astropy.io.fits.ImageHDU`.
+
+    Parameters
+    ----------
+    path : str
+        The local path to the FITS file.
+
+    Returns
+    -------
+    hdu : `~astropy.io.fits.ImageHDU`
+        The primary HDU data and header as an ImageHDU.
+    """
+    with fits.open(path) as hdulist:
+        data = hdulist[0].data
+        header = hdulist[0].header
+    return fits.ImageHDU(data, header)
+
+
+def load_spitzer_image(show_progress=False):
     """
     Load a 4.5 micron Spitzer image.
 
@@ -122,15 +143,10 @@ def load_spitzer_image(show_progress=False):  # pragma: no cover
     """
     path = get_path('spitzer_example_image.fits', location='remote',
                     show_progress=show_progress)
-
-    with fits.open(path) as hdulist:
-        data = hdulist[0].data
-        header = hdulist[0].header
-
-    return fits.ImageHDU(data, header)
+    return _load_fits_as_imagehdu(path)
 
 
-def load_spitzer_catalog(show_progress=False):  # pragma: no cover
+def load_spitzer_catalog(show_progress=False):
     """
     Load a 4.5 micron Spitzer catalog.
 
@@ -172,7 +188,7 @@ def load_spitzer_catalog(show_progress=False):  # pragma: no cover
     return Table.read(path)
 
 
-def load_irac_psf(channel, show_progress=False):  # pragma: no cover
+def load_irac_psf(channel, show_progress=False):
     """
     Load a Spitzer IRAC PSF image.
 
@@ -234,14 +250,10 @@ def load_irac_psf(channel, show_progress=False):  # pragma: no cover
 
     filepath = f'irac_ch{channel}_flight.fits'
     path = get_path(filepath, location='remote', show_progress=show_progress)
-    with fits.open(path) as hdulist:
-        data = hdulist[0].data
-        header = hdulist[0].header
-
-    return fits.ImageHDU(data, header)
+    return _load_fits_as_imagehdu(path)
 
 
-def load_star_image(show_progress=False):  # pragma: no cover
+def load_star_image(show_progress=False):
     """
     Load an optical image of stars.
 
@@ -275,14 +287,10 @@ def load_star_image(show_progress=False):  # pragma: no cover
     """
     path = get_path('M6707HH.fits', location='remote',
                     show_progress=show_progress)
-    with fits.open(path) as hdulist:
-        data = hdulist[0].data
-        header = hdulist[0].header
-
-    return fits.ImageHDU(data, header)
+    return _load_fits_as_imagehdu(path)
 
 
-def load_simulated_hst_star_image(show_progress=False):  # pragma: no cover
+def load_simulated_hst_star_image(show_progress=False):
     """
     Load a simulated HST WFC3/IR F160W image of stars.
 
@@ -313,8 +321,4 @@ def load_simulated_hst_star_image(show_progress=False):  # pragma: no cover
     path = get_path('hst_wfc3ir_f160w_simulated_starfield.fits',
                     location='photutils-datasets',
                     show_progress=show_progress)
-    with fits.open(path) as hdulist:
-        data = hdulist[0].data
-        header = hdulist[0].header
-
-    return fits.ImageHDU(data, header)
+    return _load_fits_as_imagehdu(path)

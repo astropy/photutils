@@ -165,7 +165,7 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
 
     Parameters
     ----------
-    n_sources : float
+    n_sources : int
         The number of random model sources to generate.
 
     param_ranges : dict

@@ -6,11 +6,12 @@ Tests for the images module.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.modeling.models import Moffat2D
+from astropy.modeling.models import Moffat2D, Polynomial2D
 from astropy.table import QTable
 from numpy.testing import assert_allclose
 
 from photutils.datasets import make_model_image
+from photutils.datasets.images import _model_shape_from_bbox
 from photutils.psf import (CircularGaussianPSF, CircularGaussianSigmaPRF,
                            ImagePSF)
 
@@ -279,3 +280,33 @@ def test_make_model_image_nonfinite():
     image = make_model_image(shape, model, params, model_shape=model_shape)
     assert image.shape == shape
     assert image.sum() == 0
+
+
+def test_make_model_image_progress_bar():
+    """
+    Test the model image with progress_bar=True.
+    """
+    pytest.importorskip('tqdm')
+    params = QTable()
+    params['x_0'] = [50, 70, 90]
+    params['y_0'] = [50, 50, 50]
+    params['gamma'] = [1.7, 2.32, 5.8]
+    params['alpha'] = [2.9, 5.7, 4.6]
+    model = Moffat2D(amplitude=1)
+    shape = (300, 500)
+    model_shape = (11, 11)
+    image = make_model_image(shape, model, params, model_shape=model_shape,
+                             progress_bar=True)
+    assert image.shape == shape
+    assert image.sum() > 1
+
+
+def test_model_shape_from_bbox_no_bbox():
+    """
+    Test that _model_shape_from_bbox raises an error when the model does
+    not have a bounding_box attribute.
+    """
+    model = Polynomial2D(degree=2)
+    match = 'model does not have a bounding_box attribute'
+    with pytest.raises(ValueError, match=match):
+        _model_shape_from_bbox(model)
