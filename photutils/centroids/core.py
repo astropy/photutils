@@ -251,7 +251,7 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
             msg = 'data and mask must have the same shape'
             raise ValueError(msg)
         data[mask] = np.nan
-        badmask &= ~mask
+        badmask &= ~mask  # exclude non-finite values in the input mask
 
     if np.any(badmask):
         warnings.warn('Input data contains non-finite values (e.g., NaN or '
@@ -352,8 +352,14 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     # analytically find the maximum of the polynomial
     _, c10, c01, c11, c20, c02 = c
     det = 4 * c20 * c02 - c11**2
-    if det <= 0 or ((c20 > 0.0 and c02 >= 0.0)
-                    or (c20 >= 0.0 and c02 > 0.0)):
+
+    # If the determinant is <= 0, the surface has a saddle point. If
+    # the determinant is > 0, the surface has a minimum or maximum. The
+    # curvature is negative (maximum) if c20 < 0 and c02 < 0. However,
+    # if det > 0, then 4 * c20 * c02 > c11**2 >= 0, so c20 and c02 must
+    # have the same sign. Therefore, we only need to check if c20 > 0
+    # (or c02 > 0) to determine if the surface has a minimum.
+    if det <= 0 or c20 > 0:
         warnings.warn('quadratic fit does not have a maximum',
                       AstropyUserWarning)
         return np.array((np.nan, np.nan))
