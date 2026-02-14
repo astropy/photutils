@@ -8,7 +8,8 @@ from urllib.error import HTTPError, URLError
 
 from astropy.io import fits
 from astropy.table import Table
-from astropy.utils.data import download_file, get_pkg_data_filename
+from astropy.utils.data import (download_file, get_pkg_data_filename,
+                                is_url_in_cache)
 
 __all__ = [
     'get_path',
@@ -54,15 +55,29 @@ def get_path(filename, location='local', cache=True, show_progress=False):
 
     if location == 'local':
         path = get_pkg_data_filename('data/' + filename)
-    elif location == 'remote':  # pragma: no cover
-        try:
-            url = f'https://data.astropy.org/photometry/{filename}'
-            path = download_file(url, cache=cache,
+    elif location == 'remote':
+        url = f'http://data.astropy.org/photometry/{filename}'
+
+        # First check if the file is already in the local cache from the
+        # primary URL, then check the backup URL. If the file is in the
+        # cache, the download_file function will simply return the local
+        # path to the cached file without trying to download it again.
+        if is_url_in_cache(url):
+            path = download_file(url, cache=True,
                                  show_progress=show_progress)
-        except (URLError, HTTPError):  # timeout or not found
-            path = download_file(datasets_url, cache=cache,
+        elif is_url_in_cache(datasets_url):
+            path = download_file(datasets_url, cache=True,
                                  show_progress=show_progress)
-    elif location == 'photutils-datasets':  # pragma: no cover
+        else:
+            # If the file is not in the local cache, then try to
+            # download it from the respective URLs.
+            try:
+                path = download_file(url, cache=cache,
+                                     show_progress=show_progress)
+            except (URLError, HTTPError):  # timeout or not found
+                path = download_file(datasets_url, cache=cache,
+                                     show_progress=show_progress)
+    elif location == 'photutils-datasets':
         path = download_file(datasets_url, cache=cache,
                              show_progress=show_progress)
     else:

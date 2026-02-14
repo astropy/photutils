@@ -3,6 +3,9 @@
 Tests for the load module.
 """
 
+from unittest.mock import patch
+from urllib.error import URLError
+
 import pytest
 
 from photutils.datasets import get_path, load
@@ -16,6 +19,84 @@ def test_get_path():
     match = 'Invalid location:'
     with pytest.raises(ValueError, match=match):
         get_path('filename', location='invalid')
+
+
+class TestGetPathCache:
+    """
+    Regression tests for the get_path caching behavior.
+    """
+
+    def setup_method(self):
+        self.filename = 'test_file.fits'
+        self.primary_url = (
+            f'http://data.astropy.org/photometry/{self.filename}'
+        )
+        self.datasets_url = (
+            'https://github.com/astropy/photutils-datasets/raw/'
+            f'main/data/{self.filename}'
+        )
+
+    def test_cache_hit_primary_url(self):
+        """
+        Test that get_path uses the cached file when the primary URL is
+        already in the cache, without trying the fallback URL.
+        """
+        with (
+            patch('photutils.datasets.load.is_url_in_cache') as mock_cache,
+            patch('photutils.datasets.load.download_file') as mock_dl,
+        ):
+            mock_cache.side_effect = (
+                lambda url: url == self.primary_url
+            )
+            mock_dl.return_value = '/cached/path/test_file.fits'
+
+            result = get_path(self.filename, location='remote')
+
+            assert result == '/cached/path/test_file.fits'
+            mock_dl.assert_called_once_with(
+                self.primary_url, cache=True, show_progress=False,
+            )
+
+    def test_cache_hit_datasets_url(self):
+        """
+        Test that get_path uses the cached file when only the fallback
+        datasets URL is in the cache.
+        """
+        with (
+            patch('photutils.datasets.load.is_url_in_cache') as mock_cache,
+            patch('photutils.datasets.load.download_file') as mock_dl,
+        ):
+            mock_cache.side_effect = (
+                lambda url: url == self.datasets_url
+            )
+            mock_dl.return_value = '/cached/path/test_file.fits'
+
+            result = get_path(self.filename, location='remote')
+
+            assert result == '/cached/path/test_file.fits'
+            mock_dl.assert_called_once_with(
+                self.datasets_url, cache=True, show_progress=False,
+            )
+
+    def test_no_cache_falls_through_to_download(self):
+        """
+        Test that get_path tries the primary URL and falls back to the
+        datasets URL when neither is cached and the primary fails.
+        """
+        with (
+            patch('photutils.datasets.load.is_url_in_cache',
+                  return_value=False),
+            patch('photutils.datasets.load.download_file') as mock_dl,
+        ):
+            mock_dl.side_effect = [
+                URLError('timeout'),
+                '/downloaded/path/test_file.fits',
+            ]
+
+            result = get_path(self.filename, location='remote')
+
+            assert result == '/downloaded/path/test_file.fits'
+            assert mock_dl.call_count == 2
 
 
 @pytest.mark.remote_data
