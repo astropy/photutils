@@ -191,6 +191,9 @@ class Background2D:
     Better performance will generally be obtained if you have the
     `bottleneck`_ package installed.
 
+    Integer input data produce background and background RMS outputs
+    with ``np.float32`` dtype.
+
     If there is only one background box element (i.e., ``box_size`` is
     the same size as (or larger than) the ``data``), then the background
     map will simply be a constant image.
@@ -264,8 +267,11 @@ class Background2D:
 
         # store the interpolator keyword arguments for later use
         # (before self._data is deleted in self._calculate_stats)
+        interp_dtype = self._data.dtype
+        if interp_dtype.kind != 'f':
+            interp_dtype = np.float32
         self._interp_kwargs = {'shape': self._data.shape,
-                               'dtype': self._data.dtype,
+                               'dtype': interp_dtype,
                                'box_size': self.box_size}
 
         # perform the initial calculations to avoid storing large data
@@ -649,9 +655,6 @@ class Background2D:
             The input array with NaNs replaced by interpolated values.
         """
         if not np.any(np.isnan(data)):
-            # change output dtype to integer if input data dtype was integer
-            if data.dtype != self._data_dtype:
-                data = data.astype(self._data_dtype)
             return data
 
         mask = ~np.isnan(data)
@@ -667,10 +670,6 @@ class Background2D:
 
         interp_data = np.copy(data)  # copy to avoid modifying the input data
         interp_data[idx] = interp_values
-
-        # change output dtype to integer if input data dtype was integer
-        if interp_data.dtype != self._data_dtype:
-            interp_data = interp_data.astype(self._data_dtype)
 
         return interp_data
 
