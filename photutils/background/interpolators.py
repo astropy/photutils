@@ -210,14 +210,15 @@ class BkgIDWInterpolator:
             return np.full(kwargs['shape'], np.min(data),
                            dtype=kwargs['dtype'])
 
-        # we create the interpolator from only the good mesh points
+        # Create the interpolator from only the good mesh points
         yxcen = np.column_stack(kwargs['mesh_yxcen'])
         good_idx = np.where(~kwargs['mesh_nan_mask'])
         data = data[good_idx]
         interp_func = ShepardIDWInterpolator(yxcen, data,
                                              leafsize=self.leafsize)
 
-        # the position coordinates used when calling the interpolator
+        # Define the position coordinates used when calling the
+        # interpolator
         yi, xi = np.mgrid[0:kwargs['shape'][0], 0:kwargs['shape'][1]]
         yx_indices = np.column_stack((yi.ravel(), xi.ravel()))
         data = interp_func(yx_indices, n_neighbors=self.n_neighbors,
