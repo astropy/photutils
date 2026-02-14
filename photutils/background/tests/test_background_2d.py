@@ -71,9 +71,15 @@ def nddata_no_unit(test_data):
 
 
 class TestBackground2D:
+    """
+    Test the Background2D class.
+    """
     @pytest.mark.parametrize('filter_size', [(1, 1), (3, 3)])
     def test_background(self, filter_size, test_data, bkg_rms, bkg_mesh,
                         bkg_rms_mesh):
+        """
+        Test with different filter sizes.
+        """
         bkg = Background2D(test_data, (25, 25), filter_size=filter_size)
         assert_allclose(bkg.background, test_data)
         assert_allclose(bkg.background_rms, bkg_rms)
@@ -87,13 +93,24 @@ class TestBackground2D:
     @pytest.mark.parametrize('box_size', [(25, 25), (23, 22)])
     @pytest.mark.parametrize('dtype', ['int', 'int32', 'float32'])
     def test_background_dtype(self, box_size, dtype, test_data, bkg_rms):
+        """
+        Test that the output background and RMS have the same dtype as
+        the input data, or are floating point if the input is integer.
+        """
         filter_size = 3
         data2 = test_data.copy().astype(dtype)
         bkg = Background2D(data2, box_size, filter_size=filter_size)
-        assert bkg.background.dtype == data2.dtype
-        assert bkg.background_rms.dtype == data2.dtype
-        assert bkg.background_mesh.dtype == data2.dtype
-        assert bkg.background_rms_mesh.dtype == data2.dtype
+        if data2.dtype.kind == 'f':
+            assert bkg.background.dtype == data2.dtype
+            assert bkg.background_rms.dtype == data2.dtype
+            assert bkg.background_mesh.dtype == data2.dtype
+            assert bkg.background_rms_mesh.dtype == data2.dtype
+        else:
+            assert np.issubdtype(bkg.background.dtype, np.floating)
+            assert np.issubdtype(bkg.background_rms.dtype, np.floating)
+            assert np.issubdtype(bkg.background_mesh.dtype, np.floating)
+            assert np.issubdtype(bkg.background_rms_mesh.dtype,
+                                 np.floating)
         assert bkg.npixels_map.dtype == int
         assert bkg.npixels_mesh.dtype == int
         assert_allclose(bkg.background, data2)
@@ -136,7 +153,12 @@ class TestBackground2D:
         assert bkg.background_median == 5.5
         assert bkg.background_rms_median == 0.0
 
-    def test_background_nonconstant(self, test_data, bkg_mesh):
+    def test_background_nonconstant_data(self, test_data, bkg_mesh):
+        """
+        Test on non-constant data to ensure that the background mesh
+        is computed correctly and that the background is properly
+        interpolated.
+        """
         data = np.copy(test_data)
         data[25:50, 50:75] = 10.0
         bkg_low_res = np.copy(bkg_mesh)
@@ -206,6 +228,9 @@ class TestBackground2D:
         assert_allclose(mesh[1, 2], 1.0, atol=0.01)
 
     def test_no_sigma_clipping(self, test_data):
+        """
+        Test bkg_estimator inputs without sigma clipping.
+        """
         data = np.copy(test_data)
         data[10, 10] = 100.0
         bkg1 = Background2D(data, (25, 25), filter_size=(1, 1),
@@ -215,7 +240,40 @@ class TestBackground2D:
 
         assert bkg2.background_mesh[0, 0] > bkg1.background_mesh[0, 0]
 
+    def test_function_estimators(self, test_data):
+        """
+        Test with user-defined functions for bkg_estimator and
+        bkgrms_estimator.
+        """
+        def bkg_func(data, axis=None):
+            return np.nanmean(data, axis=axis)
+
+        def bkgrms_func(data, axis=None):
+            return np.nanstd(data, axis=axis)
+
+        bkg = Background2D(test_data, (25, 25), filter_size=(1, 1),
+                           sigma_clip=None, bkg_estimator=bkg_func,
+                           bkgrms_estimator=bkgrms_func)
+        assert_allclose(bkg.background, test_data)
+        assert_allclose(bkg.background_rms, np.zeros(test_data.shape))
+
+    def test_integer_input_background_not_truncated(self):
+        """
+        Test that the background is not truncated when the input data is
+        integer type.
+        """
+        data = np.array([[1, 2], [1, 2]], dtype=int)
+        bkg = Background2D(data, (2, 2), filter_size=(1, 1),
+                           sigma_clip=None, bkg_estimator=MeanBackground())
+        assert_allclose(bkg.background_mesh, [[1.5]])
+        assert_allclose(bkg.background, np.full(data.shape, 1.5))
+        assert np.issubdtype(bkg.background.dtype, np.floating)
+
     def test_resizing(self):
+        """
+        Test that the background mesh is resized correctly when the
+        input data dimensions are not integer multiples of the box size.
+        """
         shape1 = (128, 256)
         shape2 = (129, 256)
         box_size = (16, 16)
@@ -231,7 +289,7 @@ class TestBackground2D:
     @pytest.mark.parametrize('box_size', ([(25, 25), (23, 22)]))
     def test_background_mask(self, box_size, test_data, bkg_rms):
         """
-        Test with an input mask.
+        Test with an input mask with different box sizes.
 
         Note that box_size=(23, 22) tests the resizing of the image and
         mask.
@@ -246,6 +304,9 @@ class TestBackground2D:
         assert_allclose(bkg.background_rms, bkg_rms)
 
     def test_mask(self, test_data):
+        """
+        Test with an input mask.
+        """
         data = np.copy(test_data)
         data[25:50, 25:50] = 100.0
         mask = np.zeros(test_data.shape, dtype=bool)
@@ -271,6 +332,9 @@ class TestBackground2D:
 
     @pytest.mark.parametrize('fill_value', [0.0, np.nan, -1.0])
     def test_coverage_mask(self, fill_value, test_data):
+        """
+        Test with an input coverage mask.
+        """
         data = np.copy(test_data)
         data[:50, :50] = np.nan
         mask = np.isnan(data)
@@ -281,7 +345,7 @@ class TestBackground2D:
         assert_equal(bkg1.background[:50, :50], fill_value)
         assert_equal(bkg1.background_rms[:50, :50], fill_value)
 
-        # test that combined mask and coverage_mask gives the same
+        # Test that combined mask and coverage_mask gives the same
         # results
         mask = np.zeros(test_data.shape, dtype=bool)
         coverage_mask = np.zeros(test_data.shape, dtype=bool)
@@ -296,6 +360,10 @@ class TestBackground2D:
         assert_allclose(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
 
     def test_mask_nonfinite(self, test_data):
+        """
+        Test that non-finite values in the input data are masked and a
+        warning is issued.
+        """
         data = test_data.copy()
         data[0, 0:50] = np.nan
         match = r'Input data contains non-finite \(NaN or infinity\) values'
@@ -329,6 +397,9 @@ class TestBackground2D:
         assert bkg.background.shape == data.shape
 
     def test_masked_array(self, test_data):
+        """
+        Test that masked arrays are handled correctly.
+        """
         data = test_data.copy()
         data[0, 0:50] = True
         mask = np.zeros(test_data.shape, dtype=bool)
@@ -343,6 +414,9 @@ class TestBackground2D:
         assert_allclose(bkg2.background, bkg3.background, rtol=1e-5)
 
     def test_completely_masked(self, test_data):
+        """
+        Test that an error is raised if all pixels are masked.
+        """
         mask = np.ones(test_data.shape, dtype=bool)
         match = 'All input pixels are masked. Cannot compute a background.'
         with pytest.raises(ValueError, match=match):
@@ -382,7 +456,8 @@ class TestBackground2D:
 
     def test_exclude_percentile(self, test_data):
         """
-        Only meshes greater than filter_threshold are filtered.
+        Test that the exclude_percentile parameter excludes the correct
+        pixels.
         """
         data = np.copy(test_data)
         data[0:50, 0:50] = np.nan
@@ -408,7 +483,8 @@ class TestBackground2D:
 
     def test_filter_threshold(self, test_data, bkg_mesh):
         """
-        Only meshes greater than filter_threshold are filtered.
+        Test that the filter_threshold parameter filters the correct
+        pixels.
         """
         data = np.copy(test_data)
         data[25:50, 50:75] = 10.0
@@ -417,12 +493,13 @@ class TestBackground2D:
         assert_allclose(bkg.background, test_data)
         assert_allclose(bkg.background_mesh, bkg_mesh)
         bkg2 = Background2D(data, (25, 25), filter_size=(3, 3),
-                            filter_threshold=11.0)  # no filtering
+                            filter_threshold=11.0)  # No filtering
         assert bkg2.background_mesh[1, 2] == 10
 
     def test_filter_threshold_high(self, test_data, bkg_mesh):
         """
-        No filtering because filter_threshold is too large.
+        Test that the filter_threshold parameter does not filter any
+        pixels when it is set too high.
         """
         data = np.copy(test_data)
         data[25:50, 50:75] = 10.0
@@ -434,7 +511,8 @@ class TestBackground2D:
 
     def test_filter_threshold_nofilter(self, test_data, bkg_mesh):
         """
-        No filtering because filter_size is (1, 1).
+        Test that the filter_threshold does not filter any pixels when
+        the filter_size is (1, 1).
         """
         data = np.copy(test_data)
         data[25:50, 50:75] = 10.0
@@ -445,22 +523,38 @@ class TestBackground2D:
         assert_allclose(b.background_mesh, ref_data)
 
     def test_scalar_sizes(self, test_data):
+        """
+        Test that scalar box_size and filter_size are correctly
+        converted to tuples.
+        """
         bkg1 = Background2D(test_data, (25, 25), filter_size=(3, 3))
         bkg2 = Background2D(test_data, 25, filter_size=3)
         assert_allclose(bkg1.background, bkg2.background)
         assert_allclose(bkg1.background_rms, bkg2.background_rms)
 
     def test_invalid_box_size(self, test_data):
+        """
+        Test that an error is raised if box_size has an invalid number
+        of elements.
+        """
         match = 'box_size must have 1 or 2 elements'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (5, 5, 3))
 
     def test_invalid_filter_size(self, test_data):
+        """
+        Test that an error is raised if filter_size has an invalid
+        number of elements.
+        """
         match = 'filter_size must have 1 or 2 elements'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (5, 5), filter_size=(3, 3, 3))
 
     def test_invalid_exclude_percentile(self, test_data):
+        """
+        Test that an error is raised if exclude_percentile is outside the
+        range [0, 100].
+        """
         match = 'exclude_percentile must be between 0 and 100'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (5, 5), exclude_percentile=-1)
@@ -468,6 +562,10 @@ class TestBackground2D:
             Background2D(test_data, (5, 5), exclude_percentile=101)
 
     def test_mask_nomask(self, test_data):
+        """
+        Test that mask and coverage_mask can be set to np.ma.nomask and
+        that the background is computed correctly.
+        """
         bkg = Background2D(test_data, (25, 25), filter_size=(1, 1),
                            mask=np.ma.nomask)
         assert bkg._mask is None
@@ -477,6 +575,10 @@ class TestBackground2D:
         assert bkg.coverage_mask is None
 
     def test_invalid_mask(self, test_data):
+        """
+        Test that an error is raised if the mask has an invalid shape or
+        number of dimensions.
+        """
         match = 'data and mask must have the same shape'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (25, 25), filter_size=(1, 1),
@@ -488,6 +590,10 @@ class TestBackground2D:
                          mask=np.zeros((2, 2, 2)))
 
     def test_invalid_coverage_mask(self, test_data):
+        """
+        Test that an error is raised if the coverage_mask has an invalid
+        shape or number of dimensions.
+        """
         match = 'data and coverage_mask must have the same shape'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (25, 25), filter_size=(1, 1),
@@ -501,6 +607,8 @@ class TestBackground2D:
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_meshes(self, test_data):
         """
+        Test the plot_meshes method.
+
         This test should run without any errors, but there is no return
         value.
         """
@@ -508,6 +616,9 @@ class TestBackground2D:
         bkg.plot_meshes(outlines=True)
 
     def test_repr(self):
+        """
+        Test the __repr__ method.
+        """
         data = np.ones((300, 500))
         bkg = Background2D(data, (74, 99))
         cls_repr = repr(bkg)
@@ -526,6 +637,9 @@ class TestBackground2D:
         assert 'coverage_mask' in cls_repr
 
     def test_str(self):
+        """
+        Test the __str__ method.
+        """
         data = np.ones((300, 500))
         bkg = Background2D(data, (74, 99))
         cls_str = str(bkg)
@@ -534,6 +648,11 @@ class TestBackground2D:
         assert cls_str.startswith(f'<{cls_name}>')
 
     def test_masks(self):
+        """
+        Test that the input data is not modified when a mask is applied
+        and that the same background is computed whether the non-finite
+        values are masked or set to NaN.
+        """
         arr = np.arange(25.0).reshape(5, 5)
         arr_orig = arr.copy()
         mask = np.zeros(arr.shape, dtype=bool)
@@ -571,8 +690,10 @@ class TestBackground2D:
                                          SExtractorBackground()])
     def test_large_boxsize(self, bkg_est):
         """
-        Regression test to ensure that when boxsize is the same as the
-        image size that the input data left unchanged.
+        Test that when boxsize is the same as the image size that the
+        input data is unchanged and that the background mesh is a single
+        value equal to the background estimator applied to the entire
+        image.
         """
         shape = (103, 107)
         data = np.ones(shape)
@@ -606,10 +727,10 @@ class TestBackground2D:
 
     def test_background_box_size_one(self, test_data):
         """
-        Test with box_size=1 (no smoothing).
+        Test that when box_size is (1, 1) the background is equal to the
+        input data.
         """
         bkg = Background2D(test_data, (1, 1), filter_size=(1, 1))
-        # Should be close to input data
         assert_allclose(bkg.background, test_data, rtol=1e-5)
 
     def test_background_prime_dimensions(self):
@@ -640,14 +761,13 @@ class TestBackground2D:
         assert bkg.background.shape == data.shape
         assert bkg.background_mesh.shape == (2, 1)
 
-    def test_background_properties_relationship(self, test_data):
+    def test_background_mesh_properties(self, test_data):
         """
-        Test that properties are computed correctly and maintain
-        relationships.
+        Test that the background mesh properties are consistent with the
+        input data and box size.
         """
         bkg = Background2D(test_data, (25, 25))
 
-        # Check relationships between properties
         assert bkg.background_mesh.shape[0] * 25 >= test_data.shape[0]
         assert bkg.background_mesh.shape[1] * 25 >= test_data.shape[1]
         assert_allclose(bkg.background_median,
