@@ -7,12 +7,14 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import CCDData, NDData
+from astropy.stats import SigmaClip
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background import (Background2D, BkgZoomInterpolator,
-                                  MeanBackground, SExtractorBackground)
+                                  MeanBackground, MedianBackground,
+                                  SExtractorBackground)
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 
@@ -142,9 +144,6 @@ class TestBackground2D:
         bkg1 = Background2D(data, (25, 25), filter_size=(1, 1))
         assert_allclose(bkg1.background_mesh, bkg_low_res)
         assert bkg1.background.shape == data.shape
-        bkg2 = Background2D(data, (25, 25), filter_size=(1, 1))
-        assert_allclose(bkg2.background_mesh, bkg_low_res)
-        assert bkg2.background.shape == data.shape
 
         rng = np.random.default_rng(0)
         data = rng.normal(1.0, 0.1, (121, 289))
@@ -157,6 +156,54 @@ class TestBackground2D:
         assert bkg.background_rms_median < 0.1
         assert bkg.npixels_mesh.shape == (5, 12)
         assert bkg.npixels_map.shape == data.shape
+
+    def test_bkg_estimator_not_mutated(self, test_data):
+        """
+        Test that user-supplied estimator objects are not mutated.
+
+        Background2D silences sigma clipping on the internal copy of the
+        estimators. The original objects passed by the caller must be
+        left unchanged.
+        """
+        sigclip = SigmaClip(sigma=3.0)
+        bkg_est = MeanBackground(sigma_clip=sigclip)
+        bkgrms_est = MedianBackground(sigma_clip=sigclip)
+
+        # Remember the sigma_clip values before the call
+        assert bkg_est.sigma_clip is sigclip
+        assert bkgrms_est.sigma_clip is sigclip
+
+        Background2D(test_data, (25, 25), bkg_estimator=bkg_est,
+                     bkgrms_estimator=bkgrms_est)
+
+        # Check that original sigma_clip values are unchanged after the
+        # call
+        assert bkg_est.sigma_clip is sigclip
+        assert bkgrms_est.sigma_clip is sigclip
+
+    def test_filter_threshold_rms_mesh_before_mesh(self):
+        """
+        Test that accessing background_rms_mesh before background_mesh
+        does not crash when filter_threshold is set.
+
+        Background2D._bkg_stats is used by _selective_filter, which
+        is called when filter_threshold is not None. It must still
+        be available when background_mesh is computed even if
+        background_rms_mesh was computed first.
+        """
+        data = np.ones((100, 100))
+        data[25:50, 50:75] = 10.0
+        bkg = Background2D(data, (25, 25), filter_size=(3, 3),
+                           filter_threshold=9.0)
+
+        # Access rms_mesh first, then the regular mesh
+        rms_mesh = bkg.background_rms_mesh
+        mesh = bkg.background_mesh
+        assert rms_mesh.shape == (4, 4)
+        assert mesh.shape == (4, 4)
+
+        # Both should still give sensible results
+        assert_allclose(mesh[1, 2], 1.0, atol=0.01)
 
     def test_no_sigma_clipping(self, test_data):
         data = np.copy(test_data)
