@@ -77,6 +77,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.datasets``
+
+  - Fixed a bug in ``apply_poisson_noise`` where the returned image
+    could have a different dtype than the input. [#2173]
+
 - ``photutils.isophote``
 
   - ``build_ellipse_model`` now integrates over all angles instead of
