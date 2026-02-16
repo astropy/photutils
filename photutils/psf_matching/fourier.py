@@ -250,23 +250,35 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         less accurate matching kernels; smaller values preserve more
         detail but may amplify noise.
 
-    penalty : `None`, ``'laplacian'``, or 2D `~numpy.ndarray`, optional
+    penalty : `None`, ``'laplacian'``, ``'biharmonic'``, or 2D \
+`~numpy.ndarray`, optional
         The regularization penalty operator. This controls the
         structure of the regularization term in the denominator:
 
         * `None` (default): Scalar Tikhonov regularization. The
-          denominator is :math:`|S|^2 + \\epsilon \\cdot
-          \\max(|S|^2)`, providing uniform regularization across
-          all spatial frequencies.
+          denominator is :math:`|S|^2 + \\epsilon \\cdot \\max(|S|^2)`,
+          providing uniform regularization across all spatial
+          frequencies. Use this for well-behaved PSFs or when you want
+          simple, frequency-independent smoothing.
 
-        * ``'laplacian'``: Uses a discrete Laplacian operator as
-          the penalty, producing frequency-dependent regularization
-          that penalizes high spatial frequencies more heavily. The
-          denominator becomes :math:`|S|^2 + \\epsilon \\cdot
-          |L|^2` where :math:`L` is the OTF of the Laplacian
+        * ``'laplacian'``: Uses a discrete Laplacian operator (second
+          derivative) as the penalty, producing frequency-dependent
+          regularization that penalizes high spatial frequencies more
+          heavily. The denominator becomes :math:`|S|^2 + \\epsilon
+          \\cdot |L|^2` where :math:`L` is the OTF of the Laplacian
           kernel ``[[0, -1, 0], [-1, 4, -1], [0, -1, 0]]``. This
-          reproduces the regularization used by the ``pypher``
-          package (`Boucaud et al. 2016`_).
+          reproduces the regularization used by the ``pypher`` package
+          (`Boucaud et al. 2016`_). This is the most commonly used
+          penalty for PSF matching and works well for most applications.
+
+        * ``'biharmonic'``: Uses a biharmonic operator (fourth
+          derivative, Laplacian of the Laplacian) as the penalty,
+          producing very strong suppression of high spatial frequencies.
+          Uses the kernel ``[[0, 0, 1, 0, 0], [0, 2, -8, 2, 0], [1,
+          -8, 20, -8, 1], [0, 2, -8, 2, 0], [0, 0, 1, 0, 0]]``. This
+          produces the smoothest matching kernels and is useful when
+          working with very noisy or poorly sampled PSFs, at the cost of
+          reduced accuracy in matching.
 
         * 2D `~numpy.ndarray`: A custom penalty operator array.
           Its OTF will be computed and used in the denominator as
@@ -338,6 +350,12 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
     >>> kernel = make_wiener_kernel(psf1, psf2, penalty='laplacian')
     >>> print(f'{kernel.sum():.1f}')
     1.0
+
+    Use the biharmonic penalty for maximum smoothness:
+
+    >>> kernel = make_wiener_kernel(psf1, psf2, penalty='biharmonic')
+    >>> print(f'{kernel.sum():.1f}')
+    1.0
     """
     source_psf, target_psf = _validate_kernel_inputs(
         source_psf, target_psf, window)
@@ -351,11 +369,18 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         penalty_array = None
     elif isinstance(penalty, str):
         if penalty == 'laplacian':
-            penalty_array = np.array([[0, -1, 0],
-                                      [-1, 4, -1],
-                                      [0, -1, 0]])
+            penalty_array = np.array([[+0, -1, +0],
+                                      [-1, +4, -1],
+                                      [+0, -1, +0]])
+        elif penalty == 'biharmonic':
+            penalty_array = np.array([[+0, +0, +1, +0, +0],
+                                      [+0, +2, -8, +2, +0],
+                                      [+1, -8, 20, -8, +1],
+                                      [+0, +2, -8, +2, +0],
+                                      [+0, +0, +1, +0, +0]])
         else:
-            msg = f'Invalid penalty string {penalty!r}. Must be "laplacian"'
+            msg = (f'Invalid penalty string {penalty!r}. '
+                   'Must be "laplacian" or "biharmonic"')
             raise ValueError(msg)
     elif isinstance(penalty, np.ndarray):
         if penalty.ndim != 2:
@@ -363,7 +388,8 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
             raise ValueError(msg)
         penalty_array = penalty
     else:
-        msg = 'penalty must be None, "laplacian", or a 2D numpy array'
+        msg = ('penalty must be None, "laplacian", "biharmonic", or a 2D '
+               'numpy array')
         raise ValueError(msg)
 
     # ensure input PSFs are normalized
