@@ -265,14 +265,12 @@ class TestMakeKernelWiener:
         """
         Test with different regularization strengths.
         """
-        kernel_weak = make_wiener_kernel(
-            psf1, psf2, regularization=1e-8)
-        kernel_strong = make_wiener_kernel(
-            psf1, psf2, regularization=1e-1)
-        # both should be normalized
+        kernel_weak = make_wiener_kernel(psf1, psf2, regularization=1e-8)
+        kernel_strong = make_wiener_kernel(psf1, psf2, regularization=1e-1)
+        # Both should be normalized
         assert_allclose(kernel_weak.sum(), 1.0)
         assert_allclose(kernel_strong.sum(), 1.0)
-        # stronger regularization should produce a smoother kernel
+        # Stronger regularization should produce a smoother kernel
         # (lower max value)
         assert kernel_strong.max() < kernel_weak.max()
 
@@ -363,10 +361,8 @@ class TestMakeKernelWiener:
         laplacian = np.array([[0, -1, 0],
                               [-1, 4, -1],
                               [0, -1, 0]])
-        kernel_str = make_wiener_kernel(psf1, psf2,
-                                        penalty='laplacian')
-        kernel_arr = make_wiener_kernel(psf1, psf2,
-                                        penalty=laplacian)
+        kernel_str = make_wiener_kernel(psf1, psf2, penalty='laplacian')
+        kernel_arr = make_wiener_kernel(psf1, psf2, penalty=laplacian)
         assert_allclose(kernel_str, kernel_arr)
 
     def test_penalty_laplacian_kernel_shape(self, psf1, psf2):
@@ -426,8 +422,7 @@ class TestMakeKernelWiener:
         Test that penalty and window can be used together.
         """
         window = SplitCosineBellWindow(0.0, 0.2)
-        kernel = make_wiener_kernel(psf1, psf2,
-                                    penalty='laplacian',
+        kernel = make_wiener_kernel(psf1, psf2, penalty='laplacian',
                                     window=window)
         assert kernel.shape == psf1.shape
         assert_allclose(kernel.sum(), 1.0)
@@ -438,12 +433,71 @@ class TestMakeKernelWiener:
         Tikhonov with the same regularization parameter.
         """
         reg = 1e-4
-        kernel_scalar = make_wiener_kernel(psf1, psf2,
-                                           regularization=reg)
-        kernel_laplacian = make_wiener_kernel(psf1, psf2,
-                                              regularization=reg,
+        kernel_scalar = make_wiener_kernel(psf1, psf2, regularization=reg)
+        kernel_laplacian = make_wiener_kernel(psf1, psf2, regularization=reg,
                                               penalty='laplacian')
         assert not np.allclose(kernel_scalar, kernel_laplacian)
+
+    def test_penalty_biharmonic_basic(self, psf1, psf2):
+        """
+        Test basic biharmonic penalty functionality.
+        """
+        kernel = make_wiener_kernel(psf1, psf2, penalty='biharmonic')
+        assert kernel.shape == psf1.shape
+        assert_allclose(kernel.sum(), 1.0)
+
+    def test_penalty_biharmonic_kernel_shape(self, psf1, psf2):
+        """
+        Test that biharmonic penalty kernel has the expected Gaussian
+        shape.
+        """
+        size = psf1.shape[0]
+        cen = (size - 1) / 2.0
+        yy, xx = np.mgrid[0:size, 0:size]
+        kernel = make_wiener_kernel(psf1, psf2, penalty='biharmonic')
+
+        fitter = TRFLSQFitter()
+        gm1 = Gaussian2D(1.0, cen, cen, 3.0, 3.0)
+        gfit = fitter(gm1, xx, yy, kernel)
+        assert_allclose(gfit.x_stddev, gfit.y_stddev)
+        assert_allclose(gfit.x_stddev, np.sqrt(25 - 9), atol=0.08)
+
+    def test_penalty_biharmonic_results(self, psf1, psf2):
+        """
+        Test that biharmonic penalty gives different results than scalar
+        and Laplacian penalties.
+        """
+        reg = 1e-4
+        kernel_scalar = make_wiener_kernel(psf1, psf2, regularization=reg)
+        kernel_laplacian = make_wiener_kernel(psf1, psf2, regularization=reg,
+                                              penalty='laplacian')
+        kernel_biharmonic = make_wiener_kernel(psf1, psf2, regularization=reg,
+                                               penalty='biharmonic')
+        assert not np.allclose(kernel_scalar, kernel_biharmonic)
+        assert not np.allclose(kernel_laplacian, kernel_biharmonic)
+
+    def test_penalty_biharmonic_smoothness(self, psf1, psf2):
+        """
+        Test that biharmonic penalty produces smoother kernels than
+        Laplacian (lower peak value indicates more smoothing).
+        """
+        reg = 1e-4
+        kernel_laplacian = make_wiener_kernel(psf1, psf2, regularization=reg,
+                                              penalty='laplacian')
+        kernel_biharmonic = make_wiener_kernel(psf1, psf2, regularization=reg,
+                                               penalty='biharmonic')
+        # Biharmonic should produce a smoother kernel with lower peak
+        assert kernel_biharmonic.max() < kernel_laplacian.max()
+
+    def test_penalty_biharmonic_with_window(self, psf1, psf2):
+        """
+        Test that biharmonic penalty works with window functions.
+        """
+        window = SplitCosineBellWindow(0.0, 0.2)
+        kernel = make_wiener_kernel(psf1, psf2, penalty='biharmonic',
+                                    window=window)
+        assert kernel.shape == psf1.shape
+        assert_allclose(kernel.sum(), 1.0)
 
     def test_asymmetric_shape(self):
         """
