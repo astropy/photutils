@@ -194,6 +194,61 @@ class TestConvertPsfToOtf:
         otf = _convert_psf_to_otf(laplacian, (25, 25))
         assert_allclose(otf[0, 0], 0.0, atol=1e-15)
 
+    def test_normalized_psf_dc_component(self):
+        """
+        Test that a normalized PSF has DC component equal to 1.0.
+
+        For a normalized PSF (sum = 1), the DC component of the OTF
+        should be 1.0.
+        """
+        psf = _make_gaussian_psf(5, 1.5)
+        otf = _convert_psf_to_otf(psf, (25, 25))
+        assert_allclose(otf[0, 0], 1.0, rtol=1e-10)
+
+    def test_non_square_shapes(self):
+        """
+        Test with non-square PSF and output shapes.
+        """
+        # 3x5 PSF to 11x21 output
+        psf = np.zeros((3, 5))
+        psf[1, 2] = 1.0  # center at (1, 2)
+        otf = _convert_psf_to_otf(psf, (11, 21))
+        assert otf.shape == (11, 21)
+        assert_allclose(np.abs(otf), 1.0, rtol=1e-10)
+
+    def test_no_padding_needed(self):
+        """
+        Test when PSF size equals output size (no padding).
+        """
+        psf = _make_gaussian_psf(7, 1.5)
+        otf = _convert_psf_to_otf(psf, (7, 7))
+        assert otf.shape == (7, 7)
+        assert_allclose(otf[0, 0], 1.0, rtol=1e-10)
+
+    def test_symmetric_psf_real_otf(self):
+        """
+        Test that a symmetric PSF produces a nearly real OTF.
+
+        A centered, symmetric PSF should produce an OTF with negligible
+        imaginary components.
+        """
+        psf = _make_gaussian_psf(7, 2.0)
+        otf = _convert_psf_to_otf(psf, (25, 25))
+        # Imaginary components should be negligible
+        assert np.max(np.abs(otf.imag)) < 1e-10
+
+    def test_larger_psf_sizes(self):
+        """
+        Test with various PSF sizes to ensure centering works correctly.
+        """
+        for psf_size in [5, 7, 9]:
+            psf = _make_gaussian_psf(psf_size, psf_size / 4.0)
+            otf = _convert_psf_to_otf(psf, (25, 25))
+            # Normalized PSF should have DC component of 1.0
+            assert_allclose(otf[0, 0], 1.0, rtol=1e-10)
+            # OTF should be nearly real for symmetric PSF
+            assert np.max(np.abs(otf.imag)) < 1e-10
+
 
 class TestResizePSF:
     def test_resize(self):
