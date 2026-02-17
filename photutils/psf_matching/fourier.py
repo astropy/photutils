@@ -36,13 +36,13 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
     .. math::
 
         R = \\begin{cases}
-            \\frac{T}{S} & \\text{if } |S| > \\epsilon \\cdot \\max(|S|) \\\\
+            \\frac{T}{S} & \\text{if } |S| > \\lambda \\cdot \\max(|S|) \\\\
             0 & \\text{otherwise}
             \\end{cases}
 
     Here, :math:`\\mathcal{F}^{-1}` is the inverse Fourier transform,
     :math:`S` and :math:`T` are the Fourier transforms of the source and
-    target PSFs (the optical transfer functions, OTFs), :math:`\\epsilon`
+    target PSFs (the optical transfer functions, OTFs), :math:`\\lambda`
     is the ``otf_threshold`` parameter, and :math:`W` is the optional
     ``window`` function (defaulting to 1 if not provided).
 
@@ -186,7 +186,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
 
         K = \\mathcal{F}^{-1} \\left[ W \\cdot
             \\frac{T \\cdot S^{*}}
-                  {|S|^{2} + \\epsilon \\cdot \\max(|S|^{2})} \\right]
+                  {|S|^{2} + \\lambda \\cdot \\max(|S|^{2})} \\right]
 
     When a ``penalty`` array is provided (e.g., a Laplacian operator),
     the regularization becomes frequency-dependent:
@@ -195,7 +195,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
 
         K = \\mathcal{F}^{-1} \\left[ W \\cdot
             \\frac{T \\cdot S^{*}}
-                  {|S|^{2} + \\epsilon \\cdot |P|^{2}} \\right]
+                  {|S|^{2} + \\lambda \\cdot |P|^{2}} \\right]
 
     where :math:`P` is the OTF of the ``penalty`` operator. This
     penalizes high spatial frequencies more heavily, which is
@@ -204,7 +204,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
     In both equations, :math:`\\mathcal{F}^{-1}` is the inverse Fourier
     transform, :math:`S` and :math:`T` are the Fourier transforms of
     the source and target PSFs (the OTFs), :math:`S^{*}` is the complex
-    conjugate of :math:`S`, :math:`\\epsilon` is the ``regularization``
+    conjugate of :math:`S`, :math:`\\lambda` is the ``regularization``
     parameter, and :math:`W` is the optional ``window`` function
     (defaulting to 1 if not provided). :math:`|S|^{2}` is the power
     spectrum of the source OTF.
@@ -256,7 +256,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         structure of the regularization term in the denominator:
 
         * `None` (default): Scalar Tikhonov regularization. The
-          denominator is :math:`|S|^2 + \\epsilon \\cdot \\max(|S|^2)`,
+          denominator is :math:`|S|^2 + \\lambda \\cdot \\max(|S|^2)`,
           providing uniform regularization across all spatial
           frequencies. Use this for well-behaved PSFs or when you want
           simple, frequency-independent smoothing.
@@ -264,7 +264,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         * ``'laplacian'``: Uses a discrete Laplacian operator (second
           derivative) as the penalty, producing frequency-dependent
           regularization that penalizes high spatial frequencies more
-          heavily. The denominator becomes :math:`|S|^2 + \\epsilon
+          heavily. The denominator becomes :math:`|S|^2 + \\lambda
           \\cdot |L|^2` where :math:`L` is the OTF of the Laplacian
           kernel ``[[0, -1, 0], [-1, 4, -1], [0, -1, 0]]``. This
           reproduces the regularization used by the ``pypher`` package
@@ -284,7 +284,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
 
         * 2D `~numpy.ndarray`: A custom penalty operator array.
           Its OTF will be computed and used in the denominator as
-          :math:`|S|^2 + \\epsilon \\cdot |P|^2`. The PSFs must be at
+          :math:`|S|^2 + \\lambda \\cdot |P|^2`. The PSFs must be at
           least as large as the penalty array in both dimensions.
 
     window : callable, optional
