@@ -62,12 +62,12 @@ New Features
 
 - ``photutils.psf_matching``
 
-  - Added ``make_wiener_kernel`` function that uses Wiener
-    regularization to make a PSF matching kernel. [#2171, #2172]
-
   - Added a ``regularization`` keyword to ``make_kernel`` to regularize
     division by near-zero values in the source Optical Transfer Function.
     [#2170, #2171, #2175]
+
+  - Added ``make_wiener_kernel`` function that uses Wiener
+    regularization to make a PSF matching kernel. [#2171, #2172, #2175]
 
   - ``make_kernel`` now validates input PSFs (2D, odd dimensions,
     centered) and the window function output. [#2170]
