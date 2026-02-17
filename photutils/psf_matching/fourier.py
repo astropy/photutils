@@ -141,13 +141,13 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
     # domain with the DC component at the corner of the array (standard
     # FFT layout).
 
-    # regularized division to avoid dividing by near-zero values
+    # Regularized division to avoid dividing by near-zero values
     max_otf = np.max(np.abs(source_otf))
     mask = np.abs(source_otf) > otf_threshold * max_otf
     ratio = np.zeros_like(source_otf, dtype=complex)
     ratio[mask] = target_otf[mask] / source_otf[mask]
 
-    # apply a window function in frequency space
+    # Apply a window function in frequency space
     if window is not None:
         # The window function is defined in the Fourier domain with the
         # DC component at the center of the array. The ratio array is
@@ -270,6 +270,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
           reproduces the regularization used by the ``pypher`` package
           (`Boucaud et al. 2016`_). This is the most commonly used
           penalty for PSF matching and works well for most applications.
+          Requires PSFs to be at least 3x3.
 
         * ``'biharmonic'``: Uses a biharmonic operator (fourth
           derivative, Laplacian of the Laplacian) as the penalty,
@@ -277,12 +278,14 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
           Uses the kernel ``[[0, 0, 1, 0, 0], [0, 2, -8, 2, 0], [1,
           -8, 20, -8, 1], [0, 2, -8, 2, 0], [0, 0, 1, 0, 0]]``. This
           produces the smoothest matching kernels and is useful when
-          working with very noisy or poorly sampled PSFs, at the cost of
-          reduced accuracy in matching.
+          working with very noisy or poorly sampled PSFs, at the cost
+          of reduced accuracy in matching. Requires PSFs to be at least
+          5x5.
 
         * 2D `~numpy.ndarray`: A custom penalty operator array.
           Its OTF will be computed and used in the denominator as
-          :math:`|S|^2 + \\epsilon \\cdot |P|^2`.
+          :math:`|S|^2 + \\epsilon \\cdot |P|^2`. The PSFs must be at
+          least as large as the penalty array in both dimensions.
 
     window : callable, optional
         The window (taper) function or callable class instance used
@@ -317,9 +320,10 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
     Raises
     ------
     ValueError
-        If the PSFs are not 2D arrays, have even dimensions, do not
-        have the same shape, if ``regularization`` is not positive,
-        or if ``penalty`` is not a valid value.
+        If the PSFs are not 2D arrays, have even dimensions, do not have
+        the same shape, are too small for the specified penalty, if
+        ``regularization`` is not positive, or if ``penalty`` is not a
+        valid value.
 
     TypeError
         If the input ``window`` is not callable.
@@ -392,7 +396,18 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
                'numpy array')
         raise ValueError(msg)
 
-    # ensure input PSFs are normalized
+    # Validate that PSF is large enough for the penalty
+    if penalty_array is not None:
+        penalty_shape = penalty_array.shape
+        psf_shape = source_psf.shape
+        if (psf_shape[0] < penalty_shape[0]
+                or psf_shape[1] < penalty_shape[1]):
+            msg = (f'PSFs must be at least as large as the penalty '
+                   f'operator. PSF shape is {psf_shape}, but penalty '
+                   f'shape is {penalty_shape}.')
+            raise ValueError(msg)
+
+    # Ensure input PSFs are normalized
     source_psf /= source_psf.sum()
     target_psf /= target_psf.sum()
 

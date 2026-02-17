@@ -405,6 +405,63 @@ class TestMakeKernelWiener:
         with pytest.raises(ValueError, match=match):
             make_wiener_kernel(psf1, psf2, penalty=np.ones(5))
 
+    def test_penalty_psf_too_small_for_laplacian(self):
+        """
+        Test that a PSF smaller than 3x3 raises ValueError when using
+        laplacian penalty.
+        """
+        # Create 1x1 PSFs (too small for 3x3 laplacian)
+        psf1 = np.array([[1.0]])
+        psf2 = np.array([[1.0]])
+        match = 'PSFs must be at least as large as the penalty operator'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty='laplacian')
+
+    def test_penalty_psf_too_small_for_biharmonic(self):
+        """
+        Test that a PSF smaller than 5x5 raises ValueError when using
+        biharmonic penalty.
+        """
+        # Create 3x3 PSFs (too small for 5x5 biharmonic)
+        psf1 = _make_gaussian_psf(3, 1.0)
+        psf2 = _make_gaussian_psf(3, 1.5)
+        match = 'PSFs must be at least as large as the penalty operator'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty='biharmonic')
+
+    def test_penalty_psf_minimum_size_laplacian(self):
+        """
+        Test that 3x3 PSF (minimum size) works with laplacian penalty.
+        """
+        psf1 = _make_gaussian_psf(3, 0.8)
+        psf2 = _make_gaussian_psf(3, 1.0)
+        kernel = make_wiener_kernel(psf1, psf2, penalty='laplacian')
+        assert kernel.shape == (3, 3)
+        assert_allclose(kernel.sum(), 1.0)
+
+    def test_penalty_psf_minimum_size_biharmonic(self):
+        """
+        Test that 5x5 PSF (minimum size) works with biharmonic penalty.
+        """
+        psf1 = _make_gaussian_psf(5, 1.2)
+        psf2 = _make_gaussian_psf(5, 1.5)
+        kernel = make_wiener_kernel(psf1, psf2, penalty='biharmonic')
+        assert kernel.shape == (5, 5)
+        assert_allclose(kernel.sum(), 1.0)
+
+    def test_penalty_custom_array_too_large(self):
+        """
+        Test that a custom penalty array larger than the PSF raises
+        ValueError.
+        """
+        # Create 3x3 PSFs but 5x5 penalty
+        psf1 = _make_gaussian_psf(3, 0.8)
+        psf2 = _make_gaussian_psf(3, 1.0)
+        penalty = np.ones((5, 5))
+        match = 'PSFs must be at least as large as the penalty operator'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty=penalty)
+
     def test_penalty_custom_array(self, psf1, psf2):
         """
         Test with a custom 2D penalty array.
