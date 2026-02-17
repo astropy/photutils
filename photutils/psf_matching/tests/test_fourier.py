@@ -129,37 +129,37 @@ class TestMakeKernel:
         with pytest.raises(TypeError, match=match):
             make_kernel(psf1, psf2, window='bad')
 
-    def test_otf_threshold(self, psf1, psf2):
+    def test_regularization(self, psf1, psf2):
         """
-        Test with an aggressive OTF threshold.
+        Test with an aggressive regularization threshold.
         """
-        kernel = make_kernel(psf1, psf2, otf_threshold=0.5)
+        kernel = make_kernel(psf1, psf2, regularization=0.5)
         assert kernel.shape == psf1.shape
         assert_allclose(kernel.sum(), 1.0)
 
-    def test_otf_threshold_zero(self, psf1, psf2):
+    def test_regularization_zero(self, psf1, psf2):
         """
-        Test with otf_threshold=0 (minimum thresholding).
+        Test with regularization=0 (minimum thresholding).
         """
-        kernel = make_kernel(psf1, psf2, otf_threshold=0)
+        kernel = make_kernel(psf1, psf2, regularization=0)
         assert kernel.shape == psf1.shape
         assert_allclose(kernel.sum(), 1.0)
 
-    def test_otf_threshold_negative(self, psf1, psf2):
+    def test_regularization_negative(self, psf1, psf2):
         """
-        Test that negative otf_threshold raises an error.
+        Test that negative regularization raises an error.
         """
-        match = 'otf_threshold must be in the range'
+        match = 'regularization must be in the range'
         with pytest.raises(ValueError, match=match):
-            make_kernel(psf1, psf2, otf_threshold=-0.1)
+            make_kernel(psf1, psf2, regularization=-0.1)
 
-    def test_otf_threshold_greater_than_one(self, psf1, psf2):
+    def test_regularization_greater_than_one(self, psf1, psf2):
         """
-        Test that otf_threshold > 1 raises an error.
+        Test that regularization > 1 raises an error.
         """
-        match = 'otf_threshold must be in the range'
+        match = 'regularization must be in the range'
         with pytest.raises(ValueError, match=match):
-            make_kernel(psf1, psf2, otf_threshold=1.5)
+            make_kernel(psf1, psf2, regularization=1.5)
 
     def test_window_not_2d(self, psf1, psf2):
         """

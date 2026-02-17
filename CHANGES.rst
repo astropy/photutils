@@ -65,9 +65,9 @@ New Features
   - Added ``make_wiener_kernel`` function that uses Wiener
     regularization to make a PSF matching kernel. [#2171, #2172]
 
-  - Added a ``otf_threshold`` keyword to ``make_kernel`` to regularize
+  - Added a ``regularization`` keyword to ``make_kernel`` to regularize
     division by near-zero values in the source Optical Transfer Function.
-    [#2170, #2171]
+    [#2170, #2171, #2175]
 
   - ``make_kernel`` now validates input PSFs (2D, odd dimensions,
     centered) and the window function output. [#2170]

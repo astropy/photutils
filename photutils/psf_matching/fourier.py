@@ -14,7 +14,7 @@ __all__ = ['create_matching_kernel', 'make_kernel', 'make_wiener_kernel',
            'resize_psf']
 
 
-def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
+def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
     """
     Make a convolution kernel that matches an input PSF to a target PSF
     using the ratio of Fourier transforms.
@@ -43,7 +43,7 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
     Here, :math:`\\mathcal{F}^{-1}` is the inverse Fourier transform,
     :math:`S` and :math:`T` are the Fourier transforms of the source and
     target PSFs (the optical transfer functions, OTFs), :math:`\\lambda`
-    is the ``otf_threshold`` parameter, and :math:`W` is the optional
+    is the ``regularization`` parameter, and :math:`W` is the optional
     ``window`` function (defaulting to 1 if not provided).
 
     Parameters
@@ -77,15 +77,15 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
         For more information on window functions, custom windows, and
         example usage, see :ref:`PSF Matching <psf_matching>`.
 
-    otf_threshold : float, optional
-        The fractional amplitude threshold for the source OTF
-        (Optical Transfer Function, the Fourier transform of the
-        PSF). At frequencies where the source OTF amplitude is below
-        ``otf_threshold`` times the peak amplitude, the Fourier ratio is
-        set to zero to avoid division by near-zero values. Must be in
-        the range [0, 1], where 0 provides no thresholding (only exact
-        zeros are excluded) and values closer to 1 apply more aggressive
-        thresholding.
+    regularization : float, optional
+        The regularization parameter that controls the OTF amplitude
+        threshold for the source OTF (Optical Transfer Function, the
+        Fourier transform of the PSF). At frequencies where the source
+        OTF amplitude is below ``regularization`` times the peak
+        amplitude, the Fourier ratio is set to zero to avoid division by
+        near-zero values. Must be in the range [0, 1], where 0 provides
+        no thresholding (only exact zeros are excluded) and values
+        closer to 1 apply more aggressive thresholding.
 
     Returns
     -------
@@ -97,7 +97,7 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
     ------
     ValueError
         If the PSFs are not 2D arrays, have even dimensions, or do not
-        have the same shape, if ``otf_threshold`` is not in the range
+        have the same shape, if ``regularization`` is not in the range
         [0, 1], or if the window function output is invalid (not a 2D
         array, wrong shape, or values outside [0, 1]).
 
@@ -129,9 +129,9 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
     source_psf, target_psf = _validate_kernel_inputs(
         source_psf, target_psf, window)
 
-    if not 0 <= otf_threshold <= 1:
-        msg = (f'otf_threshold must be in the range [0, 1], '
-               f'got {otf_threshold}.')
+    if not 0 <= regularization <= 1:
+        msg = (f'regularization must be in the range [0, 1], '
+               f'got {regularization}.')
         raise ValueError(msg)
 
     source_otf = np.fft.fft2(source_psf)
@@ -143,7 +143,7 @@ def make_kernel(source_psf, target_psf, *, window=None, otf_threshold=1e-4):
 
     # Regularized division to avoid dividing by near-zero values
     max_otf = np.max(np.abs(source_otf))
-    mask = np.abs(source_otf) > otf_threshold * max_otf
+    mask = np.abs(source_otf) > regularization * max_otf
     ratio = np.zeros_like(source_otf, dtype=complex)
     ratio[mask] = target_otf[mask] / source_otf[mask]
 
@@ -447,7 +447,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
 
 @deprecated('3.0', alternative='make_kernel')
 def create_matching_kernel(source_psf, target_psf, *, window=None,
-                           otf_threshold=1e-4):
+                           regularization=1e-4):
     """
     Create a kernel to match 2D point spread functions (PSF).
 
@@ -458,4 +458,4 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
     return make_kernel(source_psf,  # pragma: no cover
                        target_psf,
                        window=window,
-                       otf_threshold=otf_threshold)
+                       regularization=regularization)

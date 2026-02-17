@@ -43,7 +43,7 @@ noise. The two functions handle this differently:
 
 `~photutils.psf_matching.make_kernel` sets the Fourier ratio to zero at
 frequencies where the source OTF amplitude is below a fraction of the
-peak (controlled by the ``otf_threshold`` parameter, default ``1e-4``):
+peak (controlled by the ``regularization`` parameter, default ``1e-4``):
 
 .. math::
 

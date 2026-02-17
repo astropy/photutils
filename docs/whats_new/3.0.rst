@@ -195,16 +195,16 @@ Improved PSF Matching Tools
 The PSF matching module has been significantly improved with better
 validation, regularization, and documentation.
 
-New otf_threshold parameter
+New regularization parameter
 -----------------------------
 
-The :func:`~photutils.psf_matching.make_kernel` function now
-includes a ``otf_threshold`` parameter to regularize division by
-near-zero values in the Fourier domain. This prevents numerical
-instabilities when the source PSF has very small Fourier coefficients::
+The :func:`~photutils.psf_matching.make_kernel` function now includes a
+``regularization`` parameter to regularize division by near-zero values
+in the Fourier domain. This prevents numerical instabilities when the
+source PSF has very small Fourier coefficients::
 
     >>> from photutils.psf_matching import make_kernel
-    >>> kernel = make_kernel(source_psf, target_psf, otf_threshold=1e-4)
+    >>> kernel = make_kernel(source_psf, target_psf, regularization=1e-4)
 
 The default value of ``1e-4`` provides good regularization for most
 cases, but can be adjusted based on the noise characteristics of your
