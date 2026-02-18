@@ -3,7 +3,10 @@
 Window (tapering) functions for matching PSFs using Fourier methods.
 """
 
+import warnings
+
 import numpy as np
+from astropy.utils.exceptions import AstropyUserWarning
 
 __all__ = [
     'CosineBellWindow',
@@ -100,6 +103,11 @@ class SplitCosineBellWindow:
             msg = ('beta must be between 0.0 and 1.0, inclusive. '
                    f'Got: {beta}')
             raise ValueError(msg)
+
+        if alpha + beta > 1.0:
+            msg = ('alpha + beta > 1.0; the taper region will be '
+                   'clipped to the array boundary.')
+            warnings.warn(msg, AstropyUserWarning)
 
         self.alpha = float(alpha)
         self.beta = float(beta)
@@ -257,11 +265,10 @@ class CosineBellWindow(SplitCosineBellWindow):
     """
     Class to define a 2D cosine bell window function.
 
-    This window equals 1.0 at the center, maintains this value for some
-    radius, then smoothly tapers to 0.0 at a distance determined by
-    ``alpha`` from the center. The taper begins immediately (no inner
-    plateau) and extends inward by a fraction ``alpha`` of the maximum
-    radius.
+    This window equals 1.0 only at the exact center point and smoothly
+    tapers to 0.0. The taper begins immediately from the center (no
+    inner plateau) and extends outward over a fraction ``alpha`` of the
+    maximum radius.
 
     Use this window when you want to preserve the very center of an
     image while applying a gentle taper that starts relatively far from

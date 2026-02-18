@@ -5,6 +5,7 @@ Tests for the windows module.
 
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 from scipy.signal.windows import tukey
 
@@ -97,6 +98,15 @@ def test_split_cosine_bell_invalid_inputs():
         SplitCosineBellWindow(alpha=0.8, beta=-0.1)
     with pytest.raises(ValueError, match=match):
         SplitCosineBellWindow(alpha=0.8, beta=1.1)
+
+
+def test_split_cosine_bell_alpha_plus_beta_gt_one():
+    """
+    Test that alpha + beta > 1.0 warns about taper clipping.
+    """
+    match = 'alpha.*beta.*>.*1.0'
+    with pytest.warns(AstropyUserWarning, match=match):
+        SplitCosineBellWindow(alpha=0.8, beta=0.5)
 
 
 def test_tophat():
