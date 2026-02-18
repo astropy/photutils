@@ -8,10 +8,9 @@ from astropy.utils.decorators import deprecated
 
 from photutils.psf_matching.utils import (_convert_psf_to_otf,
                                           _validate_kernel_inputs,
-                                          _validate_window_array, resize_psf)
+                                          _validate_window_array)
 
-__all__ = ['create_matching_kernel', 'make_kernel', 'make_wiener_kernel',
-           'resize_psf']
+__all__ = ['create_matching_kernel', 'make_kernel', 'make_wiener_kernel']
 
 
 def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
@@ -407,10 +406,6 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
                    f'shape is {penalty_shape}.')
             raise ValueError(msg)
 
-    # Ensure input PSFs are normalized
-    source_psf /= source_psf.sum()
-    target_psf /= target_psf.sum()
-
     source_otf = np.fft.fft2(source_psf)
     target_otf = np.fft.fft2(target_psf)
 
@@ -437,8 +432,10 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         # computed with the DC component at the corner of the array,
         # so we need to shift it to the center to apply the window
         # function.
+        window_array = window(target_psf.shape)
+        _validate_window_array(window_array, target_psf.shape)
         kernel_otf = np.fft.fftshift(kernel_otf)
-        kernel_otf *= window(target_psf.shape)
+        kernel_otf *= window_array
         kernel_otf = np.fft.ifftshift(kernel_otf)
 
     kernel = np.real(np.fft.fftshift(np.fft.ifft2(kernel_otf)))
