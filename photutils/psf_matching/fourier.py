@@ -6,9 +6,9 @@ Tools for matching PSFs using Fourier methods.
 import numpy as np
 from astropy.utils.decorators import deprecated
 
-from photutils.psf_matching.utils import (_convert_psf_to_otf,
-                                          _validate_kernel_inputs,
-                                          _validate_window_array)
+from photutils.psf_matching.utils import (_apply_window_to_fourier,
+                                          _convert_psf_to_otf,
+                                          _validate_kernel_inputs)
 
 __all__ = ['create_matching_kernel', 'make_kernel', 'make_wiener_kernel']
 
@@ -153,16 +153,7 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
 
     # Apply a window function in frequency space
     if window is not None:
-        # The window function is defined in the Fourier domain with the
-        # DC component at the center of the array. The ratio array is
-        # computed with the DC component at the corner of the array,
-        # so we need to shift it to the center to apply the window
-        # function.
-        window_array = window(target_psf.shape)
-        _validate_window_array(window_array, target_psf.shape)
-        ratio = np.fft.fftshift(ratio)
-        ratio *= window_array
-        ratio = np.fft.ifftshift(ratio)
+        ratio = _apply_window_to_fourier(ratio, window, target_psf.shape)
 
     kernel = np.real(np.fft.fftshift(np.fft.ifft2(ratio)))
     if np.sum(kernel) < 1e-30:
@@ -442,16 +433,8 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
 
     # Apply a window function in frequency space
     if window is not None:
-        # The window function is defined in the Fourier domain with the
-        # DC component at the center of the array. The kernel OTF is
-        # computed with the DC component at the corner of the array,
-        # so we need to shift it to the center to apply the window
-        # function.
-        window_array = window(target_psf.shape)
-        _validate_window_array(window_array, target_psf.shape)
-        kernel_otf = np.fft.fftshift(kernel_otf)
-        kernel_otf *= window_array
-        kernel_otf = np.fft.ifftshift(kernel_otf)
+        kernel_otf = _apply_window_to_fourier(
+            kernel_otf, window, target_psf.shape)
 
     kernel = np.real(np.fft.fftshift(np.fft.ifft2(kernel_otf)))
     if np.sum(kernel) < 1e-30:

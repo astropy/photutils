@@ -5,22 +5,12 @@ Tests for the utils module.
 
 import numpy as np
 import pytest
-from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose
 
-from photutils.psf_matching.utils import (_convert_psf_to_otf, _validate_psf,
+from photutils.psf_matching.tests.conftest import _make_gaussian_psf
+from photutils.psf_matching.utils import (_apply_window_to_fourier,
+                                          _convert_psf_to_otf, _validate_psf,
                                           _validate_window_array, resize_psf)
-
-
-def _make_gaussian_psf(size, std):
-    """
-    Make a centered, normalized 2D Gaussian PSF.
-    """
-    cen = (size - 1) / 2.0
-    yy, xx = np.mgrid[0:size, 0:size]
-    model = Gaussian2D(1.0, cen, cen, std, std)
-    psf = model(xx, yy)
-    return psf / psf.sum()
 
 
 class TestValidatePSF:
@@ -63,12 +53,15 @@ class TestValidatePSF:
         with pytest.raises(ValueError, match=match):
             _validate_psf(psf, 'psf')
 
-    def test_zero_psf_no_centering_warning(self):
+    def test_zero_psf_raises(self):
         """
-        Test that an all-zero PSF does not trigger a centering warning.
+        Test that an all-zero PSF raises ValueError (cannot be
+        normalized).
         """
         psf = np.zeros((5, 5))
-        _validate_psf(psf, 'psf')  # should not warn
+        match = 'must have a non-zero sum'
+        with pytest.raises(ValueError, match=match):
+            _validate_psf(psf, 'psf')
 
 
 class TestValidateWindowArray:
@@ -323,3 +316,48 @@ class TestResizePSF:
         match = 'must be positive'
         with pytest.raises(ValueError, match=match):
             resize_psf(psf, 0.0, 0.05)
+
+
+class TestApplyWindowToFourier:
+    def test_basic(self):
+        """
+        Test that _apply_window_to_fourier applies a window to a
+        Fourier array.
+        """
+        shape = (11, 11)
+        fourier_array = np.ones(shape, dtype=complex)
+
+        def uniform_window(shape):
+            return np.ones(shape)
+
+        result = _apply_window_to_fourier(fourier_array, uniform_window,
+                                          shape)
+        assert result.shape == shape
+        assert np.allclose(result, fourier_array)
+
+    def test_zero_window(self):
+        """
+        Test that a zero window zeros out the Fourier array.
+        """
+        shape = (11, 11)
+        fourier_array = np.ones(shape, dtype=complex)
+
+        def zero_window(shape):
+            return np.zeros(shape)
+
+        result = _apply_window_to_fourier(fourier_array, zero_window, shape)
+        assert np.allclose(result, 0.0)
+
+    def test_invalid_window_raises(self):
+        """
+        Test that an invalid window function raises ValueError.
+        """
+        shape = (11, 11)
+        fourier_array = np.ones(shape, dtype=complex)
+
+        def bad_window(shape):  # noqa: ARG001
+            return np.ones((5, 5))  # wrong shape
+
+        match = 'window function must return an array with shape'
+        with pytest.raises(ValueError, match=match):
+            _apply_window_to_fourier(fourier_array, bad_window, shape)

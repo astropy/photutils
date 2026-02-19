@@ -130,7 +130,7 @@ def _validate_window_array(window_array, expected_shape):
                f'{expected_shape}, got {window_array.shape}.')
         raise ValueError(msg)
 
-    if np.any(window_array < 0) or np.any(window_array > 1):
+    if np.any(np.logical_or(window_array < 0, window_array > 1)):
         msg = ('window function values must be in the range [0, 1], '
                f'got range [{np.min(window_array)}, '
                f'{np.max(window_array)}].')
@@ -204,6 +204,42 @@ def _convert_psf_to_otf(psf, shape):
     padded = np.fft.ifftshift(padded)
 
     return np.fft.fft2(padded)
+
+
+def _apply_window_to_fourier(fourier_array, window, shape):
+    """
+    Apply a centered window function to a Fourier-domain array.
+
+    The window function is assumed to be defined with the DC component
+    at the center of the array. Since Fourier arrays use the standard
+    FFT layout with the DC component at the corner, this function shifts
+    the array to the center, applies the window, and shifts it back.
+
+    Parameters
+    ----------
+    fourier_array : 2D `~numpy.ndarray`
+        A complex Fourier-domain array with the DC component at the
+        corner.
+
+    window : callable
+        The window function. Must accept a single ``shape`` tuple and
+        return a 2D array with values in [0, 1].
+
+    shape : tuple of int
+        The shape passed to the window function and the expected shape
+        of the window output.
+
+    Returns
+    -------
+    result : 2D `~numpy.ndarray`
+        The windowed Fourier-domain array, still in standard FFT layout
+        (DC at the corner).
+    """
+    window_array = window(shape)
+    _validate_window_array(window_array, shape)
+    fourier_array = np.fft.fftshift(fourier_array)
+    fourier_array *= window_array
+    return np.fft.ifftshift(fourier_array)
 
 
 def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
