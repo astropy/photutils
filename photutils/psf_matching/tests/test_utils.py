@@ -6,7 +6,6 @@ Tests for the utils module.
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
 from photutils.psf_matching.utils import (_convert_psf_to_otf, _validate_psf,
@@ -48,16 +47,6 @@ class TestValidatePSF:
         psf[2, 2] = 1.0
         match = 'must have odd dimensions'
         with pytest.raises(ValueError, match=match):
-            _validate_psf(psf, 'psf')
-
-    def test_not_centered(self):
-        """
-        Test that non-centered PSF produces a warning.
-        """
-        psf = np.zeros((5, 5))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
             _validate_psf(psf, 'psf')
 
     def test_nan_inf_values(self):
@@ -307,16 +296,6 @@ class TestResizePSF:
         match = 'must have odd dimensions'
         with pytest.raises(ValueError, match=match):
             resize_psf(psf, 0.1, 0.05)
-
-    def test_not_centered(self):
-        """
-        Test that non-centered PSF produces a warning.
-        """
-        psf = np.zeros((5, 5))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            resize_psf(psf, 0.1, 0.1)  # ratio=1.0 -> 5x5 (odd, no extra warn)
 
     def test_non_positive_input_scale(self):
         """

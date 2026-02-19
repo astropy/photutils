@@ -3,10 +3,8 @@
 Utility functions for the psf_matching subpackage.
 """
 
-import warnings
 
 import numpy as np
-from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import zoom
 
 __all__ = ['resize_psf']
@@ -69,7 +67,7 @@ def _validate_kernel_inputs(source_psf, target_psf, window):
 
 def _validate_psf(psf, name):
     """
-    Validate that a PSF is 2D with odd dimensions and centered.
+    Validate that a PSF is 2D with odd dimensions.
 
     Parameters
     ----------
@@ -97,14 +95,6 @@ def _validate_psf(psf, name):
     if not np.all(np.isfinite(psf)):
         msg = f'{name} contains NaN or Inf values.'
         raise ValueError(msg)
-
-    if np.any(psf):
-        center = ((psf.shape[0] - 1) // 2, (psf.shape[1] - 1) // 2)
-        peak = np.unravel_index(np.argmax(psf), psf.shape)
-        if peak != center:
-            msg = (f'The peak of {name} is not centered. Expected peak at '
-                   f'{center}, but found peak at {peak}.')
-            warnings.warn(msg, AstropyUserWarning)
 
 
 def _validate_window_array(window_array, expected_shape):
@@ -213,7 +203,8 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     Parameters
     ----------
     psf : 2D `~numpy.ndarray`
-        The 2D data array of the PSF.
+        The 2D data array of the PSF. The PSF must have odd dimensions.
+        It is assumed to be centered on the central pixel.
 
     input_pixel_scale : float
         The pixel scale of the input ``psf``. The units must match

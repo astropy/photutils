@@ -50,12 +50,14 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
     source_psf : 2D `~numpy.ndarray`
         The source PSF. The source PSF should have higher resolution
         (i.e., narrower) than the target PSF. ``source_psf`` and
-        ``target_psf`` must have the same shape and pixel scale.
+        ``target_psf`` must have the same shape and pixel scale. It is
+        assumed to be centered on the central pixel.
 
     target_psf : 2D `~numpy.ndarray`
         The target PSF. The target PSF should have lower resolution
         (i.e., broader) than the source PSF. ``source_psf`` and
-        ``target_psf`` must have the same shape and pixel scale.
+        ``target_psf`` must have the same shape and pixel scale. It is
+        assumed to be centered on the central pixel.
 
     window : callable, optional
         The window (taper) function or callable class instance used
@@ -65,7 +67,8 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
         returns a 2D array of the same shape. The returned window
         values must be in the range [0, 1], where 1.0 indicates full
         preservation of that spatial frequency and 0.0 indicates
-        complete suppression. Built-in window classes include:
+        complete suppression. The window must be centered on the central
+        pixel. Built-in window classes include:
 
         * `~photutils.psf_matching.HanningWindow`
         * `~photutils.psf_matching.TukeyWindow`
@@ -232,12 +235,14 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
     source_psf : 2D `~numpy.ndarray`
         The source PSF. The source PSF should have higher resolution
         (i.e., narrower) than the target PSF. ``source_psf`` and
-        ``target_psf`` must have the same shape and pixel scale.
+        ``target_psf`` must have the same shape and pixel scale. It is
+        assumed to be centered on the central pixel.
 
     target_psf : 2D `~numpy.ndarray`
         The target PSF. The target PSF should have lower resolution
         (i.e., broader) than the source PSF. ``source_psf`` and
-        ``target_psf`` must have the same shape and pixel scale.
+        ``target_psf`` must have the same shape and pixel scale. It is
+        assumed to be centered on the central pixel.
 
     regularization : float, optional
         The regularization parameter that controls the strength
@@ -294,7 +299,8 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         returns a 2D array of the same shape. The returned window
         values must be in the range [0, 1], where 1.0 indicates full
         preservation of that spatial frequency and 0.0 indicates
-        complete suppression. Built-in window classes include:
+        complete suppression. The window must be centered on the central
+        pixel. Built-in window classes include:
 
         * `~photutils.psf_matching.HanningWindow`
         * `~photutils.psf_matching.TukeyWindow`

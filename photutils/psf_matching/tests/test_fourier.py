@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
 from photutils.psf_matching.fourier import make_kernel, make_wiener_kernel
@@ -100,26 +99,6 @@ class TestMakeKernel:
         match = 'must have odd dimensions'
         with pytest.raises(ValueError, match=match):
             make_kernel(psf, psf)
-
-    def test_source_not_centered(self, psf2):
-        """
-        Test that non-centered source PSF produces a warning.
-        """
-        psf = np.zeros((25, 25))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            make_kernel(psf, psf2)
-
-    def test_target_not_centered(self, psf1):
-        """
-        Test that non-centered target PSF produces a warning.
-        """
-        psf = np.zeros((25, 25))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            make_kernel(psf1, psf)
 
     def test_non_callable_window(self, psf1, psf2):
         """
@@ -308,26 +287,6 @@ class TestMakeKernelWiener:
         match = 'must have odd dimensions'
         with pytest.raises(ValueError, match=match):
             make_wiener_kernel(psf, psf)
-
-    def test_source_not_centered(self, psf2):
-        """
-        Test that non-centered source PSF produces a warning.
-        """
-        psf = np.zeros((25, 25))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            make_wiener_kernel(psf, psf2)
-
-    def test_target_not_centered(self, psf1):
-        """
-        Test that non-centered target PSF produces a warning.
-        """
-        psf = np.zeros((25, 25))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            make_wiener_kernel(psf1, psf)
 
     def test_non_callable_window(self, psf1, psf2):
         """

@@ -146,8 +146,7 @@ The input source and target PSFs must satisfy these requirements:
   pixels equals 1.
 
 * **Centered** (recommended but not required): The peak of the PSF
-  should be at the center of the array. A warning will be issued if
-  the peak is off-center, but the function will still work.
+  should be at the center of the array.
 
 
 Noiseless Gaussian Example
