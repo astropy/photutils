@@ -112,6 +112,13 @@ class SplitCosineBellWindow:
         self.alpha = float(alpha)
         self.beta = float(beta)
 
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                f'alpha={self.alpha!r}, beta={self.beta!r})')
+
+    def __str__(self):
+        return self.__repr__()
+
     def __call__(self, shape):
         """
         Generate the window function for the given shape.
@@ -198,6 +205,12 @@ class HanningWindow(SplitCosineBellWindow):
         # alpha=1.0 (full taper), beta=0.0 (taper starts at center)
         super().__init__(alpha=1.0, beta=0.0)
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}()'
+
+    def __str__(self):
+        return self.__repr__()
+
 
 class TukeyWindow(SplitCosineBellWindow):
     """
@@ -260,6 +273,13 @@ class TukeyWindow(SplitCosineBellWindow):
     def __init__(self, alpha):
         super().__init__(alpha=alpha, beta=1.0 - alpha)
 
+    def __repr__(self):
+        return (f'{self.__class__.__name__}'
+                f'(alpha={self.alpha!r})')
+
+    def __str__(self):
+        return self.__repr__()
+
 
 class CosineBellWindow(SplitCosineBellWindow):
     """
@@ -315,6 +335,13 @@ class CosineBellWindow(SplitCosineBellWindow):
 
     def __init__(self, alpha):
         super().__init__(alpha=alpha, beta=0.0)
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}'
+                f'(alpha={self.alpha!r})')
+
+    def __str__(self):
+        return self.__repr__()
 
 
 class TopHatWindow(SplitCosineBellWindow):
@@ -375,3 +402,10 @@ class TopHatWindow(SplitCosineBellWindow):
 
     def __init__(self, beta):
         super().__init__(alpha=0.0, beta=beta)
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}'
+                f'(beta={self.beta!r})')
+
+    def __str__(self):
+        return self.__repr__()

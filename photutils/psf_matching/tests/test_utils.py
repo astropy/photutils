@@ -6,6 +6,7 @@ Tests for the utils module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+from scipy.fft import fft2
 
 from photutils.psf_matching.tests.conftest import _make_gaussian_psf
 from photutils.psf_matching.utils import (_apply_window_to_fourier,
@@ -165,7 +166,7 @@ class TestConvertPsfToOtf:
         # Compare to a naive approach (no circular shift)
         padded = np.zeros(shape)
         padded[:3, :3] = laplacian
-        otf_naive = np.fft.fft2(padded)
+        otf_naive = fft2(padded)
         power_naive = np.abs(otf_naive) ** 2
 
         assert_allclose(power, power_naive)

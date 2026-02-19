@@ -138,3 +138,28 @@ def test_asymmetric_shape():
     data = window(shape)
     assert data.shape == shape
     assert_allclose(data[25, 12], 1.0)
+
+
+def test_repr_and_str():
+    """
+    Test __repr__ and __str__ for all window classes.
+    """
+    window = SplitCosineBellWindow(alpha=0.4, beta=0.3)
+    assert repr(window) == 'SplitCosineBellWindow(alpha=0.4, beta=0.3)'
+    assert str(window) == repr(window)
+
+    window = HanningWindow()
+    assert repr(window) == 'HanningWindow()'
+    assert str(window) == repr(window)
+
+    window = TukeyWindow(alpha=0.5)
+    assert repr(window) == 'TukeyWindow(alpha=0.5)'
+    assert str(window) == repr(window)
+
+    window = CosineBellWindow(alpha=0.3)
+    assert repr(window) == 'CosineBellWindow(alpha=0.3)'
+    assert str(window) == repr(window)
+
+    window = TopHatWindow(beta=0.4)
+    assert repr(window) == 'TopHatWindow(beta=0.4)'
+    assert str(window) == repr(window)
