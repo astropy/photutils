@@ -84,6 +84,13 @@ class TestValidatePSF:
         with pytest.warns(AstropyUserWarning, match=match):
             _validate_psf(psf, 'psf')
 
+    def test_zero_psf_no_centering_warning(self):
+        """
+        Test that an all-zero PSF does not trigger a centering warning.
+        """
+        psf = np.zeros((5, 5))
+        _validate_psf(psf, 'psf')  # should not warn
+
 
 class TestValidateWindowArray:
     def test_valid_window(self):
@@ -181,6 +188,15 @@ class TestConvertPsfToOtf:
         power_naive = np.abs(otf_naive) ** 2
 
         assert_allclose(power, power_naive)
+
+    def test_psf_larger_than_shape(self):
+        """
+        Test that a PSF larger than the target shape raises ValueError.
+        """
+        psf = np.ones((7, 7))
+        match = 'PSF shape.*is larger than the target shape'
+        with pytest.raises(ValueError, match=match):
+            _convert_psf_to_otf(psf, (5, 5))
 
     def test_laplacian_dc_is_zero(self):
         """

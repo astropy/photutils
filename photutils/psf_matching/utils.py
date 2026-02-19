@@ -102,12 +102,13 @@ def _validate_psf(psf, name):
         msg = f'{name} contains negative values.'
         warnings.warn(msg, AstropyUserWarning)
 
-    center = ((psf.shape[0] - 1) / 2, (psf.shape[1] - 1) / 2)
-    peak = np.unravel_index(np.argmax(psf), psf.shape)
-    if peak != center:
-        msg = (f'The peak of {name} is not centered. Expected peak at '
-               f'{center}, but found peak at {peak}.')
-        warnings.warn(msg, AstropyUserWarning)
+    if np.any(psf):
+        center = ((psf.shape[0] - 1) // 2, (psf.shape[1] - 1) // 2)
+        peak = np.unravel_index(np.argmax(psf), psf.shape)
+        if peak != center:
+            msg = (f'The peak of {name} is not centered. Expected peak at '
+                   f'{center}, but found peak at {peak}.')
+            warnings.warn(msg, AstropyUserWarning)
 
 
 def _validate_window_array(window_array, expected_shape):
@@ -184,6 +185,11 @@ def _convert_psf_to_otf(psf, shape):
         return np.zeros(shape, dtype=complex)
 
     inshape = psf.shape
+
+    if any(i > s for i, s in zip(inshape, shape, strict=True)):
+        msg = (f'The PSF shape {inshape} is larger than the target '
+               f'shape {shape} in at least one dimension.')
+        raise ValueError(msg)
 
     # Zero-pad to the output shape with PSF centered in the array
     padded = np.zeros(shape, dtype=psf.dtype)
