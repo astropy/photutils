@@ -119,6 +119,15 @@ class TestConvertPsfToOtf:
         otf = _convert_psf_to_otf(psf, (5, 5))
         assert_allclose(otf, 0.0)
 
+    def test_invalid_psf(self):
+        match = 'psf must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            _convert_psf_to_otf(np.ones(5), (5, 5))
+
+        match = 'psf must have odd dimensions'
+        with pytest.raises(ValueError, match=match):
+            _convert_psf_to_otf(np.ones((6, 6)), (11, 11))
+
     def test_output_shape(self):
         """
         Test that the output OTF has the requested shape.
@@ -251,6 +260,7 @@ class TestResizePSF:
         assert result.shape == (11, 11)
         assert result.shape[0] % 2 == 1
         assert result.shape[1] % 2 == 1
+        assert_allclose(result.sum(), psf.sum())
 
     def test_resize_odd_output(self):
         """

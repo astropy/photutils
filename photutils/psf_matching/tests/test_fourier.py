@@ -12,7 +12,8 @@ from numpy.testing import assert_allclose
 
 from photutils.psf_matching.fourier import (create_matching_kernel,
                                             make_kernel, make_wiener_kernel)
-from photutils.psf_matching.tests.conftest import _make_gaussian_psf
+from photutils.psf_matching.tests.conftest import (
+    _make_gaussian_psf, _make_gaussian_psf_noncentered)
 from photutils.psf_matching.windows import SplitCosineBellWindow
 
 
@@ -176,16 +177,26 @@ class TestMakeKernel:
         """
         Test with asymmetric PSF shapes.
         """
-        # Create 51x25 PSFs centered at (y=25, x=12)
-        y, x = np.mgrid[0:51, 0:25]
-        psf1 = Gaussian2D(100, 12, 25, 3, 3)(x, y)
-        psf2 = Gaussian2D(100, 12, 25, 5, 5)(x, y)
-        psf1 /= psf1.sum()
-        psf2 /= psf2.sum()
+        # Create 51x25 PSFs centered at (x=12, y=25)
+        shape = (51, 25)
+        psf1 = _make_gaussian_psf_noncentered(shape, 3, xcen=12, ycen=25)
+        psf2 = _make_gaussian_psf_noncentered(shape, 5, xcen=12, ycen=25)
 
         kernel = make_kernel(psf1, psf2)
-        assert kernel.shape == (51, 25)
+        assert kernel.shape == shape
         assert_allclose(kernel.sum(), 1.0)
+
+    def test_zero_kernel_raises(self, psf1, psf2):
+        """
+        Test that a window returning all zeros raises ValueError because
+        the computed kernel sums to zero.
+        """
+        def zero_window(shape):
+            return np.zeros(shape)
+
+        match = 'The computed kernel sums to zero'
+        with pytest.raises(ValueError, match=match):
+            make_kernel(psf1, psf2, window=zero_window)
 
 
 class TestMakeKernelWiener:
@@ -503,15 +514,13 @@ class TestMakeKernelWiener:
         """
         Test with asymmetric PSF shapes.
         """
-        # Create 51x25 PSFs centered at (y=25, x=12)
-        y, x = np.mgrid[0:51, 0:25]
-        psf1 = Gaussian2D(100, 12, 25, 3, 3)(x, y)
-        psf2 = Gaussian2D(100, 12, 25, 5, 5)(x, y)
-        psf1 /= psf1.sum()
-        psf2 /= psf2.sum()
+        # Create 51x25 PSFs centered at (x=12, y=25)
+        shape = (51, 25)
+        psf1 = _make_gaussian_psf_noncentered(shape, 3, xcen=12, ycen=25)
+        psf2 = _make_gaussian_psf_noncentered(shape, 5, xcen=12, ycen=25)
 
         kernel = make_wiener_kernel(psf1, psf2)
-        assert kernel.shape == (51, 25)
+        assert kernel.shape == shape
         assert_allclose(kernel.sum(), 1.0)
 
     def test_window_not_2d(self, psf1, psf2):
@@ -561,6 +570,18 @@ class TestMakeKernelWiener:
         match = 'window function values must be in the range'
         with pytest.raises(ValueError, match=match):
             make_wiener_kernel(psf1, psf2, window=bad_window)
+
+    def test_zero_kernel_raises(self, psf1, psf2):
+        """
+        Test that a window returning all zeros raises ValueError because
+        the computed kernel sums to zero.
+        """
+        def zero_window(shape):
+            return np.zeros(shape)
+
+        match = 'The computed kernel sums to zero'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, window=zero_window)
 
 
 class TestCreateMatchingKernelDeprecated:

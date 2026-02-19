@@ -162,7 +162,9 @@ def _convert_psf_to_otf(psf, shape):
     Parameters
     ----------
     psf : 2D `~numpy.ndarray`
-        The PSF array.
+        The PSF array. The PSF must have odd dimensions and be centered
+        on the central pixel. The PSF shape must be smaller than or
+        equal to the target shape in both dimensions.
 
     shape : tuple of int
         The desired output shape.
