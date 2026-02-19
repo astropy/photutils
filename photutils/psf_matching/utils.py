@@ -98,10 +98,6 @@ def _validate_psf(psf, name):
         msg = f'{name} contains NaN or Inf values.'
         raise ValueError(msg)
 
-    if np.any(psf < 0):
-        msg = f'{name} contains negative values.'
-        warnings.warn(msg, AstropyUserWarning)
-
     if np.any(psf):
         center = ((psf.shape[0] - 1) // 2, (psf.shape[1] - 1) // 2)
         peak = np.unravel_index(np.argmax(psf), psf.shape)
@@ -233,7 +229,15 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     Returns
     -------
     result : 2D `~numpy.ndarray`
-        The resampled/interpolated 2D data array.
+        The resampled/interpolated 2D data array. The output always
+        has odd dimensions. The natural resampled size is computed
+        by taking the ceiling of ``input_size * (input_pixel_scale
+        / output_pixel_scale)`` for each axis, then adding 1 to
+        any axis whose size is even. This guarantees the output is
+        centered and usable for PSF matching. When the output size is
+        adjusted, the effective pixel scale will be slightly smaller
+        than ``output_pixel_scale``; the exact value per axis is
+        ``input_pixel_scale * input_size / output_size``.
 
     Raises
     ------
@@ -252,5 +256,15 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
 
     ratio = input_pixel_scale / output_pixel_scale
 
-    # Scale by ratio**2 to conserve total flux
-    return zoom(psf, ratio, order=order) / ratio**2
+    # Compute target shape using ceiling (never discard pixels), then
+    # add 1 to any even dimension to guarantee an odd output, which is
+    # required for PSF matching.
+    in_shape = np.array(psf.shape)
+    out_shape = np.maximum(1, np.ceil(in_shape * ratio).astype(int))
+    out_shape += out_shape % 2 == 0
+
+    # Per-axis zoom factors for the forced-odd target shape
+    zoom_factors = out_shape / in_shape
+
+    # Scale by the pixel area ratio to conserve total flux
+    return zoom(psf, zoom_factors, order=order) / np.prod(zoom_factors)

@@ -74,16 +74,6 @@ class TestValidatePSF:
         with pytest.raises(ValueError, match=match):
             _validate_psf(psf, 'psf')
 
-    def test_negative_values(self):
-        """
-        Test that negative values produce a warning.
-        """
-        psf = _make_gaussian_psf(25, 3.0)
-        psf[0, 0] = -0.1
-        match = 'contains negative values'
-        with pytest.warns(AstropyUserWarning, match=match):
-            _validate_psf(psf, 'psf')
-
     def test_zero_psf_no_centering_warning(self):
         """
         Test that an all-zero PSF does not trigger a centering warning.
@@ -269,11 +259,36 @@ class TestConvertPsfToOtf:
 class TestResizePSF:
     def test_resize(self):
         """
-        Test basic PSF resizing from one pixel scale to another.
+        Test that resizing returns an odd-shaped output.
+
+        For a (5,5) input with ratio=2.0, ceil gives 10 (even), so one
+        pixel is added to give (11, 11).
         """
         psf = _make_gaussian_psf(5, 1.5)
         result = resize_psf(psf, 0.1, 0.05)
-        assert result.shape == (10, 10)
+        assert result.shape == (11, 11)
+        assert result.shape[0] % 2 == 1
+        assert result.shape[1] % 2 == 1
+
+    def test_resize_odd_output(self):
+        """
+        Test that resizing to a naturally odd output shape is unchanged.
+        """
+        psf = _make_gaussian_psf(5, 1.5)
+        result = resize_psf(psf, 0.1, 0.1)  # ratio=1.0 -> 5x5 (odd)
+        assert result.shape == (5, 5)
+
+    def test_resize_always_odd(self):
+        """
+        Test that the output is always odd across a range of ratios.
+        """
+        psf = _make_gaussian_psf(5, 1.5)
+        for scale_out in [0.04, 0.05, 0.06, 0.07, 0.08]:
+            result = resize_psf(psf, 0.1, scale_out)
+            assert result.shape[0] % 2 == 1, (
+                f'Even output shape {result.shape} for scale={scale_out}')
+            assert result.shape[1] % 2 == 1, (
+                f'Even output shape {result.shape} for scale={scale_out}')
 
     def test_non_2d(self):
         """
@@ -301,7 +316,7 @@ class TestResizePSF:
         psf[0, 0] = 1.0
         match = r'The peak .* is not centered'
         with pytest.warns(AstropyUserWarning, match=match):
-            resize_psf(psf, 0.1, 0.05)
+            resize_psf(psf, 0.1, 0.1)  # ratio=1.0 -> 5x5 (odd, no extra warn)
 
     def test_non_positive_input_scale(self):
         """
