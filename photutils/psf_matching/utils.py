@@ -150,20 +150,22 @@ def _convert_psf_to_otf(psf, shape):
     """
     Convert a point-spread function to an optical transfer function.
 
-    This computes the FFT of a PSF array after zero-padding to the
-    output shape and circularly shifting the PSF so that its center
-    is at [0, 0].
+    This computes the FFT of a PSF array after centering it in a
+    zero-padded array of the output shape and applying `ifftshift` to
+    move the PSF center to position [0, 0].
 
-    The zero-padding is needed when the input kernel (e.g., a 3x3
-    Laplacian) is smaller than the target shape, so that the resulting
-    OTF has the correct size for element-wise operations with other
-    same-shaped OTFs.
+    The PSF is first placed at the center of the zero-padded array,
+    ensuring its center aligns with the array's center. The zero-padding
+    is needed when the input kernel (e.g., a 3x3 Laplacian) is smaller
+    than the target shape, so that the resulting OTF has the correct
+    size for element-wise operations with other same-shaped OTFs.
 
-    The circular shift places the kernel center at position [0, 0],
-    which is the standard convention for computing OTFs via FFT. This
-    ensures correct complex phase in the resulting OTF for general use.
-    Note that when only the power spectrum (|OTF|^2) is needed, the
-    shift has no effect because it only changes the phase.
+    The `ifftshift` operation then moves the PSF center from the array
+    center to position [0, 0], which is the standard convention for
+    computing OTFs via FFT. This ensures correct complex phase in
+    the resulting OTF for general use. Note that when only the power
+    spectrum (|OTF|^2) is needed, the shift has no effect because it
+    only changes the phase.
 
     Parameters
     ----------
@@ -179,17 +181,23 @@ def _convert_psf_to_otf(psf, shape):
         The optical transfer function (complex array).
     """
     if np.all(psf == 0):
-        return np.zeros_like(psf, dtype=complex)
+        return np.zeros(shape, dtype=complex)
 
     inshape = psf.shape
 
-    # Zero-pad to the output shape (corner position)
+    # Zero-pad to the output shape with PSF centered in the array
     padded = np.zeros(shape, dtype=psf.dtype)
-    padded[:inshape[0], :inshape[1]] = psf
 
-    # Circularly shift so that the center of the PSF is at [0, 0]
-    for axis, axis_size in enumerate(inshape):
-        padded = np.roll(padded, -axis_size // 2, axis=axis)
+    # Calculate where to place PSF so its center aligns with padded
+    # array center
+    center = tuple(s // 2 for s in shape)
+    psf_center = tuple(s // 2 for s in inshape)
+    start = tuple(c - pc for c, pc in zip(center, psf_center, strict=True))
+    padded[start[0]:start[0] + inshape[0],
+           start[1]:start[1] + inshape[1]] = psf
+
+    # Shift the centered PSF so its center moves to [0, 0]
+    padded = np.fft.ifftshift(padded)
 
     return np.fft.fft2(padded)
 

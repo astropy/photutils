@@ -43,12 +43,12 @@ noise. The two functions handle this differently:
 
 `~photutils.psf_matching.make_kernel` sets the Fourier ratio to zero at
 frequencies where the source OTF amplitude is below a fraction of the
-peak (controlled by the ``otf_threshold`` parameter, default ``1e-4``):
+peak (controlled by the ``regularization`` parameter, default ``1e-4``):
 
 .. math::
 
     R = \begin{cases}
-        T / S & \text{if } |S| > \epsilon \cdot \max(|S|) \\
+        T / S & \text{if } |S| > \lambda \cdot \max(|S|) \\
         0     & \text{otherwise}
     \end{cases}
 
@@ -72,10 +72,10 @@ fraction of the peak power in the source OTF:
 
     K = \mathcal{F}^{-1} \left[ W \cdot
         \frac{T \cdot S^{*}}
-             {|S|^{2} + \epsilon \cdot \max(|S|^{2})} \right]
+             {|S|^{2} + \lambda \cdot \max(|S|^{2})} \right]
 
 where :math:`\mathcal{F}^{-1}` is the inverse Fourier transform,
-:math:`S^{*}` is the complex conjugate of :math:`S`, :math:`\epsilon` is
+:math:`S^{*}` is the complex conjugate of :math:`S`, :math:`\lambda` is
 the ``regularization`` parameter (default ``1e-4``), and :math:`W` is
 the optional ``window`` function (defaulting to 1 if not provided).
 
@@ -86,7 +86,7 @@ the regularization becomes frequency-dependent:
 
     K = \mathcal{F}^{-1} \left[ W \cdot
         \frac{T \cdot S^{*}}
-              {|S|^{2} + \epsilon \cdot |P|^{2}} \right]
+              {|S|^{2} + \lambda \cdot |P|^{2}} \right]
 
 where :math:`P` is the OTF of the penalty operator.
 
