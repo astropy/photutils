@@ -174,6 +174,14 @@ def _convert_psf_to_otf(psf, shape):
     if np.all(psf == 0):
         return np.zeros(shape, dtype=complex)
 
+    if psf.ndim != 2:
+        msg = 'psf must be a 2D array.'
+        raise ValueError(msg)
+
+    if psf.shape[0] % 2 == 0 or psf.shape[1] % 2 == 0:
+        msg = f'psf must have odd dimensions, got shape {psf.shape}.'
+        raise ValueError(msg)
+
     inshape = psf.shape
 
     if any(i > s for i, s in zip(inshape, shape, strict=True)):

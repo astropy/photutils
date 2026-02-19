@@ -144,9 +144,10 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
     # FFT layout).
 
     # Regularized division to avoid dividing by near-zero values
-    max_otf = np.max(np.abs(source_otf))
-    mask = np.abs(source_otf) > regularization * max_otf
-    ratio = np.zeros_like(source_otf, dtype=complex)
+    abs_source_otf = np.abs(source_otf)
+    max_otf = np.max(abs_source_otf)
+    mask = abs_source_otf > regularization * max_otf
+    ratio = np.zeros_like(source_otf)  # dtype='complex128' from fft2
     ratio[mask] = target_otf[mask] / source_otf[mask]
 
     # Apply a window function in frequency space
@@ -387,22 +388,22 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         if penalty == 'laplacian':
             penalty_array = np.array([[+0, -1, +0],
                                       [-1, +4, -1],
-                                      [+0, -1, +0]])
+                                      [+0, -1, +0]], dtype=float)
         elif penalty == 'biharmonic':
             penalty_array = np.array([[+0, +0, +1, +0, +0],
                                       [+0, +2, -8, +2, +0],
                                       [+1, -8, 20, -8, +1],
                                       [+0, +2, -8, +2, +0],
-                                      [+0, +0, +1, +0, +0]])
+                                      [+0, +0, +1, +0, +0]], dtype=float)
         else:
             msg = (f'Invalid penalty string {penalty!r}. '
-                   'Must be "laplacian" or "biharmonic"')
+                   'Must be "laplacian" or "biharmonic".')
             raise ValueError(msg)
     elif isinstance(penalty, np.ndarray):
         if penalty.ndim != 2:
             msg = 'penalty array must be 2D.'
             raise ValueError(msg)
-        penalty_array = penalty
+        penalty_array = np.asarray(penalty, dtype=float)
     else:
         msg = ('penalty must be None, "laplacian", "biharmonic", or a 2D '
                'numpy array')
