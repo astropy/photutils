@@ -5,6 +5,7 @@ Utility functions for the psf_matching subpackage.
 
 
 import numpy as np
+from scipy.fft import fft2, fftshift, ifftshift
 from scipy.ndimage import zoom
 
 __all__ = ['resize_psf']
@@ -201,9 +202,9 @@ def _convert_psf_to_otf(psf, shape):
            start[1]:start[1] + inshape[1]] = psf
 
     # Shift the centered PSF so its center moves to [0, 0]
-    padded = np.fft.ifftshift(padded)
+    padded = ifftshift(padded)
 
-    return np.fft.fft2(padded)
+    return fft2(padded)
 
 
 def _apply_window_to_fourier(fourier_array, window, shape):
@@ -237,9 +238,9 @@ def _apply_window_to_fourier(fourier_array, window, shape):
     """
     window_array = window(shape)
     _validate_window_array(window_array, shape)
-    fourier_array = np.fft.fftshift(fourier_array)
+    fourier_array = fftshift(fourier_array)
     fourier_array *= window_array
-    return np.fft.ifftshift(fourier_array)
+    return ifftshift(fourier_array)
 
 
 def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):

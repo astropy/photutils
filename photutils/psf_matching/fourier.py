@@ -5,6 +5,7 @@ Tools for matching PSFs using Fourier methods.
 
 import numpy as np
 from astropy.utils.decorators import deprecated
+from scipy.fft import fft2, fftshift, ifft2
 
 from photutils.psf_matching.utils import (_apply_window_to_fourier,
                                           _convert_psf_to_otf,
@@ -137,8 +138,8 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
                f'got {regularization}.')
         raise ValueError(msg)
 
-    source_otf = np.fft.fft2(source_psf)
-    target_otf = np.fft.fft2(target_psf)
+    source_otf = fft2(source_psf)
+    target_otf = fft2(target_psf)
 
     # Note: the following calculations are performed in the Fourier
     # domain with the DC component at the corner of the array (standard
@@ -155,7 +156,7 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
     if window is not None:
         ratio = _apply_window_to_fourier(ratio, window, target_psf.shape)
 
-    kernel = np.real(np.fft.fftshift(np.fft.ifft2(ratio)))
+    kernel = np.real(fftshift(ifft2(ratio)))
     if np.sum(kernel) < 1e-30:
         msg = ('The computed kernel sums to zero, which likely indicates '
                'that the regularization threshold is too high. Try reducing '
@@ -412,8 +413,8 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
                    f'shape is {penalty_shape}.')
             raise ValueError(msg)
 
-    source_otf = np.fft.fft2(source_psf)
-    target_otf = np.fft.fft2(target_psf)
+    source_otf = fft2(source_psf)
+    target_otf = fft2(target_psf)
 
     source_power = np.abs(source_otf) ** 2
 
@@ -436,7 +437,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         kernel_otf = _apply_window_to_fourier(
             kernel_otf, window, target_psf.shape)
 
-    kernel = np.real(np.fft.fftshift(np.fft.ifft2(kernel_otf)))
+    kernel = np.real(fftshift(ifft2(kernel_otf)))
     if np.sum(kernel) < 1e-30:
         msg = ('The computed kernel sums to zero, which likely indicates '
                'that the regularization threshold is too high. Try reducing '
