@@ -7,37 +7,13 @@ import numpy as np
 import pytest
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian2D
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
-from photutils.psf_matching.fourier import make_kernel, make_wiener_kernel
+from photutils.psf_matching.fourier import (create_matching_kernel,
+                                            make_kernel, make_wiener_kernel)
+from photutils.psf_matching.tests.conftest import _make_gaussian_psf
 from photutils.psf_matching.windows import SplitCosineBellWindow
-
-
-def _make_gaussian_psf(size, std):
-    """
-    Make a centered, normalized 2D Gaussian PSF.
-    """
-    cen = (size - 1) / 2.0
-    yy, xx = np.mgrid[0:size, 0:size]
-    model = Gaussian2D(1.0, cen, cen, std, std)
-    psf = model(xx, yy)
-    return psf / psf.sum()
-
-
-@pytest.fixture
-def psf1():
-    """
-    Narrow Gaussian PSF (source).
-    """
-    return _make_gaussian_psf(25, 3.0)
-
-
-@pytest.fixture
-def psf2():
-    """
-    Broad Gaussian PSF (target).
-    """
-    return _make_gaussian_psf(25, 5.0)
 
 
 class TestMakeKernel:
@@ -140,6 +116,14 @@ class TestMakeKernel:
         with pytest.raises(ValueError, match=match):
             make_kernel(psf1, psf2, regularization=1.5)
 
+    def test_regularization_invalid(self, psf1, psf2):
+        """
+        Test that regularization=1 raises an error (range is [0, 1)).
+        """
+        match = 'regularization must be in the range'
+        with pytest.raises(ValueError, match=match):
+            make_kernel(psf1, psf2, regularization=1.0)
+
     def test_window_not_2d(self, psf1, psf2):
         """
         Test that window function returning non-2D array raises error.
@@ -192,7 +176,7 @@ class TestMakeKernel:
         """
         Test with asymmetric PSF shapes.
         """
-        # Create 51x25 PSFs
+        # Create 51x25 PSFs centered at (y=25, x=12)
         y, x = np.mgrid[0:51, 0:25]
         psf1 = Gaussian2D(100, 12, 25, 3, 3)(x, y)
         psf2 = Gaussian2D(100, 12, 25, 5, 5)(x, y)
@@ -519,7 +503,7 @@ class TestMakeKernelWiener:
         """
         Test with asymmetric PSF shapes.
         """
-        # Create 51x25 PSFs
+        # Create 51x25 PSFs centered at (y=25, x=12)
         y, x = np.mgrid[0:51, 0:25]
         psf1 = Gaussian2D(100, 12, 25, 3, 3)(x, y)
         psf2 = Gaussian2D(100, 12, 25, 5, 5)(x, y)
@@ -577,3 +561,23 @@ class TestMakeKernelWiener:
         match = 'window function values must be in the range'
         with pytest.raises(ValueError, match=match):
             make_wiener_kernel(psf1, psf2, window=bad_window)
+
+
+class TestCreateMatchingKernelDeprecated:
+    def test_deprecation_warning(self, psf1, psf2):
+        """
+        Test that create_matching_kernel raises a deprecation warning.
+        """
+        with pytest.warns(AstropyDeprecationWarning):
+            kernel = create_matching_kernel(psf1, psf2)
+        assert_allclose(kernel.sum(), 1.0)
+
+    def test_deprecation_result_matches_make_kernel(self, psf1, psf2):
+        """
+        Test that create_matching_kernel returns the same result as
+        make_kernel.
+        """
+        with pytest.warns(AstropyDeprecationWarning):
+            kernel_old = create_matching_kernel(psf1, psf2)
+        kernel_new = make_kernel(psf1, psf2)
+        assert_allclose(kernel_old, kernel_new)

@@ -85,9 +85,10 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
         Fourier transform of the PSF). At frequencies where the source
         OTF amplitude is below ``regularization`` times the peak
         amplitude, the Fourier ratio is set to zero to avoid division by
-        near-zero values. Must be in the range [0, 1], where 0 provides
+        near-zero values. Must be in the range [0, 1), where 0 provides
         no thresholding (only exact zeros are excluded) and values
-        closer to 1 apply more aggressive thresholding.
+        closer to 1 apply more aggressive thresholding. A value of 1
+        would zero out all frequencies and produce a degenerate kernel.
 
     Returns
     -------
@@ -100,7 +101,7 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
     ValueError
         If the PSFs are not 2D arrays, have even dimensions, or do not
         have the same shape, if ``regularization`` is not in the range
-        [0, 1], or if the window function output is invalid (not a 2D
+        [0, 1), or if the window function output is invalid (not a 2D
         array, wrong shape, or values outside [0, 1]).
 
     TypeError
@@ -131,8 +132,8 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
     source_psf, target_psf = _validate_kernel_inputs(
         source_psf, target_psf, window)
 
-    if not 0 <= regularization <= 1:
-        msg = (f'regularization must be in the range [0, 1], '
+    if not 0 <= regularization < 1:
+        msg = (f'regularization must be in the range [0, 1), '
                f'got {regularization}.')
         raise ValueError(msg)
 
@@ -260,7 +261,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         ``penalty`` is provided, this scales the penalty operator's
         power spectrum directly. Larger values produce smoother but
         less accurate matching kernels; smaller values preserve more
-        detail but may amplify noise.
+        detail but may amplify noise. Must be a positive number.
 
     penalty : `None`, ``'laplacian'``, ``'biharmonic'``, or 2D \
 `~numpy.ndarray`, optional
@@ -406,7 +407,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         penalty_array = np.asarray(penalty, dtype=float)
     else:
         msg = ('penalty must be None, "laplacian", "biharmonic", or a 2D '
-               'numpy array')
+               'numpy array.')
         raise ValueError(msg)
 
     # Validate that PSF is large enough for the penalty
@@ -473,7 +474,7 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
         ``create_matching_kernel`` is deprecated as of Photutils 3.0 and
         will be removed in a future version. Use `make_kernel` instead.
     """
-    return make_kernel(source_psf,  # pragma: no cover
+    return make_kernel(source_psf,
                        target_psf,
                        window=window,
                        regularization=regularization)
