@@ -308,5 +308,7 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     # Per-axis zoom factors for the forced-odd target shape
     zoom_factors = out_shape / in_shape
 
-    # Scale by the pixel area ratio to conserve total flux
-    return zoom(psf, zoom_factors, order=order) / np.prod(zoom_factors)
+    # Normalize the PSF to conserve total flux after resizing.
+    psf_sum = psf.sum()
+    result = zoom(psf, zoom_factors, order=order)
+    return result * (psf_sum / result.sum())
