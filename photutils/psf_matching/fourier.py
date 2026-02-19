@@ -163,6 +163,13 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
         ratio = np.fft.ifftshift(ratio)
 
     kernel = np.real(np.fft.fftshift(np.fft.ifft2(ratio)))
+    if np.sum(kernel) < 1e-30:
+        msg = ('The computed kernel sums to zero, which likely indicates '
+               'that the regularization threshold is too high. Try reducing '
+               'the regularization parameter or using a different window '
+               'function.')
+        raise ValueError(msg)
+
     return kernel / kernel.sum()
 
 
@@ -445,6 +452,13 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         kernel_otf = np.fft.ifftshift(kernel_otf)
 
     kernel = np.real(np.fft.fftshift(np.fft.ifft2(kernel_otf)))
+    if np.sum(kernel) < 1e-30:
+        msg = ('The computed kernel sums to zero, which likely indicates '
+               'that the regularization threshold is too high. Try reducing '
+               'the regularization parameter or using a different window '
+               'function.')
+        raise ValueError(msg)
+
     return kernel / kernel.sum()
 
 

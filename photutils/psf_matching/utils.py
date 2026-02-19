@@ -96,6 +96,10 @@ def _validate_psf(psf, name):
         msg = f'{name} contains NaN or Inf values.'
         raise ValueError(msg)
 
+    if np.sum(psf) == 0:
+        msg = f'{name} must have a non-zero sum; it cannot be normalized.'
+        raise ValueError(msg)
+
 
 def _validate_window_array(window_array, expected_shape):
     """
