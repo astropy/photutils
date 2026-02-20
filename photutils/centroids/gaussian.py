@@ -184,10 +184,10 @@ def centroid_2dg(data, *, error=None, mask=None):
     # Subtract the minimum of the data to make the data values positive.
     # Moments from negative data values can yield undefined Gaussian
     # parameters, e.g., x_stddev and y_stddev.
-    x_mean, y_mean, x_stddev, y_stddev, theta = _gaussian2d_moments(
+    amplitude, x_mean, y_mean, x_stddev, y_stddev, theta = _gaussian2d_moments(
         data - np.min(data))
 
-    g_init = Gaussian2D(amplitude=np.ptp(data),
+    g_init = Gaussian2D(amplitude=amplitude,
                         x_mean=x_mean,
                         y_mean=y_mean,
                         x_stddev=x_stddev,
@@ -198,9 +198,10 @@ def centroid_2dg(data, *, error=None, mask=None):
     y, x = np.indices(data.shape)
 
     with warnings.catch_warnings(record=True) as fit_warnings:
+        warnings.simplefilter('always', AstropyUserWarning)
         gfit = fitter(g_init, x, y, data, weights=weights)
 
-    if len(fit_warnings) > 0:
+    if any(issubclass(w.category, AstropyUserWarning) for w in fit_warnings):
         msg = 'The fit may not have converged. Please check your results.'
         warnings.warn(msg, AstropyUserWarning)
 

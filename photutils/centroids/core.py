@@ -13,6 +13,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.centroids._utils import _process_data_mask
 from photutils.utils._parameters import as_pair
+from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils._round import py2intround
 
@@ -94,10 +95,11 @@ def centroid_com(data, *, mask=None):
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
+    (data,), _ = process_quantities((data,), ('data',))
     data = _process_data_mask(data, mask, ndim=None, fill_value=0.0)
 
     total = np.sum(data)
-    if total == 0:
+    if abs(total) < 1.e-30:
         return np.full(data.ndim, np.nan)
 
     indices = np.ogrid[tuple(slice(0, i) for i in data.shape)]
@@ -113,8 +115,8 @@ def centroid_com(data, *, mask=None):
 def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
                        ypeak=None, search_boxsize=None):
     """
-    Calculate the centroid of an n-dimensional array by fitting a 2D
-    quadratic polynomial.
+    Calculate the centroid of an 2D array by fitting a 2D quadratic
+    polynomial.
 
     A second degree 2D polynomial is fit within a small region of the
     data defined by ``fit_boxsize`` to calculate the centroid position.
@@ -331,10 +333,10 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     coeff_matrix[:, 5] = y * y
 
     # Remove NaNs from data to be fit
-    mask = ~np.isnan(cutout)
-    if np.any(mask):
-        coeff_matrix = coeff_matrix[mask]
-        cutout = cutout[mask]
+    nan_mask = ~np.isnan(cutout)
+    if np.any(nan_mask):
+        coeff_matrix = coeff_matrix[nan_mask]
+        cutout = cutout[nan_mask]
 
     try:
         c = np.linalg.lstsq(coeff_matrix, cutout, rcond=None)[0]
@@ -564,10 +566,13 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
     if ypos.ndim != 1:
         msg = 'ypos must be a 1D array'
         raise ValueError(msg)
+    if len(xpos) != len(ypos):
+        msg = 'xpos and ypos must have the same length'
+        raise ValueError(msg)
 
-    if (np.any(np.min(xpos) < 0) or np.any(np.min(ypos) < 0)
-            or np.any(np.max(xpos) > data.shape[1] - 1)
-            or np.any(np.max(ypos) > data.shape[0] - 1)):
+    if (xpos.min() < 0 or ypos.min() < 0
+            or xpos.max() > data.shape[1] - 1
+            or ypos.max() > data.shape[0] - 1):
         msg = 'xpos, ypos values contain points outside the input data'
         raise ValueError(msg)
 
@@ -639,7 +644,9 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
 
         try:
             xcen, ycen = centroid_func(data_cutout, **centroid_kwargs)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as exc:
+            msg = f'Centroid failed for source at ({xp}, {yp}): {exc}'
+            warnings.warn(msg, AstropyUserWarning, stacklevel=2)
             xcen, ycen = np.nan, np.nan
 
         xcentroids[i] = xcen + slices_large[1].start

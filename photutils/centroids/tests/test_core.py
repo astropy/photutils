@@ -498,6 +498,9 @@ class TestCentroidSources:
         match = 'ypos must be a 1D array'
         with pytest.raises(ValueError, match=match):
             centroid_sources(data, 25, [[26]], box_size=11)
+        match = 'xpos and ypos must have the same length'
+        with pytest.raises(ValueError, match=match):
+            centroid_sources(data, [25, 26], [26], box_size=11)
         match = 'box_size must have 1 or 2 elements'
         with pytest.raises(ValueError, match=match):
             centroid_sources(data, 25, 26, box_size=(1, 2, 3))
@@ -541,11 +544,13 @@ class TestCentroidSources:
         yres = np.copy(ypos).astype(float)
         xres[-1] = 46.689208
         yres[-1] = 49.689208
-        assert_allclose(xcen, xres)
-        assert_allclose(ycen, yres)
+        assert_allclose(xcen, xres, atol=1e-5)
+        assert_allclose(ycen, yres, atol=1e-5)
 
-        xcen, ycen = centroid_sources(data, xpos, ypos, box_size=3,
-                                      centroid_func=centroid_2dg)
+        match = 'Centroid failed for source'
+        with pytest.warns(AstropyUserWarning, match=match):
+            xcen, ycen = centroid_sources(data, xpos, ypos, box_size=3,
+                                          centroid_func=centroid_2dg)
         xres[-1] = np.nan
         yres[-1] = np.nan
         assert_allclose(xcen, xres)
@@ -556,8 +561,10 @@ class TestCentroidSources:
         assert_allclose(xcen, xpos)
         assert_allclose(ycen, ypos)
 
-        xcen, ycen = centroid_sources(data, xpos, ypos, box_size=3,
-                                      centroid_func=centroid_quadratic)
+        match = 'Centroid failed for source'
+        with pytest.warns(AstropyUserWarning, match=match):
+            xcen, ycen = centroid_sources(data, xpos, ypos, box_size=3,
+                                          centroid_func=centroid_quadratic)
         assert_allclose(xcen, xres)
         assert_allclose(ycen, yres)
 

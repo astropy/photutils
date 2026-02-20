@@ -226,6 +226,7 @@ def _gaussian2d_moments(data):
         radians (``theta``) of a 2D Gaussian.
     """
     y, x = np.indices(data.shape)
+    amplitude = np.max(data)
     total = np.sum(data)
 
     # 1st-order moments (centroid)
@@ -258,4 +259,4 @@ def _gaussian2d_moments(data):
     else:
         theta = 0.5 * np.arctan2(2.0 * mu_11, mu_20 - mu_02)
 
-    return x_mean, y_mean, x_stddev, y_stddev, theta
+    return amplitude, x_mean, y_mean, x_stddev, y_stddev, theta

@@ -242,7 +242,15 @@ class TestGaussian2DMoments:
         model = Gaussian2D(1.0, xcen, ycen, x_stddev=std, y_stddev=std)
         y, x = np.mgrid[0:50, 0:50]
         data = model(x, y)
-        x_mean, y_mean, x_stddev, y_stddev, theta = _gaussian2d_moments(data)
+        (amplitude,
+         x_mean,
+         y_mean,
+         x_stddev,
+         y_stddev,
+         theta,
+         ) = _gaussian2d_moments(data)
+
+        assert_allclose(amplitude, 1.0, atol=0.01)
         assert_allclose(x_mean, xcen, atol=0.01)
         assert_allclose(y_mean, ycen, atol=0.01)
         assert_allclose(x_stddev, std, atol=0.1)
@@ -256,13 +264,22 @@ class TestGaussian2DMoments:
         Axis-aligned elliptical Gaussian (theta=0): centroid and axis
         stddevs are recovered. The larger sigma maps to x_stddev.
         """
+        ampl = 3.5
         xcen, ycen = 30.0, 20.0
         x_std, y_std = 6.0, 3.0
-        model = Gaussian2D(1.0, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
+        model = Gaussian2D(ampl, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
                            theta=theta_in)
         y, x = np.mgrid[0:50, 0:50]
         data = model(x, y)
-        x_mean, y_mean, x_stddev, y_stddev, theta = _gaussian2d_moments(data)
+        (amplitude,
+         x_mean,
+         y_mean,
+         x_stddev,
+         y_stddev,
+         theta,
+         ) = _gaussian2d_moments(data)
+
+        assert_allclose(amplitude, ampl, atol=0.01)
         assert_allclose(x_mean, xcen, atol=0.02)
         assert_allclose(y_mean, ycen, atol=0.02)
         assert_allclose(x_stddev, x_std, atol=0.1)
