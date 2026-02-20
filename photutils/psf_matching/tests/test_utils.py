@@ -259,8 +259,6 @@ class TestResizePSF:
         psf = _make_gaussian_psf(5, 1.5)
         result = resize_psf(psf, 0.1, 0.05)
         assert result.shape == (11, 11)
-        assert result.shape[0] % 2 == 1
-        assert result.shape[1] % 2 == 1
         assert_allclose(result.sum(), psf.sum())
 
     def test_resize_odd_output(self):
@@ -278,10 +276,8 @@ class TestResizePSF:
         psf = _make_gaussian_psf(5, 1.5)
         for scale_out in [0.04, 0.05, 0.06, 0.07, 0.08]:
             result = resize_psf(psf, 0.1, scale_out)
-            assert result.shape[0] % 2 == 1, (
-                f'Even output shape {result.shape} for scale={scale_out}')
-            assert result.shape[1] % 2 == 1, (
-                f'Even output shape {result.shape} for scale={scale_out}')
+            assert result.shape[0] % 2 == 1
+            assert result.shape[1] % 2 == 1
 
     def test_non_2d(self):
         """
