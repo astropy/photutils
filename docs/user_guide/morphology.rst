@@ -6,11 +6,11 @@ Introduction
 
 The :func:`~photutils.morphology.data_properties` function can
 be used to calculate the basic morphological properties (e.g.,
-elliptical shape properties) of a single source in a cutout
-image. :func:`~photutils.morphology.data_properties` returns a
-:class:`~photutils.segmentation.SourceCatalog` object. Please see
-:class:`~photutils.segmentation.SourceCatalog` for the list of the many
-properties that are calculated.
+elliptical shape properties) of a single source in a cutout image.
+:func:`~photutils.morphology.data_properties` returns a scalar
+:class:`~photutils.segmentation.SourceCatalog` object (single source).
+Please see :class:`~photutils.segmentation.SourceCatalog` for the list
+of the many properties that are calculated.
 
 The `photutils.morphology` subpackage also includes the
 :func:`~photutils.morphology.gini` function, which calculates the Gini
@@ -26,9 +26,9 @@ from Image Segmentation <image_segmentation>` for more details.
 Getting Started
 ---------------
 
-Let's extract a single object from a synthetic dataset and find
-calculate its morphological properties. For this example, we will
-subtract the background using simple sigma-clipped statistics.
+Let's extract a single object from a synthetic dataset and calculate
+its morphological properties. For this example, we will subtract the
+background using simple sigma-clipped statistics.
 
 First, we create the source image and subtract its background::
 
@@ -38,10 +38,11 @@ First, we create the source image and subtract its background::
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> data -= median  # subtract background
 
-Then, calculate its properties::
+Then, calculate its properties. We define a mask to isolate the source
+pixels by excluding pixels below a flux threshold::
 
     >>> from photutils.morphology import data_properties
-    >>> mask = data < 50
+    >>> mask = data < 50  # isolate source pixels
     >>> cat = data_properties(data, mask=mask)
     >>> columns = ['label', 'xcentroid', 'ycentroid', 'semimajor_sigma',
     ...            'semiminor_sigma', 'orientation']
@@ -125,8 +126,10 @@ and 1 indicates that the flux is concentrated in a single pixel.
 The :func:`~photutils.morphology.gini` function calculates the Gini
 coefficient of a single source using the values in a cutout image.
 The input array may be 1D or 2D. Invalid values (NaN and inf) are
-automatically excluded from the calculation. An optional boolean mask
-can be used to exclude pixels from the calculation.
+automatically excluded from the calculation. Negative pixel values are
+used via their absolute value, consistent with the :math:`|x_i|` term in
+the Lotz et al. formula. An optional boolean mask can be used to exclude
+pixels from the calculation.
 
 Let's calculate the Gini coefficient of the source in the above
 example::
