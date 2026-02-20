@@ -23,14 +23,13 @@ def data_properties(data, mask=None, background=None, wcs=None):
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from all calculations.
 
-    background : float, array_like, or `~astropy.units.Quantity`, optional
-        The background level that was previously present in the input
-        ``data``. ``background`` may either be a scalar value or a 2D
-        image with the same shape as the input ``data``. Inputting the
-        ``background`` merely allows for its properties to be measured
-        within each source segment. The input ``background`` does *not*
-        get subtracted from the input ``data``, which should already be
-        background-subtracted.
+    background : float or array_like, optional
+        The background level previously present in the input ``data``.
+        ``background`` may be a scalar value or a 2D array with the same
+        shape as ``data``. The input ``background`` is not subtracted
+        from ``data``, which should already be background-subtracted;
+        providing it only enables background-related properties to be
+        measured.
 
     wcs : WCS object or `None`, optional
         A world coordinate system (WCS) transformation that
@@ -42,17 +41,56 @@ def data_properties(data, mask=None, background=None, wcs=None):
     Returns
     -------
     result : `~photutils.segmentation.SourceCatalog` instance
-        A `~photutils.segmentation.SourceCatalog` object.
+        A scalar `~photutils.segmentation.SourceCatalog` object (single
+        source) containing the morphological properties.
+
+    Raises
+    ------
+    ValueError
+        If ``data`` is not a 2D array.
+
+    ValueError
+        If ``mask`` is provided and does not have the same shape as
+        ``data``.
+
+    ValueError
+        If ``mask`` is provided and all pixels are masked.
+
+    ValueError
+        If ``background`` is provided and is not a scalar or a 2D array
+        with the same shape as ``data``.
     """
-    # prevent circular import
+    # Prevent circular import
     from photutils.segmentation import SegmentationImage, SourceCatalog
 
-    segment_image = SegmentationImage(np.ones(data.shape, dtype=int))
+    data = np.asanyarray(data)
+    if len(data.shape) != 2:
+        msg = 'data must be a 2D array'
+        raise ValueError(msg)
+
+    seg_arr = np.ones(data.shape, dtype=int)
+    if mask is not None:
+        mask = np.asarray(mask, dtype=bool)
+        if mask.shape != data.shape:
+            msg = 'mask must have the same shape as data'
+            raise ValueError(msg)
+        if np.all(mask):
+            msg = 'All pixels in data are masked'
+            raise ValueError(msg)
+        seg_arr[mask] = 0
+
+    segment_image = SegmentationImage(seg_arr)
 
     if background is not None:
-        background = np.atleast_1d(background)
-        if background.shape == (1,):
-            background = np.zeros(data.shape) + background
+        background = np.asarray(background)
+        if background.ndim == 0:
+            background = np.full(data.shape, float(background))
+        elif background.shape != data.shape:
+            msg = ('background must be a scalar or a 2D array '
+                   'with the same shape as data')
+            raise ValueError(msg)
 
-    return SourceCatalog(data, segment_image, mask=mask,
+    # mask is encoded in seg_arr (masked pixels set to 0), so
+    # mask=None is intentional here
+    return SourceCatalog(data, segment_image, mask=None,
                          background=background, wcs=wcs)[0]

@@ -3,27 +3,19 @@
 Tests for the core module.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
 from photutils.datasets import make_wcs
 from photutils.morphology import data_properties
-from photutils.utils._optional_deps import HAS_SKIMAGE
-
-XCS = [25.7]
-YCS = [26.2]
-XSTDDEVS = [3.2, 4.0]
-YSTDDEVS = [5.7, 4.1]
-THETAS = np.array([30.0, 45.0]) * np.pi / 180.0
-DATA = np.zeros((3, 3))
-DATA[0:2, 1] = 1.0
-DATA[1, 0:2] = 1.0
-DATA[1, 1] = 2.0
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_data_properties():
+    """
+    Test basics of ``data_properties`` with and without a mask.
+    """
     data = np.ones((2, 2)).astype(float)
     mask = np.array([[False, False], [True, True]])
     props = data_properties(data, mask=None)
@@ -41,13 +33,79 @@ def test_data_properties():
     assert props.sky_centroid is not None
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_data_properties_invalid_data_shape():
+    """
+    Test that data must be a 2D array.
+    """
+    match = 'data must be a 2D array'
+    with pytest.raises(ValueError, match=match):
+        data_properties(np.ones(10))  # 1D
+
+    with pytest.raises(ValueError, match=match):
+        data_properties([1, 2, 3])  # 1D list
+
+    with pytest.raises(ValueError, match=match):
+        data_properties(np.ones((3, 3, 3)))  # 3D
+
+
+def test_data_properties_mask_invalid_shape():
+    """
+    Test that mask must have the same shape as data.
+    """
+    data = np.ones((10, 10))
+
+    match = 'mask must have the same shape as data'
+    with pytest.raises(ValueError, match=match):
+        data_properties(data, mask=np.zeros((5, 5), dtype=bool))
+
+    match = 'mask must have the same shape as data'
+    with pytest.raises(ValueError, match=match):
+        data_properties(data, mask=np.zeros((10, 5), dtype=bool))
+
+
 def test_data_properties_bkg():
+    """
+    Test with a scalar and 2D array background.
+    """
     data = np.ones((3, 3)).astype(float)
     props = data_properties(data, background=1.0)
     assert props.area.value == 9.0
     assert props.background_sum == 9.0
 
-    match = 'background must be a 2D array'
+    bkg_2d = np.full((3, 3), 2.0)
+    props2 = data_properties(data, background=bkg_2d)
+    assert props2.background_sum == 18.0
+
+
+def test_data_properties_bkg_invalid():
+    """
+    Test that invalid background inputs raise ``ValueError``.
+    """
+    data = np.ones((3, 3))
+
+    match = 'background must be a scalar or a 2D array'
     with pytest.raises(ValueError, match=match):
         data_properties(data, background=[1.0, 2.0])
+
+    with pytest.raises(ValueError, match=match):
+        data_properties(data, background=np.ones((2, 2)))
+
+
+def test_data_properties_all_masked():
+    """
+    Test that an all-True mask raises ``ValueError``.
+    """
+    data = np.ones((4, 4))
+    mask = np.ones((4, 4), dtype=bool)
+    match = 'All pixels in data are masked'
+    with pytest.raises(ValueError, match=match):
+        data_properties(data, mask=mask)
+
+
+def test_data_properties_quantity():
+    """
+    Test that ``~astropy.units.Quantity`` input is accepted.
+    """
+    data = np.ones((3, 3)) * u.Jy
+    props = data_properties(data)
+    assert props.area.value == 9.0
