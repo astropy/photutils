@@ -19,6 +19,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture.core import _aperture_metadata
+from photutils.morphology import gini as gini_func
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _moments, _moments_central
 from photutils.utils._quantity_helpers import process_quantities
@@ -1753,14 +1754,4 @@ class ApertureStats:
         while a Gini coefficient value of 1 represents a galaxy image
         with all its light concentrated in just one pixel.
         """
-        gini = []
-        for arr in self._data_values_center:
-            if np.all(np.isnan(arr)):
-                gini.append(np.nan)
-                continue
-            npix = np.size(arr)
-            normalization = np.abs(np.mean(arr)) * npix * (npix - 1)
-            kernel = ((2.0 * np.arange(1, npix + 1) - npix - 1)
-                      * np.abs(np.sort(arr)))
-            gini.append(np.sum(kernel) / normalization)
-        return np.array(gini)
+        return np.array([gini_func(arr) for arr in self._data_values_center])
