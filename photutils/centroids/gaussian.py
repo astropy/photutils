@@ -27,9 +27,10 @@ def centroid_1dg(data, *, error=None, mask=None):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
-        The 2D image data. The image should be a background-subtracted
-        cutout image containing a single source.
+    data : 2D array_like
+        The 2D image data. ``data`` can be a `~numpy.ma.MaskedArray`.
+        The image should be a background-subtracted cutout image
+        containing a single source.
 
     error : 2D `~numpy.ndarray`, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -37,6 +38,8 @@ def centroid_1dg(data, *, error=None, mask=None):
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
+        If ``data`` is a `~numpy.ma.MaskedArray`, its mask will be
+        combined (using bitwise OR) with the input ``mask``.
 
     Returns
     -------
@@ -144,9 +147,10 @@ def centroid_2dg(data, *, error=None, mask=None):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
-        The 2D image data. The image should be a background-subtracted
-        cutout image containing a single source.
+    data : 2D array_like
+        The 2D image data. ``data`` can be a `~numpy.ma.MaskedArray`.
+        The image should be a background-subtracted cutout image
+        containing a single source.
 
     error : 2D `~numpy.ndarray`, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -154,6 +158,8 @@ def centroid_2dg(data, *, error=None, mask=None):
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
+        If ``data`` is a `~numpy.ma.MaskedArray`, its mask will be
+        combined (using bitwise OR) with the input ``mask``.
 
     Returns
     -------

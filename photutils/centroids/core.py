@@ -31,8 +31,9 @@ def centroid_com(data, *, mask=None):
 
     Parameters
     ----------
-    data : `~numpy.ndarray`
-        The input n-dimensional array. The image should be a
+    data : array_like
+        The input n-dimensional array. ``data`` can be a
+        `~numpy.ma.MaskedArray`. The image should be a
         background-subtracted cutout image containing a single
         source. The source should be significantly stronger than the
         background noise. If the data contains nearly equal positive and
@@ -43,6 +44,8 @@ def centroid_com(data, *, mask=None):
     mask : bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
+        If ``data`` is a `~numpy.ma.MaskedArray`, its mask will be
+        combined (using bitwise OR) with the input ``mask``.
 
     Returns
     -------
@@ -133,14 +136,17 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
-        The 2D image data. The image should be a background-subtracted
-        cutout image containing a single source.
+    data : 2D array_like
+        The 2D image data. ``data`` can be a `~numpy.ma.MaskedArray`.
+        The image should be a background-subtracted cutout image
+        containing a single source.
 
-    mask : bool `~numpy.ndarray`, optional
+    mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
-        Masked data are excluded from calculations.
+        Masked data are excluded from calculations. If ``data`` is
+        a `~numpy.ma.MaskedArray`, its mask will be combined (using
+        bitwise OR) with the input ``mask``.
 
     fit_boxsize : int or tuple of int, optional
         The size (in pixels) of the box used to define the fitting
@@ -423,15 +429,18 @@ class CentroidQuadratic:
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray`
-            The 2D image data. The image should be a
+        data : 2D array_like
+            The 2D image data. ``data`` can be a
+            `~numpy.ma.MaskedArray`. The image should be a
             background-subtracted cutout image containing a single
             source.
 
-        mask : bool `~numpy.ndarray`, optional
+        mask : 2D bool `~numpy.ndarray`, optional
             A boolean mask, with the same shape as ``data``, where a
             `True` value indicates the corresponding element of ``data``
-            is masked. Masked data are excluded from calculations.
+            is masked. If ``data`` is a `~numpy.ma.MaskedArray`, its
+            mask will be combined (using bitwise OR) with the input
+            ``mask``. Masked data are excluded from calculations.
 
         Returns
         -------
@@ -456,8 +465,9 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
-        The 2D image data. The image should be background-subtracted.
+    data : 2D array_like
+        The 2D image data. ``data`` can be a `~numpy.ma.MaskedArray`.
+        The image should be background-subtracted.
 
     xpos, ypos : float or array_like of float
         The initial ``x`` and ``y`` pixel position(s) of the center
@@ -486,7 +496,8 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
     mask : 2D bool `~numpy.ndarray`, optional
         A 2D boolean array with the same shape as ``data``, where a
         `True` value indicates the corresponding element of ``data`` is
-        masked.
+        masked. If ``data`` is a `~numpy.ma.MaskedArray`, its mask will
+        be combined (using bitwise OR) with the input ``mask``.
 
     centroid_func : callable, optional
         A callable object (e.g., function or class) that is used to
