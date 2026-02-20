@@ -11,7 +11,7 @@ __all__ = ['gini']
 def gini(data, mask=None):
     r"""
     Calculate the `Gini coefficient
-    <https://en.wikipedia.org/wiki/Gini_coefficient>`_ of a 2D array.
+    <https://en.wikipedia.org/wiki/Gini_coefficient>`_ of an array.
 
     The Gini coefficient is calculated using the prescription from `Lotz
     et al. 2004
@@ -40,10 +40,14 @@ def gini(data, mask=None):
     input data. As there is not a general standard for doing this, this
     is left for the user.
 
+    Invalid values (NaN and inf) in the input are automatically excluded
+    from the calculation.
+
     Parameters
     ----------
     data : array_like
-        The 2D data array or object that can be converted to an array.
+        The 1D or 2D data array or object that can be converted to an
+        array.
 
     mask : array_like, optional
         A boolean mask with the same shape as ``data`` where `True`
@@ -53,13 +57,30 @@ def gini(data, mask=None):
     Returns
     -------
     result : float
-        The Gini coefficient of the input 2D array.
+        The Gini coefficient of the input array.
+
+    Raises
+    ------
+    ValueError
+        If ``mask`` is provided and does not have the same shape as
+        ``data``.
     """
-    values = data[~mask] if mask is not None else np.ravel(data)
-    if np.all(np.isnan(values)):
+    data = np.asarray(data)
+    if mask is not None:
+        mask = np.asarray(mask, dtype=bool)
+        if mask.shape != data.shape:
+            msg = 'mask must have the same shape as data'
+            raise ValueError(msg)
+        values = np.ravel(data[~mask])
+    else:
+        values = np.ravel(data)
+
+    # Exclude invalid values (NaN, inf)
+    values = values[np.isfinite(values)]
+    if values.size == 0:
         return np.nan
 
-    npix = np.size(values)
+    npix = values.size
     normalization = np.abs(np.mean(values)) * npix * (npix - 1)
     if normalization == 0:
         return 0.0

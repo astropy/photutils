@@ -124,8 +124,9 @@ and 1 indicates that the flux is concentrated in a single pixel.
 
 The :func:`~photutils.morphology.gini` function calculates the Gini
 coefficient of a single source using the values in a cutout image.
-An optional boolean mask can be used to exclude pixels from the
-calculation.
+The input array may be 1D or 2D. Invalid values (NaN and inf) are
+automatically excluded from the calculation. An optional boolean mask
+can be used to exclude pixels from the calculation.
 
 Let's calculate the Gini coefficient of the source in the above
 example::
