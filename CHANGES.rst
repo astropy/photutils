@@ -91,6 +91,10 @@ Bug Fixes
   - ``build_ellipse_model`` now integrates over all angles instead of
     stopping once it hits the edge of the output image. [#2156]
 
+- ``photutils.morphology``
+
+  - Fixed issues with negative pixel values input to ``gini``. [#2178]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now handle
