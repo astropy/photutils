@@ -267,7 +267,9 @@ def centroid_2dg(data, *, error=None, mask=None):
     if data.mask is not np.ma.nomask:
         weights[data.mask] = 0.0
 
-    mask = data.mask
+    # Normalize np.ma.nomask (False) to None so that data_properties
+    # does not mistake a scalar boolean for a same-shaped boolean array.
+    mask = data.mask if data.mask is not np.ma.nomask else None
     data.fill_value = 0.0
     data = data.filled()
 
