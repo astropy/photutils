@@ -12,7 +12,7 @@ import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.centroids.core import (CentroidQuadratic, centroid_com,
                                       centroid_quadratic, centroid_sources)
@@ -180,6 +180,20 @@ def test_centroid_com_masked_array():
     xc4, yc4 = centroid_com(data.data, mask=full_mask)
     assert xc3 == xc4
     assert yc3 == yc4
+
+
+def test_centroid_com_mutation():
+    """
+    Test that centroid_com does not mutate the input data or mask.
+    """
+    data = np.ones((5, 5))
+    mask = np.zeros((5, 5), dtype=bool)
+    mask[2, 2] = True
+    data_orig = data.copy()
+    mask_orig = mask.copy()
+    centroid_com(data, mask=mask)
+    assert_array_equal(data, data_orig)
+    assert_array_equal(mask, mask_orig)
 
 
 @pytest.mark.parametrize('x_std', [3.2, 4.0])
@@ -357,6 +371,21 @@ def test_centroid_quadratic_edge():
     with pytest.warns(AstropyUserWarning, match=match):
         xycen = centroid_quadratic(data)
     assert_allclose(xycen, (0, 0))
+
+
+def test_centroid_quadratic_mutation():
+    """
+    Test that centroid_quadratic does not mutate the input data or mask.
+    """
+    data = np.ones((11, 11))
+    data[5, 5] = 10.0
+    mask = np.zeros((11, 11), dtype=bool)
+    mask[0, 0] = True
+    data_orig = data.copy()
+    mask_orig = mask.copy()
+    centroid_quadratic(data, mask=mask)
+    assert_array_equal(data, data_orig)
+    assert_array_equal(mask, mask_orig)
 
 
 def test_centroid_quadratic_fit_failed():
@@ -612,6 +641,22 @@ class TestCentroidSources:
                                       centroid_func=centroid_quadratic,
                                       xpeak=7, ypeak=7, fit_boxsize=3)
         assert_allclose(xycen3, ([7], [7]))
+
+
+def test_centroid_sources_mutation():
+    """
+    Test that centroid_sources does not mutate the input data or mask.
+    """
+    data = np.ones((50, 50))
+    mask = np.zeros((50, 50), dtype=bool)
+    mask[10, 10] = True
+    xpos = [25.0]
+    ypos = [26.0]
+    data_orig = data.copy()
+    mask_orig = mask.copy()
+    centroid_sources(data, xpos, ypos, box_size=11, mask=mask)
+    np.testing.assert_array_equal(data, data_orig)
+    np.testing.assert_array_equal(mask, mask_orig)
 
 
 def test_cutout_mask():
