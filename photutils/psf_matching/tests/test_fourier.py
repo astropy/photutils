@@ -7,38 +7,14 @@ import numpy as np
 import pytest
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
-from photutils.psf_matching.fourier import make_kernel, make_wiener_kernel
+from photutils.psf_matching.fourier import (create_matching_kernel,
+                                            make_kernel, make_wiener_kernel)
+from photutils.psf_matching.tests.conftest import (
+    _make_gaussian_psf, _make_gaussian_psf_noncentered)
 from photutils.psf_matching.windows import SplitCosineBellWindow
-
-
-def _make_gaussian_psf(size, std):
-    """
-    Make a centered, normalized 2D Gaussian PSF.
-    """
-    cen = (size - 1) / 2.0
-    yy, xx = np.mgrid[0:size, 0:size]
-    model = Gaussian2D(1.0, cen, cen, std, std)
-    psf = model(xx, yy)
-    return psf / psf.sum()
-
-
-@pytest.fixture
-def psf1():
-    """
-    Narrow Gaussian PSF (source).
-    """
-    return _make_gaussian_psf(25, 3.0)
-
-
-@pytest.fixture
-def psf2():
-    """
-    Broad Gaussian PSF (target).
-    """
-    return _make_gaussian_psf(25, 5.0)
 
 
 class TestMakeKernel:
@@ -101,26 +77,6 @@ class TestMakeKernel:
         with pytest.raises(ValueError, match=match):
             make_kernel(psf, psf)
 
-    def test_source_not_centered(self, psf2):
-        """
-        Test that non-centered source PSF produces a warning.
-        """
-        psf = np.zeros((25, 25))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            make_kernel(psf, psf2)
-
-    def test_target_not_centered(self, psf1):
-        """
-        Test that non-centered target PSF produces a warning.
-        """
-        psf = np.zeros((25, 25))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            make_kernel(psf1, psf)
-
     def test_non_callable_window(self, psf1, psf2):
         """
         Test that non-callable window raises TypeError.
@@ -160,6 +116,14 @@ class TestMakeKernel:
         match = 'regularization must be in the range'
         with pytest.raises(ValueError, match=match):
             make_kernel(psf1, psf2, regularization=1.5)
+
+    def test_regularization_invalid(self, psf1, psf2):
+        """
+        Test that regularization=1 raises an error (range is [0, 1)).
+        """
+        match = 'regularization must be in the range'
+        with pytest.raises(ValueError, match=match):
+            make_kernel(psf1, psf2, regularization=1.0)
 
     def test_window_not_2d(self, psf1, psf2):
         """
@@ -213,16 +177,26 @@ class TestMakeKernel:
         """
         Test with asymmetric PSF shapes.
         """
-        # Create 51x25 PSFs
-        y, x = np.mgrid[0:51, 0:25]
-        psf1 = Gaussian2D(100, 12, 25, 3, 3)(x, y)
-        psf2 = Gaussian2D(100, 12, 25, 5, 5)(x, y)
-        psf1 /= psf1.sum()
-        psf2 /= psf2.sum()
+        # Create 51x25 PSFs centered at (x=12, y=25)
+        shape = (51, 25)
+        psf1 = _make_gaussian_psf_noncentered(shape, 3, xcen=12, ycen=25)
+        psf2 = _make_gaussian_psf_noncentered(shape, 5, xcen=12, ycen=25)
 
         kernel = make_kernel(psf1, psf2)
-        assert kernel.shape == (51, 25)
+        assert kernel.shape == shape
         assert_allclose(kernel.sum(), 1.0)
+
+    def test_zero_kernel_raises(self, psf1, psf2):
+        """
+        Test that a window returning all zeros raises ValueError because
+        the computed kernel sums to zero.
+        """
+        def zero_window(shape):
+            return np.zeros(shape)
+
+        match = 'The computed kernel sums to zero'
+        with pytest.raises(ValueError, match=match):
+            make_kernel(psf1, psf2, window=zero_window)
 
 
 class TestMakeKernelWiener:
@@ -308,26 +282,6 @@ class TestMakeKernelWiener:
         match = 'must have odd dimensions'
         with pytest.raises(ValueError, match=match):
             make_wiener_kernel(psf, psf)
-
-    def test_source_not_centered(self, psf2):
-        """
-        Test that non-centered source PSF produces a warning.
-        """
-        psf = np.zeros((25, 25))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            make_wiener_kernel(psf, psf2)
-
-    def test_target_not_centered(self, psf1):
-        """
-        Test that non-centered target PSF produces a warning.
-        """
-        psf = np.zeros((25, 25))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            make_wiener_kernel(psf1, psf)
 
     def test_non_callable_window(self, psf1, psf2):
         """
@@ -560,13 +514,91 @@ class TestMakeKernelWiener:
         """
         Test with asymmetric PSF shapes.
         """
-        # Create 51x25 PSFs
-        y, x = np.mgrid[0:51, 0:25]
-        psf1 = Gaussian2D(100, 12, 25, 3, 3)(x, y)
-        psf2 = Gaussian2D(100, 12, 25, 5, 5)(x, y)
-        psf1 /= psf1.sum()
-        psf2 /= psf2.sum()
+        # Create 51x25 PSFs centered at (x=12, y=25)
+        shape = (51, 25)
+        psf1 = _make_gaussian_psf_noncentered(shape, 3, xcen=12, ycen=25)
+        psf2 = _make_gaussian_psf_noncentered(shape, 5, xcen=12, ycen=25)
 
         kernel = make_wiener_kernel(psf1, psf2)
-        assert kernel.shape == (51, 25)
+        assert kernel.shape == shape
         assert_allclose(kernel.sum(), 1.0)
+
+    def test_window_not_2d(self, psf1, psf2):
+        """
+        Test that window function returning non-2D array raises error.
+        """
+        def bad_window(shape):
+            return np.ones(shape[0])  # 1D array
+
+        match = 'window function must return a 2D array'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, window=bad_window)
+
+    def test_window_wrong_shape(self, psf1, psf2):
+        """
+        Test that window function returning wrong shape raises error.
+        """
+        def bad_window(shape):  # noqa: ARG001
+            return np.ones((10, 10))  # wrong shape
+
+        match = 'window function must return an array with shape'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, window=bad_window)
+
+    def test_window_values_below_zero(self, psf1, psf2):
+        """
+        Test that window function with values < 0 raises error.
+        """
+        def bad_window(shape):
+            arr = np.ones(shape)
+            arr[0, 0] = -0.1
+            return arr
+
+        match = 'window function values must be in the range'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, window=bad_window)
+
+    def test_window_values_above_one(self, psf1, psf2):
+        """
+        Test that window function with values > 1 raises error.
+        """
+        def bad_window(shape):
+            arr = np.ones(shape)
+            arr[0, 0] = 1.5
+            return arr
+
+        match = 'window function values must be in the range'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, window=bad_window)
+
+    def test_zero_kernel_raises(self, psf1, psf2):
+        """
+        Test that a window returning all zeros raises ValueError because
+        the computed kernel sums to zero.
+        """
+        def zero_window(shape):
+            return np.zeros(shape)
+
+        match = 'The computed kernel sums to zero'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, window=zero_window)
+
+
+class TestCreateMatchingKernelDeprecated:
+    def test_deprecation_warning(self, psf1, psf2):
+        """
+        Test that create_matching_kernel raises a deprecation warning.
+        """
+        with pytest.warns(AstropyDeprecationWarning):
+            kernel = create_matching_kernel(psf1, psf2)
+        assert_allclose(kernel.sum(), 1.0)
+
+    def test_deprecation_result_matches_make_kernel(self, psf1, psf2):
+        """
+        Test that create_matching_kernel returns the same result as
+        make_kernel.
+        """
+        with pytest.warns(AstropyDeprecationWarning):
+            kernel_old = create_matching_kernel(psf1, psf2)
+        kernel_new = make_kernel(psf1, psf2)
+        assert_allclose(kernel_old, kernel_new)

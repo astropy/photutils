@@ -5,23 +5,13 @@ Tests for the utils module.
 
 import numpy as np
 import pytest
-from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
+from scipy.fft import fft2
 
-from photutils.psf_matching.utils import (_convert_psf_to_otf, _validate_psf,
+from photutils.psf_matching.tests.conftest import _make_gaussian_psf
+from photutils.psf_matching.utils import (_apply_window_to_fourier,
+                                          _convert_psf_to_otf, _validate_psf,
                                           _validate_window_array, resize_psf)
-
-
-def _make_gaussian_psf(size, std):
-    """
-    Make a centered, normalized 2D Gaussian PSF.
-    """
-    cen = (size - 1) / 2.0
-    yy, xx = np.mgrid[0:size, 0:size]
-    model = Gaussian2D(1.0, cen, cen, std, std)
-    psf = model(xx, yy)
-    return psf / psf.sum()
 
 
 class TestValidatePSF:
@@ -50,16 +40,6 @@ class TestValidatePSF:
         with pytest.raises(ValueError, match=match):
             _validate_psf(psf, 'psf')
 
-    def test_not_centered(self):
-        """
-        Test that non-centered PSF produces a warning.
-        """
-        psf = np.zeros((5, 5))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
-            _validate_psf(psf, 'psf')
-
     def test_nan_inf_values(self):
         """
         Test that NaN or Inf values raise ValueError.
@@ -74,14 +54,14 @@ class TestValidatePSF:
         with pytest.raises(ValueError, match=match):
             _validate_psf(psf, 'psf')
 
-    def test_negative_values(self):
+    def test_zero_psf_raises(self):
         """
-        Test that negative values produce a warning.
+        Test that an all-zero PSF raises ValueError (cannot be
+        normalized).
         """
-        psf = _make_gaussian_psf(25, 3.0)
-        psf[0, 0] = -0.1
-        match = 'contains negative values'
-        with pytest.warns(AstropyUserWarning, match=match):
+        psf = np.zeros((5, 5))
+        match = 'must have a non-zero sum'
+        with pytest.raises(ValueError, match=match):
             _validate_psf(psf, 'psf')
 
 
@@ -140,6 +120,15 @@ class TestConvertPsfToOtf:
         otf = _convert_psf_to_otf(psf, (5, 5))
         assert_allclose(otf, 0.0)
 
+    def test_invalid_psf(self):
+        match = 'psf must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            _convert_psf_to_otf(np.ones(5), (5, 5))
+
+        match = 'psf must have odd dimensions'
+        with pytest.raises(ValueError, match=match):
+            _convert_psf_to_otf(np.ones((6, 6)), (11, 11))
+
     def test_output_shape(self):
         """
         Test that the output OTF has the requested shape.
@@ -177,10 +166,19 @@ class TestConvertPsfToOtf:
         # Compare to a naive approach (no circular shift)
         padded = np.zeros(shape)
         padded[:3, :3] = laplacian
-        otf_naive = np.fft.fft2(padded)
+        otf_naive = fft2(padded)
         power_naive = np.abs(otf_naive) ** 2
 
         assert_allclose(power, power_naive)
+
+    def test_psf_larger_than_shape(self):
+        """
+        Test that a PSF larger than the target shape raises ValueError.
+        """
+        psf = np.ones((7, 7))
+        match = 'PSF shape.*is larger than the target shape'
+        with pytest.raises(ValueError, match=match):
+            _convert_psf_to_otf(psf, (5, 5))
 
     def test_laplacian_dc_is_zero(self):
         """
@@ -253,11 +251,37 @@ class TestConvertPsfToOtf:
 class TestResizePSF:
     def test_resize(self):
         """
-        Test basic PSF resizing from one pixel scale to another.
+        Test that resizing returns an odd-shaped output.
+
+        For a (5,5) input with ratio=2.0, ceil gives 10 (even), so one
+        pixel is added to give (11, 11).
         """
         psf = _make_gaussian_psf(5, 1.5)
         result = resize_psf(psf, 0.1, 0.05)
-        assert result.shape == (10, 10)
+        assert result.shape == (11, 11)
+        assert result.shape[0] % 2 == 1
+        assert result.shape[1] % 2 == 1
+        assert_allclose(result.sum(), psf.sum())
+
+    def test_resize_odd_output(self):
+        """
+        Test that resizing to a naturally odd output shape is unchanged.
+        """
+        psf = _make_gaussian_psf(5, 1.5)
+        result = resize_psf(psf, 0.1, 0.1)  # ratio=1.0 -> 5x5 (odd)
+        assert result.shape == (5, 5)
+
+    def test_resize_always_odd(self):
+        """
+        Test that the output is always odd across a range of ratios.
+        """
+        psf = _make_gaussian_psf(5, 1.5)
+        for scale_out in [0.04, 0.05, 0.06, 0.07, 0.08]:
+            result = resize_psf(psf, 0.1, scale_out)
+            assert result.shape[0] % 2 == 1, (
+                f'Even output shape {result.shape} for scale={scale_out}')
+            assert result.shape[1] % 2 == 1, (
+                f'Even output shape {result.shape} for scale={scale_out}')
 
     def test_non_2d(self):
         """
@@ -275,16 +299,6 @@ class TestResizePSF:
         psf[2, 2] = 1.0
         match = 'must have odd dimensions'
         with pytest.raises(ValueError, match=match):
-            resize_psf(psf, 0.1, 0.05)
-
-    def test_not_centered(self):
-        """
-        Test that non-centered PSF produces a warning.
-        """
-        psf = np.zeros((5, 5))
-        psf[0, 0] = 1.0
-        match = r'The peak .* is not centered'
-        with pytest.warns(AstropyUserWarning, match=match):
             resize_psf(psf, 0.1, 0.05)
 
     def test_non_positive_input_scale(self):
@@ -313,3 +327,48 @@ class TestResizePSF:
         match = 'must be positive'
         with pytest.raises(ValueError, match=match):
             resize_psf(psf, 0.0, 0.05)
+
+
+class TestApplyWindowToFourier:
+    def test_basic(self):
+        """
+        Test that _apply_window_to_fourier applies a window to a
+        Fourier array.
+        """
+        shape = (11, 11)
+        fourier_array = np.ones(shape, dtype=complex)
+
+        def uniform_window(shape):
+            return np.ones(shape)
+
+        result = _apply_window_to_fourier(fourier_array, uniform_window,
+                                          shape)
+        assert result.shape == shape
+        assert np.allclose(result, fourier_array)
+
+    def test_zero_window(self):
+        """
+        Test that a zero window zeros out the Fourier array.
+        """
+        shape = (11, 11)
+        fourier_array = np.ones(shape, dtype=complex)
+
+        def zero_window(shape):
+            return np.zeros(shape)
+
+        result = _apply_window_to_fourier(fourier_array, zero_window, shape)
+        assert np.allclose(result, 0.0)
+
+    def test_invalid_window_raises(self):
+        """
+        Test that an invalid window function raises ValueError.
+        """
+        shape = (11, 11)
+        fourier_array = np.ones(shape, dtype=complex)
+
+        def bad_window(shape):  # noqa: ARG001
+            return np.ones((5, 5))  # wrong shape
+
+        match = 'window function must return an array with shape'
+        with pytest.raises(ValueError, match=match):
+            _apply_window_to_fourier(fourier_array, bad_window, shape)

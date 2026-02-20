@@ -5,6 +5,7 @@ Tests for the windows module.
 
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 from scipy.signal.windows import tukey
 
@@ -99,6 +100,15 @@ def test_split_cosine_bell_invalid_inputs():
         SplitCosineBellWindow(alpha=0.8, beta=1.1)
 
 
+def test_split_cosine_bell_alpha_plus_beta_gt_one():
+    """
+    Test that alpha + beta > 1.0 warns about taper clipping.
+    """
+    match = 'alpha.*beta.*>.*1.0'
+    with pytest.warns(AstropyUserWarning, match=match):
+        SplitCosineBellWindow(alpha=0.8, beta=0.5)
+
+
 def test_tophat():
     """
     Test top hat window with basic array values.
@@ -128,3 +138,28 @@ def test_asymmetric_shape():
     data = window(shape)
     assert data.shape == shape
     assert_allclose(data[25, 12], 1.0)
+
+
+def test_repr_and_str():
+    """
+    Test __repr__ and __str__ for all window classes.
+    """
+    window = SplitCosineBellWindow(alpha=0.4, beta=0.3)
+    assert repr(window) == 'SplitCosineBellWindow(alpha=0.4, beta=0.3)'
+    assert str(window) == repr(window)
+
+    window = HanningWindow()
+    assert repr(window) == 'HanningWindow()'
+    assert str(window) == repr(window)
+
+    window = TukeyWindow(alpha=0.5)
+    assert repr(window) == 'TukeyWindow(alpha=0.5)'
+    assert str(window) == repr(window)
+
+    window = CosineBellWindow(alpha=0.3)
+    assert repr(window) == 'CosineBellWindow(alpha=0.3)'
+    assert str(window) == repr(window)
+
+    window = TopHatWindow(beta=0.4)
+    assert repr(window) == 'TopHatWindow(beta=0.4)'
+    assert str(window) == repr(window)

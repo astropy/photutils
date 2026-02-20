@@ -74,6 +74,10 @@ New Features
 
   - ``resize_psf`` now validates input PSFs and pixel scales. [#2170]
 
+  - Added ``__repr__`` methods to ``CosineBellWindow``, ``HanningWindow``,
+    ``SplitCosineBellWindow``, ``TopHatWindow``, and ``TukeyWindow``
+    classes. [#2176]
+
 Bug Fixes
 ^^^^^^^^^
 

@@ -5,13 +5,13 @@ Tools for matching PSFs using Fourier methods.
 
 import numpy as np
 from astropy.utils.decorators import deprecated
+from scipy.fft import fft2, fftshift, ifft2
 
-from photutils.psf_matching.utils import (_convert_psf_to_otf,
-                                          _validate_kernel_inputs,
-                                          _validate_window_array, resize_psf)
+from photutils.psf_matching.utils import (_apply_window_to_fourier,
+                                          _convert_psf_to_otf,
+                                          _validate_kernel_inputs)
 
-__all__ = ['create_matching_kernel', 'make_kernel', 'make_wiener_kernel',
-           'resize_psf']
+__all__ = ['create_matching_kernel', 'make_kernel', 'make_wiener_kernel']
 
 
 def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
@@ -51,12 +51,14 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
     source_psf : 2D `~numpy.ndarray`
         The source PSF. The source PSF should have higher resolution
         (i.e., narrower) than the target PSF. ``source_psf`` and
-        ``target_psf`` must have the same shape and pixel scale.
+        ``target_psf`` must have the same shape and pixel scale. It is
+        assumed to be centered on the central pixel.
 
     target_psf : 2D `~numpy.ndarray`
         The target PSF. The target PSF should have lower resolution
         (i.e., broader) than the source PSF. ``source_psf`` and
-        ``target_psf`` must have the same shape and pixel scale.
+        ``target_psf`` must have the same shape and pixel scale. It is
+        assumed to be centered on the central pixel.
 
     window : callable, optional
         The window (taper) function or callable class instance used
@@ -66,7 +68,8 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
         returns a 2D array of the same shape. The returned window
         values must be in the range [0, 1], where 1.0 indicates full
         preservation of that spatial frequency and 0.0 indicates
-        complete suppression. Built-in window classes include:
+        complete suppression. The window must be centered on the central
+        pixel. Built-in window classes include:
 
         * `~photutils.psf_matching.HanningWindow`
         * `~photutils.psf_matching.TukeyWindow`
@@ -83,9 +86,10 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
         Fourier transform of the PSF). At frequencies where the source
         OTF amplitude is below ``regularization`` times the peak
         amplitude, the Fourier ratio is set to zero to avoid division by
-        near-zero values. Must be in the range [0, 1], where 0 provides
+        near-zero values. Must be in the range [0, 1), where 0 provides
         no thresholding (only exact zeros are excluded) and values
-        closer to 1 apply more aggressive thresholding.
+        closer to 1 apply more aggressive thresholding. A value of 1
+        would zero out all frequencies and produce a degenerate kernel.
 
     Returns
     -------
@@ -98,7 +102,7 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
     ValueError
         If the PSFs are not 2D arrays, have even dimensions, or do not
         have the same shape, if ``regularization`` is not in the range
-        [0, 1], or if the window function output is invalid (not a 2D
+        [0, 1), or if the window function output is invalid (not a 2D
         array, wrong shape, or values outside [0, 1]).
 
     TypeError
@@ -129,38 +133,37 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
     source_psf, target_psf = _validate_kernel_inputs(
         source_psf, target_psf, window)
 
-    if not 0 <= regularization <= 1:
-        msg = (f'regularization must be in the range [0, 1], '
+    if not 0 <= regularization < 1:
+        msg = (f'regularization must be in the range [0, 1), '
                f'got {regularization}.')
         raise ValueError(msg)
 
-    source_otf = np.fft.fft2(source_psf)
-    target_otf = np.fft.fft2(target_psf)
+    source_otf = fft2(source_psf)
+    target_otf = fft2(target_psf)
 
     # Note: the following calculations are performed in the Fourier
     # domain with the DC component at the corner of the array (standard
     # FFT layout).
 
     # Regularized division to avoid dividing by near-zero values
-    max_otf = np.max(np.abs(source_otf))
-    mask = np.abs(source_otf) > regularization * max_otf
-    ratio = np.zeros_like(source_otf, dtype=complex)
+    abs_source_otf = np.abs(source_otf)
+    max_otf = np.max(abs_source_otf)
+    mask = abs_source_otf > regularization * max_otf
+    ratio = np.zeros_like(source_otf)  # dtype='complex128' from fft2
     ratio[mask] = target_otf[mask] / source_otf[mask]
 
     # Apply a window function in frequency space
     if window is not None:
-        # The window function is defined in the Fourier domain with the
-        # DC component at the center of the array. The ratio array is
-        # computed with the DC component at the corner of the array,
-        # so we need to shift it to the center to apply the window
-        # function.
-        window_array = window(target_psf.shape)
-        _validate_window_array(window_array, target_psf.shape)
-        ratio = np.fft.fftshift(ratio)
-        ratio *= window_array
-        ratio = np.fft.ifftshift(ratio)
+        ratio = _apply_window_to_fourier(ratio, window, target_psf.shape)
 
-    kernel = np.real(np.fft.fftshift(np.fft.ifft2(ratio)))
+    kernel = np.real(fftshift(ifft2(ratio)))
+    if np.sum(kernel) < 1e-30:
+        msg = ('The computed kernel sums to zero, which likely indicates '
+               'that the regularization threshold is too high. Try reducing '
+               'the regularization parameter or using a different window '
+               'function.')
+        raise ValueError(msg)
+
     return kernel / kernel.sum()
 
 
@@ -233,12 +236,14 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
     source_psf : 2D `~numpy.ndarray`
         The source PSF. The source PSF should have higher resolution
         (i.e., narrower) than the target PSF. ``source_psf`` and
-        ``target_psf`` must have the same shape and pixel scale.
+        ``target_psf`` must have the same shape and pixel scale. It is
+        assumed to be centered on the central pixel.
 
     target_psf : 2D `~numpy.ndarray`
         The target PSF. The target PSF should have lower resolution
         (i.e., broader) than the source PSF. ``source_psf`` and
-        ``target_psf`` must have the same shape and pixel scale.
+        ``target_psf`` must have the same shape and pixel scale. It is
+        assumed to be centered on the central pixel.
 
     regularization : float, optional
         The regularization parameter that controls the strength
@@ -248,7 +253,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         ``penalty`` is provided, this scales the penalty operator's
         power spectrum directly. Larger values produce smoother but
         less accurate matching kernels; smaller values preserve more
-        detail but may amplify noise.
+        detail but may amplify noise. Must be a positive number.
 
     penalty : `None`, ``'laplacian'``, ``'biharmonic'``, or 2D \
 `~numpy.ndarray`, optional
@@ -295,7 +300,8 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         returns a 2D array of the same shape. The returned window
         values must be in the range [0, 1], where 1.0 indicates full
         preservation of that spatial frequency and 0.0 indicates
-        complete suppression. Built-in window classes include:
+        complete suppression. The window must be centered on the central
+        pixel. Built-in window classes include:
 
         * `~photutils.psf_matching.HanningWindow`
         * `~photutils.psf_matching.TukeyWindow`
@@ -375,25 +381,25 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         if penalty == 'laplacian':
             penalty_array = np.array([[+0, -1, +0],
                                       [-1, +4, -1],
-                                      [+0, -1, +0]])
+                                      [+0, -1, +0]], dtype=float)
         elif penalty == 'biharmonic':
             penalty_array = np.array([[+0, +0, +1, +0, +0],
                                       [+0, +2, -8, +2, +0],
                                       [+1, -8, 20, -8, +1],
                                       [+0, +2, -8, +2, +0],
-                                      [+0, +0, +1, +0, +0]])
+                                      [+0, +0, +1, +0, +0]], dtype=float)
         else:
             msg = (f'Invalid penalty string {penalty!r}. '
-                   'Must be "laplacian" or "biharmonic"')
+                   'Must be "laplacian" or "biharmonic".')
             raise ValueError(msg)
     elif isinstance(penalty, np.ndarray):
         if penalty.ndim != 2:
             msg = 'penalty array must be 2D.'
             raise ValueError(msg)
-        penalty_array = penalty
+        penalty_array = np.asarray(penalty, dtype=float)
     else:
         msg = ('penalty must be None, "laplacian", "biharmonic", or a 2D '
-               'numpy array')
+               'numpy array.')
         raise ValueError(msg)
 
     # Validate that PSF is large enough for the penalty
@@ -407,12 +413,8 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
                    f'shape is {penalty_shape}.')
             raise ValueError(msg)
 
-    # Ensure input PSFs are normalized
-    source_psf /= source_psf.sum()
-    target_psf /= target_psf.sum()
-
-    source_otf = np.fft.fft2(source_psf)
-    target_otf = np.fft.fft2(target_psf)
+    source_otf = fft2(source_psf)
+    target_otf = fft2(target_psf)
 
     source_power = np.abs(source_otf) ** 2
 
@@ -432,16 +434,17 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
 
     # Apply a window function in frequency space
     if window is not None:
-        # The window function is defined in the Fourier domain with the
-        # DC component at the center of the array. The kernel OTF is
-        # computed with the DC component at the corner of the array,
-        # so we need to shift it to the center to apply the window
-        # function.
-        kernel_otf = np.fft.fftshift(kernel_otf)
-        kernel_otf *= window(target_psf.shape)
-        kernel_otf = np.fft.ifftshift(kernel_otf)
+        kernel_otf = _apply_window_to_fourier(
+            kernel_otf, window, target_psf.shape)
 
-    kernel = np.real(np.fft.fftshift(np.fft.ifft2(kernel_otf)))
+    kernel = np.real(fftshift(ifft2(kernel_otf)))
+    if np.sum(kernel) < 1e-30:
+        msg = ('The computed kernel sums to zero, which likely indicates '
+               'that the regularization threshold is too high. Try reducing '
+               'the regularization parameter or using a different window '
+               'function.')
+        raise ValueError(msg)
+
     return kernel / kernel.sum()
 
 
@@ -455,7 +458,7 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
         ``create_matching_kernel`` is deprecated as of Photutils 3.0 and
         will be removed in a future version. Use `make_kernel` instead.
     """
-    return make_kernel(source_psf,  # pragma: no cover
+    return make_kernel(source_psf,
                        target_psf,
                        window=window,
                        regularization=regularization)

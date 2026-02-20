@@ -3,10 +3,9 @@
 Utility functions for the psf_matching subpackage.
 """
 
-import warnings
 
 import numpy as np
-from astropy.utils.exceptions import AstropyUserWarning
+from scipy.fft import fft2, fftshift, ifftshift
 from scipy.ndimage import zoom
 
 __all__ = ['resize_psf']
@@ -69,7 +68,7 @@ def _validate_kernel_inputs(source_psf, target_psf, window):
 
 def _validate_psf(psf, name):
     """
-    Validate that a PSF is 2D with odd dimensions and centered.
+    Validate that a PSF is 2D with odd dimensions.
 
     Parameters
     ----------
@@ -98,16 +97,9 @@ def _validate_psf(psf, name):
         msg = f'{name} contains NaN or Inf values.'
         raise ValueError(msg)
 
-    if np.any(psf < 0):
-        msg = f'{name} contains negative values.'
-        warnings.warn(msg, AstropyUserWarning)
-
-    center = ((psf.shape[0] - 1) / 2, (psf.shape[1] - 1) / 2)
-    peak = np.unravel_index(np.argmax(psf), psf.shape)
-    if peak != center:
-        msg = (f'The peak of {name} is not centered. Expected peak at '
-               f'{center}, but found peak at {peak}.')
-        warnings.warn(msg, AstropyUserWarning)
+    if np.sum(psf) == 0:
+        msg = f'{name} must have a non-zero sum; it cannot be normalized.'
+        raise ValueError(msg)
 
 
 def _validate_window_array(window_array, expected_shape):
@@ -139,7 +131,7 @@ def _validate_window_array(window_array, expected_shape):
                f'{expected_shape}, got {window_array.shape}.')
         raise ValueError(msg)
 
-    if np.any(window_array < 0) or np.any(window_array > 1):
+    if np.any(np.logical_or(window_array < 0, window_array > 1)):
         msg = ('window function values must be in the range [0, 1], '
                f'got range [{np.min(window_array)}, '
                f'{np.max(window_array)}].')
@@ -170,7 +162,9 @@ def _convert_psf_to_otf(psf, shape):
     Parameters
     ----------
     psf : 2D `~numpy.ndarray`
-        The PSF array.
+        The PSF array. The PSF must have odd dimensions and be centered
+        on the central pixel. The PSF shape must be smaller than or
+        equal to the target shape in both dimensions.
 
     shape : tuple of int
         The desired output shape.
@@ -183,7 +177,20 @@ def _convert_psf_to_otf(psf, shape):
     if np.all(psf == 0):
         return np.zeros(shape, dtype=complex)
 
+    if psf.ndim != 2:
+        msg = 'psf must be a 2D array.'
+        raise ValueError(msg)
+
+    if psf.shape[0] % 2 == 0 or psf.shape[1] % 2 == 0:
+        msg = f'psf must have odd dimensions, got shape {psf.shape}.'
+        raise ValueError(msg)
+
     inshape = psf.shape
+
+    if any(i > s for i, s in zip(inshape, shape, strict=True)):
+        msg = (f'The PSF shape {inshape} is larger than the target '
+               f'shape {shape} in at least one dimension.')
+        raise ValueError(msg)
 
     # Zero-pad to the output shape with PSF centered in the array
     padded = np.zeros(shape, dtype=psf.dtype)
@@ -197,9 +204,45 @@ def _convert_psf_to_otf(psf, shape):
            start[1]:start[1] + inshape[1]] = psf
 
     # Shift the centered PSF so its center moves to [0, 0]
-    padded = np.fft.ifftshift(padded)
+    padded = ifftshift(padded)
 
-    return np.fft.fft2(padded)
+    return fft2(padded)
+
+
+def _apply_window_to_fourier(fourier_array, window, shape):
+    """
+    Apply a centered window function to a Fourier-domain array.
+
+    The window function is assumed to be defined with the DC component
+    at the center of the array. Since Fourier arrays use the standard
+    FFT layout with the DC component at the corner, this function shifts
+    the array to the center, applies the window, and shifts it back.
+
+    Parameters
+    ----------
+    fourier_array : 2D `~numpy.ndarray`
+        A complex Fourier-domain array with the DC component at the
+        corner.
+
+    window : callable
+        The window function. Must accept a single ``shape`` tuple and
+        return a 2D array with values in [0, 1].
+
+    shape : tuple of int
+        The shape passed to the window function and the expected shape
+        of the window output.
+
+    Returns
+    -------
+    result : 2D `~numpy.ndarray`
+        The windowed Fourier-domain array, still in standard FFT layout
+        (DC at the corner).
+    """
+    window_array = window(shape)
+    _validate_window_array(window_array, shape)
+    fourier_array = fftshift(fourier_array)
+    fourier_array *= window_array
+    return ifftshift(fourier_array)
 
 
 def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
@@ -211,7 +254,8 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     Parameters
     ----------
     psf : 2D `~numpy.ndarray`
-        The 2D data array of the PSF.
+        The 2D data array of the PSF. The PSF must have odd dimensions.
+        It is assumed to be centered on the central pixel.
 
     input_pixel_scale : float
         The pixel scale of the input ``psf``. The units must match
@@ -227,7 +271,15 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     Returns
     -------
     result : 2D `~numpy.ndarray`
-        The resampled/interpolated 2D data array.
+        The resampled/interpolated 2D data array. The output always
+        has odd dimensions. The natural resampled size is computed
+        by taking the ceiling of ``input_size * (input_pixel_scale
+        / output_pixel_scale)`` for each axis, then adding 1 to
+        any axis whose size is even. This guarantees the output is
+        centered and usable for PSF matching. When the output size is
+        adjusted, the effective pixel scale will be slightly smaller
+        than ``output_pixel_scale``; the exact value per axis is
+        ``input_pixel_scale * input_size / output_size``.
 
     Raises
     ------
@@ -246,5 +298,17 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
 
     ratio = input_pixel_scale / output_pixel_scale
 
-    # Scale by ratio**2 to conserve total flux
-    return zoom(psf, ratio, order=order) / ratio**2
+    # Compute target shape using ceiling (never discard pixels), then
+    # add 1 to any even dimension to guarantee an odd output, which is
+    # required for PSF matching.
+    in_shape = np.array(psf.shape)
+    out_shape = np.maximum(1, np.ceil(in_shape * ratio).astype(int))
+    out_shape += out_shape % 2 == 0
+
+    # Per-axis zoom factors for the forced-odd target shape
+    zoom_factors = out_shape / in_shape
+
+    # Normalize the PSF to conserve total flux after resizing.
+    psf_sum = psf.sum()
+    result = zoom(psf, zoom_factors, order=order)
+    return result * (psf_sum / result.sum())

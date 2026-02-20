@@ -3,7 +3,10 @@
 Window (tapering) functions for matching PSFs using Fourier methods.
 """
 
+import warnings
+
 import numpy as np
+from astropy.utils.exceptions import AstropyUserWarning
 
 __all__ = [
     'CosineBellWindow',
@@ -101,8 +104,20 @@ class SplitCosineBellWindow:
                    f'Got: {beta}')
             raise ValueError(msg)
 
+        if alpha + beta > 1.0:
+            msg = ('alpha + beta > 1.0; the taper region will be '
+                   'clipped to the array boundary.')
+            warnings.warn(msg, AstropyUserWarning)
+
         self.alpha = float(alpha)
         self.beta = float(beta)
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                f'alpha={self.alpha!r}, beta={self.beta!r})')
+
+    def __str__(self):
+        return self.__repr__()
 
     def __call__(self, shape):
         """
@@ -190,6 +205,12 @@ class HanningWindow(SplitCosineBellWindow):
         # alpha=1.0 (full taper), beta=0.0 (taper starts at center)
         super().__init__(alpha=1.0, beta=0.0)
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}()'
+
+    def __str__(self):
+        return self.__repr__()
+
 
 class TukeyWindow(SplitCosineBellWindow):
     """
@@ -252,16 +273,22 @@ class TukeyWindow(SplitCosineBellWindow):
     def __init__(self, alpha):
         super().__init__(alpha=alpha, beta=1.0 - alpha)
 
+    def __repr__(self):
+        return (f'{self.__class__.__name__}'
+                f'(alpha={self.alpha!r})')
+
+    def __str__(self):
+        return self.__repr__()
+
 
 class CosineBellWindow(SplitCosineBellWindow):
     """
     Class to define a 2D cosine bell window function.
 
-    This window equals 1.0 at the center, maintains this value for some
-    radius, then smoothly tapers to 0.0 at a distance determined by
-    ``alpha`` from the center. The taper begins immediately (no inner
-    plateau) and extends inward by a fraction ``alpha`` of the maximum
-    radius.
+    This window equals 1.0 only at the exact center point and smoothly
+    tapers to 0.0. The taper begins immediately from the center (no
+    inner plateau) and extends outward over a fraction ``alpha`` of the
+    maximum radius.
 
     Use this window when you want to preserve the very center of an
     image while applying a gentle taper that starts relatively far from
@@ -308,6 +335,13 @@ class CosineBellWindow(SplitCosineBellWindow):
 
     def __init__(self, alpha):
         super().__init__(alpha=alpha, beta=0.0)
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}'
+                f'(alpha={self.alpha!r})')
+
+    def __str__(self):
+        return self.__repr__()
 
 
 class TopHatWindow(SplitCosineBellWindow):
@@ -368,3 +402,10 @@ class TopHatWindow(SplitCosineBellWindow):
 
     def __init__(self, beta):
         super().__init__(alpha=0.0, beta=beta)
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}'
+                f'(beta={self.beta!r})')
+
+    def __str__(self):
+        return self.__repr__()
