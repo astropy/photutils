@@ -16,13 +16,13 @@ functions for computing PSF-matching kernels in the Fourier domain:
   2011`_).
 
 * :func:`~photutils.psf_matching.make_wiener_kernel` — Uses Wiener
-  regularization, which smoothly suppresses noise amplification at spatial
-  frequencies where the source response is weak.
+  regularization, which smoothly suppresses noise amplification at
+  spatial frequencies where the source response is weak.
 
-Both functions take a source PSF and a target PSF and return a
-matching kernel that, when convolved with the source PSF, produces the
-target PSF. They both support an optional ``window`` function to
-further suppress high-frequency noise.
+Both functions take a source PSF and a target PSF and return a matching
+kernel that, when convolved with the source PSF, produces the target
+PSF. They both support an optional ``window`` function to further
+suppress high-frequency noise.
 
 
 How It Works
@@ -153,9 +153,9 @@ Noiseless Gaussian Example
 ---------------------------
 
 For this first simple example, let's assume our source and target PSFs
-are noiseless 2D Gaussians. The "high-resolution" PSF will be a
-Gaussian with :math:`\sigma=3`. The "low-resolution" PSF will be a
-Gaussian with :math:`\sigma=5`::
+are noiseless 2D Gaussians. The "high-resolution" PSF will be a Gaussian
+with :math:`\sigma=3`. The "low-resolution" PSF will be a Gaussian with
+:math:`\sigma=5`::
 
     >>> import numpy as np
     >>> from photutils.psf import CircularGaussianSigmaPRF
@@ -165,9 +165,9 @@ Gaussian with :math:`\sigma=5`::
     >>> psf1 = gm1(xx, yy)
     >>> psf2 = gm2(xx, yy)
 
-For these 2D Gaussians, the matching kernel should be a 2D Gaussian
-with :math:`\sigma=4` (:math:`\sqrt{5^2 - 3^2}`). Let's create the
-matching kernel using both methods.
+For these 2D Gaussians, the matching kernel should be a 2D Gaussian with
+:math:`\sigma=4` (:math:`\sqrt{5^2 - 3^2}`). Let's create the matching
+kernel using both methods.
 
 Using ``make_kernel``::
 
@@ -179,9 +179,9 @@ Using ``make_wiener_kernel``::
     >>> from photutils.psf_matching import make_wiener_kernel
     >>> kernel2 = make_wiener_kernel(psf1, psf2)
 
-Both output kernels are 2D arrays representing the matching kernel
-that, when convolved with the source PSF, produces the target PSF.
-The output matching kernels are normalized such that they sum to 1::
+Both output kernels are 2D arrays representing the matching kernel that,
+when convolved with the source PSF, produces the target PSF. The output
+matching kernels are normalized such that they sum to 1::
 
     >>> print(kernel1.sum())  # doctest: +FLOAT_CMP
     1.0
@@ -258,13 +258,12 @@ that have significant structure in their power spectra.
 Window Functions
 ----------------
 
-When working with real-world PSFs (e.g., from observations
-or optical models), the Fourier ratio can still contain
-residual high-frequency spatial noise even after regularization.
-An optional `window function
-<https://en.wikipedia.org/wiki/Window_function>`_ (also called a taper
-function) can be applied to further suppress these artifacts. Both
-:func:`~photutils.psf_matching.make_kernel` and
+When working with real-world PSFs (e.g., from observations or
+optical models), the Fourier ratio can still contain residual
+high-frequency spatial noise even after regularization. An optional
+`window function <https://en.wikipedia.org/wiki/Window_function>`_
+(also called a taper function) can be applied to further suppress
+these artifacts. Both :func:`~photutils.psf_matching.make_kernel` and
 :func:`~photutils.psf_matching.make_wiener_kernel` accept an optional
 ``window`` parameter.
 
@@ -275,8 +274,8 @@ high spatial frequencies where the signal-to-noise ratio is poorest.
 The trade-off is that tapering removes some real information along
 with the noise, so the choice of window involves balancing artifact
 suppression against fidelity. A window is generally less critical for
-`~photutils.psf_matching.make_wiener_kernel` because the
-regularization itself suppresses high-frequency noise.
+`~photutils.psf_matching.make_wiener_kernel` because the regularization
+itself suppresses high-frequency noise.
 
 ``photutils.psf_matching`` provides five built-in window classes. They
 are all subclasses of `~photutils.psf_matching.SplitCosineBellWindow`,
@@ -348,15 +347,15 @@ generally preferred over this window.
 Custom Window Functions
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-Users may also define their own custom window function and pass it to
-:func:`~photutils.psf_matching.make_kernel` or
-:func:`~photutils.psf_matching.make_wiener_kernel`. The window
-function should be a callable that takes a single ``shape`` argument
-(a tuple defining the 2D array shape) and returns a 2D array of the
-same shape containing the window values. The window values should
-range from 0.0 to 1.0, where 1.0 indicates full preservation of that
-spatial frequency and 0.0 indicates complete suppression. The window
-should be radially symmetric and centered on the array.
+Users may also define their own custom window function and
+pass it to :func:`~photutils.psf_matching.make_kernel` or
+:func:`~photutils.psf_matching.make_wiener_kernel`. The window function
+should be a callable that takes a single ``shape`` argument (a tuple
+defining the 2D array shape) and returns a 2D array of the same shape
+containing the window values. The window values should range from 0.0
+to 1.0, where 1.0 indicates full preservation of that spatial frequency
+and 0.0 indicates complete suppression. The window should be radially
+symmetric and centered on the array.
 
 Example Window Function Plots
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -416,9 +415,9 @@ defined above:
 Matching Spitzer IRAC PSFs
 --------------------------
 
-For this example, let's generate a matching kernel to go from the
-Spitzer/IRAC channel 1 (3.6 microns) PSF to the channel 4 (8.0
-microns) PSF. We load the PSFs using the
+For this example, let's generate a matching kernel to go
+from the Spitzer/IRAC channel 1 (3.6 microns) PSF to the
+channel 4 (8.0 microns) PSF. We load the PSFs using the
 :func:`~photutils.datasets.load_irac_psf` convenience function::
 
     >>> from photutils.datasets import load_irac_psf
@@ -459,14 +458,15 @@ lower-resolution PSF to the same size as the higher-resolution PSF.
 For real-world PSFs like these, applying a window function is
 recommended for :func:`~photutils.psf_matching.make_kernel` to
 suppress residual high-frequency artifacts. Here we use the
-:class:`~photutils.psf_matching.CosineBellWindow`:
+:class:`~photutils.psf_matching.SplitCosineBellWindow`:
 
 .. doctest-skip::
 
-    >>> from photutils.psf_matching import (CosineBellWindow,
+    >>> from photutils.psf_matching import (SplitCosineBellWindow,
     ...                                     make_kernel)
-    >>> window = CosineBellWindow(alpha=0.35)
-    >>> kernel1 = make_kernel(ch1_psf, ch4_psf, window=window)
+    >>> window = SplitCosineBellWindow(alpha=0.15, beta=0.3)
+    >>> kernel1 = make_kernel(ch1_psf, ch4_psf, window=window,
+    ...                       regularization=0.0001)
 
 With :func:`~photutils.psf_matching.make_wiener_kernel`, the Wiener
 regularization itself suppresses high-frequency noise, so a window
@@ -475,24 +475,29 @@ function is generally not needed:
 .. doctest-skip::
 
     >>> from photutils.psf_matching import make_wiener_kernel
-    >>> kernel2 = make_wiener_kernel(ch1_psf, ch4_psf, regularization=0.1)
+    >>> kernel2 = make_wiener_kernel(ch1_psf, ch4_psf,
+    ...                              regularization=0.0001)
 
-For ``pypher``-style frequency-dependent regularization using a
-Laplacian penalty operator:
+For frequency-dependent regularization using a Laplacian or biharmonic
+penalty operator:
 
 .. doctest-skip::
 
-    >>> kernel3 = make_wiener_kernel(ch1_psf, ch4_psf, regularization=0.5,
+    >>> kernel3 = make_wiener_kernel(ch1_psf, ch4_psf,
+    ...                              regularization=0.0001,
     ...                              penalty='laplacian')
+    >>> kernel4 = make_wiener_kernel(ch1_psf, ch4_psf,
+    ...                              regularization=0.0001,
+    ...                              penalty='biharmonic')
 
-Let's display the matching kernel results from both methods:
+Let's display the matching kernel results from all methods:
 
 .. plot::
 
     import matplotlib.pyplot as plt
     from astropy.visualization import SimpleNorm
     from photutils.datasets import load_irac_psf
-    from photutils.psf_matching import (CosineBellWindow, make_kernel,
+    from photutils.psf_matching import (SplitCosineBellWindow, make_kernel,
                                         make_wiener_kernel)
 
     ch1_hdu = load_irac_psf(channel=1)
@@ -500,32 +505,266 @@ Let's display the matching kernel results from both methods:
     ch1_psf = ch1_hdu.data
     ch4_psf = ch4_hdu.data
 
-    window = CosineBellWindow(alpha=0.35)
-    kernel1 = make_kernel(ch1_psf, ch4_psf, window=window)
-    kernel2 = make_wiener_kernel(ch1_psf, ch4_psf, regularization=0.1)
-    kernel3 = make_wiener_kernel(ch1_psf, ch4_psf, regularization=0.5,
+    window = SplitCosineBellWindow(alpha=0.15, beta=0.3)
+    regularization = 0.0001
+    kernel1 = make_kernel(ch1_psf, ch4_psf, window=window,
+                          regularization=regularization)
+    kernel2 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization)
+    kernel3 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization,
                                  penalty='laplacian')
-
-    fig, ax = plt.subplots(1, 3, figsize=(10, 3))
+    kernel4 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization,
+                                 penalty='biharmonic')
 
     snorm = SimpleNorm('log', log_a=10)
-    axim1 = snorm.imshow(kernel1, ax=ax[0], origin='lower')
-    plt.colorbar(axim1, ax=ax[0])
-    ax[0].set_title('make_kernel')
+    kernels = [kernel1, kernel2, kernel3, kernel4]
+    titles = ['make_kernel',
+              'make_wiener_kernel',
+              'make_wiener_kernel\n(Laplacian penalty)',
+              'make_wiener_kernel\n(biharmonic penalty)']
 
-    axim2 = snorm.imshow(kernel2, ax=ax[1], origin='lower')
-    plt.colorbar(axim2, ax=ax[1])
-    ax[1].set_title('make_wiener_kernel')
-
-    axim3 = snorm.imshow(kernel3, ax=ax[2], origin='lower')
-    plt.colorbar(axim3, ax=ax[2])
-    ax[2].set_title('make_wiener_kernel\nwith Laplacian penalty')
+    fig, axes = plt.subplots(2, 2, figsize=(8, 7))
+    for ax, kernel, title in zip(axes.ravel(), kernels, titles):
+        axim = snorm.imshow(kernel, ax=ax, origin='lower')
+        plt.colorbar(axim, ax=ax)
+        ax.set_title(title)
 
     fig.tight_layout()
 
-The matching kernel could then be convolved with the Spitzer/IRAC
-channel 1 image to produce an image with the same resolution as the
-channel-4 image.
+Let's now convolve the channel 1 PSF with each matching kernel using
+`scipy.signal.fftconvolve` and compare the PSF-matched results with the
+channel 4 PSF:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    from astropy.visualization import SimpleNorm
+    from scipy.signal import fftconvolve
+
+    from photutils.datasets import load_irac_psf
+    from photutils.psf_matching import (SplitCosineBellWindow, make_kernel,
+                                        make_wiener_kernel)
+
+    ch1_hdu = load_irac_psf(channel=1)
+    ch4_hdu = load_irac_psf(channel=4)
+    ch1_psf = ch1_hdu.data
+    ch4_psf = ch4_hdu.data
+
+    window = SplitCosineBellWindow(alpha=0.15, beta=0.3)
+    regularization = 0.0001
+    kernel1 = make_kernel(ch1_psf, ch4_psf, window=window,
+                          regularization=regularization)
+    kernel2 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization)
+    kernel3 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization,
+                                 penalty='laplacian')
+    kernel4 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization,
+                                 penalty='biharmonic')
+
+    matched1 = fftconvolve(ch1_psf, kernel1, mode='same')
+    matched2 = fftconvolve(ch1_psf, kernel2, mode='same')
+    matched3 = fftconvolve(ch1_psf, kernel3, mode='same')
+    matched4 = fftconvolve(ch1_psf, kernel4, mode='same')
+
+    snorm = SimpleNorm('log', log_a=1000)
+
+    titles = ['Channel 4 PSF',
+              'make_kernel',
+              'make_wiener_kernel',
+              'make_wiener_kernel\n(Laplacian penalty)',
+              'make_wiener_kernel\n(biharmonic penalty)']
+
+    images = [ch4_psf, matched1, matched2, matched3, matched4]
+
+    fig = plt.figure(figsize=(14, 8))
+    gs = fig.add_gridspec(2, 3, width_ratios=[1, 1, 1])
+
+    # Column 1 spans both rows
+    ax_main = fig.add_subplot(gs[:, 0])
+
+    # Columns 2 & 3: 2x2 grid
+    ax_top_left = fig.add_subplot(gs[0, 1])
+    ax_top_right = fig.add_subplot(gs[0, 2])
+    ax_bot_left = fig.add_subplot(gs[1, 1])
+    ax_bot_right = fig.add_subplot(gs[1, 2])
+
+    axes = [ax_main, ax_top_left, ax_top_right, ax_bot_left, ax_bot_right]
+
+    for ax, img, title in zip(axes, images, titles):
+        axim = snorm.imshow(img, ax=ax, origin='lower')
+        plt.colorbar(axim, ax=ax, fraction=0.046, pad=0.04)
+        ax.set_title(title)
+
+    fig.suptitle('Channel 1 PSF-matched to Channel 4',
+                 x=0.666, y=0.98, ha='center', fontsize=16)
+
+    fig.tight_layout(rect=[0, 0, 1, 0.98])
+
+    plt.show()
+
+Now let's examine the residuals between the PSF-matched results and the
+channel 4 PSF target:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from scipy.signal import fftconvolve
+
+    from photutils.datasets import load_irac_psf
+    from photutils.psf_matching import (SplitCosineBellWindow, make_kernel,
+                                        make_wiener_kernel)
+
+    ch1_hdu = load_irac_psf(channel=1)
+    ch4_hdu = load_irac_psf(channel=4)
+    ch1_psf = ch1_hdu.data
+    ch4_psf = ch4_hdu.data
+
+    window = SplitCosineBellWindow(alpha=0.15, beta=0.3)
+    regularization = 0.0001
+    kernel1 = make_kernel(ch1_psf, ch4_psf, window=window,
+                          regularization=regularization)
+    kernel2 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization)
+    kernel3 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization,
+                                 penalty='laplacian')
+    kernel4 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization,
+                                 penalty='biharmonic')
+
+    matched1 = fftconvolve(ch1_psf, kernel1, mode='same')
+    matched2 = fftconvolve(ch1_psf, kernel2, mode='same')
+    matched3 = fftconvolve(ch1_psf, kernel3, mode='same')
+    matched4 = fftconvolve(ch1_psf, kernel4, mode='same')
+
+    resid1 = matched1 - ch4_psf
+    resid2 = matched2 - ch4_psf
+    resid3 = matched3 - ch4_psf
+    resid4 = matched4 - ch4_psf
+    vmax = np.abs(
+        np.array([resid1, resid2, resid3, resid4])).max()
+
+    titles = ['make_kernel',
+              'make_wiener_kernel',
+              'make_wiener_kernel\n(Laplacian penalty)',
+              'make_wiener_kernel\n(biharmonic penalty)']
+    residuals = [resid1, resid2, resid3, resid4]
+
+    fig, axes = plt.subplots(2, 2, figsize=(9, 7))
+    for ax, resid, title in zip(axes.ravel(), residuals, titles):
+        axim = ax.imshow(resid, origin='lower', cmap='RdBu_r',
+                         vmin=-vmax, vmax=vmax)
+        plt.colorbar(axim, ax=ax)
+        ax.set_title(title)
+
+    fig.suptitle('Residuals: PSF-matched minus channel 4 PSF')
+    fig.tight_layout()
+
+The residuals are small relative to the peak PSF values, confirming that
+all four methods produce good PSF matches.
+
+Finally, let's compare the encircled energies of the PSF-matched
+results with the channel 1 and channel 4 PSFs using the
+:class:`~photutils.profiles.CurveOfGrowth` class. A residual subpanel
+immediately below the main panel shows how well each PSF-matched curve
+agrees with the channel 4 target:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from scipy.signal import fftconvolve
+
+    from photutils.datasets import load_irac_psf
+    from photutils.profiles import CurveOfGrowth
+    from photutils.psf_matching import (SplitCosineBellWindow, make_kernel,
+                                        make_wiener_kernel)
+
+    ch1_hdu = load_irac_psf(channel=1)
+    ch4_hdu = load_irac_psf(channel=4)
+    ch1_psf = ch1_hdu.data
+    ch4_psf = ch4_hdu.data
+
+    window = SplitCosineBellWindow(alpha=0.15, beta=0.3)
+    regularization = 0.0001
+    kernel1 = make_kernel(ch1_psf, ch4_psf, window=window,
+                          regularization=regularization)
+    kernel2 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization)
+    kernel3 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization,
+                                 penalty='laplacian')
+    kernel4 = make_wiener_kernel(ch1_psf, ch4_psf,
+                                 regularization=regularization,
+                                 penalty='biharmonic')
+
+    matched1 = fftconvolve(ch1_psf, kernel1, mode='same')
+    matched2 = fftconvolve(ch1_psf, kernel2, mode='same')
+    matched3 = fftconvolve(ch1_psf, kernel3, mode='same')
+    matched4 = fftconvolve(ch1_psf, kernel4, mode='same')
+
+    xycen = (40.0, 40.0)
+    radii = np.arange(1, 40)
+
+    cog_ch1 = CurveOfGrowth(ch1_psf, xycen, radii)
+    cog_ch4 = CurveOfGrowth(ch4_psf, xycen, radii)
+    cog_m1 = CurveOfGrowth(matched1, xycen, radii)
+    cog_m2 = CurveOfGrowth(matched2, xycen, radii)
+    cog_m3 = CurveOfGrowth(matched3, xycen, radii)
+    cog_m4 = CurveOfGrowth(matched4, xycen, radii)
+
+    for cog in [cog_ch1, cog_ch4, cog_m1, cog_m2, cog_m3, cog_m4]:
+        cog.normalize()
+
+    labels = [
+        'make_kernel',
+        'make_wiener_kernel',
+        'make_wiener_kernel (Laplacian)',
+        'make_wiener_kernel (biharmonic)',
+    ]
+    cogs_matched = [cog_m1, cog_m2, cog_m3, cog_m4]
+    ls_list = ['--', '-.', ':', (0, (3, 1, 1, 1))]
+
+    fig, (ax_top, ax_bot) = plt.subplots(
+        2, 1, figsize=(8, 8),
+        gridspec_kw={'height_ratios': [3, 1]},
+        sharex=True,
+    )
+
+    # Main panel
+    cog_ch1.plot(ax=ax_top, label='Channel 1 PSF', lw=2,
+                 color='C0', ls='-')
+    cog_ch4.plot(ax=ax_top, label='Channel 4 PSF', lw=3,
+                 color='k')
+    for cog, label, ls in zip(cogs_matched, labels, ls_list):
+        cog.plot(ax=ax_top, label=label, lw=2, ls=ls)
+    ax_top.set_ylabel('Normalized Encircled Energy')
+    ax_top.set_title(
+        'Encircled Energy: Channel 1 & 4 PSFs vs. PSF-matched results')
+    ax_top.legend(fontsize=9)
+    ax_top.set_xlabel('')
+
+    # Residual subpanel (matched - ch4)
+    for cog, label, ls in zip(cogs_matched, labels, ls_list):
+        resid = cog.profile - cog_ch4.profile
+        ax_bot.plot(cog.radius, resid, lw=2, ls=ls, label=label)
+    ax_bot.axhline(0, color='k', lw=1, ls='-')
+    ax_bot.set_xlabel('Radius (pixels)')
+    ax_bot.set_ylabel('Residual')
+    ax_bot.set_title('Matched $-$ Channel 4')
+
+    fig.tight_layout()
+
+The encircled energy curves for the PSF-matched results closely track
+the channel 4 PSF, confirming that the PSF matching has been performed
+successfully across all four methods. The residual subpanel quantifies
+the small remaining differences between each PSF-matched curve and the
+channel 4 target.
 
 
 API Reference
