@@ -20,6 +20,15 @@ from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
 from photutils.datasets import make_4gaussians_image, make_noise_image
 
 
+def _make_gaussian_source(shape, amplitude, xc, yc, xstd, ystd, theta):
+    """
+    Make a 2D Gaussian source.
+    """
+    yy, xx = np.mgrid[0:shape[0], 0:shape[1]]
+    model = Gaussian2D(amplitude, xc, yc, xstd, ystd, theta)
+    return model(xx, yy)
+
+
 @pytest.fixture(name='test_data')
 def fixture_test_data():
     """
@@ -45,9 +54,7 @@ def fixture_nan_data():
     """
     xc_ref = 24.7
     yc_ref = 25.2
-    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
-    y, x = np.mgrid[0:50, 0:50]
-    data = model(x, y)
+    data = _make_gaussian_source((50, 50), 2.4, xc_ref, yc_ref, 5.0, 5.0, 0)
     data[20, :] = np.nan
     return data, xc_ref, yc_ref
 
@@ -60,18 +67,16 @@ def test_centroid_com(x_std, y_std, theta, units):
     """
     Test centroid_com with Gaussian data.
     """
-    xcen = 25.7
-    ycen = 26.2
-    model = Gaussian2D(2.4, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
-                       theta=theta)
-    y, x = np.mgrid[0:50, 0:47]
-    data = model(x, y)
+    xc_ref = 25.7
+    yc_ref = 26.2
+    data = _make_gaussian_source((50, 47), 2.4, xc_ref, yc_ref, x_std, y_std,
+                                 theta)
 
     if units:
         data = data * u.nJy
 
     xc, yc = centroid_com(data)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=1.0e-3)
 
     # Test with mask
     x0 = 11
@@ -80,7 +85,7 @@ def test_centroid_com(x_std, y_std, theta, units):
     mask = np.zeros(data.shape, dtype=bool)
     mask[y0, x0] = True
     xc, yc = centroid_com(data, mask=mask)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=1.0e-3)
 
 
 @pytest.mark.parametrize('use_mask', [True, False])
@@ -112,9 +117,8 @@ def test_centroid_com_allmask():
     """
     xc_ref = 24.7
     yc_ref = 25.2
-    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
-    y, x = np.mgrid[0:50, 0:50]
-    data = model(x, y)
+    data = _make_gaussian_source((50, 50), 2.4, xc_ref, yc_ref, 5.0, 5.0, 0)
+
     mask = np.ones(data.shape, dtype=bool)
     xc, yc = centroid_com(data, mask=mask)
     assert np.isnan(xc)
@@ -204,17 +208,16 @@ def test_centroid_quadratic(x_std, y_std, theta, units):
     """
     Test centroid_quadratic with Gaussian data.
     """
-    xcen = 25.7
-    ycen = 26.2
-    model = Gaussian2D(2.4, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
-                       theta=theta)
-    y, x = np.mgrid[0:50, 0:47]
-    data = model(x, y)
+    xc_ref = 25.7
+    yc_ref = 26.2
+    data = _make_gaussian_source((50, 47), 2.4, xc_ref, yc_ref, x_std, y_std,
+                                 theta)
+
     if units:
         data = data * u.nJy
 
     xc, yc = centroid_quadratic(data)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
+    assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=0.015)
 
     # Test with mask
     x0 = 11
@@ -224,7 +227,7 @@ def test_centroid_quadratic(x_std, y_std, theta, units):
     mask[y0, x0] = True
     data[y0, x0] = 1.0e5 * u.nJy if units else 1.0e5
     xc, yc = centroid_quadratic(data, mask=mask)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
+    assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=0.015)
 
 
 def test_centroid_quadratic_xypeak():
@@ -266,9 +269,7 @@ def test_centroid_quadratic_nan():
     """
     Test centroid_quadratic with NaN values.
     """
-    gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
-    yy, xx = np.mgrid[0:100, 0:100]
-    data = gmodel(xx, yy)
+    data = _make_gaussian_source((100, 100), 42.1, 47.8, 52.4, 4.7, 4.7, 0)
     error = make_noise_image(data.shape, mean=0., stddev=2.4, seed=123)
     data += error
 
@@ -475,10 +476,8 @@ class TestCentroidSources:
         Test centroid_sources with Gaussian data.
         """
         theta = np.pi / 6.0
-        model = Gaussian2D(2.4, 25.7, 26.2, x_stddev=3.2, y_stddev=5.7,
-                           theta=theta)
-        y, x = np.mgrid[0:50, 0:47]
-        data = model(x, y)
+        data = _make_gaussian_source((50, 47), 2.4, 25.7, 26.2, 3.2, 5.7,
+                                     theta)
         error = np.ones(data.shape, dtype=float)
         mask = np.zeros(data.shape, dtype=bool)
         mask[10, 10] = True
@@ -570,9 +569,8 @@ class TestCentroidSources:
         """
         xc_ref = 24.7
         yc_ref = 25.2
-        model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
-        y, x = np.mgrid[0:51, 0:51]
-        data = model(x, y)
+        data = _make_gaussian_source((51, 51), 2.4, xc_ref, yc_ref, 5.0, 5.0,
+                                     0)
         mask = data < 1
         xycen = centroid_quadratic(data, mask=mask)
         assert ~np.any(np.isnan(data))
@@ -643,6 +641,32 @@ class TestCentroidSources:
         assert_allclose(xycen3, ([7], [7]))
 
 
+def test_centroid_sources_error_multiple_sources():
+    """
+    Test that centroid_sources correctly applies an error array for
+    multiple sources.
+    """
+    xpos = [25.0, 75.0]
+    ypos = [30.0, 70.0]
+    data1 = _make_gaussian_source((100, 100), 10.0, xpos[0], ypos[0],
+                                  4.0, 4.0, 0)
+    data2 = _make_gaussian_source((100, 100), 10.0, xpos[1], ypos[1],
+                                  4.0, 4.0, 0)
+    data = data1 + data2
+
+    error = np.ones(data.shape, dtype=float)
+
+    xc, yc = centroid_sources(data, xpos, ypos, box_size=21,
+                              centroid_func=centroid_1dg, error=error)
+    assert_allclose(xc, xpos)
+    assert_allclose(yc, ypos)
+
+    xc, yc = centroid_sources(data, xpos, ypos, box_size=21,
+                              centroid_func=centroid_2dg, error=error)
+    assert_allclose(xc, xpos)
+    assert_allclose(yc, ypos)
+
+
 def test_centroid_sources_mutation():
     """
     Test that centroid_sources does not mutate the input data or mask.
@@ -655,8 +679,8 @@ def test_centroid_sources_mutation():
     data_orig = data.copy()
     mask_orig = mask.copy()
     centroid_sources(data, xpos, ypos, box_size=11, mask=mask)
-    np.testing.assert_array_equal(data, data_orig)
-    np.testing.assert_array_equal(mask, mask_orig)
+    assert_array_equal(data, data_orig)
+    assert_array_equal(mask, mask_orig)
 
 
 def test_cutout_mask():
@@ -694,28 +718,24 @@ class TestCentroidQuadraticClass:
         """
         Test basic CentroidQuadratic functionality.
         """
-        xcen = 25.7
-        ycen = 26.2
-        model = Gaussian2D(2.4, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
-                           theta=theta)
-        y, x = np.mgrid[0:50, 0:47]
-        data = model(x, y)
+        xc_ref = 25.7
+        yc_ref = 26.2
+        data = _make_gaussian_source((50, 47), 2.4, xc_ref, yc_ref,
+                                     x_std, y_std, theta)
 
         # Test with default parameters
         centroid_func = CentroidQuadratic()
         xc, yc = centroid_func(data)
-        assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
+        assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=0.015)
 
     def test_mask(self):
         """
         Test CentroidQuadratic with mask input.
         """
-        xcen = 25.7
-        ycen = 26.2
-        model = Gaussian2D(2.4, xcen, ycen, x_stddev=3.2, y_stddev=5.7,
-                           theta=0)
-        y, x = np.mgrid[0:50, 0:47]
-        data = model(x, y)
+        xc_ref = 25.7
+        yc_ref = 26.2
+        data = _make_gaussian_source((50, 47), 2.4, xc_ref, yc_ref,
+                                     3.2, 5.7, 0)
 
         # Add an outlier
         x0 = 11
@@ -726,7 +746,7 @@ class TestCentroidQuadraticClass:
 
         centroid_func = CentroidQuadratic()
         xc, yc = centroid_func(data, mask=mask)
-        assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
+        assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=0.015)
 
     def test_fit_boxsize(self):
         """

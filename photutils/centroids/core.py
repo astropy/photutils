@@ -593,6 +593,10 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
     centroid_kwargs = {key: val for key, val in kwargs.items()
                        if key in spec.parameters}
 
+    # Save the original error array before the loop so that each
+    # iteration independently slices the full-image array
+    error_array = centroid_kwargs.get('error')
+
     n_sources = len(xpos)
     xcentroids = np.zeros(n_sources, dtype=float)
     ycentroids = np.zeros(n_sources, dtype=float)
@@ -621,9 +625,8 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
 
         centroid_kwargs.update({'mask': mask_cutout})
 
-        error = centroid_kwargs.get('error')
-        if error is not None:
-            centroid_kwargs['error'] = error[slices_large]
+        if error_array is not None:
+            centroid_kwargs['error'] = error_array[slices_large]
 
         # Remove this block once xpeak and ypeak are fully deprecated.
         # Remove xpeak and ypeak from the dict and add back only if both

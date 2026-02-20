@@ -5,10 +5,12 @@ Tests for the _utils module.
 
 import numpy as np
 import pytest
+from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.centroids._utils import (_process_data_mask, _validate_data,
+from photutils.centroids._utils import (_gaussian2d_moments,
+                                        _process_data_mask, _validate_data,
                                         _validate_gaussian_inputs,
                                         _validate_mask_shape)
 
@@ -225,3 +227,44 @@ class TestValidateGaussianInputs:
         _, _, out_error = _validate_gaussian_inputs(gauss_data, None, error)
         # No changes needed, so out_error must be the exact same object
         assert out_error is error
+
+
+class TestGaussian2DMoments:
+    """
+    Tests for _gaussian2d_moments.
+    """
+
+    def test_symmetric_gaussian(self):
+        """
+        Circular Gaussian: centroid and equal stddevs are recovered.
+        """
+        xcen, ycen, std = 25.0, 25.0, 5.0
+        model = Gaussian2D(1.0, xcen, ycen, x_stddev=std, y_stddev=std)
+        y, x = np.mgrid[0:50, 0:50]
+        data = model(x, y)
+        x_mean, y_mean, x_stddev, y_stddev, theta = _gaussian2d_moments(data)
+        assert_allclose(x_mean, xcen, atol=0.01)
+        assert_allclose(y_mean, ycen, atol=0.01)
+        assert_allclose(x_stddev, std, atol=0.1)
+        assert_allclose(y_stddev, std, atol=0.1)
+        assert_allclose(theta, 0, atol=0.05)
+
+    @pytest.mark.parametrize('theta_in',
+                             np.deg2rad((0, 22, 37, 45, 60, 88, 90)))
+    def test_asymmetric_gaussian_theta(self, theta_in):
+        """
+        Axis-aligned elliptical Gaussian (theta=0): centroid and axis
+        stddevs are recovered. The larger sigma maps to x_stddev.
+        """
+        xcen, ycen = 30.0, 20.0
+        x_std, y_std = 6.0, 3.0
+        model = Gaussian2D(1.0, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
+                           theta=theta_in)
+        y, x = np.mgrid[0:50, 0:50]
+        data = model(x, y)
+        x_mean, y_mean, x_stddev, y_stddev, theta = _gaussian2d_moments(data)
+        assert_allclose(x_mean, xcen, atol=0.02)
+        assert_allclose(y_mean, ycen, atol=0.02)
+        assert_allclose(x_stddev, x_std, atol=0.1)
+        assert_allclose(y_stddev, y_std, atol=0.1)
+        assert_allclose(theta, theta_in, atol=0.05)

@@ -16,18 +16,13 @@ from photutils.centroids.gaussian import (_gaussian1d_moments, centroid_1dg,
                                           centroid_2dg)
 
 
-@pytest.fixture(name='test_data')
-def fixture_test_data():
+def _make_gaussian_source(shape, amplitude, xc, yc, xstd, ystd, theta):
     """
-    Create a simple 3x3 array with a Gaussian-like peak in the center.
+    Make a 2D Gaussian source.
     """
-    xcen = 25.7
-    ycen = 26.2
-    data = np.zeros((3, 3))
-    data[0:2, 1] = 1.0
-    data[1, 0:2] = 1.0
-    data[1, 1] = 2.0
-    return data, xcen, ycen
+    yy, xx = np.mgrid[0:shape[0], 0:shape[1]]
+    model = Gaussian2D(amplitude, xc, yc, xstd, ystd, theta)
+    return model(xx, yy)
 
 
 @pytest.mark.parametrize('x_std', [3.2, 4.0])
@@ -39,15 +34,12 @@ def test_centroids(x_std, y_std, theta, units):
     Test the 1D and 2D Gaussian centroid functions on a simple 2D
     Gaussian model.
     """
-    xcen = 25.7
-    ycen = 26.2
+    xc_ref = 25.7
+    yc_ref = 26.2
+    data = _make_gaussian_source((50, 47), 2.4, xc_ref, yc_ref, x_std, y_std,
+                                 theta)
+    error = np.sqrt(np.abs(data))
 
-    model = Gaussian2D(2.4, xcen, ycen, x_stddev=x_std, y_stddev=y_std,
-                       theta=theta)
-    y, x = np.mgrid[0:50, 0:47]
-
-    data = model(x, y)
-    error = np.sqrt(data)
     value = 1.0e5
     if units:
         unit = u.nJy
@@ -56,24 +48,24 @@ def test_centroids(x_std, y_std, theta, units):
         value *= unit
 
     xc, yc = centroid_1dg(data)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=1.0e-3)
 
     # Test with errors
     xc, yc = centroid_1dg(data, error=error)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data, error=error)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=1.0e-3)
 
     # Test with mask
     mask = np.zeros(data.shape, dtype=bool)
     data[10, 10] = value
     mask[10, 10] = True
     xc, yc = centroid_1dg(data, mask=mask)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data, mask=mask)
-    assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
+    assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=1.0e-3)
 
 
 @pytest.mark.parametrize('use_mask', [True, False])
@@ -84,10 +76,9 @@ def test_centroids_nan_withmask(use_mask):
     """
     xc_ref = 24.7
     yc_ref = 25.2
-    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
-    y, x = np.mgrid[0:50, 0:50]
-    data = model(x, y)
+    data = _make_gaussian_source((50, 50), 2.4, xc_ref, yc_ref, 5.0, 5.0, 0.0)
     data[20, :] = np.nan
+
     if use_mask:
         mask = np.zeros(data.shape, dtype=bool)
         mask[20, :] = True
@@ -200,9 +191,7 @@ def test_gaussian2d_warning():
     Test that the 2D Gaussian centroid function raises a warning if the
     fit may not have converged.
     """
-    yy, xx = np.mgrid[:51, :51]
-    model = Gaussian2D(x_mean=24.17, y_mean=25.87, x_stddev=1.7, y_stddev=4.7)
-    data = model(xx, yy)
+    data = _make_gaussian_source((51, 51), 1.0, 24.17, 25.87, 1.7, 4.7, 0.0)
 
     match = 'The fit may not have converged'
     with pytest.warns(AstropyUserWarning, match=match):
@@ -214,9 +203,7 @@ def test_no_input_mutation():
     Test that input mask and error arrays are not mutated by
     centroid_1dg or centroid_2dg.
     """
-    model = Gaussian2D(2.4, 25.0, 25.0, x_stddev=5.0, y_stddev=5.0)
-    y, x = np.mgrid[0:50, 0:50]
-    data = model(x, y)
+    data = _make_gaussian_source((50, 50), 2.4, 25.0, 25.0, 5.0, 5.0, 0.0)
 
     # Add a masked position and a NaN in error to exercise all
     # copy-on-write paths without triggering data-NaN warnings
@@ -242,11 +229,7 @@ def test_masked_array_input():
     Test that MaskedArray inputs to centroid_1dg and centroid_2dg give
     the same results as equivalent plain array and mask inputs.
     """
-    xcen = 25.0
-    ycen = 25.0
-    model = Gaussian2D(2.4, xcen, ycen, x_stddev=5.0, y_stddev=5.0)
-    y, x = np.mgrid[0:50, 0:50]
-    data = model(x, y)
+    data = _make_gaussian_source((50, 50), 2.4, 25.0, 25.0, 5.0, 5.0, 0.0)
 
     mask = np.zeros(data.shape, dtype=bool)
     mask[10, 10] = True
