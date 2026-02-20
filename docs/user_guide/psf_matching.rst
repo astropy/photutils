@@ -289,15 +289,14 @@ which is parameterized by two values:
 The different window classes set these parameters in specific ways,
 offering different levels of convenience and control.
 
-`~photutils.psf_matching.HanningWindow`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+`~photutils.psf_matching.SplitCosineBellWindow`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The `Hann window <https://en.wikipedia.org/wiki/Hann_function>`_
-(``alpha=1.0``, ``beta=0.0``) is a raised cosine that equals 1.0 only at
-the exact center and smoothly tapers to zero at the edges. The entire
-array is tapered. This provides the strongest sidelobe suppression in
-Fourier space, at the cost of attenuating most of the data. Use this
-when edge artifacts and ringing are a primary concern.
+The split cosine bell is the most general window, taking both ``alpha``
+and ``beta`` as independent parameters. The window equals 1.0 for
+radii less than ``beta`` times the maximum radius, tapers over the
+next ``alpha`` fraction, and is zero beyond. Use this when you need
+fine-grained control over both the preserved region and the taper width.
 
 `~photutils.psf_matching.TukeyWindow`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -313,6 +312,16 @@ when ``alpha=1`` it becomes a `~photutils.psf_matching.HanningWindow`.
 This window provides a good balance and is a solid general-purpose
 choice.
 
+`~photutils.psf_matching.HanningWindow`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The `Hann window <https://en.wikipedia.org/wiki/Hann_function>`_
+(``alpha=1.0``, ``beta=0.0``) is a raised cosine that equals 1.0 only at
+the exact center and smoothly tapers to zero at the edges. The entire
+array is tapered. This provides the strongest sidelobe suppression in
+Fourier space, at the cost of attenuating most of the data. Use this
+when edge artifacts and ringing are a primary concern.
+
 `~photutils.psf_matching.CosineBellWindow`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -324,15 +333,6 @@ equivalent to a `~photutils.psf_matching.HanningWindow`. Compared to
 a `~photutils.psf_matching.TukeyWindow` with the same ``alpha``, the
 cosine bell has no flat plateau, so the taper starts closer to the
 center.
-
-`~photutils.psf_matching.SplitCosineBellWindow`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The split cosine bell is the most general window, taking both ``alpha``
-and ``beta`` as independent parameters. The window equals 1.0 for
-radii less than ``beta`` times the maximum radius, tapers over the
-next ``alpha`` fraction, and is zero beyond. Use this when you need
-fine-grained control over both the preserved region and the taper width.
 
 `~photutils.psf_matching.TopHatWindow`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -370,11 +370,12 @@ defined above:
                                         SplitCosineBellWindow, TopHatWindow,
                                         TukeyWindow)
 
-    w1 = HanningWindow()
+    w1 = SplitCosineBellWindow(alpha=0.4, beta=0.3)
     w2 = TukeyWindow(alpha=0.5)
-    w3 = CosineBellWindow(alpha=0.5)
-    w4 = SplitCosineBellWindow(alpha=0.4, beta=0.3)
+    w3 = HanningWindow()
+    w4 = CosineBellWindow(alpha=0.5)
     w5 = TopHatWindow(beta=0.4)
+
     shape = (101, 101)
     y0 = (shape[0] - 1) // 2
 
@@ -395,12 +396,14 @@ defined above:
 
     axes = [ax1, ax2, ax3, ax4, ax5]
     windows = [w1, w2, w3, w4, w5]
-    titles = ['Hanning',
-              'Tukey\n(alpha=0.5)',
-              'Cosine Bell\n(alpha=0.5)',
-              'Split Cosine Bell\n(alpha=0.4, beta=0.3)',
-              'Top Hat\n(beta=0.4)'
-              ]
+
+    titles = [
+        'Split Cosine Bell\n(alpha=0.4, beta=0.3)',
+        'Tukey\n(alpha=0.5)',
+        'Hanning',
+        'Cosine Bell\n(alpha=0.5)',
+        'Top Hat\n(beta=0.4)'
+    ]
 
     # Plot using the OO interface
     for ax, window, title in zip(axes, windows, titles):
