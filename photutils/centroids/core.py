@@ -19,6 +19,56 @@ __all__ = ['CentroidQuadratic', 'centroid_com', 'centroid_quadratic',
            'centroid_sources']
 
 
+def _validate_data(data, ndim=2):
+    """
+    Validate that the input data is a 2D array.
+    """
+    data = np.asanyarray(data, dtype=float)
+    if ndim is not None and data.ndim != ndim:
+        msg = f'data must be a {ndim}D array'
+        raise ValueError(msg)
+    return data
+
+
+def _validate_mask_shape(data, mask):
+    """
+    Validate that the data and mask have the same shape.
+    """
+    if mask is not None and data.shape != mask.shape:
+        msg = 'data and mask must have the same shape'
+        raise ValueError(msg)
+
+
+def _process_data_mask(data, mask, ndim=2, fill_value=np.nan):
+    """
+    Process the input data and mask.
+
+    This function validates the input data and mask, handles non-finite
+    values, and returns the processed data and mask.
+    """
+    data = _validate_data(data, ndim=ndim)
+    is_copied = False
+    _validate_mask_shape(data, mask)
+
+    badmask = ~np.isfinite(data)
+    if mask is not None:
+        if np.any(mask):
+            data = data.copy()
+            is_copied = True
+            data[mask] = fill_value
+        badmask &= ~mask
+
+    if np.any(badmask):
+        warnings.warn('Input data contains non-finite values (e.g., NaN or '
+                      'inf) that were automatically masked.',
+                      AstropyUserWarning)
+        if not is_copied:
+            data = data.copy()
+        data[badmask] = fill_value
+
+    return data
+
+
 def centroid_com(data, *, mask=None):
     """
     Calculate the centroid of an n-dimensional array as
@@ -90,30 +140,8 @@ def centroid_com(data, *, mask=None):
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
-    data = np.asanyarray(data, dtype=float)
-    is_copied = False
-
-    if mask is not None and mask is not np.ma.nomask:
-        mask = np.asarray(mask, dtype=bool)
-        if data.shape != mask.shape:
-            msg = 'data and mask must have the same shape'
-            raise ValueError(msg)
-
-        if np.any(mask):
-            # Copy if there are masked values to preserve the input data
-            data = data.copy()
-            is_copied = True
-            data[mask] = 0.0
-
-    badmask = ~np.isfinite(data)
-    if np.any(badmask):
-        warnings.warn('Input data contains non-finite values (e.g., NaN or '
-                      'inf) that were automatically masked.',
-                      AstropyUserWarning)
-
-        if not is_copied:
-            data = data.copy()
-        data[badmask] = 0.0
+    # preserve input data - which should be a small cutout image
+    data = _process_data_mask(data, mask, ndim=None, fill_value=0.0)
 
     total = np.sum(data)
     if total == 0:
@@ -256,34 +284,8 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
-    data = np.asanyarray(data, dtype=float)
-    is_copied = False
-
-    if data.ndim != 2:
-        msg = 'data must be a 2D array'
-        raise ValueError(msg)
+    data = _process_data_mask(data, mask)
     ny, nx = data.shape
-
-    badmask = ~np.isfinite(data)
-    if mask is not None:
-        if data.shape != mask.shape:
-            msg = 'data and mask must have the same shape'
-            raise ValueError(msg)
-
-        if np.any(mask):
-            # Copy if there are masked values to preserve the input data
-            data = data.copy()
-            is_copied = True
-            data[mask] = np.nan
-        badmask &= ~mask  # Exclude non-finite values in the input mask
-
-    if np.any(badmask):
-        warnings.warn('Input data contains non-finite values (e.g., NaN or '
-                      'inf) that were automatically masked.',
-                      AstropyUserWarning)
-        if not is_copied:
-            data = data.copy()
-        data[badmask] = np.nan
 
     fit_boxsize = as_pair('fit_boxsize', fit_boxsize, lower_bound=(0, 1),
                           upper_bound=data.shape, check_odd=True)

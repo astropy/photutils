@@ -131,6 +131,8 @@ def test_invalid_shapes():
         centroid_1dg(data, mask=mask)
     with pytest.raises(ValueError, match=match):
         centroid_2dg(data, mask=mask)
+    data = np.zeros(4)
+    mask = np.zeros(2, dtype=bool)
     with pytest.raises(ValueError, match=match):
         _gaussian1d_moments(data, mask=mask)
 
@@ -176,16 +178,21 @@ def test_gaussian1d_moments():
     result = _gaussian1d_moments(data, mask=mask)
     assert_allclose(result, desired, rtol=0, atol=1.0e-6)
 
+    # Test that masked NaNs do not raise a warning
     data[0] = np.nan
     mask = np.zeros(data.shape).astype(bool)
     mask[0] = True
+    result = _gaussian1d_moments(data, mask=mask)
+    assert_allclose(result, desired, rtol=0, atol=1.0e-6)
 
+    # Test that unmasked NaNs raise a warning
+    data[0] = np.nan
+    mask = np.zeros(data.shape).astype(bool)
+    mask[0] = False
     match = 'Input data contains non-finite values'
-    ctx = pytest.warns(AstropyUserWarning, match=match)
-    with ctx as warnlist:
+    with pytest.warns(AstropyUserWarning, match=match):
         result = _gaussian1d_moments(data, mask=mask)
-        assert_allclose(result, desired, rtol=0, atol=1.0e-6)
-        assert len(warnlist) == 1
+    assert_allclose(result, desired, rtol=0, atol=1.0e-6)
 
 
 def test_gaussian2d_warning():

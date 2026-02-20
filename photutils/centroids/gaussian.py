@@ -10,6 +10,7 @@ from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.centroids.core import _process_data_mask
 from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['centroid_1dg', 'centroid_2dg']
@@ -71,23 +72,9 @@ def centroid_1dg(data, *, error=None, mask=None):
     """
     (data, error), _ = process_quantities((data, error), ('data', 'error'))
 
-    data = np.ma.asanyarray(data)
-    if data.ndim != 2:
-        msg = 'data must be a 2D array'
-        raise ValueError(msg)
-
-    if mask is not None and mask is not np.ma.nomask:
-        mask = np.asanyarray(mask)
-        if data.shape != mask.shape:
-            msg = 'data and mask must have the same shape'
-            raise ValueError(msg)
-        data.mask |= mask
-
-    if np.any(~np.isfinite(data)):
-        data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains non-finite values (e.g., NaN or '
-                      'inf) that were automatically masked.',
-                      AstropyUserWarning)
+    data = _process_data_mask(data, mask)
+    data = np.ma.masked_invalid(data)
+    data.set_fill_value(0.0)
 
     if error is not None:
         error = np.ma.masked_invalid(error)
@@ -146,22 +133,9 @@ def _gaussian1d_moments(data, *, mask=None):
     amplitude, mean, stddev : float
         The estimated parameters of a 1D Gaussian.
     """
-    if np.any(~np.isfinite(data)):
-        data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains non-finite values (e.g., NaN or '
-                      'inf) that were automatically masked.',
-                      AstropyUserWarning)
-    else:
-        data = np.ma.array(data)
-
-    if mask is not None and mask is not np.ma.nomask:
-        mask = np.asanyarray(mask)
-        if data.shape != mask.shape:
-            msg = 'data and mask must have the same shape'
-            raise ValueError(msg)
-        data.mask |= mask
-
-    data.fill_value = 0.0
+    data = _process_data_mask(data, mask, ndim=1)
+    data = np.ma.masked_invalid(data)
+    data.set_fill_value(0.0)
     data = data.filled()
 
     x = np.arange(data.size)
@@ -231,23 +205,9 @@ def centroid_2dg(data, *, error=None, mask=None):
 
     (data, error), _ = process_quantities((data, error), ('data', 'error'))
 
-    data = np.ma.asanyarray(data)
-    if data.ndim != 2:
-        msg = 'data must be a 2D array'
-        raise ValueError(msg)
-
-    if mask is not None and mask is not np.ma.nomask:
-        mask = np.asanyarray(mask)
-        if data.shape != mask.shape:
-            msg = 'data and mask must have the same shape'
-            raise ValueError(msg)
-        data.mask |= mask
-
-    if np.any(~np.isfinite(data)):
-        data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains non-finite values (e.g., NaN or '
-                      'inf) that were automatically masked.',
-                      AstropyUserWarning)
+    data = _process_data_mask(data, mask)
+    data = np.ma.masked_invalid(data)
+    data.set_fill_value(0.0)
 
     if error is not None:
         error = np.ma.masked_invalid(error)
