@@ -10,7 +10,8 @@ from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.centroids._utils import (_process_data_mask,
+from photutils.centroids._utils import (_gaussian1d_moments,
+                                        _gaussian2d_moments,
                                         _validate_gaussian_inputs)
 from photutils.utils._quantity_helpers import process_quantities
 
@@ -106,37 +107,6 @@ def centroid_1dg(data, *, error=None, mask=None):
     return np.array(centroid)
 
 
-def _gaussian1d_moments(data, *, mask=None):
-    """
-    Estimate 1D Gaussian parameters from the moments of 1D data.
-
-    This function can be useful for providing initial parameter values
-    when fitting a 1D Gaussian to the ``data``.
-
-    Parameters
-    ----------
-    data : 1D `~numpy.ndarray`
-        The 1D data array.
-
-    mask : 1D bool `~numpy.ndarray`, optional
-        A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-
-    Returns
-    -------
-    amplitude, mean, stddev : float
-        The estimated parameters of a 1D Gaussian.
-    """
-    data = _process_data_mask(data, mask, ndim=1, fill_value=0.0)
-
-    x = np.arange(data.size)
-    x_mean = np.sum(x * data) / np.sum(data)
-    x_stddev = np.sqrt(abs(np.sum(data * (x - x_mean) ** 2) / np.sum(data)))
-    amplitude = np.ptp(data)
-
-    return amplitude, x_mean, x_stddev
-
-
 def centroid_2dg(data, *, error=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
@@ -194,40 +164,35 @@ def centroid_2dg(data, *, error=None, mask=None):
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
-    # Prevent circular import
-    from photutils.morphology import data_properties
-
     (data, error), _ = process_quantities((data, error), ('data', 'error'))
     data, mask, error = _validate_gaussian_inputs(data, mask, error)
-
-    if error is not None:
-        weights = 1.0 / error.clip(min=1.0e-30)
-    else:
-        weights = np.ones(data.shape)
 
     if np.count_nonzero(~mask) < 6:
         msg = ('Input data must have a least 6 unmasked values to fit a '
                '2D Gaussian.')
         raise ValueError(msg)
 
+    if error is not None:
+        weights = 1.0 / error.clip(min=1.0e-30)
+    else:
+        weights = np.ones(data.shape)
+
     # Assign zero weight to masked pixels
     if np.any(mask):
         weights[mask] = 0.0
 
     # Subtract the minimum of the data to make the data values positive.
-    # This prevents issues with the moment estimation in data_properties.
     # Moments from negative data values can yield undefined Gaussian
-    # parameters, e.g., x/y_stddev.
-    props = data_properties(data - np.min(data), mask=mask)
+    # parameters, e.g., x_stddev and y_stddev.
+    x_mean, y_mean, x_stddev, y_stddev, theta = _gaussian2d_moments(
+        data - np.min(data))
 
     g_init = Gaussian2D(amplitude=np.ptp(data),
-                        x_mean=props.xcentroid,
-                        y_mean=props.ycentroid,
-                        x_stddev=props.semimajor_sigma.value,
-                        y_stddev=props.semiminor_sigma.value,
-                        theta=props.orientation)
-
-    # Gaussian2D [x/y]_stddev are bounded to be strictly positive
+                        x_mean=x_mean,
+                        y_mean=y_mean,
+                        x_stddev=x_stddev,
+                        y_stddev=y_stddev,
+                        theta=theta)
     fitter = TRFLSQFitter()
 
     y, x = np.indices(data.shape)
@@ -236,7 +201,7 @@ def centroid_2dg(data, *, error=None, mask=None):
         gfit = fitter(g_init, x, y, data, weights=weights)
 
     if len(fit_warnings) > 0:
-        warnings.warn('The fit may not have converged. Please check your '
-                      'results.', AstropyUserWarning)
+        msg = 'The fit may not have converged. Please check your results.'
+        warnings.warn(msg, AstropyUserWarning)
 
     return np.array([gfit.x_mean.value, gfit.y_mean.value])
